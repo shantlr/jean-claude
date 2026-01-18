@@ -10,22 +10,6 @@ Primary agent: Claude Code (via Agent SDK) with extensibility for other agents l
 
 ---
 
-### Phase 0: SDK Prototype
-
-De-risk Agent SDK integration before building UI.
-
-- [ ] Validate core SDK capabilities
-  - [ ] Spawn and manage agent sessions
-  - [ ] Stream real-time output (structured events, not terminal output)
-  - [ ] Handle permission requests programmatically
-  - [ ] Respond to agent questions
-  - [ ] Stop/terminate sessions cleanly
-  - [ ] Resume sessions via session ID
-- [ ] Document SDK behavior and limitations
-- [ ] Confirm data model assumptions (what SDK stores vs what we store)
-
----
-
 ### Phase 1: Foundation
 
 #### 1.1 Project Setup
