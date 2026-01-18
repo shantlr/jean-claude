@@ -54,11 +54,14 @@ src/routes/
 ### Programmatic
 
 ```tsx
-const navigate = useNavigate()
+const navigate = useNavigate();
 
-navigate({ to: '/projects/$projectId', params: { projectId } })
-navigate({ to: '/projects/$projectId/tasks/$taskId/chat', params: { projectId, taskId } })
-navigate({ to: '/settings' })
+navigate({ to: '/projects/$projectId', params: { projectId } });
+navigate({
+  to: '/projects/$projectId/tasks/$taskId/chat',
+  params: { projectId, taskId },
+});
+navigate({ to: '/settings' });
 ```
 
 ### Link Components

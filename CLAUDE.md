@@ -115,3 +115,7 @@ src/               # Renderer (React)
 - Test business logic in isolation from UI
 - Mock IPC calls in renderer tests
 - Database tests should use in-memory SQLite
+
+### Claude Agent SDK
+
+Docs: https://platform.claude.com/docs/en/agent-sdk/overview

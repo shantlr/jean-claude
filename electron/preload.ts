@@ -1,5 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+import { AGENT_CHANNELS } from '../shared/agent-types';
+
 contextBridge.exposeInMainWorld('api', {
   platform: process.platform,
   projects: {
@@ -35,5 +37,36 @@ contextBridge.exposeInMainWorld('api', {
   fs: {
     readPackageJson: (dirPath: string) =>
       ipcRenderer.invoke('fs:readPackageJson', dirPath),
+    readFile: (filePath: string) => ipcRenderer.invoke('fs:readFile', filePath),
+  },
+  agent: {
+    start: (taskId: string) => ipcRenderer.invoke(AGENT_CHANNELS.START, taskId),
+    stop: (taskId: string) => ipcRenderer.invoke(AGENT_CHANNELS.STOP, taskId),
+    respond: (taskId: string, requestId: string, response: unknown) =>
+      ipcRenderer.invoke(AGENT_CHANNELS.RESPOND, taskId, requestId, response),
+    sendMessage: (taskId: string, message: string) =>
+      ipcRenderer.invoke(AGENT_CHANNELS.SEND_MESSAGE, taskId, message),
+    getMessages: (taskId: string) =>
+      ipcRenderer.invoke(AGENT_CHANNELS.GET_MESSAGES, taskId),
+    onMessage: (callback: (event: unknown) => void) => {
+      const handler = (_: unknown, event: unknown) => callback(event);
+      ipcRenderer.on(AGENT_CHANNELS.MESSAGE, handler);
+      return () => ipcRenderer.removeListener(AGENT_CHANNELS.MESSAGE, handler);
+    },
+    onStatus: (callback: (event: unknown) => void) => {
+      const handler = (_: unknown, event: unknown) => callback(event);
+      ipcRenderer.on(AGENT_CHANNELS.STATUS, handler);
+      return () => ipcRenderer.removeListener(AGENT_CHANNELS.STATUS, handler);
+    },
+    onPermission: (callback: (event: unknown) => void) => {
+      const handler = (_: unknown, event: unknown) => callback(event);
+      ipcRenderer.on(AGENT_CHANNELS.PERMISSION, handler);
+      return () => ipcRenderer.removeListener(AGENT_CHANNELS.PERMISSION, handler);
+    },
+    onQuestion: (callback: (event: unknown) => void) => {
+      const handler = (_: unknown, event: unknown) => callback(event);
+      ipcRenderer.on(AGENT_CHANNELS.QUESTION, handler);
+      return () => ipcRenderer.removeListener(AGENT_CHANNELS.QUESTION, handler);
+    },
   },
 });

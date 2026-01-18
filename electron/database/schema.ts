@@ -27,6 +27,7 @@ export interface Database {
   providers: ProviderTable;
   projects: ProjectTable;
   tasks: TaskTable;
+  agent_messages: AgentMessageTable;
 }
 
 export interface ProviderTable {
@@ -65,6 +66,15 @@ export interface TaskTable {
   updatedAt: string;
 }
 
+export interface AgentMessageTable {
+  id: Generated<string>;
+  taskId: string;
+  messageIndex: number;
+  messageType: string;
+  messageData: string; // JSON stringified AgentMessage
+  createdAt: Generated<string>;
+}
+
 // Kysely-specific types for database operations
 export type ProviderRow = Selectable<ProviderTable>;
 export type NewProviderRow = Insertable<ProviderTable>;
@@ -77,3 +87,6 @@ export type UpdateProjectRow = Updateable<ProjectTable>;
 export type TaskRow = Selectable<TaskTable>;
 export type NewTaskRow = Insertable<TaskTable>;
 export type UpdateTaskRow = Updateable<TaskTable>;
+
+export type AgentMessageRow = Selectable<AgentMessageTable>;
+export type NewAgentMessageRow = Insertable<AgentMessageTable>;

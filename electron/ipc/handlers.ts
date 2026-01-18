@@ -4,6 +4,11 @@ import * as path from 'path';
 import { BrowserWindow, ipcMain, dialog } from 'electron';
 
 import {
+  AGENT_CHANNELS,
+  PermissionResponse,
+  QuestionResponse,
+} from '../../shared/agent-types';
+import {
   ProjectRepository,
   TaskRepository,
   ProviderRepository,
@@ -16,6 +21,7 @@ import {
   UpdateTask,
   UpdateProvider,
 } from '../database/schema';
+import { agentService } from '../services/agent-service';
 
 export function registerIpcHandlers() {
   // Projects
@@ -89,5 +95,86 @@ export function registerIpcHandlers() {
     } catch {
       return null;
     }
+  });
+
+  ipcMain.handle('fs:readFile', (_, filePath: string) => {
+    try {
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const ext = path.extname(filePath).slice(1);
+      const languageMap: Record<string, string> = {
+        ts: 'typescript',
+        tsx: 'tsx',
+        js: 'javascript',
+        jsx: 'jsx',
+        py: 'python',
+        rb: 'ruby',
+        go: 'go',
+        rs: 'rust',
+        java: 'java',
+        kt: 'kotlin',
+        swift: 'swift',
+        c: 'c',
+        cpp: 'cpp',
+        h: 'c',
+        hpp: 'cpp',
+        cs: 'csharp',
+        php: 'php',
+        html: 'html',
+        css: 'css',
+        scss: 'scss',
+        less: 'less',
+        json: 'json',
+        yaml: 'yaml',
+        yml: 'yaml',
+        xml: 'xml',
+        md: 'markdown',
+        sql: 'sql',
+        sh: 'bash',
+        bash: 'bash',
+        zsh: 'bash',
+        toml: 'toml',
+        ini: 'ini',
+        dockerfile: 'dockerfile',
+      };
+      return { content, language: languageMap[ext] || 'text' };
+    } catch {
+      return null;
+    }
+  });
+
+  // Agent
+  ipcMain.handle(AGENT_CHANNELS.START, (event, taskId: string) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window) {
+      agentService.setMainWindow(window);
+    }
+    return agentService.start(taskId);
+  });
+
+  ipcMain.handle(AGENT_CHANNELS.STOP, (_, taskId: string) => {
+    return agentService.stop(taskId);
+  });
+
+  ipcMain.handle(
+    AGENT_CHANNELS.RESPOND,
+    (
+      _,
+      taskId: string,
+      requestId: string,
+      response: PermissionResponse | QuestionResponse
+    ) => {
+      return agentService.respond(taskId, requestId, response);
+    }
+  );
+
+  ipcMain.handle(
+    AGENT_CHANNELS.SEND_MESSAGE,
+    (_, taskId: string, message: string) => {
+      return agentService.sendMessage(taskId, message);
+    }
+  );
+
+  ipcMain.handle(AGENT_CHANNELS.GET_MESSAGES, (_, taskId: string) => {
+    return agentService.getMessages(taskId);
   });
 }

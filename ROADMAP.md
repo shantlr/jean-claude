@@ -53,10 +53,10 @@ Note: Multiple agents can run simultaneously across different projects. UI must 
 
 #### 2.1 Project View Layout
 
-- [ ] Project sidebar (secondary, inside content area)
-  - [ ] Project name/icon at top (links to project details)
-  - [ ] "New task" button
-  - [ ] Task list (title, status indicator, timestamp per task)
+- [x] Project sidebar (secondary, inside content area)
+  - [x] Project name/icon at top (links to project details)
+  - [x] "New task" button
+  - [x] Task list (title, status indicator, timestamp per task)
   - [ ] Unread badge on task (waiting for input, completed, errored)
 - [ ] Task panel (interactive session, similar to Claude Code CLI)
   - [ ] Chat-like message history (prompts, agent responses, tool outputs)
@@ -73,9 +73,9 @@ Note: Multiple agents can run simultaneously across different projects. UI must 
 
 #### 2.2 Task Creation
 
-- [ ] Prompt input (multiline textarea)
-- [ ] Use worktree checkbox (default: on)
-- [ ] Submit creates agent session and adds to task list
+- [x] Prompt input (multiline textarea)
+- [x] Use worktree checkbox (default: on)
+- [x] Submit creates agent session and adds to task list
 
 #### 2.3 Agent Output & Controls
 

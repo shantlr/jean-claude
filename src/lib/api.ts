@@ -1,4 +1,13 @@
 import type {
+  AgentMessage,
+  AgentMessageEvent,
+  AgentStatusEvent,
+  AgentPermissionEvent,
+  AgentQuestionEvent,
+  PermissionResponse,
+  QuestionResponse,
+} from '../../shared/agent-types';
+import type {
   Project,
   NewProject,
   UpdateProject,
@@ -13,6 +22,9 @@ import type {
 export interface PackageJson {
   name?: string;
 }
+
+export type AgentEventCallback<T> = (event: T) => void;
+export type UnsubscribeFn = () => void;
 
 export interface Api {
   platform: typeof process.platform;
@@ -44,6 +56,22 @@ export interface Api {
   };
   fs: {
     readPackageJson: (dirPath: string) => Promise<PackageJson | null>;
+    readFile: (filePath: string) => Promise<{ content: string; language: string } | null>;
+  };
+  agent: {
+    start: (taskId: string) => Promise<void>;
+    stop: (taskId: string) => Promise<void>;
+    respond: (
+      taskId: string,
+      requestId: string,
+      response: PermissionResponse | QuestionResponse
+    ) => Promise<void>;
+    sendMessage: (taskId: string, message: string) => Promise<void>;
+    getMessages: (taskId: string) => Promise<AgentMessage[]>;
+    onMessage: (callback: AgentEventCallback<AgentMessageEvent>) => UnsubscribeFn;
+    onStatus: (callback: AgentEventCallback<AgentStatusEvent>) => UnsubscribeFn;
+    onPermission: (callback: AgentEventCallback<AgentPermissionEvent>) => UnsubscribeFn;
+    onQuestion: (callback: AgentEventCallback<AgentQuestionEvent>) => UnsubscribeFn;
   };
 }
 
@@ -88,5 +116,17 @@ export const api: Api = hasWindowApi
       },
       fs: {
         readPackageJson: async () => null,
+        readFile: async () => null,
+      },
+      agent: {
+        start: async () => { throw new Error('API not available'); },
+        stop: async () => { throw new Error('API not available'); },
+        respond: async () => { throw new Error('API not available'); },
+        sendMessage: async () => { throw new Error('API not available'); },
+        getMessages: async () => [],
+        onMessage: () => () => {},
+        onStatus: () => () => {},
+        onPermission: () => () => {},
+        onQuestion: () => () => {},
       },
     } as Api);
