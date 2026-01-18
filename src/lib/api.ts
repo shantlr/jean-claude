@@ -30,6 +30,7 @@ export interface Api {
     create: (data: NewTask) => Promise<Task>;
     update: (id: string, data: UpdateTask) => Promise<Task>;
     delete: (id: string) => Promise<void>;
+    markAsRead: (id: string) => Promise<Task>;
   };
   providers: {
     findAll: () => Promise<Provider[]>;
@@ -73,6 +74,7 @@ export const api: Api = hasWindowApi
         create: async () => { throw new Error('API not available'); },
         update: async () => { throw new Error('API not available'); },
         delete: async () => {},
+        markAsRead: async () => { throw new Error('API not available'); },
       },
       providers: {
         findAll: async () => [],

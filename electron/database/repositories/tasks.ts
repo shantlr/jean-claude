@@ -31,4 +31,12 @@ export const TaskRepository = {
       .executeTakeFirstOrThrow(),
 
   delete: (id: string) => db.deleteFrom('tasks').where('id', '=', id).execute(),
+
+  markAsRead: (id: string) =>
+    db
+      .updateTable('tasks')
+      .set({ readAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
+      .where('id', '=', id)
+      .returningAll()
+      .executeTakeFirstOrThrow(),
 };

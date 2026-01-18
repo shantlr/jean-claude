@@ -48,6 +48,9 @@ export function registerIpcHandlers() {
     TaskRepository.update(id, data),
   );
   ipcMain.handle('tasks:delete', (_, id: string) => TaskRepository.delete(id));
+  ipcMain.handle('tasks:markAsRead', (_, id: string) =>
+    TaskRepository.markAsRead(id),
+  );
 
   // Providers
   ipcMain.handle('providers:findAll', () => ProviderRepository.findAll());
