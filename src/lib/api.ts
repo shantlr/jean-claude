@@ -1,4 +1,4 @@
-import {
+import type {
   Project,
   NewProject,
   UpdateProject,
@@ -8,9 +8,10 @@ import {
   Provider,
   NewProvider,
   UpdateProvider,
-} from '../../electron/database/schema';
+} from '../../shared/types';
 
 export interface Api {
+  platform: typeof process.platform;
   projects: {
     findAll: () => Promise<Project[]>;
     findById: (id: string) => Promise<Project | undefined>;
@@ -41,4 +42,30 @@ declare global {
   }
 }
 
-export const api = window.api;
+export const api: Api = typeof window !== 'undefined' && window.api
+  ? window.api
+  : ({
+      platform: 'darwin',
+      projects: {
+        findAll: async () => [],
+        findById: async () => undefined,
+        create: async () => { throw new Error('API not available'); },
+        update: async () => { throw new Error('API not available'); },
+        delete: async () => {},
+      },
+      tasks: {
+        findAll: async () => [],
+        findByProjectId: async () => [],
+        findById: async () => undefined,
+        create: async () => { throw new Error('API not available'); },
+        update: async () => { throw new Error('API not available'); },
+        delete: async () => {},
+      },
+      providers: {
+        findAll: async () => [],
+        findById: async () => undefined,
+        create: async () => { throw new Error('API not available'); },
+        update: async () => { throw new Error('API not available'); },
+        delete: async () => {},
+      },
+    } as Api);

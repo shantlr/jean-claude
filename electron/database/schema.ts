@@ -1,5 +1,28 @@
 import { Generated, Insertable, Selectable, Updateable } from 'kysely';
 
+import type {
+  ProviderType,
+  ProjectType,
+  TaskStatus,
+} from '../../shared/types';
+
+// Re-export shared types for convenience
+export type {
+  Provider,
+  NewProvider,
+  UpdateProvider,
+  Project,
+  NewProject,
+  UpdateProject,
+  Task,
+  NewTask,
+  UpdateTask,
+  ProviderType,
+  ProjectType,
+  TaskStatus,
+} from '../../shared/types';
+
+// Database table types with Kysely's Generated for auto-generated columns
 export interface Database {
   providers: ProviderTable;
   projects: ProjectTable;
@@ -8,7 +31,7 @@ export interface Database {
 
 export interface ProviderTable {
   id: Generated<string>;
-  type: 'azure-devops' | 'github' | 'gitlab';
+  type: ProviderType;
   label: string;
   baseUrl: string;
   token: string;
@@ -20,9 +43,10 @@ export interface ProjectTable {
   id: Generated<string>;
   name: string;
   path: string;
-  type: 'local' | 'git-provider';
+  type: ProjectType;
   providerId: string | null;
   remoteUrl: string | null;
+  color: string;
   createdAt: Generated<string>;
   updatedAt: string;
 }
@@ -32,7 +56,7 @@ export interface TaskTable {
   projectId: string;
   name: string;
   prompt: string;
-  status: 'running' | 'waiting' | 'completed' | 'errored';
+  status: TaskStatus;
   sessionId: string | null;
   worktreePath: string | null;
   startCommitHash: string | null;
@@ -40,14 +64,15 @@ export interface TaskTable {
   updatedAt: string;
 }
 
-export type Provider = Selectable<ProviderTable>;
-export type NewProvider = Insertable<ProviderTable>;
-export type UpdateProvider = Updateable<ProviderTable>;
+// Kysely-specific types for database operations
+export type ProviderRow = Selectable<ProviderTable>;
+export type NewProviderRow = Insertable<ProviderTable>;
+export type UpdateProviderRow = Updateable<ProviderTable>;
 
-export type Project = Selectable<ProjectTable>;
-export type NewProject = Insertable<ProjectTable>;
-export type UpdateProject = Updateable<ProjectTable>;
+export type ProjectRow = Selectable<ProjectTable>;
+export type NewProjectRow = Insertable<ProjectTable>;
+export type UpdateProjectRow = Updateable<ProjectTable>;
 
-export type Task = Selectable<TaskTable>;
-export type NewTask = Insertable<TaskTable>;
-export type UpdateTask = Updateable<TaskTable>;
+export type TaskRow = Selectable<TaskTable>;
+export type NewTaskRow = Insertable<TaskTable>;
+export type UpdateTaskRow = Updateable<TaskTable>;

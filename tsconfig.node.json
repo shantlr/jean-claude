@@ -12,5 +12,5 @@
     "outDir": "./out",
     "rootDir": "."
   },
-  "include": ["electron/**/*", "electron.vite.config.ts"]
+  "include": ["electron/**/*", "electron.vite.config.ts", "shared/**/*"]
 }

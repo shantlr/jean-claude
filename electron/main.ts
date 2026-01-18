@@ -9,6 +9,8 @@ function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    trafficLightPosition: { x: 16, y: 12 },
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,

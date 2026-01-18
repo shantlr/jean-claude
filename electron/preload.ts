@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('api', {
+  platform: process.platform,
   projects: {
     findAll: () => ipcRenderer.invoke('projects:findAll'),
     findById: (id: string) => ipcRenderer.invoke('projects:findById', id),
