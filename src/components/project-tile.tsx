@@ -1,6 +1,9 @@
 import { Link } from '@tanstack/react-router';
 
+import { useProjectTasks } from '@/hooks/use-tasks';
 import { getInitials } from '@/lib/colors';
+
+import { isTaskUnread } from './task-list-item';
 
 interface ProjectTileProps {
   id: string;
@@ -10,6 +13,9 @@ interface ProjectTileProps {
 
 export function ProjectTile({ id, name, color }: ProjectTileProps) {
   const initials = getInitials(name);
+  const { data: tasks } = useProjectTasks(id);
+
+  const unreadCount = tasks?.filter(isTaskUnread).length ?? 0;
 
   return (
     <Link
@@ -19,6 +25,11 @@ export function ProjectTile({ id, name, color }: ProjectTileProps) {
       style={{ backgroundColor: color }}
     >
       {initials}
+      {unreadCount > 0 && (
+        <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold">
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      )}
     </Link>
   );
 }
