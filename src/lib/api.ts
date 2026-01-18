@@ -10,6 +10,10 @@ import type {
   UpdateProvider,
 } from '../../shared/types';
 
+export interface PackageJson {
+  name?: string;
+}
+
 export interface Api {
   platform: typeof process.platform;
   projects: {
@@ -34,6 +38,12 @@ export interface Api {
     update: (id: string, data: UpdateProvider) => Promise<Provider>;
     delete: (id: string) => Promise<void>;
   };
+  dialog: {
+    openDirectory: () => Promise<string | null>;
+  };
+  fs: {
+    readPackageJson: (dirPath: string) => Promise<PackageJson | null>;
+  };
 }
 
 declare global {
@@ -42,7 +52,10 @@ declare global {
   }
 }
 
-export const api: Api = typeof window !== 'undefined' && window.api
+const hasWindowApi = typeof window !== 'undefined' && window.api;
+console.log('window.api available:', hasWindowApi, window?.api);
+
+export const api: Api = hasWindowApi
   ? window.api
   : ({
       platform: 'darwin',
@@ -67,5 +80,11 @@ export const api: Api = typeof window !== 'undefined' && window.api
         create: async () => { throw new Error('API not available'); },
         update: async () => { throw new Error('API not available'); },
         delete: async () => {},
+      },
+      dialog: {
+        openDirectory: async () => null,
+      },
+      fs: {
+        readPackageJson: async () => null,
       },
     } as Api);

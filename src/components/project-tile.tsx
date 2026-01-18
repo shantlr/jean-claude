@@ -15,7 +15,7 @@ export function ProjectTile({ id, name, color }: ProjectTileProps) {
     <Link
       to="/projects/$projectId"
       params={{ projectId: id }}
-      className="group relative flex h-12 w-12 items-center justify-center rounded-xl text-sm font-bold text-white transition-all hover:rounded-2xl hover:brightness-110 data-[status=active]:ring-2 data-[status=active]:ring-white"
+      className="group relative flex h-12 w-12 items-center justify-center rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 data-[status=active]:ring-2 data-[status=active]:ring-white"
       style={{ backgroundColor: color }}
     >
       {initials}

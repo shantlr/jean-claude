@@ -28,4 +28,11 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('providers:update', id, data),
     delete: (id: string) => ipcRenderer.invoke('providers:delete', id),
   },
+  dialog: {
+    openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),
+  },
+  fs: {
+    readPackageJson: (dirPath: string) =>
+      ipcRenderer.invoke('fs:readPackageJson', dirPath),
+  },
 });

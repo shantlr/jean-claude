@@ -75,6 +75,7 @@ src/               # Renderer (React)
 - Database auto-migrates on app startup
 - Route params use `$paramName` convention (e.g., `$projectId.tsx`)
 - See `ROADMAP.md` for feature phases and `docs/plans/` for detailed designs
+- Coding agent does not need to try to run `pnpm dev` itself; it should focus on implementing features as per the roadmap and designs.
 
 ## Coding Guidelines
 

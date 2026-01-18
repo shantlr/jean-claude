@@ -45,21 +45,21 @@ De-risk Agent SDK integration before building UI.
 
 #### 1.2 Main Layout
 
-- [ ] Sidebar (left)
-  - [ ] Discord-style project tiles (auto-generated icon from name)
-  - [ ] "Add project" button at bottom
-  - [ ] Settings gear icon at bottom
-- [ ] Header (top)
-  - [ ] macOS traffic lights (close/minimize/maximize) on left
-  - [ ] Usage/rate limits display on right (Phase 4)
-- [ ] Content area
-  - [ ] Dynamic based on selection (project view, settings, etc.)
+- [x] Sidebar (left)
+  - [x] Discord-style project tiles (auto-generated icon from name)
+  - [x] "Add project" button at bottom
+  - [x] Settings gear icon at bottom
+- [x] Header (top)
+  - [x] macOS traffic lights (close/minimize/maximize) on left
+  - [x] Usage/rate limits display on right (Phase 4)
+- [x] Content area
+  - [x] Dynamic based on selection (project view, settings, etc.)
 
 #### 1.3 Add Project (Local Folder)
 
-- [ ] Folder picker dialog
-- [ ] Extract project name from folder name or package.json
-- [ ] Store path in local config
+- [x] Folder picker dialog
+- [x] Extract project name from folder name or package.json
+- [x] Store path in local config
 
 ---
 

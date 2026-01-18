@@ -1,4 +1,7 @@
-import { ipcMain } from 'electron';
+import * as fs from 'fs';
+import * as path from 'path';
+
+import { BrowserWindow, ipcMain, dialog } from 'electron';
 
 import {
   ProjectRepository,
@@ -60,4 +63,28 @@ export function registerIpcHandlers() {
   ipcMain.handle('providers:delete', (_, id: string) =>
     ProviderRepository.delete(id),
   );
+
+  // Dialog
+  ipcMain.handle('dialog:openDirectory', async (event) => {
+    console.log('dialog:openDirectory called');
+    const window = BrowserWindow.fromWebContents(event.sender);
+    console.log('window:', window);
+    const result = await dialog.showOpenDialog(window!, {
+      properties: ['openDirectory'],
+    });
+    console.log('dialog result:', result);
+    return result.canceled ? null : result.filePaths[0];
+  });
+
+  // Filesystem
+  ipcMain.handle('fs:readPackageJson', (_, dirPath: string) => {
+    try {
+      const pkgPath = path.join(dirPath, 'package.json');
+      const content = fs.readFileSync(pkgPath, 'utf-8');
+      const pkg = JSON.parse(content);
+      return { name: pkg.name };
+    } catch {
+      return null;
+    }
+  });
 }
