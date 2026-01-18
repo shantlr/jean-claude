@@ -1,0 +1,57 @@
+{
+  "name": "idling",
+  "version": "0.0.1",
+  "description": "Personal productivity GUI to manage coding agents across multiple projects",
+  "type": "module",
+  "main": "./out/main/index.js",
+  "volta": {
+    "node": "20.18.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "electron",
+      "esbuild"
+    ]
+  },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.90.19",
+    "@tanstack/react-router": "^1.151.3",
+    "better-sqlite3": "^12.6.2",
+    "kysely": "^0.28.10",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.10"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/router-plugin": "^1.151.4",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.53.0",
+    "@typescript-eslint/parser": "^8.53.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.2.1",
+    "electron-rebuild": "^3.2.9",
+    "electron-vite": "^2.3.0",
+    "eslint": "^9.39.2",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^17.0.0",
+    "prettier": "^3.8.0",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.7.2",
+    "vite": "^6.4.1"
+  }
+}

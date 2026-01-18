@@ -29,20 +29,22 @@ De-risk Agent SDK integration before building UI.
 ### Phase 1: Foundation
 
 #### 1.1 Project Setup
-- [ ] Initialize project
+
+- [x] Initialize project
   - Stack: Electron, React, TypeScript, TailwindCSS, Zustand, ESLint, Prettier
   - TanStack Router for navigation (see [routing design](docs/plans/2026-01-18-routing-design.md))
   - Claude Code Agent SDK integration
-- [ ] Define data model
+- [x] Define data model
   - Tasks: id, name, status, timestamps, sessionId, worktreePath, startCommitHash
   - Projects: id, name, path, type (local/git-provider)
   - Sessions: managed by Agent SDK, referenced by sessionId
-- [ ] Set up persistence layer (SQLite + Kysely)
+- [x] Set up persistence layer (SQLite + Kysely)
   - Store task metadata + session IDs (Agent SDK handles message history)
   - Use `better-sqlite3` for synchronous SQLite access
   - Use Kysely for type-safe queries and migrations
 
 #### 1.2 Main Layout
+
 - [ ] Sidebar (left)
   - [ ] Discord-style project tiles (auto-generated icon from name)
   - [ ] "Add project" button at bottom
@@ -54,6 +56,7 @@ De-risk Agent SDK integration before building UI.
   - [ ] Dynamic based on selection (project view, settings, etc.)
 
 #### 1.3 Add Project (Local Folder)
+
 - [ ] Folder picker dialog
 - [ ] Extract project name from folder name or package.json
 - [ ] Store path in local config
@@ -65,6 +68,7 @@ De-risk Agent SDK integration before building UI.
 Note: Multiple agents can run simultaneously across different projects. UI must handle concurrent "running" states and multiple notifications.
 
 #### 2.1 Project View Layout
+
 - [ ] Project sidebar (secondary, inside content area)
   - [ ] Project name/icon at top (links to project details)
   - [ ] "New task" button
@@ -84,11 +88,13 @@ Note: Multiple agents can run simultaneously across different projects. UI must 
 - [ ] Mark as read when task is viewed
 
 #### 2.2 Task Creation
+
 - [ ] Prompt input (multiline textarea)
 - [ ] Use worktree checkbox (default: on)
 - [ ] Submit creates agent session and adds to task list
 
 #### 2.3 Agent Output & Controls
+
 - [ ] Real-time streaming output from agent
 - [ ] Status indicators (running, waiting, completed, errored)
 - [ ] Permission request handling (approve/deny buttons)
@@ -97,6 +103,7 @@ Note: Multiple agents can run simultaneously across different projects. UI must 
 - [ ] Desktop notifications (waiting for input, task completed)
 
 #### 2.4 Worktree Management
+
 - [ ] Auto-create worktree when task starts (if enabled)
 - [ ] Track worktree path per task
 - [ ] Show active worktrees per project
@@ -109,6 +116,7 @@ Note: Multiple agents can run simultaneously across different projects. UI must 
 Note: All git provider features use a provider abstraction layer. ADO is the first implementation, but the interface supports GitHub/GitLab later.
 
 #### 3.1 Settings Page
+
 - [ ] Accessible from sidebar gear icon
 - [ ] External editor selection (VS Code, Cursor, etc.)
 - [ ] Keybindings section (customizable shortcuts)
@@ -119,6 +127,7 @@ Note: All git provider features use a provider abstraction layer. ADO is the fir
   - [ ] Connection status indicator
 
 #### 3.2 Azure DevOps Projects
+
 - [ ] "Add project" supports ADO repo URL
 - [ ] Fetch repo details via API (name, description, default branch)
 - [ ] Clone repo locally on add (or link to existing clone)
@@ -132,27 +141,32 @@ Note: All git provider features use a provider abstraction layer. ADO is the fir
 ### Phase 4: Power Features
 
 #### 4.1 Model Selection
+
 - [ ] Per-task model dropdown (Opus, Sonnet, Haiku)
 - [ ] Default model setting per project
 - [ ] Global default in settings
 
 #### 4.2 Usage & Rate Limits
+
 - [ ] Display in header (e.g., "Claude Code: 72% of 5h limit")
 - [ ] Fetch from Claude Code API/CLI if available
 - [ ] Visual warning when approaching limit
 
 #### 4.3 Custom MCP Tools
+
 - [ ] Per-project MCP tool configuration
 - [ ] Add tool via JSON definition or path to tool script
 - [ ] Enable/disable tools per task
 
 #### 4.4 Hook Configuration
+
 - [ ] Pre-task hooks (run before agent starts)
 - [ ] Post-task hooks (run after agent completes)
 - [ ] Event hooks (on file edit, on bash command, etc.)
 - [ ] Configure via settings UI or project config file
 
 #### 4.5 Git Diff Tab
+
 - [ ] Add Git Diff tab to task panel (horizontal tab bar: Chat, Git Diff)
 - [ ] Top bar with comparison dropdown (HEAD, main, Task start) and refresh button
 - [ ] Left panel: changed files tree
@@ -170,6 +184,7 @@ Note: All git provider features use a provider abstraction layer. ADO is the fir
 - [ ] Binary files: show "Binary file changed"
 
 #### 4.6 PR Creation
+
 - [ ] "Create PR" action on completed tasks (only for worktree tasks)
   - [ ] Pre-fill PR title from task name or first prompt line
   - [ ] Pre-fill PR description with task summary (agent-generated or manual)
@@ -186,6 +201,7 @@ Note: All git provider features use a provider abstraction layer. ADO is the fir
   - [ ] Delete worktree after PR merge
 
 #### 4.7 PR Review (Low Priority)
+
 - [ ] PR picker in project view
   - [ ] Fetch open PRs from Azure DevOps API
   - [ ] Searchable list (PR number, title, author)
@@ -207,6 +223,7 @@ Note: All git provider features use a provider abstraction layer. ADO is the fir
 ### Phase 5: Polish
 
 #### 5.1 Quality of Life
+
 - [ ] Task search/filter
 - [ ] Export task logs
 - [ ] Keyboard shortcuts
