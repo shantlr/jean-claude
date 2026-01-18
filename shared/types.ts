@@ -76,6 +76,7 @@ export interface Task {
   sessionId: string | null;
   worktreePath: string | null;
   startCommitHash: string | null;
+  readAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -89,6 +90,7 @@ export interface NewTask {
   sessionId?: string | null;
   worktreePath?: string | null;
   startCommitHash?: string | null;
+  readAt?: string | null;
   createdAt?: string;
   updatedAt: string;
 }
@@ -101,5 +103,6 @@ export interface UpdateTask {
   sessionId?: string | null;
   worktreePath?: string | null;
   startCommitHash?: string | null;
+  readAt?: string | null;
   updatedAt?: string;
 }

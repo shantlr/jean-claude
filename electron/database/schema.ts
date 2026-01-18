@@ -60,6 +60,7 @@ export interface TaskTable {
   sessionId: string | null;
   worktreePath: string | null;
   startCommitHash: string | null;
+  readAt: string | null;
   createdAt: Generated<string>;
   updatedAt: string;
 }
