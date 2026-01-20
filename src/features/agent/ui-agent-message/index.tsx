@@ -6,11 +6,10 @@ import type {
   TextBlock,
   ToolUseBlock,
   ToolResultBlock,
-} from '../../../shared/agent-types';
-
-import { MarkdownContent } from './markdown-content';
-import { ToolResultCard } from './tool-result-card';
-import { ToolUseCard } from './tool-use-card';
+} from '../../../../shared/agent-types';
+import { MarkdownContent } from '../ui-markdown-content';
+import { ToolResultCard } from '../ui-tool-result-card';
+import { ToolUseCard } from '../ui-tool-use-card';
 
 interface AgentMessageProps {
   message: AgentMessageType;

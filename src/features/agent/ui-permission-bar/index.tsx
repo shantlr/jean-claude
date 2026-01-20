@@ -1,6 +1,6 @@
 import { Shield, X, Check } from 'lucide-react';
 
-import type { AgentPermissionEvent, PermissionResponse } from '../../../shared/agent-types';
+import type { AgentPermissionEvent, PermissionResponse } from '../../../../shared/agent-types';
 
 interface PermissionBarProps {
   request: AgentPermissionEvent;

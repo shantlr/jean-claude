@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
-import type { ToolUseBlock } from '../../../shared/agent-types';
+import type { ToolUseBlock } from '../../../../shared/agent-types';
 
 interface ToolUseCardProps {
   block: ToolUseBlock;

@@ -1,7 +1,7 @@
 import { HelpCircle, Send } from 'lucide-react';
 import { useState } from 'react';
 
-import type { AgentQuestionEvent, QuestionResponse, AgentQuestion } from '../../../shared/agent-types';
+import type { AgentQuestionEvent, QuestionResponse, AgentQuestion } from '../../../../shared/agent-types';
 
 interface QuestionOptionsProps {
   request: AgentQuestionEvent;

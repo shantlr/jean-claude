@@ -2,14 +2,12 @@ import { createFileRoute } from '@tanstack/react-router';
 import { Square, Play, Loader2, Copy, Check } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 
-import {
-  MessageStream,
-  PermissionBar,
-  QuestionOptions,
-  MessageInput,
-  FilePreviewPane,
-} from '@/components/agent';
-import { StatusIndicator } from '@/components/status-indicator';
+import { StatusIndicator } from '@/common/ui/status-indicator';
+import { FilePreviewPane } from '@/features/agent/ui-file-preview-pane';
+import { MessageInput } from '@/features/agent/ui-message-input';
+import { MessageStream } from '@/features/agent/ui-message-stream';
+import { PermissionBar } from '@/features/agent/ui-permission-bar';
+import { QuestionOptions } from '@/features/agent/ui-question-options';
 import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
 import { useProject } from '@/hooks/use-projects';
 import { useTask, useMarkTaskAsRead } from '@/hooks/use-tasks';

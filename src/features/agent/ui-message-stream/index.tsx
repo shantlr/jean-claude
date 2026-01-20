@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react';
 
-import type { AgentMessage as AgentMessageType } from '../../../shared/agent-types';
-
-import { AgentMessage } from './agent-message';
+import type { AgentMessage as AgentMessageType } from '../../../../shared/agent-types';
+import { AgentMessage } from '../ui-agent-message';
 
 interface MessageStreamProps {
   messages: AgentMessageType[];

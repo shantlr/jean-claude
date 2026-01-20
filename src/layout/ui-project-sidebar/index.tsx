@@ -1,10 +1,9 @@
 import { Link, useParams } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
 
+import { TaskListItem } from '@/features/task/ui-task-list-item';
 import { useProject } from '@/hooks/use-projects';
 import { useProjectTasks } from '@/hooks/use-tasks';
-
-import { TaskListItem } from './task-list-item';
 
 export function ProjectSidebar() {
   const { projectId, taskId } = useParams({ strict: false });

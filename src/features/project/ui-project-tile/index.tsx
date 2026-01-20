@@ -1,9 +1,8 @@
 import { Link } from '@tanstack/react-router';
 
+import { isTaskUnread } from '@/features/task/ui-task-list-item';
 import { useProjectTasks } from '@/hooks/use-tasks';
 import { getInitials } from '@/lib/colors';
-
-import { isTaskUnread } from './task-list-item';
 
 interface ProjectTileProps {
   id: string;

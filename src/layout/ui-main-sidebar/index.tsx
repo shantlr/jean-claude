@@ -1,9 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import { Plus, Settings } from 'lucide-react';
 
+import { ProjectTile } from '@/features/project/ui-project-tile';
 import { useProjects } from '@/hooks/use-projects';
-
-import { ProjectTile } from './project-tile';
 
 export function MainSidebar() {
   const { data: projects } = useProjects();

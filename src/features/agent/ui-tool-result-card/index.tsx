@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronRight, AlertCircle, CheckCircle } from 'lucide-react';
 import { useState } from 'react';
 
-import type { ToolResultBlock, ContentBlock } from '../../../shared/agent-types';
+import type { ToolResultBlock, ContentBlock } from '../../../../shared/agent-types';
 
 interface ToolResultCardProps {
   block: ToolResultBlock;

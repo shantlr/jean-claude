@@ -1,10 +1,9 @@
 import { Link } from '@tanstack/react-router';
 
+import { StatusIndicator } from '@/common/ui/status-indicator';
 import { formatRelativeTime } from '@/lib/time';
 
-import type { Task } from '../../shared/types';
-
-import { StatusIndicator } from './status-indicator';
+import type { Task } from '../../../../shared/types';
 
 interface TaskListItemProps {
   task: Task;
@@ -12,7 +11,7 @@ interface TaskListItemProps {
   isActive?: boolean;
 }
 
-function isTaskUnread(task: Task): boolean {
+export function isTaskUnread(task: Task): boolean {
   if (task.status === 'running') return false;
   if (!task.readAt) return true;
   return new Date(task.updatedAt) > new Date(task.readAt);
@@ -44,5 +43,3 @@ export function TaskListItem({ task, projectId, isActive }: TaskListItemProps) {
     </Link>
   );
 }
-
-export { isTaskUnread };

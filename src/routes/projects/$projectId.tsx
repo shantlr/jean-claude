@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 
-import { ProjectSidebar } from '@/components/project-sidebar';
+import { ProjectSidebar } from '@/layout/ui-project-sidebar';
 
 export const Route = createFileRoute('/projects/$projectId')({
   component: ProjectLayout,

@@ -62,7 +62,9 @@ electron/           # Main process
 
 src/               # Renderer (React)
   routes/          # TanStack Router file-based routes
-  components/      # UI components
+  layout/          # App shell components (header, sidebars)
+  features/        # Feature-based components (agent/, project/, task/)
+  common/ui/       # Atomic reusable UI components
   hooks/           # React Query hooks for data fetching
   stores/          # Zustand stores for UI state
   lib/api.ts       # Typed IPC client interface
@@ -89,6 +91,35 @@ src/               # Renderer (React)
 - Use functional components with hooks (no class components)
 - Colocate component-specific types in the same file
 - Extract reusable logic (when we actually need to reuse) into custom hooks in `src/hooks/`
+
+#### Component Organization
+
+Components are organized by location:
+- `src/layout/` - App shell components (header, sidebars)
+- `src/features/<domain>/` - Feature components grouped by domain (agent, project, task)
+- `src/common/ui/` - Atomic reusable components
+- Route files - Route-specific components that aren't reused stay in the route file
+
+#### Naming Conventions
+
+- Files and folders: kebab-case
+- Components outside `src/common/ui/`: prefix with `ui-` (e.g., `ui-message-stream`)
+- Components inside `src/common/ui/`: no prefix (e.g., `status-indicator`)
+- Hooks: prefix with `use-` (e.g., `use-projects.ts`)
+
+#### Folder Structure
+
+Each component lives in its own folder with an `index.tsx`:
+```
+src/features/agent/ui-message-stream/
+  index.tsx              # Main component
+  local-subcomponent.tsx # Co-located local components (if needed)
+```
+
+No barrel files (index.ts re-exports). Import directly from component folders:
+```ts
+import { MessageStream } from '@/features/agent/ui-message-stream';
+```
 
 ### Electron IPC
 
