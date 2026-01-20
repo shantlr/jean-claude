@@ -1,0 +1,47 @@
+import { useEffect } from 'react';
+
+import { api } from '@/lib/api';
+import { useTaskMessagesStore } from '@/stores/task-messages';
+
+export function TaskMessageManager() {
+  const appendMessage = useTaskMessagesStore((s) => s.appendMessage);
+  const setStatus = useTaskMessagesStore((s) => s.setStatus);
+  const setPermission = useTaskMessagesStore((s) => s.setPermission);
+  const setQuestion = useTaskMessagesStore((s) => s.setQuestion);
+  const isLoaded = useTaskMessagesStore((s) => s.isLoaded);
+
+  useEffect(() => {
+    const unsubMessage = api.agent.onMessage(({ taskId, message }) => {
+      if (isLoaded(taskId)) {
+        appendMessage(taskId, message);
+      }
+    });
+
+    const unsubStatus = api.agent.onStatus(({ taskId, status, error }) => {
+      if (isLoaded(taskId)) {
+        setStatus(taskId, status, error);
+      }
+    });
+
+    const unsubPermission = api.agent.onPermission((event) => {
+      if (isLoaded(event.taskId)) {
+        setPermission(event.taskId, event);
+      }
+    });
+
+    const unsubQuestion = api.agent.onQuestion((event) => {
+      if (isLoaded(event.taskId)) {
+        setQuestion(event.taskId, event);
+      }
+    });
+
+    return () => {
+      unsubMessage();
+      unsubStatus();
+      unsubPermission();
+      unsubQuestion();
+    };
+  }, [appendMessage, setStatus, setPermission, setQuestion, isLoaded]);
+
+  return null;
+}
