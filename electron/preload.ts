@@ -22,6 +22,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('tasks:update', id, data),
     delete: (id: string) => ipcRenderer.invoke('tasks:delete', id),
     markAsRead: (id: string) => ipcRenderer.invoke('tasks:markAsRead', id),
+    updateLastReadIndex: (id: string, lastReadIndex: number) =>
+      ipcRenderer.invoke('tasks:updateLastReadIndex', id, lastReadIndex),
   },
   providers: {
     findAll: () => ipcRenderer.invoke('providers:findAll'),

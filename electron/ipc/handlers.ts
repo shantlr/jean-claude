@@ -57,6 +57,9 @@ export function registerIpcHandlers() {
   ipcMain.handle('tasks:markAsRead', (_, id: string) =>
     TaskRepository.markAsRead(id),
   );
+  ipcMain.handle('tasks:updateLastReadIndex', (_, id: string, lastReadIndex: number) =>
+    TaskRepository.updateLastReadIndex(id, lastReadIndex),
+  );
 
   // Providers
   ipcMain.handle('providers:findAll', () => ProviderRepository.findAll());
