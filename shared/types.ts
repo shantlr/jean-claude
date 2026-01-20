@@ -77,6 +77,7 @@ export interface Task {
   worktreePath: string | null;
   startCommitHash: string | null;
   readAt: string | null;
+  lastReadIndex: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -91,6 +92,7 @@ export interface NewTask {
   worktreePath?: string | null;
   startCommitHash?: string | null;
   readAt?: string | null;
+  lastReadIndex?: number;
   createdAt?: string;
   updatedAt: string;
 }
@@ -104,5 +106,6 @@ export interface UpdateTask {
   worktreePath?: string | null;
   startCommitHash?: string | null;
   readAt?: string | null;
+  lastReadIndex?: number;
   updatedAt?: string;
 }
