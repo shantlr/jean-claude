@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
 
-import { NewTask, UpdateTask } from '../../shared/types';
+import type { InteractionMode, NewTask, UpdateTask } from '../../shared/types';
 
 export function useTasks() {
   return useQuery({
@@ -60,6 +60,18 @@ export function useDeleteTask() {
   return useMutation({
     mutationFn: (id: string) => api.tasks.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+  });
+}
+
+export function useSetTaskMode() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, mode }: { id: string; mode: InteractionMode }) =>
+      api.tasks.setMode(id, mode),
+    onSuccess: (task) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.setQueryData(['task', task.id], task);
+    },
   });
 }
 
