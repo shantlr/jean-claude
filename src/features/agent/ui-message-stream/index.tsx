@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useLayoutEffect } from 'react';
 
 import type {
   AgentMessage as AgentMessageType,
@@ -8,11 +8,17 @@ import { AgentMessage } from '../ui-agent-message';
 
 interface MessageStreamProps {
   messages: AgentMessageType[];
-  onFilePathClick?: (filePath: string, lineStart?: number, lineEnd?: number) => void;
+  onFilePathClick?: (
+    filePath: string,
+    lineStart?: number,
+    lineEnd?: number,
+  ) => void;
 }
 
 // Build a map of tool_use_id -> ToolResultBlock from all user messages
-function buildToolResultsMap(messages: AgentMessageType[]): Map<string, ToolResultBlock> {
+function buildToolResultsMap(
+  messages: AgentMessageType[],
+): Map<string, ToolResultBlock> {
   const resultsMap = new Map<string, ToolResultBlock>();
 
   for (const message of messages) {
@@ -31,12 +37,22 @@ function buildToolResultsMap(messages: AgentMessageType[]): Map<string, ToolResu
   return resultsMap;
 }
 
-export function MessageStream({ messages, onFilePathClick }: MessageStreamProps) {
+export function MessageStream({
+  messages,
+  onFilePathClick,
+}: MessageStreamProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Build tool results map once when messages change
-  const toolResultsMap = useMemo(() => buildToolResultsMap(messages), [messages]);
+  const toolResultsMap = useMemo(
+    () => buildToolResultsMap(messages),
+    [messages],
+  );
 
+  // Initial scroll to bottom
+  useLayoutEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'instant' });
+  }, []);
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

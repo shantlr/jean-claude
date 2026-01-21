@@ -1,5 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { Square, Loader2, Copy, Check } from 'lucide-react';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { Square, Loader2, Copy, Check, Trash2 } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 
 import { StatusIndicator } from '@/common/ui/status-indicator';
@@ -10,8 +10,9 @@ import { PermissionBar } from '@/features/agent/ui-permission-bar';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
 import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
 import { useProject } from '@/hooks/use-projects';
-import { useTask, useMarkTaskAsRead } from '@/hooks/use-tasks';
+import { useTask, useMarkTaskAsRead, useDeleteTask } from '@/hooks/use-tasks';
 import { formatRelativeTime } from '@/lib/time';
+import { useTaskMessagesStore } from '@/stores/task-messages';
 
 export const Route = createFileRoute('/projects/$projectId/tasks/$taskId')({
   component: TaskPanel,
@@ -26,9 +27,12 @@ interface FilePreviewState {
 
 function TaskPanel() {
   const { projectId, taskId } = Route.useParams();
+  const navigate = useNavigate();
   const { data: task } = useTask(taskId);
   const { data: project } = useProject(projectId);
   const markAsRead = useMarkTaskAsRead();
+  const deleteTask = useDeleteTask();
+  const unloadTask = useTaskMessagesStore((state) => state.unloadTask);
 
   const agentState = useAgentStream(taskId);
   const {
@@ -45,6 +49,7 @@ function TaskPanel() {
   });
 
   const [copiedSessionId, setCopiedSessionId] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleCopySessionId = useCallback(async () => {
     if (task?.sessionId) {
@@ -83,6 +88,15 @@ function TaskPanel() {
 
   const handleStop = async () => {
     await stop();
+  };
+
+  const handleDelete = async () => {
+    // Clean up the task from the store first
+    unloadTask(taskId);
+    // Delete from database
+    await deleteTask.mutateAsync(taskId);
+    // Navigate back to project
+    navigate({ to: '/projects/$projectId', params: { projectId } });
   };
 
   if (!task || !project) {
@@ -146,7 +160,44 @@ function TaskPanel() {
               Stop
             </button>
           )}
+
+          {/* Delete button */}
+          {!isRunning && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-neutral-400 hover:bg-neutral-700 hover:text-red-400 transition-colors"
+              title="Delete task"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
+
+        {/* Delete confirmation dialog */}
+        {showDeleteConfirm && (
+          <div className="border-b border-red-900 bg-red-950/50 px-6 py-4">
+            <p className="mb-3 text-sm text-neutral-300">
+              Are you sure you want to delete this task? This action cannot be undone.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleteTask.isPending}
+                className="cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleteTask.isPending ? 'Deleting...' : 'Delete Task'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="cursor-pointer rounded-lg bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Message stream or prompt display */}
         <div className="flex-1 overflow-auto">
