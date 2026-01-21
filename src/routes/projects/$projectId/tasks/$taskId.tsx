@@ -6,13 +6,16 @@ import { StatusIndicator } from '@/common/ui/status-indicator';
 import { FilePreviewPane } from '@/features/agent/ui-file-preview-pane';
 import { MessageInput } from '@/features/agent/ui-message-input';
 import { MessageStream } from '@/features/agent/ui-message-stream';
+import { ModeSelector } from '@/features/agent/ui-mode-selector';
 import { PermissionBar } from '@/features/agent/ui-permission-bar';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
 import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
 import { useProject } from '@/hooks/use-projects';
-import { useTask, useMarkTaskAsRead, useDeleteTask } from '@/hooks/use-tasks';
+import { useTask, useMarkTaskAsRead, useDeleteTask, useSetTaskMode } from '@/hooks/use-tasks';
 import { formatRelativeTime } from '@/lib/time';
 import { useTaskMessagesStore } from '@/stores/task-messages';
+
+import type { InteractionMode } from '../../../../../shared/types';
 
 export const Route = createFileRoute('/projects/$projectId/tasks/$taskId')({
   component: TaskPanel,
@@ -32,6 +35,7 @@ function TaskPanel() {
   const { data: project } = useProject(projectId);
   const markAsRead = useMarkTaskAsRead();
   const deleteTask = useDeleteTask();
+  const setTaskMode = useSetTaskMode();
   const unloadTask = useTaskMessagesStore((state) => state.unloadTask);
 
   const agentState = useAgentStream(taskId);
@@ -97,6 +101,10 @@ function TaskPanel() {
     await deleteTask.mutateAsync(taskId);
     // Navigate back to project
     navigate({ to: '/projects/$projectId', params: { projectId } });
+  };
+
+  const handleModeChange = (mode: InteractionMode) => {
+    setTaskMode.mutate({ id: taskId, mode });
   };
 
   if (!task || !project) {
@@ -200,7 +208,7 @@ function TaskPanel() {
         )}
 
         {/* Message stream or prompt display */}
-        <div className="flex-1 overflow-auto">
+        <div className="min-h-0 flex-1">
           {agentState.isLoading ? (
             <div className="flex h-full items-center justify-center">
               <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
@@ -253,18 +261,25 @@ function TaskPanel() {
         )}
 
         {/* Message input */}
-        {(canSendMessage || isWaiting) &&
+        {(canSendMessage || isWaiting || hasMessages) &&
           !agentState.pendingPermission &&
           !agentState.pendingQuestion && (
-            <MessageInput
-              onSend={sendMessage}
-              disabled={isRunning}
-              placeholder={
-                isRunning
-                  ? 'Agent is running...'
-                  : 'Send a follow-up message...'
-              }
-            />
+            <div className="flex items-end gap-2 border-t border-neutral-700 bg-neutral-800 px-4 py-3">
+              <ModeSelector
+                value={task.interactionMode ?? 'ask'}
+                onChange={handleModeChange}
+                disabled={isRunning}
+              />
+              <MessageInput
+                onSend={sendMessage}
+                disabled={isRunning || !canSendMessage}
+                placeholder={
+                  isRunning
+                    ? 'Agent is running...'
+                    : 'Send a follow-up message...'
+                }
+              />
+            </div>
           )}
       </div>
 
