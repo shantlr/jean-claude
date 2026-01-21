@@ -4,6 +4,7 @@
 export type ProviderType = 'azure-devops' | 'github' | 'gitlab';
 export type ProjectType = 'local' | 'git-provider';
 export type TaskStatus = 'running' | 'waiting' | 'completed' | 'errored';
+export type InteractionMode = 'ask' | 'auto' | 'plan';
 
 export interface Provider {
   id: string;
@@ -78,6 +79,7 @@ export interface Task {
   startCommitHash: string | null;
   readAt: string | null;
   lastReadIndex: number;
+  interactionMode: InteractionMode;
   createdAt: string;
   updatedAt: string;
 }
@@ -93,6 +95,7 @@ export interface NewTask {
   startCommitHash?: string | null;
   readAt?: string | null;
   lastReadIndex?: number;
+  interactionMode?: InteractionMode;
   createdAt?: string;
   updatedAt: string;
 }
@@ -107,5 +110,6 @@ export interface UpdateTask {
   startCommitHash?: string | null;
   readAt?: string | null;
   lastReadIndex?: number;
+  interactionMode?: InteractionMode;
   updatedAt?: string;
 }

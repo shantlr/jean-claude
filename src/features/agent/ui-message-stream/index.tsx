@@ -1,3 +1,4 @@
+import { Loader2 } from 'lucide-react';
 import { useEffect, useRef, useMemo, useLayoutEffect } from 'react';
 
 import type {
@@ -8,6 +9,7 @@ import { AgentMessage } from '../ui-agent-message';
 
 interface MessageStreamProps {
   messages: AgentMessageType[];
+  isRunning?: boolean;
   onFilePathClick?: (
     filePath: string,
     lineStart?: number,
@@ -39,6 +41,7 @@ function buildToolResultsMap(
 
 export function MessageStream({
   messages,
+  isRunning,
   onFilePathClick,
 }: MessageStreamProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -76,6 +79,12 @@ export function MessageStream({
           onFilePathClick={onFilePathClick}
         />
       ))}
+      {isRunning && (
+        <div className="flex items-center gap-2 px-6 py-4 text-neutral-500">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm">Agent is working...</span>
+        </div>
+      )}
       <div ref={bottomRef} />
     </div>
   );

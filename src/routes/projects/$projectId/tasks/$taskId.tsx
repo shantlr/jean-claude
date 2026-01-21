@@ -208,6 +208,7 @@ function TaskPanel() {
           ) : hasMessages ? (
             <MessageStream
               messages={agentState.messages}
+              isRunning={isRunning}
               onFilePathClick={handleFilePathClick}
             />
           ) : (
