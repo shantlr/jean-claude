@@ -17,6 +17,7 @@ import type {
   Provider,
   NewProvider,
   UpdateProvider,
+  InteractionMode,
 } from '../../shared/types';
 
 export interface PackageJson {
@@ -44,6 +45,7 @@ export interface Api {
     delete: (id: string) => Promise<void>;
     markAsRead: (id: string) => Promise<Task>;
     updateLastReadIndex: (id: string, lastReadIndex: number) => Promise<Task>;
+    setMode: (id: string, mode: InteractionMode) => Promise<Task>;
   };
   providers: {
     findAll: () => Promise<Provider[]>;
@@ -105,6 +107,7 @@ export const api: Api = hasWindowApi
         delete: async () => {},
         markAsRead: async () => { throw new Error('API not available'); },
         updateLastReadIndex: async () => { throw new Error('API not available'); },
+        setMode: async () => { throw new Error('API not available'); },
       },
       providers: {
         findAll: async () => [],

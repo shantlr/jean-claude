@@ -8,6 +8,7 @@ import {
   PermissionResponse,
   QuestionResponse,
 } from '../../shared/agent-types';
+import type { InteractionMode } from '../../shared/types';
 import {
   ProjectRepository,
   TaskRepository,
@@ -59,6 +60,13 @@ export function registerIpcHandlers() {
   );
   ipcMain.handle('tasks:updateLastReadIndex', (_, id: string, lastReadIndex: number) =>
     TaskRepository.updateLastReadIndex(id, lastReadIndex),
+  );
+  ipcMain.handle(
+    'tasks:setMode',
+    async (_, taskId: string, mode: InteractionMode) => {
+      await agentService.setMode(taskId, mode);
+      return TaskRepository.findById(taskId);
+    }
   );
 
   // Providers
