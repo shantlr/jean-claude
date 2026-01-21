@@ -63,6 +63,7 @@ export interface TaskTable {
   startCommitHash: string | null;
   readAt: string | null;
   lastReadIndex: number;
+  interactionMode: string;
   createdAt: Generated<string>;
   updatedAt: string;
 }
