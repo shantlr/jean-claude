@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 
-import { isTaskUnread } from '@/features/task/ui-task-list-item';
+import { getUnreadCount } from '@/features/task/ui-task-list-item';
 import { useProjectTasks } from '@/hooks/use-tasks';
 import { getInitials } from '@/lib/colors';
 
@@ -14,7 +14,7 @@ export function ProjectTile({ id, name, color }: ProjectTileProps) {
   const initials = getInitials(name);
   const { data: tasks } = useProjectTasks(id);
 
-  const unreadCount = tasks?.filter(isTaskUnread).length ?? 0;
+  const unreadCount = tasks?.reduce((sum, task) => sum + getUnreadCount(task), 0) ?? 0;
 
   return (
     <Link
