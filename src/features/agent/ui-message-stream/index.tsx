@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { useEffect, useRef, useMemo, useLayoutEffect } from 'react';
+import { useEffect, useRef, useMemo, useLayoutEffect, useCallback } from 'react';
 
 import type {
   AgentMessage as AgentMessageType,
@@ -39,12 +39,17 @@ function buildToolResultsMap(
   return resultsMap;
 }
 
+// Threshold in pixels - if user is within this distance from bottom, auto-scroll
+const SCROLL_THRESHOLD = 100;
+
 export function MessageStream({
   messages,
   isRunning,
   onFilePathClick,
 }: MessageStreamProps) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef(true);
 
   // Build tool results map once when messages change
   const toolResultsMap = useMemo(
@@ -52,13 +57,32 @@ export function MessageStream({
     [messages],
   );
 
+  // Check if scroll position is near bottom
+  const checkIfNearBottom = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return true;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    return distanceFromBottom <= SCROLL_THRESHOLD;
+  }, []);
+
+  // Update near-bottom state on scroll
+  const handleScroll = useCallback(() => {
+    isNearBottomRef.current = checkIfNearBottom();
+  }, [checkIfNearBottom]);
+
   // Initial scroll to bottom
   useLayoutEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'instant' });
+    isNearBottomRef.current = true;
   }, []);
-  // Auto-scroll to bottom when new messages arrive
+
+  // Auto-scroll to bottom when new messages arrive, but only if user is near bottom
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (isNearBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages.length]);
 
   if (messages.length === 0) {
@@ -70,22 +94,28 @@ export function MessageStream({
   }
 
   return (
-    <div className="flex flex-col divide-y divide-neutral-800">
-      {messages.map((message, index) => (
-        <AgentMessage
-          key={index}
-          message={message}
-          toolResultsMap={toolResultsMap}
-          onFilePathClick={onFilePathClick}
-        />
-      ))}
-      {isRunning && (
-        <div className="flex items-center gap-2 px-6 py-4 text-neutral-500">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm">Agent is working...</span>
-        </div>
-      )}
-      <div ref={bottomRef} />
+    <div
+      ref={scrollContainerRef}
+      onScroll={handleScroll}
+      className="h-full overflow-auto"
+    >
+      <div className="flex flex-col divide-y divide-neutral-800">
+        {messages.map((message, index) => (
+          <AgentMessage
+            key={index}
+            message={message}
+            toolResultsMap={toolResultsMap}
+            onFilePathClick={onFilePathClick}
+          />
+        ))}
+        {isRunning && (
+          <div className="flex items-center gap-2 px-6 py-4 text-neutral-500">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm">Agent is working...</span>
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
     </div>
   );
 }
