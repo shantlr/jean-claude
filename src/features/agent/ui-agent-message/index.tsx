@@ -8,11 +8,11 @@ import type {
   ToolResultBlock,
 } from '../../../../shared/agent-types';
 import { MarkdownContent } from '../ui-markdown-content';
-import { ToolResultCard } from '../ui-tool-result-card';
 import { ToolUseCard } from '../ui-tool-use-card';
 
 interface AgentMessageProps {
   message: AgentMessageType;
+  toolResultsMap?: Map<string, ToolResultBlock>;
   onFilePathClick?: (filePath: string, lineStart?: number, lineEnd?: number) => void;
 }
 
@@ -24,15 +24,13 @@ function isToolUseBlock(block: ContentBlock): block is ToolUseBlock {
   return block.type === 'tool_use';
 }
 
-function isToolResultBlock(block: ContentBlock): block is ToolResultBlock {
-  return block.type === 'tool_result';
-}
-
 function ContentBlockRenderer({
   block,
+  toolResultsMap,
   onFilePathClick,
 }: {
   block: ContentBlock;
+  toolResultsMap?: Map<string, ToolResultBlock>;
   onFilePathClick?: AgentMessageProps['onFilePathClick'];
 }) {
   if (isTextBlock(block)) {
@@ -40,17 +38,15 @@ function ContentBlockRenderer({
   }
 
   if (isToolUseBlock(block)) {
-    return <ToolUseCard block={block} />;
+    const result = toolResultsMap?.get(block.id);
+    return <ToolUseCard block={block} result={result} />;
   }
 
-  if (isToolResultBlock(block)) {
-    return <ToolResultCard block={block} />;
-  }
-
+  // tool_result blocks are now shown with their corresponding tool_use
   return null;
 }
 
-export function AgentMessage({ message, onFilePathClick }: AgentMessageProps) {
+export function AgentMessage({ message, toolResultsMap, onFilePathClick }: AgentMessageProps) {
   // Skip system messages (they're internal)
   if (message.type === 'system') {
     return null;
@@ -60,7 +56,7 @@ export function AgentMessage({ message, onFilePathClick }: AgentMessageProps) {
   if (message.type === 'result') {
     return (
       <div className="flex gap-3 px-4 py-3">
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-neutral-700">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-700">
           <Terminal className="h-4 w-4 text-neutral-300" />
         </div>
         <div className="flex-1 pt-1">
@@ -86,6 +82,19 @@ export function AgentMessage({ message, onFilePathClick }: AgentMessageProps) {
   // User message
   if (message.type === 'user' && message.message) {
     const content = message.message.content;
+
+    // If content is an array, check if it only contains tool_result blocks
+    // (these are displayed with their corresponding tool_use, not as user messages)
+    if (Array.isArray(content)) {
+      const hasNonToolResultContent = content.some(
+        (block) => block.type !== 'tool_result'
+      );
+      // Skip rendering if it's only tool results
+      if (!hasNonToolResultContent) {
+        return null;
+      }
+    }
+
     const textContent =
       typeof content === 'string'
         ? content
@@ -94,9 +103,14 @@ export function AgentMessage({ message, onFilePathClick }: AgentMessageProps) {
             .map((b) => b.text)
             .join('\n');
 
+    // Skip rendering empty user messages
+    if (!textContent.trim()) {
+      return null;
+    }
+
     return (
       <div className="flex gap-3 bg-neutral-800/30 px-4 py-3">
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-600">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600">
           <User className="h-4 w-4 text-white" />
         </div>
         <div className="flex-1 pt-1">
@@ -110,12 +124,12 @@ export function AgentMessage({ message, onFilePathClick }: AgentMessageProps) {
   }
 
   // Assistant message
-  if (message.type === 'assistant' && message.message) {
+  if (message.type === 'assistant' && message.message && message.message.role === 'assistant') {
     const contentBlocks = message.message.content;
 
     return (
       <div className="flex gap-3 px-4 py-3">
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-purple-600">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-600">
           <Bot className="h-4 w-4 text-white" />
         </div>
         <div className="flex-1 space-y-2 pt-1">
@@ -124,6 +138,7 @@ export function AgentMessage({ message, onFilePathClick }: AgentMessageProps) {
             <ContentBlockRenderer
               key={index}
               block={block}
+              toolResultsMap={toolResultsMap}
               onFilePathClick={onFilePathClick}
             />
           ))}

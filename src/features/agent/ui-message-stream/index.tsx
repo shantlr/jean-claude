@@ -1,6 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 
-import type { AgentMessage as AgentMessageType } from '../../../../shared/agent-types';
+import type {
+  AgentMessage as AgentMessageType,
+  ToolResultBlock,
+} from '../../../../shared/agent-types';
 import { AgentMessage } from '../ui-agent-message';
 
 interface MessageStreamProps {
@@ -8,8 +11,31 @@ interface MessageStreamProps {
   onFilePathClick?: (filePath: string, lineStart?: number, lineEnd?: number) => void;
 }
 
+// Build a map of tool_use_id -> ToolResultBlock from all user messages
+function buildToolResultsMap(messages: AgentMessageType[]): Map<string, ToolResultBlock> {
+  const resultsMap = new Map<string, ToolResultBlock>();
+
+  for (const message of messages) {
+    if (message.type === 'user' && message.message) {
+      const content = message.message.content;
+      if (Array.isArray(content)) {
+        for (const block of content) {
+          if (block.type === 'tool_result') {
+            resultsMap.set(block.tool_use_id, block);
+          }
+        }
+      }
+    }
+  }
+
+  return resultsMap;
+}
+
 export function MessageStream({ messages, onFilePathClick }: MessageStreamProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Build tool results map once when messages change
+  const toolResultsMap = useMemo(() => buildToolResultsMap(messages), [messages]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -30,6 +56,7 @@ export function MessageStream({ messages, onFilePathClick }: MessageStreamProps)
         <AgentMessage
           key={index}
           message={message}
+          toolResultsMap={toolResultsMap}
           onFilePathClick={onFilePathClick}
         />
       ))}

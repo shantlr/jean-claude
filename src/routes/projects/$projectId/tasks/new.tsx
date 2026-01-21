@@ -4,6 +4,7 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 
 import { useCreateTask } from '@/hooks/use-tasks';
+import { api } from '@/lib/api';
 
 export const Route = createFileRoute('/projects/$projectId/tasks/new')({
   component: NewTask,
@@ -28,14 +29,18 @@ function NewTask() {
       projectId,
       name: taskName,
       prompt,
-      status: 'waiting', // Agent integration deferred to Phase 2.3
+      status: 'waiting',
       updatedAt: new Date().toISOString(),
     });
 
+    // Navigate to the task first, then start the agent
     navigate({
       to: '/projects/$projectId/tasks/$taskId',
       params: { projectId, taskId: task.id },
     });
+
+    // Auto-start the agent after navigation
+    api.agent.start(task.id);
   }
 
   return (

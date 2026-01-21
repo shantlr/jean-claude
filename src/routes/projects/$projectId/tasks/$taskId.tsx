@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Square, Play, Loader2, Copy, Check } from 'lucide-react';
+import { Square, Loader2, Copy, Check } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 
 import { StatusIndicator } from '@/common/ui/status-indicator';
@@ -32,12 +32,10 @@ function TaskPanel() {
 
   const agentState = useAgentStream(taskId);
   const {
-    start,
     stop,
     respondToPermission,
     respondToQuestion,
     sendMessage,
-    isStarting,
     isStopping,
   } = useAgentControls(taskId);
 
@@ -59,7 +57,10 @@ function TaskPanel() {
   // Mark task as read when viewing (except when running)
   useEffect(() => {
     if (task && agentState.messages.length > 0 && task.status !== 'running') {
-      markAsRead.mutate({ id: taskId, lastReadIndex: agentState.messages.length - 1 });
+      markAsRead.mutate({
+        id: taskId,
+        lastReadIndex: agentState.messages.length - 1,
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId, task?.status, agentState.messages.length]);
@@ -73,16 +74,12 @@ function TaskPanel() {
         lineEnd,
       });
     },
-    []
+    [],
   );
 
   const handleCloseFilePreview = useCallback(() => {
     setFilePreview((prev) => ({ ...prev, isOpen: false }));
   }, []);
-
-  const handleStart = async () => {
-    await start();
-  };
 
   const handleStop = async () => {
     await stop();
@@ -96,10 +93,11 @@ function TaskPanel() {
     );
   }
 
-  const isRunning = agentState.status === 'running' || task.status === 'running';
-  const isWaiting = agentState.status === 'waiting' || task.status === 'waiting';
+  const isRunning =
+    agentState.status === 'running' || task.status === 'running';
+  const isWaiting =
+    agentState.status === 'waiting' || task.status === 'waiting';
   const hasMessages = agentState.messages.length > 0;
-  const canStart = !isRunning && !isStarting && !hasMessages && !agentState.isLoading;
   const canSendMessage = !isRunning && hasMessages && task.sessionId;
 
   return (
@@ -109,7 +107,9 @@ function TaskPanel() {
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-neutral-700 px-6 py-4">
           <StatusIndicator
-            status={agentState.status !== 'waiting' ? agentState.status : task.status}
+            status={
+              agentState.status !== 'waiting' ? agentState.status : task.status
+            }
             className="h-3 w-3"
           />
           <h1 className="flex-1 truncate text-lg font-semibold">{task.name}</h1>
@@ -146,22 +146,6 @@ function TaskPanel() {
               Stop
             </button>
           )}
-
-          {/* Start button (only shown when no messages yet) */}
-          {canStart && (
-            <button
-              onClick={handleStart}
-              disabled={isStarting}
-              className="flex items-center gap-2 rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-500 disabled:opacity-50"
-            >
-              {isStarting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Play className="h-4 w-4" />
-              )}
-              Start
-            </button>
-          )}
         </div>
 
         {/* Message stream or prompt display */}
@@ -177,23 +161,18 @@ function TaskPanel() {
             />
           ) : (
             <div className="p-6">
-              <div className="mb-2 text-sm font-medium text-neutral-400">Prompt</div>
+              <div className="mb-2 text-sm font-medium text-neutral-400">
+                Prompt
+              </div>
               <div className="rounded-lg border border-neutral-700 bg-neutral-800 p-4">
                 <pre className="whitespace-pre-wrap font-sans text-sm">
                   {task.prompt}
                 </pre>
               </div>
-              {!canStart && (
-                <div className="mt-6 rounded-lg border border-dashed border-neutral-700 p-8 text-center">
-                  <p className="text-neutral-400">
-                    {isStarting
-                      ? 'Starting agent...'
-                      : isRunning
-                        ? 'Agent is running...'
-                        : 'Click Start to run the agent'}
-                  </p>
-                </div>
-              )}
+              <div className="mt-6 flex items-center justify-center gap-2 rounded-lg border border-dashed border-neutral-700 p-8">
+                <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+                <p className="text-neutral-400">Starting agent...</p>
+              </div>
             </div>
           )}
         </div>
@@ -222,17 +201,19 @@ function TaskPanel() {
         )}
 
         {/* Message input */}
-        {(canSendMessage || isWaiting) && !agentState.pendingPermission && !agentState.pendingQuestion && (
-          <MessageInput
-            onSend={sendMessage}
-            disabled={isRunning}
-            placeholder={
-              isRunning
-                ? 'Agent is running...'
-                : 'Send a follow-up message...'
-            }
-          />
-        )}
+        {(canSendMessage || isWaiting) &&
+          !agentState.pendingPermission &&
+          !agentState.pendingQuestion && (
+            <MessageInput
+              onSend={sendMessage}
+              disabled={isRunning}
+              placeholder={
+                isRunning
+                  ? 'Agent is running...'
+                  : 'Send a follow-up message...'
+              }
+            />
+          )}
       </div>
 
       {/* File preview pane */}
