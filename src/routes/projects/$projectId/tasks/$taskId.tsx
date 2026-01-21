@@ -58,11 +58,11 @@ function TaskPanel() {
 
   // Mark task as read when viewing (except when running)
   useEffect(() => {
-    if (task && task.status !== 'running') {
-      markAsRead.mutate(taskId);
+    if (task && agentState.messages.length > 0 && task.status !== 'running') {
+      markAsRead.mutate({ id: taskId, lastReadIndex: agentState.messages.length - 1 });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [taskId, task?.status]);
+  }, [taskId, task?.status, agentState.messages.length]);
 
   const handleFilePathClick = useCallback(
     (filePath: string, lineStart?: number, lineEnd?: number) => {

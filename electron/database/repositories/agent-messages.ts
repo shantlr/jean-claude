@@ -1,5 +1,5 @@
-import { db } from '../index';
 import type { AgentMessage } from '../../../shared/agent-types';
+import { db } from '../index';
 
 export const AgentMessageRepository = {
   findByTaskId: async (taskId: string): Promise<AgentMessage[]> => {

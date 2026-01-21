@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
 
-import { NewTask, UpdateTask } from '../../electron/database/schema';
+import { NewTask, UpdateTask } from '../../shared/types';
 
 export function useTasks() {
   return useQuery({
@@ -66,8 +66,9 @@ export function useDeleteTask() {
 export function useMarkTaskAsRead() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.tasks.markAsRead(id),
-    onSuccess: (task, id) => {
+    mutationFn: ({ id, lastReadIndex }: { id: string; lastReadIndex: number }) =>
+      api.tasks.updateLastReadIndex(id, lastReadIndex),
+    onSuccess: (task, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
       queryClient.invalidateQueries({

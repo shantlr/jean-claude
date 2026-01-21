@@ -1,24 +1,33 @@
 import { Link } from '@tanstack/react-router';
+import { AlertCircle } from 'lucide-react';
 
 import { StatusIndicator } from '@/common/ui/status-indicator';
 import { formatRelativeTime } from '@/lib/time';
+import { useTaskMessagesStore } from '@/stores/task-messages';
 
 import type { Task } from '../../../../shared/types';
 
+interface TaskWithMessageCount extends Task {
+  messageCount?: number;
+}
+
 interface TaskListItemProps {
-  task: Task;
+  task: TaskWithMessageCount;
   projectId: string;
   isActive?: boolean;
 }
 
-export function isTaskUnread(task: Task): boolean {
-  if (task.status === 'running') return false;
-  if (!task.readAt) return true;
-  return new Date(task.updatedAt) > new Date(task.readAt);
+export function getUnreadCount(task: TaskWithMessageCount): number {
+  if (task.status === 'running') return 0;
+  const messageCount = task.messageCount ?? 0;
+  if (messageCount === 0) return 0;
+  return Math.max(0, messageCount - 1 - task.lastReadIndex);
 }
 
 export function TaskListItem({ task, projectId, isActive }: TaskListItemProps) {
-  const unread = isTaskUnread(task);
+  const unreadCount = getUnreadCount(task);
+  const taskState = useTaskMessagesStore((s) => s.tasks[task.id]);
+  const needsAttention = taskState?.pendingPermission || taskState?.pendingQuestion;
 
   return (
     <Link
@@ -32,8 +41,13 @@ export function TaskListItem({ task, projectId, isActive }: TaskListItemProps) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-medium">{task.name}</span>
-          {unread && (
-            <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+          {needsAttention && (
+            <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
+          )}
+          {unreadCount > 0 && !needsAttention && (
+            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-500 px-1.5 text-xs font-medium">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
           )}
         </div>
         <span className="text-xs text-neutral-500">

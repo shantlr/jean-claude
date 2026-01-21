@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { useTaskMessages } from '@/hooks/use-task-messages';
 import { api } from '@/lib/api';
+import { useTaskMessagesStore } from '@/stores/task-messages';
 
 import type {
   PermissionResponse,
@@ -28,6 +29,8 @@ export function useAgentControls(taskId: string) {
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const queryClient = useQueryClient();
+  const setPermission = useTaskMessagesStore((s) => s.setPermission);
+  const setQuestion = useTaskMessagesStore((s) => s.setQuestion);
 
   const start = useCallback(async () => {
     setIsStarting(true);
@@ -51,15 +54,17 @@ export function useAgentControls(taskId: string) {
   const respondToPermission = useCallback(
     async (requestId: string, response: PermissionResponse) => {
       await api.agent.respond(taskId, requestId, response);
+      setPermission(taskId, null);
     },
-    [taskId]
+    [taskId, setPermission]
   );
 
   const respondToQuestion = useCallback(
     async (requestId: string, response: QuestionResponse) => {
       await api.agent.respond(taskId, requestId, response);
+      setQuestion(taskId, null);
     },
-    [taskId]
+    [taskId, setQuestion]
   );
 
   const sendMessage = useCallback(

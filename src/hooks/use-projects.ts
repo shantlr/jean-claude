@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
 
-import { NewProject, UpdateProject } from '../../electron/database/schema';
+import { NewProject, UpdateProject } from '../../shared/types';
 
 export function useProjects() {
   return useQuery({
