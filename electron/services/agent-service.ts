@@ -9,6 +9,7 @@ import {
   QuestionResponse,
   AgentQuestion,
 } from '../../shared/agent-types';
+import type { InteractionMode } from '../../shared/types';
 import {
   TaskRepository,
   ProjectRepository,
@@ -16,6 +17,12 @@ import {
 } from '../database/repositories';
 
 import { notificationService } from './notification-service';
+
+const SDK_PERMISSION_MODES = {
+  ask: 'default',
+  auto: 'bypassPermissions',
+  plan: 'plan',
+} as const;
 
 interface PendingRequest {
   requestId: string;
@@ -32,6 +39,7 @@ interface ActiveSession {
   pendingRequests: PendingRequest[];
   messageGenerator: AsyncGenerator<unknown> | null;
   messageIndex: number;
+  queryInstance: ReturnType<typeof query> | null;
 }
 
 class AgentService {
@@ -144,6 +152,7 @@ class AgentService {
       pendingRequests: [],
       messageGenerator: null,
       messageIndex: existingMessageCount,
+      queryInstance: null,
     };
     this.sessions.set(taskId, session);
 
@@ -172,6 +181,7 @@ class AgentService {
         ): Promise<PermissionResponse> => {
           return this.handleToolRequest(taskId, toolName, input);
         },
+        permissionMode: SDK_PERMISSION_MODES[(task.interactionMode ?? 'ask') as InteractionMode],
       };
 
       // Resume if we have a session ID
@@ -184,6 +194,7 @@ class AgentService {
         options,
       });
 
+      session.queryInstance = generator;
       session.messageGenerator = generator;
 
       // Stream messages
@@ -371,6 +382,7 @@ class AgentService {
       pendingRequests: [],
       messageGenerator: null,
       messageIndex: existingMessageCount,
+      queryInstance: null,
     };
     this.sessions.set(taskId, newSession);
 
@@ -397,6 +409,7 @@ class AgentService {
         ): Promise<PermissionResponse> => {
           return this.handleToolRequest(taskId, toolName, input);
         },
+        permissionMode: SDK_PERMISSION_MODES[(task.interactionMode ?? 'ask') as InteractionMode],
       };
 
       if (newSession.sessionId) {
@@ -408,12 +421,14 @@ class AgentService {
         options,
       });
 
+      newSession.queryInstance = generator;
       newSession.messageGenerator = generator;
 
       for await (const rawMessage of generator) {
         if (abortController.signal.aborted) {
           break;
         }
+
 
         const agentMessage = rawMessage as AgentMessage;
 
@@ -437,6 +452,14 @@ class AgentService {
     } finally {
       this.sessions.delete(taskId);
     }
+  }
+
+  async setMode(taskId: string, mode: InteractionMode): Promise<void> {
+    const session = this.sessions.get(taskId);
+    if (session?.queryInstance) {
+      await session.queryInstance.setPermissionMode(SDK_PERMISSION_MODES[mode]);
+    }
+    await TaskRepository.update(taskId, { interactionMode: mode });
   }
 
   isRunning(taskId: string): boolean {
