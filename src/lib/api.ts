@@ -71,6 +71,7 @@ export interface Api {
     ) => Promise<void>;
     sendMessage: (taskId: string, message: string) => Promise<void>;
     getMessages: (taskId: string) => Promise<AgentMessage[]>;
+    getMessageCount: (taskId: string) => Promise<number>;
     onMessage: (callback: AgentEventCallback<AgentMessageEvent>) => UnsubscribeFn;
     onStatus: (callback: AgentEventCallback<AgentStatusEvent>) => UnsubscribeFn;
     onPermission: (callback: AgentEventCallback<AgentPermissionEvent>) => UnsubscribeFn;
@@ -129,6 +130,7 @@ export const api: Api = hasWindowApi
         respond: async () => { throw new Error('API not available'); },
         sendMessage: async () => { throw new Error('API not available'); },
         getMessages: async () => [],
+        getMessageCount: async () => 0,
         onMessage: () => () => {},
         onStatus: () => () => {},
         onPermission: () => () => {},

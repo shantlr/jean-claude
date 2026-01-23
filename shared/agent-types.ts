@@ -123,4 +123,5 @@ export const AGENT_CHANNELS = {
   RESPOND: 'agent:respond',
   SEND_MESSAGE: 'agent:sendMessage',
   GET_MESSAGES: 'agent:getMessages',
+  GET_MESSAGE_COUNT: 'agent:getMessageCount',
 } as const;

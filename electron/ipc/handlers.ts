@@ -188,4 +188,8 @@ export function registerIpcHandlers() {
   ipcMain.handle(AGENT_CHANNELS.GET_MESSAGES, (_, taskId: string) => {
     return agentService.getMessages(taskId);
   });
+
+  ipcMain.handle(AGENT_CHANNELS.GET_MESSAGE_COUNT, (_, taskId: string) => {
+    return agentService.getMessageCount(taskId);
+  });
 }

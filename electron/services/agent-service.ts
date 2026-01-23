@@ -315,6 +315,14 @@ class AgentService {
     }
 
     session.abortController.abort();
+
+    // Emit a custom interruption message
+    await this.emitMessage(taskId, {
+      type: 'result',
+      result: 'Task interrupted by user',
+      is_error: true,
+    });
+
     await TaskRepository.update(taskId, { status: 'errored' });
     this.emitStatus(taskId, 'errored', 'Stopped by user');
     this.sessions.delete(taskId);
@@ -470,6 +478,10 @@ class AgentService {
     const messages = await AgentMessageRepository.findByTaskId(taskId);
     console.log(`[AgentService] getMessages for task ${taskId}: found ${messages.length} messages`);
     return messages;
+  }
+
+  async getMessageCount(taskId: string): Promise<number> {
+    return AgentMessageRepository.getMessageCount(taskId);
   }
 }
 

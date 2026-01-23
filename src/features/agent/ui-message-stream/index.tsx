@@ -1,5 +1,11 @@
 import { Loader2 } from 'lucide-react';
-import { useEffect, useRef, useMemo, useLayoutEffect, useCallback } from 'react';
+import {
+  useEffect,
+  useRef,
+  useMemo,
+  useLayoutEffect,
+  useCallback,
+} from 'react';
 
 import type {
   AgentMessage as AgentMessageType,
@@ -40,7 +46,7 @@ function buildToolResultsMap(
 }
 
 // Threshold in pixels - if user is within this distance from bottom, auto-scroll
-const SCROLL_THRESHOLD = 100;
+const SCROLL_THRESHOLD = 10;
 
 export function MessageStream({
   messages,
@@ -81,9 +87,13 @@ export function MessageStream({
   // Auto-scroll to bottom when new messages arrive, but only if user is near bottom
   useEffect(() => {
     if (isNearBottomRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      bottomRef.current?.scrollIntoView({ behavior: 'instant' });
     }
   }, [messages.length]);
+
+  console.log({
+    messages,
+  });
 
   if (messages.length === 0) {
     return (
