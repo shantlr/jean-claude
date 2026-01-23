@@ -11,7 +11,7 @@ import type {
   AgentMessage as AgentMessageType,
   ToolResultBlock,
 } from '../../../../shared/agent-types';
-import { AgentMessage } from '../ui-agent-message';
+import { TimelineEntry } from '../ui-timeline-entry';
 
 interface MessageStreamProps {
   messages: AgentMessageType[];
@@ -109,9 +109,10 @@ export function MessageStream({
       onScroll={handleScroll}
       className="h-full overflow-auto"
     >
-      <div className="flex flex-col divide-y divide-neutral-800">
+      {/* Timeline vertical line */}
+      <div className="relative ml-3 border-l border-neutral-700">
         {messages.map((message, index) => (
-          <AgentMessage
+          <TimelineEntry
             key={index}
             message={message}
             toolResultsMap={toolResultsMap}
@@ -119,9 +120,12 @@ export function MessageStream({
           />
         ))}
         {isRunning && (
-          <div className="flex items-center gap-2 px-6 py-4 text-neutral-500">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Agent is working...</span>
+          <div className="relative pl-6 py-1.5">
+            <div className="absolute -left- top-2.5 h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
+            <div className="flex items-center gap-2 text-neutral-500">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span className="text-sm">Working...</span>
+            </div>
           </div>
         )}
         <div ref={bottomRef} />
