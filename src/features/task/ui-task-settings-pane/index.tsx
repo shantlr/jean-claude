@@ -1,7 +1,8 @@
 import { X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
-import { SESSION_ALLOWABLE_TOOLS } from '../../../../shared/agent-types';
+// Tools that can be pre-configured for session-level allowance
+const SESSION_ALLOWABLE_TOOLS = ['Edit', 'Write'] as const;
 
 export function TaskSettingsPane({
   sessionAllowedTools,

@@ -123,7 +123,7 @@ export function PermissionBar({
 }: {
   request: AgentPermissionEvent;
   onRespond: (requestId: string, response: PermissionResponse) => void;
-  onAllowForSession?: (toolName: string) => void;
+  onAllowForSession?: (toolNames: string[]) => void;
 }) {
   const [instruction, setInstruction] = useState('');
 
@@ -135,7 +135,9 @@ export function PermissionBar({
   };
 
   const handleAllowForSession = () => {
-    onAllowForSession?.(request.toolName);
+    if (request.sessionAllowButton) {
+      onAllowForSession?.(request.sessionAllowButton.toolsToAllow);
+    }
     onRespond(request.requestId, {
       behavior: 'allow',
       updatedInput: request.input,
@@ -152,7 +154,7 @@ export function PermissionBar({
   console.log('ASKED PERMISSION', request);
 
   const isExitPlanMode = request.toolName === 'ExitPlanMode';
-  const showAllowForSession = request.canAllowForSession;
+  const sessionAllowButton = request.sessionAllowButton;
 
   return (
     <div className="border-t border-yellow-700/50 bg-yellow-900/20 px-4 py-3">
@@ -191,13 +193,13 @@ export function PermissionBar({
           <Check className="h-4 w-4" />
           Allow
         </button>
-        {showAllowForSession && (
+        {sessionAllowButton && (
           <button
             onClick={handleAllowForSession}
             className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
           >
             <ShieldCheck className="h-4 w-4" />
-            Allow for Session
+            {sessionAllowButton.label}
           </button>
         )}
       </div>

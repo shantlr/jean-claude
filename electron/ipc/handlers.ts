@@ -8,7 +8,6 @@ import {
   AGENT_CHANNELS,
   PermissionResponse,
   QuestionResponse,
-  SESSION_ALLOWABLE_TOOLS,
 } from '../../shared/agent-types';
 import {
   PRESET_EDITORS,
@@ -119,11 +118,16 @@ export function registerIpcHandlers() {
   ipcMain.handle('tasks:clearUserCompleted', (_, id: string) =>
     TaskRepository.clearUserCompleted(id)
   );
+  // Tools that can be session-allowed (security validation)
+  const SESSION_ALLOWABLE_TOOLS = ['Edit', 'Write'] as const;
+
   ipcMain.handle(
     'tasks:addSessionAllowedTool',
     async (_, taskId: string, toolName: string) => {
       // Validate that the tool is allowed to be session-allowed
-      if (!SESSION_ALLOWABLE_TOOLS.includes(toolName as typeof SESSION_ALLOWABLE_TOOLS[number])) {
+      if (
+        !SESSION_ALLOWABLE_TOOLS.includes(toolName as (typeof SESSION_ALLOWABLE_TOOLS)[number])
+      ) {
         console.warn(`[IPC] Tool "${toolName}" is not allowed to be session-allowed`);
         return TaskRepository.findById(taskId);
       }

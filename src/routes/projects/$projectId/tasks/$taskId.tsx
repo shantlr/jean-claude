@@ -159,6 +159,15 @@ function TaskPanel() {
     [taskId, addSessionAllowedTool]
   );
 
+  const handleAllowToolsForSession = useCallback(
+    (toolNames: string[]) => {
+      toolNames.forEach((toolName) => {
+        addSessionAllowedTool.mutate({ id: taskId, toolName });
+      });
+    },
+    [taskId, addSessionAllowedTool]
+  );
+
   const handleRemoveSessionAllowedTool = useCallback(
     (toolName: string) => {
       removeSessionAllowedTool.mutate({ id: taskId, toolName });
@@ -349,7 +358,7 @@ function TaskPanel() {
           <PermissionBar
             request={agentState.pendingPermission}
             onRespond={respondToPermission}
-            onAllowForSession={handleAllowToolForSession}
+            onAllowForSession={handleAllowToolsForSession}
           />
         )}
 

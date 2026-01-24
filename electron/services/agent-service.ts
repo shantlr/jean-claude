@@ -8,7 +8,7 @@ import {
   PermissionResponse,
   QuestionResponse,
   AgentQuestion,
-  SESSION_ALLOWABLE_TOOLS,
+  SessionAllowButton,
 } from '../../shared/agent-types';
 import type { InteractionMode } from '../../shared/types';
 import {
@@ -91,14 +91,27 @@ class AgentService {
     this.emit(AGENT_CHANNELS.MESSAGE, { taskId, message });
   }
 
+  private getSessionAllowButton(toolName: string): SessionAllowButton | undefined {
+    switch (toolName) {
+      case 'ExitPlanMode':
+        return { label: 'Allow and Auto-Edit', toolsToAllow: ['Edit', 'Write'] };
+      case 'Edit':
+        return { label: 'Allow Edit for Session', toolsToAllow: ['Edit'] };
+      case 'Write':
+        return { label: 'Allow Write for Session', toolsToAllow: ['Write'] };
+      default:
+        return undefined;
+    }
+  }
+
   private async emitPermissionRequest(
     taskId: string,
     requestId: string,
     toolName: string,
     input: Record<string, unknown>
   ) {
-    const canAllowForSession = SESSION_ALLOWABLE_TOOLS.includes(toolName as typeof SESSION_ALLOWABLE_TOOLS[number]);
-    this.emit(AGENT_CHANNELS.PERMISSION, { taskId, requestId, toolName, input, canAllowForSession });
+    const sessionAllowButton = this.getSessionAllowButton(toolName);
+    this.emit(AGENT_CHANNELS.PERMISSION, { taskId, requestId, toolName, input, sessionAllowButton });
 
     // Send desktop notification if window not focused
     if (this.mainWindow && !this.mainWindow.isFocused()) {

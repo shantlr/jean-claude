@@ -97,17 +97,18 @@ export interface AgentStatusEvent {
   error?: string;
 }
 
+export interface SessionAllowButton {
+  label: string;
+  toolsToAllow: string[];
+}
+
 export interface AgentPermissionEvent {
   taskId: string;
   requestId: string;
   toolName: string;
   input: Record<string, unknown>;
-  canAllowForSession: boolean;
+  sessionAllowButton?: SessionAllowButton;
 }
-
-// Tools that can be allowed for the entire session
-export const SESSION_ALLOWABLE_TOOLS = ['Edit'] as const;
-export type SessionAllowableTool = (typeof SESSION_ALLOWABLE_TOOLS)[number];
 
 export interface AgentQuestionEvent {
   taskId: string;
