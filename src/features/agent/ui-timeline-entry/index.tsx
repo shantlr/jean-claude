@@ -282,7 +282,7 @@ function TextEntry({
   );
 }
 
-// User message entry
+// User message entry - shows full content, clickable for file paths
 function UserEntry({
   text,
   onFilePathClick,
@@ -290,21 +290,14 @@ function UserEntry({
   text: string;
   onFilePathClick?: TimelineEntryProps['onFilePathClick'];
 }) {
-  const truncated = text.length > 60 ? text.slice(0, 60) + '...' : text;
-  const needsExpansion = text.length > 60;
-
-  const expandedContent = needsExpansion ? (
-    <div className="text-xs text-neutral-300">
-      <MarkdownContent content={text} onFilePathClick={onFilePathClick} />
-    </div>
-  ) : null;
-
   return (
-    <DotEntry
-      type="user"
-      summary={truncated}
-      expandedContent={expandedContent}
-    />
+    <div className="relative pl-6 bg-purple-500/5">
+      {/* Dot - purple for user */}
+      <div className="absolute -left-1 top-2.5 h-2 w-2 rounded-full bg-purple-500" />
+      <div className="py-1.5 pr-3 text-xs text-neutral-300">
+        <MarkdownContent content={text} onFilePathClick={onFilePathClick} />
+      </div>
+    </div>
   );
 }
 
