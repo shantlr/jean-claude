@@ -94,7 +94,7 @@ class AgentService {
   private getSessionAllowButton(toolName: string): SessionAllowButton | undefined {
     switch (toolName) {
       case 'ExitPlanMode':
-        return { label: 'Allow and Auto-Edit', toolsToAllow: ['Edit', 'Write'] };
+        return { label: 'Allow and Auto-Edit', toolsToAllow: ['Edit', 'Write'], setModeOnAllow: 'ask' };
       case 'Edit':
         return { label: 'Allow Edit for Session', toolsToAllow: ['Edit'] };
       case 'Write':

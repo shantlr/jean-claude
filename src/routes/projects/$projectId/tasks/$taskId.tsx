@@ -373,6 +373,7 @@ function TaskPanel() {
             request={agentState.pendingPermission}
             onRespond={respondToPermission}
             onAllowForSession={handleAllowToolsForSession}
+            onSetMode={(mode) => setTaskMode.mutate({ id: taskId, mode })}
           />
         )}
 

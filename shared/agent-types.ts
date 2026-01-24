@@ -1,5 +1,7 @@
 // Agent-related types shared between main and renderer processes
 
+import type { InteractionMode } from './types';
+
 // SDK message types (simplified for our use case)
 export interface AgentMessage {
   type: 'system' | 'assistant' | 'user' | 'result';
@@ -100,6 +102,7 @@ export interface AgentStatusEvent {
 export interface SessionAllowButton {
   label: string;
   toolsToAllow: string[];
+  setModeOnAllow?: InteractionMode;
 }
 
 export interface AgentPermissionEvent {

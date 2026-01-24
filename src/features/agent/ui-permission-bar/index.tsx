@@ -5,6 +5,7 @@ import type {
   AgentPermissionEvent,
   PermissionResponse,
 } from '../../../../shared/agent-types';
+import type { InteractionMode } from '../../../../shared/types';
 import { MarkdownContent } from '../ui-markdown-content';
 
 function ToolInputDisplay({
@@ -120,14 +121,19 @@ export function PermissionBar({
   request,
   onRespond,
   onAllowForSession,
+  onSetMode,
 }: {
   request: AgentPermissionEvent;
   onRespond: (requestId: string, response: PermissionResponse) => void;
   onAllowForSession?: (toolNames: string[]) => void;
+  onSetMode?: (mode: InteractionMode) => void;
 }) {
   const [instruction, setInstruction] = useState('');
 
   const handleAllow = () => {
+    if (request.sessionAllowButton?.setModeOnAllow) {
+      onSetMode?.(request.sessionAllowButton.setModeOnAllow);
+    }
     onRespond(request.requestId, {
       behavior: 'allow',
       updatedInput: request.input,
@@ -136,6 +142,9 @@ export function PermissionBar({
 
   const handleAllowForSession = () => {
     if (request.sessionAllowButton) {
+      if (request.sessionAllowButton.setModeOnAllow) {
+        onSetMode?.(request.sessionAllowButton.setModeOnAllow);
+      }
       onAllowForSession?.(request.sessionAllowButton.toolsToAllow);
     }
     onRespond(request.requestId, {
