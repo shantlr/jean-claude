@@ -45,7 +45,11 @@ export default defineConfig({
         routesDirectory: 'src/routes',
         generatedRouteTree: 'src/routeTree.gen.ts',
       }) as any,
-      react(),
+      react({
+        babel: {
+          plugins: [['babel-plugin-react-compiler', {}]],
+        },
+      }),
       tailwindcss(),
     ],
   },
