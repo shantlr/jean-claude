@@ -12,6 +12,7 @@ import * as m009 from './migrations/009_task_user_completed';
 import * as m011 from './migrations/011_add_session_allowed_tools';
 import * as m012 from './migrations/012_task_nullable_name';
 import * as m013 from './migrations/013_project_sort_order';
+import * as m014 from './migrations/014_project_worktrees_path';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -26,6 +27,7 @@ const migrations: Record<string, Migration> = {
   '011_add_session_allowed_tools': m011,
   '012_task_nullable_name': m012,
   '013_project_sort_order': m013,
+  '014_project_worktrees_path': m014,
 };
 
 export const migrationProvider: MigrationProvider = {

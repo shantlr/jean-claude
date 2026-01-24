@@ -32,6 +32,7 @@ import {
   UpdateProvider,
 } from '../database/schema';
 import { agentService } from '../services/agent-service';
+import { createWorktree } from '../services/worktree-service';
 
 export function registerIpcHandlers() {
   // Projects
@@ -62,6 +63,38 @@ export function registerIpcHandlers() {
   );
   ipcMain.handle('tasks:create', (_, data: NewTask) =>
     TaskRepository.create(data),
+  );
+  ipcMain.handle(
+    'tasks:createWithWorktree',
+    async (_, data: NewTask & { useWorktree: boolean }) => {
+      const { useWorktree, ...taskData } = data;
+
+      if (!useWorktree) {
+        // No worktree requested, just create the task normally
+        return TaskRepository.create(taskData);
+      }
+
+      // Get the project to access its path and name
+      const project = await ProjectRepository.findById(taskData.projectId);
+      if (!project) {
+        throw new Error(`Project ${taskData.projectId} not found`);
+      }
+
+      // Create the worktree
+      const { worktreePath, startCommitHash } = await createWorktree(
+        project.path,
+        project.id,
+        project.name,
+        taskData.prompt
+      );
+
+      // Create the task with worktree info
+      return TaskRepository.create({
+        ...taskData,
+        worktreePath,
+        startCommitHash,
+      });
+    }
   );
   ipcMain.handle('tasks:update', (_, id: string, data: UpdateTask) =>
     TaskRepository.update(id, data),

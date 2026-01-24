@@ -4,7 +4,7 @@ import { nanoid } from 'nanoid';
 import type { FormEvent } from 'react';
 
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
-import { useCreateTask } from '@/hooks/use-tasks';
+import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
 import { useNewTaskFormStore } from '@/stores/new-task-form';
 
@@ -15,7 +15,7 @@ export const Route = createFileRoute('/projects/$projectId/tasks/new')({
 function NewTask() {
   const { projectId } = Route.useParams();
   const navigate = useNavigate();
-  const createTask = useCreateTask();
+  const createTask = useCreateTaskWithWorktree();
 
   const { getDraft, setDraft, clearDraft } = useNewTaskFormStore();
   const { name, prompt, useWorktree, interactionMode } = getDraft(projectId);
@@ -31,6 +31,7 @@ function NewTask() {
       prompt,
       status: 'waiting',
       interactionMode,
+      useWorktree,
       updatedAt: new Date().toISOString(),
     });
 

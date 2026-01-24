@@ -50,6 +50,7 @@ export interface ProjectTable {
   remoteUrl: string | null;
   color: string;
   sortOrder: number;
+  worktreesPath: string | null;
   createdAt: Generated<string>;
   updatedAt: string;
 }

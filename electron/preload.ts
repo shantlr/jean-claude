@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('tasks:findByProjectId', projectId),
     findById: (id: string) => ipcRenderer.invoke('tasks:findById', id),
     create: (data: unknown) => ipcRenderer.invoke('tasks:create', data),
+    createWithWorktree: (data: unknown) =>
+      ipcRenderer.invoke('tasks:createWithWorktree', data),
     update: (id: string, data: unknown) =>
       ipcRenderer.invoke('tasks:update', id, data),
     delete: (id: string) => ipcRenderer.invoke('tasks:delete', id),
