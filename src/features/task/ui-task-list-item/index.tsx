@@ -1,9 +1,10 @@
 import { useRouter } from '@tanstack/react-router';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, GitBranch } from 'lucide-react';
 
 import { ToggleableStatusIndicator } from '@/features/task/ui-status-indicator';
 import { useToggleTaskUserCompleted } from '@/hooks/use-tasks';
 import { formatRelativeTime } from '@/lib/time';
+import { getBranchFromWorktreePath } from '@/lib/worktree';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 
 import type { Task } from '../../../../shared/types';
@@ -65,6 +66,12 @@ export function TaskListItem({ task, projectId, isActive }: TaskListItemProps) {
           <span className="truncate text-sm font-medium">
             {task.name ?? task.prompt.split('\n')[0].slice(0, 50)}
           </span>
+          {task.worktreePath && (
+            <span className="flex shrink items-center gap-1 min-w-0 text-neutral-500" title={getBranchFromWorktreePath(task.worktreePath)}>
+              <GitBranch className="h-3 w-3 shrink-0" />
+              <span className="truncate text-xs">{getBranchFromWorktreePath(task.worktreePath)}</span>
+            </span>
+          )}
           {needsAttention && (
             <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
           )}
