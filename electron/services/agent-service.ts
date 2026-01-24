@@ -210,8 +210,11 @@ class AgentService {
       const sdkPermissionMode = SDK_PERMISSION_MODES[(task.interactionMode ?? 'ask') as InteractionMode];
       console.log(`[AgentService] Starting agent for task ${taskId}, interactionMode: ${task.interactionMode}, sdkPermissionMode: ${sdkPermissionMode}`);
 
+      // Use worktree path if available, otherwise use project path
+      const workingDir = task.worktreePath ?? project.path;
+
       const options: NonNullable<Parameters<typeof query>[0]['options']> = {
-        cwd: project.path,
+        cwd: workingDir,
         allowedTools: [
           // 'Read',
           // 'Write',
@@ -481,8 +484,11 @@ class AgentService {
       const sdkPermissionMode = SDK_PERMISSION_MODES[(task.interactionMode ?? 'ask') as InteractionMode];
       console.log(`[AgentService] Resuming/sending message for task ${taskId}, interactionMode: ${task.interactionMode}, sdkPermissionMode: ${sdkPermissionMode}`);
 
+      // Use worktree path if available, otherwise use project path
+      const workingDir = task.worktreePath ?? project.path;
+
       const options: Record<string, unknown> = {
-        cwd: project.path,
+        cwd: workingDir,
         allowedTools: [
           'Read',
           'Write',

@@ -13,7 +13,7 @@ interface NewTaskFormDraft {
 const defaultDraft: NewTaskFormDraft = {
   name: '',
   prompt: '',
-  useWorktree: true,
+  useWorktree: false,
   interactionMode: 'plan',
 };
 

@@ -43,6 +43,7 @@ export interface Project {
   remoteUrl: string | null;
   color: string;
   sortOrder: number;
+  worktreesPath: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -68,6 +69,7 @@ export interface UpdateProject {
   remoteUrl?: string | null;
   color?: string;
   sortOrder?: number;
+  worktreesPath?: string | null;
   updatedAt?: string;
 }
 

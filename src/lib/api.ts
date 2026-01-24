@@ -56,6 +56,7 @@ export interface Api {
     findByProjectId: (projectId: string) => Promise<Task[]>;
     findById: (id: string) => Promise<Task | undefined>;
     create: (data: NewTask) => Promise<Task>;
+    createWithWorktree: (data: NewTask & { useWorktree: boolean }) => Promise<Task>;
     update: (id: string, data: UpdateTask) => Promise<Task>;
     delete: (id: string) => Promise<void>;
     markAsRead: (id: string) => Promise<Task>;
@@ -137,6 +138,7 @@ export const api: Api = hasWindowApi
         findByProjectId: async () => [],
         findById: async () => undefined,
         create: async () => { throw new Error('API not available'); },
+        createWithWorktree: async () => { throw new Error('API not available'); },
         update: async () => { throw new Error('API not available'); },
         delete: async () => {},
         markAsRead: async () => { throw new Error('API not available'); },
