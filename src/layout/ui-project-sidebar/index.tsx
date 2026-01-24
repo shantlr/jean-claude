@@ -1,16 +1,118 @@
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
 import { Link, useParams } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
 
-import { TaskListItem } from '@/features/task/ui-task-list-item';
+import { SortableTaskListItem } from '@/features/task/ui-sortable-task-list-item';
 import { useProject } from '@/hooks/use-projects';
-import { useProjectTasks } from '@/hooks/use-tasks';
+import { useProjectTasks, useReorderTasks } from '@/hooks/use-tasks';
+
+import type { Task } from '../../../shared/types';
+
+interface TaskWithMessageCount extends Task {
+  messageCount?: number;
+}
 
 export function ProjectSidebar() {
   const { projectId, taskId } = useParams({ strict: false });
   const { data: project } = useProject(projectId!);
   const { data: tasks } = useProjectTasks(projectId!);
+  const reorderTasks = useReorderTasks();
+
+  // Split tasks into active and completed
+  const { activeTasks: serverActiveTasks, completedTasks: serverCompletedTasks } =
+    useMemo(() => {
+      if (!tasks) return { activeTasks: [], completedTasks: [] };
+      const active: TaskWithMessageCount[] = [];
+      const completed: TaskWithMessageCount[] = [];
+      for (const task of tasks) {
+        if (task.userCompleted) {
+          completed.push(task);
+        } else {
+          active.push(task);
+        }
+      }
+      return { activeTasks: active, completedTasks: completed };
+    }, [tasks]);
+
+  // Local state for optimistic reordering
+  const [localActiveTasks, setLocalActiveTasks] =
+    useState<TaskWithMessageCount[]>(serverActiveTasks);
+  const [localCompletedTasks, setLocalCompletedTasks] =
+    useState<TaskWithMessageCount[]>(serverCompletedTasks);
+
+  // Sync local state when tasks data changes
+  useEffect(() => {
+    setLocalActiveTasks(serverActiveTasks);
+    setLocalCompletedTasks(serverCompletedTasks);
+  }, [serverActiveTasks, serverCompletedTasks]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  function handleActiveDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = localActiveTasks.findIndex((t) => t.id === active.id);
+      const newIndex = localActiveTasks.findIndex((t) => t.id === over.id);
+
+      const reordered = arrayMove(localActiveTasks, oldIndex, newIndex);
+      setLocalActiveTasks(reordered);
+
+      // Persist the new order
+      reorderTasks.mutate({
+        projectId: projectId!,
+        activeIds: reordered.map((t) => t.id),
+        completedIds: localCompletedTasks.map((t) => t.id),
+      });
+    }
+  }
+
+  function handleCompletedDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = localCompletedTasks.findIndex((t) => t.id === active.id);
+      const newIndex = localCompletedTasks.findIndex((t) => t.id === over.id);
+
+      const reordered = arrayMove(localCompletedTasks, oldIndex, newIndex);
+      setLocalCompletedTasks(reordered);
+
+      // Persist the new order
+      reorderTasks.mutate({
+        projectId: projectId!,
+        activeIds: localActiveTasks.map((t) => t.id),
+        completedIds: reordered.map((t) => t.id),
+      });
+    }
+  }
 
   if (!project) return null;
+
+  const hasTasks = localActiveTasks.length > 0 || localCompletedTasks.length > 0;
 
   return (
     <aside className="flex h-full w-64 flex-col border-r border-neutral-700 bg-neutral-900">
@@ -41,16 +143,60 @@ export function ProjectSidebar() {
 
       {/* Task list */}
       <div className="flex-1 overflow-y-auto p-2">
-        {tasks && tasks.length > 0 ? (
-          <div className="flex flex-col gap-1">
-            {tasks.map((task) => (
-              <TaskListItem
-                key={task.id}
-                task={task}
-                projectId={project.id}
-                isActive={task.id === taskId}
-              />
-            ))}
+        {hasTasks ? (
+          <div className="flex flex-col gap-4">
+            {/* Active tasks section */}
+            {localActiveTasks.length > 0 && (
+              <div className="flex flex-col gap-1">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleActiveDragEnd}
+                >
+                  <SortableContext
+                    items={localActiveTasks.map((t) => t.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {localActiveTasks.map((task) => (
+                      <SortableTaskListItem
+                        key={task.id}
+                        task={task}
+                        projectId={project.id}
+                        isActive={task.id === taskId}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
+              </div>
+            )}
+
+            {/* Completed tasks section */}
+            {localCompletedTasks.length > 0 && (
+              <div className="flex flex-col gap-1">
+                <span className="px-3 py-1 text-xs font-medium uppercase tracking-wider text-neutral-500">
+                  Completed
+                </span>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleCompletedDragEnd}
+                >
+                  <SortableContext
+                    items={localCompletedTasks.map((t) => t.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {localCompletedTasks.map((task) => (
+                      <SortableTaskListItem
+                        key={task.id}
+                        task={task}
+                        projectId={project.id}
+                        isActive={task.id === taskId}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-neutral-500">

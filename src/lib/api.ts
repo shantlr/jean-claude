@@ -67,6 +67,11 @@ export interface Api {
     clearUserCompleted: (id: string) => Promise<Task>;
     addSessionAllowedTool: (id: string, toolName: string) => Promise<Task>;
     removeSessionAllowedTool: (id: string, toolName: string) => Promise<Task>;
+    reorder: (
+      projectId: string,
+      activeIds: string[],
+      completedIds: string[]
+    ) => Promise<Task[]>;
   };
   providers: {
     findAll: () => Promise<Provider[]>;
@@ -150,6 +155,7 @@ export const api: Api = hasWindowApi
         clearUserCompleted: async () => { throw new Error('API not available'); },
         addSessionAllowedTool: async () => { throw new Error('API not available'); },
         removeSessionAllowedTool: async () => { throw new Error('API not available'); },
+        reorder: async () => [],
       },
       providers: {
         findAll: async () => [],

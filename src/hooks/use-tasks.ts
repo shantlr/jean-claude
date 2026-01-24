@@ -161,3 +161,24 @@ export function useRemoveSessionAllowedTool() {
     },
   });
 }
+
+export function useReorderTasks() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      activeIds,
+      completedIds,
+    }: {
+      projectId: string;
+      activeIds: string[];
+      completedIds: string[];
+    }) => api.tasks.reorder(projectId, activeIds, completedIds),
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({
+        queryKey: ['tasks', { projectId }],
+      });
+    },
+  });
+}

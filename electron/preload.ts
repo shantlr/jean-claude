@@ -38,6 +38,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('tasks:addSessionAllowedTool', id, toolName),
     removeSessionAllowedTool: (id: string, toolName: string) =>
       ipcRenderer.invoke('tasks:removeSessionAllowedTool', id, toolName),
+    reorder: (projectId: string, activeIds: string[], completedIds: string[]) =>
+      ipcRenderer.invoke('tasks:reorder', projectId, activeIds, completedIds),
   },
   providers: {
     findAll: () => ipcRenderer.invoke('providers:findAll'),

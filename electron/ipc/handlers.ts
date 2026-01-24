@@ -129,6 +129,11 @@ export function registerIpcHandlers() {
   ipcMain.handle('tasks:clearUserCompleted', (_, id: string) =>
     TaskRepository.clearUserCompleted(id)
   );
+  ipcMain.handle(
+    'tasks:reorder',
+    (_, projectId: string, activeIds: string[], completedIds: string[]) =>
+      TaskRepository.reorder(projectId, activeIds, completedIds)
+  );
   // Tools that can be session-allowed (security validation)
   const SESSION_ALLOWABLE_TOOLS = ['Edit', 'Write'] as const;
 

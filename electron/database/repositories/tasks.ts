@@ -90,7 +90,8 @@ export const TaskRepository = {
           .as('messageCount')
       )
       .where('projectId', '=', projectId)
-      .orderBy('createdAt', 'desc')
+      .orderBy('userCompleted', 'asc') // Active tasks first (0), then completed (1)
+      .orderBy('sortOrder', 'asc')
       .execute();
     return rows.map(toTask);
   },
@@ -105,9 +106,20 @@ export const TaskRepository = {
   },
 
   create: async (data: CreateTaskInput) => {
+    // Shift all existing active tasks in this project down (increment sortOrder)
+    await db
+      .updateTable('tasks')
+      .set((eb) => ({
+        sortOrder: eb('sortOrder', '+', 1),
+      }))
+      .where('projectId', '=', data.projectId)
+      .where('userCompleted', '=', 0)
+      .execute();
+
+    // Insert new task with sortOrder 0 (top of active list)
     const row = await db
       .insertInto('tasks')
-      .values(toDbValues(data))
+      .values({ ...toDbValues(data), sortOrder: 0 })
       .returningAll()
       .executeTakeFirstOrThrow();
     return toTask(row);
@@ -146,17 +158,34 @@ export const TaskRepository = {
   },
 
   toggleUserCompleted: async (id: string): Promise<Task> => {
-    // First get current value
+    // First get current value and projectId
     const current = await db
       .selectFrom('tasks')
-      .select('userCompleted')
+      .select(['userCompleted', 'projectId'])
       .where('id', '=', id)
       .executeTakeFirstOrThrow();
 
     const newValue = current.userCompleted ? 0 : 1;
+    const targetSection = newValue; // 0 = active, 1 = completed
+
+    // Shift all existing tasks in the target section down (increment sortOrder)
+    await db
+      .updateTable('tasks')
+      .set((eb) => ({
+        sortOrder: eb('sortOrder', '+', 1),
+      }))
+      .where('projectId', '=', current.projectId)
+      .where('userCompleted', '=', targetSection)
+      .execute();
+
+    // Update the task: toggle completion and move to top of target section (sortOrder 0)
     const row = await db
       .updateTable('tasks')
-      .set({ userCompleted: newValue, updatedAt: new Date().toISOString() })
+      .set({
+        userCompleted: newValue,
+        sortOrder: 0,
+        updatedAt: new Date().toISOString(),
+      })
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -178,6 +207,49 @@ export const TaskRepository = {
       .selectFrom('tasks')
       .selectAll()
       .where('status', 'in', statuses)
+      .execute();
+    return rows.map(toTask);
+  },
+
+  reorder: async (
+    projectId: string,
+    activeIds: string[],
+    completedIds: string[]
+  ): Promise<Task[]> => {
+    const now = new Date().toISOString();
+
+    // Update sortOrder for active tasks
+    for (let i = 0; i < activeIds.length; i++) {
+      await db
+        .updateTable('tasks')
+        .set({ sortOrder: i, updatedAt: now })
+        .where('id', '=', activeIds[i])
+        .execute();
+    }
+
+    // Update sortOrder for completed tasks
+    for (let i = 0; i < completedIds.length; i++) {
+      await db
+        .updateTable('tasks')
+        .set({ sortOrder: i, updatedAt: now })
+        .where('id', '=', completedIds[i])
+        .execute();
+    }
+
+    // Return all tasks in new order
+    const rows = await db
+      .selectFrom('tasks')
+      .selectAll('tasks')
+      .select((eb) =>
+        eb
+          .selectFrom('agent_messages')
+          .whereRef('agent_messages.taskId', '=', 'tasks.id')
+          .select((eb2) => eb2.fn.countAll<number>().as('count'))
+          .as('messageCount')
+      )
+      .where('projectId', '=', projectId)
+      .orderBy('userCompleted', 'asc')
+      .orderBy('sortOrder', 'asc')
       .execute();
     return rows.map(toTask);
   },

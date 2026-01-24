@@ -69,6 +69,7 @@ export interface TaskTable {
   interactionMode: string;
   userCompleted: number; // SQLite stores booleans as 0/1
   sessionAllowedTools: string | null; // JSON array of tool names
+  sortOrder: number;
   createdAt: Generated<string>;
   updatedAt: string;
 }
