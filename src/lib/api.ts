@@ -4,6 +4,7 @@ import type {
   AgentStatusEvent,
   AgentPermissionEvent,
   AgentQuestionEvent,
+  AgentNameUpdatedEvent,
   PermissionResponse,
   QuestionResponse,
 } from '../../shared/agent-types';
@@ -103,6 +104,7 @@ export interface Api {
     onStatus: (callback: AgentEventCallback<AgentStatusEvent>) => UnsubscribeFn;
     onPermission: (callback: AgentEventCallback<AgentPermissionEvent>) => UnsubscribeFn;
     onQuestion: (callback: AgentEventCallback<AgentQuestionEvent>) => UnsubscribeFn;
+    onNameUpdated: (callback: AgentEventCallback<AgentNameUpdatedEvent>) => UnsubscribeFn;
   };
   debug: {
     getTableNames: () => Promise<string[]>;
@@ -179,6 +181,7 @@ export const api: Api = hasWindowApi
         onStatus: () => () => {},
         onPermission: () => () => {},
         onQuestion: () => () => {},
+        onNameUpdated: () => () => {},
       },
       debug: {
         getTableNames: async () => [],

@@ -25,6 +25,14 @@ const SDK_PERMISSION_MODES = {
   plan: 'plan',
 } as const;
 
+const TASK_NAME_SCHEMA = {
+  type: 'object',
+  properties: {
+    name: { type: 'string' },
+  },
+  required: ['name'],
+} as const;
+
 interface PendingRequest {
   requestId: string;
   type: 'permission' | 'question';
@@ -122,6 +130,41 @@ class AgentService {
           this.mainWindow?.focus();
         }
       );
+    }
+  }
+
+  private emitNameUpdated(taskId: string, name: string) {
+    this.emit(AGENT_CHANNELS.NAME_UPDATED, { taskId, name });
+  }
+
+  private async generateTaskName(taskId: string, prompt: string): Promise<void> {
+    try {
+      const generator = query({
+        prompt: `Generate a very short task name (max 30 characters) that summarizes this task. Output only the name, nothing else.\n\nTask: ${prompt}`,
+        options: {
+          allowedTools: [],
+          permissionMode: 'bypassPermissions',
+          model: 'haiku',
+          outputFormat: {
+            type: 'json_schema',
+            schema: TASK_NAME_SCHEMA,
+          },
+        },
+      });
+
+      for await (const message of generator) {
+        const msg = message as { type: string; structured_output?: { name: string } };
+        if (msg.type === 'result' && msg.structured_output?.name) {
+          const name = msg.structured_output.name.slice(0, 30);
+          await TaskRepository.update(taskId, { name });
+          this.emitNameUpdated(taskId, name);
+          console.log(`[AgentService] Generated task name for ${taskId}: ${name}`);
+          break;
+        }
+      }
+    } catch (error) {
+      console.error(`[AgentService] Failed to generate task name for ${taskId}:`, error);
+      // Non-fatal - task keeps its original name
     }
   }
 
@@ -230,6 +273,12 @@ class AgentService {
         if (message.type === 'system' && message.subtype === 'init' && message.session_id) {
           session.sessionId = message.session_id;
           await TaskRepository.update(taskId, { sessionId: message.session_id });
+
+          // Generate task name if not set
+          if (task.name === null) {
+            // Fire and forget - don't block the main agent work
+            this.generateTaskName(taskId, task.prompt);
+          }
         }
 
         // Emit message to renderer and persist

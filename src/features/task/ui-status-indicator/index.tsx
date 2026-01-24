@@ -59,6 +59,7 @@ export const ToggleableStatusIndicator = ({
     >
       <CheckCircle2
         className={clsx('w-3 h-3 status-checked transition-all', {
+          hidden: !isChecked && disabled,
           'group-[:not(:hover)]/status-indicator:hidden':
             !isChecked && !disabled,
           'text-green-500': isChecked,

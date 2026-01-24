@@ -21,8 +21,8 @@ function NewTask() {
   const { name, prompt, useWorktree, interactionMode } = getDraft(projectId);
 
   async function handleCreateTask(shouldStart: boolean) {
-    // Auto-generate name from first line of prompt if empty
-    const taskName = name.trim() || prompt.split('\n')[0].slice(0, 50) || 'Untitled task';
+    // Pass null if name is empty - will trigger auto-generation when agent starts
+    const taskName = name.trim() || null;
 
     const task = await createTask.mutateAsync({
       id: nanoid(),

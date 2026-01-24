@@ -1,9 +1,11 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
 import { api } from '@/lib/api';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 
 export function TaskMessageManager() {
+  const queryClient = useQueryClient();
   const appendMessage = useTaskMessagesStore((s) => s.appendMessage);
   const setStatus = useTaskMessagesStore((s) => s.setStatus);
   const setPermission = useTaskMessagesStore((s) => s.setPermission);
@@ -35,13 +37,20 @@ export function TaskMessageManager() {
       }
     });
 
+    const unsubNameUpdated = api.agent.onNameUpdated(({ taskId }) => {
+      // Invalidate task queries so the UI refreshes with the new name
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
+    });
+
     return () => {
       unsubMessage();
       unsubStatus();
       unsubPermission();
       unsubQuestion();
+      unsubNameUpdated();
     };
-  }, [appendMessage, setStatus, setPermission, setQuestion, isLoaded]);
+  }, [queryClient, appendMessage, setStatus, setPermission, setQuestion, isLoaded]);
 
   return null;
 }

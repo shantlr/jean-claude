@@ -6,7 +6,7 @@ import { NewTaskRow, TaskRow, UpdateTaskRow } from '../schema';
 interface CreateTaskInput {
   id?: string;
   projectId: string;
-  name: string;
+  name?: string | null;
   prompt: string;
   status?: TaskStatus;
   sessionId?: string | null;
@@ -23,7 +23,7 @@ interface CreateTaskInput {
 
 interface UpdateTaskInput {
   projectId?: string;
-  name?: string;
+  name?: string | null;
   prompt?: string;
   status?: TaskStatus;
   sessionId?: string | null;

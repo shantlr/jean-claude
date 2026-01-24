@@ -115,6 +115,11 @@ export interface AgentQuestionEvent {
   questions: AgentQuestion[];
 }
 
+export interface AgentNameUpdatedEvent {
+  taskId: string;
+  name: string;
+}
+
 // IPC channel names
 export const AGENT_CHANNELS = {
   // Events (main -> renderer)
@@ -122,6 +127,7 @@ export const AGENT_CHANNELS = {
   STATUS: 'agent:status',
   PERMISSION: 'agent:permission',
   QUESTION: 'agent:question',
+  NAME_UPDATED: 'agent:nameUpdated',
   // Invoke (renderer -> main)
   START: 'agent:start',
   STOP: 'agent:stop',

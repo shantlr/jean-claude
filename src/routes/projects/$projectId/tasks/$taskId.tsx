@@ -204,7 +204,9 @@ function TaskPanel() {
             }
             className="h-3 w-3"
           />
-          <h1 className="flex-1 truncate text-lg font-semibold">{task.name}</h1>
+          <h1 className="flex-1 truncate text-lg font-semibold">
+            {task.name ?? task.prompt.split('\n')[0].slice(0, 50)}
+          </h1>
           {task.sessionId && (
             <button
               onClick={handleCopySessionId}

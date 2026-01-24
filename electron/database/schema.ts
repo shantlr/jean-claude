@@ -56,7 +56,7 @@ export interface ProjectTable {
 export interface TaskTable {
   id: Generated<string>;
   projectId: string;
-  name: string;
+  name: string | null;
   prompt: string;
   status: TaskStatus;
   sessionId: string | null;

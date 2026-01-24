@@ -51,7 +51,9 @@ export function TaskListItem({ task, projectId, isActive }: TaskListItemProps) {
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-medium">{task.name}</span>
+          <span className="truncate text-sm font-medium">
+            {task.name ?? task.prompt.split('\n')[0].slice(0, 50)}
+          </span>
           {needsAttention && (
             <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
           )}

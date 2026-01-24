@@ -93,6 +93,11 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.on(AGENT_CHANNELS.QUESTION, handler);
       return () => ipcRenderer.removeListener(AGENT_CHANNELS.QUESTION, handler);
     },
+    onNameUpdated: (callback: (event: unknown) => void) => {
+      const handler = (_: unknown, event: unknown) => callback(event);
+      ipcRenderer.on(AGENT_CHANNELS.NAME_UPDATED, handler);
+      return () => ipcRenderer.removeListener(AGENT_CHANNELS.NAME_UPDATED, handler);
+    },
   },
   debug: {
     getTableNames: () => ipcRenderer.invoke('debug:getTableNames'),

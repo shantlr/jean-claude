@@ -127,6 +127,7 @@ docs/plans/            # Design and implementation documents
 ### React Components
 
 - Use functional components with hooks (no class components)
+- Inline props typing instead of declaring an interface separately
 - Colocate component-specific types in the same file
 - Extract reusable logic (when we actually need to reuse) into custom hooks in `src/hooks/`
 

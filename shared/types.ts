@@ -71,7 +71,7 @@ export interface UpdateProject {
 export interface Task {
   id: string;
   projectId: string;
-  name: string;
+  name: string | null;
   prompt: string;
   status: TaskStatus;
   sessionId: string | null;
@@ -89,7 +89,7 @@ export interface Task {
 export interface NewTask {
   id?: string;
   projectId: string;
-  name: string;
+  name?: string | null;
   prompt: string;
   status?: TaskStatus;
   sessionId?: string | null;
@@ -106,7 +106,7 @@ export interface NewTask {
 
 export interface UpdateTask {
   projectId?: string;
-  name?: string;
+  name?: string | null;
   prompt?: string;
   status?: TaskStatus;
   sessionId?: string | null;
