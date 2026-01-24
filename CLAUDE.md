@@ -187,6 +187,7 @@ docs/plans/            # Design and implementation documents
 
 - Write TypeScript with strict mode enabled
 - File and folder names should be kebab-case
+- Favorise single object parameter for functions over multiple positional parameters
 
 ### React Components
 

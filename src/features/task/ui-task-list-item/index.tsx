@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router';
+import { useRouter } from '@tanstack/react-router';
 import { AlertCircle } from 'lucide-react';
 
 import { ToggleableStatusIndicator } from '@/features/task/ui-status-indicator';
@@ -32,11 +32,22 @@ export function TaskListItem({ task, projectId, isActive }: TaskListItemProps) {
   const needsAttention =
     taskState?.pendingPermission || taskState?.pendingQuestion;
 
+  const router = useRouter();
+
   return (
-    <Link
-      to="/projects/$projectId/tasks/$taskId"
-      params={{ projectId, taskId: task.id }}
-      className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={() => {
+        router.navigate({
+          to: '/projects/$projectId/tasks/$taskId',
+          params: {
+            projectId,
+            taskId: task.id,
+          },
+        });
+      }}
+      className={`cursor-pointer flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
         isActive ? 'bg-neutral-700' : 'hover:bg-neutral-800'
       }`}
     >
@@ -67,6 +78,6 @@ export function TaskListItem({ task, projectId, isActive }: TaskListItemProps) {
           {formatRelativeTime(task.createdAt)}
         </span>
       </div>
-    </Link>
+    </div>
   );
 }
