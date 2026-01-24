@@ -50,6 +50,7 @@ export interface Api {
     create: (data: NewProject) => Promise<Project>;
     update: (id: string, data: UpdateProject) => Promise<Project>;
     delete: (id: string) => Promise<void>;
+    reorder: (orderedIds: string[]) => Promise<Project[]>;
   };
   tasks: {
     findAll: () => Promise<Task[]>;
@@ -131,6 +132,7 @@ export const api: Api = hasWindowApi
         create: async () => { throw new Error('API not available'); },
         update: async () => { throw new Error('API not available'); },
         delete: async () => {},
+        reorder: async () => [],
       },
       tasks: {
         findAll: async () => [],

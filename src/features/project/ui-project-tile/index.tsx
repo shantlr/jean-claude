@@ -1,4 +1,5 @@
-import { Link } from '@tanstack/react-router';
+import { useRouter, useRouterState } from '@tanstack/react-router';
+import clsx from 'clsx';
 
 import { getUnreadCount } from '@/features/task/ui-task-list-item';
 import { useProjectTasks } from '@/hooks/use-tasks';
@@ -14,13 +15,31 @@ export function ProjectTile({ id, name, color }: ProjectTileProps) {
   const initials = getInitials(name);
   const { data: tasks } = useProjectTasks(id);
 
-  const unreadCount = tasks?.reduce((sum, task) => sum + getUnreadCount(task), 0) ?? 0;
+  const unreadCount =
+    tasks?.reduce((sum, task) => sum + getUnreadCount(task), 0) ?? 0;
+  const router = useRouter();
+
+  const isActive = useRouterState({
+    select: (state) =>
+      state.location.pathname.startsWith(`/projects/${id}`),
+  });
 
   return (
-    <Link
-      to="/projects/$projectId"
-      params={{ projectId: id }}
-      className="group relative flex h-12 w-12 items-center justify-center rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 data-[status=active]:ring-2 data-[status=active]:ring-white"
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => {
+        router.navigate({
+          to: '/projects/$projectId',
+          params: { projectId: id },
+        });
+      }}
+      className={clsx(
+        'cursor-pointer group relative flex h-12 w-12 items-center justify-center rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 ',
+        {
+          'ring-white ring-2': isActive,
+        },
+      )}
       style={{ backgroundColor: color }}
     >
       {initials}
@@ -29,6 +48,6 @@ export function ProjectTile({ id, name, color }: ProjectTileProps) {
           {unreadCount > 9 ? '9+' : unreadCount}
         </span>
       )}
-    </Link>
+    </div>
   );
 }

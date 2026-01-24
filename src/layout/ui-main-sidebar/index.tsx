@@ -1,24 +1,90 @@
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
 import { Link } from '@tanstack/react-router';
 import { Plus, Settings } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
-import { ProjectTile } from '@/features/project/ui-project-tile';
-import { useProjects } from '@/hooks/use-projects';
+import { useProjects, useReorderProjects } from '@/hooks/use-projects';
+
+import { SortableProjectTile } from './sortable-project-tile';
 
 export function MainSidebar() {
   const { data: projects } = useProjects();
+  const reorderProjects = useReorderProjects();
+
+  // Local state for optimistic reordering
+  const [localProjects, setLocalProjects] = useState(projects ?? []);
+
+  // Sync local state when projects data changes
+  useEffect(() => {
+    if (projects) {
+      setLocalProjects(projects);
+    }
+  }, [projects]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = localProjects.findIndex((p) => p.id === active.id);
+      const newIndex = localProjects.findIndex((p) => p.id === over.id);
+
+      const reordered = arrayMove(localProjects, oldIndex, newIndex);
+      setLocalProjects(reordered);
+
+      // Persist the new order
+      const orderedIds = reordered.map((p) => p.id);
+      reorderProjects.mutate(orderedIds);
+    }
+  }
 
   return (
     <aside className="flex h-full w-[86px] flex-col border-r border-neutral-800 bg-neutral-900">
       {/* Project tiles */}
       <div className="flex flex-1 flex-col items-center gap-2 overflow-y-auto px-3 pb-3 pt-12">
-        {projects?.map((project) => (
-          <ProjectTile
-            key={project.id}
-            id={project.id}
-            name={project.name}
-            color={project.color}
-          />
-        ))}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={localProjects.map((p) => p.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {localProjects.map((project) => (
+              <SortableProjectTile
+                key={project.id}
+                id={project.id}
+                name={project.name}
+                color={project.color}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
       </div>
 
       {/* Footer */}

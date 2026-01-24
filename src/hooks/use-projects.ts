@@ -46,3 +46,11 @@ export function useDeleteProject() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects'] }),
   });
 }
+
+export function useReorderProjects() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (orderedIds: string[]) => api.projects.reorder(orderedIds),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects'] }),
+  });
+}
