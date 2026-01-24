@@ -33,6 +33,32 @@ The renderer calls `window.api.*` methods which are defined in `preload.ts` and 
 - **UI state**: Zustand stores in `src/stores/` (sidebar collapse, last visited project, task message cache)
 - **Routing**: TanStack Router with file-based routes in `src/routes/`
 
+#### Zustand Usage
+
+Always use selectors to subscribe to store state reactively:
+```ts
+// Good - reactive, only re-renders when selected state changes
+const draft = useStore((state) => state.drafts[id]);
+const setDraft = useStore((state) => state.setDraft);
+
+// Bad - not reactive, won't trigger re-renders
+const { getDraft } = useStore();
+const draft = getDraft(id);
+```
+
+For stores keyed by ID, expose a custom hook that takes the ID and returns bound actions:
+```ts
+export function useNewTaskFormStore(projectId: string) {
+  const draft = useStore((state) => state.drafts[projectId] ?? defaultDraft);
+  const setDraftAction = useStore((state) => state.setDraft);
+  const setDraft = useCallback(
+    (update: Partial<Draft>) => setDraftAction(projectId, update),
+    [projectId, setDraftAction],
+  );
+  return { draft, setDraft };
+}
+```
+
 ### Database
 
 SQLite via better-sqlite3 + Kysely (type-safe query builder):

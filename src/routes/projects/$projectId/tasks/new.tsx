@@ -17,8 +17,8 @@ function NewTask() {
   const navigate = useNavigate();
   const createTask = useCreateTaskWithWorktree();
 
-  const { getDraft, setDraft, clearDraft } = useNewTaskFormStore();
-  const { name, prompt, useWorktree, interactionMode } = getDraft(projectId);
+  const { draft, setDraft, clearDraft } = useNewTaskFormStore(projectId);
+  const { name, prompt, useWorktree, interactionMode } = draft;
 
   async function handleCreateTask(shouldStart: boolean) {
     // Pass null if name is empty - will trigger auto-generation when agent starts
@@ -36,7 +36,7 @@ function NewTask() {
     });
 
     // Clear the draft now that we've submitted
-    clearDraft(projectId);
+    clearDraft();
 
     // Navigate to the task first
     navigate({
@@ -64,7 +64,9 @@ function NewTask() {
       <div className="mx-auto max-w-xl">
         <button
           type="button"
-          onClick={() => navigate({ to: '/projects/$projectId', params: { projectId } })}
+          onClick={() =>
+            navigate({ to: '/projects/$projectId', params: { projectId } })
+          }
           className="mb-6 flex cursor-pointer items-center gap-2 text-neutral-400 transition-colors hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -86,7 +88,7 @@ function NewTask() {
               id="name"
               type="text"
               value={name}
-              onChange={(e) => setDraft(projectId, { name: e.target.value })}
+              onChange={(e) => setDraft({ name: e.target.value })}
               placeholder="Auto-generated from prompt if empty"
               className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
             />
@@ -103,7 +105,7 @@ function NewTask() {
             <textarea
               id="prompt"
               value={prompt}
-              onChange={(e) => setDraft(projectId, { prompt: e.target.value })}
+              onChange={(e) => setDraft({ prompt: e.target.value })}
               placeholder="Describe what you want the agent to do..."
               rows={8}
               required
@@ -117,17 +119,23 @@ function NewTask() {
               id="useWorktree"
               type="checkbox"
               checked={useWorktree}
-              onChange={(e) => setDraft(projectId, { useWorktree: e.target.checked })}
+              onChange={(e) => setDraft({ useWorktree: e.target.checked })}
               className="h-4 w-4 cursor-pointer rounded border-neutral-600 bg-neutral-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-neutral-900"
             />
-            <label htmlFor="useWorktree" className="cursor-pointer text-sm text-neutral-300">
+            <label
+              htmlFor="useWorktree"
+              className="cursor-pointer text-sm text-neutral-300"
+            >
               Create git worktree for isolation
             </label>
           </div>
 
           {/* Submit row with mode selector */}
           <div className="flex items-center gap-3">
-            <ModeSelector value={interactionMode} onChange={(mode) => setDraft(projectId, { interactionMode: mode })} />
+            <ModeSelector
+              value={interactionMode}
+              onChange={(mode) => setDraft({ interactionMode: mode })}
+            />
             <button
               type="button"
               onClick={handleCreateOnly}

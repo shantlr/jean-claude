@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -19,19 +20,14 @@ const defaultDraft: NewTaskFormDraft = {
 
 interface NewTaskFormState {
   drafts: Record<string, NewTaskFormDraft>;
-  getDraft: (projectId: string) => NewTaskFormDraft;
   setDraft: (projectId: string, draft: Partial<NewTaskFormDraft>) => void;
   clearDraft: (projectId: string) => void;
 }
 
-export const useNewTaskFormStore = create<NewTaskFormState>()(
+const useStore = create<NewTaskFormState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       drafts: {},
-
-      getDraft: (projectId) => {
-        return get().drafts[projectId] ?? defaultDraft;
-      },
 
       setDraft: (projectId, draft) => {
         set((state) => ({
@@ -56,3 +52,23 @@ export const useNewTaskFormStore = create<NewTaskFormState>()(
     { name: 'new-task-form' },
   ),
 );
+
+export function useNewTaskFormStore(projectId: string) {
+  const draft = useStore(
+    (state) => state.drafts[projectId] ?? defaultDraft,
+  );
+  const setDraftAction = useStore((state) => state.setDraft);
+  const clearDraftAction = useStore((state) => state.clearDraft);
+
+  const setDraft = useCallback(
+    (update: Partial<NewTaskFormDraft>) => setDraftAction(projectId, update),
+    [projectId, setDraftAction],
+  );
+
+  const clearDraft = useCallback(
+    () => clearDraftAction(projectId),
+    [projectId, clearDraftAction],
+  );
+
+  return { draft, setDraft, clearDraft };
+}
