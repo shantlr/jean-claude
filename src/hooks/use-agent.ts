@@ -14,9 +14,9 @@ export function useAgentStream(taskId: string) {
   const taskMessages = useTaskMessages(taskId);
   const queryClient = useQueryClient();
 
-  // Invalidate task queries when status changes
+  // Invalidate task queries when status changes to a terminal state
   useEffect(() => {
-    if (taskMessages.status === 'completed' || taskMessages.status === 'errored') {
+    if (taskMessages.status === 'completed' || taskMessages.status === 'errored' || taskMessages.status === 'interrupted') {
       queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     }

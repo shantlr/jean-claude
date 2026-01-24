@@ -9,6 +9,7 @@ const STATUS_COLORS: Record<TaskStatus, string> = {
   waiting: 'bg-yellow-500',
   completed: 'bg-neutral-500',
   errored: 'bg-red-500',
+  interrupted: 'bg-orange-500',
 };
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
@@ -16,6 +17,7 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
   waiting: 'Waiting',
   completed: 'Completed',
   errored: 'Errored',
+  interrupted: 'Interrupted',
 };
 
 export function StatusIndicator({
@@ -46,7 +48,7 @@ export const ToggleableStatusIndicator = ({
   isChecked: boolean;
   onClick: (event: MouseEvent) => void;
 }) => {
-  const disabled = status === 'running';
+  const disabled = status === 'running' || status === 'waiting';
   return (
     <button
       disabled={disabled}

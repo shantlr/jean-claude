@@ -172,4 +172,13 @@ export const TaskRepository = {
       .executeTakeFirstOrThrow();
     return toTask(row) as Task;
   },
+
+  findByStatuses: async (statuses: TaskStatus[]): Promise<Task[]> => {
+    const rows = await db
+      .selectFrom('tasks')
+      .selectAll()
+      .where('status', 'in', statuses)
+      .execute();
+    return rows.map(toTask);
+  },
 };

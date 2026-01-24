@@ -67,7 +67,7 @@ class AgentService {
 
   private emitStatus(
     taskId: string,
-    status: 'running' | 'waiting' | 'completed' | 'errored',
+    status: 'running' | 'waiting' | 'completed' | 'errored' | 'interrupted',
     error?: string
   ) {
     this.emit(AGENT_CHANNELS.STATUS, { taskId, status, error });
@@ -406,8 +406,8 @@ class AgentService {
       is_error: true,
     });
 
-    await TaskRepository.update(taskId, { status: 'errored' });
-    this.emitStatus(taskId, 'errored', 'Stopped by user');
+    await TaskRepository.update(taskId, { status: 'interrupted' });
+    this.emitStatus(taskId, 'interrupted', 'Stopped by user');
     this.sessions.delete(taskId);
   }
 
@@ -581,6 +581,24 @@ class AgentService {
 
   async getMessageCount(taskId: string): Promise<number> {
     return AgentMessageRepository.getMessageCount(taskId);
+  }
+
+  /**
+   * Recover tasks that were left in 'running' or 'waiting' state from a previous app session.
+   * These tasks were interrupted by app shutdown/crash and should be marked as 'interrupted'.
+   * Should be called on app startup before the main window is shown.
+   */
+  async recoverStaleTasks(): Promise<void> {
+    const staleTasks = await TaskRepository.findByStatuses(['running', 'waiting']);
+
+    for (const task of staleTasks) {
+      await TaskRepository.update(task.id, { status: 'interrupted' });
+      // Note: No need to emit status here since no UI is connected yet at startup
+    }
+
+    if (staleTasks.length > 0) {
+      console.log(`[AgentService] Recovered ${staleTasks.length} stale task(s) on startup`);
+    }
   }
 }
 

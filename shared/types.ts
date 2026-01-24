@@ -3,7 +3,7 @@
 
 export type ProviderType = 'azure-devops' | 'github' | 'gitlab';
 export type ProjectType = 'local' | 'git-provider';
-export type TaskStatus = 'running' | 'waiting' | 'completed' | 'errored';
+export type TaskStatus = 'running' | 'waiting' | 'completed' | 'errored' | 'interrupted';
 export type InteractionMode = 'ask' | 'auto' | 'plan';
 
 export interface Provider {

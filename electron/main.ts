@@ -4,6 +4,7 @@ import { app, BrowserWindow } from 'electron';
 
 import { migrateDatabase } from './database';
 import { registerIpcHandlers } from './ipc/handlers';
+import { agentService } from './services/agent-service';
 
 function createWindow() {
   const isDev = !!process.env.ELECTRON_RENDERER_URL;
@@ -30,6 +31,10 @@ function createWindow() {
 app.whenReady().then(async () => {
   await migrateDatabase();
   registerIpcHandlers();
+
+  // Recover any tasks that were left in running/waiting state from a previous crash
+  await agentService.recoverStaleTasks();
+
   createWindow();
 
   app.on('activate', () => {
