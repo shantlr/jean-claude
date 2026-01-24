@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('api', {
     update: (id: string, data: unknown) =>
       ipcRenderer.invoke('projects:update', id, data),
     delete: (id: string) => ipcRenderer.invoke('projects:delete', id),
+    reorder: (orderedIds: string[]) =>
+      ipcRenderer.invoke('projects:reorder', orderedIds),
   },
   tasks: {
     findAll: () => ipcRenderer.invoke('tasks:findAll'),

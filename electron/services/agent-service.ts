@@ -329,7 +329,7 @@ class AgentService {
     const allowedTools = task?.sessionAllowedTools ?? [];
     if (allowedTools.includes(toolName)) {
       console.log(`[AgentService] Tool ${toolName} is session-allowed for task ${taskId}`);
-      return { behavior: 'allow' };
+      return { behavior: 'allow', updatedInput: input };
     }
 
     const requestId = uuidv4();

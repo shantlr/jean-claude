@@ -48,6 +48,9 @@ export function registerIpcHandlers() {
   ipcMain.handle('projects:delete', (_, id: string) =>
     ProjectRepository.delete(id),
   );
+  ipcMain.handle('projects:reorder', (_, orderedIds: string[]) =>
+    ProjectRepository.reorder(orderedIds),
+  );
 
   // Tasks
   ipcMain.handle('tasks:findAll', () => TaskRepository.findAll());

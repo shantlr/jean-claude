@@ -6,7 +6,7 @@ import {
   Trash2,
   ExternalLink,
   RefreshCw,
-  MoreVertical,
+  Settings,
 } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 
@@ -256,7 +256,7 @@ function TaskPanel() {
             }`}
             title="Task settings"
           >
-            <MoreVertical className="h-4 w-4" />
+            <Settings className="h-4 w-4" />
           </button>
         </div>
 

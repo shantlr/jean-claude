@@ -49,6 +49,7 @@ export interface ProjectTable {
   providerId: string | null;
   remoteUrl: string | null;
   color: string;
+  sortOrder: number;
   createdAt: Generated<string>;
   updatedAt: string;
 }

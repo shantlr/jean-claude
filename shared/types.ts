@@ -42,6 +42,7 @@ export interface Project {
   providerId: string | null;
   remoteUrl: string | null;
   color: string;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -54,6 +55,7 @@ export interface NewProject {
   providerId?: string | null;
   remoteUrl?: string | null;
   color: string;
+  sortOrder?: number;
   createdAt?: string;
   updatedAt: string;
 }
@@ -65,6 +67,7 @@ export interface UpdateProject {
   providerId?: string | null;
   remoteUrl?: string | null;
   color?: string;
+  sortOrder?: number;
   updatedAt?: string;
 }
 

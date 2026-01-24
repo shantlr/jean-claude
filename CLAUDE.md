@@ -45,6 +45,70 @@ To add a migration:
 2. Register in `electron/database/migrator.ts`
 3. Update types in `schema.ts`
 
+#### Migration Patterns
+
+**Simple migrations (adding columns):**
+```typescript
+import { Kysely, sql } from 'kysely';
+
+export async function up(db: Kysely<unknown>): Promise<void> {
+  await db.schema
+    .alterTable('tasks')
+    .addColumn('newColumn', 'text', (col) => col.defaultTo('value'))
+    .execute();
+}
+
+export async function down(db: Kysely<unknown>): Promise<void> {
+  await db.schema.alterTable('tasks').dropColumn('newColumn').execute();
+}
+```
+
+**Table recreation (for modifying columns/constraints):**
+
+SQLite doesn't support `ALTER COLUMN`, so changing column constraints or defaults requires recreating the table. This pattern is dangerous if not done correctly:
+
+- **Problem 1**: Dropping a table with FK references triggers `ON DELETE CASCADE`, wiping related data (e.g., dropping `tasks` deletes all `agent_messages`)
+- **Problem 2**: Without transactions, partial failures leave the database in an invalid state
+- **Problem 3**: Duplicating data temporarily doubles disk usage
+
+**Safe table recreation pattern:**
+```typescript
+import { Kysely, sql } from 'kysely';
+
+export async function up(db: Kysely<unknown>): Promise<void> {
+  await db.transaction().execute(async (trx) => {
+    // 1. Disable FK constraints to prevent cascade deletes
+    await sql`PRAGMA foreign_keys = OFF`.execute(trx);
+
+    // 2. Create new table with desired schema
+    await sql`DROP TABLE IF EXISTS tablename_new`.execute(trx);
+    await trx.schema.createTable('tablename_new')
+      // ... columns ...
+      .execute();
+
+    // 3. Copy data
+    await sql`INSERT INTO tablename_new SELECT ... FROM tablename`.execute(trx);
+
+    // 4. Drop old table and rename
+    await trx.schema.dropTable('tablename').execute();
+    await sql`ALTER TABLE tablename_new RENAME TO tablename`.execute(trx);
+
+    // 5. Re-enable FK constraints and verify integrity
+    await sql`PRAGMA foreign_keys = ON`.execute(trx);
+    const fkCheck = await sql<{ table: string }>`PRAGMA foreign_key_check`.execute(trx);
+    if (fkCheck.rows.length > 0) {
+      throw new Error(`Foreign key violation: ${JSON.stringify(fkCheck.rows)}`);
+    }
+  });
+}
+```
+
+Key points:
+- Always wrap in `db.transaction().execute()`
+- Use `PRAGMA foreign_keys = OFF` before dropping tables with FK references
+- Verify FK integrity with `PRAGMA foreign_key_check` before committing
+- Use `trx` (not `db`) for all operations inside the transaction
+
 ### Key Entities
 
 - **Projects**: Local directories or git-provider repos (has color for tile display)
