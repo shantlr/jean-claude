@@ -9,6 +9,7 @@ import type {
   ToolUseBlock,
   ToolResultBlock,
 } from '../../../../shared/agent-types';
+import { DiffView } from '../ui-diff-view';
 import { MarkdownContent } from '../ui-markdown-content';
 
 import { getToolSummary } from './tool-summary';
@@ -16,7 +17,11 @@ import { getToolSummary } from './tool-summary';
 interface TimelineEntryProps {
   message: AgentMessage;
   toolResultsMap?: Map<string, ToolResultBlock>;
-  onFilePathClick?: (filePath: string, lineStart?: number, lineEnd?: number) => void;
+  onFilePathClick?: (
+    filePath: string,
+    lineStart?: number,
+    lineEnd?: number,
+  ) => void;
 }
 
 function isTextBlock(block: ContentBlock): block is TextBlock {
@@ -30,7 +35,9 @@ function isToolUseBlock(block: ContentBlock): block is ToolUseBlock {
 function formatResultContent(content: string | ContentBlock[]): string {
   if (typeof content === 'string') return content;
   return content
-    .map((block) => (block.type === 'text' ? block.text : JSON.stringify(block, null, 2)))
+    .map((block) =>
+      block.type === 'text' ? block.text : JSON.stringify(block, null, 2),
+    )
     .join('\n');
 }
 
@@ -49,7 +56,9 @@ function LineNumberedContent({
 
   if (!hasLineNumbers) {
     return (
-      <pre className={`${maxHeight} overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 text-neutral-300`}>
+      <pre
+        className={`${maxHeight} overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 text-neutral-300`}
+      >
         {content}
       </pre>
     );
@@ -65,7 +74,9 @@ function LineNumberedContent({
   });
 
   return (
-    <div className={`${maxHeight} overflow-auto rounded bg-black/30 p-2 font-mono text-xs`}>
+    <div
+      className={`${maxHeight} overflow-auto rounded bg-black/30 p-2 font-mono text-xs`}
+    >
       <table className="w-full border-collapse">
         <tbody>
           {parsedLines.map((line, i) => (
@@ -73,7 +84,9 @@ function LineNumberedContent({
               <td className="select-none pr-3 text-right align-top text-neutral-600">
                 {line.lineNum}
               </td>
-              <td className="whitespace-pre-wrap text-neutral-300">{line.content}</td>
+              <td className="whitespace-pre-wrap text-neutral-300">
+                {line.content}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -83,7 +96,8 @@ function LineNumberedContent({
 }
 
 function formatToolInput(input: Record<string, unknown>): string {
-  if ('command' in input && typeof input.command === 'string') return input.command;
+  if ('command' in input && typeof input.command === 'string')
+    return input.command;
   if ('file_path' in input && typeof input.file_path === 'string') {
     if ('content' in input) return `${input.file_path}\n${input.content}`;
     if ('old_string' in input && 'new_string' in input) {
@@ -91,7 +105,8 @@ function formatToolInput(input: Record<string, unknown>): string {
     }
     return input.file_path;
   }
-  if ('pattern' in input && typeof input.pattern === 'string') return input.pattern;
+  if ('pattern' in input && typeof input.pattern === 'string')
+    return input.pattern;
   if ('query' in input && typeof input.query === 'string') return input.query;
   if ('url' in input && typeof input.url === 'string') return input.url;
   return JSON.stringify(input, null, 2);
@@ -145,7 +160,9 @@ function DotEntry({
       >
         {/* Summary row */}
         <div className="flex items-center gap-2">
-          {isPending && <Loader2 className="h-3 w-3 shrink-0 animate-spin text-neutral-400" />}
+          {isPending && (
+            <Loader2 className="h-3 w-3 shrink-0 animate-spin text-neutral-400" />
+          )}
           {isError && <AlertCircle className="h-3 w-3 shrink-0 text-red-400" />}
           <span className="text-xs text-neutral-300">
             <SummaryText text={summary} codeStyle={codeStyle} />
@@ -166,14 +183,22 @@ function DotEntry({
 type CodeStyle = 'file' | 'command' | 'pattern' | 'default';
 
 // Render inline code in summary text with tool-specific styling
-function SummaryText({ text, codeStyle = 'default' }: { text: string; codeStyle?: CodeStyle }) {
+function SummaryText({
+  text,
+  codeStyle = 'default',
+}: {
+  text: string;
+  codeStyle?: CodeStyle;
+}) {
   // Split by backticks and render code spans
   const parts = text.split(/(`[^`]+`)/g);
 
   const codeClasses: Record<CodeStyle, string> = {
     file: 'text-blue-400 underline decoration-blue-400/50',
-    command: 'rounded border border-cyan-700/50 bg-cyan-900/30 px-1 py-0.5 text-xs text-cyan-200',
-    pattern: 'rounded border border-green-700/50 bg-green-900/30 px-1 py-0.5 text-xs text-green-200',
+    command:
+      'rounded border border-cyan-700/50 bg-cyan-900/30 px-1 py-0.5 text-xs text-cyan-200',
+    pattern:
+      'rounded border border-green-700/50 bg-green-900/30 px-1 py-0.5 text-xs text-green-200',
     default: 'rounded bg-neutral-800 px-1 py-0.5 text-xs text-neutral-200',
   };
 
@@ -211,6 +236,20 @@ function getCodeStyleForTool(toolName: string): CodeStyle {
   }
 }
 
+// Check if tool input is an Edit tool with old_string/new_string
+function isEditToolInput(
+  input: Record<string, unknown>,
+): input is { file_path: string; old_string: string; new_string: string } {
+  return (
+    'file_path' in input &&
+    'old_string' in input &&
+    'new_string' in input &&
+    typeof input.file_path === 'string' &&
+    typeof input.old_string === 'string' &&
+    typeof input.new_string === 'string'
+  );
+}
+
 // Tool entry with expandable input/output
 function ToolEntry({
   block,
@@ -225,18 +264,43 @@ function ToolEntry({
   const isPending = !hasResult;
   const codeStyle = getCodeStyleForTool(block.name);
 
-  const formattedInput = formatToolInput(block.input);
+  // Check if this is an Edit tool with diff content
+  const isEditTool = block.name === 'Edit' && isEditToolInput(block.input);
+
+  // Extract edit input for DiffView (type-safe after guard)
+  const editInput = isEditTool
+    ? (block.input as {
+        file_path: string;
+        old_string: string;
+        new_string: string;
+      })
+    : null;
+
+  const formattedInput = isEditTool ? '' : formatToolInput(block.input);
   const formattedResult = result ? formatResultContent(result.content) : '';
 
   const expandedContent = (
     <div className="space-y-2 text-xs">
       <div>
-        <div className="mb-1 font-medium text-neutral-500">Input</div>
-        <LineNumberedContent content={formattedInput} maxHeight="max-h-48" />
+        <div className="mb-1 font-medium text-neutral-500">
+          {isEditTool ? 'Changes' : 'Input'}
+        </div>
+        {editInput ? (
+          <DiffView
+            filePath={editInput.file_path}
+            oldString={editInput.old_string}
+            newString={editInput.new_string}
+            maxHeight="max-h-48"
+          />
+        ) : (
+          <LineNumberedContent content={formattedInput} maxHeight="max-h-48" />
+        )}
       </div>
       {hasResult && (
         <div>
-          <div className={`mb-1 font-medium ${isError ? 'text-red-400' : 'text-neutral-500'}`}>
+          <div
+            className={`mb-1 font-medium ${isError ? 'text-red-400' : 'text-neutral-500'}`}
+          >
             {isError ? 'Error' : 'Result'}
           </div>
           {isError ? (
@@ -317,7 +381,10 @@ function ResultEntry({
 
   const expandedContent = message.result ? (
     <div className="text-xs text-neutral-300">
-      <MarkdownContent content={message.result} onFilePathClick={onFilePathClick} />
+      <MarkdownContent
+        content={message.result}
+        onFilePathClick={onFilePathClick}
+      />
     </div>
   ) : null;
 
@@ -333,12 +400,17 @@ function ResultEntry({
 // System message entry
 function SystemEntry({ message }: { message: AgentMessage }) {
   // For system init messages, show a simple summary
-  const summary = message.subtype === 'init' ? 'Session started' : 'System message';
+  const summary =
+    message.subtype === 'init' ? 'Session started' : 'System message';
 
   return <DotEntry type="system" summary={summary} />;
 }
 
-export function TimelineEntry({ message, toolResultsMap, onFilePathClick }: TimelineEntryProps) {
+export function TimelineEntry({
+  message,
+  toolResultsMap,
+  onFilePathClick,
+}: TimelineEntryProps) {
   // Skip system init messages (replaced by user prompt entries)
   if (message.type === 'system' && message.subtype === 'init') {
     return null;
@@ -360,7 +432,9 @@ export function TimelineEntry({ message, toolResultsMap, onFilePathClick }: Time
 
     // Skip if only tool results
     if (Array.isArray(content)) {
-      const hasNonToolResultContent = content.some((block) => block.type !== 'tool_result');
+      const hasNonToolResultContent = content.some(
+        (block) => block.type !== 'tool_result',
+      );
       if (!hasNonToolResultContent) return null;
     }
 
@@ -378,7 +452,11 @@ export function TimelineEntry({ message, toolResultsMap, onFilePathClick }: Time
   }
 
   // Assistant message - render each content block as separate entry
-  if (message.type === 'assistant' && message.message && message.message.role === 'assistant') {
+  if (
+    message.type === 'assistant' &&
+    message.message &&
+    message.message.role === 'assistant'
+  ) {
     const contentBlocks = message.message.content;
     const entries: ReactNode[] = [];
 
@@ -387,7 +465,11 @@ export function TimelineEntry({ message, toolResultsMap, onFilePathClick }: Time
 
       if (isTextBlock(block) && block.text.trim()) {
         entries.push(
-          <TextEntry key={i} text={block.text} onFilePathClick={onFilePathClick} />
+          <TextEntry
+            key={i}
+            text={block.text}
+            onFilePathClick={onFilePathClick}
+          />,
         );
       } else if (isToolUseBlock(block)) {
         const result = toolResultsMap?.get(block.id);
