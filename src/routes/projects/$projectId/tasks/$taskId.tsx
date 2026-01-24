@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
-  Square,
   Loader2,
   Copy,
   Check,
@@ -213,22 +212,6 @@ function TaskPanel() {
             {editorSetting ? getEditorLabel(editorSetting) : 'Editor'}
           </button>
 
-          {/* Stop button */}
-          {isRunning && (
-            <button
-              onClick={handleStop}
-              disabled={isStopping}
-              className="flex items-center gap-2 rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
-            >
-              {isStopping ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Square className="h-4 w-4" />
-              )}
-              Stop
-            </button>
-          )}
-
           {/* Delete button */}
           {!isRunning && (
             <button
@@ -353,12 +336,15 @@ function TaskPanel() {
               />
               <MessageInput
                 onSend={handleSendMessage}
+                onStop={handleStop}
                 disabled={isRunning || !canSendMessage}
                 placeholder={
                   isRunning
                     ? 'Agent is running...'
                     : 'Send a follow-up message...'
                 }
+                isRunning={isRunning}
+                isStopping={isStopping}
               />
             </div>
           )}

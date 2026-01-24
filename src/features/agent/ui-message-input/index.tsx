@@ -1,16 +1,22 @@
-import { Send } from 'lucide-react';
+import { Send, Square, Loader2 } from 'lucide-react';
 import { useState, useRef, useCallback, KeyboardEvent } from 'react';
 
 interface MessageInputProps {
   onSend: (message: string) => void;
+  onStop?: () => void;
   disabled?: boolean;
   placeholder?: string;
+  isRunning?: boolean;
+  isStopping?: boolean;
 }
 
 export function MessageInput({
   onSend,
+  onStop,
   disabled = false,
   placeholder = 'Type a message... (Shift+Enter for new line)',
+  isRunning = false,
+  isStopping = false,
 }: MessageInputProps) {
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -63,10 +69,24 @@ export function MessageInput({
       <button
         onClick={handleSend}
         disabled={disabled || !value.trim()}
-        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <Send className="h-5 w-5" />
       </button>
+      {isRunning && onStop && (
+        <button
+          onClick={onStop}
+          disabled={isStopping}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-600 text-white hover:bg-red-500 disabled:opacity-50"
+          title="Stop agent"
+        >
+          {isStopping ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <Square className="h-5 w-5" />
+          )}
+        </button>
+      )}
     </div>
   );
 }
