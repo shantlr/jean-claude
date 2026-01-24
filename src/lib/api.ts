@@ -18,10 +18,24 @@ import type {
   NewProvider,
   UpdateProvider,
   InteractionMode,
+  AppSettings,
 } from '../../shared/types';
 
 export interface PackageJson {
   name?: string;
+}
+
+export interface QueryTableParams {
+  table: string;
+  search?: string;
+  limit: number;
+  offset: number;
+}
+
+export interface QueryTableResult {
+  columns: string[];
+  rows: Record<string, unknown>[];
+  total: number;
 }
 
 export type AgentEventCallback<T> = (event: T) => void;
@@ -56,10 +70,19 @@ export interface Api {
   };
   dialog: {
     openDirectory: () => Promise<string | null>;
+    openApplication: () => Promise<{ path: string; name: string } | null>;
   };
   fs: {
     readPackageJson: (dirPath: string) => Promise<PackageJson | null>;
     readFile: (filePath: string) => Promise<{ content: string; language: string } | null>;
+  };
+  settings: {
+    get: <K extends keyof AppSettings>(key: K) => Promise<AppSettings[K]>;
+    set: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => Promise<void>;
+  };
+  shell: {
+    openInEditor: (dirPath: string) => Promise<void>;
+    getAvailableEditors: () => Promise<{ id: string; available: boolean }[]>;
   };
   agent: {
     start: (taskId: string) => Promise<void>;
@@ -76,6 +99,10 @@ export interface Api {
     onStatus: (callback: AgentEventCallback<AgentStatusEvent>) => UnsubscribeFn;
     onPermission: (callback: AgentEventCallback<AgentPermissionEvent>) => UnsubscribeFn;
     onQuestion: (callback: AgentEventCallback<AgentQuestionEvent>) => UnsubscribeFn;
+  };
+  debug: {
+    getTableNames: () => Promise<string[]>;
+    queryTable: (params: QueryTableParams) => Promise<QueryTableResult>;
   };
 }
 
@@ -119,10 +146,19 @@ export const api: Api = hasWindowApi
       },
       dialog: {
         openDirectory: async () => null,
+        openApplication: async () => null,
       },
       fs: {
         readPackageJson: async () => null,
         readFile: async () => null,
+      },
+      settings: {
+        get: async () => { throw new Error('API not available'); },
+        set: async () => { throw new Error('API not available'); },
+      },
+      shell: {
+        openInEditor: async () => {},
+        getAvailableEditors: async () => [],
       },
       agent: {
         start: async () => { throw new Error('API not available'); },
@@ -135,5 +171,9 @@ export const api: Api = hasWindowApi
         onStatus: () => () => {},
         onPermission: () => () => {},
         onQuestion: () => () => {},
+      },
+      debug: {
+        getTableNames: async () => [],
+        queryTable: async () => ({ columns: [], rows: [], total: 0 }),
       },
     } as Api);

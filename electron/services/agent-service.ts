@@ -1,4 +1,4 @@
-import { query } from '@anthropic-ai/claude-agent-sdk';
+import { PermissionResult, query } from '@anthropic-ai/claude-agent-sdk';
 import { BrowserWindow } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -162,26 +162,31 @@ class AgentService {
 
     try {
       // Spawn agent
-      const options: Record<string, unknown> = {
+      const sdkPermissionMode = SDK_PERMISSION_MODES[(task.interactionMode ?? 'ask') as InteractionMode];
+      console.log(`[AgentService] Starting agent for task ${taskId}, interactionMode: ${task.interactionMode}, sdkPermissionMode: ${sdkPermissionMode}`);
+
+      const options: NonNullable<Parameters<typeof query>[0]['options']> = {
         cwd: project.path,
         allowedTools: [
-          'Read',
-          'Write',
-          'Edit',
-          'Bash',
-          'Glob',
-          'Grep',
-          'WebSearch',
-          'WebFetch',
-          'AskUserQuestion',
+          // 'Read',
+          // 'Write',
+          // 'Edit',
+          // 'Bash',
+          // 'Glob',
+          // 'Grep',
+          // 'WebSearch',
+          // 'WebFetch',
+          // 'AskUserQuestion',
         ],
         canUseTool: async (
           toolName: string,
           input: Record<string, unknown>
-        ): Promise<PermissionResponse> => {
+        ): Promise<PermissionResult> => {
+          console.log(`[AgentService] canUseTool callback invoked for tool: ${toolName}`);
           return this.handleToolRequest(taskId, toolName, input);
         },
-        permissionMode: SDK_PERMISSION_MODES[(task.interactionMode ?? 'ask') as InteractionMode],
+        permissionMode: SDK_PERMISSION_MODES[(task.interactionMode ?? 'plan') as InteractionMode],
+        settingSources: ['user', 'project', 'local']
       };
 
       // Resume if we have a session ID
@@ -189,10 +194,15 @@ class AgentService {
         options.resume = session.sessionId;
       }
 
+      console.log('[AgentService] Calling query with options:', options);
+
       const generator = query({
         prompt: task.prompt,
         options,
       });
+      if (!options.resume) {
+        console.log(`[AgentService] New session started for task ${taskId}:`);
+      }
 
       session.queryInstance = generator;
       session.messageGenerator = generator;
@@ -246,9 +256,11 @@ class AgentService {
     taskId: string,
     toolName: string,
     input: Record<string, unknown>
-  ): Promise<PermissionResponse> {
+  ): Promise<PermissionResult> {
+    console.log(`[AgentService] handleToolRequest called for task ${taskId}, tool: ${toolName}`);
     const session = this.sessions.get(taskId);
     if (!session) {
+      console.log(`[AgentService] No session found for task ${taskId}`);
       return { behavior: 'deny', message: 'Session not found' };
     }
 
@@ -398,6 +410,9 @@ class AgentService {
     this.emitStatus(taskId, 'running');
 
     try {
+      const sdkPermissionMode = SDK_PERMISSION_MODES[(task.interactionMode ?? 'ask') as InteractionMode];
+      console.log(`[AgentService] Resuming/sending message for task ${taskId}, interactionMode: ${task.interactionMode}, sdkPermissionMode: ${sdkPermissionMode}`);
+
       const options: Record<string, unknown> = {
         cwd: project.path,
         allowedTools: [
@@ -415,9 +430,10 @@ class AgentService {
           toolName: string,
           input: Record<string, unknown>
         ): Promise<PermissionResponse> => {
+          console.log(`[AgentService] canUseTool callback invoked for tool: ${toolName} (sendMessage)`);
           return this.handleToolRequest(taskId, toolName, input);
         },
-        permissionMode: SDK_PERMISSION_MODES[(task.interactionMode ?? 'ask') as InteractionMode],
+        permissionMode: sdkPermissionMode,
       };
 
       if (newSession.sessionId) {

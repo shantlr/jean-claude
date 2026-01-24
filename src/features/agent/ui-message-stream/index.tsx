@@ -1,4 +1,3 @@
-import { Loader2 } from 'lucide-react';
 import {
   useEffect,
   useRef,
@@ -121,11 +120,8 @@ export function MessageStream({
         ))}
         {isRunning && (
           <div className="relative pl-6 py-1.5">
-            <div className="absolute -left- top-2.5 h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
-            <div className="flex items-center gap-2 text-neutral-500">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span className="text-sm">Working...</span>
-            </div>
+            <div className="absolute -left-1 top-2.5 h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
+            <span className="text-sm text-neutral-500">Working...</span>
           </div>
         )}
         <div ref={bottomRef} />

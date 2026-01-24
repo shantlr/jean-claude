@@ -6,6 +6,8 @@ import * as m003 from './migrations/003_task_read_at';
 import * as m004 from './migrations/004_agent_messages';
 import * as m005 from './migrations/005_task_last_read_index';
 import * as m006 from './migrations/006_task_interaction_mode';
+import * as m007 from './migrations/007_task_interaction_mode_default_plan';
+import * as m008 from './migrations/008_settings';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -14,6 +16,8 @@ const migrations: Record<string, Migration> = {
   '004_agent_messages': m004,
   '005_task_last_read_index': m005,
   '006_task_interaction_mode': m006,
+  '007_task_interaction_mode_default_plan': m007,
+  '008_settings': m008,
 };
 
 export const migrationProvider: MigrationProvider = {

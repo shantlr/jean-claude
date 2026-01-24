@@ -1,13 +1,19 @@
 import { Shield, X, Check } from 'lucide-react';
 
-import type { AgentPermissionEvent, PermissionResponse } from '../../../../shared/agent-types';
+import type {
+  AgentPermissionEvent,
+  PermissionResponse,
+} from '../../../../shared/agent-types';
 
 interface PermissionBarProps {
   request: AgentPermissionEvent;
   onRespond: (requestId: string, response: PermissionResponse) => void;
 }
 
-function formatToolInput(toolName: string, input: Record<string, unknown>): string {
+function formatToolInput(
+  toolName: string,
+  input: Record<string, unknown>,
+): string {
   switch (toolName) {
     case 'Bash':
       return String(input.command || '');
@@ -44,16 +50,18 @@ export function PermissionBar({ request, onRespond }: PermissionBarProps) {
 
   const displayText = formatToolInput(request.toolName, request.input);
 
+  console.log('ASKED PERMISSION', request);
+
   return (
     <div className="flex items-center gap-3 border-t border-yellow-700/50 bg-yellow-900/20 px-4 py-3">
-      <Shield className="h-5 w-5 flex-shrink-0 text-yellow-500" />
+      <Shield className="h-5 w-5 shrink-0 text-yellow-500" />
       <div className="min-w-0 flex-1">
         <div className="mb-0.5 text-xs font-medium text-yellow-400">
           Permission Required: {request.toolName}
         </div>
         <div className="truncate text-sm text-neutral-300">{displayText}</div>
       </div>
-      <div className="flex flex-shrink-0 gap-2">
+      <div className="flex shrink-0 gap-2">
         <button
           onClick={handleDeny}
           className="flex items-center gap-1.5 rounded-md bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600"

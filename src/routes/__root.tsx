@@ -10,10 +10,10 @@ export const Route = createRootRoute({
 
 function RootLayout() {
   return (
-    <div className="flex h-screen bg-neutral-900 text-white">
+    <div className="flex h-screen w-screen overflow-hidden bg-neutral-900 text-white">
       <TaskMessageManager />
       <MainSidebar />
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
         <main className="flex-1 overflow-auto">
           <Outlet />

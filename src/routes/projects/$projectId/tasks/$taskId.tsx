@@ -1,5 +1,13 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { Square, Loader2, Copy, Check, Trash2 } from 'lucide-react';
+import {
+  Square,
+  Loader2,
+  Copy,
+  Check,
+  Trash2,
+  ExternalLink,
+  RefreshCw,
+} from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 
 import { StatusIndicator } from '@/common/ui/status-indicator';
@@ -11,11 +19,22 @@ import { PermissionBar } from '@/features/agent/ui-permission-bar';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
 import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
 import { useProject } from '@/hooks/use-projects';
-import { useTask, useMarkTaskAsRead, useDeleteTask, useSetTaskMode } from '@/hooks/use-tasks';
+import { useEditorSetting } from '@/hooks/use-settings';
+import {
+  useTask,
+  useMarkTaskAsRead,
+  useDeleteTask,
+  useSetTaskMode,
+} from '@/hooks/use-tasks';
+import { api } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/time';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 
-import type { InteractionMode } from '../../../../../shared/types';
+import {
+  PRESET_EDITORS,
+  type InteractionMode,
+  type EditorSetting,
+} from '../../../../../shared/types';
 
 export const Route = createFileRoute('/projects/$projectId/tasks/$taskId')({
   component: TaskPanel,
@@ -33,6 +52,7 @@ function TaskPanel() {
   const navigate = useNavigate();
   const { data: task } = useTask(taskId);
   const { data: project } = useProject(projectId);
+  const { data: editorSetting } = useEditorSetting();
   const markAsRead = useMarkTaskAsRead();
   const deleteTask = useDeleteTask();
   const setTaskMode = useSetTaskMode();
@@ -107,6 +127,23 @@ function TaskPanel() {
     setTaskMode.mutate({ id: taskId, mode });
   };
 
+  const handleOpenInEditor = () => {
+    if (project?.path) {
+      api.shell.openInEditor(project.path);
+    }
+  };
+
+  const getEditorLabel = (setting: EditorSetting): string => {
+    if (setting.type === 'preset') {
+      const editor = PRESET_EDITORS.find((e) => e.id === setting.id);
+      return editor?.label ?? setting.id;
+    }
+    if (setting.type === 'command') {
+      return setting.command;
+    }
+    return setting.name;
+  };
+
   if (!task || !project) {
     return (
       <div className="flex h-full items-center justify-center text-neutral-500">
@@ -153,6 +190,16 @@ function TaskPanel() {
             {formatRelativeTime(task.createdAt)}
           </span>
 
+          {/* Open in editor button */}
+          <button
+            onClick={handleOpenInEditor}
+            className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200 transition-colors"
+            title="Open project in editor"
+          >
+            <ExternalLink className="h-4 w-4" />
+            {editorSetting ? getEditorLabel(editorSetting) : 'Editor'}
+          </button>
+
           {/* Stop button */}
           {isRunning && (
             <button
@@ -185,7 +232,8 @@ function TaskPanel() {
         {showDeleteConfirm && (
           <div className="border-b border-red-900 bg-red-950/50 px-6 py-4">
             <p className="mb-3 text-sm text-neutral-300">
-              Are you sure you want to delete this task? This action cannot be undone.
+              Are you sure you want to delete this task? This action cannot be
+              undone.
             </p>
             <div className="flex gap-2">
               <button
@@ -229,18 +277,38 @@ function TaskPanel() {
                   {task.prompt}
                 </pre>
               </div>
-              <div className="mt-6 flex items-center justify-center gap-2 rounded-lg border border-dashed border-neutral-700 p-8">
-                <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
-                <p className="text-neutral-400">Starting agent...</p>
-              </div>
+              {isRunning ? (
+                <div className="mt-6 flex items-center justify-center gap-2 rounded-lg border border-dashed border-neutral-700 p-8">
+                  <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+                  <p className="text-neutral-400">Starting agent...</p>
+                </div>
+              ) : (
+                <div className="mt-6 flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-700 p-8">
+                  <p className="text-neutral-400">No messages loaded</p>
+                  <button
+                    onClick={agentState.refetch}
+                    className="flex items-center gap-2 rounded-md bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600 transition-colors"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Reload messages
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Error display */}
         {agentState.error && (
-          <div className="border-t border-red-700/50 bg-red-900/20 px-4 py-3 text-sm text-red-300">
-            Error: {agentState.error}
+          <div className="flex items-center justify-between border-t border-red-700/50 bg-red-900/20 px-4 py-3 text-sm text-red-300">
+            <span>Error: {agentState.error}</span>
+            <button
+              onClick={agentState.refetch}
+              className="flex items-center gap-1.5 rounded px-2 py-1 text-red-300 hover:bg-red-900/50 transition-colors"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Retry
+            </button>
           </div>
         )}
 

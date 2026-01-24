@@ -1,3 +1,4 @@
+import { execSync, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -8,11 +9,18 @@ import {
   PermissionResponse,
   QuestionResponse,
 } from '../../shared/agent-types';
-import type { InteractionMode } from '../../shared/types';
+import {
+  PRESET_EDITORS,
+  type InteractionMode,
+  type EditorSetting,
+  type AppSettings,
+} from '../../shared/types';
 import {
   ProjectRepository,
   TaskRepository,
   ProviderRepository,
+  SettingsRepository,
+  DebugRepository,
 } from '../database/repositories';
 import {
   NewProject,
@@ -192,4 +200,98 @@ export function registerIpcHandlers() {
   ipcMain.handle(AGENT_CHANNELS.GET_MESSAGE_COUNT, (_, taskId: string) => {
     return agentService.getMessageCount(taskId);
   });
+
+  // Settings
+  ipcMain.handle(
+    'settings:get',
+    <K extends keyof AppSettings>(_: unknown, key: K) =>
+      SettingsRepository.get(key),
+  );
+  ipcMain.handle(
+    'settings:set',
+    <K extends keyof AppSettings>(_: unknown, key: K, value: AppSettings[K]) =>
+      SettingsRepository.set(key, value),
+  );
+
+  // Shell
+  ipcMain.handle('shell:getAvailableEditors', () => {
+    return PRESET_EDITORS.map((editor) => ({
+      id: editor.id,
+      available: isEditorAvailable(editor),
+    }));
+  });
+
+  ipcMain.handle('shell:openInEditor', async (_, dirPath: string) => {
+    const setting = await SettingsRepository.get('editor');
+    openInEditor(dirPath, setting);
+  });
+
+  // Dialog: open application (macOS)
+  ipcMain.handle('dialog:openApplication', async (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    const result = await dialog.showOpenDialog(window!, {
+      properties: ['openFile'],
+      filters: [{ name: 'Applications', extensions: ['app'] }],
+      defaultPath: '/Applications',
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+
+    const appPath = result.filePaths[0];
+    const appName = path.basename(appPath, '.app');
+    return { path: appPath, name: appName };
+  });
+
+  // Debug
+  ipcMain.handle('debug:getTableNames', () => DebugRepository.getTableNames());
+  ipcMain.handle(
+    'debug:queryTable',
+    (
+      _,
+      params: {
+        table: string;
+        search?: string;
+        limit: number;
+        offset: number;
+      }
+    ) => DebugRepository.queryTable(params)
+  );
+}
+
+// Helper: check if an editor is available
+function isEditorAvailable(editor: (typeof PRESET_EDITORS)[number]): boolean {
+  try {
+    execSync(`which ${editor.command}`, { stdio: 'ignore' });
+    return true;
+  } catch {
+    // Fallback: check if app exists (macOS)
+    const appPath = `/Applications/${editor.appName}.app`;
+    return fs.existsSync(appPath);
+  }
+}
+
+// Helper: open directory in editor
+function openInEditor(dirPath: string, setting: EditorSetting): void {
+  if (setting.type === 'preset') {
+    const editor = PRESET_EDITORS.find((e) => e.id === setting.id);
+    if (editor) {
+      spawn(editor.command, [dirPath], {
+        detached: true,
+        stdio: 'ignore',
+      }).unref();
+    }
+  } else if (setting.type === 'command') {
+    spawn(setting.command, [dirPath], {
+      detached: true,
+      stdio: 'ignore',
+    }).unref();
+  } else if (setting.type === 'app') {
+    // macOS: open -a "App.app" /path
+    spawn('open', ['-a', setting.path, dirPath], {
+      detached: true,
+      stdio: 'ignore',
+    }).unref();
+  }
 }

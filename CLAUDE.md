@@ -25,12 +25,12 @@ Renderer (React) ←→ Preload Bridge ←→ Main Process (Node.js)
   src/lib/api.ts   electron/preload.ts   electron/ipc/handlers.ts
 ```
 
-The renderer calls `window.api.*` methods which are defined in `preload.ts` and handled in `ipc/handlers.ts`. Types are shared via `src/lib/api.ts`.
+The renderer calls `window.api.*` methods which are defined in `preload.ts` and handled in `ipc/handlers.ts`. Types are shared via `src/lib/api.ts` and `shared/`.
 
 ### State Management
 
-- **Server state**: TanStack React Query with hooks in `src/hooks/` (useProjects, useTasks, useProviders)
-- **UI state**: Zustand stores in `src/stores/` (sidebar collapse, last visited project)
+- **Server state**: TanStack React Query with hooks in `src/hooks/` (useProjects, useTasks, useProviders, useSettings, useAgent)
+- **UI state**: Zustand stores in `src/stores/` (sidebar collapse, last visited project, task message cache)
 - **Routing**: TanStack Router with file-based routes in `src/routes/`
 
 ### Database
@@ -48,27 +48,65 @@ To add a migration:
 ### Key Entities
 
 - **Projects**: Local directories or git-provider repos (has color for tile display)
-- **Tasks**: Work units with agent sessions (status: running/waiting/completed/errored)
+- **Tasks**: Work units with agent sessions (status: running/waiting/completed/errored, interactionMode: ask/auto/plan)
 - **Providers**: Git provider credentials (Azure DevOps, GitHub, GitLab)
+- **Settings**: App configuration (key-value pairs, e.g., editor preference)
+- **Agent Messages**: Persisted messages from agent sessions (messageIndex for ordering)
+
+### Agent Integration
+
+The agent service (`electron/services/agent-service.ts`) manages Claude Agent SDK sessions:
+
+- **Interaction Modes**: `ask` (prompt for permissions), `auto` (bypass permissions), `plan` (show plan first, default)
+- **Session Lifecycle**: Start → Stream messages → Handle permissions/questions → Complete/Error
+- **Persistence**: Messages stored in `agent_messages` table with JSON-serialized content
+- **Resumption**: Sessions can be resumed via stored `sessionId`
+- **Notifications**: Desktop notifications for permission requests, questions, and completion
+
+Agent events flow via IPC channels: `agent:message`, `agent:status`, `agent:permission`, `agent:question`
 
 ## File Structure
 
 ```
-electron/           # Main process
-  main.ts          # Window creation, app lifecycle
-  preload.ts       # IPC bridge exposed to renderer
-  ipc/handlers.ts  # IPC route handlers
-  database/        # SQLite layer (schema, migrations, repositories)
+electron/              # Main process
+  main.ts              # Window creation, app lifecycle
+  preload.ts           # IPC bridge exposed to renderer
+  ipc/handlers.ts      # IPC route handlers
+  database/            # SQLite layer (schema, migrations, repositories)
+  services/            # Business logic
+    agent-service.ts   # Claude Agent SDK integration
+    notification-service.ts
 
-src/               # Renderer (React)
-  routes/          # TanStack Router file-based routes
-  layout/          # App shell components (header, sidebars)
-  features/        # Feature-based components (agent/, project/, task/)
-  common/ui/       # Atomic reusable UI components
-  hooks/           # React Query hooks for data fetching
-  stores/          # Zustand stores for UI state
-  lib/api.ts       # Typed IPC client interface
+shared/                # Types shared between main and renderer
+  types.ts             # Domain types (Project, Task, Provider, InteractionMode)
+  agent-types.ts       # Agent-specific types (AgentMessage, ContentBlock, etc.)
+
+src/                   # Renderer (React)
+  routes/              # TanStack Router file-based routes
+  layout/              # App shell components (header, sidebars)
+  features/            # Feature-based components
+    agent/             # Message stream, timeline, tool cards, mode selector, etc.
+    project/           # Project tile
+    task/              # Task list item
+    settings/          # Debug database viewer
+  common/ui/           # Atomic reusable UI components
+  hooks/               # React Query and custom hooks
+  stores/              # Zustand stores for UI state
+  lib/                 # Utilities (api.ts, colors.ts, time.ts)
+
+docs/plans/            # Design and implementation documents
 ```
+
+### Pages
+
+| Route | Purpose |
+|-------|---------|
+| `/` | Redirects to `/settings` (TODO: redirect to last visited project) |
+| `/settings` | Configure editor preferences; debug database viewer |
+| `/projects/new` | Two-step wizard to add a local project (folder picker → name/color) |
+| `/projects/:projectId` | Project layout with sidebar listing tasks |
+| `/projects/:projectId/tasks/new` | Form to create a task with prompt, mode, and worktree options |
+| `/projects/:projectId/tasks/:taskId` | Main agent UI: message stream, file preview, permissions, input |
 
 ## Development Notes
 
@@ -84,7 +122,7 @@ src/               # Renderer (React)
 ### General Principles
 
 - Write TypeScript with strict mode enabled
-- file and folder names should be kebab-case
+- File and folder names should be kebab-case
 
 ### React Components
 
@@ -96,7 +134,7 @@ src/               # Renderer (React)
 
 Components are organized by location:
 - `src/layout/` - App shell components (header, sidebars)
-- `src/features/<domain>/` - Feature components grouped by domain (agent, project, task)
+- `src/features/<domain>/` - Feature components grouped by domain (agent, project, task, settings)
 - `src/common/ui/` - Atomic reusable components
 - Route files - Route-specific components that aren't reused stay in the route file
 

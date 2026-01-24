@@ -113,3 +113,50 @@ export interface UpdateTask {
   interactionMode?: InteractionMode;
   updatedAt?: string;
 }
+
+// Editor settings
+export interface PresetEditor {
+  id: string;
+  label: string;
+  command: string;
+  appName: string; // For macOS app detection
+}
+
+export const PRESET_EDITORS: PresetEditor[] = [
+  { id: 'vscode', label: 'VS Code', command: 'code', appName: 'Visual Studio Code' },
+  { id: 'cursor', label: 'Cursor', command: 'cursor', appName: 'Cursor' },
+  { id: 'zed', label: 'Zed', command: 'zed', appName: 'Zed' },
+  { id: 'webstorm', label: 'WebStorm', command: 'webstorm', appName: 'WebStorm' },
+  { id: 'sublime', label: 'Sublime Text', command: 'subl', appName: 'Sublime Text' },
+];
+
+export type EditorSetting =
+  | { type: 'preset'; id: string }
+  | { type: 'command'; command: string }
+  | { type: 'app'; path: string; name: string };
+
+// Settings validation
+export interface SettingDefinition<T> {
+  defaultValue: T;
+  validate: (value: unknown) => value is T;
+}
+
+function isEditorSetting(v: unknown): v is EditorSetting {
+  if (!v || typeof v !== 'object') return false;
+  const obj = v as Record<string, unknown>;
+  if (obj.type === 'preset') return typeof obj.id === 'string';
+  if (obj.type === 'command') return typeof obj.command === 'string';
+  if (obj.type === 'app') return typeof obj.path === 'string' && typeof obj.name === 'string';
+  return false;
+}
+
+export const SETTINGS_DEFINITIONS = {
+  editor: {
+    defaultValue: { type: 'preset', id: 'vscode' } as EditorSetting,
+    validate: isEditorSetting,
+  },
+} satisfies Record<string, SettingDefinition<unknown>>;
+
+export type AppSettings = {
+  [K in keyof typeof SETTINGS_DEFINITIONS]: (typeof SETTINGS_DEFINITIONS)[K]['defaultValue'];
+};

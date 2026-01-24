@@ -37,11 +37,22 @@ contextBridge.exposeInMainWorld('api', {
   },
   dialog: {
     openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),
+    openApplication: () => ipcRenderer.invoke('dialog:openApplication'),
+  },
+  settings: {
+    get: (key: string) => ipcRenderer.invoke('settings:get', key),
+    set: (key: string, value: unknown) =>
+      ipcRenderer.invoke('settings:set', key, value),
   },
   fs: {
     readPackageJson: (dirPath: string) =>
       ipcRenderer.invoke('fs:readPackageJson', dirPath),
     readFile: (filePath: string) => ipcRenderer.invoke('fs:readFile', filePath),
+  },
+  shell: {
+    openInEditor: (dirPath: string) =>
+      ipcRenderer.invoke('shell:openInEditor', dirPath),
+    getAvailableEditors: () => ipcRenderer.invoke('shell:getAvailableEditors'),
   },
   agent: {
     start: (taskId: string) => ipcRenderer.invoke(AGENT_CHANNELS.START, taskId),
@@ -75,4 +86,14 @@ contextBridge.exposeInMainWorld('api', {
       return () => ipcRenderer.removeListener(AGENT_CHANNELS.QUESTION, handler);
     },
   },
+  debug: {
+    getTableNames: () => ipcRenderer.invoke('debug:getTableNames'),
+    queryTable: (params: {
+      table: string;
+      search?: string;
+      limit: number;
+      offset: number;
+    }) => ipcRenderer.invoke('debug:queryTable', params),
+  },
 });
+console.log('Preload script loaded');

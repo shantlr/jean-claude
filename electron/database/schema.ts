@@ -28,6 +28,7 @@ export interface Database {
   projects: ProjectTable;
   tasks: TaskTable;
   agent_messages: AgentMessageTable;
+  settings: SettingsTable;
 }
 
 export interface ProviderTable {
@@ -92,3 +93,13 @@ export type UpdateTaskRow = Updateable<TaskTable>;
 
 export type AgentMessageRow = Selectable<AgentMessageTable>;
 export type NewAgentMessageRow = Insertable<AgentMessageTable>;
+
+export interface SettingsTable {
+  key: string;
+  value: string;
+  updatedAt: string;
+}
+
+export type SettingsRow = Selectable<SettingsTable>;
+export type NewSettingsRow = Insertable<SettingsTable>;
+export type UpdateSettingsRow = Updateable<SettingsTable>;
