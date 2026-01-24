@@ -81,6 +81,7 @@ export interface Task {
   lastReadIndex: number;
   interactionMode: InteractionMode;
   userCompleted: boolean;
+  sessionAllowedTools: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -98,6 +99,7 @@ export interface NewTask {
   lastReadIndex?: number;
   interactionMode?: InteractionMode;
   userCompleted?: boolean;
+  sessionAllowedTools?: string[];
   createdAt?: string;
   updatedAt: string;
 }
@@ -114,6 +116,7 @@ export interface UpdateTask {
   lastReadIndex?: number;
   interactionMode?: InteractionMode;
   userCompleted?: boolean;
+  sessionAllowedTools?: string[];
   updatedAt?: string;
 }
 

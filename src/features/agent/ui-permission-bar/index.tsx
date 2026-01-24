@@ -1,4 +1,4 @@
-import { Shield, X, Check, ChevronDown } from 'lucide-react';
+import { Shield, X, Check, ChevronDown, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 
 import type {
@@ -6,11 +6,6 @@ import type {
   PermissionResponse,
 } from '../../../../shared/agent-types';
 import { MarkdownContent } from '../ui-markdown-content';
-
-interface PermissionBarProps {
-  request: AgentPermissionEvent;
-  onRespond: (requestId: string, response: PermissionResponse) => void;
-}
 
 function ToolInputDisplay({
   toolName,
@@ -121,10 +116,26 @@ function ExitPlanModeDisplay({ input }: { input: Record<string, unknown> }) {
   );
 }
 
-export function PermissionBar({ request, onRespond }: PermissionBarProps) {
+export function PermissionBar({
+  request,
+  onRespond,
+  onAllowForSession,
+}: {
+  request: AgentPermissionEvent;
+  onRespond: (requestId: string, response: PermissionResponse) => void;
+  onAllowForSession?: (toolName: string) => void;
+}) {
   const [instruction, setInstruction] = useState('');
 
   const handleAllow = () => {
+    onRespond(request.requestId, {
+      behavior: 'allow',
+      updatedInput: request.input,
+    });
+  };
+
+  const handleAllowForSession = () => {
+    onAllowForSession?.(request.toolName);
     onRespond(request.requestId, {
       behavior: 'allow',
       updatedInput: request.input,
@@ -141,6 +152,7 @@ export function PermissionBar({ request, onRespond }: PermissionBarProps) {
   console.log('ASKED PERMISSION', request);
 
   const isExitPlanMode = request.toolName === 'ExitPlanMode';
+  const showAllowForSession = request.canAllowForSession;
 
   return (
     <div className="border-t border-yellow-700/50 bg-yellow-900/20 px-4 py-3">
@@ -179,6 +191,15 @@ export function PermissionBar({ request, onRespond }: PermissionBarProps) {
           <Check className="h-4 w-4" />
           Allow
         </button>
+        {showAllowForSession && (
+          <button
+            onClick={handleAllowForSession}
+            className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            Allow for Session
+          </button>
+        )}
       </div>
     </div>
   );

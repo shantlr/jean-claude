@@ -6,6 +6,7 @@ import {
   Trash2,
   ExternalLink,
   RefreshCw,
+  MoreVertical,
 } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 
@@ -16,6 +17,7 @@ import { ModeSelector } from '@/features/agent/ui-mode-selector';
 import { PermissionBar } from '@/features/agent/ui-permission-bar';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
 import { StatusIndicator } from '@/features/task/ui-status-indicator';
+import { TaskSettingsPane } from '@/features/task/ui-task-settings-pane';
 import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
 import { useProject } from '@/hooks/use-projects';
 import { useEditorSetting } from '@/hooks/use-settings';
@@ -25,6 +27,8 @@ import {
   useDeleteTask,
   useSetTaskMode,
   useClearTaskUserCompleted,
+  useAddSessionAllowedTool,
+  useRemoveSessionAllowedTool,
 } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/time';
@@ -57,6 +61,8 @@ function TaskPanel() {
   const deleteTask = useDeleteTask();
   const setTaskMode = useSetTaskMode();
   const clearUserCompleted = useClearTaskUserCompleted();
+  const addSessionAllowedTool = useAddSessionAllowedTool();
+  const removeSessionAllowedTool = useRemoveSessionAllowedTool();
   const unloadTask = useTaskMessagesStore((state) => state.unloadTask);
 
   const agentState = useAgentStream(taskId);
@@ -75,6 +81,7 @@ function TaskPanel() {
 
   const [copiedSessionId, setCopiedSessionId] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showSettingsPane, setShowSettingsPane] = useState(false);
 
   const handleCopySessionId = useCallback(async () => {
     if (task?.sessionId) {
@@ -144,6 +151,20 @@ function TaskPanel() {
       api.shell.openInEditor(project.path);
     }
   };
+
+  const handleAllowToolForSession = useCallback(
+    (toolName: string) => {
+      addSessionAllowedTool.mutate({ id: taskId, toolName });
+    },
+    [taskId, addSessionAllowedTool]
+  );
+
+  const handleRemoveSessionAllowedTool = useCallback(
+    (toolName: string) => {
+      removeSessionAllowedTool.mutate({ id: taskId, toolName });
+    },
+    [taskId, removeSessionAllowedTool]
+  );
 
   const getEditorLabel = (setting: EditorSetting): string => {
     if (setting.type === 'preset') {
@@ -222,6 +243,19 @@ function TaskPanel() {
               <Trash2 className="h-4 w-4" />
             </button>
           )}
+
+          {/* Settings button */}
+          <button
+            onClick={() => setShowSettingsPane(!showSettingsPane)}
+            className={`flex items-center rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${
+              showSettingsPane
+                ? 'bg-neutral-700 text-neutral-200'
+                : 'text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200'
+            }`}
+            title="Task settings"
+          >
+            <MoreVertical className="h-4 w-4" />
+          </button>
         </div>
 
         {/* Delete confirmation dialog */}
@@ -313,6 +347,7 @@ function TaskPanel() {
           <PermissionBar
             request={agentState.pendingPermission}
             onRespond={respondToPermission}
+            onAllowForSession={handleAllowToolForSession}
           />
         )}
 
@@ -358,6 +393,16 @@ function TaskPanel() {
           lineStart={filePreview.lineStart}
           lineEnd={filePreview.lineEnd}
           onClose={handleCloseFilePreview}
+        />
+      )}
+
+      {/* Task settings pane */}
+      {showSettingsPane && !filePreview.isOpen && (
+        <TaskSettingsPane
+          sessionAllowedTools={task.sessionAllowedTools}
+          onAddTool={handleAllowToolForSession}
+          onRemoveTool={handleRemoveSessionAllowedTool}
+          onClose={() => setShowSettingsPane(false)}
         />
       )}
     </div>

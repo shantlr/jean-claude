@@ -62,6 +62,8 @@ export interface Api {
     setMode: (id: string, mode: InteractionMode) => Promise<Task>;
     toggleUserCompleted: (id: string) => Promise<Task>;
     clearUserCompleted: (id: string) => Promise<Task>;
+    addSessionAllowedTool: (id: string, toolName: string) => Promise<Task>;
+    removeSessionAllowedTool: (id: string, toolName: string) => Promise<Task>;
   };
   providers: {
     findAll: () => Promise<Provider[]>;
@@ -140,6 +142,8 @@ export const api: Api = hasWindowApi
         setMode: async () => { throw new Error('API not available'); },
         toggleUserCompleted: async () => { throw new Error('API not available'); },
         clearUserCompleted: async () => { throw new Error('API not available'); },
+        addSessionAllowedTool: async () => { throw new Error('API not available'); },
+        removeSessionAllowedTool: async () => { throw new Error('API not available'); },
       },
       providers: {
         findAll: async () => [],

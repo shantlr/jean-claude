@@ -30,6 +30,10 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('tasks:toggleUserCompleted', id),
     clearUserCompleted: (id: string) =>
       ipcRenderer.invoke('tasks:clearUserCompleted', id),
+    addSessionAllowedTool: (id: string, toolName: string) =>
+      ipcRenderer.invoke('tasks:addSessionAllowedTool', id, toolName),
+    removeSessionAllowedTool: (id: string, toolName: string) =>
+      ipcRenderer.invoke('tasks:removeSessionAllowedTool', id, toolName),
   },
   providers: {
     findAll: () => ipcRenderer.invoke('providers:findAll'),

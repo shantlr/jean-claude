@@ -8,6 +8,7 @@ import {
   PermissionResponse,
   QuestionResponse,
   AgentQuestion,
+  SESSION_ALLOWABLE_TOOLS,
 } from '../../shared/agent-types';
 import type { InteractionMode } from '../../shared/types';
 import {
@@ -88,7 +89,8 @@ class AgentService {
     toolName: string,
     input: Record<string, unknown>
   ) {
-    this.emit(AGENT_CHANNELS.PERMISSION, { taskId, requestId, toolName, input });
+    const canAllowForSession = SESSION_ALLOWABLE_TOOLS.includes(toolName as typeof SESSION_ALLOWABLE_TOOLS[number]);
+    this.emit(AGENT_CHANNELS.PERMISSION, { taskId, requestId, toolName, input, canAllowForSession });
 
     // Send desktop notification if window not focused
     if (this.mainWindow && !this.mainWindow.isFocused()) {
@@ -271,6 +273,14 @@ class AgentService {
     if (!session) {
       console.log(`[AgentService] No session found for task ${taskId}`);
       return { behavior: 'deny', message: 'Session not found' };
+    }
+
+    // Check if tool is in session-allowed list
+    const task = await TaskRepository.findById(taskId);
+    const allowedTools = task?.sessionAllowedTools ?? [];
+    if (allowedTools.includes(toolName)) {
+      console.log(`[AgentService] Tool ${toolName} is session-allowed for task ${taskId}`);
+      return { behavior: 'allow' };
     }
 
     const requestId = uuidv4();

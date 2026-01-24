@@ -8,6 +8,7 @@ import {
   AGENT_CHANNELS,
   PermissionResponse,
   QuestionResponse,
+  SESSION_ALLOWABLE_TOOLS,
 } from '../../shared/agent-types';
 import {
   PRESET_EDITORS,
@@ -81,6 +82,36 @@ export function registerIpcHandlers() {
   );
   ipcMain.handle('tasks:clearUserCompleted', (_, id: string) =>
     TaskRepository.clearUserCompleted(id)
+  );
+  ipcMain.handle(
+    'tasks:addSessionAllowedTool',
+    async (_, taskId: string, toolName: string) => {
+      // Validate that the tool is allowed to be session-allowed
+      if (!SESSION_ALLOWABLE_TOOLS.includes(toolName as typeof SESSION_ALLOWABLE_TOOLS[number])) {
+        console.warn(`[IPC] Tool "${toolName}" is not allowed to be session-allowed`);
+        return TaskRepository.findById(taskId);
+      }
+
+      const task = await TaskRepository.findById(taskId);
+      const currentTools = task?.sessionAllowedTools ?? [];
+      if (!currentTools.includes(toolName)) {
+        await TaskRepository.update(taskId, {
+          sessionAllowedTools: [...currentTools, toolName],
+        });
+      }
+      return TaskRepository.findById(taskId);
+    }
+  );
+  ipcMain.handle(
+    'tasks:removeSessionAllowedTool',
+    async (_, taskId: string, toolName: string) => {
+      const task = await TaskRepository.findById(taskId);
+      const currentTools = task?.sessionAllowedTools ?? [];
+      await TaskRepository.update(taskId, {
+        sessionAllowedTools: currentTools.filter((t) => t !== toolName),
+      });
+      return TaskRepository.findById(taskId);
+    }
   );
 
   // Providers

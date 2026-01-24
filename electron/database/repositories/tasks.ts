@@ -16,6 +16,7 @@ interface CreateTaskInput {
   lastReadIndex?: number;
   interactionMode?: InteractionMode;
   userCompleted?: boolean;
+  sessionAllowedTools?: string[];
   createdAt?: string;
   updatedAt: string;
 }
@@ -32,35 +33,42 @@ interface UpdateTaskInput {
   lastReadIndex?: number;
   interactionMode?: InteractionMode;
   userCompleted?: boolean;
+  sessionAllowedTools?: string[];
   updatedAt?: string;
 }
 
-// Convert SQLite's 0/1 to boolean for userCompleted
-function toTask<T extends TaskRow>(row: T): Omit<T, 'userCompleted'> & { userCompleted: boolean } {
-  const { userCompleted, ...rest } = row;
-  return { ...rest, userCompleted: Boolean(userCompleted) };
+// Convert SQLite's 0/1 to boolean for userCompleted, and JSON string to array for sessionAllowedTools
+function toTask<T extends TaskRow>(row: T): Omit<T, 'userCompleted' | 'sessionAllowedTools'> & { userCompleted: boolean; sessionAllowedTools: string[] } {
+  const { userCompleted, sessionAllowedTools, ...rest } = row;
+  return {
+    ...rest,
+    userCompleted: Boolean(userCompleted),
+    sessionAllowedTools: sessionAllowedTools ? JSON.parse(sessionAllowedTools) : [],
+  };
 }
 
 function toTaskOrUndefined<T extends TaskRow>(
   row: T | undefined
-): (Omit<T, 'userCompleted'> & { userCompleted: boolean }) | undefined {
+): (Omit<T, 'userCompleted' | 'sessionAllowedTools'> & { userCompleted: boolean; sessionAllowedTools: string[] }) | undefined {
   return row ? toTask(row) : undefined;
 }
 
-// Convert boolean userCompleted to number for database
+// Convert boolean userCompleted to number and sessionAllowedTools to JSON for database
 function toDbValues(data: CreateTaskInput): NewTaskRow {
-  const { userCompleted, ...rest } = data;
+  const { userCompleted, sessionAllowedTools, ...rest } = data;
   return {
     ...rest,
     ...(userCompleted !== undefined && { userCompleted: userCompleted ? 1 : 0 }),
+    ...(sessionAllowedTools !== undefined && { sessionAllowedTools: JSON.stringify(sessionAllowedTools) }),
   } as NewTaskRow;
 }
 
 function toDbUpdateValues(data: UpdateTaskInput): Partial<UpdateTaskRow> {
-  const { userCompleted, ...rest } = data;
+  const { userCompleted, sessionAllowedTools, ...rest } = data;
   return {
     ...rest,
     ...(userCompleted !== undefined && { userCompleted: userCompleted ? 1 : 0 }),
+    ...(sessionAllowedTools !== undefined && { sessionAllowedTools: JSON.stringify(sessionAllowedTools) }),
   };
 }
 
