@@ -49,7 +49,6 @@ function QuestionInput({
 
     return (
       <div className="space-y-2">
-        <div className="text-sm font-medium text-neutral-200">{question.question}</div>
         <div className="flex flex-wrap gap-2">
           {question.options.map((option) => (
             <button
@@ -72,7 +71,6 @@ function QuestionInput({
 
   return (
     <div className="space-y-2">
-      <div className="text-sm font-medium text-neutral-200">{question.question}</div>
       <div className="flex flex-wrap gap-2">
         {question.options.map((option) => (
           <button
@@ -100,12 +98,12 @@ function QuestionInput({
         </button>
       </div>
       {showOther && (
-        <input
-          type="text"
+        <textarea
           value={otherText}
           onChange={(e) => handleOtherChange(e.target.value)}
           placeholder="Enter your answer..."
-          className="w-full rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+          className="w-full resize-none rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-teal-500 focus:outline-none"
+          rows={3}
           autoFocus
         />
       )}
@@ -124,9 +122,16 @@ export function QuestionOptions({ request, onRespond }: QuestionOptionsProps) {
 
   return (
     <div className="border-t border-teal-700/50 bg-teal-900/20 px-4 py-3">
-      <div className="mb-3 flex items-center gap-2">
-        <HelpCircle className="h-5 w-5 text-teal-400" />
-        <span className="text-sm font-medium text-teal-300">Claude has a question</span>
+      <div className="mb-3 flex items-start gap-2">
+        <HelpCircle className="mt-0.5 h-5 w-5 shrink-0 text-teal-400" />
+        <div className="space-y-2">
+          {request.questions.map((q, i) => (
+            <div key={i} className="text-sm font-medium text-teal-300">
+              {request.questions.length > 1 ? `${i + 1}. ` : ''}
+              {q.question}
+            </div>
+          ))}
+        </div>
       </div>
       <div className="space-y-4">
         {request.questions.map((question) => (
