@@ -5,7 +5,7 @@ import { ComponentProps, MouseEvent } from 'react';
 import type { TaskStatus } from '../../../../shared/types';
 
 const STATUS_COLORS: Record<TaskStatus, string> = {
-  running: 'bg-green-500',
+  running: 'bg-green-500 animate-pulse',
   waiting: 'bg-yellow-500',
   completed: 'bg-neutral-500',
   errored: 'bg-red-500',

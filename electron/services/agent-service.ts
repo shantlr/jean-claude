@@ -140,7 +140,7 @@ class AgentService {
   private async generateTaskName(taskId: string, prompt: string): Promise<void> {
     try {
       const generator = query({
-        prompt: `Generate a very short task name (max 30 characters) that summarizes this task. Output only the name, nothing else.\n\nTask: ${prompt}`,
+        prompt: `Generate a short task name (max 40 characters) that summarizes this task. Output only the name, nothing else.\n\nTask: ${prompt}`,
         options: {
           allowedTools: [],
           permissionMode: 'bypassPermissions',
@@ -155,7 +155,7 @@ class AgentService {
       for await (const message of generator) {
         const msg = message as { type: string; structured_output?: { name: string } };
         if (msg.type === 'result' && msg.structured_output?.name) {
-          const name = msg.structured_output.name.slice(0, 30);
+          const name = msg.structured_output.name.slice(0, 40);
           await TaskRepository.update(taskId, { name });
           this.emitNameUpdated(taskId, name);
           console.log(`[AgentService] Generated task name for ${taskId}: ${name}`);
