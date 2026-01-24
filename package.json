@@ -18,6 +18,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
+    "ts-check": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
