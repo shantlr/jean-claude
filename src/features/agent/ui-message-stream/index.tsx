@@ -121,7 +121,7 @@ export function MessageStream({
         {isRunning && (
           <div className="relative pl-6 py-1.5">
             <div className="absolute -left-1 top-2.5 h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
-            <span className="text-sm text-neutral-500">Working...</span>
+            <span className="text-xs text-neutral-500">Working...</span>
           </div>
         )}
         <div ref={bottomRef} />

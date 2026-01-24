@@ -147,7 +147,7 @@ function DotEntry({
         <div className="flex items-center gap-2">
           {isPending && <Loader2 className="h-3 w-3 shrink-0 animate-spin text-neutral-400" />}
           {isError && <AlertCircle className="h-3 w-3 shrink-0 text-red-400" />}
-          <span className="text-sm text-neutral-300">
+          <span className="text-xs text-neutral-300">
             <SummaryText text={summary} codeStyle={codeStyle} />
           </span>
         </div>
@@ -275,7 +275,7 @@ function TextEntry({
     <div className="relative pl-6">
       {/* Dot - gray for text */}
       <div className="absolute -left-1 top-2.5 h-2 w-2 rounded-full bg-neutral-500" />
-      <div className="py-1.5 pr-3 text-sm text-neutral-300">
+      <div className="py-1.5 pr-3 text-xs text-neutral-300">
         <MarkdownContent content={text} onFilePathClick={onFilePathClick} />
       </div>
     </div>
@@ -294,7 +294,7 @@ function UserEntry({
   const needsExpansion = text.length > 60;
 
   const expandedContent = needsExpansion ? (
-    <div className="text-sm text-neutral-300">
+    <div className="text-xs text-neutral-300">
       <MarkdownContent content={text} onFilePathClick={onFilePathClick} />
     </div>
   ) : null;
@@ -323,7 +323,7 @@ function ResultEntry({
   const summary = `Session complete ($${cost}, ${duration}s)`;
 
   const expandedContent = message.result ? (
-    <div className="text-sm text-neutral-300">
+    <div className="text-xs text-neutral-300">
       <MarkdownContent content={message.result} onFilePathClick={onFilePathClick} />
     </div>
   ) : null;
