@@ -20,9 +20,7 @@ function NewTask() {
   const { getDraft, setDraft, clearDraft } = useNewTaskFormStore();
   const { name, prompt, useWorktree, interactionMode } = getDraft(projectId);
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-
+  async function handleCreateTask(shouldStart: boolean) {
     // Auto-generate name from first line of prompt if empty
     const taskName = name.trim() || prompt.split('\n')[0].slice(0, 50) || 'Untitled task';
 
@@ -39,14 +37,25 @@ function NewTask() {
     // Clear the draft now that we've submitted
     clearDraft(projectId);
 
-    // Navigate to the task first, then start the agent
+    // Navigate to the task first
     navigate({
       to: '/projects/$projectId/tasks/$taskId',
       params: { projectId, taskId: task.id },
     });
 
-    // Auto-start the agent after navigation
-    api.agent.start(task.id);
+    // Start the agent after navigation if requested
+    if (shouldStart) {
+      api.agent.start(task.id);
+    }
+  }
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    await handleCreateTask(true);
+  }
+
+  async function handleCreateOnly() {
+    await handleCreateTask(false);
   }
 
   return (
@@ -119,11 +128,19 @@ function NewTask() {
           <div className="flex items-center gap-3">
             <ModeSelector value={interactionMode} onChange={(mode) => setDraft(projectId, { interactionMode: mode })} />
             <button
+              type="button"
+              onClick={handleCreateOnly}
+              disabled={createTask.isPending || !prompt.trim()}
+              className="cursor-pointer rounded-lg border border-neutral-600 px-4 py-2 font-medium text-neutral-300 transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Create
+            </button>
+            <button
               type="submit"
               disabled={createTask.isPending || !prompt.trim()}
-              className="flex-1 cursor-pointer rounded-lg bg-white px-4 py-2 font-medium text-black transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer rounded-lg bg-white px-4 py-2 font-medium text-black transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {createTask.isPending ? 'Starting...' : 'Start'}
+              {createTask.isPending ? 'Creating...' : 'Start'}
             </button>
           </div>
         </form>

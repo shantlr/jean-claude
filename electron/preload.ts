@@ -26,6 +26,10 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('tasks:updateLastReadIndex', id, lastReadIndex),
     setMode: (id: string, mode: string) =>
       ipcRenderer.invoke('tasks:setMode', id, mode),
+    toggleUserCompleted: (id: string) =>
+      ipcRenderer.invoke('tasks:toggleUserCompleted', id),
+    clearUserCompleted: (id: string) =>
+      ipcRenderer.invoke('tasks:clearUserCompleted', id),
   },
   providers: {
     findAll: () => ipcRenderer.invoke('providers:findAll'),

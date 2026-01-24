@@ -89,3 +89,31 @@ export function useMarkTaskAsRead() {
     },
   });
 }
+
+export function useToggleTaskUserCompleted() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.tasks.toggleUserCompleted(id),
+    onSuccess: (task, id) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', id] });
+      queryClient.invalidateQueries({
+        queryKey: ['tasks', { projectId: task.projectId }],
+      });
+    },
+  });
+}
+
+export function useClearTaskUserCompleted() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.tasks.clearUserCompleted(id),
+    onSuccess: (task, id) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', id] });
+      queryClient.invalidateQueries({
+        queryKey: ['tasks', { projectId: task.projectId }],
+      });
+    },
+  });
+}

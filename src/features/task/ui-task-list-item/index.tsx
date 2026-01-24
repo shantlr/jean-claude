@@ -1,7 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import { AlertCircle } from 'lucide-react';
 
-import { StatusIndicator } from '@/common/ui/status-indicator';
+import { ToggleableStatusIndicator } from '@/features/task/ui-status-indicator';
+import { useToggleTaskUserCompleted } from '@/hooks/use-tasks';
 import { formatRelativeTime } from '@/lib/time';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 
@@ -27,7 +28,9 @@ export function getUnreadCount(task: TaskWithMessageCount): number {
 export function TaskListItem({ task, projectId, isActive }: TaskListItemProps) {
   const unreadCount = getUnreadCount(task);
   const taskState = useTaskMessagesStore((s) => s.tasks[task.id]);
-  const needsAttention = taskState?.pendingPermission || taskState?.pendingQuestion;
+  const toggleUserCompleted = useToggleTaskUserCompleted();
+  const needsAttention =
+    taskState?.pendingPermission || taskState?.pendingQuestion;
 
   return (
     <Link
@@ -37,7 +40,15 @@ export function TaskListItem({ task, projectId, isActive }: TaskListItemProps) {
         isActive ? 'bg-neutral-700' : 'hover:bg-neutral-800'
       }`}
     >
-      <StatusIndicator status={task.status} />
+      <ToggleableStatusIndicator
+        status={task.status}
+        isChecked={task.userCompleted}
+        onClick={(event) => {
+          event.stopPropagation();
+          event.preventDefault();
+          toggleUserCompleted.mutate(task.id);
+        }}
+      />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-medium">{task.name}</span>

@@ -10,13 +10,13 @@ import {
 } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 
-import { StatusIndicator } from '@/common/ui/status-indicator';
 import { FilePreviewPane } from '@/features/agent/ui-file-preview-pane';
 import { MessageInput } from '@/features/agent/ui-message-input';
 import { MessageStream } from '@/features/agent/ui-message-stream';
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
 import { PermissionBar } from '@/features/agent/ui-permission-bar';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
+import { StatusIndicator } from '@/features/task/ui-status-indicator';
 import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
 import { useProject } from '@/hooks/use-projects';
 import { useEditorSetting } from '@/hooks/use-settings';
@@ -25,6 +25,7 @@ import {
   useMarkTaskAsRead,
   useDeleteTask,
   useSetTaskMode,
+  useClearTaskUserCompleted,
 } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/time';
@@ -56,6 +57,7 @@ function TaskPanel() {
   const markAsRead = useMarkTaskAsRead();
   const deleteTask = useDeleteTask();
   const setTaskMode = useSetTaskMode();
+  const clearUserCompleted = useClearTaskUserCompleted();
   const unloadTask = useTaskMessagesStore((state) => state.unloadTask);
 
   const agentState = useAgentStream(taskId);
@@ -126,6 +128,17 @@ function TaskPanel() {
   const handleModeChange = (mode: InteractionMode) => {
     setTaskMode.mutate({ id: taskId, mode });
   };
+
+  const handleSendMessage = useCallback(
+    (message: string) => {
+      // Clear userCompleted when sending a follow-up message
+      if (task?.userCompleted) {
+        clearUserCompleted.mutate(taskId);
+      }
+      sendMessage(message);
+    },
+    [task?.userCompleted, taskId, clearUserCompleted, sendMessage],
+  );
 
   const handleOpenInEditor = () => {
     if (project?.path) {
@@ -339,7 +352,7 @@ function TaskPanel() {
                 disabled={isRunning}
               />
               <MessageInput
-                onSend={sendMessage}
+                onSend={handleSendMessage}
                 disabled={isRunning || !canSendMessage}
                 placeholder={
                   isRunning

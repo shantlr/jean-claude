@@ -8,6 +8,7 @@ import * as m005 from './migrations/005_task_last_read_index';
 import * as m006 from './migrations/006_task_interaction_mode';
 import * as m007 from './migrations/007_task_interaction_mode_default_plan';
 import * as m008 from './migrations/008_settings';
+import * as m009 from './migrations/009_task_user_completed';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -18,6 +19,7 @@ const migrations: Record<string, Migration> = {
   '006_task_interaction_mode': m006,
   '007_task_interaction_mode_default_plan': m007,
   '008_settings': m008,
+  '009_task_user_completed': m009,
 };
 
 export const migrationProvider: MigrationProvider = {

@@ -60,6 +60,8 @@ export interface Api {
     markAsRead: (id: string) => Promise<Task>;
     updateLastReadIndex: (id: string, lastReadIndex: number) => Promise<Task>;
     setMode: (id: string, mode: InteractionMode) => Promise<Task>;
+    toggleUserCompleted: (id: string) => Promise<Task>;
+    clearUserCompleted: (id: string) => Promise<Task>;
   };
   providers: {
     findAll: () => Promise<Provider[]>;
@@ -136,6 +138,8 @@ export const api: Api = hasWindowApi
         markAsRead: async () => { throw new Error('API not available'); },
         updateLastReadIndex: async () => { throw new Error('API not available'); },
         setMode: async () => { throw new Error('API not available'); },
+        toggleUserCompleted: async () => { throw new Error('API not available'); },
+        clearUserCompleted: async () => { throw new Error('API not available'); },
       },
       providers: {
         findAll: async () => [],

@@ -80,6 +80,7 @@ export interface Task {
   readAt: string | null;
   lastReadIndex: number;
   interactionMode: InteractionMode;
+  userCompleted: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -96,6 +97,7 @@ export interface NewTask {
   readAt?: string | null;
   lastReadIndex?: number;
   interactionMode?: InteractionMode;
+  userCompleted?: boolean;
   createdAt?: string;
   updatedAt: string;
 }
@@ -111,6 +113,7 @@ export interface UpdateTask {
   readAt?: string | null;
   lastReadIndex?: number;
   interactionMode?: InteractionMode;
+  userCompleted?: boolean;
   updatedAt?: string;
 }
 

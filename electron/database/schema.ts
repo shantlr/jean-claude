@@ -65,6 +65,7 @@ export interface TaskTable {
   readAt: string | null;
   lastReadIndex: number;
   interactionMode: string;
+  userCompleted: number; // SQLite stores booleans as 0/1
   createdAt: Generated<string>;
   updatedAt: string;
 }

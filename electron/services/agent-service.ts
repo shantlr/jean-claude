@@ -196,6 +196,15 @@ class AgentService {
 
       console.log('[AgentService] Calling query with options:', options);
 
+      // Emit user message with the initial prompt before starting agent
+      await this.emitMessage(taskId, {
+        type: 'user',
+        message: {
+          role: 'user',
+          content: task.prompt,
+        },
+      });
+
       const generator = query({
         prompt: task.prompt,
         options,
@@ -439,6 +448,15 @@ class AgentService {
       if (newSession.sessionId) {
         options.resume = newSession.sessionId;
       }
+
+      // Emit user message with the follow-up message before resuming agent
+      await this.emitMessage(taskId, {
+        type: 'user',
+        message: {
+          role: 'user',
+          content: message,
+        },
+      });
 
       const generator = query({
         prompt: message,

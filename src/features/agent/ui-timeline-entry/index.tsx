@@ -346,7 +346,12 @@ function SystemEntry({ message }: { message: AgentMessage }) {
 }
 
 export function TimelineEntry({ message, toolResultsMap, onFilePathClick }: TimelineEntryProps) {
-  // System messages
+  // Skip system init messages (replaced by user prompt entries)
+  if (message.type === 'system' && message.subtype === 'init') {
+    return null;
+  }
+
+  // Other system messages
   if (message.type === 'system') {
     return <SystemEntry message={message} />;
   }

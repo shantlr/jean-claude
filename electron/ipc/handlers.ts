@@ -76,6 +76,12 @@ export function registerIpcHandlers() {
       return TaskRepository.findById(taskId);
     }
   );
+  ipcMain.handle('tasks:toggleUserCompleted', (_, id: string) =>
+    TaskRepository.toggleUserCompleted(id)
+  );
+  ipcMain.handle('tasks:clearUserCompleted', (_, id: string) =>
+    TaskRepository.clearUserCompleted(id)
+  );
 
   // Providers
   ipcMain.handle('providers:findAll', () => ProviderRepository.findAll());
