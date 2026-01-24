@@ -138,19 +138,32 @@ export interface CreateWorktreeResult {
 }
 
 /**
+ * Generates a worktree directory name from a task name.
+ * Normalizes the name and adds a short unique suffix.
+ */
+export function generateWorktreeNameFromTaskName(taskName: string): string {
+  const normalized = normalizeName(taskName);
+  const suffix = nanoid(4);
+
+  return `${normalized}-${suffix}`;
+}
+
+/**
  * Creates a git worktree for a task.
  *
  * @param projectPath - The path to the main git repository
  * @param projectId - The project ID
  * @param projectName - The project name (for directory naming)
- * @param prompt - The task prompt (for worktree naming)
+ * @param prompt - The task prompt (fallback for worktree naming if taskName not provided)
+ * @param taskName - Optional task name to use for worktree naming (preferred over prompt)
  * @returns The path to the created worktree and the starting commit hash
  */
 export async function createWorktree(
   projectPath: string,
   projectId: string,
   projectName: string,
-  prompt: string
+  prompt: string,
+  taskName?: string
 ): Promise<CreateWorktreeResult> {
   // Verify this is a git repository
   if (!isGitRepository(projectPath)) {
@@ -160,8 +173,10 @@ export async function createWorktree(
   // Get or create the project's worktrees directory
   const projectWorktreesPath = await getOrCreateProjectWorktreesPath(projectId, projectName);
 
-  // Generate worktree name from prompt
-  const worktreeName = generateWorktreeName(prompt);
+  // Generate worktree name from task name (preferred) or prompt (fallback)
+  const worktreeName = taskName
+    ? generateWorktreeNameFromTaskName(taskName)
+    : generateWorktreeName(prompt);
   const worktreePath = path.join(projectWorktreesPath, worktreeName);
 
   // Get current commit hash before creating worktree

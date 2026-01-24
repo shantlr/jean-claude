@@ -31,6 +31,7 @@ import {
   UpdateProvider,
 } from '../database/schema';
 import { agentService } from '../services/agent-service';
+import { generateTaskName } from '../services/name-generation-service';
 import { createWorktree } from '../services/worktree-service';
 
 export function registerIpcHandlers() {
@@ -79,17 +80,27 @@ export function registerIpcHandlers() {
         throw new Error(`Project ${taskData.projectId} not found`);
       }
 
-      // Create the worktree
+      // Generate task name first (if not already provided)
+      // This allows the worktree directory to use the same name
+      let taskName = taskData.name;
+      if (!taskName) {
+        taskName = await generateTaskName(taskData.prompt);
+        // taskName may still be null if generation fails - that's ok
+      }
+
+      // Create the worktree using the generated task name
       const { worktreePath, startCommitHash } = await createWorktree(
         project.path,
         project.id,
         project.name,
-        taskData.prompt
+        taskData.prompt,
+        taskName ?? undefined
       );
 
-      // Create the task with worktree info
+      // Create the task with worktree info and generated name
       return TaskRepository.create({
         ...taskData,
+        name: taskName,
         worktreePath,
         startCommitHash,
       });
