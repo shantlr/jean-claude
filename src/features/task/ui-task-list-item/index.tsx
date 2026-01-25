@@ -66,12 +66,6 @@ export function TaskListItem({ task, projectId, isActive }: TaskListItemProps) {
           <span className="truncate text-sm font-medium">
             {task.name ?? task.prompt.split('\n')[0].slice(0, 50)}
           </span>
-          {task.worktreePath && (
-            <span className="flex shrink items-center gap-1 min-w-0 text-neutral-500" title={getBranchFromWorktreePath(task.worktreePath)}>
-              <GitBranch className="h-3 w-3 shrink-0" />
-              <span className="truncate text-xs">{getBranchFromWorktreePath(task.worktreePath)}</span>
-            </span>
-          )}
           {needsAttention && (
             <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
           )}
@@ -81,6 +75,12 @@ export function TaskListItem({ task, projectId, isActive }: TaskListItemProps) {
             </span>
           )}
         </div>
+        {task.worktreePath && (
+          <span className="flex items-center gap-1 text-neutral-500" title={getBranchFromWorktreePath(task.worktreePath)}>
+            <GitBranch className="h-3 w-3 shrink-0" />
+            <span className="truncate text-xs">{getBranchFromWorktreePath(task.worktreePath)}</span>
+          </span>
+        )}
         <span className="text-xs text-neutral-500">
           {formatRelativeTime(task.createdAt)}
         </span>

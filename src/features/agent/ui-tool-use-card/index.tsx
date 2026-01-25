@@ -32,6 +32,10 @@ function formatInput(input: Record<string, unknown>): string {
   if ('url' in input && typeof input.url === 'string') {
     return input.url;
   }
+  if ('skill' in input && typeof input.skill === 'string') {
+    const args = input.args ? `\n${input.args}` : '';
+    return `${input.skill}${args}`;
+  }
 
   return JSON.stringify(input, null, 2);
 }
@@ -63,6 +67,7 @@ const TOOL_COLORS: Record<string, string> = {
   Task: 'bg-pink-900/50 border-pink-700',
   TodoWrite: 'bg-indigo-900/50 border-indigo-700',
   AskUserQuestion: 'bg-teal-900/50 border-teal-700',
+  Skill: 'bg-violet-900/50 border-violet-700',
 };
 
 export function ToolUseCard({ block, result }: ToolUseCardProps) {

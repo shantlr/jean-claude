@@ -1,12 +1,17 @@
-import type { ToolUseBlock, ToolResultBlock, ContentBlock } from '../../../../shared/agent-types';
+import type {
+  ToolUseBlock,
+  ToolResultBlock,
+  ContentBlock,
+} from '../../../../shared/agent-types';
 
 function getResultLineCount(content: string | ContentBlock[]): number {
-  const text = typeof content === 'string'
-    ? content
-    : content
-        .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
-        .map((b) => b.text)
-        .join('\n');
+  const text =
+    typeof content === 'string'
+      ? content
+      : content
+          .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
+          .map((b) => b.text)
+          .join('\n');
   return text.split('\n').length;
 }
 
@@ -127,6 +132,13 @@ export function getToolSummary(
     case 'AskUserQuestion': {
       if (hasResult) return 'Asked question';
       return 'Asking question...';
+    }
+
+    case 'Skill': {
+      const skillName = input.skill as string;
+      if (isError) return `Skill \`${skillName}\` (error)`;
+      if (hasResult) return `Skill \`${skillName}\``;
+      return `Skill \`${skillName}\`...`;
     }
 
     default: {

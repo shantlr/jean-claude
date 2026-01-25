@@ -13,6 +13,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     title: isDev ? 'Idling 🚧 Dev' : 'Idling',
+    icon: join(__dirname, '../../resources/icons/512x512.png'),
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 16, y: 12 },
     webPreferences: {
