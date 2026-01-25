@@ -1,10 +1,15 @@
 import { join } from 'path';
 
 import { app, BrowserWindow } from 'electron';
+import fixPath from 'fix-path';
 
 import { migrateDatabase } from './database';
 import { registerIpcHandlers } from './ipc/handlers';
 import { agentService } from './services/agent-service';
+
+// Fix PATH for packaged macOS apps launched from Finder/Dock
+// (they don't inherit shell environment variables like terminal does)
+fixPath();
 
 function createWindow() {
   const isDev = !!process.env.ELECTRON_RENDERER_URL;

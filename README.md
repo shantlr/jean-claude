@@ -20,6 +20,9 @@ pnpm dev
 
 # Build for production
 pnpm build
+
+# Install
+pnpm install:mac
 ```
 
 ## Tech Stack
