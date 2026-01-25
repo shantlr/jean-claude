@@ -166,13 +166,13 @@ export function MarkdownContent({ content, onFilePathClick }: MarkdownContentPro
         ),
         li: ({ children }) => <li className="ml-2">{children}</li>,
         h1: ({ children }) => (
-          <h1 className="mb-3 text-xl font-bold">{children}</h1>
+          <h1 className="mb-3 font-bold" style={{ fontSize: '1.5em' }}>{children}</h1>
         ),
         h2: ({ children }) => (
-          <h2 className="mb-3 text-lg font-bold">{children}</h2>
+          <h2 className="mb-3 font-bold" style={{ fontSize: '1.25em' }}>{children}</h2>
         ),
         h3: ({ children }) => (
-          <h3 className="mb-2 text-base font-semibold">{children}</h3>
+          <h3 className="mb-2 font-semibold" style={{ fontSize: '1.1em' }}>{children}</h3>
         ),
         blockquote: ({ children }) => (
           <blockquote className="mb-3 border-l-4 border-neutral-600 pl-4 italic text-neutral-400">

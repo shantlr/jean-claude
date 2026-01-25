@@ -93,7 +93,7 @@ function ExitPlanModeDisplay({ input }: { input: Record<string, unknown> }) {
             {isPlanCollapsed ? 'Show plan' : 'Hide plan'}
           </button>
           {!isPlanCollapsed && (
-            <div className="max-h-64 overflow-y-auto rounded border border-neutral-700 bg-neutral-800/50 p-3 text-sm">
+            <div className="max-h-[80vh] overflow-y-auto rounded border border-neutral-700 bg-neutral-800/50 p-3 text-xs">
               <MarkdownContent content={plan} />
             </div>
           )}
