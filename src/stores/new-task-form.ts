@@ -15,7 +15,7 @@ const defaultDraft: NewTaskFormDraft = {
   name: '',
   prompt: '',
   useWorktree: false,
-  interactionMode: 'plan',
+  interactionMode: 'ask',
 };
 
 interface NewTaskFormState {
