@@ -1,5 +1,5 @@
 {
-  "name": "idling",
+  "name": "jean-claude",
   "version": "0.0.1",
   "description": "Personal productivity GUI to manage coding agents across multiple projects",
   "type": "module",
@@ -18,10 +18,10 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "preview:mac": "pnpm package && open dist/mac/Idling.app",
+    "preview:mac": "pnpm package && open dist/mac/Jean-Claude.app",
     "package": "electron-vite build && electron-builder --dir",
     "package:mac": "electron-vite build && electron-builder --mac",
-    "install:mac": "pnpm package:mac && open dist/Idling-*.dmg",
+    "install:mac": "pnpm package:mac && open dist/Jean-Claude-*.dmg",
     "package:win": "electron-vite build && electron-builder --win",
     "package:linux": "electron-vite build && electron-builder --linux",
     "icons": "rm -rf resources/icons && npx electron-icon-builder --output=./resources --flatten --input",
@@ -51,8 +51,8 @@
     "zustand": "^5.0.10"
   },
   "build": {
-    "appId": "com.idling.app",
-    "productName": "Idling",
+    "appId": "com.jean-claude.app",
+    "productName": "Jean-Claude",
     "directories": {
       "output": "dist"
     },

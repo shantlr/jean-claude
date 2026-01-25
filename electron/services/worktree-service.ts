@@ -68,11 +68,11 @@ export function generateWorktreeName(prompt: string): string {
 }
 
 /**
- * Gets the base worktrees directory for Idling: ~/.idling/worktrees/
+ * Gets the base worktrees directory for Jean-Claude: ~/.jean-claude/worktrees/
  */
 function getWorktreesBaseDir(): string {
   const homeDir = app.getPath('home');
-  return path.join(homeDir, '.idling', 'worktrees');
+  return path.join(homeDir, '.jean-claude', 'worktrees');
 }
 
 /**
@@ -383,8 +383,8 @@ export async function createWorktree(
   // Get current commit hash before creating worktree
   const startCommitHash = await getCurrentCommitHash(projectPath);
 
-  // Create branch name with idling/ prefix
-  const branchName = `idling/${worktreeName}`;
+  // Create branch name with jean-claude/ prefix
+  const branchName = `jean-claude/${worktreeName}`;
 
   // Create the worktree with a new branch
   try {

@@ -7,7 +7,7 @@ import { Kysely, Migrator, SqliteDialect } from 'kysely';
 import { migrationProvider } from './migrator';
 import { Database as DatabaseSchema } from './schema';
 
-const dbPath = join(app.getPath('userData'), 'idling.db');
+const dbPath = join(app.getPath('userData'), 'jean-claude.db');
 
 export const db = new Kysely<DatabaseSchema>({
   dialect: new SqliteDialect({

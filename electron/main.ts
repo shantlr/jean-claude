@@ -12,7 +12,7 @@ function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    title: isDev ? 'Idling 🚧 Dev' : 'Idling',
+    title: isDev ? 'Jean-Claude 🚧 Dev' : 'Jean-Claude',
     icon: join(__dirname, '../../resources/icons/512x512.png'),
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 16, y: 12 },

@@ -1,4 +1,4 @@
-# Idling
+# Jean-Claude
 
 Personal productivity GUI to manage coding agents across multiple projects.
 

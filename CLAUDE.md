@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Idling is an Electron desktop app for managing coding agents across multiple projects. It uses the Claude Code Agent SDK to spawn and manage agent sessions. The app follows a two-process architecture: Electron main process (Node.js) handles database and IPC, while the renderer process (React) handles the UI.
+Jean-Claude is an Electron desktop app for managing coding agents across multiple projects. It uses the Claude Code Agent SDK to spawn and manage agent sessions. The app follows a two-process architecture: Electron main process (Node.js) handles database and IPC, while the renderer process (React) handles the UI.
 
 ## Commands
 

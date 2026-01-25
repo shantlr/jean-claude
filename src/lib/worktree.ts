@@ -1,10 +1,10 @@
 /**
  * Extract git branch name from a worktree path.
  *
- * Worktree paths follow the pattern: ~/.idling/worktrees/project-name/folder-name
- * Branch names follow the convention: idling/<folder-name>
+ * Worktree paths follow the pattern: ~/.jean-claude/worktrees/project-name/folder-name
+ * Branch names follow the convention: jean-claude/<folder-name>
  */
 export function getBranchFromWorktreePath(worktreePath: string): string {
   const folderName = worktreePath.split('/').pop() || '';
-  return `idling/${folderName}`;
+  return `jean-claude/${folderName}`;
 }
