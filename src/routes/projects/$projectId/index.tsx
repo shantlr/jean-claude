@@ -1,6 +1,7 @@
 import { createFileRoute, Navigate } from '@tanstack/react-router';
 
 import { useProjectTasks } from '@/hooks/use-tasks';
+import { useLastTaskForProject } from '@/stores/navigation';
 
 export const Route = createFileRoute('/projects/$projectId/')({
   component: ProjectIndex,
@@ -9,6 +10,8 @@ export const Route = createFileRoute('/projects/$projectId/')({
 function ProjectIndex() {
   const { projectId } = Route.useParams();
   const { data: tasks, isLoading } = useProjectTasks(projectId);
+  const { lastTaskId, clearTaskNavHistoryState } =
+    useLastTaskForProject(projectId);
 
   if (isLoading) {
     return (
@@ -18,12 +21,24 @@ function ProjectIndex() {
     );
   }
 
-  // Redirect to first task if any exist
+  // Redirect to last viewed task or first task if any exist
   if (tasks && tasks.length > 0) {
+    // Check if lastTaskId is valid for this project
+    const lastTask = lastTaskId
+      ? tasks.find((t) => t.id === lastTaskId)
+      : null;
+
+    const targetTaskId = lastTask?.id ?? tasks[0].id;
+
+    // Clean up stale reference if needed
+    if (lastTaskId && !lastTask) {
+      clearTaskNavHistoryState(lastTaskId);
+    }
+
     return (
       <Navigate
         to="/projects/$projectId/tasks/$taskId"
-        params={{ projectId, taskId: tasks[0].id }}
+        params={{ projectId, taskId: targetTaskId }}
         replace
       />
     );

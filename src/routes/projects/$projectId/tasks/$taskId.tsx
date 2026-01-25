@@ -34,6 +34,7 @@ import {
 import { api } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/time';
 import { getBranchFromWorktreePath } from '@/lib/worktree';
+import { useNavigationStore, useTaskState } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 
 import {
@@ -45,13 +46,6 @@ import {
 export const Route = createFileRoute('/projects/$projectId/tasks/$taskId')({
   component: TaskPanel,
 });
-
-interface FilePreviewState {
-  isOpen: boolean;
-  filePath: string;
-  lineStart?: number;
-  lineEnd?: number;
-}
 
 function TaskPanel() {
   const { projectId, taskId } = Route.useParams();
@@ -67,6 +61,19 @@ function TaskPanel() {
   const removeSessionAllowedTool = useRemoveSessionAllowedTool();
   const unloadTask = useTaskMessagesStore((state) => state.unloadTask);
 
+  // Navigation tracking
+  const setLastLocation = useNavigationStore((s) => s.setLastLocation);
+  const setLastTaskForProject = useNavigationStore(
+    (s) => s.setLastTaskForProject,
+  );
+  const clearTaskNavHistoryState = useNavigationStore(
+    (s) => s.clearTaskNavHistoryState,
+  );
+
+  // Task state from store (replaces useState for pane state)
+  const { rightPane, openFilePreview, openSettings, closeRightPane } =
+    useTaskState(taskId);
+
   const agentState = useAgentStream(taskId);
   const {
     stop,
@@ -76,14 +83,14 @@ function TaskPanel() {
     isStopping,
   } = useAgentControls(taskId);
 
-  const [filePreview, setFilePreview] = useState<FilePreviewState>({
-    isOpen: false,
-    filePath: '',
-  });
-
   const [copiedSessionId, setCopiedSessionId] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showSettingsPane, setShowSettingsPane] = useState(false);
+
+  // Track this location for navigation restoration
+  useEffect(() => {
+    setLastLocation(projectId, taskId);
+    setLastTaskForProject(projectId, taskId);
+  }, [projectId, taskId, setLastLocation, setLastTaskForProject]);
 
   const handleCopySessionId = useCallback(async () => {
     if (task?.sessionId) {
@@ -106,27 +113,19 @@ function TaskPanel() {
 
   const handleFilePathClick = useCallback(
     (filePath: string, lineStart?: number, lineEnd?: number) => {
-      setFilePreview({
-        isOpen: true,
-        filePath,
-        lineStart,
-        lineEnd,
-      });
+      openFilePreview(filePath, lineStart, lineEnd);
     },
-    [],
+    [openFilePreview],
   );
-
-  const handleCloseFilePreview = useCallback(() => {
-    setFilePreview((prev) => ({ ...prev, isOpen: false }));
-  }, []);
 
   const handleStop = async () => {
     await stop();
   };
 
   const handleDelete = async () => {
-    // Clean up the task from the store first
+    // Clean up the task from stores
     unloadTask(taskId);
+    clearTaskNavHistoryState(taskId);
     // Delete from database
     await deleteTask.mutateAsync(taskId);
     // Navigate back to project
@@ -158,7 +157,7 @@ function TaskPanel() {
     (toolName: string) => {
       addSessionAllowedTool.mutate({ id: taskId, toolName });
     },
-    [taskId, addSessionAllowedTool]
+    [taskId, addSessionAllowedTool],
   );
 
   const handleAllowToolsForSession = useCallback(
@@ -167,14 +166,14 @@ function TaskPanel() {
         addSessionAllowedTool.mutate({ id: taskId, toolName });
       });
     },
-    [taskId, addSessionAllowedTool]
+    [taskId, addSessionAllowedTool],
   );
 
   const handleRemoveSessionAllowedTool = useCallback(
     (toolName: string) => {
       removeSessionAllowedTool.mutate({ id: taskId, toolName });
     },
-    [taskId, removeSessionAllowedTool]
+    [taskId, removeSessionAllowedTool],
   );
 
   const getEditorLabel = (setting: EditorSetting): string => {
@@ -187,6 +186,14 @@ function TaskPanel() {
     }
     return setting.name;
   };
+
+  const handleToggleSettingsPane = useCallback(() => {
+    if (rightPane?.type === 'settings') {
+      closeRightPane();
+    } else {
+      openSettings();
+    }
+  }, [rightPane, closeRightPane, openSettings]);
 
   if (!task || !project) {
     return (
@@ -202,6 +209,9 @@ function TaskPanel() {
     agentState.status === 'waiting' || task.status === 'waiting';
   const hasMessages = agentState.messages.length > 0;
   const canSendMessage = !isRunning && hasMessages && task.sessionId;
+
+  // const showFilePreview = rightPane?.type === 'filePreview';
+  // const showSettingsPane = rightPane?.type === 'settings';
 
   return (
     <div className="flex h-full">
@@ -222,7 +232,7 @@ function TaskPanel() {
             {task.worktreePath && (
               <button
                 onClick={() => api.shell.openInEditor(task.worktreePath!)}
-                className="flex w-fit items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-300 transition-colors"
+                className="flex w-fit items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-300"
                 title={`Open in ${editorSetting ? getEditorLabel(editorSetting) : 'editor'}`}
               >
                 <GitBranch className="h-3.5 w-3.5" />
@@ -233,7 +243,7 @@ function TaskPanel() {
           {task.sessionId && (
             <button
               onClick={handleCopySessionId}
-              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-mono text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300 transition-colors"
+              className="flex items-center gap-1 rounded px-2 py-1 font-mono text-xs text-neutral-500 transition-colors hover:bg-neutral-700 hover:text-neutral-300"
               title="Click to copy session ID"
             >
               {copiedSessionId ? (
@@ -251,7 +261,7 @@ function TaskPanel() {
           {/* Open in editor button */}
           <button
             onClick={handleOpenInEditor}
-            className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200 transition-colors"
+            className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
             title="Open project in editor"
           >
             <ExternalLink className="h-4 w-4" />
@@ -262,7 +272,7 @@ function TaskPanel() {
           {!isRunning && (
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-neutral-400 hover:bg-neutral-700 hover:text-red-400 transition-colors"
+              className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-red-400"
               title="Delete task"
             >
               <Trash2 className="h-4 w-4" />
@@ -271,9 +281,9 @@ function TaskPanel() {
 
           {/* Settings button */}
           <button
-            onClick={() => setShowSettingsPane(!showSettingsPane)}
+            onClick={handleToggleSettingsPane}
             className={`flex items-center rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${
-              showSettingsPane
+              rightPane?.type === 'settings'
                 ? 'bg-neutral-700 text-neutral-200'
                 : 'text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200'
             }`}
@@ -342,7 +352,7 @@ function TaskPanel() {
                   <p className="text-neutral-400">No messages loaded</p>
                   <button
                     onClick={agentState.refetch}
-                    className="flex items-center gap-2 rounded-md bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600 transition-colors"
+                    className="flex items-center gap-2 rounded-md bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-600"
                   >
                     <RefreshCw className="h-4 w-4" />
                     Reload messages
@@ -359,7 +369,7 @@ function TaskPanel() {
             <span>Error: {agentState.error}</span>
             <button
               onClick={agentState.refetch}
-              className="flex items-center gap-1.5 rounded px-2 py-1 text-red-300 hover:bg-red-900/50 transition-colors"
+              className="flex items-center gap-1.5 rounded px-2 py-1 text-red-300 transition-colors hover:bg-red-900/50"
             >
               <RefreshCw className="h-3.5 w-3.5" />
               Retry
@@ -412,23 +422,23 @@ function TaskPanel() {
       </div>
 
       {/* File preview pane */}
-      {filePreview.isOpen && (
+      {rightPane?.type === 'filePreview' && (
         <FilePreviewPane
-          filePath={filePreview.filePath}
+          filePath={rightPane.filePath}
           projectPath={project.path}
-          lineStart={filePreview.lineStart}
-          lineEnd={filePreview.lineEnd}
-          onClose={handleCloseFilePreview}
+          lineStart={rightPane.lineStart}
+          lineEnd={rightPane.lineEnd}
+          onClose={closeRightPane}
         />
       )}
 
       {/* Task settings pane */}
-      {showSettingsPane && !filePreview.isOpen && (
+      {rightPane?.type === 'settings' && (
         <TaskSettingsPane
           sessionAllowedTools={task.sessionAllowedTools}
           onAddTool={handleAllowToolForSession}
           onRemoveTool={handleRemoveSessionAllowedTool}
-          onClose={() => setShowSettingsPane(false)}
+          onClose={closeRightPane}
         />
       )}
     </div>

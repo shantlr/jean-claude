@@ -2,8 +2,13 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { useProject, useUpdateProject, useDeleteProject } from '@/hooks/use-projects';
+import {
+  useProject,
+  useUpdateProject,
+  useDeleteProject,
+} from '@/hooks/use-projects';
 import { PROJECT_COLORS } from '@/lib/colors';
+import { useNavigationStore } from '@/stores/navigation';
 
 export const Route = createFileRoute('/projects/$projectId/details')({
   component: ProjectDetails,
@@ -15,6 +20,9 @@ function ProjectDetails() {
   const { data: project } = useProject(projectId);
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
+  const clearProjectNavHistoryState = useNavigationStore(
+    (s) => s.clearProjectNavHistoryState,
+  );
 
   const [name, setName] = useState('');
   const [color, setColor] = useState('');
@@ -44,6 +52,7 @@ function ProjectDetails() {
   }
 
   async function handleDelete() {
+    clearProjectNavHistoryState(projectId);
     await deleteProject.mutateAsync(projectId);
     navigate({ to: '/' });
   }
