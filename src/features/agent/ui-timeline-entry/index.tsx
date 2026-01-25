@@ -13,6 +13,7 @@ import { DiffView } from '../ui-diff-view';
 import { MarkdownContent } from '../ui-markdown-content';
 
 import { getToolSummary } from './tool-summary';
+import clsx from 'clsx';
 
 interface TimelineEntryProps {
   message: AgentMessage;
@@ -42,13 +43,7 @@ function formatResultContent(content: string | ContentBlock[]): string {
 }
 
 // Parse line-numbered content (e.g., "     1→import..." format from Read tool)
-function LineNumberedContent({
-  content,
-  maxHeight = 'max-h-64',
-}: {
-  content: string;
-  maxHeight?: string;
-}) {
+function LineNumberedContent({ content }: { content: string }) {
   // Check if content has line numbers (format: spaces + number + arrow)
   const lineNumberPattern = /^(\s*\d+)→(.*)$/;
   const lines = content.split('\n');
@@ -56,11 +51,11 @@ function LineNumberedContent({
 
   if (!hasLineNumbers) {
     return (
-      <pre
-        className={`${maxHeight} overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 text-neutral-300`}
-      >
-        {content}
-      </pre>
+      <div className="relative">
+        <pre className="overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 text-neutral-300">
+          {content}
+        </pre>
+      </div>
     );
   }
 
@@ -74,23 +69,23 @@ function LineNumberedContent({
   });
 
   return (
-    <div
-      className={`${maxHeight} overflow-auto rounded bg-black/30 p-2 font-mono text-xs`}
-    >
-      <table className="w-full border-collapse">
-        <tbody>
-          {parsedLines.map((line, i) => (
-            <tr key={i}>
-              <td className="select-none pr-3 text-right align-top text-neutral-600">
-                {line.lineNum}
-              </td>
-              <td className="whitespace-pre-wrap text-neutral-300">
-                {line.content}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="relative">
+      <div className="overflow-auto rounded bg-black/30 p-2 font-mono text-xs">
+        <table className="w-full border-collapse">
+          <tbody>
+            {parsedLines.map((line, i) => (
+              <tr key={i}>
+                <td className="select-none pr-3 text-right align-top text-neutral-600">
+                  {line.lineNum}
+                </td>
+                <td className="whitespace-pre-wrap text-neutral-300">
+                  {line.content}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -122,6 +117,7 @@ function DotEntry({
   summary,
   expandedContent,
   codeStyle = 'default',
+  defaultExpanded = false,
 }: {
   type: EntryType;
   isError?: boolean;
@@ -129,8 +125,9 @@ function DotEntry({
   summary: string;
   expandedContent?: ReactNode;
   codeStyle?: CodeStyle;
+  defaultExpanded?: boolean;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const hasExpandedContent = !!expandedContent;
 
   // Dot colors: blue for tools, yellow for system, gray for text/result, purple for user
@@ -266,6 +263,10 @@ function ToolEntry({
 
   // Check if this is an Edit tool with diff content
   const isEditTool = block.name === 'Edit' && isEditToolInput(block.input);
+  const isWriteTool = block.name === 'Write';
+
+  // Auto-expand Edit and Write tools
+  const shouldAutoExpand = isEditTool || isWriteTool;
 
   // Extract edit input for DiffView (type-safe after guard)
   const editInput = isEditTool
@@ -278,6 +279,7 @@ function ToolEntry({
 
   const formattedInput = isEditTool ? '' : formatToolInput(block.input);
   const formattedResult = result ? formatResultContent(result.content) : '';
+  const [expandContent, setExpandContent] = useState(false);
 
   const expandedContent = (
     <div className="space-y-2 text-xs">
@@ -285,16 +287,28 @@ function ToolEntry({
         <div className="mb-1 font-medium text-neutral-500">
           {isEditTool ? 'Changes' : 'Input'}
         </div>
-        {editInput ? (
-          <DiffView
-            filePath={editInput.file_path}
-            oldString={editInput.old_string}
-            newString={editInput.new_string}
-            maxHeight="max-h-48"
-          />
-        ) : (
-          <LineNumberedContent content={formattedInput} maxHeight="max-h-48" />
-        )}
+        <div
+          className={clsx('cursor-pointer', {
+            'max-h-48 overflow-auto rounded': !expandContent,
+          })}
+          role="button"
+          tabIndex={0}
+          onClick={(event) => {
+            event.stopPropagation();
+            event.preventDefault();
+            setExpandContent((v) => !v);
+          }}
+        >
+          {editInput ? (
+            <DiffView
+              filePath={editInput.file_path}
+              oldString={editInput.old_string}
+              newString={editInput.new_string}
+            />
+          ) : (
+            <LineNumberedContent content={formattedInput} />
+          )}
+        </div>
       </div>
       {hasResult && (
         <div>
@@ -323,6 +337,7 @@ function ToolEntry({
       summary={summary}
       expandedContent={expandedContent}
       codeStyle={codeStyle}
+      defaultExpanded={shouldAutoExpand}
     />
   );
 }

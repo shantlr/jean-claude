@@ -17,12 +17,7 @@ interface DiffState {
   newTokens: ThemedToken[][];
 }
 
-export function DiffView({
-  filePath,
-  oldString,
-  newString,
-  maxHeight = 'max-h-64',
-}: DiffViewProps) {
+export function DiffView({ filePath, oldString, newString }: DiffViewProps) {
   const [state, setState] = useState<DiffState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -69,30 +64,28 @@ export function DiffView({
 
   if (isLoading || !state) {
     return (
-      <div
-        className={`${maxHeight} flex items-center justify-center rounded bg-black/30 p-2`}
-      >
+      <div className="flex items-center justify-center rounded bg-black/30 p-2">
         <span className="text-xs text-neutral-500">Loading diff...</span>
       </div>
     );
   }
 
   return (
-    <div
-      className={`${maxHeight} overflow-auto rounded bg-black/30 font-mono text-xs`}
-    >
-      <table className="w-full border-collapse">
-        <tbody>
-          {state.lines.map((line, i) => (
-            <DiffLineRow
-              key={i}
-              line={line}
-              oldTokens={state.oldTokens}
-              newTokens={state.newTokens}
-            />
-          ))}
-        </tbody>
-      </table>
+    <div className="relative">
+      <div className="overflow-auto rounded bg-black/30 font-mono text-xs">
+        <table className="w-full border-collapse">
+          <tbody>
+            {state.lines.map((line, i) => (
+              <DiffLineRow
+                key={i}
+                line={line}
+                oldTokens={state.oldTokens}
+                newTokens={state.newTokens}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
