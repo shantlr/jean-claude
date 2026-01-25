@@ -5,7 +5,11 @@ import { codeToHtml } from 'shiki';
 
 interface MarkdownContentProps {
   content: string;
-  onFilePathClick?: (filePath: string, lineStart?: number, lineEnd?: number) => void;
+  onFilePathClick?: (
+    filePath: string,
+    lineStart?: number,
+    lineEnd?: number,
+  ) => void;
 }
 
 // Pattern to match file paths like src/foo.ts:42-50 or just src/foo.ts:42 or src/foo.ts
@@ -17,9 +21,7 @@ function parseFilePath(match: string): {
   lineStart?: number;
   lineEnd?: number;
 } {
-  const parts = match.match(
-    /([\w\-./]+\.\w+)(?::(\d+)(?:-(\d+))?)?/
-  );
+  const parts = match.match(/([\w\-./]+\.\w+)(?::(\d+)(?:-(\d+))?)?/);
   if (!parts) return { path: match };
   return {
     path: parts[1],
@@ -58,7 +60,7 @@ function TextWithFilePaths({
         onClick={() => onFilePathClick(path, lineStart, lineEnd)}
       >
         {match[0]}
-      </button>
+      </button>,
     );
 
     lastIndex = regex.lastIndex;
@@ -77,10 +79,52 @@ interface CodeBlockProps {
   code: string;
 }
 
+// Detect ASCII art by looking for box-drawing characters or repeated patterns
+function isAsciiArt(code: string): boolean {
+  // Box-drawing characters (Unicode)
+  const boxDrawingChars = /[┌┐└┘├┤┬┴┼─│╔╗╚╝╠╣╦╩╬═║]/;
+
+  // Also detect ASCII box drawing with +, -, |, corners
+  const asciiBoxPattern = /[+][-]+[+]|[|].*[|]/;
+
+  // Check if code contains box-drawing characters
+  if (boxDrawingChars.test(code)) {
+    return true;
+  }
+
+  // Check for ASCII-style boxes (multiple lines with | or + patterns)
+  const lines = code.split('\n');
+  const linesWithBoxChars = lines.filter((line) => asciiBoxPattern.test(line));
+  if (linesWithBoxChars.length >= 2) {
+    return true;
+  }
+
+  return false;
+}
+
+// Special rendering for ASCII art - no syntax highlighting, smaller font, no wrap
+function AsciiArtBlock({ code }: { code: string }) {
+  return (
+    <div className="overflow-x-auto rounded-lg bg-neutral-900 p-3">
+      <pre className="font-mono text-[10px] leading-tight text-neutral-300 whitespace-pre">
+        {code}
+      </pre>
+    </div>
+  );
+}
+
 function CodeBlock({ language, code }: CodeBlockProps) {
   const [html, setHtml] = useState<string>('');
 
+  // Check if this is ASCII art
+  const asciiArt = isAsciiArt(code);
+
   useEffect(() => {
+    // Skip syntax highlighting for ASCII art
+    if (asciiArt) {
+      return;
+    }
+
     codeToHtml(code, {
       lang: language || 'text',
       theme: 'github-dark',
@@ -93,11 +137,16 @@ function CodeBlock({ language, code }: CodeBlockProps) {
           theme: 'github-dark',
         }).then(setHtml);
       });
-  }, [code, language]);
+  }, [code, language, asciiArt]);
+
+  // Render ASCII art with special styling
+  if (asciiArt) {
+    return <AsciiArtBlock code={code} />;
+  }
 
   if (!html) {
     return (
-      <pre className="overflow-x-auto rounded-lg bg-neutral-900 p-4 text-sm">
+      <pre className="overflow-x-auto rounded-lg bg-neutral-900 p-4 text-sm whitespace-pre">
         <code>{code}</code>
       </pre>
     );
@@ -105,13 +154,16 @@ function CodeBlock({ language, code }: CodeBlockProps) {
 
   return (
     <div
-      className="overflow-x-auto rounded-lg text-sm [&_pre]:!bg-neutral-900 [&_pre]:p-4"
+      className="overflow-x-auto rounded-lg text-sm [&_pre]:!bg-neutral-900 [&_pre]:p-4 [&_pre]:whitespace-pre"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
 }
 
-export function MarkdownContent({ content, onFilePathClick }: MarkdownContentProps) {
+export function MarkdownContent({
+  content,
+  onFilePathClick,
+}: MarkdownContentProps) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -119,7 +171,10 @@ export function MarkdownContent({ content, onFilePathClick }: MarkdownContentPro
         p: ({ children }) => (
           <p className="mb-3 last:mb-0">
             {typeof children === 'string' ? (
-              <TextWithFilePaths text={children} onFilePathClick={onFilePathClick} />
+              <TextWithFilePaths
+                text={children}
+                onFilePathClick={onFilePathClick}
+              />
             ) : (
               children
             )}
@@ -162,17 +217,25 @@ export function MarkdownContent({ content, onFilePathClick }: MarkdownContentPro
           <ul className="mb-3 list-inside list-disc space-y-1">{children}</ul>
         ),
         ol: ({ children }) => (
-          <ol className="mb-3 list-inside list-decimal space-y-1">{children}</ol>
+          <ol className="mb-3 list-inside list-decimal space-y-1">
+            {children}
+          </ol>
         ),
         li: ({ children }) => <li className="ml-2">{children}</li>,
         h1: ({ children }) => (
-          <h1 className="mb-3 font-bold" style={{ fontSize: '1.5em' }}>{children}</h1>
+          <h1 className="mb-3 font-bold" style={{ fontSize: '1.5em' }}>
+            {children}
+          </h1>
         ),
         h2: ({ children }) => (
-          <h2 className="mb-3 font-bold" style={{ fontSize: '1.25em' }}>{children}</h2>
+          <h2 className="mb-3 font-bold" style={{ fontSize: '1.25em' }}>
+            {children}
+          </h2>
         ),
         h3: ({ children }) => (
-          <h3 className="mb-2 font-semibold" style={{ fontSize: '1.1em' }}>{children}</h3>
+          <h3 className="mb-2 font-semibold" style={{ fontSize: '1.1em' }}>
+            {children}
+          </h3>
         ),
         blockquote: ({ children }) => (
           <blockquote className="mb-3 border-l-4 border-neutral-600 pl-4 italic text-neutral-400">
