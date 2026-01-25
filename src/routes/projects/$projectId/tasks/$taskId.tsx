@@ -102,14 +102,25 @@ function TaskPanel() {
 
   // Mark task as read when viewing (except when running)
   const markAsReadMutate = markAsRead.mutate;
+  const taskStatus = task?.status;
+  const lastReadIndex = task?.lastReadIndex ?? -1;
   useEffect(() => {
-    if (task && agentState.messages.length > 0 && task.status !== 'running') {
+    if (
+      taskStatus !== 'running' &&
+      lastReadIndex < agentState.messages.length - 1
+    ) {
       markAsReadMutate({
         id: taskId,
         lastReadIndex: agentState.messages.length - 1,
       });
     }
-  }, [taskId, task, agentState.messages.length, markAsReadMutate]);
+  }, [
+    taskId,
+    taskStatus,
+    agentState.messages.length,
+    markAsReadMutate,
+    lastReadIndex,
+  ]);
 
   const handleFilePathClick = useCallback(
     (filePath: string, lineStart?: number, lineEnd?: number) => {
@@ -210,8 +221,7 @@ function TaskPanel() {
   const hasMessages = agentState.messages.length > 0;
   const canSendMessage = !isRunning && hasMessages && task.sessionId;
 
-  // const showFilePreview = rightPane?.type === 'filePreview';
-  // const showSettingsPane = rightPane?.type === 'settings';
+  console.log('RENDER TASK PAGE');
 
   return (
     <div className="flex h-full">
