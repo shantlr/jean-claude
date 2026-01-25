@@ -1,6 +1,8 @@
+import clsx from 'clsx';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { codeToTokens, type ThemedToken } from 'shiki';
 
 import type {
   AgentMessage,
@@ -10,10 +12,10 @@ import type {
   ToolResultBlock,
 } from '../../../../shared/agent-types';
 import { DiffView } from '../ui-diff-view';
+import { getLanguageFromPath } from '../ui-diff-view/language-utils';
 import { MarkdownContent } from '../ui-markdown-content';
 
 import { getToolSummary } from './tool-summary';
-import clsx from 'clsx';
 
 interface TimelineEntryProps {
   message: AgentMessage;
@@ -43,13 +45,60 @@ function formatResultContent(content: string | ContentBlock[]): string {
 }
 
 // Parse line-numbered content (e.g., "     1→import..." format from Read tool)
-function LineNumberedContent({ content }: { content: string }) {
+// Optionally apply syntax highlighting if filePath is provided
+function LineNumberedContent({
+  content,
+  filePath,
+}: {
+  content: string;
+  filePath?: string;
+}) {
+  const [tokens, setTokens] = useState<ThemedToken[][] | null>(null);
+
   // Check if content has line numbers (format: spaces + number + arrow)
   const lineNumberPattern = /^(\s*\d+)→(.*)$/;
   const lines = content.split('\n');
   const hasLineNumbers = lines.length > 0 && lineNumberPattern.test(lines[0]);
 
-  if (!hasLineNumbers) {
+  // Parse lines into line number and content
+  const parsedLines = hasLineNumbers
+    ? lines.map((line) => {
+        const match = line.match(lineNumberPattern);
+        if (match) {
+          return { lineNum: match[1], content: match[2] };
+        }
+        return { lineNum: '', content: line };
+      })
+    : null;
+
+  // Extract raw code for syntax highlighting (join parsed content lines)
+  const rawCode = parsedLines
+    ? parsedLines.map((l) => l.content).join('\n')
+    : content;
+
+  // Get language from file path for syntax highlighting
+  const language = filePath ? getLanguageFromPath(filePath) : 'text';
+
+  // Load syntax tokens asynchronously
+  useEffect(() => {
+    if (language === 'text') {
+      setTokens(null);
+      return;
+    }
+
+    codeToTokens(rawCode || ' ', {
+      lang: language,
+      theme: 'github-dark',
+    })
+      .then((result) => setTokens(result.tokens))
+      .catch(() => {
+        // Fallback to no highlighting
+        setTokens(null);
+      });
+  }, [rawCode, language]);
+
+  // Render content without line numbers
+  if (!hasLineNumbers || !parsedLines) {
     return (
       <div className="relative">
         <pre className="overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 text-neutral-300">
@@ -59,30 +108,32 @@ function LineNumberedContent({ content }: { content: string }) {
     );
   }
 
-  // Parse lines into line number and content
-  const parsedLines = lines.map((line) => {
-    const match = line.match(lineNumberPattern);
-    if (match) {
-      return { lineNum: match[1], content: match[2] };
-    }
-    return { lineNum: '', content: line };
-  });
-
   return (
     <div className="relative">
       <div className="overflow-auto rounded bg-black/30 p-2 font-mono text-xs">
         <table className="w-full border-collapse">
           <tbody>
-            {parsedLines.map((line, i) => (
-              <tr key={i}>
-                <td className="select-none pr-3 text-right align-top text-neutral-600">
-                  {line.lineNum}
-                </td>
-                <td className="whitespace-pre-wrap text-neutral-300">
-                  {line.content}
-                </td>
-              </tr>
-            ))}
+            {parsedLines.map((line, i) => {
+              const lineTokens = tokens?.[i];
+              return (
+                <tr key={i}>
+                  <td className="select-none pr-3 text-right align-top text-neutral-600">
+                    {line.lineNum}
+                  </td>
+                  <td className="whitespace-pre-wrap">
+                    {lineTokens ? (
+                      lineTokens.map((token, j) => (
+                        <span key={j} style={{ color: token.color }}>
+                          {token.content}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-neutral-300">{line.content}</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -277,6 +328,14 @@ function ToolEntry({
       })
     : null;
 
+  // Extract file_path for Read tool syntax highlighting
+  const readFilePath =
+    block.name === 'Read' &&
+    'file_path' in block.input &&
+    typeof block.input.file_path === 'string'
+      ? block.input.file_path
+      : undefined;
+
   const formattedInput = isEditTool ? '' : formatToolInput(block.input);
   const formattedResult = result ? formatResultContent(result.content) : '';
   const [expandContent, setExpandContent] = useState(false);
@@ -322,7 +381,10 @@ function ToolEntry({
               {formattedResult}
             </pre>
           ) : (
-            <LineNumberedContent content={formattedResult} />
+            <LineNumberedContent
+              content={formattedResult}
+              filePath={readFilePath}
+            />
           )}
         </div>
       )}
