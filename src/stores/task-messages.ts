@@ -4,6 +4,7 @@ import type {
   AgentMessage,
   AgentPermissionEvent,
   AgentQuestionEvent,
+  QueuedPrompt,
 } from '../../shared/agent-types';
 import type { TaskStatus } from '../../shared/types';
 
@@ -13,6 +14,7 @@ export interface TaskState {
   error: string | null;
   pendingPermission: AgentPermissionEvent | null;
   pendingQuestion: AgentQuestionEvent | null;
+  queuedPrompts: QueuedPrompt[];
   lastAccessedAt: number;
 }
 
@@ -26,6 +28,7 @@ interface TaskMessagesStore {
   setStatus: (taskId: string, status: TaskStatus, error?: string | null) => void;
   setPermission: (taskId: string, permission: AgentPermissionEvent | null) => void;
   setQuestion: (taskId: string, question: AgentQuestionEvent | null) => void;
+  setQueuedPrompts: (taskId: string, queuedPrompts: QueuedPrompt[]) => void;
   touchTask: (taskId: string) => void;
   unloadTask: (taskId: string) => void;
 
@@ -77,6 +80,7 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
           error: null,
           pendingPermission: null,
           pendingQuestion: null,
+          queuedPrompts: [],
           lastAccessedAt: Date.now(),
         },
       };
@@ -143,6 +147,22 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
           [taskId]: {
             ...task,
             pendingQuestion: question,
+          },
+        },
+      };
+    });
+  },
+
+  setQueuedPrompts: (taskId, queuedPrompts) => {
+    set((state) => {
+      const task = state.tasks[taskId];
+      if (!task) return state;
+      return {
+        tasks: {
+          ...state.tasks,
+          [taskId]: {
+            ...task,
+            queuedPrompts,
           },
         },
       };

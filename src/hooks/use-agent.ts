@@ -74,12 +74,28 @@ export function useAgentControls(taskId: string) {
     [taskId]
   );
 
+  const queuePrompt = useCallback(
+    async (prompt: string) => {
+      return api.agent.queuePrompt(taskId, prompt);
+    },
+    [taskId]
+  );
+
+  const cancelQueuedPrompt = useCallback(
+    async (promptId: string) => {
+      await api.agent.cancelQueuedPrompt(taskId, promptId);
+    },
+    [taskId]
+  );
+
   return {
     start,
     stop,
     respondToPermission,
     respondToQuestion,
     sendMessage,
+    queuePrompt,
+    cancelQueuedPrompt,
     isStarting,
     isStopping,
   };

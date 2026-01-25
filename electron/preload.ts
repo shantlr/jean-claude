@@ -94,6 +94,10 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke(AGENT_CHANNELS.RESPOND, taskId, requestId, response),
     sendMessage: (taskId: string, message: string) =>
       ipcRenderer.invoke(AGENT_CHANNELS.SEND_MESSAGE, taskId, message),
+    queuePrompt: (taskId: string, prompt: string) =>
+      ipcRenderer.invoke(AGENT_CHANNELS.QUEUE_PROMPT, taskId, prompt),
+    cancelQueuedPrompt: (taskId: string, promptId: string) =>
+      ipcRenderer.invoke(AGENT_CHANNELS.CANCEL_QUEUED_PROMPT, taskId, promptId),
     getMessages: (taskId: string) =>
       ipcRenderer.invoke(AGENT_CHANNELS.GET_MESSAGES, taskId),
     getMessageCount: (taskId: string) =>
@@ -122,6 +126,11 @@ contextBridge.exposeInMainWorld('api', {
       const handler = (_: unknown, event: unknown) => callback(event);
       ipcRenderer.on(AGENT_CHANNELS.NAME_UPDATED, handler);
       return () => ipcRenderer.removeListener(AGENT_CHANNELS.NAME_UPDATED, handler);
+    },
+    onQueueUpdate: (callback: (event: unknown) => void) => {
+      const handler = (_: unknown, event: unknown) => callback(event);
+      ipcRenderer.on(AGENT_CHANNELS.QUEUE_UPDATE, handler);
+      return () => ipcRenderer.removeListener(AGENT_CHANNELS.QUEUE_UPDATE, handler);
     },
   },
   debug: {

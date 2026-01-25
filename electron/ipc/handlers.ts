@@ -319,6 +319,20 @@ export function registerIpcHandlers() {
     }
   );
 
+  ipcMain.handle(
+    AGENT_CHANNELS.QUEUE_PROMPT,
+    (_, taskId: string, prompt: string) => {
+      return agentService.queuePrompt(taskId, prompt);
+    }
+  );
+
+  ipcMain.handle(
+    AGENT_CHANNELS.CANCEL_QUEUED_PROMPT,
+    (_, taskId: string, promptId: string) => {
+      return agentService.cancelQueuedPrompt(taskId, promptId);
+    }
+  );
+
   ipcMain.handle(AGENT_CHANNELS.GET_MESSAGES, (_, taskId: string) => {
     return agentService.getMessages(taskId);
   });

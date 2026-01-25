@@ -89,6 +89,8 @@ function TaskPanel() {
     respondToPermission,
     respondToQuestion,
     sendMessage,
+    queuePrompt,
+    cancelQueuedPrompt,
     isStopping,
   } = useAgentControls(taskId);
 
@@ -367,7 +369,9 @@ function TaskPanel() {
             <MessageStream
               messages={agentState.messages}
               isRunning={isRunning}
+              queuedPrompts={agentState.queuedPrompts}
               onFilePathClick={handleFilePathClick}
+              onCancelQueuedPrompt={cancelQueuedPrompt}
             />
           ) : (
             <div className="p-6">
@@ -444,13 +448,10 @@ function TaskPanel() {
               />
               <MessageInput
                 onSend={handleSendMessage}
+                onQueue={queuePrompt}
                 onStop={handleStop}
-                disabled={isRunning || !canSendMessage}
-                placeholder={
-                  isRunning
-                    ? 'Agent is running...'
-                    : 'Send a follow-up message...'
-                }
+                disabled={!canSendMessage}
+                placeholder="Send a follow-up message..."
                 isRunning={isRunning}
                 isStopping={isStopping}
               />

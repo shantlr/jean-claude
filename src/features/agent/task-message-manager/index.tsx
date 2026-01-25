@@ -10,6 +10,7 @@ export function TaskMessageManager() {
   const setStatus = useTaskMessagesStore((s) => s.setStatus);
   const setPermission = useTaskMessagesStore((s) => s.setPermission);
   const setQuestion = useTaskMessagesStore((s) => s.setQuestion);
+  const setQueuedPrompts = useTaskMessagesStore((s) => s.setQueuedPrompts);
   const isLoaded = useTaskMessagesStore((s) => s.isLoaded);
 
   useEffect(() => {
@@ -43,14 +44,21 @@ export function TaskMessageManager() {
       queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
     });
 
+    const unsubQueueUpdate = api.agent.onQueueUpdate(({ taskId, queuedPrompts }) => {
+      if (isLoaded(taskId)) {
+        setQueuedPrompts(taskId, queuedPrompts);
+      }
+    });
+
     return () => {
       unsubMessage();
       unsubStatus();
       unsubPermission();
       unsubQuestion();
       unsubNameUpdated();
+      unsubQueueUpdate();
     };
-  }, [queryClient, appendMessage, setStatus, setPermission, setQuestion, isLoaded]);
+  }, [queryClient, appendMessage, setStatus, setPermission, setQuestion, setQueuedPrompts, isLoaded]);
 
   return null;
 }

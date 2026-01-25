@@ -74,6 +74,7 @@ export function useTaskMessages(taskId: string) {
     error: null,
     pendingPermission: null,
     pendingQuestion: null,
+    queuedPrompts: [],
     lastAccessedAt: 0,
   };
 
@@ -85,6 +86,7 @@ export function useTaskMessages(taskId: string) {
     error: state.error,
     pendingPermission: state.pendingPermission,
     pendingQuestion: state.pendingQuestion,
+    queuedPrompts: state.queuedPrompts,
     isLoading: !isLoaded,
     refetch,
   };

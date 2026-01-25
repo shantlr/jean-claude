@@ -9,17 +9,21 @@ import {
 import type {
   AgentMessage as AgentMessageType,
   ToolResultBlock,
+  QueuedPrompt,
 } from '../../../../shared/agent-types';
+import { QueuedPromptEntry } from '../ui-queued-prompt-entry';
 import { TimelineEntry } from '../ui-timeline-entry';
 
 interface MessageStreamProps {
   messages: AgentMessageType[];
   isRunning?: boolean;
+  queuedPrompts?: QueuedPrompt[];
   onFilePathClick?: (
     filePath: string,
     lineStart?: number,
     lineEnd?: number,
   ) => void;
+  onCancelQueuedPrompt?: (promptId: string) => void;
 }
 
 // Build a map of tool_use_id -> ToolResultBlock from all user messages
@@ -50,7 +54,9 @@ const SCROLL_THRESHOLD = 10;
 export function MessageStream({
   messages,
   isRunning,
+  queuedPrompts = [],
   onFilePathClick,
+  onCancelQueuedPrompt,
 }: MessageStreamProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -124,6 +130,14 @@ export function MessageStream({
             <span className="text-xs text-neutral-500">Working...</span>
           </div>
         )}
+        {/* Queued prompts */}
+        {queuedPrompts.map((prompt) => (
+          <QueuedPromptEntry
+            key={prompt.id}
+            prompt={prompt}
+            onCancel={onCancelQueuedPrompt ?? (() => {})}
+          />
+        ))}
         <div ref={bottomRef} />
       </div>
     </div>

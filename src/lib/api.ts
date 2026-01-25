@@ -5,6 +5,7 @@ import type {
   AgentPermissionEvent,
   AgentQuestionEvent,
   AgentNameUpdatedEvent,
+  AgentQueueUpdateEvent,
   PermissionResponse,
   QuestionResponse,
 } from '../../shared/agent-types';
@@ -133,6 +134,8 @@ export interface Api {
       response: PermissionResponse | QuestionResponse
     ) => Promise<void>;
     sendMessage: (taskId: string, message: string) => Promise<void>;
+    queuePrompt: (taskId: string, prompt: string) => Promise<{ promptId: string }>;
+    cancelQueuedPrompt: (taskId: string, promptId: string) => Promise<void>;
     getMessages: (taskId: string) => Promise<AgentMessage[]>;
     getMessageCount: (taskId: string) => Promise<number>;
     onMessage: (callback: AgentEventCallback<AgentMessageEvent>) => UnsubscribeFn;
@@ -140,6 +143,7 @@ export interface Api {
     onPermission: (callback: AgentEventCallback<AgentPermissionEvent>) => UnsubscribeFn;
     onQuestion: (callback: AgentEventCallback<AgentQuestionEvent>) => UnsubscribeFn;
     onNameUpdated: (callback: AgentEventCallback<AgentNameUpdatedEvent>) => UnsubscribeFn;
+    onQueueUpdate: (callback: AgentEventCallback<AgentQueueUpdateEvent>) => UnsubscribeFn;
   };
   debug: {
     getTableNames: () => Promise<string[]>;
@@ -222,6 +226,8 @@ export const api: Api = hasWindowApi
         stop: async () => { throw new Error('API not available'); },
         respond: async () => { throw new Error('API not available'); },
         sendMessage: async () => { throw new Error('API not available'); },
+        queuePrompt: async () => { throw new Error('API not available'); },
+        cancelQueuedPrompt: async () => { throw new Error('API not available'); },
         getMessages: async () => [],
         getMessageCount: async () => 0,
         onMessage: () => () => {},
@@ -229,6 +235,7 @@ export const api: Api = hasWindowApi
         onPermission: () => () => {},
         onQuestion: () => () => {},
         onNameUpdated: () => () => {},
+        onQueueUpdate: () => () => {},
       },
       debug: {
         getTableNames: async () => [],

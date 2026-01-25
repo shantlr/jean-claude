@@ -124,6 +124,18 @@ export interface AgentNameUpdatedEvent {
   name: string;
 }
 
+// Queued prompt types
+export interface QueuedPrompt {
+  id: string;
+  content: string;
+  createdAt: number;
+}
+
+export interface AgentQueueUpdateEvent {
+  taskId: string;
+  queuedPrompts: QueuedPrompt[];
+}
+
 // IPC channel names
 export const AGENT_CHANNELS = {
   // Events (main -> renderer)
@@ -132,6 +144,7 @@ export const AGENT_CHANNELS = {
   PERMISSION: 'agent:permission',
   QUESTION: 'agent:question',
   NAME_UPDATED: 'agent:nameUpdated',
+  QUEUE_UPDATE: 'agent:queueUpdate',
   // Invoke (renderer -> main)
   START: 'agent:start',
   STOP: 'agent:stop',
@@ -139,4 +152,6 @@ export const AGENT_CHANNELS = {
   SEND_MESSAGE: 'agent:sendMessage',
   GET_MESSAGES: 'agent:getMessages',
   GET_MESSAGE_COUNT: 'agent:getMessageCount',
+  QUEUE_PROMPT: 'agent:queuePrompt',
+  CANCEL_QUEUED_PROMPT: 'agent:cancelQueuedPrompt',
 } as const;
