@@ -1,8 +1,20 @@
-import { execSync, spawn } from 'child_process';
-import * as fs from 'fs';
+import { exec, spawn } from 'child_process';
+import * as fs from 'fs/promises';
 import * as path from 'path';
+import { promisify } from 'util';
 
 import { BrowserWindow, ipcMain, dialog } from 'electron';
+
+const execAsync = promisify(exec);
+
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 import {
   AGENT_CHANNELS,
@@ -33,7 +45,7 @@ import {
 import { agentService } from '../services/agent-service';
 import { agentUsageService } from '../services/agent-usage-service';
 import { generateTaskName } from '../services/name-generation-service';
-import { createWorktree } from '../services/worktree-service';
+import { createWorktree, getWorktreeDiff, getWorktreeFileContent } from '../services/worktree-service';
 
 export function registerIpcHandlers() {
   // Projects
@@ -171,6 +183,26 @@ export function registerIpcHandlers() {
     }
   );
 
+  // Worktree Git
+  ipcMain.handle(
+    'worktree:git:getDiff',
+    async (_, worktreePath: string, startCommitHash: string) => {
+      return getWorktreeDiff(worktreePath, startCommitHash);
+    }
+  );
+  ipcMain.handle(
+    'worktree:git:getFileContent',
+    async (
+      _,
+      worktreePath: string,
+      startCommitHash: string,
+      filePath: string,
+      status: 'added' | 'modified' | 'deleted'
+    ) => {
+      return getWorktreeFileContent(worktreePath, startCommitHash, filePath, status);
+    }
+  );
+
   // Providers
   ipcMain.handle('providers:findAll', () => ProviderRepository.findAll());
   ipcMain.handle('providers:findById', (_, id: string) =>
@@ -199,10 +231,10 @@ export function registerIpcHandlers() {
   });
 
   // Filesystem
-  ipcMain.handle('fs:readPackageJson', (_, dirPath: string) => {
+  ipcMain.handle('fs:readPackageJson', async (_, dirPath: string) => {
     try {
       const pkgPath = path.join(dirPath, 'package.json');
-      const content = fs.readFileSync(pkgPath, 'utf-8');
+      const content = await fs.readFile(pkgPath, 'utf-8');
       const pkg = JSON.parse(content);
       return { name: pkg.name };
     } catch {
@@ -210,9 +242,9 @@ export function registerIpcHandlers() {
     }
   });
 
-  ipcMain.handle('fs:readFile', (_, filePath: string) => {
+  ipcMain.handle('fs:readFile', async (_, filePath: string) => {
     try {
-      const content = fs.readFileSync(filePath, 'utf-8');
+      const content = await fs.readFile(filePath, 'utf-8');
       const ext = path.extname(filePath).slice(1);
       const languageMap: Record<string, string> = {
         ts: 'typescript',
@@ -308,11 +340,14 @@ export function registerIpcHandlers() {
   );
 
   // Shell
-  ipcMain.handle('shell:getAvailableEditors', () => {
-    return PRESET_EDITORS.map((editor) => ({
-      id: editor.id,
-      available: isEditorAvailable(editor),
-    }));
+  ipcMain.handle('shell:getAvailableEditors', async () => {
+    const results = await Promise.all(
+      PRESET_EDITORS.map(async (editor) => ({
+        id: editor.id,
+        available: await isEditorAvailable(editor),
+      }))
+    );
+    return results;
   });
 
   ipcMain.handle('shell:openInEditor', async (_, dirPath: string) => {
@@ -358,14 +393,14 @@ export function registerIpcHandlers() {
 }
 
 // Helper: check if an editor is available
-function isEditorAvailable(editor: (typeof PRESET_EDITORS)[number]): boolean {
+async function isEditorAvailable(editor: (typeof PRESET_EDITORS)[number]): Promise<boolean> {
   try {
-    execSync(`which ${editor.command}`, { stdio: 'ignore' });
+    await execAsync(`which ${editor.command}`);
     return true;
   } catch {
     // Fallback: check if app exists (macOS)
     const appPath = `/Applications/${editor.appName}.app`;
-    return fs.existsSync(appPath);
+    return pathExists(appPath);
   }
 }
 

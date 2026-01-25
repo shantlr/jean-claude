@@ -27,6 +27,22 @@ export interface PackageJson {
   name?: string;
 }
 
+export interface WorktreeDiffFile {
+  path: string;
+  status: 'added' | 'modified' | 'deleted';
+}
+
+export interface WorktreeDiffResult {
+  files: WorktreeDiffFile[];
+  worktreeDeleted?: boolean;
+}
+
+export interface WorktreeFileContent {
+  oldContent: string | null;
+  newContent: string | null;
+  isBinary: boolean;
+}
+
 export interface QueryTableParams {
   table: string;
   search?: string;
@@ -88,6 +104,17 @@ export interface Api {
   fs: {
     readPackageJson: (dirPath: string) => Promise<PackageJson | null>;
     readFile: (filePath: string) => Promise<{ content: string; language: string } | null>;
+  };
+  worktree: {
+    git: {
+      getDiff: (worktreePath: string, startCommitHash: string) => Promise<WorktreeDiffResult>;
+      getFileContent: (
+        worktreePath: string,
+        startCommitHash: string,
+        filePath: string,
+        status: 'added' | 'modified' | 'deleted'
+      ) => Promise<WorktreeFileContent>;
+    };
   };
   settings: {
     get: <K extends keyof AppSettings>(key: K) => Promise<AppSettings[K]>;
@@ -175,6 +202,12 @@ export const api: Api = hasWindowApi
       fs: {
         readPackageJson: async () => null,
         readFile: async () => null,
+      },
+      worktree: {
+        git: {
+          getDiff: async () => ({ files: [] }),
+          getFileContent: async () => ({ oldContent: null, newContent: null, isBinary: false }),
+        },
       },
       settings: {
         get: async () => { throw new Error('API not available'); },

@@ -14,12 +14,24 @@ export type RightPane =
       type: 'settings';
     };
 
+interface DiffViewState {
+  isOpen: boolean;
+  selectedFilePath: string | null;
+}
+
 interface TaskState {
   rightPane: RightPane | null;
+  diffView: DiffViewState;
 }
+
+const defaultDiffViewState: DiffViewState = {
+  isOpen: false,
+  selectedFilePath: null,
+};
 
 const defaultTaskState: TaskState = {
   rightPane: null,
+  diffView: defaultDiffViewState,
 };
 
 interface NavigationState {
@@ -36,6 +48,8 @@ interface NavigationState {
   setLastLocation: (projectId: string | null, taskId: string | null) => void;
   setLastTaskForProject: (projectId: string, taskId: string) => void;
   setTaskRightPane: (taskId: string, pane: RightPane | null) => void;
+  setDiffViewOpen: (taskId: string, isOpen: boolean) => void;
+  setDiffViewSelectedFile: (taskId: string, filePath: string | null) => void;
   clearProjectNavHistoryState: (projectId: string) => void;
   clearTaskNavHistoryState: (taskId: string) => void;
 }
@@ -66,6 +80,40 @@ const useStore = create<NavigationState>()(
               ...defaultTaskState,
               ...state.taskState[taskId],
               rightPane: pane,
+            },
+          },
+        })),
+
+      setDiffViewOpen: (taskId, isOpen) =>
+        set((state) => ({
+          taskState: {
+            ...state.taskState,
+            [taskId]: {
+              ...defaultTaskState,
+              ...state.taskState[taskId],
+              diffView: {
+                ...(state.taskState[taskId]?.diffView ?? defaultDiffViewState),
+                isOpen,
+                // Reset selected file when closing
+                selectedFilePath: isOpen
+                  ? state.taskState[taskId]?.diffView?.selectedFilePath ?? null
+                  : null,
+              },
+            },
+          },
+        })),
+
+      setDiffViewSelectedFile: (taskId, filePath) =>
+        set((state) => ({
+          taskState: {
+            ...state.taskState,
+            [taskId]: {
+              ...defaultTaskState,
+              ...state.taskState[taskId],
+              diffView: {
+                ...(state.taskState[taskId]?.diffView ?? defaultDiffViewState),
+                selectedFilePath: filePath,
+              },
             },
           },
         })),
@@ -184,5 +232,45 @@ export function useTaskState(taskId: string) {
     openFilePreview,
     openSettings,
     closeRightPane,
+  };
+}
+
+// Hook for diff view state
+export function useDiffViewState(taskId: string) {
+  const diffView = useStore(
+    (state) => state.taskState[taskId]?.diffView ?? defaultDiffViewState
+  );
+  const setDiffViewOpenAction = useStore((state) => state.setDiffViewOpen);
+  const setDiffViewSelectedFileAction = useStore(
+    (state) => state.setDiffViewSelectedFile
+  );
+
+  const toggleDiffView = useCallback(
+    () => setDiffViewOpenAction(taskId, !diffView.isOpen),
+    [taskId, diffView.isOpen, setDiffViewOpenAction]
+  );
+
+  const openDiffView = useCallback(
+    () => setDiffViewOpenAction(taskId, true),
+    [taskId, setDiffViewOpenAction]
+  );
+
+  const closeDiffView = useCallback(
+    () => setDiffViewOpenAction(taskId, false),
+    [taskId, setDiffViewOpenAction]
+  );
+
+  const selectFile = useCallback(
+    (filePath: string | null) => setDiffViewSelectedFileAction(taskId, filePath),
+    [taskId, setDiffViewSelectedFileAction]
+  );
+
+  return {
+    isOpen: diffView.isOpen,
+    selectedFilePath: diffView.selectedFilePath,
+    toggleDiffView,
+    openDiffView,
+    closeDiffView,
+    selectFile,
   };
 }

@@ -1,10 +1,13 @@
-import { execSync } from 'child_process';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
 import type {
   ClaudeUsageResponse,
   UsageResult,
   UsageDisplayData,
 } from '../../shared/usage-types';
+
+const execAsync = promisify(exec);
 
 class AgentUsageService {
   private cachedToken: string | null = null;
@@ -70,12 +73,12 @@ class AgentUsageService {
 
     try {
       // Retrieve from macOS Keychain
-      const rawCredentials = execSync(
+      const { stdout } = await execAsync(
         'security find-generic-password -s "Claude Code-credentials" -w',
-        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
-      ).trim();
+        { encoding: 'utf-8' }
+      );
 
-      const credentials = JSON.parse(rawCredentials);
+      const credentials = JSON.parse(stdout.trim());
       const token = credentials?.claudeAiOauth?.accessToken;
 
       if (token) {

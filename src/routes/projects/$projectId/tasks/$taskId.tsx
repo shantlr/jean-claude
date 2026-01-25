@@ -8,6 +8,7 @@ import {
   RefreshCw,
   Settings,
   GitBranch,
+  GitCompare,
 } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 
@@ -17,6 +18,7 @@ import { MessageStream } from '@/features/agent/ui-message-stream';
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
 import { PermissionBar } from '@/features/agent/ui-permission-bar';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
+import { WorktreeDiffView } from '@/features/agent/ui-worktree-diff-view';
 import { StatusIndicator } from '@/features/task/ui-status-indicator';
 import { TaskSettingsPane } from '@/features/task/ui-task-settings-pane';
 import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
@@ -32,9 +34,8 @@ import {
   useRemoveSessionAllowedTool,
 } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
-import { formatRelativeTime } from '@/lib/time';
 import { getBranchFromWorktreePath } from '@/lib/worktree';
-import { useNavigationStore, useTaskState } from '@/stores/navigation';
+import { useNavigationStore, useTaskState, useDiffViewState } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 
 import {
@@ -73,6 +74,14 @@ function TaskPanel() {
   // Task state from store (replaces useState for pane state)
   const { rightPane, openFilePreview, openSettings, closeRightPane } =
     useTaskState(taskId);
+
+  // Diff view state
+  const {
+    isOpen: isDiffViewOpen,
+    selectedFilePath: diffSelectedFile,
+    toggleDiffView,
+    selectFile: selectDiffFile,
+  } = useDiffViewState(taskId);
 
   const agentState = useAgentStream(taskId);
   const {
@@ -240,14 +249,28 @@ function TaskPanel() {
               {task.name ?? task.prompt.split('\n')[0].slice(0, 50)}
             </h1>
             {task.worktreePath && (
-              <button
-                onClick={() => api.shell.openInEditor(task.worktreePath!)}
-                className="flex w-fit items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-300"
-                title={`Open in ${editorSetting ? getEditorLabel(editorSetting) : 'editor'}`}
-              >
-                <GitBranch className="h-3.5 w-3.5" />
-                <span>{getBranchFromWorktreePath(task.worktreePath)}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => api.shell.openInEditor(task.worktreePath!)}
+                  className="flex min-w-0 max-w-48 items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-300"
+                  title={`Open in ${editorSetting ? getEditorLabel(editorSetting) : 'editor'}`}
+                >
+                  <GitBranch className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{getBranchFromWorktreePath(task.worktreePath)}</span>
+                </button>
+                <button
+                  onClick={toggleDiffView}
+                  className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium transition-colors ${
+                    isDiffViewOpen
+                      ? 'bg-purple-500/20 text-purple-400'
+                      : 'text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300'
+                  }`}
+                  title="View git diff"
+                >
+                  <GitCompare className="h-3.5 w-3.5" />
+                  Diff
+                </button>
+              </div>
             )}
           </div>
           {task.sessionId && (
@@ -264,9 +287,6 @@ function TaskPanel() {
               {task.sessionId.slice(0, 8)}...
             </button>
           )}
-          <span className="text-sm text-neutral-500">
-            {formatRelativeTime(task.createdAt)}
-          </span>
 
           {/* Open in editor button */}
           <button
@@ -330,9 +350,16 @@ function TaskPanel() {
           </div>
         )}
 
-        {/* Message stream or prompt display */}
+        {/* Main content area: Diff view OR Message stream */}
         <div className="min-h-0 flex-1">
-          {agentState.isLoading ? (
+          {isDiffViewOpen && task.worktreePath && task.startCommitHash ? (
+            <WorktreeDiffView
+              worktreePath={task.worktreePath}
+              startCommitHash={task.startCommitHash}
+              selectedFilePath={diffSelectedFile}
+              onSelectFile={selectDiffFile}
+            />
+          ) : agentState.isLoading ? (
             <div className="flex h-full items-center justify-center">
               <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
             </div>

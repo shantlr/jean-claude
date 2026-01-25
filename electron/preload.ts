@@ -41,6 +41,25 @@ contextBridge.exposeInMainWorld('api', {
     reorder: (projectId: string, activeIds: string[], completedIds: string[]) =>
       ipcRenderer.invoke('tasks:reorder', projectId, activeIds, completedIds),
   },
+  worktree: {
+    git: {
+      getDiff: (worktreePath: string, startCommitHash: string) =>
+        ipcRenderer.invoke('worktree:git:getDiff', worktreePath, startCommitHash),
+      getFileContent: (
+        worktreePath: string,
+        startCommitHash: string,
+        filePath: string,
+        status: 'added' | 'modified' | 'deleted'
+      ) =>
+        ipcRenderer.invoke(
+          'worktree:git:getFileContent',
+          worktreePath,
+          startCommitHash,
+          filePath,
+          status
+        ),
+    },
+  },
   providers: {
     findAll: () => ipcRenderer.invoke('providers:findAll'),
     findById: (id: string) => ipcRenderer.invoke('providers:findById', id),
