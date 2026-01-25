@@ -149,6 +149,27 @@ export function generateWorktreeNameFromTaskName(taskName: string): string {
 }
 
 /**
+ * Copies Claude local settings from source repo to destination worktree.
+ * This ensures the worktree has the same Claude Code permissions.
+ */
+function copyClaudeLocalSettings(sourcePath: string, destPath: string): void {
+  const sourceSettings = path.join(sourcePath, '.claude', 'settings.local.json');
+
+  if (!fs.existsSync(sourceSettings)) {
+    return; // No local settings to copy
+  }
+
+  try {
+    const destClaudeDir = path.join(destPath, '.claude');
+    fs.mkdirSync(destClaudeDir, { recursive: true });
+    fs.copyFileSync(sourceSettings, path.join(destClaudeDir, 'settings.local.json'));
+  } catch (error) {
+    console.warn('Failed to copy Claude local settings to worktree:', error);
+    // Don't fail worktree creation for this
+  }
+}
+
+/**
  * Creates a git worktree for a task.
  *
  * @param projectPath - The path to the main git repository
@@ -195,6 +216,9 @@ export async function createWorktree(
   } catch (error) {
     throw new Error(`Failed to create git worktree: ${error}`);
   }
+
+  // Copy Claude local settings if they exist in the main repo
+  copyClaudeLocalSettings(projectPath, worktreePath);
 
   return {
     worktreePath,
