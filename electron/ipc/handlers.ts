@@ -31,6 +31,7 @@ import {
   UpdateProvider,
 } from '../database/schema';
 import { agentService } from '../services/agent-service';
+import { agentUsageService } from '../services/agent-usage-service';
 import { generateTaskName } from '../services/name-generation-service';
 import { createWorktree } from '../services/worktree-service';
 
@@ -336,6 +337,9 @@ export function registerIpcHandlers() {
     const appName = path.basename(appPath, '.app');
     return { path: appPath, name: appName };
   });
+
+  // Usage
+  ipcMain.handle('agent:usage:get', () => agentUsageService.getUsage());
 
   // Debug
   ipcMain.handle('debug:getTableNames', () => DebugRepository.getTableNames());

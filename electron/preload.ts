@@ -114,5 +114,8 @@ contextBridge.exposeInMainWorld('api', {
       offset: number;
     }) => ipcRenderer.invoke('debug:queryTable', params),
   },
+  usage: {
+    get: () => ipcRenderer.invoke('agent:usage:get'),
+  },
 });
 console.log('Preload script loaded');

@@ -2,6 +2,8 @@ import type { CSSProperties } from 'react';
 
 import { api } from '@/lib/api';
 
+import { UsageDisplay } from './usage-display';
+
 export function Header() {
   const isMac = api.platform === 'darwin';
 
@@ -15,12 +17,12 @@ export function Header() {
 
       <div className="flex-1" />
 
-      {/* Usage placeholder - Phase 4 */}
+      {/* Usage display */}
       <div
         className="px-4"
         style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
       >
-        {/* Rate limits will go here */}
+        <UsageDisplay />
       </div>
     </header>
   );

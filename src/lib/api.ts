@@ -21,6 +21,7 @@ import type {
   InteractionMode,
   AppSettings,
 } from '../../shared/types';
+import type { UsageResult } from '../../shared/usage-types';
 
 export interface PackageJson {
   name?: string;
@@ -117,6 +118,9 @@ export interface Api {
     getTableNames: () => Promise<string[]>;
     queryTable: (params: QueryTableParams) => Promise<QueryTableResult>;
   };
+  usage: {
+    get: () => Promise<UsageResult>;
+  };
 }
 
 declare global {
@@ -196,5 +200,8 @@ export const api: Api = hasWindowApi
       debug: {
         getTableNames: async () => [],
         queryTable: async () => ({ columns: [], rows: [], total: 0 }),
+      },
+      usage: {
+        get: async () => ({ data: null, error: { type: 'api_error', message: 'API not available' } }),
       },
     } as Api);
