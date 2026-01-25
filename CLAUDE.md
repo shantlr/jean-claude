@@ -30,7 +30,7 @@ The renderer calls `window.api.*` methods which are defined in `preload.ts` and 
 ### State Management
 
 - **Server state**: TanStack React Query with hooks in `src/hooks/` (useProjects, useTasks, useProviders, useSettings, useAgent)
-- **UI state**: Zustand stores in `src/stores/` (sidebar collapse, last visited project, task message cache)
+- **UI state**: Zustand stores in `src/stores/` (navigation, new task form, task message cache)
 - **Routing**: TanStack Router with file-based routes in `src/routes/`
 
 #### Zustand Usage
@@ -152,8 +152,22 @@ The agent service (`electron/services/agent-service.ts`) manages Claude Agent SD
 - **Persistence**: Messages stored in `agent_messages` table with JSON-serialized content
 - **Resumption**: Sessions can be resumed via stored `sessionId`
 - **Notifications**: Desktop notifications for permission requests, questions, and completion
+- **Message Queue**: Users can queue messages while the agent is busy; queued prompts execute sequentially
+- **Usage Tracking**: Claude Code OAuth usage stats displayed in header (5-hour and 7-day limits)
 
-Agent events flow via IPC channels: `agent:message`, `agent:status`, `agent:permission`, `agent:question`
+Agent events flow via IPC channels: `agent:message`, `agent:status`, `agent:permission`, `agent:question`, `agent:queue-update`
+
+### Worktree Diff View
+
+Tasks created with worktrees can display a diff view showing all changes since the worktree was created:
+
+- **File tree**: Left panel shows changed files (added/modified/deleted)
+- **Diff view**: Right panel shows side-by-side or unified diff
+- **Services**: `worktree-service.ts` provides `getWorktreeDiff()` and `getWorktreeFileContent()`
+- **Hooks**: `useWorktreeDiff` and `useWorktreeFileContent` for React Query integration
+- **State**: Diff view open/closed state persisted in navigation store
+
+The diff is calculated between the task's `startCommitHash` (captured at worktree creation) and the current working tree.
 
 ## File Structure
 
@@ -165,24 +179,30 @@ electron/              # Main process
   database/            # SQLite layer (schema, migrations, repositories)
   services/            # Business logic
     agent-service.ts   # Claude Agent SDK integration
+    agent-usage-service.ts  # Claude Code OAuth usage stats
     notification-service.ts
+    worktree-service.ts     # Git worktree creation and diff
 
 shared/                # Types shared between main and renderer
   types.ts             # Domain types (Project, Task, Provider, InteractionMode)
   agent-types.ts       # Agent-specific types (AgentMessage, ContentBlock, etc.)
+  usage-types.ts       # Claude usage API types
 
 src/                   # Renderer (React)
   routes/              # TanStack Router file-based routes
   layout/              # App shell components (header, sidebars)
   features/            # Feature-based components
-    agent/             # Message stream, timeline, tool cards, mode selector, etc.
+    agent/             # Message stream, timeline, tool cards, mode selector, diff view, etc.
     project/           # Project tile
     task/              # Task list item
     settings/          # Debug database viewer
   common/ui/           # Atomic reusable UI components
   hooks/               # React Query and custom hooks
   stores/              # Zustand stores for UI state
-  lib/                 # Utilities (api.ts, colors.ts, time.ts)
+    navigation.ts      # Last visited location, per-task pane state, diff view state
+    new-task-form.ts   # Per-project task form drafts
+    task-messages.ts   # Queued prompts by task
+  lib/                 # Utilities (api.ts, colors.ts, time.ts, worktree.ts)
 
 docs/plans/            # Design and implementation documents
 ```
@@ -191,12 +211,12 @@ docs/plans/            # Design and implementation documents
 
 | Route | Purpose |
 |-------|---------|
-| `/` | Redirects to `/settings` (TODO: redirect to last visited project) |
+| `/` | Redirects to last visited project/task (persisted in navigation store) |
 | `/settings` | Configure editor preferences; debug database viewer |
 | `/projects/new` | Two-step wizard to add a local project (folder picker → name/color) |
 | `/projects/:projectId` | Project layout with sidebar listing tasks |
 | `/projects/:projectId/tasks/new` | Form to create a task with prompt, mode, and worktree options |
-| `/projects/:projectId/tasks/:taskId` | Main agent UI: message stream, file preview, permissions, input |
+| `/projects/:projectId/tasks/:taskId` | Main agent UI: message stream, file preview, diff view, permissions, input |
 
 ## Development Notes
 
