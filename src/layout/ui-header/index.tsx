@@ -9,7 +9,7 @@ export function Header() {
 
   return (
     <header
-      className="flex h-10 items-center border-b border-neutral-800 bg-neutral-900"
+      className="flex h-10 items-center"
       style={{ WebkitAppRegion: 'drag' } as CSSProperties}
     >
       {/* Traffic light padding on macOS */}

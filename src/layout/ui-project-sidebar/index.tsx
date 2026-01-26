@@ -14,6 +14,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { Link, useParams } from '@tanstack/react-router';
+import clsx from 'clsx';
 import { Plus } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 
@@ -27,6 +28,8 @@ interface TaskWithMessageCount extends Task {
   messageCount?: number;
 }
 
+export const PROJECT_HEADER_HEIGHT = 48;
+
 export function ProjectSidebar() {
   const { projectId, taskId } = useParams({ strict: false });
   const { data: project } = useProject(projectId!);
@@ -34,20 +37,22 @@ export function ProjectSidebar() {
   const reorderTasks = useReorderTasks();
 
   // Split tasks into active and completed
-  const { activeTasks: serverActiveTasks, completedTasks: serverCompletedTasks } =
-    useMemo(() => {
-      if (!tasks) return { activeTasks: [], completedTasks: [] };
-      const active: TaskWithMessageCount[] = [];
-      const completed: TaskWithMessageCount[] = [];
-      for (const task of tasks) {
-        if (task.userCompleted) {
-          completed.push(task);
-        } else {
-          active.push(task);
-        }
+  const {
+    activeTasks: serverActiveTasks,
+    completedTasks: serverCompletedTasks,
+  } = useMemo(() => {
+    if (!tasks) return { activeTasks: [], completedTasks: [] };
+    const active: TaskWithMessageCount[] = [];
+    const completed: TaskWithMessageCount[] = [];
+    for (const task of tasks) {
+      if (task.userCompleted) {
+        completed.push(task);
+      } else {
+        active.push(task);
       }
-      return { activeTasks: active, completedTasks: completed };
-    }, [tasks]);
+    }
+    return { activeTasks: active, completedTasks: completed };
+  }, [tasks]);
 
   // Local state for optimistic reordering
   const [localActiveTasks, setLocalActiveTasks] =
@@ -69,7 +74,7 @@ export function ProjectSidebar() {
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   function handleActiveDragEnd(event: DragEndEvent) {
@@ -112,7 +117,8 @@ export function ProjectSidebar() {
 
   if (!project) return null;
 
-  const hasTasks = localActiveTasks.length > 0 || localCompletedTasks.length > 0;
+  const hasTasks =
+    localActiveTasks.length > 0 || localCompletedTasks.length > 0;
 
   return (
     <aside className="flex h-full w-64 flex-col border-r border-neutral-700 bg-neutral-900">
@@ -120,7 +126,12 @@ export function ProjectSidebar() {
       <Link
         to="/projects/$projectId/details"
         params={{ projectId: project.id }}
-        className="flex items-center gap-3 border-b border-neutral-700 px-4 py-3 transition-colors hover:bg-neutral-800"
+        className={clsx(
+          'flex items-center gap-3 border-b border-neutral-700 px-4 py-3 transition-colors hover:bg-neutral-800',
+        )}
+        style={{
+          height: PROJECT_HEADER_HEIGHT,
+        }}
       >
         <span
           className="h-3 w-3 rounded-full"

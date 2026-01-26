@@ -33,9 +33,14 @@ import {
   useAddSessionAllowedTool,
   useRemoveSessionAllowedTool,
 } from '@/hooks/use-tasks';
+import { PROJECT_HEADER_HEIGHT } from '@/layout/ui-project-sidebar';
 import { api } from '@/lib/api';
 import { getBranchFromWorktreePath } from '@/lib/worktree';
-import { useNavigationStore, useTaskState, useDiffViewState } from '@/stores/navigation';
+import {
+  useNavigationStore,
+  useTaskState,
+  useDiffViewState,
+} from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 
 import {
@@ -239,7 +244,12 @@ function TaskPanel() {
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
-        <div className="flex items-center gap-3 border-b border-neutral-700 px-6 py-4">
+        <div
+          className="flex items-center gap-3 border-b border-neutral-700 px-6 py-4"
+          style={{
+            height: PROJECT_HEADER_HEIGHT,
+          }}
+        >
           <StatusIndicator
             status={
               agentState.status !== 'waiting' ? agentState.status : task.status
@@ -258,7 +268,9 @@ function TaskPanel() {
                   title={`Open in ${editorSetting ? getEditorLabel(editorSetting) : 'editor'}`}
                 >
                   <GitBranch className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{getBranchFromWorktreePath(task.worktreePath)}</span>
+                  <span className="truncate">
+                    {getBranchFromWorktreePath(task.worktreePath)}
+                  </span>
                 </button>
                 <button
                   onClick={toggleDiffView}

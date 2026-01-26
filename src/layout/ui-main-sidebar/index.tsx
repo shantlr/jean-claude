@@ -63,7 +63,7 @@ export function MainSidebar() {
   }
 
   return (
-    <aside className="flex h-full w-[86px] flex-col border-r border-neutral-800 bg-neutral-900">
+    <aside className="flex h-full w-[86px] flex-col">
       {/* Project tiles */}
       <div className="flex flex-1 flex-col items-center gap-2 overflow-y-auto px-3 pb-3 pt-12">
         <DndContext
@@ -88,7 +88,7 @@ export function MainSidebar() {
       </div>
 
       {/* Footer */}
-      <div className="flex flex-col items-center gap-2 border-t border-neutral-800 px-3 py-3">
+      <div className="flex flex-col items-center gap-2 bg-neutral-800 px-3 py-3 m-2 rounded-xl">
         {/* Add project button */}
         <Link
           to="/projects/new"

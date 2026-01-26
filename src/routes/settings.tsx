@@ -39,7 +39,11 @@ function SettingsPage() {
   const handleBrowseApp = async () => {
     const result = await api.dialog.openApplication();
     if (result) {
-      updateEditor.mutate({ type: 'app', path: result.path, name: result.name });
+      updateEditor.mutate({
+        type: 'app',
+        path: result.path,
+        name: result.name,
+      });
       setCustomCommand('');
     }
   };
@@ -73,7 +77,7 @@ function SettingsPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 border-l border-t rounded-tl-lg border-neutral-800 overflow-hidden h-full flex flex-col">
       {/* View toggle */}
       <div className="flex gap-2">
         <button
@@ -99,92 +103,90 @@ function SettingsPage() {
       </div>
 
       {view === 'debug' ? (
-        <div className="mt-8">
+        <div className="mt-8 h-full overflow-hidden flex flex-col">
           <DebugDatabase />
         </div>
       ) : (
         <div className="mt-8">
-        <h2 className="text-lg font-semibold text-neutral-200">Editor</h2>
-        <p className="mt-1 text-sm text-neutral-500">
-          Choose which editor to open projects in
-        </p>
+          <h2 className="text-lg font-semibold text-neutral-200">Editor</h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            Choose which editor to open projects in
+          </p>
 
-        {/* Preset editors */}
-        <div className="mt-4 flex flex-wrap gap-2">
-          {PRESET_EDITORS.map((editor) => {
-            const available = isEditorAvailable(editor.id);
-            const selected = isPresetSelected(editor.id);
+          {/* Preset editors */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {PRESET_EDITORS.map((editor) => {
+              const available = isEditorAvailable(editor.id);
+              const selected = isPresetSelected(editor.id);
 
-            return (
+              return (
+                <button
+                  key={editor.id}
+                  onClick={() => handleSelectPreset(editor.id)}
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                    selected
+                      ? 'border-blue-500 bg-blue-500/20 text-blue-400'
+                      : available
+                        ? 'border-neutral-700 bg-neutral-800 text-neutral-300 hover:border-neutral-600 hover:bg-neutral-700'
+                        : 'border-neutral-800 bg-neutral-900 text-neutral-600'
+                  }`}
+                >
+                  {editor.label}
+                  {available && <Check className="h-3 w-3 text-green-500" />}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Custom command */}
+          <div className="mt-6">
+            <label className="block text-sm font-medium text-neutral-400">
+              Custom command
+            </label>
+            <div className="mt-2 flex gap-2">
+              <input
+                type="text"
+                value={customCommand}
+                onChange={(e) => setCustomCommand(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSetCustomCommand()}
+                placeholder="e.g., vim, emacs, nano"
+                className="flex-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+              />
               <button
-                key={editor.id}
-                onClick={() => handleSelectPreset(editor.id)}
-                className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                  selected
-                    ? 'border-blue-500 bg-blue-500/20 text-blue-400'
-                    : available
-                      ? 'border-neutral-700 bg-neutral-800 text-neutral-300 hover:border-neutral-600 hover:bg-neutral-700'
-                      : 'border-neutral-800 bg-neutral-900 text-neutral-600'
-                }`}
+                onClick={handleSetCustomCommand}
+                disabled={!customCommand.trim()}
+                className="cursor-pointer rounded-lg bg-neutral-700 px-4 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-neutral-700"
               >
-                {editor.label}
-                {available && (
-                  <Check className="h-3 w-3 text-green-500" />
-                )}
+                Set
               </button>
-            );
-          })}
-        </div>
+            </div>
+          </div>
 
-        {/* Custom command */}
-        <div className="mt-6">
-          <label className="block text-sm font-medium text-neutral-400">
-            Custom command
-          </label>
-          <div className="mt-2 flex gap-2">
-            <input
-              type="text"
-              value={customCommand}
-              onChange={(e) => setCustomCommand(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSetCustomCommand()}
-              placeholder="e.g., vim, emacs, nano"
-              className="flex-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
-            />
+          {/* Browse for app */}
+          <div className="mt-4">
             <button
-              onClick={handleSetCustomCommand}
-              disabled={!customCommand.trim()}
-              className="cursor-pointer rounded-lg bg-neutral-700 px-4 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-neutral-700"
+              onClick={handleBrowseApp}
+              className="flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-300 hover:border-neutral-600 hover:bg-neutral-700"
             >
-              Set
+              <FolderOpen className="h-4 w-4" />
+              Browse for application...
             </button>
           </div>
-        </div>
 
-        {/* Browse for app */}
-        <div className="mt-4">
-          <button
-            onClick={handleBrowseApp}
-            className="flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-300 hover:border-neutral-600 hover:bg-neutral-700"
-          >
-            <FolderOpen className="h-4 w-4" />
-            Browse for application...
-          </button>
-        </div>
-
-        {/* Current selection */}
-        {editorSetting && (
-          <div className="mt-6 rounded-lg border border-neutral-700 bg-neutral-800/50 px-4 py-3">
-            <span className="text-sm text-neutral-500">Current editor: </span>
-            <span className="text-sm font-medium text-neutral-200">
-              {getEditorLabel(editorSetting)}
-            </span>
-            {editorSetting.type === 'app' && (
-              <span className="ml-2 text-xs text-neutral-500">
-                ({editorSetting.path})
+          {/* Current selection */}
+          {editorSetting && (
+            <div className="mt-6 rounded-lg border border-neutral-700 bg-neutral-800/50 px-4 py-3">
+              <span className="text-sm text-neutral-500">Current editor: </span>
+              <span className="text-sm font-medium text-neutral-200">
+                {getEditorLabel(editorSetting)}
               </span>
-            )}
-          </div>
-        )}
+              {editorSetting.type === 'app' && (
+                <span className="ml-2 text-xs text-neutral-500">
+                  ({editorSetting.path})
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
