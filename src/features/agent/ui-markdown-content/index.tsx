@@ -146,7 +146,7 @@ function CodeBlock({ language, code }: CodeBlockProps) {
 
   if (!html) {
     return (
-      <pre className="overflow-x-auto rounded-lg bg-neutral-900 p-4 text-sm whitespace-pre">
+      <pre className="overflow-x-auto rounded-lg bg-neutral-900 p-4 whitespace-pre">
         <code>{code}</code>
       </pre>
     );
@@ -154,7 +154,7 @@ function CodeBlock({ language, code }: CodeBlockProps) {
 
   return (
     <div
-      className="overflow-x-auto rounded-lg text-sm [&_pre]:!bg-neutral-900 [&_pre]:p-4 [&_pre]:whitespace-pre"
+      className="overflow-x-auto rounded-lg [&_pre]:!bg-neutral-900 [&_pre]:p-4 [&_pre]:whitespace-pre"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -181,13 +181,15 @@ export function MarkdownContent({
           </p>
         ),
         code: ({ className, children, ...props }) => {
-          const match = /language-(\w+)/.exec(className || '');
-          const isInline = !match && !className;
+          const matchLang = /language-(\w+)/.exec(className || '');
+          const isInline =
+            !matchLang &&
+            (typeof children !== 'string' || !children.includes('\n'));
 
           if (isInline) {
             return (
               <code
-                className="rounded bg-neutral-800 px-1.5 py-0.5 text-sm"
+                className="rounded bg-neutral-800 border border-neutral-600 px-1 py-0.5"
                 {...props}
               >
                 {children}
@@ -197,7 +199,7 @@ export function MarkdownContent({
 
           return (
             <CodeBlock
-              language={match ? match[1] : 'text'}
+              language={matchLang ? matchLang[1] : 'text'}
               code={String(children).replace(/\n$/, '')}
             />
           );
