@@ -34,9 +34,16 @@ const defaultTaskState: TaskState = {
   diffView: defaultDiffViewState,
 };
 
+// Constants for diff file tree width
+const DEFAULT_DIFF_FILE_TREE_WIDTH = 224; // w-56 equivalent
+const MIN_DIFF_FILE_TREE_WIDTH = 150;
+
 interface NavigationState {
   // App-level: last visited location
   lastLocation: { projectId: string | null; taskId: string | null };
+
+  // App-level: diff file tree width (global setting)
+  diffFileTreeWidth: number;
 
   // Per-project: last viewed task
   lastTaskByProject: Record<string, string>; // projectId -> taskId
@@ -46,6 +53,7 @@ interface NavigationState {
 
   // Actions
   setLastLocation: (projectId: string | null, taskId: string | null) => void;
+  setDiffFileTreeWidth: (width: number) => void;
   setLastTaskForProject: (projectId: string, taskId: string) => void;
   setTaskRightPane: (taskId: string, pane: RightPane | null) => void;
   setDiffViewOpen: (taskId: string, isOpen: boolean) => void;
@@ -58,11 +66,15 @@ const useStore = create<NavigationState>()(
   persist(
     (set) => ({
       lastLocation: { projectId: null, taskId: null },
+      diffFileTreeWidth: DEFAULT_DIFF_FILE_TREE_WIDTH,
       lastTaskByProject: {},
       taskState: {},
 
       setLastLocation: (projectId, taskId) =>
         set({ lastLocation: { projectId, taskId } }),
+
+      setDiffFileTreeWidth: (width) =>
+        set({ diffFileTreeWidth: Math.max(MIN_DIFF_FILE_TREE_WIDTH, width) }),
 
       setLastTaskForProject: (projectId, taskId) =>
         set((state) => ({
@@ -273,4 +285,11 @@ export function useDiffViewState(taskId: string) {
     closeDiffView,
     selectFile,
   };
+}
+
+// Hook for diff file tree width
+export function useDiffFileTreeWidth() {
+  const width = useStore((state) => state.diffFileTreeWidth);
+  const setWidth = useStore((state) => state.setDiffFileTreeWidth);
+  return { width, setWidth, minWidth: MIN_DIFF_FILE_TREE_WIDTH };
 }

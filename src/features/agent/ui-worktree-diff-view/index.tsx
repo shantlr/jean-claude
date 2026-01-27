@@ -1,11 +1,17 @@
+import clsx from 'clsx';
 import { FileX, FolderX, Loader2, RefreshCw } from 'lucide-react';
 import { useMemo } from 'react';
 
 import { DiffFileTree } from '@/features/agent/ui-diff-file-tree';
 import { DiffView } from '@/features/agent/ui-diff-view';
 import { WorktreeActions } from '@/features/agent/ui-worktree-actions';
-import { useWorktreeDiff, useWorktreeFileContent } from '@/hooks/use-worktree-diff';
+import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
+import {
+  useWorktreeDiff,
+  useWorktreeFileContent,
+} from '@/hooks/use-worktree-diff';
 import type { WorktreeDiffFile } from '@/lib/api';
+import { useDiffFileTreeWidth } from '@/stores/navigation';
 
 interface WorktreeDiffViewProps {
   taskId: string;
@@ -27,6 +33,17 @@ export function WorktreeDiffView({
   onMergeComplete,
 }: WorktreeDiffViewProps) {
   const { data, isLoading, error, refresh } = useWorktreeDiff(taskId, true);
+  const {
+    width: fileTreeWidth,
+    setWidth: setFileTreeWidth,
+    minWidth,
+  } = useDiffFileTreeWidth();
+  const { containerRef, isDragging, handleMouseDown } = useHorizontalResize({
+    initialWidth: fileTreeWidth,
+    minWidth,
+    maxWidthFraction: 0.5,
+    onWidthChange: setFileTreeWidth,
+  });
 
   const selectedFile = useMemo(() => {
     if (!selectedFilePath || !data?.files) return null;
@@ -61,7 +78,9 @@ export function WorktreeDiffView({
       <div className="flex h-full flex-col items-center justify-center gap-2 text-neutral-500">
         <FolderX className="h-8 w-8" />
         <p>Worktree has been deleted</p>
-        <p className="text-xs text-neutral-600">The diff view is no longer available</p>
+        <p className="text-xs text-neutral-600">
+          The diff view is no longer available
+        </p>
       </div>
     );
   }
@@ -78,9 +97,15 @@ export function WorktreeDiffView({
   }
 
   return (
-    <div className="flex h-full">
+    <div
+      ref={containerRef}
+      className={clsx('flex h-full', isDragging && 'select-none')}
+    >
       {/* File tree sidebar */}
-      <div className="flex w-56 flex-shrink-0 flex-col border-r border-neutral-700">
+      <div
+        className="relative flex flex-shrink-0 flex-col border-r border-neutral-700"
+        style={{ width: fileTreeWidth }}
+      >
         <div className="flex items-center justify-between border-b border-neutral-700 px-3 py-2">
           <span className="text-xs font-medium text-neutral-400">
             Changed Files ({files.length})
@@ -104,6 +129,14 @@ export function WorktreeDiffView({
           defaultBranch={defaultBranch}
           taskName={taskName}
           onMergeComplete={onMergeComplete}
+        />
+        {/* Resize handle */}
+        <div
+          onMouseDown={handleMouseDown}
+          className={clsx(
+            'absolute right-0 top-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500/50',
+            isDragging && 'bg-blue-500/50',
+          )}
         />
       </div>
 
@@ -130,7 +163,7 @@ function FileDiffContent({ file, taskId }: FileDiffContentProps) {
   const { data, isLoading, error } = useWorktreeFileContent(
     taskId,
     file.path,
-    file.status
+    file.status,
   );
 
   if (isLoading) {
@@ -175,7 +208,11 @@ function FileDiffContent({ file, taskId }: FileDiffContentProps) {
 
       {/* Diff view */}
       <div className="min-h-0 flex-1 overflow-auto p-4">
-        <DiffView filePath={file.path} oldString={oldString} newString={newString} />
+        <DiffView
+          filePath={file.path}
+          oldString={oldString}
+          newString={newString}
+        />
       </div>
     </div>
   );
@@ -184,7 +221,11 @@ function FileDiffContent({ file, taskId }: FileDiffContentProps) {
 function StatusBadge({ status }: { status: 'added' | 'modified' | 'deleted' }) {
   const config = {
     added: { label: 'Added', bg: 'bg-green-500/20', text: 'text-green-400' },
-    modified: { label: 'Modified', bg: 'bg-orange-500/20', text: 'text-orange-400' },
+    modified: {
+      label: 'Modified',
+      bg: 'bg-orange-500/20',
+      text: 'text-orange-400',
+    },
     deleted: { label: 'Deleted', bg: 'bg-red-500/20', text: 'text-red-400' },
   };
 
