@@ -10,7 +10,9 @@ import type {
   TextBlock,
   ToolUseBlock,
   ToolResultBlock,
+  HiddenSystemSubtype,
 } from '../../../../shared/agent-types';
+import { HIDDEN_SYSTEM_SUBTYPES } from '../../../../shared/agent-types';
 import { DiffView } from '../ui-diff-view';
 import { getLanguageFromPath } from '../ui-diff-view/language-utils';
 import { MarkdownContent } from '../ui-markdown-content';
@@ -483,17 +485,24 @@ function SystemEntry({ message }: { message: AgentMessage }) {
   return <DotEntry type="system" summary={summary} />;
 }
 
+// Helper to check if a system message subtype should be hidden
+function isHiddenSystemSubtype(
+  subtype: string | undefined,
+): subtype is HiddenSystemSubtype {
+  return HIDDEN_SYSTEM_SUBTYPES.includes(subtype as HiddenSystemSubtype);
+}
+
 export function TimelineEntry({
   message,
   toolResultsMap,
   onFilePathClick,
 }: TimelineEntryProps) {
-  // Skip system init messages (replaced by user prompt entries)
-  if (message.type === 'system' && message.subtype === 'init') {
+  // Skip system messages with hidden subtypes (init, hook_started, hook_completed, etc.)
+  if (message.type === 'system' && isHiddenSystemSubtype(message.subtype)) {
     return null;
   }
 
-  // Other system messages
+  // Other system messages (show them for visibility)
   if (message.type === 'system') {
     return <SystemEntry message={message} />;
   }

@@ -3,9 +3,18 @@
 import type { InteractionMode } from './types';
 
 // SDK message types (simplified for our use case)
+// System message subtypes that should be hidden in the message stream
+export const HIDDEN_SYSTEM_SUBTYPES = [
+  'init',
+  'hook_started',
+  'hook_completed',
+] as const;
+
+export type HiddenSystemSubtype = (typeof HIDDEN_SYSTEM_SUBTYPES)[number];
+
 export interface AgentMessage {
   type: 'system' | 'assistant' | 'user' | 'result';
-  subtype?: 'init';
+  subtype?: string; // SDK provides various subtypes like 'init', 'hook_started', 'hook_completed', etc.
   session_id?: string;
   message?: AssistantMessage | UserMessage;
   result?: string;
