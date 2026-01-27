@@ -67,6 +67,10 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('providers:update', id, data),
     delete: (id: string) => ipcRenderer.invoke('providers:delete', id),
   },
+  azureDevOps: {
+    getOrganizations: (token: string) =>
+      ipcRenderer.invoke('azureDevOps:getOrganizations', token),
+  },
   dialog: {
     openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),
     openApplication: () => ipcRenderer.invoke('dialog:openApplication'),

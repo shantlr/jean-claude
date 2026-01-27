@@ -44,6 +44,12 @@ export interface WorktreeFileContent {
   isBinary: boolean;
 }
 
+export interface AzureDevOpsOrganization {
+  id: string;
+  name: string;
+  url: string;
+}
+
 export interface WorktreeStatus {
   hasUncommittedChanges: boolean;
   hasStagedChanges: boolean;
@@ -124,6 +130,9 @@ export interface Api {
     create: (data: NewProvider) => Promise<Provider>;
     update: (id: string, data: UpdateProvider) => Promise<Provider>;
     delete: (id: string) => Promise<void>;
+  };
+  azureDevOps: {
+    getOrganizations: (token: string) => Promise<AzureDevOpsOrganization[]>;
   };
   dialog: {
     openDirectory: () => Promise<string | null>;
@@ -223,6 +232,9 @@ export const api: Api = hasWindowApi
         create: async () => { throw new Error('API not available'); },
         update: async () => { throw new Error('API not available'); },
         delete: async () => {},
+      },
+      azureDevOps: {
+        getOrganizations: async () => { throw new Error('API not available'); },
       },
       dialog: {
         openDirectory: async () => null,

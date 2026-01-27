@@ -44,6 +44,7 @@ import {
 } from '../database/schema';
 import { agentService } from '../services/agent-service';
 import { agentUsageService } from '../services/agent-usage-service';
+import { getOrganizations } from '../services/azure-devops-service';
 import { generateTaskName } from '../services/name-generation-service';
 import {
   createWorktree,
@@ -293,6 +294,11 @@ export function registerIpcHandlers() {
   );
   ipcMain.handle('providers:delete', (_, id: string) =>
     ProviderRepository.delete(id),
+  );
+
+  // Azure DevOps
+  ipcMain.handle('azureDevOps:getOrganizations', (_, token: string) =>
+    getOrganizations(token)
   );
 
   // Dialog
