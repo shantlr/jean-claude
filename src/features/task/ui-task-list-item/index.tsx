@@ -48,43 +48,41 @@ export function TaskListItem({ task, projectId, isActive }: TaskListItemProps) {
           },
         });
       }}
-      className={`cursor-pointer flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
+      className={`cursor-pointer flex flex-col gap-1 rounded-lg px-3 py-2 transition-colors ${
         isActive ? 'bg-neutral-700' : 'hover:bg-neutral-800'
       }`}
     >
-      <ToggleableStatusIndicator
-        status={task.status}
-        isChecked={task.userCompleted}
-        onClick={(event) => {
-          event.stopPropagation();
-          event.preventDefault();
-          toggleUserCompleted.mutate(task.id);
-        }}
-      />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-medium">
-            {task.name ?? task.prompt.split('\n')[0].slice(0, 50)}
-          </span>
-          {needsAttention && (
-            <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
-          )}
-          {unreadCount > 0 && !needsAttention && (
-            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-500 px-1.5 text-xs font-medium">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
-        </div>
-        {task.worktreePath && (
-          <span className="flex items-center gap-1 text-neutral-500" title={getBranchFromWorktreePath(task.worktreePath)}>
-            <GitBranch className="h-3 w-3 shrink-0" />
-            <span className="truncate text-xs">{getBranchFromWorktreePath(task.worktreePath)}</span>
+      <div className="flex items-center gap-3">
+        <ToggleableStatusIndicator
+          status={task.status}
+          isChecked={task.userCompleted}
+          onClick={(event) => {
+            event.stopPropagation();
+            event.preventDefault();
+            toggleUserCompleted.mutate(task.id);
+          }}
+        />
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+          {task.name ?? task.prompt.split('\n')[0].slice(0, 50)}
+        </span>
+        {needsAttention && (
+          <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
+        )}
+        {unreadCount > 0 && !needsAttention && (
+          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-500 px-1.5 text-xs font-medium">
+            {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
-        <span className="text-xs text-neutral-500">
-          {formatRelativeTime(task.createdAt)}
-        </span>
       </div>
+      {task.worktreePath && (
+        <span className="flex items-center gap-1 text-xs text-neutral-500" title={getBranchFromWorktreePath(task.worktreePath)}>
+          <GitBranch className="h-3 w-3 shrink-0" />
+          <span className="truncate">{getBranchFromWorktreePath(task.worktreePath)}</span>
+        </span>
+      )}
+      <span className="text-xs text-neutral-500">
+        {formatRelativeTime(task.createdAt)}
+      </span>
     </div>
   );
 }
