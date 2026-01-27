@@ -137,8 +137,8 @@ Key points:
 
 ### Key Entities
 
-- **Projects**: Local directories or git-provider repos (has color for tile display)
-- **Tasks**: Work units with agent sessions (status: running/waiting/completed/errored, interactionMode: ask/auto/plan)
+- **Projects**: Local directories or git-provider repos (has color for tile display, defaultBranch for worktree merges)
+- **Tasks**: Work units with agent sessions (status: running/waiting/completed/errored, interactionMode: ask/auto/plan, branchName for worktree tasks)
 - **Providers**: Git provider credentials (Azure DevOps, GitHub, GitLab)
 - **Settings**: App configuration (key-value pairs, e.g., editor preference)
 - **Agent Messages**: Persisted messages from agent sessions (messageIndex for ordering)
@@ -161,13 +161,22 @@ Agent events flow via IPC channels: `agent:message`, `agent:status`, `agent:perm
 
 Tasks created with worktrees can display a diff view showing all changes since the worktree was created:
 
-- **File tree**: Left panel shows changed files (added/modified/deleted)
+- **File tree**: Left panel shows changed files (added/modified/deleted), resizable
 - **Diff view**: Right panel shows side-by-side or unified diff
 - **Services**: `worktree-service.ts` provides `getWorktreeDiff()` and `getWorktreeFileContent()`
 - **Hooks**: `useWorktreeDiff` and `useWorktreeFileContent` for React Query integration
 - **State**: Diff view open/closed state persisted in navigation store
 
 The diff is calculated between the task's `startCommitHash` (captured at worktree creation) and the current working tree.
+
+### Worktree Actions
+
+Worktree tasks have commit and merge capabilities:
+
+- **Commit**: Stage and commit changes with a custom message
+- **Merge**: Merge worktree branch into target branch (with squash option)
+- **Default branch**: Projects can specify a default merge target branch
+- **UI Components**: `ui-worktree-actions/` with commit modal, merge confirm/success dialogs
 
 ## File Structure
 
@@ -180,8 +189,9 @@ electron/              # Main process
   services/            # Business logic
     agent-service.ts   # Claude Agent SDK integration
     agent-usage-service.ts  # Claude Code OAuth usage stats
+    azure-devops-service.ts # Azure DevOps API integration
     notification-service.ts
-    worktree-service.ts     # Git worktree creation and diff
+    worktree-service.ts     # Git worktree creation, diff, commit, merge
 
 shared/                # Types shared between main and renderer
   types.ts             # Domain types (Project, Task, Provider, InteractionMode)
@@ -192,10 +202,10 @@ src/                   # Renderer (React)
   routes/              # TanStack Router file-based routes
   layout/              # App shell components (header, sidebars)
   features/            # Feature-based components
-    agent/             # Message stream, timeline, tool cards, mode selector, diff view, etc.
+    agent/             # Message stream, timeline, tool cards, mode selector, diff view, worktree actions
     project/           # Project tile
     task/              # Task list item
-    settings/          # Debug database viewer
+    settings/          # General settings, debug viewer, Azure DevOps management
   common/ui/           # Atomic reusable UI components
   hooks/               # React Query and custom hooks
   stores/              # Zustand stores for UI state
@@ -212,9 +222,13 @@ docs/plans/            # Design and implementation documents
 | Route | Purpose |
 |-------|---------|
 | `/` | Redirects to last visited project/task (persisted in navigation store) |
-| `/settings` | Configure editor preferences; debug database viewer |
+| `/settings` | Settings layout with tabbed navigation |
+| `/settings/general` | Configure editor preferences |
+| `/settings/azure-devops` | Manage Azure DevOps organizations and PAT tokens |
+| `/settings/debug` | Debug database viewer |
 | `/projects/new` | Two-step wizard to add a local project (folder picker → name/color) |
 | `/projects/:projectId` | Project layout with sidebar listing tasks |
+| `/projects/:projectId/details` | Project settings (name, color, default merge branch) |
 | `/projects/:projectId/tasks/new` | Form to create a task with prompt, mode, and worktree options |
 | `/projects/:projectId/tasks/:taskId` | Main agent UI: message stream, file preview, diff view, permissions, input |
 
