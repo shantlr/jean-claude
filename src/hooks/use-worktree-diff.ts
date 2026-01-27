@@ -21,10 +21,12 @@ export function useWorktreeDiff(taskId: string | null, enabled: boolean = true) 
   });
 
   const refresh = useCallback(() => {
+    query.refetch();
+    // Also invalidate file content cache so files show updated content
     queryClient.invalidateQueries({
-      queryKey: ['worktree-diff', taskId],
+      queryKey: ['worktree-file-content', taskId],
     });
-  }, [queryClient, taskId]);
+  }, [query.refetch, queryClient, taskId]);
 
   return {
     ...query,
