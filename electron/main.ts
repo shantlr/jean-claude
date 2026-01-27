@@ -8,8 +8,12 @@ import { registerIpcHandlers } from './ipc/handlers';
 import { agentService } from './services/agent-service';
 
 // Fix PATH for packaged macOS apps launched from Finder/Dock
-// (they don't inherit shell environment variables like terminal does)
-fixPath();
+// Only needed when NOT running from terminal (which already has correct PATH)
+// Note: fixPath can cause issues with fish shell + jenv/volta configurations
+// TODO: Re-enable with PATH cleanup for production Finder launches
+if (!process.env.TERM) {
+  fixPath();
+}
 
 function createWindow() {
   const isDev = !!process.env.ELECTRON_RENDERER_URL;
