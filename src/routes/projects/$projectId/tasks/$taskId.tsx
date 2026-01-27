@@ -223,6 +223,13 @@ function TaskPanel() {
     }
   }, [rightPane, closeRightPane, openSettings]);
 
+  const handleMergeComplete = useCallback(() => {
+    // Close the diff view after successful merge (worktree is deleted)
+    if (isDiffViewOpen) {
+      toggleDiffView();
+    }
+  }, [isDiffViewOpen, toggleDiffView]);
+
   if (!task || !project) {
     return (
       <div className="flex h-full items-center justify-center text-neutral-500">
@@ -275,7 +282,7 @@ function TaskPanel() {
                 >
                   <GitBranch className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">
-                    {getBranchFromWorktreePath(task.worktreePath)}
+                    {task.branchName ?? getBranchFromWorktreePath(task.worktreePath)}
                   </span>
                 </button>
                 <button
@@ -372,12 +379,15 @@ function TaskPanel() {
 
         {/* Main content area: Diff view OR Message stream */}
         <div className="min-h-0 flex-1">
-          {isDiffViewOpen && task.worktreePath && task.startCommitHash ? (
+          {isDiffViewOpen && task.worktreePath ? (
             <WorktreeDiffView
-              worktreePath={task.worktreePath}
-              startCommitHash={task.startCommitHash}
+              taskId={taskId}
               selectedFilePath={diffSelectedFile}
               onSelectFile={selectDiffFile}
+              branchName={task.branchName ?? getBranchFromWorktreePath(task.worktreePath)}
+              defaultBranch={project.defaultBranch}
+              taskName={task.name}
+              onMergeComplete={handleMergeComplete}
             />
           ) : agentState.isLoading ? (
             <div className="flex h-full items-center justify-center">

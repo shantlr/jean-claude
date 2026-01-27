@@ -3,27 +3,30 @@ import { useMemo } from 'react';
 
 import { DiffFileTree } from '@/features/agent/ui-diff-file-tree';
 import { DiffView } from '@/features/agent/ui-diff-view';
+import { WorktreeActions } from '@/features/agent/ui-worktree-actions';
 import { useWorktreeDiff, useWorktreeFileContent } from '@/hooks/use-worktree-diff';
 import type { WorktreeDiffFile } from '@/lib/api';
 
 interface WorktreeDiffViewProps {
-  worktreePath: string;
-  startCommitHash: string;
+  taskId: string;
   selectedFilePath: string | null;
   onSelectFile: (path: string | null) => void;
+  branchName: string;
+  defaultBranch: string | null;
+  taskName: string | null;
+  onMergeComplete: () => void;
 }
 
 export function WorktreeDiffView({
-  worktreePath,
-  startCommitHash,
+  taskId,
   selectedFilePath,
   onSelectFile,
+  branchName,
+  defaultBranch,
+  taskName,
+  onMergeComplete,
 }: WorktreeDiffViewProps) {
-  const { data, isLoading, error, refresh } = useWorktreeDiff(
-    worktreePath,
-    startCommitHash,
-    true
-  );
+  const { data, isLoading, error, refresh } = useWorktreeDiff(taskId, true);
 
   const selectedFile = useMemo(() => {
     if (!selectedFilePath || !data?.files) return null;
@@ -95,16 +98,19 @@ export function WorktreeDiffView({
           selectedPath={selectedFilePath}
           onSelectFile={onSelectFile}
         />
+        <WorktreeActions
+          taskId={taskId}
+          branchName={branchName}
+          defaultBranch={defaultBranch}
+          taskName={taskName}
+          onMergeComplete={onMergeComplete}
+        />
       </div>
 
       {/* Diff content */}
       <div className="min-w-0 flex-1 overflow-auto">
         {selectedFile ? (
-          <FileDiffContent
-            file={selectedFile}
-            worktreePath={worktreePath}
-            startCommitHash={startCommitHash}
-          />
+          <FileDiffContent file={selectedFile} taskId={taskId} />
         ) : (
           <div className="flex h-full items-center justify-center text-neutral-500">
             <p>Select a file to view changes</p>
@@ -117,14 +123,12 @@ export function WorktreeDiffView({
 
 interface FileDiffContentProps {
   file: WorktreeDiffFile;
-  worktreePath: string;
-  startCommitHash: string;
+  taskId: string;
 }
 
-function FileDiffContent({ file, worktreePath, startCommitHash }: FileDiffContentProps) {
+function FileDiffContent({ file, taskId }: FileDiffContentProps) {
   const { data, isLoading, error } = useWorktreeFileContent(
-    worktreePath,
-    startCommitHash,
+    taskId,
     file.path,
     file.status
   );

@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('api', {
     delete: (id: string) => ipcRenderer.invoke('projects:delete', id),
     reorder: (orderedIds: string[]) =>
       ipcRenderer.invoke('projects:reorder', orderedIds),
+    getBranches: (projectId: string) =>
+      ipcRenderer.invoke('projects:getBranches', projectId),
   },
   tasks: {
     findAll: () => ipcRenderer.invoke('tasks:findAll'),
@@ -40,24 +42,21 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('tasks:removeSessionAllowedTool', id, toolName),
     reorder: (projectId: string, activeIds: string[], completedIds: string[]) =>
       ipcRenderer.invoke('tasks:reorder', projectId, activeIds, completedIds),
-  },
-  worktree: {
-    git: {
-      getDiff: (worktreePath: string, startCommitHash: string) =>
-        ipcRenderer.invoke('worktree:git:getDiff', worktreePath, startCommitHash),
+    worktree: {
+      getDiff: (taskId: string) => ipcRenderer.invoke('tasks:worktree:getDiff', taskId),
       getFileContent: (
-        worktreePath: string,
-        startCommitHash: string,
+        taskId: string,
         filePath: string,
         status: 'added' | 'modified' | 'deleted'
-      ) =>
-        ipcRenderer.invoke(
-          'worktree:git:getFileContent',
-          worktreePath,
-          startCommitHash,
-          filePath,
-          status
-        ),
+      ) => ipcRenderer.invoke('tasks:worktree:getFileContent', taskId, filePath, status),
+      getStatus: (taskId: string) => ipcRenderer.invoke('tasks:worktree:getStatus', taskId),
+      commit: (taskId: string, params: { message: string; stageAll: boolean }) =>
+        ipcRenderer.invoke('tasks:worktree:commit', taskId, params),
+      merge: (
+        taskId: string,
+        params: { targetBranch: string; squash?: boolean; commitMessage?: string }
+      ) => ipcRenderer.invoke('tasks:worktree:merge', taskId, params),
+      getBranches: (taskId: string) => ipcRenderer.invoke('tasks:worktree:getBranches', taskId),
     },
   },
   providers: {

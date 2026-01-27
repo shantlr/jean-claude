@@ -44,6 +44,17 @@ export interface WorktreeFileContent {
   isBinary: boolean;
 }
 
+export interface WorktreeStatus {
+  hasUncommittedChanges: boolean;
+  hasStagedChanges: boolean;
+  hasUnstagedChanges: boolean;
+}
+
+export interface MergeWorktreeResult {
+  success: boolean;
+  error?: string;
+}
+
 export interface QueryTableParams {
   table: string;
   search?: string;
@@ -69,6 +80,7 @@ export interface Api {
     update: (id: string, data: UpdateProject) => Promise<Project>;
     delete: (id: string) => Promise<void>;
     reorder: (orderedIds: string[]) => Promise<Project[]>;
+    getBranches: (projectId: string) => Promise<string[]>;
   };
   tasks: {
     findAll: () => Promise<Task[]>;
@@ -90,6 +102,21 @@ export interface Api {
       activeIds: string[],
       completedIds: string[]
     ) => Promise<Task[]>;
+    worktree: {
+      getDiff: (taskId: string) => Promise<WorktreeDiffResult>;
+      getFileContent: (
+        taskId: string,
+        filePath: string,
+        status: 'added' | 'modified' | 'deleted'
+      ) => Promise<WorktreeFileContent>;
+      getStatus: (taskId: string) => Promise<WorktreeStatus>;
+      commit: (taskId: string, params: { message: string; stageAll: boolean }) => Promise<void>;
+      merge: (
+        taskId: string,
+        params: { targetBranch: string; squash?: boolean; commitMessage?: string }
+      ) => Promise<MergeWorktreeResult>;
+      getBranches: (taskId: string) => Promise<string[]>;
+    };
   };
   providers: {
     findAll: () => Promise<Provider[]>;
@@ -105,17 +132,6 @@ export interface Api {
   fs: {
     readPackageJson: (dirPath: string) => Promise<PackageJson | null>;
     readFile: (filePath: string) => Promise<{ content: string; language: string } | null>;
-  };
-  worktree: {
-    git: {
-      getDiff: (worktreePath: string, startCommitHash: string) => Promise<WorktreeDiffResult>;
-      getFileContent: (
-        worktreePath: string,
-        startCommitHash: string,
-        filePath: string,
-        status: 'added' | 'modified' | 'deleted'
-      ) => Promise<WorktreeFileContent>;
-    };
   };
   settings: {
     get: <K extends keyof AppSettings>(key: K) => Promise<AppSettings[K]>;
@@ -174,6 +190,7 @@ export const api: Api = hasWindowApi
         update: async () => { throw new Error('API not available'); },
         delete: async () => {},
         reorder: async () => [],
+        getBranches: async () => [],
       },
       tasks: {
         findAll: async () => [],
@@ -191,6 +208,14 @@ export const api: Api = hasWindowApi
         addSessionAllowedTool: async () => { throw new Error('API not available'); },
         removeSessionAllowedTool: async () => { throw new Error('API not available'); },
         reorder: async () => [],
+        worktree: {
+          getDiff: async () => ({ files: [] }),
+          getFileContent: async () => ({ oldContent: null, newContent: null, isBinary: false }),
+          getStatus: async () => ({ hasUncommittedChanges: false, hasStagedChanges: false, hasUnstagedChanges: false }),
+          commit: async () => {},
+          merge: async () => ({ success: false, error: 'API not available' } as MergeWorktreeResult),
+          getBranches: async () => [],
+        },
       },
       providers: {
         findAll: async () => [],
@@ -206,12 +231,6 @@ export const api: Api = hasWindowApi
       fs: {
         readPackageJson: async () => null,
         readFile: async () => null,
-      },
-      worktree: {
-        git: {
-          getDiff: async () => ({ files: [] }),
-          getFileContent: async () => ({ oldContent: null, newContent: null, isBinary: false }),
-        },
       },
       settings: {
         get: async () => { throw new Error('API not available'); },

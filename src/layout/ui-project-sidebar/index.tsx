@@ -18,6 +18,7 @@ import clsx from 'clsx';
 import { Plus } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 
+import { ProjectSettings } from '@/features/project/ui-project-settings';
 import { SortableTaskListItem } from '@/features/task/ui-sortable-task-list-item';
 import { useProject } from '@/hooks/use-projects';
 import { useProjectTasks, useReorderTasks } from '@/hooks/use-tasks';
@@ -153,7 +154,7 @@ export function ProjectSidebar() {
       </div>
 
       {/* Task list */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {hasTasks ? (
           <div className="flex flex-col gap-4">
             {/* Active tasks section */}
@@ -215,6 +216,12 @@ export function ProjectSidebar() {
           </div>
         )}
       </div>
+
+      {/* Project settings */}
+      <ProjectSettings
+        projectId={project.id}
+        defaultBranch={project.defaultBranch}
+      />
     </aside>
   );
 }

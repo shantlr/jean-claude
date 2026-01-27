@@ -45,7 +45,15 @@ import {
 import { agentService } from '../services/agent-service';
 import { agentUsageService } from '../services/agent-usage-service';
 import { generateTaskName } from '../services/name-generation-service';
-import { createWorktree, getWorktreeDiff, getWorktreeFileContent } from '../services/worktree-service';
+import {
+  createWorktree,
+  getWorktreeDiff,
+  getWorktreeFileContent,
+  getProjectBranches,
+  getWorktreeStatus,
+  commitWorktreeChanges,
+  mergeWorktree,
+} from '../services/worktree-service';
 
 export function registerIpcHandlers() {
   // Projects
@@ -65,6 +73,13 @@ export function registerIpcHandlers() {
   ipcMain.handle('projects:reorder', (_, orderedIds: string[]) =>
     ProjectRepository.reorder(orderedIds),
   );
+  ipcMain.handle('projects:getBranches', async (_, projectId: string) => {
+    const project = await ProjectRepository.findById(projectId);
+    if (!project) {
+      throw new Error(`Project ${projectId} not found`);
+    }
+    return getProjectBranches(project.path);
+  });
 
   // Tasks
   ipcMain.handle('tasks:findAll', () => TaskRepository.findAll());
@@ -102,7 +117,7 @@ export function registerIpcHandlers() {
       }
 
       // Create the worktree using the generated task name
-      const { worktreePath, startCommitHash } = await createWorktree(
+      const { worktreePath, startCommitHash, branchName } = await createWorktree(
         project.path,
         project.id,
         project.name,
@@ -116,6 +131,7 @@ export function registerIpcHandlers() {
         name: taskName,
         worktreePath,
         startCommitHash,
+        branchName,
       });
     }
   );
@@ -183,25 +199,86 @@ export function registerIpcHandlers() {
     }
   );
 
-  // Worktree Git
-  ipcMain.handle(
-    'worktree:git:getDiff',
-    async (_, worktreePath: string, startCommitHash: string) => {
-      return getWorktreeDiff(worktreePath, startCommitHash);
+  // Task worktree operations - resolve paths internally from taskId
+  ipcMain.handle('tasks:worktree:getDiff', async (_, taskId: string) => {
+    const task = await TaskRepository.findById(taskId);
+    if (!task?.worktreePath || !task?.startCommitHash) {
+      throw new Error(`Task ${taskId} does not have a worktree`);
     }
-  );
+    return getWorktreeDiff(task.worktreePath, task.startCommitHash);
+  });
+
   ipcMain.handle(
-    'worktree:git:getFileContent',
+    'tasks:worktree:getFileContent',
     async (
       _,
-      worktreePath: string,
-      startCommitHash: string,
+      taskId: string,
       filePath: string,
       status: 'added' | 'modified' | 'deleted'
     ) => {
-      return getWorktreeFileContent(worktreePath, startCommitHash, filePath, status);
+      const task = await TaskRepository.findById(taskId);
+      if (!task?.worktreePath || !task?.startCommitHash) {
+        throw new Error(`Task ${taskId} does not have a worktree`);
+      }
+      return getWorktreeFileContent(task.worktreePath, task.startCommitHash, filePath, status);
     }
   );
+
+  ipcMain.handle('tasks:worktree:getStatus', async (_, taskId: string) => {
+    const task = await TaskRepository.findById(taskId);
+    if (!task?.worktreePath) {
+      throw new Error(`Task ${taskId} does not have a worktree`);
+    }
+    return getWorktreeStatus(task.worktreePath);
+  });
+
+  ipcMain.handle(
+    'tasks:worktree:commit',
+    async (_, taskId: string, params: { message: string; stageAll: boolean }) => {
+      const task = await TaskRepository.findById(taskId);
+      if (!task?.worktreePath) {
+        throw new Error(`Task ${taskId} does not have a worktree`);
+      }
+      return commitWorktreeChanges({ worktreePath: task.worktreePath, ...params });
+    }
+  );
+
+  ipcMain.handle(
+    'tasks:worktree:merge',
+    async (
+      _,
+      taskId: string,
+      params: { targetBranch: string; squash?: boolean; commitMessage?: string }
+    ) => {
+      const task = await TaskRepository.findById(taskId);
+      if (!task?.worktreePath) {
+        throw new Error(`Task ${taskId} does not have a worktree`);
+      }
+      const project = await ProjectRepository.findById(task.projectId);
+      if (!project) {
+        throw new Error(`Project ${task.projectId} not found`);
+      }
+      return mergeWorktree({
+        worktreePath: task.worktreePath,
+        projectPath: project.path,
+        targetBranch: params.targetBranch,
+        squash: params.squash,
+        commitMessage: params.commitMessage,
+      });
+    }
+  );
+
+  ipcMain.handle('tasks:worktree:getBranches', async (_, taskId: string) => {
+    const task = await TaskRepository.findById(taskId);
+    if (!task) {
+      throw new Error(`Task ${taskId} not found`);
+    }
+    const project = await ProjectRepository.findById(task.projectId);
+    if (!project) {
+      throw new Error(`Project ${task.projectId} not found`);
+    }
+    return getProjectBranches(project.path);
+  });
 
   // Providers
   ipcMain.handle('providers:findAll', () => ProviderRepository.findAll());

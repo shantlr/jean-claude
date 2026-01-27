@@ -44,6 +44,7 @@ export interface Project {
   color: string;
   sortOrder: number;
   worktreesPath: string | null;
+  defaultBranch: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -57,6 +58,7 @@ export interface NewProject {
   remoteUrl?: string | null;
   color: string;
   sortOrder?: number;
+  defaultBranch?: string | null;
   createdAt?: string;
   updatedAt: string;
 }
@@ -70,6 +72,7 @@ export interface UpdateProject {
   color?: string;
   sortOrder?: number;
   worktreesPath?: string | null;
+  defaultBranch?: string | null;
   updatedAt?: string;
 }
 
@@ -82,6 +85,7 @@ export interface Task {
   sessionId: string | null;
   worktreePath: string | null;
   startCommitHash: string | null;
+  branchName: string | null;
   readAt: string | null;
   lastReadIndex: number;
   interactionMode: InteractionMode;
@@ -100,6 +104,7 @@ export interface NewTask {
   sessionId?: string | null;
   worktreePath?: string | null;
   startCommitHash?: string | null;
+  branchName?: string | null;
   readAt?: string | null;
   lastReadIndex?: number;
   interactionMode?: InteractionMode;
@@ -117,6 +122,7 @@ export interface UpdateTask {
   sessionId?: string | null;
   worktreePath?: string | null;
   startCommitHash?: string | null;
+  branchName?: string | null;
   readAt?: string | null;
   lastReadIndex?: number;
   interactionMode?: InteractionMode;

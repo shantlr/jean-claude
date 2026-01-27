@@ -54,3 +54,15 @@ export function useReorderProjects() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects'] }),
   });
 }
+
+export function useProjectBranches(projectId: string | null) {
+  return useQuery({
+    queryKey: ['project-branches', projectId],
+    queryFn: () => {
+      if (!projectId) return [];
+      return api.projects.getBranches(projectId);
+    },
+    enabled: !!projectId,
+    staleTime: 30000, // Cache for 30 seconds
+  });
+}

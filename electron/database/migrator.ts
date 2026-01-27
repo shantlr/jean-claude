@@ -14,6 +14,8 @@ import * as m012 from './migrations/012_task_nullable_name';
 import * as m013 from './migrations/013_project_sort_order';
 import * as m014 from './migrations/014_project_worktrees_path';
 import * as m015 from './migrations/015_task_sort_order';
+import * as m016 from './migrations/016_project_default_branch';
+import * as m017 from './migrations/017_task_branch_name';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -30,6 +32,8 @@ const migrations: Record<string, Migration> = {
   '013_project_sort_order': m013,
   '014_project_worktrees_path': m014,
   '015_task_sort_order': m015,
+  '016_project_default_branch': m016,
+  '017_task_branch_name': m017,
 };
 
 export const migrationProvider: MigrationProvider = {

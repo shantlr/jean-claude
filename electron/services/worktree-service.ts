@@ -405,3 +405,172 @@ export async function createWorktree(
     branchName,
   };
 }
+
+/**
+ * Gets the list of local branches for a git repository.
+ */
+export async function getProjectBranches(projectPath: string): Promise<string[]> {
+  try {
+    const { stdout } = await execAsync('git branch --format="%(refname:short)"', {
+      cwd: projectPath,
+      encoding: 'utf-8',
+    });
+    return stdout
+      .trim()
+      .split('\n')
+      .filter((branch) => branch.length > 0);
+  } catch (error) {
+    throw new Error(`Failed to get branches: ${error}`);
+  }
+}
+
+export interface WorktreeStatus {
+  hasUncommittedChanges: boolean;
+  hasStagedChanges: boolean;
+  hasUnstagedChanges: boolean;
+}
+
+/**
+ * Checks if a worktree has uncommitted changes.
+ */
+export async function getWorktreeStatus(worktreePath: string): Promise<WorktreeStatus> {
+  try {
+    // Check for staged changes
+    const { stdout: stagedOutput } = await execAsync('git diff --cached --name-only', {
+      cwd: worktreePath,
+      encoding: 'utf-8',
+    });
+    const hasStagedChanges = stagedOutput.trim().length > 0;
+
+    // Check for unstaged changes (including untracked files)
+    const { stdout: unstagedOutput } = await execAsync('git status --porcelain', {
+      cwd: worktreePath,
+      encoding: 'utf-8',
+    });
+    const hasUnstagedChanges = unstagedOutput.trim().length > 0;
+
+    return {
+      hasUncommittedChanges: hasStagedChanges || hasUnstagedChanges,
+      hasStagedChanges,
+      hasUnstagedChanges,
+    };
+  } catch (error) {
+    throw new Error(`Failed to get worktree status: ${error}`);
+  }
+}
+
+export interface CommitWorktreeParams {
+  worktreePath: string;
+  message: string;
+  stageAll: boolean;
+}
+
+/**
+ * Commits changes in a worktree.
+ */
+export async function commitWorktreeChanges(params: CommitWorktreeParams): Promise<void> {
+  const { worktreePath, message, stageAll } = params;
+
+  try {
+    if (stageAll) {
+      // Stage all changes including untracked files
+      await execAsync('git add -A', { cwd: worktreePath, encoding: 'utf-8' });
+    }
+
+    // Commit with the provided message
+    await execAsync(`git commit -m ${JSON.stringify(message)}`, {
+      cwd: worktreePath,
+      encoding: 'utf-8',
+    });
+  } catch (error) {
+    throw new Error(`Failed to commit changes: ${error}`);
+  }
+}
+
+export interface MergeWorktreeParams {
+  worktreePath: string;
+  projectPath: string;
+  targetBranch: string;
+  squash?: boolean;
+  commitMessage?: string;
+}
+
+export interface MergeWorktreeResult {
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Merges a worktree branch into target branch and deletes the worktree.
+ * Supports both regular merge and squash merge with custom commit message.
+ */
+export async function mergeWorktree(params: MergeWorktreeParams): Promise<MergeWorktreeResult> {
+  const { worktreePath, projectPath, targetBranch, squash = false, commitMessage } = params;
+
+  // Check if worktree still exists before attempting operations
+  if (!(await pathExists(worktreePath))) {
+    return { success: false, error: 'Worktree no longer exists' };
+  }
+
+  try {
+    // Get the branch name of the worktree
+    const { stdout: branchOutput } = await execAsync('git rev-parse --abbrev-ref HEAD', {
+      cwd: worktreePath,
+      encoding: 'utf-8',
+    });
+    const worktreeBranch = branchOutput.trim();
+
+    // Switch to target branch in main repo
+    await execAsync(`git checkout ${JSON.stringify(targetBranch)}`, {
+      cwd: projectPath,
+      encoding: 'utf-8',
+    });
+
+    if (squash) {
+      // Squash merge: combine all commits into staged changes, then commit with custom message
+      await execAsync(`git merge --squash ${JSON.stringify(worktreeBranch)}`, {
+        cwd: projectPath,
+        encoding: 'utf-8',
+      });
+
+      // Commit the squashed changes with the provided message
+      const message = commitMessage || `Squash merge branch '${worktreeBranch}'`;
+      await execAsync(`git commit -m ${JSON.stringify(message)}`, {
+        cwd: projectPath,
+        encoding: 'utf-8',
+      });
+    } else {
+      // Regular merge
+      await execAsync(`git merge ${JSON.stringify(worktreeBranch)}`, {
+        cwd: projectPath,
+        encoding: 'utf-8',
+      });
+    }
+
+    // Remove the worktree
+    await execAsync(`git worktree remove ${JSON.stringify(worktreePath)} --force`, {
+      cwd: projectPath,
+      encoding: 'utf-8',
+    });
+
+    // Force delete the branch (use -D to handle edge cases where git thinks branch isn't fully merged)
+    await execAsync(`git branch -D ${JSON.stringify(worktreeBranch)}`, {
+      cwd: projectPath,
+      encoding: 'utf-8',
+    });
+
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Check if it's a merge conflict
+    if (errorMessage.includes('CONFLICT') || errorMessage.includes('Automatic merge failed')) {
+      return {
+        success: false,
+        error: 'Merge failed due to conflicts. Resolve manually in your editor.',
+      };
+    }
+
+    return { success: false, error: errorMessage };
+  }
+}

@@ -51,6 +51,7 @@ export interface ProjectTable {
   color: string;
   sortOrder: number;
   worktreesPath: string | null;
+  defaultBranch: string | null;
   createdAt: Generated<string>;
   updatedAt: string;
 }
@@ -64,6 +65,7 @@ export interface TaskTable {
   sessionId: string | null;
   worktreePath: string | null;
   startCommitHash: string | null;
+  branchName: string | null;
   readAt: string | null;
   lastReadIndex: number;
   interactionMode: string;
