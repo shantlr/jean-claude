@@ -9,13 +9,22 @@ export const HIDDEN_SYSTEM_SUBTYPES = [
   'hook_started',
   'hook_completed',
   'hook_response',
+  'status', // Handled via compacting merge
+  'compact_boundary', // Handled via compacting merge
 ] as const;
 
 export type HiddenSystemSubtype = (typeof HIDDEN_SYSTEM_SUBTYPES)[number];
 
+// Compacting metadata from compact_boundary message
+export interface CompactMetadata {
+  trigger: 'auto' | 'manual';
+  pre_tokens: number;
+}
+
 export interface AgentMessage {
   type: 'system' | 'assistant' | 'user' | 'result';
   subtype?: string; // SDK provides various subtypes like 'init', 'hook_started', 'hook_completed', etc.
+  status?: string; // For system/status messages (e.g., 'compacting')
   session_id?: string;
   message?: AssistantMessage | UserMessage;
   result?: string;
@@ -30,6 +39,8 @@ export interface AgentMessage {
     success: boolean;
     commandName: string;
   };
+  // SDK-provided fields for compact_boundary messages
+  compact_metadata?: CompactMetadata;
 }
 
 export interface AssistantMessage {

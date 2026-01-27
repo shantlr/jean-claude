@@ -1,11 +1,12 @@
 import clsx from 'clsx';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, PackageOpen } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
 
 import type {
   AgentMessage,
+  CompactMetadata,
   ContentBlock,
   TextBlock,
   ToolUseBlock,
@@ -490,6 +491,44 @@ function isHiddenSystemSubtype(
   subtype: string | undefined,
 ): subtype is HiddenSystemSubtype {
   return HIDDEN_SYSTEM_SUBTYPES.includes(subtype as HiddenSystemSubtype);
+}
+
+// Format token count with thousands separator
+function formatTokenCount(tokens: number): string {
+  return tokens.toLocaleString();
+}
+
+// Compacting entry - shows context compaction status
+export function CompactingEntry({
+  isComplete,
+  metadata,
+}: {
+  isComplete: boolean;
+  metadata?: CompactMetadata;
+}) {
+  const summary = isComplete
+    ? `Context compacted (${formatTokenCount(metadata?.pre_tokens ?? 0)} tokens${metadata?.trigger === 'auto' ? ', auto' : ''})`
+    : 'Compacting context...';
+
+  return (
+    <div className="relative pl-6">
+      {/* Dot - orange/amber for compacting */}
+      <div
+        className={`absolute -left-1 top-2.5 h-2 w-2 rounded-full bg-amber-500 ${!isComplete ? 'animate-pulse' : ''}`}
+      />
+      <div className="py-1.5 pr-3">
+        <div className="flex items-center gap-2">
+          {!isComplete && (
+            <Loader2 className="h-3 w-3 shrink-0 animate-spin text-amber-400" />
+          )}
+          {isComplete && (
+            <PackageOpen className="h-3 w-3 shrink-0 text-amber-400" />
+          )}
+          <span className="text-xs text-neutral-400">{summary}</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function TimelineEntry({
