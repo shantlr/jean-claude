@@ -8,6 +8,7 @@ export const HIDDEN_SYSTEM_SUBTYPES = [
   'init',
   'hook_started',
   'hook_completed',
+  'hook_response',
 ] as const;
 
 export type HiddenSystemSubtype = (typeof HIDDEN_SYSTEM_SUBTYPES)[number];
