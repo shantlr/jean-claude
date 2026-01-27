@@ -169,7 +169,7 @@ export function MarkdownContent({
       remarkPlugins={[remarkGfm]}
       components={{
         p: ({ children }) => (
-          <p className="mb-3 last:mb-0">
+          <p className="mb-3 whitespace-pre-line last:mb-0">
             {typeof children === 'string' ? (
               <TextWithFilePaths
                 text={children}

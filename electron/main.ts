@@ -1,6 +1,6 @@
 import { join } from 'path';
 
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, shell } from 'electron';
 import fixPath from 'fix-path';
 
 import { migrateDatabase } from './database';
@@ -29,6 +29,15 @@ function createWindow() {
       preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,
     },
+  });
+
+  // Open external links in the system default browser
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+      return { action: 'deny' };
+    }
+    return { action: 'deny' };
   });
 
   if (process.env.ELECTRON_RENDERER_URL) {
