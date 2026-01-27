@@ -2,7 +2,7 @@ import {
   createFileRoute,
   Link,
   Outlet,
-  useMatchRoute,
+  useRouterState,
 } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/settings')({
@@ -10,7 +10,9 @@ export const Route = createFileRoute('/settings')({
 });
 
 function SettingsLayout() {
-  const matchRoute = useMatchRoute();
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
 
   const tabs = [
     { to: '/settings/general', label: 'General' },
@@ -23,7 +25,7 @@ function SettingsLayout() {
       {/* Tab navigation */}
       <div className="flex gap-2">
         {tabs.map((tab) => {
-          const isActive = matchRoute({ to: tab.to });
+          const isActive = pathname === tab.to;
           return (
             <Link
               key={tab.to}
