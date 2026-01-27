@@ -443,6 +443,7 @@ function TaskPanel() {
             onRespond={respondToPermission}
             onAllowForSession={handleAllowToolsForSession}
             onSetMode={(mode) => setTaskMode.mutate({ id: taskId, mode })}
+            worktreePath={task.worktreePath}
           />
         )}
 

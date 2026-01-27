@@ -8,12 +8,43 @@ import type {
 import type { InteractionMode } from '../../../../shared/types';
 import { MarkdownContent } from '../ui-markdown-content';
 
+/**
+ * Format a file path relative to the worktree if it's a subpath.
+ * Returns { displayPath, isExternal } where isExternal is true if the path is outside the worktree.
+ */
+function formatPathRelativeToWorktree(
+  filePath: string,
+  worktreePath?: string | null,
+): { displayPath: string; isExternal: boolean } {
+  if (!worktreePath) {
+    return { displayPath: filePath, isExternal: false };
+  }
+
+  // Normalize paths (ensure no trailing slash for comparison)
+  const normalizedWorktree = worktreePath.replace(/\/$/, '');
+  const normalizedFile = filePath.replace(/\/$/, '');
+
+  if (normalizedFile.startsWith(normalizedWorktree + '/')) {
+    const relativePath = normalizedFile.slice(normalizedWorktree.length + 1);
+    return { displayPath: `<worktree>/${relativePath}`, isExternal: false };
+  }
+
+  if (normalizedFile === normalizedWorktree) {
+    return { displayPath: '<worktree>', isExternal: false };
+  }
+
+  // Path is external to the worktree
+  return { displayPath: filePath, isExternal: true };
+}
+
 function ToolInputDisplay({
   toolName,
   input,
+  worktreePath,
 }: {
   toolName: string;
   input: Record<string, unknown>;
+  worktreePath?: string | null;
 }) {
   switch (toolName) {
     case 'Bash':
@@ -25,12 +56,20 @@ function ToolInputDisplay({
 
     case 'Write':
     case 'Read':
-    case 'Edit':
+    case 'Edit': {
+      const filePath = String(input.file_path || '');
+      const { displayPath, isExternal } = formatPathRelativeToWorktree(filePath, worktreePath);
       return (
-        <code className="block truncate text-sm text-neutral-300">
-          {String(input.file_path || '')}
+        <code
+          className={`block truncate text-sm ${
+            isExternal ? 'text-orange-400' : 'text-neutral-300'
+          }`}
+          title={isExternal ? `External path: ${filePath}` : filePath}
+        >
+          {displayPath}
         </code>
       );
+    }
 
     case 'Glob':
     case 'Grep':
@@ -122,11 +161,13 @@ export function PermissionBar({
   onRespond,
   onAllowForSession,
   onSetMode,
+  worktreePath,
 }: {
   request: AgentPermissionEvent;
   onRespond: (requestId: string, response: PermissionResponse) => void;
   onAllowForSession?: (toolNames: string[]) => void;
   onSetMode?: (mode: InteractionMode) => void;
+  worktreePath?: string | null;
 }) {
   const [instruction, setInstruction] = useState('');
 
@@ -176,7 +217,11 @@ export function PermissionBar({
           {isExitPlanMode ? (
             <ExitPlanModeDisplay input={request.input} />
           ) : (
-            <ToolInputDisplay toolName={request.toolName} input={request.input} />
+            <ToolInputDisplay
+              toolName={request.toolName}
+              input={request.input}
+              worktreePath={worktreePath}
+            />
           )}
         </div>
       </div>
