@@ -154,7 +154,7 @@ function CodeBlock({ language, code }: CodeBlockProps) {
 
   return (
     <div
-      className="overflow-x-auto rounded-lg [&_pre]:!bg-neutral-900 [&_pre]:p-4 [&_pre]:whitespace-pre"
+      className="overflow-x-auto rounded mb-3 border border-neutral-600 [&_pre]:p-2 [&_pre]:whitespace-pre"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

@@ -1,7 +1,17 @@
-import { ChevronDown, ChevronRight, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  AlertCircle,
+  CheckCircle,
+  Loader2,
+} from 'lucide-react';
 import { useState } from 'react';
 
-import type { ToolUseBlock, ToolResultBlock, ContentBlock } from '../../../../shared/agent-types';
+import type {
+  ToolUseBlock,
+  ToolResultBlock,
+  ContentBlock,
+} from '../../../../shared/agent-types';
 
 interface ToolUseCardProps {
   block: ToolUseBlock;
@@ -72,14 +82,14 @@ const TOOL_COLORS: Record<string, string> = {
 
 export function ToolUseCard({ block, result }: ToolUseCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const colorClass = TOOL_COLORS[block.name] || 'bg-neutral-800 border-neutral-600';
+  const colorClass =
+    TOOL_COLORS[block.name] || 'bg-neutral-800 border-neutral-600';
   const formattedInput = formatInput(block.input);
 
   const hasResult = !!result;
   const isError = result?.is_error;
   const formattedResult = result ? formatResultContent(result.content) : '';
   const resultPreview = formattedResult.split('\n')[0].slice(0, 80);
-  const inputPreview = formattedInput.split('\n')[0].slice(0, 80);
 
   return (
     <div className={`rounded-lg border ${colorClass} overflow-hidden`}>
@@ -110,10 +120,7 @@ export function ToolUseCard({ block, result }: ToolUseCardProps) {
       {/* Collapsed input preview */}
       {!isExpanded && (
         <div className="border-t border-white/10 bg-black/20 px-3 py-1.5">
-          <span className="text-xs text-neutral-300">
-            {inputPreview}
-            {formattedInput.length > 80 && '...'}
-          </span>
+          <pre className="text-neutral-300">{formattedInput}</pre>
         </div>
       )}
 
@@ -122,7 +129,9 @@ export function ToolUseCard({ block, result }: ToolUseCardProps) {
         <div className="border-t border-white/10">
           {/* Input section */}
           <div className="bg-black/20 px-3 py-2">
-            <div className="mb-1 text-xs font-medium text-neutral-500">Input</div>
+            <div className="mb-1 text-xs font-medium text-neutral-500">
+              Input
+            </div>
             <pre className="overflow-x-auto whitespace-pre-wrap text-xs text-neutral-300">
               {formattedInput}
             </pre>
@@ -130,8 +139,12 @@ export function ToolUseCard({ block, result }: ToolUseCardProps) {
 
           {/* Result section */}
           {hasResult && (
-            <div className={`border-t border-white/10 px-3 py-2 ${isError ? 'bg-red-900/20' : 'bg-black/10'}`}>
-              <div className={`mb-1 text-xs font-medium ${isError ? 'text-red-400' : 'text-neutral-500'}`}>
+            <div
+              className={`border-t border-white/10 px-3 py-2 ${isError ? 'bg-red-900/20' : 'bg-black/10'}`}
+            >
+              <div
+                className={`mb-1 text-xs font-medium ${isError ? 'text-red-400' : 'text-neutral-500'}`}
+              >
                 {isError ? 'Error' : 'Result'}
               </div>
               <pre className="max-h-64 overflow-auto whitespace-pre-wrap text-xs text-neutral-300">
@@ -144,8 +157,12 @@ export function ToolUseCard({ block, result }: ToolUseCardProps) {
 
       {/* Collapsed result preview */}
       {!isExpanded && hasResult && (
-        <div className={`border-t border-white/10 px-3 py-1.5 ${isError ? 'bg-red-900/20' : 'bg-black/10'}`}>
-          <span className={`text-xs ${isError ? 'text-red-300' : 'text-neutral-500'}`}>
+        <div
+          className={`border-t border-white/10 px-3 py-1.5 ${isError ? 'bg-red-900/20' : 'bg-black/10'}`}
+        >
+          <span
+            className={`text-xs ${isError ? 'text-red-300' : 'text-neutral-500'}`}
+          >
             {resultPreview}
             {formattedResult.length > 80 && '...'}
           </span>

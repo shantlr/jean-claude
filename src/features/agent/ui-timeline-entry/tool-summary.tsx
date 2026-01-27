@@ -71,7 +71,10 @@ export function getToolSummary(
 
     case 'Bash': {
       const command = input.command as string;
-      const preview = command?.split('\n')[0].slice(0, 40) || 'command';
+      const isMultiline = command.includes('\n');
+      const preview = isMultiline
+        ? command.split('\n')[0] + '↩...'
+        : command || 'command';
       if (isError) return `\`${preview}\` (error)`;
       if (hasResult) return `\`${preview}\``;
       return `\`${preview}\`...`;

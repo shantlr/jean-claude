@@ -246,10 +246,10 @@ function SummaryText({
   const codeClasses: Record<CodeStyle, string> = {
     file: 'text-blue-400 underline decoration-blue-400/50',
     command:
-      'rounded border border-cyan-700/50 bg-cyan-900/30 px-1 py-0.5 text-xs text-cyan-200',
+      'rounded border border-cyan-700/50 bg-cyan-900/30 px-1 py-0.5 text-cyan-200',
     pattern:
-      'rounded border border-green-700/50 bg-green-900/30 px-1 py-0.5 text-xs text-green-200',
-    default: 'rounded bg-neutral-800 px-1 py-0.5 text-xs text-neutral-200',
+      'rounded border border-green-700/50 bg-green-900/30 px-1 py-0.5 text-green-200',
+    default: 'rounded bg-neutral-800 px-1 py-0.5 text-neutral-200',
   };
 
   return (
