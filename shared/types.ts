@@ -2,6 +2,34 @@
 // These are plain TypeScript types without database-specific dependencies
 
 export type ProviderType = 'azure-devops' | 'github' | 'gitlab';
+
+// Token metadata - sensitive token value never exposed to renderer
+export interface Token {
+  id: string;
+  label: string;
+  providerType: ProviderType;
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewToken {
+  id?: string;
+  label: string;
+  token: string; // Plain token sent during creation, never returned
+  providerType: ProviderType;
+  expiresAt?: string | null;
+  createdAt?: string;
+  updatedAt: string;
+}
+
+export interface UpdateToken {
+  label?: string;
+  token?: string; // Optional: only when refreshing
+  expiresAt?: string | null;
+  updatedAt?: string;
+}
+
 export type ProjectType = 'local' | 'git-provider';
 export type TaskStatus = 'running' | 'waiting' | 'completed' | 'errored' | 'interrupted';
 export type InteractionMode = 'ask' | 'auto' | 'plan';
@@ -11,7 +39,7 @@ export interface Provider {
   type: ProviderType;
   label: string;
   baseUrl: string;
-  token: string;
+  tokenId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -21,7 +49,7 @@ export interface NewProvider {
   type: ProviderType;
   label: string;
   baseUrl: string;
-  token: string;
+  tokenId: string;
   createdAt?: string;
   updatedAt: string;
 }
@@ -30,7 +58,7 @@ export interface UpdateProvider {
   type?: ProviderType;
   label?: string;
   baseUrl?: string;
-  token?: string;
+  tokenId?: string | null;
   updatedAt?: string;
 }
 
