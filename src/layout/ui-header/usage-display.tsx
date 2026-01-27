@@ -6,14 +6,13 @@ import { useClaudeUsage } from '@/hooks/use-usage';
 import type { UsageLevel } from '../../../shared/usage-types';
 
 /**
- * Determines usage level based on the ratio of utilization to elapsed time.
- * If usage is ahead of pace (using more than expected for elapsed time), it shows warning colors.
+ * Calculates the usage ratio (actual usage / expected usage based on elapsed time).
  *
  * @param utilization - Current usage percentage (0-100)
  * @param resetsAt - When the usage window resets
  * @param windowDurationMs - Total duration of the usage window in milliseconds
  */
-function getUsageLevel({
+function getUsageRatio({
   utilization,
   resetsAt,
   windowDurationMs,
@@ -21,7 +20,7 @@ function getUsageLevel({
   utilization: number;
   resetsAt: Date;
   windowDurationMs: number;
-}): UsageLevel {
+}): number {
   const now = new Date();
   const timeRemainingMs = Math.max(0, resetsAt.getTime() - now.getTime());
   const timeElapsedMs = windowDurationMs - timeRemainingMs;
@@ -32,8 +31,14 @@ function getUsageLevel({
 
   // Ratio of actual usage to expected usage
   // Avoid division by zero at the very start of the window
-  const usageRatio = utilization / Math.max(expectedUsage, 1);
+  return utilization / Math.max(expectedUsage, 1);
+}
 
+/**
+ * Determines usage level based on the ratio of utilization to elapsed time.
+ * If usage is ahead of pace (using more than expected for elapsed time), it shows warning colors.
+ */
+function getUsageLevel(usageRatio: number): UsageLevel {
   // If ratio > 1, we're ahead of pace (using more than expected)
   if (usageRatio >= 1.5) return 'critical'; // 50%+ ahead of pace
   if (usageRatio >= 1.3) return 'high'; // 30%+ ahead of pace
@@ -98,12 +103,15 @@ export function UsageDisplay() {
     return null;
   }
 
-  const level = getUsageLevel({
+  const usageRatio = getUsageRatio({
     utilization: fiveHour.utilization,
     resetsAt: fiveHour.resetsAt,
     windowDurationMs: fiveHour.windowDurationMs,
   });
+  const level = getUsageLevel(usageRatio);
   const percentage = Math.min(fiveHour.utilization, 100);
+  // Format ratio to max 2 digits (e.g., 1.2, 0.8)
+  const formattedRatio = usageRatio.toFixed(1);
 
   return (
     <div className="flex items-center gap-3">
@@ -119,7 +127,7 @@ export function UsageDisplay() {
           />
         </div>
         <span className={clsx('text-xs font-medium', LEVEL_COLORS[level])}>
-          {fiveHour.utilization.toFixed(0)}%
+          {fiveHour.utilization.toFixed(0)}% ({formattedRatio})
         </span>
       </div>
 
