@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import clsx from 'clsx';
 import {
   Loader2,
   Copy,
@@ -257,8 +258,13 @@ function TaskPanel() {
             className="h-3 w-3"
           />
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <h1 className="truncate text-lg font-semibold">
-              {task.name ?? task.prompt.split('\n')[0].slice(0, 50)}
+            <h1
+              className={clsx(
+                'truncate font-semibold whitespace-nowrap overflow-hidden text-ellipsis',
+                !task.worktreePath ? 'text-lg' : 'text-sm',
+              )}
+            >
+              {task.name ?? task.prompt.split('\n')[0]}
             </h1>
             {task.worktreePath && (
               <div className="flex items-center gap-2">
