@@ -12,7 +12,10 @@ import type {
   QueuedPrompt,
 } from '../../../../shared/agent-types';
 import { QueuedPromptEntry } from '../ui-queued-prompt-entry';
+import { SkillEntry } from '../ui-skill-entry';
 import { TimelineEntry } from '../ui-timeline-entry';
+
+import { mergeSkillMessages } from './message-merger';
 
 interface MessageStreamProps {
   messages: AgentMessageType[];
@@ -68,6 +71,12 @@ export function MessageStream({
     [messages],
   );
 
+  // Merge skill messages for display
+  const displayMessages = useMemo(
+    () => mergeSkillMessages(messages),
+    [messages],
+  );
+
   // Check if scroll position is near bottom
   const checkIfNearBottom = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -94,11 +103,7 @@ export function MessageStream({
     if (isNearBottomRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: 'instant' });
     }
-  }, [messages.length]);
-
-  console.log({
-    messages,
-  });
+  }, [displayMessages.length]);
 
   if (messages.length === 0) {
     return (
@@ -116,14 +121,23 @@ export function MessageStream({
     >
       {/* Timeline vertical line */}
       <div className="relative ml-3 border-l border-neutral-700">
-        {messages.map((message, index) => (
-          <TimelineEntry
-            key={index}
-            message={message}
-            toolResultsMap={toolResultsMap}
-            onFilePathClick={onFilePathClick}
-          />
-        ))}
+        {displayMessages.map((displayMessage, index) =>
+          displayMessage.kind === 'skill' ? (
+            <SkillEntry
+              key={index}
+              skillName={displayMessage.skillName}
+              promptMessage={displayMessage.promptMessage}
+              onFilePathClick={onFilePathClick}
+            />
+          ) : (
+            <TimelineEntry
+              key={index}
+              message={displayMessage.message}
+              toolResultsMap={toolResultsMap}
+              onFilePathClick={onFilePathClick}
+            />
+          ),
+        )}
         {isRunning && (
           <div className="relative pl-6 py-1.5">
             <div className="absolute -left-1 top-2.5 h-2 w-2 rounded-full bg-purple-500 animate-pulse" />

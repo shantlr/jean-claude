@@ -23,6 +23,12 @@ export interface AgentMessage {
   duration_api_ms?: number;
   total_cost_usd?: number;
   is_error?: boolean;
+  // SDK-provided fields for skill messages
+  isSynthetic?: boolean;
+  tool_use_result?: {
+    success: boolean;
+    commandName: string;
+  };
 }
 
 export interface AssistantMessage {
