@@ -223,7 +223,9 @@ export function MarkdownContent({
             {children}
           </ol>
         ),
-        li: ({ children }) => <li className="ml-2">{children}</li>,
+        li: ({ children }) => (
+          <li className="ml-2 [&>*:first-child]:inline">{children}</li>
+        ),
         h1: ({ children }) => (
           <h1 className="mb-3 font-bold" style={{ fontSize: '1.5em' }}>
             {children}
