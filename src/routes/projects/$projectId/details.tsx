@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import {
   useProject,
+  useProjectBranches,
   useUpdateProject,
   useDeleteProject,
 } from '@/hooks/use-projects';
@@ -18,6 +19,8 @@ function ProjectDetails() {
   const { projectId } = Route.useParams();
   const navigate = useNavigate();
   const { data: project } = useProject(projectId);
+  const { data: branches, isLoading: branchesLoading } =
+    useProjectBranches(projectId);
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
   const clearProjectNavHistoryState = useNavigationStore(
@@ -26,6 +29,7 @@ function ProjectDetails() {
 
   const [name, setName] = useState('');
   const [color, setColor] = useState('');
+  const [defaultBranch, setDefaultBranch] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Sync local state when project loads or changes
@@ -33,8 +37,23 @@ function ProjectDetails() {
     if (project) {
       setName(project.name);
       setColor(project.color);
+      setDefaultBranch(project.defaultBranch ?? '');
     }
   }, [project]);
+
+  // Initialize default branch when branches load
+  useEffect(() => {
+    if (branches && branches.length > 0 && !defaultBranch) {
+      const initial =
+        project?.defaultBranch ??
+        (branches.includes('main')
+          ? 'main'
+          : branches.includes('master')
+            ? 'master'
+            : branches[0]);
+      setDefaultBranch(initial);
+    }
+  }, [branches, project?.defaultBranch, defaultBranch]);
 
   if (!project) {
     return (
@@ -47,7 +66,7 @@ function ProjectDetails() {
   async function handleSave() {
     await updateProject.mutateAsync({
       id: projectId,
-      data: { name, color },
+      data: { name, color, defaultBranch: defaultBranch || null },
     });
   }
 
@@ -57,7 +76,10 @@ function ProjectDetails() {
     navigate({ to: '/' });
   }
 
-  const hasChanges = name !== project.name || color !== project.color;
+  const hasChanges =
+    name !== project.name ||
+    color !== project.color ||
+    defaultBranch !== (project.defaultBranch ?? '');
 
   return (
     <div className="h-full overflow-auto p-6">
@@ -131,6 +153,38 @@ function ProjectDetails() {
                 />
               ))}
             </div>
+          </div>
+
+          {/* Default Branch */}
+          <div>
+            <label
+              htmlFor="defaultBranch"
+              className="mb-1 block text-sm font-medium text-neutral-300"
+            >
+              Default merge branch
+            </label>
+            <select
+              id="defaultBranch"
+              value={defaultBranch}
+              onChange={(e) => setDefaultBranch(e.target.value)}
+              disabled={branchesLoading || !branches?.length}
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white focus:border-neutral-500 focus:outline-none disabled:opacity-50"
+            >
+              {branchesLoading ? (
+                <option>Loading...</option>
+              ) : branches?.length === 0 ? (
+                <option>No branches found</option>
+              ) : (
+                branches?.map((branch) => (
+                  <option key={branch} value={branch}>
+                    {branch}
+                  </option>
+                ))
+              )}
+            </select>
+            <p className="mt-1 text-xs text-neutral-500">
+              The branch that worktrees will merge into
+            </p>
           </div>
 
           {/* Save button */}

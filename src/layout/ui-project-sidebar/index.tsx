@@ -18,7 +18,6 @@ import clsx from 'clsx';
 import { Plus } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 
-import { ProjectSettings } from '@/features/project/ui-project-settings';
 import { SortableTaskListItem } from '@/features/task/ui-sortable-task-list-item';
 import { useProject } from '@/hooks/use-projects';
 import { useProjectTasks, useReorderTasks } from '@/hooks/use-tasks';
@@ -217,11 +216,6 @@ export function ProjectSidebar() {
         )}
       </div>
 
-      {/* Project settings */}
-      <ProjectSettings
-        projectId={project.id}
-        defaultBranch={project.defaultBranch}
-      />
     </aside>
   );
 }
