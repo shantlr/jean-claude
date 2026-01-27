@@ -90,6 +90,7 @@ class AgentService {
       console.warn(`[AgentService] No session found for task ${taskId}, message not persisted`);
     }
 
+    console.log(`[AgentService] Emitting message for task ${taskId}, type: ${message.type}`);
     this.emit(AGENT_CHANNELS.MESSAGE, { taskId, message });
   }
 
