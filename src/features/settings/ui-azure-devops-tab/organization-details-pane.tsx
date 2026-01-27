@@ -1,10 +1,20 @@
-import { ChevronDown, ChevronRight, ExternalLink, GitBranch, Loader2, X } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  GitBranch,
+  Loader2,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { useState } from 'react';
 
-import { useProviderDetails } from '@/hooks/use-providers';
+import { useProviderDetails, useDeleteProvider } from '@/hooks/use-providers';
 import type { ProviderProject, ProviderRepo } from '@/lib/api';
 
 import type { Provider } from '../../../../shared/types';
+
+import { DeleteProviderDialog } from './delete-provider-dialog';
 
 function ProjectAccordion({
   project,
@@ -83,8 +93,27 @@ export function OrganizationDetailsPane({
   onClose: () => void;
 }) {
   const { data, isLoading, error } = useProviderDetails(provider.id);
+  const deleteProvider = useDeleteProvider();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const handleDelete = () => {
+    deleteProvider.mutate(provider.id, {
+      onSuccess: () => {
+        setShowDeleteDialog(false);
+        onClose();
+      },
+    });
+  };
 
   return (
+    <>
+      <DeleteProviderDialog
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        onConfirm={handleDelete}
+        provider={provider}
+        isPending={deleteProvider.isPending}
+      />
     <div className="flex h-full w-96 shrink-0 flex-col rounded-lg border border-neutral-700 bg-neutral-800/50">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-neutral-700 px-4 py-3">
@@ -146,6 +175,18 @@ export function OrganizationDetailsPane({
           </div>
         )}
       </div>
+
+      {/* Footer with delete button */}
+      <div className="border-t border-neutral-700 px-4 py-3">
+        <button
+          onClick={() => setShowDeleteDialog(true)}
+          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-red-500/50 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20"
+        >
+          <Trash2 className="h-4 w-4" />
+          Delete Organization
+        </button>
+      </div>
     </div>
+    </>
   );
 }

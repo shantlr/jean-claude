@@ -1,4 +1,4 @@
-import { useProviders, useDeleteProvider } from '@/hooks/use-providers';
+import { useProviders } from '@/hooks/use-providers';
 
 import type { Provider } from '../../../../shared/types';
 
@@ -12,7 +12,6 @@ export function OrganizationList({
   onSelectProvider: (provider: Provider | null) => void;
 }) {
   const { data: providers = [] } = useProviders();
-  const deleteProvider = useDeleteProvider();
 
   const azureDevOpsProviders = providers.filter((p) => p.type === 'azure-devops');
 
@@ -41,13 +40,6 @@ export function OrganizationList({
             } else {
               onSelectProvider(provider);
             }
-          }}
-          onDelete={() => {
-            // Clear selection if deleting the selected provider
-            if (selectedProviderId === provider.id) {
-              onSelectProvider(null);
-            }
-            deleteProvider.mutate(provider.id);
           }}
         />
       ))}

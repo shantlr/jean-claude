@@ -1,17 +1,13 @@
-import { X } from 'lucide-react';
-
 import { Provider } from '../../../../shared/types';
 
 export function OrganizationCard({
   provider,
   isSelected,
   onSelect,
-  onDelete,
 }: {
   provider: Provider;
   isSelected: boolean;
   onSelect: () => void;
-  onDelete: () => void;
 }) {
   return (
     <div
@@ -33,16 +29,6 @@ export function OrganizationCard({
           <div className="text-sm text-neutral-500">{provider.baseUrl}</div>
         </div>
       </div>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        className="cursor-pointer rounded-lg p-2 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
-        title="Remove organization"
-      >
-        <X className="h-4 w-4" />
-      </button>
     </div>
   );
 }
