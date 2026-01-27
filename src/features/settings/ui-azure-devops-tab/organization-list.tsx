@@ -1,8 +1,16 @@
 import { useProviders, useDeleteProvider } from '@/hooks/use-providers';
 
+import type { Provider } from '../../../../shared/types';
+
 import { OrganizationCard } from './organization-card';
 
-export function OrganizationList() {
+export function OrganizationList({
+  selectedProviderId,
+  onSelectProvider,
+}: {
+  selectedProviderId: string | null;
+  onSelectProvider: (provider: Provider | null) => void;
+}) {
   const { data: providers = [] } = useProviders();
   const deleteProvider = useDeleteProvider();
 
@@ -25,7 +33,22 @@ export function OrganizationList() {
         <OrganizationCard
           key={provider.id}
           provider={provider}
-          onDelete={() => deleteProvider.mutate(provider.id)}
+          isSelected={selectedProviderId === provider.id}
+          onSelect={() => {
+            // Toggle selection if clicking the same provider
+            if (selectedProviderId === provider.id) {
+              onSelectProvider(null);
+            } else {
+              onSelectProvider(provider);
+            }
+          }}
+          onDelete={() => {
+            // Clear selection if deleting the selected provider
+            if (selectedProviderId === provider.id) {
+              onSelectProvider(null);
+            }
+            deleteProvider.mutate(provider.id);
+          }}
         />
       ))}
     </div>

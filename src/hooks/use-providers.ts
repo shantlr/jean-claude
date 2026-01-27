@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { api } from '@/lib/api';
+import { api, ProviderDetails } from '@/lib/api';
 
 import { NewProvider, UpdateProvider } from '../../shared/types';
 
@@ -44,5 +44,14 @@ export function useDeleteProvider() {
   return useMutation({
     mutationFn: (id: string) => api.providers.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['providers'] }),
+  });
+}
+
+export function useProviderDetails(providerId: string, enabled = true) {
+  return useQuery<ProviderDetails, Error>({
+    queryKey: ['providers', providerId, 'details'],
+    queryFn: () => api.providers.getDetails(providerId),
+    enabled: enabled && !!providerId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }

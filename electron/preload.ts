@@ -66,6 +66,8 @@ contextBridge.exposeInMainWorld('api', {
     update: (id: string, data: unknown) =>
       ipcRenderer.invoke('providers:update', id, data),
     delete: (id: string) => ipcRenderer.invoke('providers:delete', id),
+    getDetails: (providerId: string) =>
+      ipcRenderer.invoke('providers:getDetails', providerId),
   },
   azureDevOps: {
     getOrganizations: (token: string) =>

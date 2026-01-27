@@ -1,11 +1,32 @@
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
+import { Provider } from '../../../../shared/types';
+
 import { AddOrganizationPane } from './add-organization-pane';
+import { OrganizationDetailsPane } from './organization-details-pane';
 import { OrganizationList } from './organization-list';
 
 export function AzureDevOpsTab() {
   const [showAddPane, setShowAddPane] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
+
+  // Determine which pane to show (details takes precedence, add pane closes when selecting)
+  const showDetailsPane = selectedProvider !== null;
+
+  const handleSelectProvider = (provider: Provider | null) => {
+    setSelectedProvider(provider);
+    // Close add pane when selecting an organization
+    if (provider !== null) {
+      setShowAddPane(false);
+    }
+  };
+
+  const handleShowAddPane = () => {
+    setShowAddPane(true);
+    // Clear selection when opening add pane
+    setSelectedProvider(null);
+  };
 
   return (
     <div className="flex h-full gap-6">
@@ -19,7 +40,7 @@ export function AzureDevOpsTab() {
             </p>
           </div>
           <button
-            onClick={() => setShowAddPane(true)}
+            onClick={handleShowAddPane}
             className="flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
           >
             <Plus className="h-4 w-4" />
@@ -27,12 +48,21 @@ export function AzureDevOpsTab() {
           </button>
         </div>
 
-        <OrganizationList />
+        <OrganizationList
+          selectedProviderId={selectedProvider?.id ?? null}
+          onSelectProvider={handleSelectProvider}
+        />
       </div>
 
       {/* Right pane for adding */}
-      {showAddPane && (
-        <AddOrganizationPane onClose={() => setShowAddPane(false)} />
+      {showAddPane && <AddOrganizationPane onClose={() => setShowAddPane(false)} />}
+
+      {/* Right pane for organization details */}
+      {showDetailsPane && (
+        <OrganizationDetailsPane
+          provider={selectedProvider}
+          onClose={() => setSelectedProvider(null)}
+        />
       )}
     </div>
   );

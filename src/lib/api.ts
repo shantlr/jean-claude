@@ -50,6 +50,26 @@ export interface AzureDevOpsOrganization {
   url: string;
 }
 
+export interface ProviderProject {
+  id: string;
+  name: string;
+  url: string;
+}
+
+export interface ProviderRepo {
+  id: string;
+  name: string;
+  url: string;
+  projectId: string;
+}
+
+export interface ProviderDetails {
+  projects: Array<{
+    project: ProviderProject;
+    repos: ProviderRepo[];
+  }>;
+}
+
 export interface WorktreeStatus {
   hasUncommittedChanges: boolean;
   hasStagedChanges: boolean;
@@ -130,6 +150,7 @@ export interface Api {
     create: (data: NewProvider) => Promise<Provider>;
     update: (id: string, data: UpdateProvider) => Promise<Provider>;
     delete: (id: string) => Promise<void>;
+    getDetails: (providerId: string) => Promise<ProviderDetails>;
   };
   azureDevOps: {
     getOrganizations: (token: string) => Promise<AzureDevOpsOrganization[]>;
@@ -232,6 +253,7 @@ export const api: Api = hasWindowApi
         create: async () => { throw new Error('API not available'); },
         update: async () => { throw new Error('API not available'); },
         delete: async () => {},
+        getDetails: async () => { throw new Error('API not available'); },
       },
       azureDevOps: {
         getOrganizations: async () => { throw new Error('API not available'); },
