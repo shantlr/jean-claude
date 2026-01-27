@@ -93,12 +93,16 @@ class AgentUsageService {
   }
 
   private transformResponse(apiData: ClaudeUsageResponse): UsageDisplayData {
+    const FIVE_HOUR_MS = 5 * 60 * 60 * 1000;
+    const SEVEN_DAY_MS = 7 * 24 * 60 * 60 * 1000;
+
     return {
       fiveHour: apiData.five_hour
         ? {
             utilization: apiData.five_hour.utilization,
             resetsAt: new Date(apiData.five_hour.resets_at),
             timeUntilReset: this.formatTimeUntil(new Date(apiData.five_hour.resets_at)),
+            windowDurationMs: FIVE_HOUR_MS,
           }
         : null,
       sevenDay: apiData.seven_day
@@ -106,6 +110,7 @@ class AgentUsageService {
             utilization: apiData.seven_day.utilization,
             resetsAt: new Date(apiData.seven_day.resets_at),
             timeUntilReset: this.formatTimeUntil(new Date(apiData.seven_day.resets_at)),
+            windowDurationMs: SEVEN_DAY_MS,
           }
         : null,
     };

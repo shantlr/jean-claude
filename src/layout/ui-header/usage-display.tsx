@@ -5,14 +5,45 @@ import { useClaudeUsage } from '@/hooks/use-usage';
 
 import type { UsageLevel } from '../../../shared/usage-types';
 
-function getUsageLevel(utilization: number): UsageLevel {
-  if (utilization >= 90) return 'critical';
-  if (utilization >= 70) return 'high';
-  if (utilization >= 50) return 'medium';
-  return 'low';
+/**
+ * Determines usage level based on the ratio of utilization to elapsed time.
+ * If usage is ahead of pace (using more than expected for elapsed time), it shows warning colors.
+ *
+ * @param utilization - Current usage percentage (0-100)
+ * @param resetsAt - When the usage window resets
+ * @param windowDurationMs - Total duration of the usage window in milliseconds
+ */
+function getUsageLevel({
+  utilization,
+  resetsAt,
+  windowDurationMs,
+}: {
+  utilization: number;
+  resetsAt: Date;
+  windowDurationMs: number;
+}): UsageLevel {
+  const now = new Date();
+  const timeRemainingMs = Math.max(0, resetsAt.getTime() - now.getTime());
+  const timeElapsedMs = windowDurationMs - timeRemainingMs;
+  const timeElapsedRatio = timeElapsedMs / windowDurationMs;
+
+  // Expected usage based on elapsed time (as percentage)
+  const expectedUsage = timeElapsedRatio * 100;
+
+  // Ratio of actual usage to expected usage
+  // Avoid division by zero at the very start of the window
+  const usageRatio = utilization / Math.max(expectedUsage, 1);
+
+  // If ratio > 1, we're ahead of pace (using more than expected)
+  if (usageRatio >= 1.5) return 'critical'; // 50%+ ahead of pace
+  if (usageRatio >= 1.3) return 'high'; // 30%+ ahead of pace
+  if (usageRatio >= 1.0) return 'medium'; // At or slightly ahead of pace
+  if (usageRatio >= 0.8) return 'low'; // Slightly below pace
+  return 'excellent'; // Well below pace
 }
 
 const LEVEL_COLORS: Record<UsageLevel, string> = {
+  excellent: 'text-blue-400',
   low: 'text-green-400',
   medium: 'text-yellow-400',
   high: 'text-orange-400',
@@ -20,6 +51,7 @@ const LEVEL_COLORS: Record<UsageLevel, string> = {
 };
 
 const LEVEL_BG_COLORS: Record<UsageLevel, string> = {
+  excellent: 'bg-blue-500',
   low: 'bg-green-500',
   medium: 'bg-yellow-500',
   high: 'bg-orange-500',
@@ -66,7 +98,11 @@ export function UsageDisplay() {
     return null;
   }
 
-  const level = getUsageLevel(fiveHour.utilization);
+  const level = getUsageLevel({
+    utilization: fiveHour.utilization,
+    resetsAt: fiveHour.resetsAt,
+    windowDurationMs: fiveHour.windowDurationMs,
+  });
   const percentage = Math.min(fiveHour.utilization, 100);
 
   return (

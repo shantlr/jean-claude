@@ -17,15 +17,17 @@ export interface UsageDisplayData {
     utilization: number;
     resetsAt: Date;
     timeUntilReset: string;
+    windowDurationMs: number;
   } | null;
   sevenDay: {
     utilization: number;
     resetsAt: Date;
     timeUntilReset: string;
+    windowDurationMs: number;
   } | null;
 }
 
-export type UsageLevel = 'low' | 'medium' | 'high' | 'critical';
+export type UsageLevel = 'excellent' | 'low' | 'medium' | 'high' | 'critical';
 
 export type UsageError =
   | { type: 'no_token'; message: string }
