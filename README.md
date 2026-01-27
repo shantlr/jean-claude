@@ -14,7 +14,7 @@ A desktop app for managing AI coding agents across multiple projects. Built with
 ```bash
 # Install dependencies
 pnpm install
-
+pnpm rebuild
 # Run in development mode
 pnpm dev
 
