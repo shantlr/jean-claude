@@ -92,8 +92,13 @@ export function useSetTaskMode() {
 export function useMarkTaskAsRead() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, lastReadIndex }: { id: string; lastReadIndex: number }) =>
-      api.tasks.updateLastReadIndex(id, lastReadIndex),
+    mutationFn: ({
+      id,
+      lastReadIndex,
+    }: {
+      id: string;
+      lastReadIndex: number;
+    }) => api.tasks.updateLastReadIndex(id, lastReadIndex),
     onSuccess: (task, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });

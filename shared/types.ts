@@ -31,7 +31,12 @@ export interface UpdateToken {
 }
 
 export type ProjectType = 'local' | 'git-provider';
-export type TaskStatus = 'running' | 'waiting' | 'completed' | 'errored' | 'interrupted';
+export type TaskStatus =
+  | 'running'
+  | 'waiting'
+  | 'completed'
+  | 'errored'
+  | 'interrupted';
 export type InteractionMode = 'ask' | 'auto' | 'plan';
 
 export interface Provider {
@@ -168,11 +173,26 @@ export interface PresetEditor {
 }
 
 export const PRESET_EDITORS: PresetEditor[] = [
-  { id: 'vscode', label: 'VS Code', command: 'code', appName: 'Visual Studio Code' },
+  {
+    id: 'vscode',
+    label: 'VS Code',
+    command: 'code',
+    appName: 'Visual Studio Code',
+  },
   { id: 'cursor', label: 'Cursor', command: 'cursor', appName: 'Cursor' },
   { id: 'zed', label: 'Zed', command: 'zed', appName: 'Zed' },
-  { id: 'webstorm', label: 'WebStorm', command: 'webstorm', appName: 'WebStorm' },
-  { id: 'sublime', label: 'Sublime Text', command: 'subl', appName: 'Sublime Text' },
+  {
+    id: 'webstorm',
+    label: 'WebStorm',
+    command: 'webstorm',
+    appName: 'WebStorm',
+  },
+  {
+    id: 'sublime',
+    label: 'Sublime Text',
+    command: 'subl',
+    appName: 'Sublime Text',
+  },
 ];
 
 export type EditorSetting =
@@ -191,7 +211,8 @@ function isEditorSetting(v: unknown): v is EditorSetting {
   const obj = v as Record<string, unknown>;
   if (obj.type === 'preset') return typeof obj.id === 'string';
   if (obj.type === 'command') return typeof obj.command === 'string';
-  if (obj.type === 'app') return typeof obj.path === 'string' && typeof obj.name === 'string';
+  if (obj.type === 'app')
+    return typeof obj.path === 'string' && typeof obj.name === 'string';
   return false;
 }
 

@@ -28,9 +28,15 @@ export async function up(db: Kysely<unknown>): Promise<void> {
       .addColumn('worktreePath', 'text')
       .addColumn('startCommitHash', 'text')
       .addColumn('readAt', 'text')
-      .addColumn('lastReadIndex', 'integer', (col) => col.notNull().defaultTo(0))
-      .addColumn('interactionMode', 'text', (col) => col.notNull().defaultTo('plan'))
-      .addColumn('userCompleted', 'integer', (col) => col.notNull().defaultTo(0))
+      .addColumn('lastReadIndex', 'integer', (col) =>
+        col.notNull().defaultTo(0),
+      )
+      .addColumn('interactionMode', 'text', (col) =>
+        col.notNull().defaultTo('plan'),
+      )
+      .addColumn('userCompleted', 'integer', (col) =>
+        col.notNull().defaultTo(0),
+      )
       .addColumn('sessionAllowedTools', 'text')
       .addColumn('createdAt', 'text', (col) =>
         col.notNull().defaultTo(sql`(datetime('now'))`),
@@ -59,9 +65,13 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     await sql`PRAGMA foreign_keys = ON`.execute(trx);
 
     // Verify FK integrity after migration
-    const fkCheck = await sql<{ table: string }>`PRAGMA foreign_key_check`.execute(trx);
+    const fkCheck = await sql<{
+      table: string;
+    }>`PRAGMA foreign_key_check`.execute(trx);
     if (fkCheck.rows.length > 0) {
-      throw new Error(`Foreign key violation after migration: ${JSON.stringify(fkCheck.rows)}`);
+      throw new Error(
+        `Foreign key violation after migration: ${JSON.stringify(fkCheck.rows)}`,
+      );
     }
   });
 }
@@ -88,9 +98,15 @@ export async function down(db: Kysely<unknown>): Promise<void> {
       .addColumn('worktreePath', 'text')
       .addColumn('startCommitHash', 'text')
       .addColumn('readAt', 'text')
-      .addColumn('lastReadIndex', 'integer', (col) => col.notNull().defaultTo(0))
-      .addColumn('interactionMode', 'text', (col) => col.notNull().defaultTo('plan'))
-      .addColumn('userCompleted', 'integer', (col) => col.notNull().defaultTo(0))
+      .addColumn('lastReadIndex', 'integer', (col) =>
+        col.notNull().defaultTo(0),
+      )
+      .addColumn('interactionMode', 'text', (col) =>
+        col.notNull().defaultTo('plan'),
+      )
+      .addColumn('userCompleted', 'integer', (col) =>
+        col.notNull().defaultTo(0),
+      )
       .addColumn('sessionAllowedTools', 'text')
       .addColumn('createdAt', 'text', (col) =>
         col.notNull().defaultTo(sql`(datetime('now'))`),
@@ -112,9 +128,13 @@ export async function down(db: Kysely<unknown>): Promise<void> {
 
     await sql`PRAGMA foreign_keys = ON`.execute(trx);
 
-    const fkCheck = await sql<{ table: string }>`PRAGMA foreign_key_check`.execute(trx);
+    const fkCheck = await sql<{
+      table: string;
+    }>`PRAGMA foreign_key_check`.execute(trx);
     if (fkCheck.rows.length > 0) {
-      throw new Error(`Foreign key violation after migration: ${JSON.stringify(fkCheck.rows)}`);
+      throw new Error(
+        `Foreign key violation after migration: ${JSON.stringify(fkCheck.rows)}`,
+      );
     }
   });
 }

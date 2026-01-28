@@ -3,7 +3,9 @@ import { Kysely } from 'kysely';
 export async function up(db: Kysely<unknown>): Promise<void> {
   await db.schema
     .alterTable('tasks')
-    .addColumn('interactionMode', 'text', (col) => col.defaultTo('ask').notNull())
+    .addColumn('interactionMode', 'text', (col) =>
+      col.defaultTo('ask').notNull(),
+    )
     .execute();
 }
 

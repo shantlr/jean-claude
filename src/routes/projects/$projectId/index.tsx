@@ -24,9 +24,7 @@ function ProjectIndex() {
   // Redirect to last viewed task or first task if any exist
   if (tasks && tasks.length > 0) {
     // Check if lastTaskId is valid for this project
-    const lastTask = lastTaskId
-      ? tasks.find((t) => t.id === lastTaskId)
-      : null;
+    const lastTask = lastTaskId ? tasks.find((t) => t.id === lastTaskId) : null;
 
     const targetTaskId = lastTask?.id ?? tasks[0].id;
 

@@ -21,7 +21,9 @@ export function DeleteProviderDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-md rounded-lg bg-neutral-800 shadow-xl">
         <div className="flex items-center justify-between border-b border-neutral-700 px-4 py-3">
-          <h2 className="text-lg font-semibold text-neutral-100">Delete Organization</h2>
+          <h2 className="text-lg font-semibold text-neutral-100">
+            Delete Organization
+          </h2>
           <button
             onClick={onClose}
             className="cursor-pointer rounded p-1 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
@@ -41,7 +43,8 @@ export function DeleteProviderDialog({
                 <span className="font-semibold">{provider.label}</span>?
               </p>
               <p className="mt-1 text-sm text-neutral-400">
-                This will remove the organization and its credentials. This action cannot be undone.
+                This will remove the organization and its credentials. This
+                action cannot be undone.
               </p>
             </div>
           </div>

@@ -20,8 +20,7 @@ export function ProjectTile({ id, name, color }: ProjectTileProps) {
   const router = useRouter();
 
   const isActive = useRouterState({
-    select: (state) =>
-      state.location.pathname.startsWith(`/projects/${id}`),
+    select: (state) => state.location.pathname.startsWith(`/projects/${id}`),
   });
 
   return (

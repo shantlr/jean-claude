@@ -27,9 +27,13 @@ export function useHorizontalResize({
 
       const handleMouseMove = (moveEvent: MouseEvent | ReactMouseEvent) => {
         const delta = moveEvent.clientX - startX;
-        const containerWidth = containerRef.current?.offsetWidth ?? window.innerWidth;
+        const containerWidth =
+          containerRef.current?.offsetWidth ?? window.innerWidth;
         const maxWidth = containerWidth * maxWidthFraction;
-        const newWidth = Math.min(Math.max(startWidth + delta, minWidth), maxWidth);
+        const newWidth = Math.min(
+          Math.max(startWidth + delta, minWidth),
+          maxWidth,
+        );
         onWidthChange(newWidth);
       };
 

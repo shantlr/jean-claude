@@ -70,7 +70,7 @@ class AgentService {
   private emitStatus(
     taskId: string,
     status: 'running' | 'waiting' | 'completed' | 'errored' | 'interrupted',
-    error?: string
+    error?: string,
   ) {
     this.emit(AGENT_CHANNELS.STATUS, { taskId, status, error });
   }
@@ -80,24 +80,40 @@ class AgentService {
     const session = this.sessions.get(taskId);
     if (session) {
       try {
-        console.log(`[AgentService] Persisting message ${session.messageIndex} for task ${taskId}, type: ${message.type}`);
-        await AgentMessageRepository.create(taskId, session.messageIndex, message);
+        console.log(
+          `[AgentService] Persisting message ${session.messageIndex} for task ${taskId}, type: ${message.type}`,
+        );
+        await AgentMessageRepository.create(
+          taskId,
+          session.messageIndex,
+          message,
+        );
         session.messageIndex++;
       } catch (error) {
         console.error('Failed to persist message:', error);
       }
     } else {
-      console.warn(`[AgentService] No session found for task ${taskId}, message not persisted`);
+      console.warn(
+        `[AgentService] No session found for task ${taskId}, message not persisted`,
+      );
     }
 
-    console.log(`[AgentService] Emitting message for task ${taskId}, type: ${message.type}`);
+    console.log(
+      `[AgentService] Emitting message for task ${taskId}, type: ${message.type}`,
+    );
     this.emit(AGENT_CHANNELS.MESSAGE, { taskId, message });
   }
 
-  private getSessionAllowButton(toolName: string): SessionAllowButton | undefined {
+  private getSessionAllowButton(
+    toolName: string,
+  ): SessionAllowButton | undefined {
     switch (toolName) {
       case 'ExitPlanMode':
-        return { label: 'Allow and Auto-Edit', toolsToAllow: ['Edit', 'Write'], setModeOnAllow: 'ask' };
+        return {
+          label: 'Allow and Auto-Edit',
+          toolsToAllow: ['Edit', 'Write'],
+          setModeOnAllow: 'ask',
+        };
       case 'Edit':
         return { label: 'Allow Edit for Session', toolsToAllow: ['Edit'] };
       case 'Write':
@@ -111,10 +127,16 @@ class AgentService {
     taskId: string,
     requestId: string,
     toolName: string,
-    input: Record<string, unknown>
+    input: Record<string, unknown>,
   ) {
     const sessionAllowButton = this.getSessionAllowButton(toolName);
-    this.emit(AGENT_CHANNELS.PERMISSION, { taskId, requestId, toolName, input, sessionAllowButton });
+    this.emit(AGENT_CHANNELS.PERMISSION, {
+      taskId,
+      requestId,
+      toolName,
+      input,
+      sessionAllowButton,
+    });
 
     // Send desktop notification if window not focused
     if (this.mainWindow && !this.mainWindow.isFocused()) {
@@ -124,7 +146,7 @@ class AgentService {
         `Task "${task?.name || 'Unknown'}" needs approval for ${toolName}`,
         () => {
           this.mainWindow?.focus();
-        }
+        },
       );
     }
   }
@@ -132,7 +154,7 @@ class AgentService {
   private async emitQuestionRequest(
     taskId: string,
     requestId: string,
-    questions: AgentQuestion[]
+    questions: AgentQuestion[],
   ) {
     this.emit(AGENT_CHANNELS.QUESTION, { taskId, requestId, questions });
 
@@ -144,7 +166,7 @@ class AgentService {
         `Task "${task?.name || 'Unknown'}" has a question`,
         () => {
           this.mainWindow?.focus();
-        }
+        },
       );
     }
   }
@@ -157,7 +179,10 @@ class AgentService {
     this.emit(AGENT_CHANNELS.QUEUE_UPDATE, { taskId, queuedPrompts });
   }
 
-  private async generateTaskName(taskId: string, prompt: string): Promise<void> {
+  private async generateTaskName(
+    taskId: string,
+    prompt: string,
+  ): Promise<void> {
     try {
       const generator = query({
         prompt: `Generate a short task name (max 40 characters) that summarizes this task. Output only the name, nothing else.\n\nTask: ${prompt}`,
@@ -173,17 +198,25 @@ class AgentService {
       });
 
       for await (const message of generator) {
-        const msg = message as { type: string; structured_output?: { name: string } };
+        const msg = message as {
+          type: string;
+          structured_output?: { name: string };
+        };
         if (msg.type === 'result' && msg.structured_output?.name) {
           const name = msg.structured_output.name.slice(0, 40);
           await TaskRepository.update(taskId, { name });
           this.emitTaskNameUpdated(taskId, name);
-          console.log(`[AgentService] Generated task name for ${taskId}: ${name}`);
+          console.log(
+            `[AgentService] Generated task name for ${taskId}: ${name}`,
+          );
           break;
         }
       }
     } catch (error) {
-      console.error(`[AgentService] Failed to generate task name for ${taskId}:`, error);
+      console.error(
+        `[AgentService] Failed to generate task name for ${taskId}:`,
+        error,
+      );
       // Non-fatal - task keeps its original name
     }
   }
@@ -192,7 +225,8 @@ class AgentService {
    * Create a new session for a task.
    */
   private async createSession(taskId: string): Promise<ActiveSession> {
-    const existingMessageCount = await AgentMessageRepository.getMessageCount(taskId);
+    const existingMessageCount =
+      await AgentMessageRepository.getMessageCount(taskId);
     const task = await TaskRepository.findById(taskId);
 
     const session: ActiveSession = {
@@ -218,7 +252,7 @@ class AgentService {
     taskId: string,
     prompt: string,
     session: ActiveSession,
-    options?: { generateNameOnInit?: boolean; initialPrompt?: string }
+    options?: { generateNameOnInit?: boolean; initialPrompt?: string },
   ): Promise<void> {
     const task = await TaskRepository.findById(taskId);
     if (!task) {
@@ -238,7 +272,8 @@ class AgentService {
     // Create new abort controller for this query iteration
     session.abortController = new AbortController();
 
-    const sdkPermissionMode = SDK_PERMISSION_MODES[(task.interactionMode ?? 'ask') as InteractionMode];
+    const sdkPermissionMode =
+      SDK_PERMISSION_MODES[(task.interactionMode ?? 'ask') as InteractionMode];
     const workingDir = task.worktreePath ?? project.path;
 
     const queryOptions: NonNullable<Parameters<typeof query>[0]['options']> = {
@@ -246,7 +281,7 @@ class AgentService {
       allowedTools: [],
       canUseTool: async (
         toolName: string,
-        input: Record<string, unknown>
+        input: Record<string, unknown>,
       ): Promise<PermissionResult> => {
         return this.handleToolRequest(taskId, toolName, input);
       },
@@ -260,9 +295,11 @@ class AgentService {
 
     if (options?.generateNameOnInit && task.name === null) {
       // NOTE: fire-and-forget
-      void this.generateTaskName(taskId, options.initialPrompt ?? prompt).catch(err => {
-        console.error('Error generating task name:', err);
-      });
+      void this.generateTaskName(taskId, options.initialPrompt ?? prompt).catch(
+        (err) => {
+          console.error('Error generating task name:', err);
+        },
+      );
     }
 
     // Emit user message before starting query
@@ -318,7 +355,7 @@ class AgentService {
             `Task "${updatedTask?.name || 'Unknown'}" ${status === 'completed' ? 'finished successfully' : 'encountered an error'}`,
             () => {
               this.mainWindow?.focus();
-            }
+            },
           );
         }
       }
@@ -351,7 +388,8 @@ class AgentService {
         initialPrompt: task.prompt,
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       await TaskRepository.update(taskId, { status: 'errored' });
       this.emitStatus(taskId, 'errored', errorMessage);
     } finally {
@@ -362,9 +400,11 @@ class AgentService {
   private async handleToolRequest(
     taskId: string,
     toolName: string,
-    input: Record<string, unknown>
+    input: Record<string, unknown>,
   ): Promise<PermissionResult> {
-    console.log(`[AgentService] handleToolRequest called for task ${taskId}, tool: ${toolName}`);
+    console.log(
+      `[AgentService] handleToolRequest called for task ${taskId}, tool: ${toolName}`,
+    );
     const session = this.sessions.get(taskId);
     if (!session) {
       console.log(`[AgentService] No session found for task ${taskId}`);
@@ -375,7 +415,9 @@ class AgentService {
     const task = await TaskRepository.findById(taskId);
     const allowedTools = task?.sessionAllowedTools ?? [];
     if (allowedTools.includes(toolName)) {
-      console.log(`[AgentService] Tool ${toolName} is session-allowed for task ${taskId}`);
+      console.log(
+        `[AgentService] Tool ${toolName} is session-allowed for task ${taskId}`,
+      );
       return { behavior: 'allow', updatedInput: input };
     }
 
@@ -389,15 +431,17 @@ class AgentService {
       this.emitStatus(taskId, 'waiting');
 
       // Wait for response
-      const response = await new Promise<PermissionResponse | QuestionResponse>((resolve) => {
-        session.pendingRequests.push({
-          requestId,
-          type: 'question',
-          toolName,
-          input,
-          resolve,
-        });
-      });
+      const response = await new Promise<PermissionResponse | QuestionResponse>(
+        (resolve) => {
+          session.pendingRequests.push({
+            requestId,
+            type: 'question',
+            toolName,
+            input,
+            resolve,
+          });
+        },
+      );
 
       await TaskRepository.update(taskId, { status: 'running' });
       this.emitStatus(taskId, 'running');
@@ -462,14 +506,16 @@ class AgentService {
   async respond(
     taskId: string,
     requestId: string,
-    response: PermissionResponse | QuestionResponse
+    response: PermissionResponse | QuestionResponse,
   ): Promise<void> {
     const session = this.sessions.get(taskId);
     if (!session) {
       throw new Error(`No active session for task ${taskId}`);
     }
 
-    const requestIndex = session.pendingRequests.findIndex((r) => r.requestId === requestId);
+    const requestIndex = session.pendingRequests.findIndex(
+      (r) => r.requestId === requestId,
+    );
     if (requestIndex === -1) {
       throw new Error(`No pending request with ID ${requestId}`);
     }
@@ -481,9 +527,18 @@ class AgentService {
     if (session.pendingRequests.length > 0) {
       const next = session.pendingRequests[0];
       if (next.type === 'question') {
-        await this.emitQuestionRequest(taskId, next.requestId, next.input.questions as AgentQuestion[]);
+        await this.emitQuestionRequest(
+          taskId,
+          next.requestId,
+          next.input.questions as AgentQuestion[],
+        );
       } else {
-        await this.emitPermissionRequest(taskId, next.requestId, next.toolName, next.input);
+        await this.emitPermissionRequest(
+          taskId,
+          next.requestId,
+          next.toolName,
+          next.input,
+        );
       }
     }
   }
@@ -498,10 +553,13 @@ class AgentService {
     const session = await this.createSession(taskId);
 
     try {
-      console.log(`[AgentService] Sending follow-up message for task ${taskId}`);
+      console.log(
+        `[AgentService] Sending follow-up message for task ${taskId}`,
+      );
       await this.runQuery(taskId, message, session);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       await TaskRepository.update(taskId, { status: 'errored' });
       this.emitStatus(taskId, 'errored', errorMessage);
     } finally {
@@ -527,7 +585,9 @@ class AgentService {
     session.queuedPrompts.push(queuedPrompt);
     this.emitPromptQueueUpdate(taskId, session.queuedPrompts);
 
-    console.log(`[AgentService] Queued prompt ${queuedPrompt.id} for task ${taskId}`);
+    console.log(
+      `[AgentService] Queued prompt ${queuedPrompt.id} for task ${taskId}`,
+    );
     return { promptId: queuedPrompt.id };
   }
 
@@ -548,7 +608,9 @@ class AgentService {
     session.queuedPrompts.splice(index, 1);
     this.emitPromptQueueUpdate(taskId, session.queuedPrompts);
 
-    console.log(`[AgentService] Cancelled queued prompt ${promptId} for task ${taskId}`);
+    console.log(
+      `[AgentService] Cancelled queued prompt ${promptId} for task ${taskId}`,
+    );
   }
 
   /**
@@ -573,7 +635,9 @@ class AgentService {
 
   async getMessages(taskId: string): Promise<AgentMessage[]> {
     const messages = await AgentMessageRepository.findByTaskId(taskId);
-    console.log(`[AgentService] getMessages for task ${taskId}: found ${messages.length} messages`);
+    console.log(
+      `[AgentService] getMessages for task ${taskId}: found ${messages.length} messages`,
+    );
     return messages;
   }
 
@@ -587,7 +651,10 @@ class AgentService {
    * Should be called on app startup before the main window is shown.
    */
   async recoverStaleTasks(): Promise<void> {
-    const staleTasks = await TaskRepository.findByStatuses(['running', 'waiting']);
+    const staleTasks = await TaskRepository.findByStatuses([
+      'running',
+      'waiting',
+    ]);
 
     for (const task of staleTasks) {
       await TaskRepository.update(task.id, { status: 'interrupted' });
@@ -595,7 +662,9 @@ class AgentService {
     }
 
     if (staleTasks.length > 0) {
-      console.log(`[AgentService] Recovered ${staleTasks.length} stale task(s) on startup`);
+      console.log(
+        `[AgentService] Recovered ${staleTasks.length} stale task(s) on startup`,
+      );
     }
   }
 }

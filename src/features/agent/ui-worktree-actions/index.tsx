@@ -30,10 +30,14 @@ export function WorktreeActions({
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false);
   const [isMergeConfirmOpen, setIsMergeConfirmOpen] = useState(false);
   const [isMergeSuccessOpen, setIsMergeSuccessOpen] = useState(false);
-  const [selectedBranch, setSelectedBranch] = useState<string>(defaultBranch ?? 'main');
+  const [selectedBranch, setSelectedBranch] = useState<string>(
+    defaultBranch ?? 'main',
+  );
 
-  const { data: status, isLoading: isStatusLoading } = useWorktreeStatus(taskId);
-  const { data: branches, isLoading: isBranchesLoading } = useWorktreeBranches(taskId);
+  const { data: status, isLoading: isStatusLoading } =
+    useWorktreeStatus(taskId);
+  const { data: branches, isLoading: isBranchesLoading } =
+    useWorktreeBranches(taskId);
   const commitMutation = useCommitWorktree();
   const mergeMutation = useMergeWorktree();
 
@@ -59,7 +63,10 @@ export function WorktreeActions({
     setIsCommitModalOpen(false);
   };
 
-  const handleMerge = async (params: { squash: boolean; commitMessage?: string }) => {
+  const handleMerge = async (params: {
+    squash: boolean;
+    commitMessage?: string;
+  }) => {
     const result = await mergeMutation.mutateAsync({
       taskId,
       targetBranch: selectedBranch,
@@ -103,7 +110,9 @@ export function WorktreeActions({
 
       {/* Merge section */}
       <div className="flex flex-col gap-2">
-        <label className="text-xs font-medium text-neutral-400">Merge into</label>
+        <label className="text-xs font-medium text-neutral-400">
+          Merge into
+        </label>
         <select
           value={selectedBranch}
           onChange={(e) => setSelectedBranch(e.target.value)}
@@ -121,7 +130,9 @@ export function WorktreeActions({
           onClick={() => setIsMergeConfirmOpen(true)}
           disabled={!canMerge || mergeMutation.isPending}
           className="flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-          title={canMerge ? 'Merge worktree' : 'Commit or discard changes first'}
+          title={
+            canMerge ? 'Merge worktree' : 'Commit or discard changes first'
+          }
         >
           {mergeMutation.isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />

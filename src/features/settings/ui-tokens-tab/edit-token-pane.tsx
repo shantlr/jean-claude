@@ -18,7 +18,7 @@ export function EditTokenPane({
   const [label, setLabel] = useState(token.label);
   const [newToken, setNewToken] = useState('');
   const [expiresAt, setExpiresAt] = useState(
-    token.expiresAt ? token.expiresAt.split('T')[0] : ''
+    token.expiresAt ? token.expiresAt.split('T')[0] : '',
   );
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [error, setError] = useState<string | null>(null);

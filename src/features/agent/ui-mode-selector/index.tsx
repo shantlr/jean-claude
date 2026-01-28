@@ -3,11 +3,16 @@ import { useState, useRef, useEffect } from 'react';
 
 import type { InteractionMode } from '../../../../shared/types';
 
-const MODES: { value: InteractionMode; label: string; description: string }[] = [
-  { value: 'ask', label: 'Ask', description: 'All tools require approval' },
-  { value: 'auto', label: 'Auto', description: 'All tools auto-approved' },
-  { value: 'plan', label: 'Plan', description: 'Planning only, no execution' },
-];
+const MODES: { value: InteractionMode; label: string; description: string }[] =
+  [
+    { value: 'ask', label: 'Ask', description: 'All tools require approval' },
+    { value: 'auto', label: 'Auto', description: 'All tools auto-approved' },
+    {
+      value: 'plan',
+      label: 'Plan',
+      description: 'Planning only, no execution',
+    },
+  ];
 
 interface ModeSelectorProps {
   value: InteractionMode;
@@ -23,7 +28,10 @@ export function ModeSelector({ value, onChange, disabled }: ModeSelectorProps) {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -60,7 +68,9 @@ export function ModeSelector({ value, onChange, disabled }: ModeSelectorProps) {
                 mode.value === value ? 'bg-neutral-700' : ''
               }`}
             >
-              <div className="text-sm font-medium text-neutral-200">{mode.label}</div>
+              <div className="text-sm font-medium text-neutral-200">
+                {mode.label}
+              </div>
               <div className="text-xs text-neutral-400">{mode.description}</div>
             </button>
           ))}

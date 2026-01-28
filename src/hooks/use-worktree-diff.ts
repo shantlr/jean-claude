@@ -1,9 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
-import { api, type WorktreeDiffResult, type WorktreeFileContent } from '@/lib/api';
+import {
+  api,
+  type WorktreeDiffResult,
+  type WorktreeFileContent,
+} from '@/lib/api';
 
-export function useWorktreeDiff(taskId: string | null, enabled: boolean = true) {
+export function useWorktreeDiff(
+  taskId: string | null,
+  enabled: boolean = true,
+) {
   const queryClient = useQueryClient();
 
   const query = useQuery<WorktreeDiffResult>({
@@ -37,7 +44,7 @@ export function useWorktreeDiff(taskId: string | null, enabled: boolean = true) 
 export function useWorktreeFileContent(
   taskId: string | null,
   filePath: string | null,
-  status: 'added' | 'modified' | 'deleted' | null
+  status: 'added' | 'modified' | 'deleted' | null,
 ) {
   return useQuery<WorktreeFileContent>({
     queryKey: ['worktree-file-content', taskId, filePath],
@@ -89,7 +96,11 @@ export function useWorktreeBranches(taskId: string | null) {
 export function useCommitWorktree() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (params: { taskId: string; message: string; stageAll: boolean }) =>
+    mutationFn: (params: {
+      taskId: string;
+      message: string;
+      stageAll: boolean;
+    }) =>
       api.tasks.worktree.commit(params.taskId, {
         message: params.message,
         stageAll: params.stageAll,
@@ -98,7 +109,9 @@ export function useCommitWorktree() {
       // Invalidate status and diff queries
       queryClient.invalidateQueries({ queryKey: ['worktree-status', taskId] });
       queryClient.invalidateQueries({ queryKey: ['worktree-diff', taskId] });
-      queryClient.invalidateQueries({ queryKey: ['worktree-file-content', taskId] });
+      queryClient.invalidateQueries({
+        queryKey: ['worktree-file-content', taskId],
+      });
     },
   });
 }
@@ -121,7 +134,9 @@ export function useMergeWorktree() {
       // Invalidate all worktree-related queries for this task
       queryClient.invalidateQueries({ queryKey: ['worktree-status', taskId] });
       queryClient.invalidateQueries({ queryKey: ['worktree-diff', taskId] });
-      queryClient.invalidateQueries({ queryKey: ['worktree-file-content', taskId] });
+      queryClient.invalidateQueries({
+        queryKey: ['worktree-file-content', taskId],
+      });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });

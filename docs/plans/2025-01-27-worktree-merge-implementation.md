@@ -13,6 +13,7 @@
 ## Task 1: Database Migration - Add defaultBranch to Projects
 
 **Files:**
+
 - Create: `electron/database/migrations/016_project_default_branch.ts`
 - Modify: `electron/database/migrator.ts`
 - Modify: `electron/database/schema.ts`
@@ -39,6 +40,7 @@ export async function down(db: Kysely<unknown>): Promise<void> {
 **Step 2: Register migration in migrator.ts**
 
 Add import and register:
+
 ```typescript
 import * as m016 from './migrations/016_project_default_branch';
 
@@ -49,6 +51,7 @@ import * as m016 from './migrations/016_project_default_branch';
 **Step 3: Update schema.ts - ProjectTable**
 
 Add to `ProjectTable` interface:
+
 ```typescript
 defaultBranch: string | null;
 ```
@@ -56,16 +59,19 @@ defaultBranch: string | null;
 **Step 4: Update shared/types.ts - Project types**
 
 Add to `Project` interface:
+
 ```typescript
 defaultBranch: string | null;
 ```
 
 Add to `NewProject` interface:
+
 ```typescript
 defaultBranch?: string | null;
 ```
 
 Add to `UpdateProject` interface:
+
 ```typescript
 defaultBranch?: string | null;
 ```
@@ -87,6 +93,7 @@ EOF
 ## Task 2: Backend - Add Git Operations to worktree-service.ts
 
 **Files:**
+
 - Modify: `electron/services/worktree-service.ts`
 
 **Step 1: Add getProjectBranches function**
@@ -95,12 +102,17 @@ EOF
 /**
  * Gets the list of local branches for a git repository.
  */
-export async function getProjectBranches(projectPath: string): Promise<string[]> {
+export async function getProjectBranches(
+  projectPath: string,
+): Promise<string[]> {
   try {
-    const { stdout } = await execAsync('git branch --format="%(refname:short)"', {
-      cwd: projectPath,
-      encoding: 'utf-8',
-    });
+    const { stdout } = await execAsync(
+      'git branch --format="%(refname:short)"',
+      {
+        cwd: projectPath,
+        encoding: 'utf-8',
+      },
+    );
     return stdout
       .trim()
       .split('\n')
@@ -123,19 +135,21 @@ export interface WorktreeStatus {
 /**
  * Checks if a worktree has uncommitted changes.
  */
-export async function getWorktreeStatus(worktreePath: string): Promise<WorktreeStatus> {
+export async function getWorktreeStatus(
+  worktreePath: string,
+): Promise<WorktreeStatus> {
   try {
     // Check for staged changes
     const { stdout: stagedOutput } = await execAsync(
       'git diff --cached --name-only',
-      { cwd: worktreePath, encoding: 'utf-8' }
+      { cwd: worktreePath, encoding: 'utf-8' },
     );
     const hasStagedChanges = stagedOutput.trim().length > 0;
 
     // Check for unstaged changes (including untracked files)
     const { stdout: unstagedOutput } = await execAsync(
       'git status --porcelain',
-      { cwd: worktreePath, encoding: 'utf-8' }
+      { cwd: worktreePath, encoding: 'utf-8' },
     );
     const hasUnstagedChanges = unstagedOutput.trim().length > 0;
 
@@ -162,7 +176,9 @@ export interface CommitWorktreeParams {
 /**
  * Commits changes in a worktree.
  */
-export async function commitWorktreeChanges(params: CommitWorktreeParams): Promise<void> {
+export async function commitWorktreeChanges(
+  params: CommitWorktreeParams,
+): Promise<void> {
   const { worktreePath, message, stageAll } = params;
 
   try {
@@ -199,15 +215,20 @@ export interface MergeWorktreeResult {
 /**
  * Merges a worktree branch into target branch and deletes the worktree.
  */
-export async function mergeWorktree(params: MergeWorktreeParams): Promise<MergeWorktreeResult> {
+export async function mergeWorktree(
+  params: MergeWorktreeParams,
+): Promise<MergeWorktreeResult> {
   const { worktreePath, projectPath, targetBranch } = params;
 
   try {
     // Get the branch name of the worktree
-    const { stdout: branchOutput } = await execAsync('git rev-parse --abbrev-ref HEAD', {
-      cwd: worktreePath,
-      encoding: 'utf-8',
-    });
+    const { stdout: branchOutput } = await execAsync(
+      'git rev-parse --abbrev-ref HEAD',
+      {
+        cwd: worktreePath,
+        encoding: 'utf-8',
+      },
+    );
     const worktreeBranch = branchOutput.trim();
 
     // Switch to target branch in main repo
@@ -223,10 +244,13 @@ export async function mergeWorktree(params: MergeWorktreeParams): Promise<MergeW
     });
 
     // Remove the worktree
-    await execAsync(`git worktree remove ${JSON.stringify(worktreePath)} --force`, {
-      cwd: projectPath,
-      encoding: 'utf-8',
-    });
+    await execAsync(
+      `git worktree remove ${JSON.stringify(worktreePath)} --force`,
+      {
+        cwd: projectPath,
+        encoding: 'utf-8',
+      },
+    );
 
     // Delete the branch
     await execAsync(`git branch -d ${worktreeBranch}`, {
@@ -239,10 +263,14 @@ export async function mergeWorktree(params: MergeWorktreeParams): Promise<MergeW
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     // Check if it's a merge conflict
-    if (errorMessage.includes('CONFLICT') || errorMessage.includes('Automatic merge failed')) {
+    if (
+      errorMessage.includes('CONFLICT') ||
+      errorMessage.includes('Automatic merge failed')
+    ) {
       return {
         success: false,
-        error: 'Merge failed due to conflicts. Resolve manually in your editor.',
+        error:
+          'Merge failed due to conflicts. Resolve manually in your editor.',
       };
     }
 
@@ -271,11 +299,13 @@ EOF
 ## Task 3: Backend - Add IPC Handlers
 
 **Files:**
+
 - Modify: `electron/ipc/handlers.ts`
 
 **Step 1: Add imports**
 
 Add to existing imports from worktree-service:
+
 ```typescript
 import {
   createWorktree,
@@ -291,37 +321,37 @@ import {
 **Step 2: Add IPC handlers after existing worktree handlers**
 
 ```typescript
-  // Project branches
-  ipcMain.handle('projects:getBranches', async (_, projectPath: string) => {
-    return getProjectBranches(projectPath);
-  });
+// Project branches
+ipcMain.handle('projects:getBranches', async (_, projectPath: string) => {
+  return getProjectBranches(projectPath);
+});
 
-  // Worktree status
-  ipcMain.handle('worktree:git:getStatus', async (_, worktreePath: string) => {
-    return getWorktreeStatus(worktreePath);
-  });
+// Worktree status
+ipcMain.handle('worktree:git:getStatus', async (_, worktreePath: string) => {
+  return getWorktreeStatus(worktreePath);
+});
 
-  // Worktree commit
-  ipcMain.handle(
-    'worktree:git:commit',
-    async (
-      _,
-      params: { worktreePath: string; message: string; stageAll: boolean }
-    ) => {
-      return commitWorktreeChanges(params);
-    }
-  );
+// Worktree commit
+ipcMain.handle(
+  'worktree:git:commit',
+  async (
+    _,
+    params: { worktreePath: string; message: string; stageAll: boolean },
+  ) => {
+    return commitWorktreeChanges(params);
+  },
+);
 
-  // Worktree merge
-  ipcMain.handle(
-    'worktree:git:merge',
-    async (
-      _,
-      params: { worktreePath: string; projectPath: string; targetBranch: string }
-    ) => {
-      return mergeWorktree(params);
-    }
-  );
+// Worktree merge
+ipcMain.handle(
+  'worktree:git:merge',
+  async (
+    _,
+    params: { worktreePath: string; projectPath: string; targetBranch: string },
+  ) => {
+    return mergeWorktree(params);
+  },
+);
 ```
 
 **Step 3: Commit**
@@ -341,12 +371,14 @@ EOF
 ## Task 4: Frontend - Update API Types and Preload
 
 **Files:**
+
 - Modify: `src/lib/api.ts`
 - Modify: `electron/preload.ts`
 
 **Step 1: Add types to api.ts**
 
 Add after `WorktreeFileContent` interface:
+
 ```typescript
 export interface WorktreeStatus {
   hasUncommittedChanges: boolean;
@@ -375,6 +407,7 @@ export interface MergeWorktreeResult {
 **Step 2: Update Api interface - add to projects**
 
 In the `projects` section of `Api` interface:
+
 ```typescript
 getBranches: (projectPath: string) => Promise<string[]>;
 ```
@@ -382,6 +415,7 @@ getBranches: (projectPath: string) => Promise<string[]>;
 **Step 3: Update Api interface - add to worktree.git**
 
 In the `worktree.git` section:
+
 ```typescript
 getStatus: (worktreePath: string) => Promise<WorktreeStatus>;
 commit: (params: CommitWorktreeParams) => Promise<void>;
@@ -391,11 +425,13 @@ merge: (params: MergeWorktreeParams) => Promise<MergeWorktreeResult>;
 **Step 4: Update fallback api object**
 
 Add to `projects`:
+
 ```typescript
 getBranches: async () => [],
 ```
 
 Add to `worktree.git`:
+
 ```typescript
 getStatus: async () => ({ hasUncommittedChanges: false, hasStagedChanges: false, hasUnstagedChanges: false }),
 commit: async () => {},
@@ -437,19 +473,25 @@ EOF
 ## Task 5: Frontend - Add React Query Hooks
 
 **Files:**
+
 - Modify: `src/hooks/use-worktree-diff.ts`
 - Modify: `src/hooks/use-projects.ts`
 
 **Step 1: Add hooks to use-worktree-diff.ts**
 
 Add at the end of the file:
+
 ```typescript
 export function useWorktreeStatus(worktreePath: string | null) {
   return useQuery({
     queryKey: ['worktree-status', worktreePath],
     queryFn: () => {
       if (!worktreePath) {
-        return { hasUncommittedChanges: false, hasStagedChanges: false, hasUnstagedChanges: false };
+        return {
+          hasUncommittedChanges: false,
+          hasStagedChanges: false,
+          hasUnstagedChanges: false,
+        };
       }
       return api.worktree.git.getStatus(worktreePath);
     },
@@ -463,11 +505,16 @@ export function useWorktreeStatus(worktreePath: string | null) {
 export function useCommitWorktree() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (params: { worktreePath: string; message: string; stageAll: boolean }) =>
-      api.worktree.git.commit(params),
+    mutationFn: (params: {
+      worktreePath: string;
+      message: string;
+      stageAll: boolean;
+    }) => api.worktree.git.commit(params),
     onSuccess: (_, { worktreePath }) => {
       // Invalidate status and diff queries
-      queryClient.invalidateQueries({ queryKey: ['worktree-status', worktreePath] });
+      queryClient.invalidateQueries({
+        queryKey: ['worktree-status', worktreePath],
+      });
       queryClient.invalidateQueries({ queryKey: ['worktree-diff'] });
       queryClient.invalidateQueries({ queryKey: ['worktree-file-content'] });
     },
@@ -477,8 +524,11 @@ export function useCommitWorktree() {
 export function useMergeWorktree() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (params: { worktreePath: string; projectPath: string; targetBranch: string }) =>
-      api.worktree.git.merge(params),
+    mutationFn: (params: {
+      worktreePath: string;
+      projectPath: string;
+      targetBranch: string;
+    }) => api.worktree.git.merge(params),
     onSuccess: () => {
       // Invalidate all worktree-related queries
       queryClient.invalidateQueries({ queryKey: ['worktree-status'] });
@@ -495,6 +545,7 @@ Also add `useMutation` to the imports at the top.
 **Step 2: Add useProjectBranches hook to use-projects.ts**
 
 Add at the end:
+
 ```typescript
 export function useProjectBranches(projectPath: string | null) {
   return useQuery({
@@ -529,6 +580,7 @@ EOF
 ## Task 6: Frontend - Create WorktreeActions Component
 
 **Files:**
+
 - Create: `src/features/agent/ui-worktree-actions/index.tsx`
 
 **Step 1: Create the component**
@@ -709,6 +761,7 @@ EOF
 ## Task 7: Frontend - Create Modal Components
 
 **Files:**
+
 - Create: `src/features/agent/ui-worktree-actions/commit-modal.tsx`
 - Create: `src/features/agent/ui-worktree-actions/merge-confirm-dialog.tsx`
 - Create: `src/features/agent/ui-worktree-actions/merge-success-dialog.tsx`
@@ -987,11 +1040,13 @@ EOF
 ## Task 8: Frontend - Integrate WorktreeActions into Diff View
 
 **Files:**
+
 - Modify: `src/features/agent/ui-worktree-diff-view/index.tsx`
 
 **Step 1: Update imports**
 
 Add import:
+
 ```typescript
 import { WorktreeActions } from '@/features/agent/ui-worktree-actions';
 ```
@@ -1068,6 +1123,7 @@ EOF
 ## Task 9: Frontend - Update Task Page to Pass Props
 
 **Files:**
+
 - Modify: `src/routes/projects/$projectId/tasks/$taskId.tsx`
 
 **Step 1: Find WorktreeDiffView usage and update props**
@@ -1111,6 +1167,7 @@ EOF
 ## Task 10: Frontend - Add Project Settings Section to Sidebar
 
 **Files:**
+
 - Create: `src/features/project/ui-project-settings/index.tsx`
 - Modify: `src/layout/ui-project-sidebar/index.tsx`
 
@@ -1234,6 +1291,7 @@ EOF
 ## Task 11: Add branchName to Task
 
 **Files:**
+
 - Modify: `electron/database/schema.ts`
 - Modify: `shared/types.ts`
 - Create: `electron/database/migrations/017_task_branch_name.ts`
@@ -1248,10 +1306,7 @@ The task needs to store the branch name so we can display it in the merge dialog
 import { Kysely } from 'kysely';
 
 export async function up(db: Kysely<unknown>): Promise<void> {
-  await db.schema
-    .alterTable('tasks')
-    .addColumn('branchName', 'text')
-    .execute();
+  await db.schema.alterTable('tasks').addColumn('branchName', 'text').execute();
 }
 
 export async function down(db: Kysely<unknown>): Promise<void> {
@@ -1262,6 +1317,7 @@ export async function down(db: Kysely<unknown>): Promise<void> {
 **Step 2: Register migration**
 
 Add to migrator.ts:
+
 ```typescript
 import * as m017 from './migrations/017_task_branch_name';
 
@@ -1272,6 +1328,7 @@ import * as m017 from './migrations/017_task_branch_name';
 **Step 3: Update schema.ts TaskTable**
 
 Add to `TaskTable`:
+
 ```typescript
 branchName: string | null;
 ```
@@ -1279,16 +1336,19 @@ branchName: string | null;
 **Step 4: Update shared/types.ts Task types**
 
 Add to `Task`:
+
 ```typescript
 branchName: string | null;
 ```
 
 Add to `NewTask`:
+
 ```typescript
 branchName?: string | null;
 ```
 
 Add to `UpdateTask`:
+
 ```typescript
 branchName?: string | null;
 ```
@@ -1303,7 +1363,7 @@ const { worktreePath, startCommitHash, branchName } = await createWorktree(
   project.id,
   project.name,
   taskData.prompt,
-  taskName ?? undefined
+  taskName ?? undefined,
 );
 
 return TaskRepository.create({

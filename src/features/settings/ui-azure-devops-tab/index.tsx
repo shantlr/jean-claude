@@ -9,7 +9,9 @@ import { OrganizationList } from './organization-list';
 
 export function AzureDevOpsTab() {
   const [showAddPane, setShowAddPane] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(
+    null,
+  );
 
   // Determine which pane to show (details takes precedence, add pane closes when selecting)
   const showDetailsPane = selectedProvider !== null;
@@ -34,7 +36,9 @@ export function AzureDevOpsTab() {
       <div className="flex-1">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-neutral-200">Organizations</h2>
+            <h2 className="text-lg font-semibold text-neutral-200">
+              Organizations
+            </h2>
             <p className="mt-1 text-sm text-neutral-500">
               Connect your Azure DevOps organizations
             </p>
@@ -55,7 +59,9 @@ export function AzureDevOpsTab() {
       </div>
 
       {/* Right pane for adding */}
-      {showAddPane && <AddOrganizationPane onClose={() => setShowAddPane(false)} />}
+      {showAddPane && (
+        <AddOrganizationPane onClose={() => setShowAddPane(false)} />
+      )}
 
       {/* Right pane for organization details */}
       {showDetailsPane && (

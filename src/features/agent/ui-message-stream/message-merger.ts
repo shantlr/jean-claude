@@ -1,4 +1,7 @@
-import type { AgentMessage, CompactMetadata } from '../../../../shared/agent-types';
+import type {
+  AgentMessage,
+  CompactMetadata,
+} from '../../../../shared/agent-types';
 
 /**
  * Represents a message ready for display in the timeline.

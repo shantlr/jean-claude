@@ -70,7 +70,9 @@ function createAuthHeader(token: string): string {
 }
 
 // Internal function that uses raw token
-async function getOrganizationsWithToken(token: string): Promise<AzureDevOpsOrganization[]> {
+async function getOrganizationsWithToken(
+  token: string,
+): Promise<AzureDevOpsOrganization[]> {
   // Step 1: Get the user's member ID from profile
   const profileResponse = await fetch(
     'https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.0',
@@ -78,7 +80,7 @@ async function getOrganizationsWithToken(token: string): Promise<AzureDevOpsOrga
       headers: {
         Authorization: createAuthHeader(token),
       },
-    }
+    },
   );
 
   if (!profileResponse.ok) {
@@ -95,7 +97,7 @@ async function getOrganizationsWithToken(token: string): Promise<AzureDevOpsOrga
       headers: {
         Authorization: createAuthHeader(token),
       },
-    }
+    },
   );
 
   if (!accountsResponse.ok) {
@@ -113,7 +115,9 @@ async function getOrganizationsWithToken(token: string): Promise<AzureDevOpsOrga
 }
 
 // Get organizations using a tokenId (looks up decrypted token internally)
-export async function getOrganizationsByTokenId(tokenId: string): Promise<AzureDevOpsOrganization[]> {
+export async function getOrganizationsByTokenId(
+  tokenId: string,
+): Promise<AzureDevOpsOrganization[]> {
   const token = await TokenRepository.getDecryptedToken(tokenId);
   if (!token) {
     throw new Error(`Token not found: ${tokenId}`);
@@ -122,12 +126,16 @@ export async function getOrganizationsByTokenId(tokenId: string): Promise<AzureD
 }
 
 // Validate token and get organizations (for initial token creation)
-export async function validateTokenAndGetOrganizations(token: string): Promise<AzureDevOpsOrganization[]> {
+export async function validateTokenAndGetOrganizations(
+  token: string,
+): Promise<AzureDevOpsOrganization[]> {
   return getOrganizationsWithToken(token);
 }
 
 // Get PAT expiration date from Azure DevOps API
-export async function getTokenExpiration(tokenId: string): Promise<string | null> {
+export async function getTokenExpiration(
+  tokenId: string,
+): Promise<string | null> {
   const token = await TokenRepository.getDecryptedToken(tokenId);
   if (!token) {
     throw new Error(`Token not found: ${tokenId}`);
@@ -149,7 +157,7 @@ export async function getTokenExpiration(tokenId: string): Promise<string | null
         headers: {
           Authorization: createAuthHeader(token),
         },
-      }
+      },
     );
 
     if (!response.ok) {
@@ -167,8 +175,9 @@ export async function getTokenExpiration(tokenId: string): Promise<string | null
 
     const validPats = pats
       .filter((pat: { validTo: string }) => new Date(pat.validTo) > now)
-      .sort((a: { validTo: string }, b: { validTo: string }) =>
-        new Date(a.validTo).getTime() - new Date(b.validTo).getTime()
+      .sort(
+        (a: { validTo: string }, b: { validTo: string }) =>
+          new Date(a.validTo).getTime() - new Date(b.validTo).getTime(),
       );
 
     if (validPats.length > 0) {
@@ -182,7 +191,9 @@ export async function getTokenExpiration(tokenId: string): Promise<string | null
   }
 }
 
-export async function getProviderDetails(providerId: string): Promise<AzureDevOpsOrgDetails> {
+export async function getProviderDetails(
+  providerId: string,
+): Promise<AzureDevOpsOrgDetails> {
   const provider = await ProviderRepository.findById(providerId);
   if (!provider) {
     throw new Error(`Provider not found: ${providerId}`);
@@ -212,7 +223,7 @@ export async function getProviderDetails(providerId: string): Promise<AzureDevOp
     `https://dev.azure.com/${orgName}/_apis/projects?api-version=7.0`,
     {
       headers: { Authorization: authHeader },
-    }
+    },
   );
 
   if (!projectsResponse.ok) {
@@ -229,7 +240,7 @@ export async function getProviderDetails(providerId: string): Promise<AzureDevOp
         `https://dev.azure.com/${orgName}/${project.id}/_apis/git/repositories?api-version=7.0`,
         {
           headers: { Authorization: authHeader },
-        }
+        },
       );
 
       let repos: AzureDevOpsRepo[] = [];
@@ -251,7 +262,7 @@ export async function getProviderDetails(providerId: string): Promise<AzureDevOp
         },
         repos,
       };
-    })
+    }),
   );
 
   return { projects: projectsWithRepos };

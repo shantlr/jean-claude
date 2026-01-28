@@ -30,14 +30,18 @@ export async function up(db: Kysely<unknown>): Promise<void> {
       .addColumn('type', 'text', (col) => col.notNull())
       .addColumn('label', 'text', (col) => col.notNull())
       .addColumn('baseUrl', 'text', (col) => col.notNull())
-      .addColumn('tokenId', 'text', (col) => col.references('tokens.id').onDelete('set null'))
+      .addColumn('tokenId', 'text', (col) =>
+        col.references('tokens.id').onDelete('set null'),
+      )
       .addColumn('createdAt', 'text', (col) => col.notNull())
       .addColumn('updatedAt', 'text', (col) => col.notNull())
       .execute();
 
     // 6. Re-enable FK constraints and verify integrity
     await sql`PRAGMA foreign_keys = ON`.execute(trx);
-    const fkCheck = await sql<{ table: string }>`PRAGMA foreign_key_check`.execute(trx);
+    const fkCheck = await sql<{
+      table: string;
+    }>`PRAGMA foreign_key_check`.execute(trx);
     if (fkCheck.rows.length > 0) {
       throw new Error(`Foreign key violation: ${JSON.stringify(fkCheck.rows)}`);
     }

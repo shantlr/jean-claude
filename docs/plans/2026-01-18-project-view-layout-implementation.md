@@ -13,6 +13,7 @@
 ## Task 1: Database Migration for readAt Column
 
 **Files:**
+
 - Create: `electron/database/migrations/003_task_read_at.ts`
 - Modify: `electron/database/migrator.ts`
 - Modify: `electron/database/schema.ts`
@@ -26,10 +27,7 @@ Create `electron/database/migrations/003_task_read_at.ts`:
 import { Kysely } from 'kysely';
 
 export async function up(db: Kysely<unknown>): Promise<void> {
-  await db.schema
-    .alterTable('tasks')
-    .addColumn('readAt', 'text')
-    .execute();
+  await db.schema.alterTable('tasks').addColumn('readAt', 'text').execute();
 }
 
 export async function down(db: Kysely<unknown>): Promise<void> {
@@ -94,6 +92,7 @@ git commit -m "feat: add readAt column to tasks table for read tracking"
 ## Task 2: Add markAsRead API Method
 
 **Files:**
+
 - Modify: `electron/database/repositories/tasks.ts`
 - Modify: `electron/ipc/handlers.ts`
 - Modify: `electron/preload.ts`
@@ -181,6 +180,7 @@ git commit -m "feat: add markAsRead API for task read tracking"
 ## Task 3: Create Status Indicator Component
 
 **Files:**
+
 - Create: `src/components/status-indicator.tsx`
 
 **Step 1: Create the component**
@@ -209,7 +209,10 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
   errored: 'Errored',
 };
 
-export function StatusIndicator({ status, className = '' }: StatusIndicatorProps) {
+export function StatusIndicator({
+  status,
+  className = '',
+}: StatusIndicatorProps) {
   return (
     <span
       className={`inline-block h-2 w-2 rounded-full ${STATUS_COLORS[status]} ${className}`}
@@ -231,6 +234,7 @@ git commit -m "feat: add StatusIndicator component"
 ## Task 4: Create Task List Item Component
 
 **Files:**
+
 - Create: `src/components/task-list-item.tsx`
 - Create: `src/lib/time.ts`
 
@@ -289,9 +293,7 @@ export function TaskListItem({ task, projectId, isActive }: TaskListItemProps) {
       to="/projects/$projectId/tasks/$taskId"
       params={{ projectId, taskId: task.id }}
       className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
-        isActive
-          ? 'bg-neutral-700'
-          : 'hover:bg-neutral-800'
+        isActive ? 'bg-neutral-700' : 'hover:bg-neutral-800'
       }`}
     >
       <StatusIndicator status={task.status} />
@@ -325,6 +327,7 @@ git commit -m "feat: add TaskListItem component with unread indicator"
 ## Task 5: Create Project Sidebar Component
 
 **Files:**
+
 - Create: `src/components/project-sidebar.tsx`
 
 **Step 1: Create the component**
@@ -410,6 +413,7 @@ git commit -m "feat: add ProjectSidebar component with task list"
 ## Task 6: Update Project Layout Route
 
 **Files:**
+
 - Modify: `src/routes/projects/$projectId.tsx`
 
 **Step 1: Update the layout**
@@ -449,6 +453,7 @@ git commit -m "feat: update project layout with ProjectSidebar"
 ## Task 7: Create Project Index Route
 
 **Files:**
+
 - Create: `src/routes/projects/$projectId/index.tsx`
 
 **Step 1: Create the route**
@@ -509,6 +514,7 @@ git commit -m "feat: add project index route with redirect logic"
 ## Task 8: Create Project Details Route
 
 **Files:**
+
 - Create: `src/routes/projects/$projectId/details.tsx`
 
 **Step 1: Create the route**
@@ -520,7 +526,11 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
-import { useProject, useUpdateProject, useDeleteProject } from '@/hooks/use-projects';
+import {
+  useProject,
+  useUpdateProject,
+  useDeleteProject,
+} from '@/hooks/use-projects';
 import { PROJECT_COLORS } from '@/lib/colors';
 
 export const Route = createFileRoute('/projects/$projectId/details')({
@@ -571,7 +581,9 @@ function ProjectDetails() {
       <div className="mx-auto max-w-lg">
         <button
           type="button"
-          onClick={() => navigate({ to: '/projects/$projectId', params: { projectId } })}
+          onClick={() =>
+            navigate({ to: '/projects/$projectId', params: { projectId } })
+          }
           className="mb-6 flex cursor-pointer items-center gap-2 text-neutral-400 transition-colors hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -654,11 +666,14 @@ function ProjectDetails() {
 
           {/* Danger zone */}
           <div className="border-t border-neutral-700 pt-6">
-            <h2 className="mb-4 text-lg font-semibold text-red-400">Danger Zone</h2>
+            <h2 className="mb-4 text-lg font-semibold text-red-400">
+              Danger Zone
+            </h2>
             {showDeleteConfirm ? (
               <div className="rounded-lg border border-red-900 bg-red-950/50 p-4">
                 <p className="mb-4 text-sm text-neutral-300">
-                  Are you sure you want to delete this project? This action cannot be undone.
+                  Are you sure you want to delete this project? This action
+                  cannot be undone.
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -708,6 +723,7 @@ git commit -m "feat: add project details page with settings"
 ## Task 9: Create New Task Route
 
 **Files:**
+
 - Create: `src/routes/projects/$projectId/tasks/new.tsx`
 
 **Step 1: Create the route**
@@ -739,7 +755,8 @@ function NewTask() {
     e.preventDefault();
 
     // Auto-generate name from first line of prompt if empty
-    const taskName = name.trim() || prompt.split('\n')[0].slice(0, 50) || 'Untitled task';
+    const taskName =
+      name.trim() || prompt.split('\n')[0].slice(0, 50) || 'Untitled task';
 
     const task = await createTask.mutateAsync({
       projectId,
@@ -760,7 +777,9 @@ function NewTask() {
       <div className="mx-auto max-w-xl">
         <button
           type="button"
-          onClick={() => navigate({ to: '/projects/$projectId', params: { projectId } })}
+          onClick={() =>
+            navigate({ to: '/projects/$projectId', params: { projectId } })
+          }
           className="mb-6 flex cursor-pointer items-center gap-2 text-neutral-400 transition-colors hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -816,7 +835,10 @@ function NewTask() {
               onChange={(e) => setUseWorktree(e.target.checked)}
               className="h-4 w-4 cursor-pointer rounded border-neutral-600 bg-neutral-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-neutral-900"
             />
-            <label htmlFor="useWorktree" className="cursor-pointer text-sm text-neutral-300">
+            <label
+              htmlFor="useWorktree"
+              className="cursor-pointer text-sm text-neutral-300"
+            >
               Create git worktree for isolation
             </label>
           </div>
@@ -848,6 +870,7 @@ git commit -m "feat: add new task creation page"
 ## Task 10: Create Task Panel Route (Placeholder)
 
 **Files:**
+
 - Create: `src/routes/projects/$projectId/tasks/$taskId.tsx`
 
 **Step 1: Create the route**
@@ -904,14 +927,20 @@ function TaskPanel() {
         <div className="mb-6">
           <h2 className="mb-2 text-sm font-medium text-neutral-400">Prompt</h2>
           <div className="rounded-lg border border-neutral-700 bg-neutral-800 p-4">
-            <pre className="whitespace-pre-wrap font-sans text-sm">{task.prompt}</pre>
+            <pre className="whitespace-pre-wrap font-sans text-sm">
+              {task.prompt}
+            </pre>
           </div>
         </div>
 
         {/* Placeholder message */}
         <div className="rounded-lg border border-dashed border-neutral-700 p-8 text-center">
-          <p className="mb-2 text-neutral-400">Agent session will appear here</p>
-          <p className="text-sm text-neutral-600">Agent integration coming in Phase 2.3</p>
+          <p className="mb-2 text-neutral-400">
+            Agent session will appear here
+          </p>
+          <p className="text-sm text-neutral-600">
+            Agent integration coming in Phase 2.3
+          </p>
         </div>
       </div>
     </div>
@@ -931,6 +960,7 @@ git commit -m "feat: add task panel placeholder route"
 ## Task 11: Update ProjectTile with Unread Badge
 
 **Files:**
+
 - Modify: `src/components/project-tile.tsx`
 
 **Step 1: Add unread badge logic**
@@ -1018,6 +1048,7 @@ git commit -m "fix: address lint issues"
 ## Summary
 
 This plan implements Phase 2.1 (Project View Layout) with:
+
 - Database migration for read tracking (`readAt` column)
 - API method `markAsRead` for updating read status
 - `StatusIndicator` component for task status visualization

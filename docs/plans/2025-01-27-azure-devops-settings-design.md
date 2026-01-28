@@ -8,12 +8,12 @@ Add an Azure DevOps tab to the settings page allowing users to connect multiple 
 
 No schema changes needed. We use the existing `providers` table:
 
-| Field | Value |
-|-------|-------|
-| `type` | `'azure-devops'` |
-| `label` | Organization name (auto-populated from API, editable later) |
-| `baseUrl` | `https://dev.azure.com/{orgName}` |
-| `token` | PAT (encrypted via safeStorage) |
+| Field     | Value                                                       |
+| --------- | ----------------------------------------------------------- |
+| `type`    | `'azure-devops'`                                            |
+| `label`   | Organization name (auto-populated from API, editable later) |
+| `baseUrl` | `https://dev.azure.com/{orgName}`                           |
+| `token`   | PAT (encrypted via safeStorage)                             |
 
 ## API Design
 
@@ -26,9 +26,9 @@ azureDevOps: {
 }
 
 interface AzureDevOpsOrganization {
-  id: string;      // GUID
-  name: string;    // Organization name
-  url: string;     // https://dev.azure.com/{name}
+  id: string; // GUID
+  name: string; // Organization name
+  url: string; // https://dev.azure.com/{name}
 }
 ```
 

@@ -86,7 +86,9 @@ function ProjectDetails() {
       <div className="mx-auto max-w-lg">
         <button
           type="button"
-          onClick={() => navigate({ to: '/projects/$projectId', params: { projectId } })}
+          onClick={() =>
+            navigate({ to: '/projects/$projectId', params: { projectId } })
+          }
           className="mb-6 flex cursor-pointer items-center gap-2 text-neutral-400 transition-colors hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -201,11 +203,14 @@ function ProjectDetails() {
 
           {/* Danger zone */}
           <div className="border-t border-neutral-700 pt-6">
-            <h2 className="mb-4 text-lg font-semibold text-red-400">Danger Zone</h2>
+            <h2 className="mb-4 text-lg font-semibold text-red-400">
+              Danger Zone
+            </h2>
             {showDeleteConfirm ? (
               <div className="rounded-lg border border-red-900 bg-red-950/50 p-4">
                 <p className="mb-4 text-sm text-neutral-300">
-                  Are you sure you want to delete this project? This action cannot be undone.
+                  Are you sure you want to delete this project? This action
+                  cannot be undone.
                 </p>
                 <div className="flex gap-2">
                   <button

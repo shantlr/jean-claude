@@ -19,18 +19,32 @@ function getExpirationStatus(expiresAt: string | null): {
 
   const now = new Date();
   const expiry = new Date(expiresAt);
-  const daysUntil = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const daysUntil = Math.ceil(
+    (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+  );
 
   if (daysUntil < 0) {
     return { label: 'Expired', color: 'text-red-400', icon: AlertCircle };
   }
   if (daysUntil <= 7) {
-    return { label: `Expires in ${daysUntil} days`, color: 'text-yellow-400', icon: AlertCircle };
+    return {
+      label: `Expires in ${daysUntil} days`,
+      color: 'text-yellow-400',
+      icon: AlertCircle,
+    };
   }
   if (daysUntil <= 30) {
-    return { label: `Expires in ${daysUntil} days`, color: 'text-yellow-500', icon: Clock };
+    return {
+      label: `Expires in ${daysUntil} days`,
+      color: 'text-yellow-500',
+      icon: Clock,
+    };
   }
-  return { label: `Expires in ${daysUntil} days`, color: 'text-green-400', icon: CheckCircle };
+  return {
+    label: `Expires in ${daysUntil} days`,
+    color: 'text-green-400',
+    icon: CheckCircle,
+  };
 }
 
 export function TokenCard({

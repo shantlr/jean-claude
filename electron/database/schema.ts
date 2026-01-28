@@ -1,10 +1,6 @@
 import { Generated, Insertable, Selectable, Updateable } from 'kysely';
 
-import type {
-  ProviderType,
-  ProjectType,
-  TaskStatus,
-} from '../../shared/types';
+import type { ProviderType, ProjectType, TaskStatus } from '../../shared/types';
 
 // Re-export shared types for convenience
 export type {

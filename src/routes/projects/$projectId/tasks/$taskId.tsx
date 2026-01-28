@@ -282,7 +282,8 @@ function TaskPanel() {
                 >
                   <GitBranch className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">
-                    {task.branchName ?? getBranchFromWorktreePath(task.worktreePath)}
+                    {task.branchName ??
+                      getBranchFromWorktreePath(task.worktreePath)}
                   </span>
                 </button>
                 <button
@@ -384,7 +385,9 @@ function TaskPanel() {
               taskId={taskId}
               selectedFilePath={diffSelectedFile}
               onSelectFile={selectDiffFile}
-              branchName={task.branchName ?? getBranchFromWorktreePath(task.worktreePath)}
+              branchName={
+                task.branchName ?? getBranchFromWorktreePath(task.worktreePath)
+              }
               defaultBranch={project.defaultBranch}
               taskName={task.name}
               onMergeComplete={handleMergeComplete}

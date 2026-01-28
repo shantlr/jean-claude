@@ -43,20 +43,35 @@ contextBridge.exposeInMainWorld('api', {
     reorder: (projectId: string, activeIds: string[], completedIds: string[]) =>
       ipcRenderer.invoke('tasks:reorder', projectId, activeIds, completedIds),
     worktree: {
-      getDiff: (taskId: string) => ipcRenderer.invoke('tasks:worktree:getDiff', taskId),
+      getDiff: (taskId: string) =>
+        ipcRenderer.invoke('tasks:worktree:getDiff', taskId),
       getFileContent: (
         taskId: string,
         filePath: string,
-        status: 'added' | 'modified' | 'deleted'
-      ) => ipcRenderer.invoke('tasks:worktree:getFileContent', taskId, filePath, status),
-      getStatus: (taskId: string) => ipcRenderer.invoke('tasks:worktree:getStatus', taskId),
-      commit: (taskId: string, params: { message: string; stageAll: boolean }) =>
-        ipcRenderer.invoke('tasks:worktree:commit', taskId, params),
+        status: 'added' | 'modified' | 'deleted',
+      ) =>
+        ipcRenderer.invoke(
+          'tasks:worktree:getFileContent',
+          taskId,
+          filePath,
+          status,
+        ),
+      getStatus: (taskId: string) =>
+        ipcRenderer.invoke('tasks:worktree:getStatus', taskId),
+      commit: (
+        taskId: string,
+        params: { message: string; stageAll: boolean },
+      ) => ipcRenderer.invoke('tasks:worktree:commit', taskId, params),
       merge: (
         taskId: string,
-        params: { targetBranch: string; squash?: boolean; commitMessage?: string }
+        params: {
+          targetBranch: string;
+          squash?: boolean;
+          commitMessage?: string;
+        },
       ) => ipcRenderer.invoke('tasks:worktree:merge', taskId, params),
-      getBranches: (taskId: string) => ipcRenderer.invoke('tasks:worktree:getBranches', taskId),
+      getBranches: (taskId: string) =>
+        ipcRenderer.invoke('tasks:worktree:getBranches', taskId),
     },
   },
   providers: {
@@ -134,7 +149,8 @@ contextBridge.exposeInMainWorld('api', {
     onPermission: (callback: (event: unknown) => void) => {
       const handler = (_: unknown, event: unknown) => callback(event);
       ipcRenderer.on(AGENT_CHANNELS.PERMISSION, handler);
-      return () => ipcRenderer.removeListener(AGENT_CHANNELS.PERMISSION, handler);
+      return () =>
+        ipcRenderer.removeListener(AGENT_CHANNELS.PERMISSION, handler);
     },
     onQuestion: (callback: (event: unknown) => void) => {
       const handler = (_: unknown, event: unknown) => callback(event);
@@ -144,12 +160,14 @@ contextBridge.exposeInMainWorld('api', {
     onNameUpdated: (callback: (event: unknown) => void) => {
       const handler = (_: unknown, event: unknown) => callback(event);
       ipcRenderer.on(AGENT_CHANNELS.NAME_UPDATED, handler);
-      return () => ipcRenderer.removeListener(AGENT_CHANNELS.NAME_UPDATED, handler);
+      return () =>
+        ipcRenderer.removeListener(AGENT_CHANNELS.NAME_UPDATED, handler);
     },
     onQueueUpdate: (callback: (event: unknown) => void) => {
       const handler = (_: unknown, event: unknown) => callback(event);
       ipcRenderer.on(AGENT_CHANNELS.QUEUE_UPDATE, handler);
-      return () => ipcRenderer.removeListener(AGENT_CHANNELS.QUEUE_UPDATE, handler);
+      return () =>
+        ipcRenderer.removeListener(AGENT_CHANNELS.QUEUE_UPDATE, handler);
     },
   },
   debug: {

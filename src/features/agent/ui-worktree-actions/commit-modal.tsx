@@ -9,7 +9,13 @@ interface CommitModalProps {
   error?: string;
 }
 
-export function CommitModal({ isOpen, onClose, onCommit, isPending, error }: CommitModalProps) {
+export function CommitModal({
+  isOpen,
+  onClose,
+  onCommit,
+  isPending,
+  error,
+}: CommitModalProps) {
   const [message, setMessage] = useState('');
   const [stageAll, setStageAll] = useState(true);
 
@@ -26,7 +32,9 @@ export function CommitModal({ isOpen, onClose, onCommit, isPending, error }: Com
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-md rounded-lg bg-neutral-800 shadow-xl">
         <div className="flex items-center justify-between border-b border-neutral-700 px-4 py-3">
-          <h2 className="text-lg font-semibold text-neutral-100">Commit Changes</h2>
+          <h2 className="text-lg font-semibold text-neutral-100">
+            Commit Changes
+          </h2>
           <button
             onClick={onClose}
             className="rounded p-1 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"

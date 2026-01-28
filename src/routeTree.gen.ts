@@ -8,127 +8,127 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as SettingsIndexRouteImport } from './routes/settings/index'
-import { Route as SettingsGeneralRouteImport } from './routes/settings/general'
-import { Route as SettingsDebugRouteImport } from './routes/settings/debug'
-import { Route as SettingsAzureDevopsRouteImport } from './routes/settings/azure-devops'
-import { Route as ProjectsNewRouteImport } from './routes/projects.new'
-import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projectId'
-import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$projectId/index'
-import { Route as ProjectsProjectIdDetailsRouteImport } from './routes/projects/$projectId/details'
-import { Route as ProjectsProjectIdTasksNewRouteImport } from './routes/projects/$projectId/tasks/new'
-import { Route as ProjectsProjectIdTasksTaskIdRouteImport } from './routes/projects/$projectId/tasks/$taskId'
+import { Route as rootRouteImport } from './routes/__root';
+import { Route as SettingsRouteImport } from './routes/settings';
+import { Route as IndexRouteImport } from './routes/index';
+import { Route as SettingsIndexRouteImport } from './routes/settings/index';
+import { Route as SettingsGeneralRouteImport } from './routes/settings/general';
+import { Route as SettingsDebugRouteImport } from './routes/settings/debug';
+import { Route as SettingsAzureDevopsRouteImport } from './routes/settings/azure-devops';
+import { Route as ProjectsNewRouteImport } from './routes/projects.new';
+import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projectId';
+import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$projectId/index';
+import { Route as ProjectsProjectIdDetailsRouteImport } from './routes/projects/$projectId/details';
+import { Route as ProjectsProjectIdTasksNewRouteImport } from './routes/projects/$projectId/tasks/new';
+import { Route as ProjectsProjectIdTasksTaskIdRouteImport } from './routes/projects/$projectId/tasks/$taskId';
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const SettingsIndexRoute = SettingsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => SettingsRoute,
-} as any)
+} as any);
 const SettingsGeneralRoute = SettingsGeneralRouteImport.update({
   id: '/general',
   path: '/general',
   getParentRoute: () => SettingsRoute,
-} as any)
+} as any);
 const SettingsDebugRoute = SettingsDebugRouteImport.update({
   id: '/debug',
   path: '/debug',
   getParentRoute: () => SettingsRoute,
-} as any)
+} as any);
 const SettingsAzureDevopsRoute = SettingsAzureDevopsRouteImport.update({
   id: '/azure-devops',
   path: '/azure-devops',
   getParentRoute: () => SettingsRoute,
-} as any)
+} as any);
 const ProjectsNewRoute = ProjectsNewRouteImport.update({
   id: '/projects/new',
   path: '/projects/new',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
   id: '/projects/$projectId',
   path: '/projects/$projectId',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ProjectsProjectIdIndexRoute = ProjectsProjectIdIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ProjectsProjectIdRoute,
-} as any)
+} as any);
 const ProjectsProjectIdDetailsRoute =
   ProjectsProjectIdDetailsRouteImport.update({
     id: '/details',
     path: '/details',
     getParentRoute: () => ProjectsProjectIdRoute,
-  } as any)
+  } as any);
 const ProjectsProjectIdTasksNewRoute =
   ProjectsProjectIdTasksNewRouteImport.update({
     id: '/tasks/new',
     path: '/tasks/new',
     getParentRoute: () => ProjectsProjectIdRoute,
-  } as any)
+  } as any);
 const ProjectsProjectIdTasksTaskIdRoute =
   ProjectsProjectIdTasksTaskIdRouteImport.update({
     id: '/tasks/$taskId',
     path: '/tasks/$taskId',
     getParentRoute: () => ProjectsProjectIdRoute,
-  } as any)
+  } as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/settings': typeof SettingsRouteWithChildren
-  '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
-  '/projects/new': typeof ProjectsNewRoute
-  '/settings/azure-devops': typeof SettingsAzureDevopsRoute
-  '/settings/debug': typeof SettingsDebugRoute
-  '/settings/general': typeof SettingsGeneralRoute
-  '/settings/': typeof SettingsIndexRoute
-  '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute
-  '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
-  '/projects/$projectId/tasks/$taskId': typeof ProjectsProjectIdTasksTaskIdRoute
-  '/projects/$projectId/tasks/new': typeof ProjectsProjectIdTasksNewRoute
+  '/': typeof IndexRoute;
+  '/settings': typeof SettingsRouteWithChildren;
+  '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren;
+  '/projects/new': typeof ProjectsNewRoute;
+  '/settings/azure-devops': typeof SettingsAzureDevopsRoute;
+  '/settings/debug': typeof SettingsDebugRoute;
+  '/settings/general': typeof SettingsGeneralRoute;
+  '/settings/': typeof SettingsIndexRoute;
+  '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute;
+  '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute;
+  '/projects/$projectId/tasks/$taskId': typeof ProjectsProjectIdTasksTaskIdRoute;
+  '/projects/$projectId/tasks/new': typeof ProjectsProjectIdTasksNewRoute;
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/projects/new': typeof ProjectsNewRoute
-  '/settings/azure-devops': typeof SettingsAzureDevopsRoute
-  '/settings/debug': typeof SettingsDebugRoute
-  '/settings/general': typeof SettingsGeneralRoute
-  '/settings': typeof SettingsIndexRoute
-  '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute
-  '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
-  '/projects/$projectId/tasks/$taskId': typeof ProjectsProjectIdTasksTaskIdRoute
-  '/projects/$projectId/tasks/new': typeof ProjectsProjectIdTasksNewRoute
+  '/': typeof IndexRoute;
+  '/projects/new': typeof ProjectsNewRoute;
+  '/settings/azure-devops': typeof SettingsAzureDevopsRoute;
+  '/settings/debug': typeof SettingsDebugRoute;
+  '/settings/general': typeof SettingsGeneralRoute;
+  '/settings': typeof SettingsIndexRoute;
+  '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute;
+  '/projects/$projectId': typeof ProjectsProjectIdIndexRoute;
+  '/projects/$projectId/tasks/$taskId': typeof ProjectsProjectIdTasksTaskIdRoute;
+  '/projects/$projectId/tasks/new': typeof ProjectsProjectIdTasksNewRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/settings': typeof SettingsRouteWithChildren
-  '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
-  '/projects/new': typeof ProjectsNewRoute
-  '/settings/azure-devops': typeof SettingsAzureDevopsRoute
-  '/settings/debug': typeof SettingsDebugRoute
-  '/settings/general': typeof SettingsGeneralRoute
-  '/settings/': typeof SettingsIndexRoute
-  '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute
-  '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
-  '/projects/$projectId/tasks/$taskId': typeof ProjectsProjectIdTasksTaskIdRoute
-  '/projects/$projectId/tasks/new': typeof ProjectsProjectIdTasksNewRoute
+  __root__: typeof rootRouteImport;
+  '/': typeof IndexRoute;
+  '/settings': typeof SettingsRouteWithChildren;
+  '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren;
+  '/projects/new': typeof ProjectsNewRoute;
+  '/settings/azure-devops': typeof SettingsAzureDevopsRoute;
+  '/settings/debug': typeof SettingsDebugRoute;
+  '/settings/general': typeof SettingsGeneralRoute;
+  '/settings/': typeof SettingsIndexRoute;
+  '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute;
+  '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute;
+  '/projects/$projectId/tasks/$taskId': typeof ProjectsProjectIdTasksTaskIdRoute;
+  '/projects/$projectId/tasks/new': typeof ProjectsProjectIdTasksNewRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
+  fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | '/'
     | '/settings'
@@ -141,8 +141,8 @@ export interface FileRouteTypes {
     | '/projects/$projectId/details'
     | '/projects/$projectId/'
     | '/projects/$projectId/tasks/$taskId'
-    | '/projects/$projectId/tasks/new'
-  fileRoutesByTo: FileRoutesByTo
+    | '/projects/$projectId/tasks/new';
+  fileRoutesByTo: FileRoutesByTo;
   to:
     | '/'
     | '/projects/new'
@@ -153,7 +153,7 @@ export interface FileRouteTypes {
     | '/projects/$projectId/details'
     | '/projects/$projectId'
     | '/projects/$projectId/tasks/$taskId'
-    | '/projects/$projectId/tasks/new'
+    | '/projects/$projectId/tasks/new';
   id:
     | '__root__'
     | '/'
@@ -167,110 +167,110 @@ export interface FileRouteTypes {
     | '/projects/$projectId/details'
     | '/projects/$projectId/'
     | '/projects/$projectId/tasks/$taskId'
-    | '/projects/$projectId/tasks/new'
-  fileRoutesById: FileRoutesById
+    | '/projects/$projectId/tasks/new';
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  SettingsRoute: typeof SettingsRouteWithChildren
-  ProjectsProjectIdRoute: typeof ProjectsProjectIdRouteWithChildren
-  ProjectsNewRoute: typeof ProjectsNewRoute
+  IndexRoute: typeof IndexRoute;
+  SettingsRoute: typeof SettingsRouteWithChildren;
+  ProjectsProjectIdRoute: typeof ProjectsProjectIdRouteWithChildren;
+  ProjectsNewRoute: typeof ProjectsNewRoute;
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/settings';
+      path: '/settings';
+      fullPath: '/settings';
+      preLoaderRoute: typeof SettingsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/';
+      path: '/';
+      fullPath: '/';
+      preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/settings/': {
-      id: '/settings/'
-      path: '/'
-      fullPath: '/settings/'
-      preLoaderRoute: typeof SettingsIndexRouteImport
-      parentRoute: typeof SettingsRoute
-    }
+      id: '/settings/';
+      path: '/';
+      fullPath: '/settings/';
+      preLoaderRoute: typeof SettingsIndexRouteImport;
+      parentRoute: typeof SettingsRoute;
+    };
     '/settings/general': {
-      id: '/settings/general'
-      path: '/general'
-      fullPath: '/settings/general'
-      preLoaderRoute: typeof SettingsGeneralRouteImport
-      parentRoute: typeof SettingsRoute
-    }
+      id: '/settings/general';
+      path: '/general';
+      fullPath: '/settings/general';
+      preLoaderRoute: typeof SettingsGeneralRouteImport;
+      parentRoute: typeof SettingsRoute;
+    };
     '/settings/debug': {
-      id: '/settings/debug'
-      path: '/debug'
-      fullPath: '/settings/debug'
-      preLoaderRoute: typeof SettingsDebugRouteImport
-      parentRoute: typeof SettingsRoute
-    }
+      id: '/settings/debug';
+      path: '/debug';
+      fullPath: '/settings/debug';
+      preLoaderRoute: typeof SettingsDebugRouteImport;
+      parentRoute: typeof SettingsRoute;
+    };
     '/settings/azure-devops': {
-      id: '/settings/azure-devops'
-      path: '/azure-devops'
-      fullPath: '/settings/azure-devops'
-      preLoaderRoute: typeof SettingsAzureDevopsRouteImport
-      parentRoute: typeof SettingsRoute
-    }
+      id: '/settings/azure-devops';
+      path: '/azure-devops';
+      fullPath: '/settings/azure-devops';
+      preLoaderRoute: typeof SettingsAzureDevopsRouteImport;
+      parentRoute: typeof SettingsRoute;
+    };
     '/projects/new': {
-      id: '/projects/new'
-      path: '/projects/new'
-      fullPath: '/projects/new'
-      preLoaderRoute: typeof ProjectsNewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/projects/new';
+      path: '/projects/new';
+      fullPath: '/projects/new';
+      preLoaderRoute: typeof ProjectsNewRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/projects/$projectId': {
-      id: '/projects/$projectId'
-      path: '/projects/$projectId'
-      fullPath: '/projects/$projectId'
-      preLoaderRoute: typeof ProjectsProjectIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/projects/$projectId';
+      path: '/projects/$projectId';
+      fullPath: '/projects/$projectId';
+      preLoaderRoute: typeof ProjectsProjectIdRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/projects/$projectId/': {
-      id: '/projects/$projectId/'
-      path: '/'
-      fullPath: '/projects/$projectId/'
-      preLoaderRoute: typeof ProjectsProjectIdIndexRouteImport
-      parentRoute: typeof ProjectsProjectIdRoute
-    }
+      id: '/projects/$projectId/';
+      path: '/';
+      fullPath: '/projects/$projectId/';
+      preLoaderRoute: typeof ProjectsProjectIdIndexRouteImport;
+      parentRoute: typeof ProjectsProjectIdRoute;
+    };
     '/projects/$projectId/details': {
-      id: '/projects/$projectId/details'
-      path: '/details'
-      fullPath: '/projects/$projectId/details'
-      preLoaderRoute: typeof ProjectsProjectIdDetailsRouteImport
-      parentRoute: typeof ProjectsProjectIdRoute
-    }
+      id: '/projects/$projectId/details';
+      path: '/details';
+      fullPath: '/projects/$projectId/details';
+      preLoaderRoute: typeof ProjectsProjectIdDetailsRouteImport;
+      parentRoute: typeof ProjectsProjectIdRoute;
+    };
     '/projects/$projectId/tasks/new': {
-      id: '/projects/$projectId/tasks/new'
-      path: '/tasks/new'
-      fullPath: '/projects/$projectId/tasks/new'
-      preLoaderRoute: typeof ProjectsProjectIdTasksNewRouteImport
-      parentRoute: typeof ProjectsProjectIdRoute
-    }
+      id: '/projects/$projectId/tasks/new';
+      path: '/tasks/new';
+      fullPath: '/projects/$projectId/tasks/new';
+      preLoaderRoute: typeof ProjectsProjectIdTasksNewRouteImport;
+      parentRoute: typeof ProjectsProjectIdRoute;
+    };
     '/projects/$projectId/tasks/$taskId': {
-      id: '/projects/$projectId/tasks/$taskId'
-      path: '/tasks/$taskId'
-      fullPath: '/projects/$projectId/tasks/$taskId'
-      preLoaderRoute: typeof ProjectsProjectIdTasksTaskIdRouteImport
-      parentRoute: typeof ProjectsProjectIdRoute
-    }
+      id: '/projects/$projectId/tasks/$taskId';
+      path: '/tasks/$taskId';
+      fullPath: '/projects/$projectId/tasks/$taskId';
+      preLoaderRoute: typeof ProjectsProjectIdTasksTaskIdRouteImport;
+      parentRoute: typeof ProjectsProjectIdRoute;
+    };
   }
 }
 
 interface SettingsRouteChildren {
-  SettingsAzureDevopsRoute: typeof SettingsAzureDevopsRoute
-  SettingsDebugRoute: typeof SettingsDebugRoute
-  SettingsGeneralRoute: typeof SettingsGeneralRoute
-  SettingsIndexRoute: typeof SettingsIndexRoute
+  SettingsAzureDevopsRoute: typeof SettingsAzureDevopsRoute;
+  SettingsDebugRoute: typeof SettingsDebugRoute;
+  SettingsGeneralRoute: typeof SettingsGeneralRoute;
+  SettingsIndexRoute: typeof SettingsIndexRoute;
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
@@ -278,17 +278,17 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsDebugRoute: SettingsDebugRoute,
   SettingsGeneralRoute: SettingsGeneralRoute,
   SettingsIndexRoute: SettingsIndexRoute,
-}
+};
 
 const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
   SettingsRouteChildren,
-)
+);
 
 interface ProjectsProjectIdRouteChildren {
-  ProjectsProjectIdDetailsRoute: typeof ProjectsProjectIdDetailsRoute
-  ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
-  ProjectsProjectIdTasksTaskIdRoute: typeof ProjectsProjectIdTasksTaskIdRoute
-  ProjectsProjectIdTasksNewRoute: typeof ProjectsProjectIdTasksNewRoute
+  ProjectsProjectIdDetailsRoute: typeof ProjectsProjectIdDetailsRoute;
+  ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute;
+  ProjectsProjectIdTasksTaskIdRoute: typeof ProjectsProjectIdTasksTaskIdRoute;
+  ProjectsProjectIdTasksNewRoute: typeof ProjectsProjectIdTasksNewRoute;
 }
 
 const ProjectsProjectIdRouteChildren: ProjectsProjectIdRouteChildren = {
@@ -296,17 +296,17 @@ const ProjectsProjectIdRouteChildren: ProjectsProjectIdRouteChildren = {
   ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,
   ProjectsProjectIdTasksTaskIdRoute: ProjectsProjectIdTasksTaskIdRoute,
   ProjectsProjectIdTasksNewRoute: ProjectsProjectIdTasksNewRoute,
-}
+};
 
 const ProjectsProjectIdRouteWithChildren =
-  ProjectsProjectIdRoute._addFileChildren(ProjectsProjectIdRouteChildren)
+  ProjectsProjectIdRoute._addFileChildren(ProjectsProjectIdRouteChildren);
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SettingsRoute: SettingsRouteWithChildren,
   ProjectsProjectIdRoute: ProjectsProjectIdRouteWithChildren,
   ProjectsNewRoute: ProjectsNewRoute,
-}
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();

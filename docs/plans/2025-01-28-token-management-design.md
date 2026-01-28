@@ -68,6 +68,7 @@ Users will need to re-add tokens and providers after migration.
 ### Types separation
 
 **Shared types (exposed to renderer):**
+
 ```typescript
 export interface Token {
   id: string;
@@ -80,18 +81,19 @@ export interface Token {
 
 export interface NewToken {
   label: string;
-  token: string;  // Plain token sent once during creation, never returned
+  token: string; // Plain token sent once during creation, never returned
   providerType: 'azure_devops' | 'github' | 'gitlab';
   expiresAt?: string | null;
 }
 ```
 
 **Internal types (main process only):**
+
 ```typescript
 export interface TokenRow {
   id: string;
   label: string;
-  tokenEncrypted: string;  // Encrypted, stays in main process
+  tokenEncrypted: string; // Encrypted, stays in main process
   providerType: string;
   expiresAt: string | null;
   createdAt: string;
@@ -104,6 +106,7 @@ export interface TokenRow {
 Extract existing encryption functions into dedicated service:
 
 **`electron/services/encryption-service.ts`**
+
 ```typescript
 import { safeStorage } from 'electron';
 
@@ -137,9 +140,9 @@ tokens: {
 
 ```typescript
 azureDevOps: {
-  getOrganizations: (tokenId: string) => Promise<AzureDevOpsOrganization[]>;  // tokenId instead of raw token
-  getTokenExpiration: (tokenId: string) => Promise<string | null>;  // New: fetch PAT expiration
-};
+  getOrganizations: (tokenId: string) => Promise<AzureDevOpsOrganization[]>; // tokenId instead of raw token
+  getTokenExpiration: (tokenId: string) => Promise<string | null>; // New: fetch PAT expiration
+}
 ```
 
 ## Token Expiration Auto-Fetch
@@ -149,6 +152,7 @@ For Azure DevOps, use PAT Lifecycle Management API:
 **Endpoint:** `GET https://vssps.dev.azure.com/{organization}/_apis/tokens/pats?api-version=7.1-preview.1`
 
 **Flow:**
+
 1. User pastes PAT
 2. Call `getOrganizations` to validate & get orgs
 3. Using first org, call PAT API to find matching token and get `validTo`
@@ -169,16 +173,19 @@ Settings
 ### Tokens tab (`/settings/tokens`)
 
 **Layout:**
+
 - List of tokens as cards
 - "Add Token" button opens a pane/dialog
 
 **Token card displays:**
+
 - Label (e.g., "Work Azure PAT")
 - Provider type badge (Azure DevOps / GitHub / GitLab)
 - Expiration status: "Expires in 30 days" / "Expired" / "No expiration"
 - Actions: Edit, Refresh expiration, Delete
 
 **Add Token flow:**
+
 1. Select provider type (Azure DevOps, GitHub, GitLab)
 2. Enter label
 3. Paste token
@@ -188,6 +195,7 @@ Settings
 ### Azure DevOps tab (updated)
 
 **Changes:**
+
 - When adding organization, select from existing tokens (dropdown)
 - If no tokens exist, prompt user to add one first
 - Organization cards show which token they're using

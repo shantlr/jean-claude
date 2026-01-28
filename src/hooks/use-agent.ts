@@ -16,7 +16,11 @@ export function useAgentStream(taskId: string) {
 
   // Invalidate task queries when status changes to a terminal state
   useEffect(() => {
-    if (taskMessages.status === 'completed' || taskMessages.status === 'errored' || taskMessages.status === 'interrupted') {
+    if (
+      taskMessages.status === 'completed' ||
+      taskMessages.status === 'errored' ||
+      taskMessages.status === 'interrupted'
+    ) {
       queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     }
@@ -56,7 +60,7 @@ export function useAgentControls(taskId: string) {
       await api.agent.respond(taskId, requestId, response);
       setPermission(taskId, null);
     },
-    [taskId, setPermission]
+    [taskId, setPermission],
   );
 
   const respondToQuestion = useCallback(
@@ -64,28 +68,28 @@ export function useAgentControls(taskId: string) {
       await api.agent.respond(taskId, requestId, response);
       setQuestion(taskId, null);
     },
-    [taskId, setQuestion]
+    [taskId, setQuestion],
   );
 
   const sendMessage = useCallback(
     async (message: string) => {
       await api.agent.sendMessage(taskId, message);
     },
-    [taskId]
+    [taskId],
   );
 
   const queuePrompt = useCallback(
     async (prompt: string) => {
       return api.agent.queuePrompt(taskId, prompt);
     },
-    [taskId]
+    [taskId],
   );
 
   const cancelQueuedPrompt = useCallback(
     async (promptId: string) => {
       await api.agent.cancelQueuedPrompt(taskId, promptId);
     },
-    [taskId]
+    [taskId],
   );
 
   return {

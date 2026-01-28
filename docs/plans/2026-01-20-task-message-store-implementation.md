@@ -13,6 +13,7 @@
 ## Task 1: Add `lastReadIndex` Migration
 
 **Files:**
+
 - Create: `electron/database/migrations/005_task_last_read_index.ts`
 - Modify: `electron/database/migrator.ts:6-13`
 - Modify: `electron/database/schema.ts:55-67`
@@ -66,7 +67,7 @@ export interface TaskTable {
   worktreePath: string | null;
   startCommitHash: string | null;
   readAt: string | null;
-  lastReadIndex: number;  // Add this line
+  lastReadIndex: number; // Add this line
   createdAt: Generated<string>;
   updatedAt: string;
 }
@@ -105,6 +106,7 @@ git commit -m "feat(db): add lastReadIndex column to tasks table"
 ## Task 2: Update Task Repository with `messageCount` and `updateLastReadIndex`
 
 **Files:**
+
 - Modify: `electron/database/repositories/tasks.ts`
 
 **Step 1: Add `messageCount` subquery to `findByProjectId`**
@@ -154,6 +156,7 @@ git commit -m "feat(repo): add messageCount subquery and updateLastReadIndex met
 ## Task 3: Expose `updateLastReadIndex` via IPC
 
 **Files:**
+
 - Modify: `electron/ipc/handlers.ts:56-59`
 - Modify: `electron/preload.ts:23-25`
 - Modify: `src/lib/api.ts:38-46,98-106`
@@ -163,8 +166,10 @@ git commit -m "feat(repo): add messageCount subquery and updateLastReadIndex met
 In `electron/ipc/handlers.ts`, add after `tasks:markAsRead` handler:
 
 ```typescript
-ipcMain.handle('tasks:updateLastReadIndex', (_, id: string, lastReadIndex: number) =>
-  TaskRepository.updateLastReadIndex(id, lastReadIndex),
+ipcMain.handle(
+  'tasks:updateLastReadIndex',
+  (_, id: string, lastReadIndex: number) =>
+    TaskRepository.updateLastReadIndex(id, lastReadIndex),
 );
 ```
 
@@ -205,6 +210,7 @@ git commit -m "feat(ipc): expose updateLastReadIndex endpoint"
 ## Task 4: Create Zustand Task Messages Store
 
 **Files:**
+
 - Create: `src/stores/task-messages.ts`
 
 **Step 1: Create the store**
@@ -234,10 +240,21 @@ interface TaskMessagesStore {
   cacheLimit: number;
 
   // Actions
-  loadTask: (taskId: string, messages: AgentMessage[], status: TaskStatus) => void;
+  loadTask: (
+    taskId: string,
+    messages: AgentMessage[],
+    status: TaskStatus,
+  ) => void;
   appendMessage: (taskId: string, message: AgentMessage) => void;
-  setStatus: (taskId: string, status: TaskStatus, error?: string | null) => void;
-  setPermission: (taskId: string, permission: AgentPermissionEvent | null) => void;
+  setStatus: (
+    taskId: string,
+    status: TaskStatus,
+    error?: string | null,
+  ) => void;
+  setPermission: (
+    taskId: string,
+    permission: AgentPermissionEvent | null,
+  ) => void;
   setQuestion: (taskId: string, question: AgentQuestionEvent | null) => void;
   touchTask: (taskId: string) => void;
   unloadTask: (taskId: string) => void;
@@ -251,10 +268,12 @@ const DEFAULT_CACHE_LIMIT = 10;
 
 function evictIfNeeded(
   tasks: Record<string, TaskState>,
-  cacheLimit: number
+  cacheLimit: number,
 ): Record<string, TaskState> {
   const entries = Object.entries(tasks);
-  const inactiveTasks = entries.filter(([, state]) => state.status !== 'running');
+  const inactiveTasks = entries.filter(
+    ([, state]) => state.status !== 'running',
+  );
 
   if (inactiveTasks.length <= cacheLimit) {
     return tasks;
@@ -406,6 +425,7 @@ git commit -m "feat(store): create Zustand task messages store with LRU eviction
 ## Task 5: Create Global Task Message Manager Component
 
 **Files:**
+
 - Create: `src/features/agent/task-message-manager/index.tsx`
 
 **Step 1: Create the component**
@@ -473,6 +493,7 @@ git commit -m "feat(agent): create TaskMessageManager for global IPC subscriptio
 ## Task 6: Mount TaskMessageManager in Root Layout
 
 **Files:**
+
 - Modify: `src/routes/__root.tsx`
 
 **Step 1: Import and render TaskMessageManager**
@@ -516,6 +537,7 @@ git commit -m "feat(layout): mount TaskMessageManager in root layout"
 ## Task 7: Create `useTaskMessages` Hook
 
 **Files:**
+
 - Create: `src/hooks/use-task-messages.ts`
 
 **Step 1: Create the hook**
@@ -535,13 +557,14 @@ export function useTaskMessages(taskId: string) {
 
   useEffect(() => {
     if (!isLoaded) {
-      Promise.all([api.agent.getMessages(taskId), api.tasks.findById(taskId)]).then(
-        ([messages, task]) => {
-          if (task) {
-            loadTask(taskId, messages, task.status);
-          }
+      Promise.all([
+        api.agent.getMessages(taskId),
+        api.tasks.findById(taskId),
+      ]).then(([messages, task]) => {
+        if (task) {
+          loadTask(taskId, messages, task.status);
         }
-      );
+      });
     } else {
       touchTask(taskId);
     }
@@ -581,6 +604,7 @@ git commit -m "feat(hooks): create useTaskMessages hook to access store"
 ## Task 8: Refactor `useAgentStream` to Use Store
 
 **Files:**
+
 - Modify: `src/hooks/use-agent.ts`
 
 **Step 1: Replace `useAgentStream` implementation**
@@ -605,7 +629,10 @@ export function useAgentStream(taskId: string) {
 
   // Invalidate task queries when status changes
   useEffect(() => {
-    if (taskMessages.status === 'completed' || taskMessages.status === 'errored') {
+    if (
+      taskMessages.status === 'completed' ||
+      taskMessages.status === 'errored'
+    ) {
       queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     }
@@ -642,21 +669,21 @@ export function useAgentControls(taskId: string) {
     async (requestId: string, response: PermissionResponse) => {
       await api.agent.respond(taskId, requestId, response);
     },
-    [taskId]
+    [taskId],
   );
 
   const respondToQuestion = useCallback(
     async (requestId: string, response: QuestionResponse) => {
       await api.agent.respond(taskId, requestId, response);
     },
-    [taskId]
+    [taskId],
   );
 
   const sendMessage = useCallback(
     async (message: string) => {
       await api.agent.sendMessage(taskId, message);
     },
-    [taskId]
+    [taskId],
   );
 
   return {
@@ -683,6 +710,7 @@ git commit -m "refactor(hooks): simplify useAgentStream to use store via useTask
 ## Task 9: Update Task Page to Mark as Read with `lastReadIndex`
 
 **Files:**
+
 - Modify: `src/routes/projects/$projectId/tasks/$taskId.tsx:59-65`
 - Modify: `src/hooks/use-tasks.ts:66-78`
 
@@ -694,8 +722,13 @@ In `src/hooks/use-tasks.ts`, replace `useMarkTaskAsRead`:
 export function useMarkTaskAsRead() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, lastReadIndex }: { id: string; lastReadIndex: number }) =>
-      api.tasks.updateLastReadIndex(id, lastReadIndex),
+    mutationFn: ({
+      id,
+      lastReadIndex,
+    }: {
+      id: string;
+      lastReadIndex: number;
+    }) => api.tasks.updateLastReadIndex(id, lastReadIndex),
     onSuccess: (task, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
@@ -715,7 +748,10 @@ In `src/routes/projects/$projectId/tasks/$taskId.tsx`, update the mark as read e
 // Mark task as read when viewing (except when running)
 useEffect(() => {
   if (task && agentState.messages.length > 0 && task.status !== 'running') {
-    markAsRead.mutate({ id: taskId, lastReadIndex: agentState.messages.length - 1 });
+    markAsRead.mutate({
+      id: taskId,
+      lastReadIndex: agentState.messages.length - 1,
+    });
   }
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [taskId, task?.status, agentState.messages.length]);
@@ -733,6 +769,7 @@ git commit -m "feat(tasks): mark as read using lastReadIndex"
 ## Task 10: Update Task List Item Unread Badge Logic
 
 **Files:**
+
 - Modify: `src/features/task/ui-task-list-item/index.tsx`
 
 **Step 1: Update unread calculation**
@@ -806,6 +843,7 @@ git commit -m "feat(ui): show unread message count badge on task list items"
 ## Task 11: Add Pending Permission/Question Indicators to Task List
 
 **Files:**
+
 - Modify: `src/features/task/ui-task-list-item/index.tsx`
 
 **Step 1: Add store selector for pending state**
@@ -886,6 +924,7 @@ git commit -m "feat(ui): show attention indicator when task needs permission/ans
 ## Task 12: Clear Pending Permission/Question After Response
 
 **Files:**
+
 - Modify: `src/hooks/use-agent.ts`
 
 **Step 1: Clear store state after responding**
@@ -911,7 +950,10 @@ export function useAgentStream(taskId: string) {
 
   // Invalidate task queries when status changes
   useEffect(() => {
-    if (taskMessages.status === 'completed' || taskMessages.status === 'errored') {
+    if (
+      taskMessages.status === 'completed' ||
+      taskMessages.status === 'errored'
+    ) {
       queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     }
@@ -951,7 +993,7 @@ export function useAgentControls(taskId: string) {
       await api.agent.respond(taskId, requestId, response);
       setPermission(taskId, null);
     },
-    [taskId, setPermission]
+    [taskId, setPermission],
   );
 
   const respondToQuestion = useCallback(
@@ -959,14 +1001,14 @@ export function useAgentControls(taskId: string) {
       await api.agent.respond(taskId, requestId, response);
       setQuestion(taskId, null);
     },
-    [taskId, setQuestion]
+    [taskId, setQuestion],
   );
 
   const sendMessage = useCallback(
     async (message: string) => {
       await api.agent.sendMessage(taskId, message);
     },
-    [taskId]
+    [taskId],
   );
 
   return {

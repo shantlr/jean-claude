@@ -36,6 +36,7 @@ The renderer calls `window.api.*` methods which are defined in `preload.ts` and 
 #### Zustand Usage
 
 Always use selectors to subscribe to store state reactively:
+
 ```ts
 // Good - reactive, only re-renders when selected state changes
 const draft = useStore((state) => state.drafts[id]);
@@ -47,6 +48,7 @@ const draft = getDraft(id);
 ```
 
 For stores keyed by ID, expose a custom hook that takes the ID and returns bound actions:
+
 ```ts
 export function useNewTaskFormStore(projectId: string) {
   const draft = useStore((state) => state.drafts[projectId] ?? defaultDraft);
@@ -62,11 +64,13 @@ export function useNewTaskFormStore(projectId: string) {
 ### Database
 
 SQLite via better-sqlite3 + Kysely (type-safe query builder):
+
 - Schema types: `electron/database/schema.ts`
 - Migrations: `electron/database/migrations/`
 - Repositories: `electron/database/repositories/`
 
 To add a migration:
+
 1. Create `electron/database/migrations/NNN_name.ts` with `up()` and `down()` functions
 2. Register in `electron/database/migrator.ts`
 3. Update types in `schema.ts`
@@ -74,6 +78,7 @@ To add a migration:
 #### Migration Patterns
 
 **Simple migrations (adding columns):**
+
 ```typescript
 import { Kysely, sql } from 'kysely';
 
@@ -98,6 +103,7 @@ SQLite doesn't support `ALTER COLUMN`, so changing column constraints or default
 - **Problem 3**: Duplicating data temporarily doubles disk usage
 
 **Safe table recreation pattern:**
+
 ```typescript
 import { Kysely, sql } from 'kysely';
 
@@ -108,7 +114,8 @@ export async function up(db: Kysely<unknown>): Promise<void> {
 
     // 2. Create new table with desired schema
     await sql`DROP TABLE IF EXISTS tablename_new`.execute(trx);
-    await trx.schema.createTable('tablename_new')
+    await trx.schema
+      .createTable('tablename_new')
       // ... columns ...
       .execute();
 
@@ -121,7 +128,9 @@ export async function up(db: Kysely<unknown>): Promise<void> {
 
     // 5. Re-enable FK constraints and verify integrity
     await sql`PRAGMA foreign_keys = ON`.execute(trx);
-    const fkCheck = await sql<{ table: string }>`PRAGMA foreign_key_check`.execute(trx);
+    const fkCheck = await sql<{
+      table: string;
+    }>`PRAGMA foreign_key_check`.execute(trx);
     if (fkCheck.rows.length > 0) {
       throw new Error(`Foreign key violation: ${JSON.stringify(fkCheck.rows)}`);
     }
@@ -130,6 +139,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
 ```
 
 Key points:
+
 - Always wrap in `db.transaction().execute()`
 - Use `PRAGMA foreign_keys = OFF` before dropping tables with FK references
 - Verify FK integrity with `PRAGMA foreign_key_check` before committing
@@ -209,13 +219,13 @@ docs/plans/            # Design and implementation documents
 
 ### Pages
 
-| Route | Purpose |
-|-------|---------|
-| `/` | Redirects to last visited project/task (persisted in navigation store) |
-| `/settings` | Configure editor preferences; debug database viewer |
-| `/projects/new` | Two-step wizard to add a local project (folder picker → name/color) |
-| `/projects/:projectId` | Project layout with sidebar listing tasks |
-| `/projects/:projectId/tasks/new` | Form to create a task with prompt, mode, and worktree options |
+| Route                                | Purpose                                                                    |
+| ------------------------------------ | -------------------------------------------------------------------------- |
+| `/`                                  | Redirects to last visited project/task (persisted in navigation store)     |
+| `/settings`                          | Configure editor preferences; debug database viewer                        |
+| `/projects/new`                      | Two-step wizard to add a local project (folder picker → name/color)        |
+| `/projects/:projectId`               | Project layout with sidebar listing tasks                                  |
+| `/projects/:projectId/tasks/new`     | Form to create a task with prompt, mode, and worktree options              |
 | `/projects/:projectId/tasks/:taskId` | Main agent UI: message stream, file preview, diff view, permissions, input |
 
 ## Development Notes
@@ -245,6 +255,7 @@ docs/plans/            # Design and implementation documents
 #### Component Organization
 
 Components are organized by location:
+
 - `src/layout/` - App shell components (header, sidebars)
 - `src/features/<domain>/` - Feature components grouped by domain (agent, project, task, settings)
 - `src/common/ui/` - Atomic reusable components
@@ -260,6 +271,7 @@ Components are organized by location:
 #### Folder Structure
 
 Each component lives in its own folder with an `index.tsx`:
+
 ```
 src/features/agent/ui-message-stream/
   index.tsx              # Main component
@@ -267,6 +279,7 @@ src/features/agent/ui-message-stream/
 ```
 
 No barrel files (index.ts re-exports). Import directly from component folders:
+
 ```ts
 import { MessageStream } from '@/features/agent/ui-message-stream';
 ```

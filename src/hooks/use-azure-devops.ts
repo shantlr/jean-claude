@@ -19,6 +19,7 @@ export function useValidateAzureDevOpsToken() {
 // Get token expiration from Azure DevOps API
 export function useGetAzureDevOpsTokenExpiration() {
   return useMutation<string | null, Error, string>({
-    mutationFn: (tokenId: string) => api.azureDevOps.getTokenExpiration(tokenId),
+    mutationFn: (tokenId: string) =>
+      api.azureDevOps.getTokenExpiration(tokenId),
   });
 }

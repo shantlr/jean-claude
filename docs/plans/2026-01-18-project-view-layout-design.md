@@ -23,13 +23,14 @@ Add `readAt` column to track when user last viewed a task:
 ```typescript
 interface TaskTable {
   // ... existing fields
-  readAt: string | null;  // ISO timestamp, null = never read
+  readAt: string | null; // ISO timestamp, null = never read
 }
 ```
 
 ### Unread Logic
 
 A task is "unread" when:
+
 - Status is `waiting`, `completed`, or `errored`
 - AND (`readAt` is null OR `updatedAt > readAt`)
 
@@ -65,6 +66,7 @@ src/routes/projects/
 ### Task List Item
 
 Displays:
+
 - Status indicator (colored dot)
   - Green: running
   - Yellow: waiting
@@ -85,35 +87,42 @@ Displays:
 ### Project Details (`/projects/$projectId/details`)
 
 **Project info section:**
+
 - Project name (editable input)
 - Project path (read-only)
 - Project type badge (local / git-provider)
 
 **Appearance section:**
+
 - Color picker (same palette as project creation)
 
 **Danger zone:**
+
 - Delete project button with confirmation
 
 ### Task Creation (`/projects/$projectId/tasks/new`)
 
 **Form fields:**
+
 - Task name (optional, auto-generate from prompt if empty)
 - Prompt (multiline textarea, required)
 - Use worktree checkbox (default: checked)
 
 **Submit behavior:**
+
 - Creates task with status `waiting` (agent integration deferred)
 - Navigates to `/projects/$projectId/tasks/$newTaskId`
 
 ### Task Panel (`/projects/$projectId/tasks/$taskId`)
 
 **Placeholder until Phase 2.3:**
+
 - Task name + status badge + timestamp
 - Displays the task prompt
 - Message: "Agent session will appear here"
 
 **Mark as read:**
+
 - On mount, update `readAt` to current timestamp
 
 ## API Changes

@@ -15,6 +15,7 @@
 Extract existing encryption functions from `providers.ts` into a dedicated service.
 
 **Files:**
+
 - Create: `electron/services/encryption-service.ts`
 
 **Step 1: Create the encryption service**
@@ -48,6 +49,7 @@ git commit -m "feat: extract encryption service from providers repository"
 Create migration to add `tokens` table and recreate `providers` table with `tokenId`.
 
 **Files:**
+
 - Create: `electron/database/migrations/018_tokens_and_providers_rework.ts`
 - Modify: `electron/database/migrator.ts`
 
@@ -87,14 +89,18 @@ export async function up(db: Kysely<unknown>): Promise<void> {
       .addColumn('type', 'text', (col) => col.notNull())
       .addColumn('label', 'text', (col) => col.notNull())
       .addColumn('baseUrl', 'text', (col) => col.notNull())
-      .addColumn('tokenId', 'text', (col) => col.references('tokens.id').onDelete('set null'))
+      .addColumn('tokenId', 'text', (col) =>
+        col.references('tokens.id').onDelete('set null'),
+      )
       .addColumn('createdAt', 'text', (col) => col.notNull())
       .addColumn('updatedAt', 'text', (col) => col.notNull())
       .execute();
 
     // 6. Re-enable FK constraints and verify integrity
     await sql`PRAGMA foreign_keys = ON`.execute(trx);
-    const fkCheck = await sql<{ table: string }>`PRAGMA foreign_key_check`.execute(trx);
+    const fkCheck = await sql<{
+      table: string;
+    }>`PRAGMA foreign_key_check`.execute(trx);
     if (fkCheck.rows.length > 0) {
       throw new Error(`Foreign key violation: ${JSON.stringify(fkCheck.rows)}`);
     }
@@ -153,6 +159,7 @@ git commit -m "feat: add migration for tokens table and providers rework"
 Update schema types for new tokens table and modified providers table.
 
 **Files:**
+
 - Modify: `electron/database/schema.ts`
 
 **Step 1: Add TokenTable interface and update ProviderTable**
@@ -220,6 +227,7 @@ git commit -m "feat: update database schema types for tokens and providers"
 Add Token types to shared types and update Provider types.
 
 **Files:**
+
 - Modify: `shared/types.ts`
 
 **Step 1: Add Token types (without sensitive tokenEncrypted)**
@@ -301,6 +309,7 @@ git commit -m "feat: add Token types and update Provider types in shared types"
 Create repository for token CRUD operations with encryption.
 
 **Files:**
+
 - Create: `electron/database/repositories/tokens.ts`
 - Modify: `electron/database/repositories/index.ts`
 
@@ -429,6 +438,7 @@ git commit -m "feat: add TokenRepository with encryption"
 Remove token handling, add tokenId, use TokenRepository for token lookup.
 
 **Files:**
+
 - Modify: `electron/database/repositories/providers.ts`
 
 **Step 1: Rewrite providers repository**
@@ -436,7 +446,11 @@ Remove token handling, add tokenId, use TokenRepository for token lookup.
 ```typescript
 // electron/database/repositories/providers.ts
 import { db } from '../index';
-import type { Provider, NewProvider, UpdateProvider } from '../../../shared/types';
+import type {
+  Provider,
+  NewProvider,
+  UpdateProvider,
+} from '../../../shared/types';
 
 export const ProviderRepository = {
   findAll: async (): Promise<Provider[]> => {
@@ -508,6 +522,7 @@ git commit -m "refactor: update ProviderRepository to use tokenId instead of tok
 Update to use TokenRepository for token lookup instead of receiving raw tokens.
 
 **Files:**
+
 - Modify: `electron/services/azure-devops-service.ts`
 
 **Step 1: Update imports and add token lookup helper**
@@ -526,7 +541,9 @@ function createAuthHeader(token: string): string {
 }
 
 // Get organizations using a tokenId (looks up decrypted token internally)
-export async function getOrganizationsByTokenId(tokenId: string): Promise<AzureDevOpsOrganization[]> {
+export async function getOrganizationsByTokenId(
+  tokenId: string,
+): Promise<AzureDevOpsOrganization[]> {
   const token = await TokenRepository.getDecryptedToken(tokenId);
   if (!token) {
     throw new Error(`Token not found: ${tokenId}`);
@@ -535,7 +552,9 @@ export async function getOrganizationsByTokenId(tokenId: string): Promise<AzureD
 }
 
 // Internal function that uses raw token
-async function getOrganizationsWithToken(token: string): Promise<AzureDevOpsOrganization[]> {
+async function getOrganizationsWithToken(
+  token: string,
+): Promise<AzureDevOpsOrganization[]> {
   // Step 1: Get the user's member ID from profile
   const profileResponse = await fetch(
     'https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.0',
@@ -543,7 +562,7 @@ async function getOrganizationsWithToken(token: string): Promise<AzureDevOpsOrga
       headers: {
         Authorization: createAuthHeader(token),
       },
-    }
+    },
   );
 
   if (!profileResponse.ok) {
@@ -560,7 +579,7 @@ async function getOrganizationsWithToken(token: string): Promise<AzureDevOpsOrga
       headers: {
         Authorization: createAuthHeader(token),
       },
-    }
+    },
   );
 
   if (!accountsResponse.ok) {
@@ -578,12 +597,16 @@ async function getOrganizationsWithToken(token: string): Promise<AzureDevOpsOrga
 }
 
 // Validate token and get organizations (for initial token creation)
-export async function validateTokenAndGetOrganizations(token: string): Promise<AzureDevOpsOrganization[]> {
+export async function validateTokenAndGetOrganizations(
+  token: string,
+): Promise<AzureDevOpsOrganization[]> {
   return getOrganizationsWithToken(token);
 }
 
 // Get PAT expiration date from Azure DevOps API
-export async function getTokenExpiration(tokenId: string): Promise<string | null> {
+export async function getTokenExpiration(
+  tokenId: string,
+): Promise<string | null> {
   const token = await TokenRepository.getDecryptedToken(tokenId);
   if (!token) {
     throw new Error(`Token not found: ${tokenId}`);
@@ -605,7 +628,7 @@ export async function getTokenExpiration(tokenId: string): Promise<string | null
         headers: {
           Authorization: createAuthHeader(token),
         },
-      }
+      },
     );
 
     if (!response.ok) {
@@ -623,8 +646,9 @@ export async function getTokenExpiration(tokenId: string): Promise<string | null
 
     const validPats = pats
       .filter((pat: { validTo: string }) => new Date(pat.validTo) > now)
-      .sort((a: { validTo: string }, b: { validTo: string }) =>
-        new Date(a.validTo).getTime() - new Date(b.validTo).getTime()
+      .sort(
+        (a: { validTo: string }, b: { validTo: string }) =>
+          new Date(a.validTo).getTime() - new Date(b.validTo).getTime(),
       );
 
     if (validPats.length > 0) {
@@ -638,7 +662,9 @@ export async function getTokenExpiration(tokenId: string): Promise<string | null
   }
 }
 
-export async function getProviderDetails(providerId: string): Promise<AzureDevOpsOrgDetails> {
+export async function getProviderDetails(
+  providerId: string,
+): Promise<AzureDevOpsOrgDetails> {
   const provider = await ProviderRepository.findById(providerId);
   if (!provider) {
     throw new Error(`Provider not found: ${providerId}`);
@@ -668,7 +694,7 @@ export async function getProviderDetails(providerId: string): Promise<AzureDevOp
     `https://dev.azure.com/${orgName}/_apis/projects?api-version=7.0`,
     {
       headers: { Authorization: authHeader },
-    }
+    },
   );
 
   if (!projectsResponse.ok) {
@@ -685,7 +711,7 @@ export async function getProviderDetails(providerId: string): Promise<AzureDevOp
         `https://dev.azure.com/${orgName}/${project.id}/_apis/git/repositories?api-version=7.0`,
         {
           headers: { Authorization: authHeader },
-        }
+        },
       );
 
       let repos: AzureDevOpsRepo[] = [];
@@ -707,7 +733,7 @@ export async function getProviderDetails(providerId: string): Promise<AzureDevOp
         },
         repos,
       };
-    })
+    }),
   );
 
   return { projects: projectsWithRepos };
@@ -728,6 +754,7 @@ git commit -m "refactor: update Azure DevOps service to use TokenRepository"
 Add token handlers and update provider/azureDevOps handlers.
 
 **Files:**
+
 - Modify: `electron/ipc/handlers.ts`
 
 **Step 1: Add token imports and handlers**
@@ -756,13 +783,17 @@ Add token handlers after provider handlers:
 ```typescript
 // Tokens
 ipcMain.handle('tokens:findAll', () => TokenRepository.findAll());
-ipcMain.handle('tokens:findById', (_, id: string) => TokenRepository.findById(id));
-ipcMain.handle('tokens:findByProviderType', (_, providerType: string) =>
-  TokenRepository.findByProviderType(providerType)
+ipcMain.handle('tokens:findById', (_, id: string) =>
+  TokenRepository.findById(id),
 );
-ipcMain.handle('tokens:create', (_, data: NewToken) => TokenRepository.create(data));
+ipcMain.handle('tokens:findByProviderType', (_, providerType: string) =>
+  TokenRepository.findByProviderType(providerType),
+);
+ipcMain.handle('tokens:create', (_, data: NewToken) =>
+  TokenRepository.create(data),
+);
 ipcMain.handle('tokens:update', (_, id: string, data: UpdateToken) =>
-  TokenRepository.update(id, data)
+  TokenRepository.update(id, data),
 );
 ipcMain.handle('tokens:delete', (_, id: string) => TokenRepository.delete(id));
 ```
@@ -772,13 +803,13 @@ Update Azure DevOps handlers:
 ```typescript
 // Azure DevOps
 ipcMain.handle('azureDevOps:getOrganizations', (_, tokenId: string) =>
-  getOrganizationsByTokenId(tokenId)
+  getOrganizationsByTokenId(tokenId),
 );
 ipcMain.handle('azureDevOps:validateToken', (_, token: string) =>
-  validateTokenAndGetOrganizations(token)
+  validateTokenAndGetOrganizations(token),
 );
 ipcMain.handle('azureDevOps:getTokenExpiration', (_, tokenId: string) =>
-  getTokenExpiration(tokenId)
+  getTokenExpiration(tokenId),
 );
 ```
 
@@ -796,6 +827,7 @@ git commit -m "feat: add token IPC handlers and update Azure DevOps handlers"
 Expose token API methods and update Azure DevOps methods.
 
 **Files:**
+
 - Modify: `electron/preload.ts`
 
 **Step 1: Add tokens API and update azureDevOps**
@@ -842,6 +874,7 @@ git commit -m "feat: expose token API and update Azure DevOps API in preload"
 Add token API types and update existing types.
 
 **Files:**
+
 - Modify: `src/lib/api.ts`
 
 **Step 1: Add Token imports and API interface**
@@ -877,7 +910,7 @@ azureDevOps: {
   getOrganizations: (tokenId: string) => Promise<AzureDevOpsOrganization[]>;
   validateToken: (token: string) => Promise<AzureDevOpsOrganization[]>;
   getTokenExpiration: (tokenId: string) => Promise<string | null>;
-};
+}
 ```
 
 Add stub implementations for tokens:
@@ -917,6 +950,7 @@ git commit -m "feat: add token API types and update Azure DevOps API types"
 Create React Query hooks for token operations.
 
 **Files:**
+
 - Create: `src/hooks/use-tokens.ts`
 
 **Step 1: Create the hooks file**
@@ -995,6 +1029,7 @@ git commit -m "feat: add React Query hooks for tokens"
 Update hooks to work with tokenId and add token validation.
 
 **Files:**
+
 - Modify: `src/hooks/use-azure-devops.ts`
 
 **Step 1: Update hooks**
@@ -1022,7 +1057,8 @@ export function useValidateAzureDevOpsToken() {
 // Get token expiration from Azure DevOps API
 export function useGetAzureDevOpsTokenExpiration() {
   return useMutation<string | null, Error, string>({
-    mutationFn: (tokenId: string) => api.azureDevOps.getTokenExpiration(tokenId),
+    mutationFn: (tokenId: string) =>
+      api.azureDevOps.getTokenExpiration(tokenId),
   });
 }
 ```
@@ -1041,6 +1077,7 @@ git commit -m "refactor: update Azure DevOps hooks for token-based auth"
 Create the Tokens settings tab with list and add/edit functionality.
 
 **Files:**
+
 - Create: `src/features/settings/ui-tokens-tab/index.tsx`
 - Create: `src/features/settings/ui-tokens-tab/token-list.tsx`
 - Create: `src/features/settings/ui-tokens-tab/token-card.tsx`
@@ -1706,6 +1743,7 @@ git commit -m "feat: add Tokens settings tab with list, add, edit, and delete fu
 Update to use tokens instead of entering PAT directly.
 
 **Files:**
+
 - Modify: `src/features/settings/ui-azure-devops-tab/add-organization-pane.tsx`
 - Modify: `src/features/settings/ui-azure-devops-tab/organization-card.tsx`
 
@@ -1929,6 +1967,7 @@ git commit -m "refactor: update Azure DevOps tab to use token selector instead o
 Ensure schema.ts properly re-exports the new Token types.
 
 **Files:**
+
 - Modify: `electron/database/schema.ts`
 
 **Step 1: Add Token to re-exports**

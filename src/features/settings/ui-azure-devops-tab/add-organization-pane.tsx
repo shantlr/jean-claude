@@ -13,10 +13,13 @@ type PaneStep = 'selectToken' | 'selectOrgs';
 export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState<PaneStep>('selectToken');
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
-  const [organizations, setOrganizations] = useState<AzureDevOpsOrganization[]>([]);
+  const [organizations, setOrganizations] = useState<AzureDevOpsOrganization[]>(
+    [],
+  );
   const [selectedOrgs, setSelectedOrgs] = useState<Set<string>>(new Set());
 
-  const { data: tokens = [], isLoading: tokensLoading } = useTokensByProviderType('azure-devops');
+  const { data: tokens = [], isLoading: tokensLoading } =
+    useTokensByProviderType('azure-devops');
   const { data: existingProviders = [] } = useProviders();
   const getOrganizations = useGetAzureDevOpsOrganizations();
   const createProvider = useCreateProvider();
@@ -24,7 +27,7 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
   const existingOrgUrls = new Set(
     existingProviders
       .filter((p) => p.type === 'azure-devops')
-      .map((p) => p.baseUrl)
+      .map((p) => p.baseUrl),
   );
 
   const handleSelectToken = async (tokenId: string) => {
@@ -63,7 +66,9 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
   const handleAddSelected = async () => {
     if (!selectedTokenId) return;
 
-    const selectedOrgsList = organizations.filter((org) => selectedOrgs.has(org.id));
+    const selectedOrgsList = organizations.filter((org) =>
+      selectedOrgs.has(org.id),
+    );
 
     for (const org of selectedOrgsList) {
       await createProvider.mutateAsync({
@@ -102,7 +107,9 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
             </div>
           ) : tokens.length === 0 ? (
             <div className="rounded-lg border border-neutral-600 bg-neutral-700/50 p-4 text-center">
-              <p className="text-sm text-neutral-400">No Azure DevOps tokens found</p>
+              <p className="text-sm text-neutral-400">
+                No Azure DevOps tokens found
+              </p>
               <Link
                 to="/settings/tokens"
                 className="mt-2 inline-block text-sm text-blue-400 hover:text-blue-300"
@@ -122,9 +129,10 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
                   <span className="text-sm font-medium text-neutral-200">
                     {token.label}
                   </span>
-                  {getOrganizations.isPending && selectedTokenId === token.id && (
-                    <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
-                  )}
+                  {getOrganizations.isPending &&
+                    selectedTokenId === token.id && (
+                      <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+                    )}
                 </button>
               ))}
             </div>
@@ -157,7 +165,9 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
                   className="h-4 w-4 rounded border-neutral-500 bg-neutral-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
                 />
                 <div>
-                  <div className="text-sm font-medium text-neutral-200">{org.name}</div>
+                  <div className="text-sm font-medium text-neutral-200">
+                    {org.name}
+                  </div>
                   <div className="text-xs text-neutral-500">{org.url}</div>
                 </div>
               </label>

@@ -20,19 +20,25 @@ class AgentUsageService {
       if (!token) {
         return {
           data: null,
-          error: { type: 'no_token', message: 'Claude Code OAuth token not found' },
+          error: {
+            type: 'no_token',
+            message: 'Claude Code OAuth token not found',
+          },
         };
       }
 
-      const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'anthropic-beta': 'oauth-2025-04-20',
+      const response = await fetch(
+        'https://api.anthropic.com/api/oauth/usage',
+        {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            'anthropic-beta': 'oauth-2025-04-20',
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         // Clear cached token on auth errors
@@ -67,7 +73,10 @@ class AgentUsageService {
 
   private async getOAuthToken(): Promise<string | null> {
     // Use cached token if still valid
-    if (this.cachedToken && Date.now() - this.tokenCacheTime < this.TOKEN_CACHE_TTL) {
+    if (
+      this.cachedToken &&
+      Date.now() - this.tokenCacheTime < this.TOKEN_CACHE_TTL
+    ) {
       return this.cachedToken;
     }
 
@@ -75,7 +84,7 @@ class AgentUsageService {
       // Retrieve from macOS Keychain
       const { stdout } = await execAsync(
         'security find-generic-password -s "Claude Code-credentials" -w',
-        { encoding: 'utf-8' }
+        { encoding: 'utf-8' },
       );
 
       const credentials = JSON.parse(stdout.trim());
@@ -101,7 +110,9 @@ class AgentUsageService {
         ? {
             utilization: apiData.five_hour.utilization,
             resetsAt: new Date(apiData.five_hour.resets_at),
-            timeUntilReset: this.formatTimeUntil(new Date(apiData.five_hour.resets_at)),
+            timeUntilReset: this.formatTimeUntil(
+              new Date(apiData.five_hour.resets_at),
+            ),
             windowDurationMs: FIVE_HOUR_MS,
           }
         : null,
@@ -109,7 +120,9 @@ class AgentUsageService {
         ? {
             utilization: apiData.seven_day.utilization,
             resetsAt: new Date(apiData.seven_day.resets_at),
-            timeUntilReset: this.formatTimeUntil(new Date(apiData.seven_day.resets_at)),
+            timeUntilReset: this.formatTimeUntil(
+              new Date(apiData.seven_day.resets_at),
+            ),
             windowDurationMs: SEVEN_DAY_MS,
           }
         : null,

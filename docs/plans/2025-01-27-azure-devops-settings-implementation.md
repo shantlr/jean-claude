@@ -13,6 +13,7 @@
 ### Task 1: Azure DevOps Service (Backend)
 
 **Files:**
+
 - Create: `electron/services/azure-devops-service.ts`
 
 **Step 1: Create the service file**
@@ -41,7 +42,9 @@ interface AccountsResponse {
   }>;
 }
 
-export async function getOrganizations(token: string): Promise<AzureDevOpsOrganization[]> {
+export async function getOrganizations(
+  token: string,
+): Promise<AzureDevOpsOrganization[]> {
   // Step 1: Get the user's member ID from profile
   const profileResponse = await fetch(
     'https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.0',
@@ -49,7 +52,7 @@ export async function getOrganizations(token: string): Promise<AzureDevOpsOrgani
       headers: {
         Authorization: `Basic ${Buffer.from(`:${token}`).toString('base64')}`,
       },
-    }
+    },
   );
 
   if (!profileResponse.ok) {
@@ -66,7 +69,7 @@ export async function getOrganizations(token: string): Promise<AzureDevOpsOrgani
       headers: {
         Authorization: `Basic ${Buffer.from(`:${token}`).toString('base64')}`,
       },
-    }
+    },
   );
 
   if (!accountsResponse.ok) {
@@ -96,21 +99,24 @@ git commit -m "feat: add Azure DevOps service for fetching organizations"
 ### Task 2: IPC Handler for Azure DevOps
 
 **Files:**
+
 - Modify: `electron/ipc/handlers.ts`
 
 **Step 1: Add import and handler**
 
 At the top of the file, add the import:
+
 ```typescript
 import { getOrganizations } from '../services/azure-devops-service';
 ```
 
 In `registerIpcHandlers()`, add after the Providers section (around line 220):
+
 ```typescript
-  // Azure DevOps
-  ipcMain.handle('azureDevOps:getOrganizations', (_, token: string) =>
-    getOrganizations(token)
-  );
+// Azure DevOps
+ipcMain.handle('azureDevOps:getOrganizations', (_, token: string) =>
+  getOrganizations(token),
+);
 ```
 
 **Step 2: Commit**
@@ -125,11 +131,13 @@ git commit -m "feat: add IPC handler for Azure DevOps getOrganizations"
 ### Task 3: Preload Bridge for Azure DevOps
 
 **Files:**
+
 - Modify: `electron/preload.ts`
 
 **Step 1: Add azureDevOps to exposed API**
 
 Add after the `providers` section (around line 70):
+
 ```typescript
   azureDevOps: {
     getOrganizations: (token: string) =>
@@ -149,11 +157,13 @@ git commit -m "feat: expose azureDevOps API in preload bridge"
 ### Task 4: API Types for Azure DevOps
 
 **Files:**
+
 - Modify: `src/lib/api.ts`
 
 **Step 1: Add AzureDevOpsOrganization type**
 
 After the `WorktreeFileContent` interface (around line 45), add:
+
 ```typescript
 export interface AzureDevOpsOrganization {
   id: string;
@@ -165,15 +175,17 @@ export interface AzureDevOpsOrganization {
 **Step 2: Add azureDevOps to Api interface**
 
 In the `Api` interface, add after `providers` section (around line 100):
+
 ```typescript
-  azureDevOps: {
-    getOrganizations: (token: string) => Promise<AzureDevOpsOrganization[]>;
-  };
+azureDevOps: {
+  getOrganizations: (token: string) => Promise<AzureDevOpsOrganization[]>;
+}
 ```
 
 **Step 3: Add stub to fallback api object**
 
 In the fallback api object, add after `providers` section (around line 200):
+
 ```typescript
       azureDevOps: {
         getOrganizations: async () => { throw new Error('API not available'); },
@@ -192,6 +204,7 @@ git commit -m "feat: add azureDevOps types to renderer API"
 ### Task 5: React Hook for Azure DevOps
 
 **Files:**
+
 - Create: `src/hooks/use-azure-devops.ts`
 
 **Step 1: Create the hook file**
@@ -221,6 +234,7 @@ git commit -m "feat: add useGetAzureDevOpsOrganizations hook"
 ### Task 6: Refactor Settings to Route-Based Tabs
 
 **Files:**
+
 - Create: `src/routes/settings/index.tsx`
 - Create: `src/routes/settings/general.tsx`
 - Create: `src/routes/settings/debug.tsx`
@@ -480,6 +494,7 @@ git commit -m "refactor: convert settings page to route-based tabs"
 ### Task 7: Azure DevOps Tab - Organization List
 
 **Files:**
+
 - Create: `src/features/settings/ui-azure-devops-tab/index.tsx`
 - Create: `src/features/settings/ui-azure-devops-tab/organization-list.tsx`
 - Create: `src/features/settings/ui-azure-devops-tab/organization-card.tsx`
@@ -620,6 +635,7 @@ git commit -m "feat: add Azure DevOps tab with organization list"
 ### Task 8: Azure DevOps Tab - Add Organization Pane
 
 **Files:**
+
 - Create: `src/features/settings/ui-azure-devops-tab/add-organization-pane.tsx`
 
 **Step 1: Create the pane component**
@@ -828,6 +844,7 @@ git commit -m "feat: add organization pane with token-first flow"
 ### Task 9: Azure DevOps Route
 
 **Files:**
+
 - Create: `src/routes/settings/azure-devops.tsx`
 
 **Step 1: Create the route file**

@@ -18,7 +18,8 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState<Step>('form');
   const [label, setLabel] = useState('');
   const [token, setToken] = useState('');
-  const [providerType, setProviderType] = useState<ProviderType>('azure-devops');
+  const [providerType, setProviderType] =
+    useState<ProviderType>('azure-devops');
   const [expiresAt, setExpiresAt] = useState('');
   const [error, setError] = useState<string | null>(null);
 

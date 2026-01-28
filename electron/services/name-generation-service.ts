@@ -32,7 +32,10 @@ export async function generateTaskName(prompt: string): Promise<string | null> {
     });
 
     for await (const message of generator) {
-      const msg = message as { type: string; structured_output?: { name: string } };
+      const msg = message as {
+        type: string;
+        structured_output?: { name: string };
+      };
       if (msg.type === 'result' && msg.structured_output?.name) {
         return msg.structured_output.name.slice(0, 40);
       }
@@ -40,7 +43,10 @@ export async function generateTaskName(prompt: string): Promise<string | null> {
 
     return null;
   } catch (error) {
-    console.error('[NameGenerationService] Failed to generate task name:', error);
+    console.error(
+      '[NameGenerationService] Failed to generate task name:',
+      error,
+    );
     return null;
   }
 }

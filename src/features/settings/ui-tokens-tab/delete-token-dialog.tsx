@@ -20,13 +20,15 @@ export function DeleteTokenDialog({
           </div>
           <div>
             <h3 className="font-semibold text-neutral-200">Delete Token</h3>
-            <p className="text-sm text-neutral-400">This action cannot be undone</p>
+            <p className="text-sm text-neutral-400">
+              This action cannot be undone
+            </p>
           </div>
         </div>
 
         <p className="mb-6 text-sm text-neutral-300">
-          Are you sure you want to delete <strong>{tokenLabel}</strong>? Any providers
-          using this token will be disconnected.
+          Are you sure you want to delete <strong>{tokenLabel}</strong>? Any
+          providers using this token will be disconnected.
         </p>
 
         <div className="flex justify-end gap-3">

@@ -45,6 +45,7 @@ async getWorktreeDiff(worktreePath: string, startCommitHash: string): Promise<{
 ```
 
 Implementation:
+
 1. Run `git diff --name-status {startCommitHash}` to get changed files
 2. For each file, retrieve old content (from startCommitHash) and new content (from working tree)
 
@@ -82,15 +83,16 @@ Transform flat paths to nested tree:
 
 ```typescript
 type TreeNode = {
-  name: string
-  path: string
-  type: 'folder' | 'file'
-  status?: 'added' | 'modified' | 'deleted'  // only for files
-  children?: TreeNode[]  // only for folders
-}
+  name: string;
+  path: string;
+  type: 'folder' | 'file';
+  status?: 'added' | 'modified' | 'deleted'; // only for files
+  children?: TreeNode[]; // only for folders
+};
 ```
 
 Rendering:
+
 - Folders: chevron icon (rotates on expand), 16px indent per level
 - Files: colored status indicator (+/M/−)
 - Selected file: highlighted background

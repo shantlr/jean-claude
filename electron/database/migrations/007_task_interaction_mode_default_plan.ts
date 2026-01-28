@@ -44,9 +44,13 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     await sql`PRAGMA foreign_keys = ON`.execute(trx);
 
     // Verify FK integrity after migration
-    const fkCheck = await sql<{ table: string }>`PRAGMA foreign_key_check`.execute(trx);
+    const fkCheck = await sql<{
+      table: string;
+    }>`PRAGMA foreign_key_check`.execute(trx);
     if (fkCheck.rows.length > 0) {
-      throw new Error(`Foreign key violation after migration: ${JSON.stringify(fkCheck.rows)}`);
+      throw new Error(
+        `Foreign key violation after migration: ${JSON.stringify(fkCheck.rows)}`,
+      );
     }
   });
 }
@@ -87,9 +91,13 @@ export async function down(db: Kysely<unknown>): Promise<void> {
 
     await sql`PRAGMA foreign_keys = ON`.execute(trx);
 
-    const fkCheck = await sql<{ table: string }>`PRAGMA foreign_key_check`.execute(trx);
+    const fkCheck = await sql<{
+      table: string;
+    }>`PRAGMA foreign_key_check`.execute(trx);
     if (fkCheck.rows.length > 0) {
-      throw new Error(`Foreign key violation after migration: ${JSON.stringify(fkCheck.rows)}`);
+      throw new Error(
+        `Foreign key violation after migration: ${JSON.stringify(fkCheck.rows)}`,
+      );
     }
   });
 }

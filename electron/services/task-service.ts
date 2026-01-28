@@ -1,12 +1,12 @@
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import { query } from '@anthropic-ai/claude-agent-sdk';
 
-import { TaskRepository } from "../database/repositories";
+import { TaskRepository } from '../database/repositories';
 
 type TaskId = string;
 type ActiveTask = {
   taskId: string;
   abortController: AbortController;
-}
+};
 
 const ACTIVE_TASKS: Map<TaskId, ActiveTask> = new Map();
 
@@ -29,8 +29,7 @@ export const TASK_SERVICE = {
 
     const generator = query({
       prompt: task.prompt,
-      options: {
-      },
+      options: {},
     });
 
     try {
@@ -42,7 +41,7 @@ export const TASK_SERVICE = {
         console.log(`[TaskService] Task ${taskId} message:`, message);
       }
 
-    // this.emit(AGENT_CHANNELS.MESSAGE, { taskId, message });
+      // this.emit(AGENT_CHANNELS.MESSAGE, { taskId, message });
     } catch (error) {
       console.error(`[TaskService] Task ${taskId} error:`, error);
       await TaskRepository.update(taskId, { status: 'errored' });
@@ -56,4 +55,4 @@ export const TASK_SERVICE = {
     }
     activeTask.abortController.abort();
   },
-}
+};

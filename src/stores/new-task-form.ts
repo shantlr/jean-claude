@@ -54,9 +54,7 @@ const useStore = create<NewTaskFormState>()(
 );
 
 export function useNewTaskFormStore(projectId: string) {
-  const draft = useStore(
-    (state) => state.drafts[projectId] ?? defaultDraft,
-  );
+  const draft = useStore((state) => state.drafts[projectId] ?? defaultDraft);
   const setDraftAction = useStore((state) => state.setDraft);
   const clearDraftAction = useStore((state) => state.clearDraft);
 

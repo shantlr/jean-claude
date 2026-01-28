@@ -33,6 +33,7 @@ Enhance the worktree feature to allow users to commit uncommitted changes and me
 When the user has uncommitted changes (staged or unstaged), the Commit button is enabled.
 
 **Commit modal:**
+
 ```
 ┌─────────────────────────────────────────────────┐
 │ Commit Changes                              [×] │
@@ -51,6 +52,7 @@ When the user has uncommitted changes (staged or unstaged), the Commit button is
 ```
 
 **Behavior:**
+
 - Opens a modal with a textarea for commit message
 - Checkbox to "Stage all changes" (default: checked) - stages all modified/untracked files before commit
 - If unchecked, only commits already-staged files
@@ -62,6 +64,7 @@ When the user has uncommitted changes (staged or unstaged), the Commit button is
 When the working tree is clean (no uncommitted changes), the Merge button is enabled.
 
 **Merge UI in the file tree panel:**
+
 ```
 ┌────────────┐
 │ File Tree  │
@@ -76,6 +79,7 @@ When the working tree is clean (no uncommitted changes), the Merge button is ena
 ```
 
 **Confirmation dialog after clicking Merge:**
+
 ```
 ┌─────────────────────────────────────────────────┐
 │ Merge Worktree                              [×] │
@@ -92,6 +96,7 @@ When the working tree is clean (no uncommitted changes), the Merge button is ena
 ```
 
 **After successful merge:**
+
 ```
 ┌─────────────────────────────────────────────────┐
 │ Worktree Merged                             [×] │
@@ -129,6 +134,7 @@ The project details page (task list view) will have a settings section for confi
 ```
 
 **Behavior:**
+
 - Dropdown shows all local branches from the project's git repo
 - Auto-detects initial default: checks for `main`, then `master`, then falls back to current branch
 - Selection is saved immediately (no save button needed)
@@ -137,17 +143,20 @@ The project details page (task list view) will have a settings section for confi
 ## Error Handling
 
 **Commit errors:**
+
 - Empty commit message → disable Commit button, show validation hint
 - Nothing to commit → Commit button disabled, tooltip: "No changes to commit"
 - Git error (e.g., hooks fail) → show error message in modal
 
 **Merge errors:**
+
 - Uncommitted changes exist → Merge button disabled, tooltip: "Commit or discard changes first"
 - Merge conflicts → show error dialog: "Merge failed due to conflicts. Resolve manually in your editor."
 - Target branch doesn't exist → shouldn't happen (dropdown only shows existing branches), but handle gracefully
 - Worktree deletion fails → show warning but consider merge successful, user can clean up manually
 
 **Branch loading:**
+
 - Git not available → show error, disable branch dropdown
 - No branches found → shouldn't happen, but show "No branches found" in dropdown
 - Loading state → show spinner in dropdown while fetching branches
@@ -162,7 +171,7 @@ Add `defaultBranch` column to `projects` table:
 // Migration: add_default_branch_to_projects
 await db.schema
   .alterTable('projects')
-  .addColumn('defaultBranch', 'text')  // nullable, null = auto-detect
+  .addColumn('defaultBranch', 'text') // nullable, null = auto-detect
   .execute();
 ```
 
