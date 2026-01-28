@@ -26,11 +26,14 @@ import {
   type InteractionMode,
   type EditorSetting,
   type AppSettings,
+  type NewToken,
+  type UpdateToken,
 } from '../../shared/types';
 import {
   ProjectRepository,
   TaskRepository,
   ProviderRepository,
+  TokenRepository,
   SettingsRepository,
   DebugRepository,
 } from '../database/repositories';
@@ -44,7 +47,12 @@ import {
 } from '../database/schema';
 import { agentService } from '../services/agent-service';
 import { agentUsageService } from '../services/agent-usage-service';
-import { getOrganizations, getProviderDetails } from '../services/azure-devops-service';
+import {
+  getOrganizationsByTokenId,
+  validateTokenAndGetOrganizations,
+  getTokenExpiration,
+  getProviderDetails,
+} from '../services/azure-devops-service';
 import { generateTaskName } from '../services/name-generation-service';
 import {
   createWorktree,
@@ -296,14 +304,32 @@ export function registerIpcHandlers() {
     ProviderRepository.delete(id),
   );
 
-  // Azure DevOps
-  ipcMain.handle('azureDevOps:getOrganizations', (_, token: string) =>
-    getOrganizations(token)
-  );
-
   // Provider details (fetches projects/repos for a provider)
   ipcMain.handle('providers:getDetails', (_, providerId: string) =>
     getProviderDetails(providerId)
+  );
+
+  // Tokens
+  ipcMain.handle('tokens:findAll', () => TokenRepository.findAll());
+  ipcMain.handle('tokens:findById', (_, id: string) => TokenRepository.findById(id));
+  ipcMain.handle('tokens:findByProviderType', (_, providerType: string) =>
+    TokenRepository.findByProviderType(providerType)
+  );
+  ipcMain.handle('tokens:create', (_, data: NewToken) => TokenRepository.create(data));
+  ipcMain.handle('tokens:update', (_, id: string, data: UpdateToken) =>
+    TokenRepository.update(id, data)
+  );
+  ipcMain.handle('tokens:delete', (_, id: string) => TokenRepository.delete(id));
+
+  // Azure DevOps
+  ipcMain.handle('azureDevOps:getOrganizations', (_, tokenId: string) =>
+    getOrganizationsByTokenId(tokenId)
+  );
+  ipcMain.handle('azureDevOps:validateToken', (_, token: string) =>
+    validateTokenAndGetOrganizations(token)
+  );
+  ipcMain.handle('azureDevOps:getTokenExpiration', (_, tokenId: string) =>
+    getTokenExpiration(tokenId)
   );
 
   // Dialog
