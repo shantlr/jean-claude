@@ -81,6 +81,18 @@ export interface ProviderDetails {
   }>;
 }
 
+export interface AzureDevOpsWorkItem {
+  id: number;
+  url: string;
+  fields: {
+    title: string;
+    workItemType: string;
+    state: string;
+    assignedTo?: string;
+    description?: string;
+  };
+}
+
 export interface WorktreeStatus {
   hasUncommittedChanges: boolean;
   hasStagedChanges: boolean;
@@ -176,6 +188,7 @@ export interface Api {
         },
       ) => Promise<MergeWorktreeResult>;
       getBranches: (taskId: string) => Promise<string[]>;
+      pushBranch: (taskId: string) => Promise<void>;
     };
   };
   providers: {
@@ -198,6 +211,21 @@ export interface Api {
     getOrganizations: (tokenId: string) => Promise<AzureDevOpsOrganization[]>;
     validateToken: (token: string) => Promise<AzureDevOpsOrganization[]>;
     getTokenExpiration: (tokenId: string) => Promise<string | null>;
+    queryWorkItems: (params: {
+      providerId: string;
+      projectId: string;
+      filters: { states?: string[]; workItemTypes?: string[] };
+    }) => Promise<AzureDevOpsWorkItem[]>;
+    createPullRequest: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      sourceBranch: string;
+      targetBranch: string;
+      title: string;
+      description: string;
+      isDraft: boolean;
+    }) => Promise<{ id: number; url: string }>;
   };
   dialog: {
     openDirectory: () => Promise<string | null>;
@@ -363,6 +391,7 @@ export const api: Api = hasWindowApi
               error: 'API not available',
             }) as MergeWorktreeResult,
           getBranches: async () => [],
+          pushBranch: async () => {},
         },
       },
       providers: {
@@ -399,6 +428,10 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         getTokenExpiration: async () => null,
+        queryWorkItems: async () => [],
+        createPullRequest: async () => {
+          throw new Error('API not available');
+        },
       },
       dialog: {
         openDirectory: async () => null,

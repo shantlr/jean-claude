@@ -17,6 +17,10 @@ interface CreateTaskInput {
   interactionMode?: InteractionMode;
   userCompleted?: boolean;
   sessionAllowedTools?: string[];
+  workItemId?: string | null;
+  workItemUrl?: string | null;
+  pullRequestId?: string | null;
+  pullRequestUrl?: string | null;
   createdAt?: string;
   updatedAt: string;
 }
@@ -34,6 +38,10 @@ interface UpdateTaskInput {
   interactionMode?: InteractionMode;
   userCompleted?: boolean;
   sessionAllowedTools?: string[];
+  workItemId?: string | null;
+  workItemUrl?: string | null;
+  pullRequestId?: string | null;
+  pullRequestUrl?: string | null;
   updatedAt?: string;
 }
 

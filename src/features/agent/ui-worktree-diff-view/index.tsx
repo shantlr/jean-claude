@@ -20,6 +20,11 @@ interface WorktreeDiffViewProps {
   branchName: string;
   defaultBranch: string | null;
   taskName: string | null;
+  taskPrompt: string;
+  workItemId: string | null;
+  repoProviderId: string | null;
+  repoProjectId: string | null;
+  repoId: string | null;
   onMergeComplete: () => void;
 }
 
@@ -30,6 +35,11 @@ export function WorktreeDiffView({
   branchName,
   defaultBranch,
   taskName,
+  taskPrompt,
+  workItemId,
+  repoProviderId,
+  repoProjectId,
+  repoId,
   onMergeComplete,
 }: WorktreeDiffViewProps) {
   const { data, isLoading, error, refresh } = useWorktreeDiff(taskId, true);
@@ -128,6 +138,11 @@ export function WorktreeDiffView({
           branchName={branchName}
           defaultBranch={defaultBranch}
           taskName={taskName}
+          taskPrompt={taskPrompt}
+          workItemId={workItemId}
+          repoProviderId={repoProviderId}
+          repoProjectId={repoProjectId}
+          repoId={repoId}
           onMergeComplete={onMergeComplete}
         />
         {/* Resize handle */}

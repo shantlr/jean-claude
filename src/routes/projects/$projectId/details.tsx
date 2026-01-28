@@ -2,7 +2,9 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { RepoLink } from '@/features/project/ui-repo-link';
 import { RunCommandsConfig } from '@/features/project/ui-run-commands-config';
+import { WorkItemsLink } from '@/features/project/ui-work-items-link';
 import {
   useProject,
   useProjectBranches,
@@ -188,6 +190,17 @@ function ProjectDetails() {
             <p className="mt-1 text-xs text-neutral-500">
               The branch that worktrees will merge into
             </p>
+          </div>
+
+          {/* Provider Integration */}
+          <div className="border-t border-neutral-700 pt-6">
+            <h2 className="mb-4 text-lg font-semibold text-neutral-200">
+              Integrations
+            </h2>
+            <div className="space-y-4">
+              <RepoLink project={project} />
+              <WorkItemsLink project={project} />
+            </div>
           </div>
 
           {/* Save button */}

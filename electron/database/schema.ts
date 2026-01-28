@@ -63,6 +63,16 @@ export interface ProjectTable {
   sortOrder: number;
   worktreesPath: string | null;
   defaultBranch: string | null;
+  // Repo link (for PR creation)
+  repoProviderId: string | null;
+  repoProjectId: string | null;
+  repoProjectName: string | null;
+  repoId: string | null;
+  repoName: string | null;
+  // Work items link (for task creation from work items)
+  workItemProviderId: string | null;
+  workItemProjectId: string | null;
+  workItemProjectName: string | null;
   createdAt: Generated<string>;
   updatedAt: string;
 }
@@ -83,6 +93,11 @@ export interface TaskTable {
   userCompleted: number; // SQLite stores booleans as 0/1
   sessionAllowedTools: string | null; // JSON array of tool names
   sortOrder: number;
+  // Provider integration tracking
+  workItemId: string | null;
+  workItemUrl: string | null;
+  pullRequestId: string | null;
+  pullRequestUrl: string | null;
   createdAt: Generated<string>;
   updatedAt: string;
 }

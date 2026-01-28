@@ -9,6 +9,8 @@ interface NewTaskFormDraft {
   prompt: string;
   useWorktree: boolean;
   interactionMode: InteractionMode;
+  workItemId: string | null;
+  workItemUrl: string | null;
 }
 
 const defaultDraft: NewTaskFormDraft = {
@@ -16,6 +18,8 @@ const defaultDraft: NewTaskFormDraft = {
   prompt: '',
   useWorktree: false,
   interactionMode: 'ask',
+  workItemId: null,
+  workItemUrl: null,
 };
 
 interface NewTaskFormState {

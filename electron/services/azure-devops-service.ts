@@ -29,6 +29,37 @@ export interface AzureDevOpsOrgDetails {
   }>;
 }
 
+export interface AzureDevOpsWorkItem {
+  id: number;
+  url: string;
+  fields: {
+    title: string;
+    workItemType: string;
+    state: string;
+    assignedTo?: string;
+    description?: string;
+  };
+}
+
+interface WiqlResponse {
+  workItems: Array<{ id: number; url: string }>;
+}
+
+interface WorkItemsBatchResponse {
+  count: number;
+  value: Array<{
+    id: number;
+    url: string;
+    fields: {
+      'System.Title': string;
+      'System.WorkItemType': string;
+      'System.State': string;
+      'System.AssignedTo'?: { displayName: string };
+      'System.Description'?: string;
+    };
+  }>;
+}
+
 interface ProfileResponse {
   id: string;
   displayName: string;
@@ -189,6 +220,163 @@ export async function getTokenExpiration(
     // If anything fails, return null (user can set manually)
     return null;
   }
+}
+
+export async function queryWorkItems(params: {
+  providerId: string;
+  projectId: string;
+  filters: { states?: string[]; workItemTypes?: string[] };
+}): Promise<AzureDevOpsWorkItem[]> {
+  const provider = await ProviderRepository.findById(params.providerId);
+  if (!provider) {
+    throw new Error(`Provider not found: ${params.providerId}`);
+  }
+  if (!provider.tokenId) {
+    throw new Error(`Provider has no associated token: ${params.providerId}`);
+  }
+
+  const token = await TokenRepository.getDecryptedToken(provider.tokenId);
+  if (!token) {
+    throw new Error(`Token not found for provider: ${params.providerId}`);
+  }
+
+  // Extract org name from baseUrl
+  const orgName = provider.baseUrl.split('/').pop();
+  if (!orgName) {
+    throw new Error(`Invalid provider baseUrl: ${provider.baseUrl}`);
+  }
+
+  const authHeader = createAuthHeader(token);
+
+  // Build WIQL query conditions
+  const conditions: string[] = [
+    `[System.TeamProject] = '${params.projectId}'`,
+  ];
+
+  if (params.filters.states && params.filters.states.length > 0) {
+    const statesList = params.filters.states.map((s) => `'${s}'`).join(', ');
+    conditions.push(`[System.State] IN (${statesList})`);
+  }
+
+  if (params.filters.workItemTypes && params.filters.workItemTypes.length > 0) {
+    const typesList = params.filters.workItemTypes
+      .map((t) => `'${t}'`)
+      .join(', ');
+    conditions.push(`[System.WorkItemType] IN (${typesList})`);
+  }
+
+  const wiqlQuery = `SELECT [System.Id] FROM WorkItems WHERE ${conditions.join(' AND ')} ORDER BY [System.ChangedDate] DESC`;
+
+  // POST WIQL query
+  const wiqlResponse = await fetch(
+    `https://dev.azure.com/${orgName}/${params.projectId}/_apis/wit/wiql?api-version=7.0&$top=50`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: authHeader,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query: wiqlQuery }),
+    },
+  );
+
+  if (!wiqlResponse.ok) {
+    const error = await wiqlResponse.text();
+    throw new Error(`Failed to query work items: ${error}`);
+  }
+
+  const wiqlData: WiqlResponse = await wiqlResponse.json();
+
+  if (wiqlData.workItems.length === 0) {
+    return [];
+  }
+
+  // Batch-fetch work item details
+  const ids = wiqlData.workItems.map((wi) => wi.id);
+  const batchResponse = await fetch(
+    `https://dev.azure.com/${orgName}/_apis/wit/workitems?ids=${ids.join(',')}&fields=System.Title,System.WorkItemType,System.State,System.AssignedTo,System.Description&api-version=7.0`,
+    {
+      headers: { Authorization: authHeader },
+    },
+  );
+
+  if (!batchResponse.ok) {
+    const error = await batchResponse.text();
+    throw new Error(`Failed to fetch work item details: ${error}`);
+  }
+
+  const batchData: WorkItemsBatchResponse = await batchResponse.json();
+
+  // Map to AzureDevOpsWorkItem[]
+  return batchData.value.map((wi) => ({
+    id: wi.id,
+    url: `https://dev.azure.com/${orgName}/${params.projectId}/_workitems/edit/${wi.id}`,
+    fields: {
+      title: wi.fields['System.Title'],
+      workItemType: wi.fields['System.WorkItemType'],
+      state: wi.fields['System.State'],
+      assignedTo: wi.fields['System.AssignedTo']?.displayName,
+      description: wi.fields['System.Description'],
+    },
+  }));
+}
+
+export async function createPullRequest(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  sourceBranch: string;
+  targetBranch: string;
+  title: string;
+  description: string;
+  isDraft: boolean;
+}): Promise<{ id: number; url: string }> {
+  const provider = await ProviderRepository.findById(params.providerId);
+  if (!provider) {
+    throw new Error(`Provider not found: ${params.providerId}`);
+  }
+  if (!provider.tokenId) {
+    throw new Error(`Provider has no associated token: ${params.providerId}`);
+  }
+
+  const token = await TokenRepository.getDecryptedToken(provider.tokenId);
+  if (!token) {
+    throw new Error(`Token not found for provider: ${params.providerId}`);
+  }
+
+  const orgName = provider.baseUrl.split('/').pop();
+  if (!orgName) {
+    throw new Error(`Invalid provider baseUrl: ${provider.baseUrl}`);
+  }
+
+  const response = await fetch(
+    `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests?api-version=7.0`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: createAuthHeader(token),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sourceRefName: `refs/heads/${params.sourceBranch}`,
+        targetRefName: `refs/heads/${params.targetBranch}`,
+        title: params.title,
+        description: params.description,
+        isDraft: params.isDraft,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to create pull request: ${error}`);
+  }
+
+  const pr = await response.json();
+  return {
+    id: pr.pullRequestId,
+    url: `https://dev.azure.com/${orgName}/${params.projectId}/_git/${params.repoId}/pullrequest/${pr.pullRequestId}`,
+  };
 }
 
 export async function getProviderDetails(

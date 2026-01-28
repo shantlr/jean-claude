@@ -18,6 +18,7 @@ import * as m016 from './migrations/016_project_default_branch';
 import * as m017 from './migrations/017_task_branch_name';
 import * as m018 from './migrations/018_tokens_and_providers_rework';
 import * as m019 from './migrations/019_project_commands';
+import * as m020 from './migrations/020_provider_integration';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -38,6 +39,7 @@ const migrations: Record<string, Migration> = {
   '017_task_branch_name': m017,
   '018_tokens_and_providers_rework': m018,
   '019_project_commands': m019,
+  '020_provider_integration': m020,
 };
 
 export const migrationProvider: MigrationProvider = {

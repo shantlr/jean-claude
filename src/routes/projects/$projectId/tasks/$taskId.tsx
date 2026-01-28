@@ -18,6 +18,7 @@ import { MessageInput } from '@/features/agent/ui-message-input';
 import { MessageStream } from '@/features/agent/ui-message-stream';
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
 import { PermissionBar } from '@/features/agent/ui-permission-bar';
+import { PrBadge } from '@/features/agent/ui-pr-badge';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
 import { RunButton } from '@/features/agent/ui-run-button';
 import { WorktreeDiffView } from '@/features/agent/ui-worktree-diff-view';
@@ -310,6 +311,12 @@ function TaskPanel() {
                 </button>
               </div>
             )}
+            {task.pullRequestId && task.pullRequestUrl && (
+              <PrBadge
+                pullRequestId={task.pullRequestId}
+                pullRequestUrl={task.pullRequestUrl}
+              />
+            )}
           </div>
           {task.sessionId && (
             <button
@@ -406,6 +413,11 @@ function TaskPanel() {
               }
               defaultBranch={project.defaultBranch}
               taskName={task.name}
+              taskPrompt={task.prompt}
+              workItemId={task.workItemId}
+              repoProviderId={project.repoProviderId}
+              repoProjectId={project.repoProjectId}
+              repoId={project.repoId}
               onMergeComplete={handleMergeComplete}
             />
           ) : agentState.isLoading ? (

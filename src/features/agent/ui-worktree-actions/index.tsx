@@ -1,4 +1,4 @@
-import { GitCommit, GitMerge, Loader2 } from 'lucide-react';
+import { GitCommit, GitMerge, GitPullRequest, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 import {
@@ -7,6 +7,8 @@ import {
   useCommitWorktree,
   useMergeWorktree,
 } from '@/hooks/use-worktree-diff';
+
+import { CreatePrDialog } from '../ui-create-pr-dialog';
 
 import { CommitModal } from './commit-modal';
 import { MergeConfirmDialog } from './merge-confirm-dialog';
@@ -17,6 +19,12 @@ interface WorktreeActionsProps {
   branchName: string;
   defaultBranch: string | null;
   taskName: string | null;
+  taskPrompt: string;
+  workItemId: string | null;
+  // Project repo link (nullable — only show PR button when linked)
+  repoProviderId: string | null;
+  repoProjectId: string | null;
+  repoId: string | null;
   onMergeComplete: () => void;
 }
 
@@ -25,6 +33,11 @@ export function WorktreeActions({
   branchName,
   defaultBranch,
   taskName,
+  taskPrompt,
+  workItemId,
+  repoProviderId,
+  repoProjectId,
+  repoId,
   onMergeComplete,
 }: WorktreeActionsProps) {
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false);
@@ -33,6 +46,8 @@ export function WorktreeActions({
   const [selectedBranch, setSelectedBranch] = useState<string>(
     defaultBranch ?? 'main',
   );
+  const [isPrDialogOpen, setIsPrDialogOpen] = useState(false);
+  const hasRepoLink = !!repoProviderId && !!repoProjectId && !!repoId;
 
   const { data: status, isLoading: isStatusLoading } =
     useWorktreeStatus(taskId);
@@ -143,6 +158,20 @@ export function WorktreeActions({
         </button>
       </div>
 
+      {/* Create PR */}
+      {hasRepoLink && (
+        <button
+          type="button"
+          onClick={() => setIsPrDialogOpen(true)}
+          disabled={!canMerge}
+          className="flex w-full items-center justify-center gap-2 rounded-md bg-green-700 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
+          title={canMerge ? 'Create pull request' : 'Commit changes first'}
+        >
+          <GitPullRequest className="h-4 w-4" />
+          Create PR
+        </button>
+      )}
+
       {/* Modals */}
       <CommitModal
         isOpen={isCommitModalOpen}
@@ -169,6 +198,22 @@ export function WorktreeActions({
         targetBranch={selectedBranch}
         taskId={taskId}
       />
+
+      {hasRepoLink && (
+        <CreatePrDialog
+          isOpen={isPrDialogOpen}
+          onClose={() => setIsPrDialogOpen(false)}
+          taskId={taskId}
+          taskName={taskName}
+          taskPrompt={taskPrompt}
+          branchName={branchName}
+          targetBranch={selectedBranch}
+          workItemId={workItemId}
+          repoProviderId={repoProviderId!}
+          repoProjectId={repoProjectId!}
+          repoId={repoId!}
+        />
+      )}
     </div>
   );
 }

@@ -78,6 +78,14 @@ export interface Project {
   sortOrder: number;
   worktreesPath: string | null;
   defaultBranch: string | null;
+  repoProviderId: string | null;
+  repoProjectId: string | null;
+  repoProjectName: string | null;
+  repoId: string | null;
+  repoName: string | null;
+  workItemProviderId: string | null;
+  workItemProjectId: string | null;
+  workItemProjectName: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -106,6 +114,14 @@ export interface UpdateProject {
   sortOrder?: number;
   worktreesPath?: string | null;
   defaultBranch?: string | null;
+  repoProviderId?: string | null;
+  repoProjectId?: string | null;
+  repoProjectName?: string | null;
+  repoId?: string | null;
+  repoName?: string | null;
+  workItemProviderId?: string | null;
+  workItemProjectId?: string | null;
+  workItemProjectName?: string | null;
   updatedAt?: string;
 }
 
@@ -124,6 +140,10 @@ export interface Task {
   interactionMode: InteractionMode;
   userCompleted: boolean;
   sessionAllowedTools: string[];
+  workItemId: string | null;
+  workItemUrl: string | null;
+  pullRequestId: string | null;
+  pullRequestUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -143,6 +163,10 @@ export interface NewTask {
   interactionMode?: InteractionMode;
   userCompleted?: boolean;
   sessionAllowedTools?: string[];
+  workItemId?: string | null;
+  workItemUrl?: string | null;
+  pullRequestId?: string | null;
+  pullRequestUrl?: string | null;
   createdAt?: string;
   updatedAt: string;
 }
@@ -161,6 +185,10 @@ export interface UpdateTask {
   interactionMode?: InteractionMode;
   userCompleted?: boolean;
   sessionAllowedTools?: string[];
+  workItemId?: string | null;
+  workItemUrl?: string | null;
+  pullRequestId?: string | null;
+  pullRequestUrl?: string | null;
   updatedAt?: string;
 }
 

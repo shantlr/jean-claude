@@ -1,5 +1,5 @@
 import { useRouter } from '@tanstack/react-router';
-import { AlertCircle, GitBranch } from 'lucide-react';
+import { AlertCircle, GitBranch, GitPullRequest } from 'lucide-react';
 
 import { ToggleableStatusIndicator } from '@/features/task/ui-status-indicator';
 import { useToggleTaskUserCompleted } from '@/hooks/use-tasks';
@@ -83,6 +83,12 @@ export function TaskListItem({ task, projectId, isActive }: TaskListItemProps) {
           <span className="truncate">
             {getBranchFromWorktreePath(task.worktreePath)}
           </span>
+        </span>
+      )}
+      {task.pullRequestUrl && (
+        <span className="flex items-center gap-1 text-xs text-green-500">
+          <GitPullRequest className="h-3 w-3 shrink-0" />
+          <span className="truncate">PR #{task.pullRequestId}</span>
         </span>
       )}
       <span className="text-xs text-neutral-500">

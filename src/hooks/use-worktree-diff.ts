@@ -13,7 +13,7 @@ export function useWorktreeDiff(
 ) {
   const queryClient = useQueryClient();
 
-  const query = useQuery<WorktreeDiffResult>({
+  const { data, isLoading, refetch: refetchQuery, error } = useQuery<WorktreeDiffResult>({
     queryKey: ['worktree-diff', taskId],
     queryFn: () => {
       if (!taskId) {
@@ -28,15 +28,17 @@ export function useWorktreeDiff(
   });
 
   const refresh = useCallback(() => {
-    query.refetch();
+    refetchQuery();
     // Also invalidate file content cache so files show updated content
     queryClient.invalidateQueries({
       queryKey: ['worktree-file-content', taskId],
     });
-  }, [query.refetch, queryClient, taskId]);
+  }, [refetchQuery, queryClient, taskId]);
 
   return {
-    ...query,
+    data,
+    error,
+    isLoading,
     refresh,
   };
 }

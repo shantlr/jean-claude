@@ -596,3 +596,17 @@ export async function mergeWorktree(
     return { success: false, error: errorMessage };
   }
 }
+
+/**
+ * Pushes the current branch to a remote.
+ */
+export async function pushBranch(params: {
+  worktreePath: string;
+  branchName: string;
+  remote?: string;
+}): Promise<void> {
+  const remote = params.remote ?? 'origin';
+  await execAsync(`git push -u ${remote} ${params.branchName}`, {
+    cwd: params.worktreePath,
+  });
+}

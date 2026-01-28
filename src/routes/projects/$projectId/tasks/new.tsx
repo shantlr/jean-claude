@@ -1,9 +1,12 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ListTodo } from 'lucide-react';
 import { nanoid } from 'nanoid';
+import { useState } from 'react';
 import type { FormEvent } from 'react';
 
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
+import { WorkItemsBrowser } from '@/features/agent/ui-work-items-browser';
+import { useProject } from '@/hooks/use-projects';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
 import { useNewTaskFormStore } from '@/stores/new-task-form';
@@ -17,8 +20,12 @@ function NewTask() {
   const navigate = useNavigate();
   const createTask = useCreateTaskWithWorktree();
 
+  const { data: project } = useProject(projectId);
+  const [showWorkItems, setShowWorkItems] = useState(false);
+  const hasWorkItemsLink = !!project?.workItemProviderId && !!project?.workItemProjectId;
+
   const { draft, setDraft, clearDraft } = useNewTaskFormStore(projectId);
-  const { name, prompt, useWorktree, interactionMode } = draft;
+  const { name, prompt, useWorktree, interactionMode, workItemId, workItemUrl } = draft;
 
   async function handleCreateTask(shouldStart: boolean) {
     // Pass null if name is empty - will trigger auto-generation when agent starts
@@ -32,6 +39,8 @@ function NewTask() {
       status: 'waiting',
       interactionMode,
       useWorktree,
+      workItemId,
+      workItemUrl,
       updatedAt: new Date().toISOString(),
     });
 
@@ -129,6 +138,37 @@ function NewTask() {
               Create git worktree for isolation
             </label>
           </div>
+
+          {/* Work Items */}
+          {hasWorkItemsLink && (
+            <div>
+              {showWorkItems ? (
+                <WorkItemsBrowser
+                  providerId={project!.workItemProviderId!}
+                  projectId={project!.workItemProjectId!}
+                  onSelect={(wi) => {
+                    setDraft({
+                      name: wi.fields.title.slice(0, 100),
+                      prompt: `[AB#${wi.id}] ${wi.fields.title}\n\n${wi.fields.description ?? ''}`.trim(),
+                      workItemId: String(wi.id),
+                      workItemUrl: wi.url,
+                    });
+                    setShowWorkItems(false);
+                  }}
+                  onClose={() => setShowWorkItems(false)}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowWorkItems(true)}
+                  className="flex cursor-pointer items-center gap-2 text-sm text-neutral-400 transition-colors hover:text-white"
+                >
+                  <ListTodo className="h-4 w-4" />
+                  {workItemId ? `From AB#${workItemId}` : 'From Work Item'}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Submit row with mode selector */}
           <div className="flex items-center gap-3">

@@ -91,6 +91,8 @@ contextBridge.exposeInMainWorld('api', {
       ) => ipcRenderer.invoke('tasks:worktree:merge', taskId, params),
       getBranches: (taskId: string) =>
         ipcRenderer.invoke('tasks:worktree:getBranches', taskId),
+      pushBranch: (taskId: string) =>
+        ipcRenderer.invoke('tasks:worktree:pushBranch', taskId),
     },
   },
   providers: {
@@ -120,6 +122,21 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('azureDevOps:validateToken', token),
     getTokenExpiration: (tokenId: string) =>
       ipcRenderer.invoke('azureDevOps:getTokenExpiration', tokenId),
+    queryWorkItems: (params: {
+      providerId: string;
+      projectId: string;
+      filters: { states?: string[]; workItemTypes?: string[] };
+    }) => ipcRenderer.invoke('azureDevOps:queryWorkItems', params),
+    createPullRequest: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      sourceBranch: string;
+      targetBranch: string;
+      title: string;
+      description: string;
+      isDraft: boolean;
+    }) => ipcRenderer.invoke('azureDevOps:createPullRequest', params),
   },
   dialog: {
     openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),

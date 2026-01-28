@@ -54,6 +54,8 @@ import {
   validateTokenAndGetOrganizations,
   getTokenExpiration,
   getProviderDetails,
+  queryWorkItems,
+  createPullRequest,
 } from '../services/azure-devops-service';
 import { generateTaskName } from '../services/name-generation-service';
 import {
@@ -71,6 +73,7 @@ import {
   getWorktreeStatus,
   commitWorktreeChanges,
   mergeWorktree,
+  pushBranch,
 } from '../services/worktree-service';
 
 export function registerIpcHandlers() {
@@ -442,6 +445,50 @@ export function registerIpcHandlers() {
   );
   ipcMain.handle('azureDevOps:getTokenExpiration', (_, tokenId: string) =>
     getTokenExpiration(tokenId),
+  );
+  ipcMain.handle(
+    'azureDevOps:queryWorkItems',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        filters: { states?: string[]; workItemTypes?: string[] };
+      },
+    ) => queryWorkItems(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:createPullRequest',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        sourceBranch: string;
+        targetBranch: string;
+        title: string;
+        description: string;
+        isDraft: boolean;
+      },
+    ) => createPullRequest(params),
+  );
+
+  ipcMain.handle(
+    'tasks:worktree:pushBranch',
+    async (_, taskId: string) => {
+      const task = await TaskRepository.findById(taskId);
+      if (!task?.worktreePath || !task?.branchName) {
+        throw new Error(
+          `Task ${taskId} does not have a worktree with a branch`,
+        );
+      }
+      return pushBranch({
+        worktreePath: task.worktreePath,
+        branchName: task.branchName,
+      });
+    },
   );
 
   // Dialog
