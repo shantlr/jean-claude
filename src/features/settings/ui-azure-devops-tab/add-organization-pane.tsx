@@ -1,18 +1,22 @@
-import { ExternalLink, Loader2, X } from 'lucide-react';
+// src/features/settings/ui-azure-devops-tab/add-organization-pane.tsx
+import { Loader2, X } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from '@tanstack/react-router';
 
 import { useGetAzureDevOpsOrganizations } from '@/hooks/use-azure-devops';
 import { useCreateProvider, useProviders } from '@/hooks/use-providers';
+import { useTokensByProviderType } from '@/hooks/use-tokens';
 import { AzureDevOpsOrganization } from '@/lib/api';
 
-type PaneStep = 'token' | 'select';
+type PaneStep = 'selectToken' | 'selectOrgs';
 
 export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
-  const [step, setStep] = useState<PaneStep>('token');
-  const [token, setToken] = useState('');
+  const [step, setStep] = useState<PaneStep>('selectToken');
+  const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [organizations, setOrganizations] = useState<AzureDevOpsOrganization[]>([]);
   const [selectedOrgs, setSelectedOrgs] = useState<Set<string>>(new Set());
 
+  const { data: tokens = [], isLoading: tokensLoading } = useTokensByProviderType('azure-devops');
   const { data: existingProviders = [] } = useProviders();
   const getOrganizations = useGetAzureDevOpsOrganizations();
   const createProvider = useCreateProvider();
@@ -23,26 +27,24 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
       .map((p) => p.baseUrl)
   );
 
-  const handleConnect = async () => {
+  const handleSelectToken = async (tokenId: string) => {
+    setSelectedTokenId(tokenId);
     try {
-      const orgs = await getOrganizations.mutateAsync(token);
-      // Filter out already connected organizations
+      const orgs = await getOrganizations.mutateAsync(tokenId);
       const newOrgs = orgs.filter((org) => !existingOrgUrls.has(org.url));
 
       if (newOrgs.length === 0) {
-        // All organizations are already connected
         alert('All accessible organizations are already connected.');
         return;
       }
 
       setOrganizations(newOrgs);
-      // Auto-select all if only one
       if (newOrgs.length === 1) {
         setSelectedOrgs(new Set([newOrgs[0].id]));
       }
-      setStep('select');
+      setStep('selectOrgs');
     } catch {
-      // Error is displayed via getOrganizations.error
+      // Error displayed via getOrganizations.error
     }
   };
 
@@ -59,6 +61,8 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
   };
 
   const handleAddSelected = async () => {
+    if (!selectedTokenId) return;
+
     const selectedOrgsList = organizations.filter((org) => selectedOrgs.has(org.id));
 
     for (const org of selectedOrgsList) {
@@ -66,7 +70,7 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
         type: 'azure-devops',
         label: org.name,
         baseUrl: org.url,
-        token: token,
+        tokenId: selectedTokenId,
         updatedAt: new Date().toISOString(),
       });
     }
@@ -86,57 +90,55 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      {step === 'token' && (
+      {step === 'selectToken' && (
         <div className="flex flex-col gap-4">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-neutral-400">
-              Personal Access Token
-            </label>
-            <input
-              type="password"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && token && handleConnect()}
-              placeholder="Enter your PAT"
-              className="w-full rounded-lg border border-neutral-600 bg-neutral-700 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
-              autoFocus
-            />
-          </div>
+          <p className="text-sm text-neutral-400">
+            Select a token to authenticate with Azure DevOps:
+          </p>
 
-          <a
-            href="https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300"
-          >
-            How to create a PAT
-            <ExternalLink className="h-3 w-3" />
-          </a>
+          {tokensLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
+            </div>
+          ) : tokens.length === 0 ? (
+            <div className="rounded-lg border border-neutral-600 bg-neutral-700/50 p-4 text-center">
+              <p className="text-sm text-neutral-400">No Azure DevOps tokens found</p>
+              <Link
+                to="/settings/tokens"
+                className="mt-2 inline-block text-sm text-blue-400 hover:text-blue-300"
+              >
+                Add a token first →
+              </Link>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {tokens.map((token) => (
+                <button
+                  key={token.id}
+                  onClick={() => handleSelectToken(token.id)}
+                  disabled={getOrganizations.isPending}
+                  className="flex cursor-pointer items-center justify-between rounded-lg border border-neutral-600 bg-neutral-700 px-3 py-2 text-left hover:border-neutral-500 disabled:opacity-50"
+                >
+                  <span className="text-sm font-medium text-neutral-200">
+                    {token.label}
+                  </span>
+                  {getOrganizations.isPending && selectedTokenId === token.id && (
+                    <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
 
           {getOrganizations.error && (
             <div className="rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-400">
               {getOrganizations.error.message}
             </div>
           )}
-
-          <button
-            onClick={handleConnect}
-            disabled={!token || getOrganizations.isPending}
-            className="flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600"
-          >
-            {getOrganizations.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Connecting...
-              </>
-            ) : (
-              'Connect'
-            )}
-          </button>
         </div>
       )}
 
-      {step === 'select' && (
+      {step === 'selectOrgs' && (
         <div className="flex flex-col gap-4">
           <p className="text-sm text-neutral-400">
             Select organizations to add:
@@ -164,7 +166,7 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
 
           <div className="flex gap-2">
             <button
-              onClick={() => setStep('token')}
+              onClick={() => setStep('selectToken')}
               className="flex-1 cursor-pointer rounded-lg border border-neutral-600 bg-neutral-700 px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-600"
             >
               Back
