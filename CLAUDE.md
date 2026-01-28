@@ -250,6 +250,8 @@ docs/plans/            # Design and implementation documents
 - Route params use `$paramName` convention (e.g., `$projectId.tsx`)
 - See `ROADMAP.md` for feature phases and `docs/plans/` for detailed designs
 - Coding agent does not need to try to run `pnpm dev` itself; it should focus on implementing features as per the roadmap and designs.
+- When writeing design documents, implementation documents or exectuting implementation task you don't need commit
+- When implementation is done, run `pnpm lint --fix` first
 
 ## Coding Guidelines
 
