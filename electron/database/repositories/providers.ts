@@ -1,6 +1,6 @@
 // electron/database/repositories/providers.ts
-import { db } from '../index';
 import type { Provider, NewProvider, UpdateProvider } from '../../../shared/types';
+import { db } from '../index';
 
 export const ProviderRepository = {
   findAll: async (): Promise<Provider[]> => {
