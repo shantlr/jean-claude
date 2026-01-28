@@ -14,20 +14,6 @@ import { CommitModal } from './commit-modal';
 import { MergeConfirmDialog } from './merge-confirm-dialog';
 import { MergeSuccessDialog } from './merge-success-dialog';
 
-interface WorktreeActionsProps {
-  taskId: string;
-  branchName: string;
-  defaultBranch: string | null;
-  taskName: string | null;
-  taskPrompt: string;
-  workItemId: string | null;
-  // Project repo link (nullable — only show PR button when linked)
-  repoProviderId: string | null;
-  repoProjectId: string | null;
-  repoId: string | null;
-  onMergeComplete: () => void;
-}
-
 export function WorktreeActions({
   taskId,
   branchName,
@@ -39,7 +25,19 @@ export function WorktreeActions({
   repoProjectId,
   repoId,
   onMergeComplete,
-}: WorktreeActionsProps) {
+}: {
+  taskId: string;
+  branchName: string;
+  defaultBranch: string | null;
+  taskName: string | null;
+  taskPrompt: string;
+  workItemId: string | null;
+  // Project repo link (nullable — only show PR button when linked)
+  repoProviderId: string | null;
+  repoProjectId: string | null;
+  repoId: string | null;
+  onMergeComplete: () => void;
+}) {
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false);
   const [isMergeConfirmOpen, setIsMergeConfirmOpen] = useState(false);
   const [isMergeSuccessOpen, setIsMergeSuccessOpen] = useState(false);

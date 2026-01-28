@@ -11,17 +11,15 @@ interface TreeNode {
   children?: TreeNode[];
 }
 
-interface DiffFileTreeProps {
-  files: WorktreeDiffFile[];
-  selectedPath: string | null;
-  onSelectFile: (path: string) => void;
-}
-
 export function DiffFileTree({
   files,
   selectedPath,
   onSelectFile,
-}: DiffFileTreeProps) {
+}: {
+  files: WorktreeDiffFile[];
+  selectedPath: string | null;
+  onSelectFile: (path: string) => void;
+}) {
   const tree = useMemo(() => buildTree(files), [files]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => {
     // Start with all folders expanded
@@ -67,15 +65,6 @@ export function DiffFileTree({
   );
 }
 
-interface TreeNodeRowProps {
-  node: TreeNode;
-  depth: number;
-  selectedPath: string | null;
-  expandedFolders: Set<string>;
-  onSelectFile: (path: string) => void;
-  onToggleFolder: (path: string) => void;
-}
-
 function TreeNodeRow({
   node,
   depth,
@@ -83,7 +72,14 @@ function TreeNodeRow({
   expandedFolders,
   onSelectFile,
   onToggleFolder,
-}: TreeNodeRowProps) {
+}: {
+  node: TreeNode;
+  depth: number;
+  selectedPath: string | null;
+  expandedFolders: Set<string>;
+  onSelectFile: (path: string) => void;
+  onToggleFolder: (path: string) => void;
+}) {
   const isExpanded = expandedFolders.has(node.path);
   const isSelected = node.path === selectedPath;
   const paddingLeft = 8 + depth * 16;

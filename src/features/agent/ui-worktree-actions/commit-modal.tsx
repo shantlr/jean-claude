@@ -1,21 +1,19 @@
 import { Loader2, X } from 'lucide-react';
 import React, { useState } from 'react';
 
-interface CommitModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onCommit: (message: string, stageAll: boolean) => Promise<void>;
-  isPending: boolean;
-  error?: string;
-}
-
 export function CommitModal({
   isOpen,
   onClose,
   onCommit,
   isPending,
   error,
-}: CommitModalProps) {
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onCommit: (message: string, stageAll: boolean) => Promise<void>;
+  isPending: boolean;
+  error?: string;
+}) {
   const [message, setMessage] = useState('');
   const [stageAll, setStageAll] = useState(true);
 

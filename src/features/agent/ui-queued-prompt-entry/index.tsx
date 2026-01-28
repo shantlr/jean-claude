@@ -2,15 +2,13 @@ import { X } from 'lucide-react';
 
 import type { QueuedPrompt } from '../../../../shared/agent-types';
 
-interface QueuedPromptEntryProps {
-  prompt: QueuedPrompt;
-  onCancel: (promptId: string) => void;
-}
-
 export function QueuedPromptEntry({
   prompt,
   onCancel,
-}: QueuedPromptEntryProps) {
+}: {
+  prompt: QueuedPrompt;
+  onCancel: (promptId: string) => void;
+}) {
   return (
     <div className="relative pl-6 bg-neutral-800/30">
       {/* Dot - hollow/outline to indicate "queued/pending" */}

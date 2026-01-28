@@ -4,16 +4,6 @@ import { useState } from 'react';
 import type { AgentMessage, TextBlock } from '../../../../shared/agent-types';
 import { MarkdownContent } from '../ui-markdown-content';
 
-interface SkillEntryProps {
-  skillName: string;
-  promptMessage: AgentMessage;
-  onFilePathClick?: (
-    filePath: string,
-    lineStart?: number,
-    lineEnd?: number,
-  ) => void;
-}
-
 /**
  * Extract text content from a skill prompt message.
  */
@@ -41,7 +31,15 @@ export function SkillEntry({
   skillName,
   promptMessage,
   onFilePathClick,
-}: SkillEntryProps) {
+}: {
+  skillName: string;
+  promptMessage: AgentMessage;
+  onFilePathClick?: (
+    filePath: string,
+    lineStart?: number,
+    lineEnd?: number,
+  ) => void;
+}) {
   const [isExpanded, setIsExpanded] = useState(false);
   const promptText = getPromptText(promptMessage);
 

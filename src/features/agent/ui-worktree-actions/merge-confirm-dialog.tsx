@@ -1,7 +1,16 @@
 import { AlertTriangle, Loader2, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
-interface MergeConfirmDialogProps {
+export function MergeConfirmDialog({
+  isOpen,
+  onClose,
+  onConfirm,
+  branchName,
+  targetBranch,
+  isPending,
+  error,
+  defaultCommitMessage,
+}: {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (params: {
@@ -13,18 +22,7 @@ interface MergeConfirmDialogProps {
   isPending: boolean;
   error?: string;
   defaultCommitMessage?: string;
-}
-
-export function MergeConfirmDialog({
-  isOpen,
-  onClose,
-  onConfirm,
-  branchName,
-  targetBranch,
-  isPending,
-  error,
-  defaultCommitMessage,
-}: MergeConfirmDialogProps) {
+}) {
   const [squash, setSquash] = useState(false);
   const [commitMessage, setCommitMessage] = useState('');
 

@@ -4,12 +4,6 @@ import { codeToTokens, type ThemedToken } from 'shiki';
 import { computeDiff, type DiffLine } from './diff-utils';
 import { getLanguageFromPath } from './language-utils';
 
-interface DiffViewProps {
-  filePath: string;
-  oldString: string;
-  newString: string;
-  maxHeight?: string;
-}
 
 interface DiffState {
   lines: DiffLine[];
@@ -17,7 +11,12 @@ interface DiffState {
   newTokens: ThemedToken[][];
 }
 
-export function DiffView({ filePath, oldString, newString }: DiffViewProps) {
+export function DiffView({ filePath, oldString, newString }: {
+  filePath: string;
+  oldString: string;
+  newString: string;
+  maxHeight?: string;
+}) {
   const [state, setState] = useState<DiffState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 

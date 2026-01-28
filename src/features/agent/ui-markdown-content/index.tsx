@@ -3,14 +3,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { codeToHtml } from 'shiki';
 
-interface MarkdownContentProps {
-  content: string;
-  onFilePathClick?: (
-    filePath: string,
-    lineStart?: number,
-    lineEnd?: number,
-  ) => void;
-}
 
 // Pattern to match file paths like src/foo.ts:42-50 or just src/foo.ts:42 or src/foo.ts
 const FILE_PATH_PATTERN =
@@ -35,7 +27,11 @@ function TextWithFilePaths({
   onFilePathClick,
 }: {
   text: string;
-  onFilePathClick?: MarkdownContentProps['onFilePathClick'];
+  onFilePathClick?: (
+    filePath: string,
+    lineStart?: number,
+    lineEnd?: number,
+  ) => void;
 }) {
   if (!onFilePathClick) {
     return <>{text}</>;
@@ -74,10 +70,6 @@ function TextWithFilePaths({
   return <>{parts}</>;
 }
 
-interface CodeBlockProps {
-  language: string;
-  code: string;
-}
 
 // Detect ASCII art by looking for box-drawing characters or repeated patterns
 function isAsciiArt(code: string): boolean {
@@ -113,7 +105,7 @@ function AsciiArtBlock({ code }: { code: string }) {
   );
 }
 
-function CodeBlock({ language, code }: CodeBlockProps) {
+function CodeBlock({ language, code }: { language: string; code: string }) {
   const [html, setHtml] = useState<string>('');
 
   // Check if this is ASCII art
@@ -163,7 +155,14 @@ function CodeBlock({ language, code }: CodeBlockProps) {
 export function MarkdownContent({
   content,
   onFilePathClick,
-}: MarkdownContentProps) {
+}: {
+  content: string;
+  onFilePathClick?: (
+    filePath: string,
+    lineStart?: number,
+    lineEnd?: number,
+  ) => void;
+}) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}

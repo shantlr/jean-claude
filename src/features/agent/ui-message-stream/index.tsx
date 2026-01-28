@@ -17,18 +17,6 @@ import { TimelineEntry, CompactingEntry } from '../ui-timeline-entry';
 
 import { mergeSkillMessages } from './message-merger';
 
-interface MessageStreamProps {
-  messages: AgentMessageType[];
-  isRunning?: boolean;
-  queuedPrompts?: QueuedPrompt[];
-  onFilePathClick?: (
-    filePath: string,
-    lineStart?: number,
-    lineEnd?: number,
-  ) => void;
-  onCancelQueuedPrompt?: (promptId: string) => void;
-}
-
 // Build a map of tool_use_id -> ToolResultBlock from all user messages
 function buildToolResultsMap(
   messages: AgentMessageType[],
@@ -83,7 +71,17 @@ export function MessageStream({
   queuedPrompts = [],
   onFilePathClick,
   onCancelQueuedPrompt,
-}: MessageStreamProps) {
+}: {
+  messages: AgentMessageType[];
+  isRunning?: boolean;
+  queuedPrompts?: QueuedPrompt[];
+  onFilePathClick?: (
+    filePath: string,
+    lineStart?: number,
+    lineEnd?: number,
+  ) => void;
+  onCancelQueuedPrompt?: (promptId: string) => void;
+}) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);

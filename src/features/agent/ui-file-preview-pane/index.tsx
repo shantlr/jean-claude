@@ -4,21 +4,19 @@ import { codeToHtml } from 'shiki';
 
 import { api } from '@/lib/api';
 
-interface FilePreviewPaneProps {
-  filePath: string;
-  projectPath: string;
-  lineStart?: number;
-  lineEnd?: number;
-  onClose: () => void;
-}
-
 export function FilePreviewPane({
   filePath,
   projectPath,
   lineStart,
   lineEnd,
   onClose,
-}: FilePreviewPaneProps) {
+}: {
+  filePath: string;
+  projectPath: string;
+  lineStart?: number;
+  lineEnd?: number;
+  onClose: () => void;
+}) {
   const [content, setContent] = useState<string | null>(null);
   const [html, setHtml] = useState<string>('');
   const [language, setLanguage] = useState<string>('text');

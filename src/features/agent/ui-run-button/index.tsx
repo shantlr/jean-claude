@@ -5,12 +5,10 @@ import { useRunCommands } from '@/hooks/use-run-commands';
 
 import { KillPortsModal } from './kill-ports-modal';
 
-interface RunButtonProps {
+export function RunButton({ projectId, workingDir }: {
   projectId: string;
   workingDir: string;
-}
-
-export function RunButton({ projectId, workingDir }: RunButtonProps) {
+}) {
   const { data: commands = [] } = useProjectCommands(projectId);
   const {
     status,

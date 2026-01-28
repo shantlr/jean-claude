@@ -13,10 +13,6 @@ import type {
   ContentBlock,
 } from '../../../../shared/agent-types';
 
-interface ToolUseCardProps {
-  block: ToolUseBlock;
-  result?: ToolResultBlock;
-}
 
 // Format tool input for display
 function formatInput(input: Record<string, unknown>): string {
@@ -80,7 +76,10 @@ const TOOL_COLORS: Record<string, string> = {
   Skill: 'bg-violet-900/50 border-violet-700',
 };
 
-export function ToolUseCard({ block, result }: ToolUseCardProps) {
+export function ToolUseCard({ block, result }: {
+  block: ToolUseBlock;
+  result?: ToolResultBlock;
+}) {
   const [isExpanded, setIsExpanded] = useState(false);
   const colorClass =
     TOOL_COLORS[block.name] || 'bg-neutral-800 border-neutral-600';

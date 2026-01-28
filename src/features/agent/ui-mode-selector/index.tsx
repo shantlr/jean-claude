@@ -14,13 +14,11 @@ const MODES: { value: InteractionMode; label: string; description: string }[] =
     },
   ];
 
-interface ModeSelectorProps {
+export function ModeSelector({ value, onChange, disabled }: {
   value: InteractionMode;
   onChange: (mode: InteractionMode) => void;
   disabled?: boolean;
-}
-
-export function ModeSelector({ value, onChange, disabled }: ModeSelectorProps) {
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 

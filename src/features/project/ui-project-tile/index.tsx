@@ -5,13 +5,11 @@ import { getUnreadCount } from '@/features/task/ui-task-list-item';
 import { useProjectTasks } from '@/hooks/use-tasks';
 import { getInitials } from '@/lib/colors';
 
-interface ProjectTileProps {
+export function ProjectTile({ id, name, color }: {
   id: string;
   name: string;
   color: string;
-}
-
-export function ProjectTile({ id, name, color }: ProjectTileProps) {
+}) {
   const initials = getInitials(name);
   const { data: tasks } = useProjectTasks(id);
 

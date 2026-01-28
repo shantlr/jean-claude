@@ -2,19 +2,17 @@ import { CheckCircle, X } from 'lucide-react';
 
 import { useToggleTaskUserCompleted } from '@/hooks/use-tasks';
 
-interface MergeSuccessDialogProps {
-  isOpen: boolean;
-  onClose: (markComplete: boolean) => void;
-  targetBranch: string;
-  taskId: string;
-}
-
 export function MergeSuccessDialog({
   isOpen,
   onClose,
   targetBranch,
   taskId,
-}: MergeSuccessDialogProps) {
+}: {
+  isOpen: boolean;
+  onClose: (markComplete: boolean) => void;
+  targetBranch: string;
+  taskId: string;
+}) {
   const toggleCompleted = useToggleTaskUserCompleted();
 
   if (!isOpen) return null;

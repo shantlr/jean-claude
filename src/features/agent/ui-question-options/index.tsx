@@ -7,11 +7,6 @@ import type {
   AgentQuestion,
 } from '../../../../shared/agent-types';
 
-interface QuestionOptionsProps {
-  request: AgentQuestionEvent;
-  onRespond: (requestId: string, response: QuestionResponse) => void;
-}
-
 function QuestionInput({
   question,
   value,
@@ -115,7 +110,10 @@ function QuestionInput({
   );
 }
 
-export function QuestionOptions({ request, onRespond }: QuestionOptionsProps) {
+export function QuestionOptions({ request, onRespond }: {
+  request: AgentQuestionEvent;
+  onRespond: (requestId: string, response: QuestionResponse) => void;
+}) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
   const handleSubmit = () => {

@@ -2,15 +2,6 @@ import clsx from 'clsx';
 import { Send, Square, Loader2, ListPlus } from 'lucide-react';
 import { useState, useRef, useCallback, KeyboardEvent } from 'react';
 
-interface MessageInputProps {
-  onSend: (message: string) => void;
-  onQueue?: (message: string) => void;
-  onStop?: () => void;
-  disabled?: boolean;
-  placeholder?: string;
-  isRunning?: boolean;
-  isStopping?: boolean;
-}
 
 const DOUBLE_ESCAPE_THRESHOLD = 300; // ms
 
@@ -22,7 +13,15 @@ export function MessageInput({
   placeholder = 'Type a message... (Shift+Enter for new line)',
   isRunning = false,
   isStopping = false,
-}: MessageInputProps) {
+}: {
+  onSend: (message: string) => void;
+  onQueue?: (message: string) => void;
+  onStop?: () => void;
+  disabled?: boolean;
+  placeholder?: string;
+  isRunning?: boolean;
+  isStopping?: boolean;
+}) {
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lastEscapeRef = useRef<number>(0);

@@ -13,11 +13,6 @@ interface TaskWithMessageCount extends Task {
   messageCount?: number;
 }
 
-interface TaskListItemProps {
-  task: TaskWithMessageCount;
-  projectId: string;
-  isActive?: boolean;
-}
 
 export function getUnreadCount(task: TaskWithMessageCount): number {
   if (task.status === 'running') return 0;
@@ -26,7 +21,11 @@ export function getUnreadCount(task: TaskWithMessageCount): number {
   return Math.max(0, messageCount - 1 - task.lastReadIndex);
 }
 
-export function TaskListItem({ task, projectId, isActive }: TaskListItemProps) {
+export function TaskListItem({ task, projectId, isActive }: {
+  task: TaskWithMessageCount;
+  projectId: string;
+  isActive?: boolean;
+}) {
   const unreadCount = getUnreadCount(task);
   const taskState = useTaskMessagesStore((s) => s.tasks[task.id]);
   const toggleUserCompleted = useToggleTaskUserCompleted();

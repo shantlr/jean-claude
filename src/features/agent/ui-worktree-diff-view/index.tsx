@@ -13,21 +13,6 @@ import {
 import type { WorktreeDiffFile } from '@/lib/api';
 import { useDiffFileTreeWidth } from '@/stores/navigation';
 
-interface WorktreeDiffViewProps {
-  taskId: string;
-  selectedFilePath: string | null;
-  onSelectFile: (path: string | null) => void;
-  branchName: string;
-  defaultBranch: string | null;
-  taskName: string | null;
-  taskPrompt: string;
-  workItemId: string | null;
-  repoProviderId: string | null;
-  repoProjectId: string | null;
-  repoId: string | null;
-  onMergeComplete: () => void;
-}
-
 export function WorktreeDiffView({
   taskId,
   selectedFilePath,
@@ -41,7 +26,20 @@ export function WorktreeDiffView({
   repoProjectId,
   repoId,
   onMergeComplete,
-}: WorktreeDiffViewProps) {
+}: {
+  taskId: string;
+  selectedFilePath: string | null;
+  onSelectFile: (path: string | null) => void;
+  branchName: string;
+  defaultBranch: string | null;
+  taskName: string | null;
+  taskPrompt: string;
+  workItemId: string | null;
+  repoProviderId: string | null;
+  repoProjectId: string | null;
+  repoId: string | null;
+  onMergeComplete: () => void;
+}) {
   const { data, isLoading, error, refresh } = useWorktreeDiff(taskId, true);
   const {
     width: fileTreeWidth,
@@ -169,12 +167,10 @@ export function WorktreeDiffView({
   );
 }
 
-interface FileDiffContentProps {
+function FileDiffContent({ file, taskId }: {
   file: WorktreeDiffFile;
   taskId: string;
-}
-
-function FileDiffContent({ file, taskId }: FileDiffContentProps) {
+}) {
   const { data, isLoading, error } = useWorktreeFileContent(
     taskId,
     file.path,

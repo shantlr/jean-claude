@@ -28,16 +28,6 @@ import { TodoListEntry } from '../ui-todo-list-entry';
 
 import { getToolSummary } from './tool-summary';
 
-interface TimelineEntryProps {
-  message: AgentMessage;
-  toolResultsMap?: Map<string, ToolResultBlock>;
-  parentMessageMap?: Map<string, AgentMessage>;
-  onFilePathClick?: (
-    filePath: string,
-    lineStart?: number,
-    lineEnd?: number,
-  ) => void;
-}
 
 function isTextBlock(block: ContentBlock): block is TextBlock {
   return block.type === 'text';
@@ -446,7 +436,11 @@ function TextEntry({
   onFilePathClick,
 }: {
   text: string;
-  onFilePathClick?: TimelineEntryProps['onFilePathClick'];
+  onFilePathClick?: (
+    filePath: string,
+    lineStart?: number,
+    lineEnd?: number,
+  ) => void;
 }) {
   return (
     <div className="relative pl-6">
@@ -465,7 +459,11 @@ function UserEntry({
   onFilePathClick,
 }: {
   text: string;
-  onFilePathClick?: TimelineEntryProps['onFilePathClick'];
+  onFilePathClick?: (
+    filePath: string,
+    lineStart?: number,
+    lineEnd?: number,
+  ) => void;
 }) {
   return (
     <div className="relative pl-6 bg-purple-500/5">
@@ -484,7 +482,11 @@ function ResultEntry({
   onFilePathClick,
 }: {
   message: AgentMessage;
-  onFilePathClick?: TimelineEntryProps['onFilePathClick'];
+  onFilePathClick?: (
+    filePath: string,
+    lineStart?: number,
+    lineEnd?: number,
+  ) => void;
 }) {
   const cost = message.total_cost_usd?.toFixed(2) || '0.00';
   const tokens = formatNumber(
@@ -571,7 +573,16 @@ export function TimelineEntry({
   toolResultsMap,
   parentMessageMap,
   onFilePathClick,
-}: TimelineEntryProps) {
+}: {
+  message: AgentMessage;
+  toolResultsMap?: Map<string, ToolResultBlock>;
+  parentMessageMap?: Map<string, AgentMessage>;
+  onFilePathClick?: (
+    filePath: string,
+    lineStart?: number,
+    lineEnd?: number,
+  ) => void;
+}) {
   // Skip system messages with hidden subtypes (init, hook_started, hook_completed, etc.)
   if (message.type === 'system' && isHiddenSystemSubtype(message.subtype)) {
     return null;
