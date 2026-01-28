@@ -69,9 +69,23 @@ contextBridge.exposeInMainWorld('api', {
     getDetails: (providerId: string) =>
       ipcRenderer.invoke('providers:getDetails', providerId),
   },
+  tokens: {
+    findAll: () => ipcRenderer.invoke('tokens:findAll'),
+    findById: (id: string) => ipcRenderer.invoke('tokens:findById', id),
+    findByProviderType: (providerType: string) =>
+      ipcRenderer.invoke('tokens:findByProviderType', providerType),
+    create: (data: unknown) => ipcRenderer.invoke('tokens:create', data),
+    update: (id: string, data: unknown) =>
+      ipcRenderer.invoke('tokens:update', id, data),
+    delete: (id: string) => ipcRenderer.invoke('tokens:delete', id),
+  },
   azureDevOps: {
-    getOrganizations: (token: string) =>
-      ipcRenderer.invoke('azureDevOps:getOrganizations', token),
+    getOrganizations: (tokenId: string) =>
+      ipcRenderer.invoke('azureDevOps:getOrganizations', tokenId),
+    validateToken: (token: string) =>
+      ipcRenderer.invoke('azureDevOps:validateToken', token),
+    getTokenExpiration: (tokenId: string) =>
+      ipcRenderer.invoke('azureDevOps:getTokenExpiration', tokenId),
   },
   dialog: {
     openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),
