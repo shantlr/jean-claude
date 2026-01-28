@@ -15,7 +15,9 @@ export function TaskSettingsPane({
   onRemoveTool: (toolName: string) => void;
   onClose: () => void;
 }) {
-  const [localAllowed, setLocalAllowed] = useState<Set<string>>(new Set(sessionAllowedTools));
+  const [localAllowed, setLocalAllowed] = useState<Set<string>>(
+    new Set(sessionAllowedTools),
+  );
 
   // Sync local state when props change
   useEffect(() => {

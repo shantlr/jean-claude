@@ -108,7 +108,8 @@ const useStore = create<NavigationState>()(
                 isOpen,
                 // Reset selected file when closing
                 selectedFilePath: isOpen
-                  ? state.taskState[taskId]?.diffView?.selectedFilePath ?? null
+                  ? (state.taskState[taskId]?.diffView?.selectedFilePath ??
+                    null)
                   : null,
               },
             },
@@ -223,7 +224,12 @@ export function useTaskState(taskId: string) {
 
   const openFilePreview = useCallback(
     (filePath: string, lineStart?: number, lineEnd?: number) =>
-      setTaskRightPaneAction(taskId, { type: 'filePreview', filePath, lineStart, lineEnd }),
+      setTaskRightPaneAction(taskId, {
+        type: 'filePreview',
+        filePath,
+        lineStart,
+        lineEnd,
+      }),
     [taskId, setTaskRightPaneAction],
   );
 
@@ -250,31 +256,32 @@ export function useTaskState(taskId: string) {
 // Hook for diff view state
 export function useDiffViewState(taskId: string) {
   const diffView = useStore(
-    (state) => state.taskState[taskId]?.diffView ?? defaultDiffViewState
+    (state) => state.taskState[taskId]?.diffView ?? defaultDiffViewState,
   );
   const setDiffViewOpenAction = useStore((state) => state.setDiffViewOpen);
   const setDiffViewSelectedFileAction = useStore(
-    (state) => state.setDiffViewSelectedFile
+    (state) => state.setDiffViewSelectedFile,
   );
 
   const toggleDiffView = useCallback(
     () => setDiffViewOpenAction(taskId, !diffView.isOpen),
-    [taskId, diffView.isOpen, setDiffViewOpenAction]
+    [taskId, diffView.isOpen, setDiffViewOpenAction],
   );
 
   const openDiffView = useCallback(
     () => setDiffViewOpenAction(taskId, true),
-    [taskId, setDiffViewOpenAction]
+    [taskId, setDiffViewOpenAction],
   );
 
   const closeDiffView = useCallback(
     () => setDiffViewOpenAction(taskId, false),
-    [taskId, setDiffViewOpenAction]
+    [taskId, setDiffViewOpenAction],
   );
 
   const selectFile = useCallback(
-    (filePath: string | null) => setDiffViewSelectedFileAction(taskId, filePath),
-    [taskId, setDiffViewSelectedFileAction]
+    (filePath: string | null) =>
+      setDiffViewSelectedFileAction(taskId, filePath),
+    [taskId, setDiffViewSelectedFileAction],
   );
 
   return {

@@ -74,7 +74,7 @@ export function FilePreviewPane({
   useEffect(() => {
     if (html && lineStart) {
       const lineElement = document.querySelector(
-        `[data-line="${lineStart}"]`
+        `[data-line="${lineStart}"]`,
       ) as HTMLElement;
       if (lineElement) {
         lineElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -89,7 +89,10 @@ export function FilePreviewPane({
 
   // Add line numbers and highlighting to HTML
   const processedHtml = html
-    ? html.replace(/<pre([^>]*)><code([^>]*)>/g, '<pre$1><code$2 class="block">')
+    ? html.replace(
+        /<pre([^>]*)><code([^>]*)>/g,
+        '<pre$1><code$2 class="block">',
+      )
     : '';
 
   return (
@@ -97,7 +100,10 @@ export function FilePreviewPane({
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-neutral-700 px-4 py-3">
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium text-neutral-200" title={fullPath}>
+          <div
+            className="truncate text-sm font-medium text-neutral-200"
+            title={fullPath}
+          >
             {filePath}
           </div>
           {lineStart && (

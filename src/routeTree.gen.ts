@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
+import { Route as SettingsTokensRouteImport } from './routes/settings/tokens'
 import { Route as SettingsGeneralRouteImport } from './routes/settings/general'
 import { Route as SettingsDebugRouteImport } from './routes/settings/debug'
 import { Route as SettingsAzureDevopsRouteImport } from './routes/settings/azure-devops'
@@ -35,6 +36,11 @@ const IndexRoute = IndexRouteImport.update({
 const SettingsIndexRoute = SettingsIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsTokensRoute = SettingsTokensRouteImport.update({
+  id: '/tokens',
+  path: '/tokens',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsGeneralRoute = SettingsGeneralRouteImport.update({
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/settings/azure-devops': typeof SettingsAzureDevopsRoute
   '/settings/debug': typeof SettingsDebugRoute
   '/settings/general': typeof SettingsGeneralRoute
+  '/settings/tokens': typeof SettingsTokensRoute
   '/settings/': typeof SettingsIndexRoute
   '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
@@ -106,6 +113,7 @@ export interface FileRoutesByTo {
   '/settings/azure-devops': typeof SettingsAzureDevopsRoute
   '/settings/debug': typeof SettingsDebugRoute
   '/settings/general': typeof SettingsGeneralRoute
+  '/settings/tokens': typeof SettingsTokensRoute
   '/settings': typeof SettingsIndexRoute
   '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute
   '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
@@ -121,6 +129,7 @@ export interface FileRoutesById {
   '/settings/azure-devops': typeof SettingsAzureDevopsRoute
   '/settings/debug': typeof SettingsDebugRoute
   '/settings/general': typeof SettingsGeneralRoute
+  '/settings/tokens': typeof SettingsTokensRoute
   '/settings/': typeof SettingsIndexRoute
   '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
@@ -137,6 +146,7 @@ export interface FileRouteTypes {
     | '/settings/azure-devops'
     | '/settings/debug'
     | '/settings/general'
+    | '/settings/tokens'
     | '/settings/'
     | '/projects/$projectId/details'
     | '/projects/$projectId/'
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/settings/azure-devops'
     | '/settings/debug'
     | '/settings/general'
+    | '/settings/tokens'
     | '/settings'
     | '/projects/$projectId/details'
     | '/projects/$projectId'
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/settings/azure-devops'
     | '/settings/debug'
     | '/settings/general'
+    | '/settings/tokens'
     | '/settings/'
     | '/projects/$projectId/details'
     | '/projects/$projectId/'
@@ -198,6 +210,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/settings/'
       preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/tokens': {
+      id: '/settings/tokens'
+      path: '/tokens'
+      fullPath: '/settings/tokens'
+      preLoaderRoute: typeof SettingsTokensRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/general': {
@@ -270,6 +289,7 @@ interface SettingsRouteChildren {
   SettingsAzureDevopsRoute: typeof SettingsAzureDevopsRoute
   SettingsDebugRoute: typeof SettingsDebugRoute
   SettingsGeneralRoute: typeof SettingsGeneralRoute
+  SettingsTokensRoute: typeof SettingsTokensRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
 
@@ -277,6 +297,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAzureDevopsRoute: SettingsAzureDevopsRoute,
   SettingsDebugRoute: SettingsDebugRoute,
   SettingsGeneralRoute: SettingsGeneralRoute,
+  SettingsTokensRoute: SettingsTokensRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }
 

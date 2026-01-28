@@ -2,8 +2,41 @@
 // These are plain TypeScript types without database-specific dependencies
 
 export type ProviderType = 'azure-devops' | 'github' | 'gitlab';
+
+// Token metadata - sensitive token value never exposed to renderer
+export interface Token {
+  id: string;
+  label: string;
+  providerType: ProviderType;
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewToken {
+  id?: string;
+  label: string;
+  token: string; // Plain token sent during creation, never returned
+  providerType: ProviderType;
+  expiresAt?: string | null;
+  createdAt?: string;
+  updatedAt: string;
+}
+
+export interface UpdateToken {
+  label?: string;
+  token?: string; // Optional: only when refreshing
+  expiresAt?: string | null;
+  updatedAt?: string;
+}
+
 export type ProjectType = 'local' | 'git-provider';
-export type TaskStatus = 'running' | 'waiting' | 'completed' | 'errored' | 'interrupted';
+export type TaskStatus =
+  | 'running'
+  | 'waiting'
+  | 'completed'
+  | 'errored'
+  | 'interrupted';
 export type InteractionMode = 'ask' | 'auto' | 'plan';
 
 export interface Provider {
@@ -11,7 +44,7 @@ export interface Provider {
   type: ProviderType;
   label: string;
   baseUrl: string;
-  token: string;
+  tokenId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -21,7 +54,7 @@ export interface NewProvider {
   type: ProviderType;
   label: string;
   baseUrl: string;
-  token: string;
+  tokenId: string;
   createdAt?: string;
   updatedAt: string;
 }
@@ -30,7 +63,7 @@ export interface UpdateProvider {
   type?: ProviderType;
   label?: string;
   baseUrl?: string;
-  token?: string;
+  tokenId?: string | null;
   updatedAt?: string;
 }
 
@@ -140,11 +173,26 @@ export interface PresetEditor {
 }
 
 export const PRESET_EDITORS: PresetEditor[] = [
-  { id: 'vscode', label: 'VS Code', command: 'code', appName: 'Visual Studio Code' },
+  {
+    id: 'vscode',
+    label: 'VS Code',
+    command: 'code',
+    appName: 'Visual Studio Code',
+  },
   { id: 'cursor', label: 'Cursor', command: 'cursor', appName: 'Cursor' },
   { id: 'zed', label: 'Zed', command: 'zed', appName: 'Zed' },
-  { id: 'webstorm', label: 'WebStorm', command: 'webstorm', appName: 'WebStorm' },
-  { id: 'sublime', label: 'Sublime Text', command: 'subl', appName: 'Sublime Text' },
+  {
+    id: 'webstorm',
+    label: 'WebStorm',
+    command: 'webstorm',
+    appName: 'WebStorm',
+  },
+  {
+    id: 'sublime',
+    label: 'Sublime Text',
+    command: 'subl',
+    appName: 'Sublime Text',
+  },
 ];
 
 export type EditorSetting =
@@ -163,7 +211,8 @@ function isEditorSetting(v: unknown): v is EditorSetting {
   const obj = v as Record<string, unknown>;
   if (obj.type === 'preset') return typeof obj.id === 'string';
   if (obj.type === 'command') return typeof obj.command === 'string';
-  if (obj.type === 'app') return typeof obj.path === 'string' && typeof obj.name === 'string';
+  if (obj.type === 'app')
+    return typeof obj.path === 'string' && typeof obj.name === 'string';
   return false;
 }
 

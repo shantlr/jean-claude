@@ -13,7 +13,11 @@ export const AgentMessageRepository = {
     return rows.map((row) => JSON.parse(row.messageData) as AgentMessage);
   },
 
-  create: async (taskId: string, messageIndex: number, message: AgentMessage) => {
+  create: async (
+    taskId: string,
+    messageIndex: number,
+    message: AgentMessage,
+  ) => {
     return db
       .insertInto('agent_messages')
       .values({
@@ -27,7 +31,10 @@ export const AgentMessageRepository = {
   },
 
   deleteByTaskId: async (taskId: string) => {
-    return db.deleteFrom('agent_messages').where('taskId', '=', taskId).execute();
+    return db
+      .deleteFrom('agent_messages')
+      .where('taskId', '=', taskId)
+      .execute();
   },
 
   getMessageCount: async (taskId: string): Promise<number> => {

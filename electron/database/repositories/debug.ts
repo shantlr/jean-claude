@@ -57,12 +57,12 @@ export const DebugRepository = {
     if (search && search.trim()) {
       const searchTerm = `%${search.trim()}%`;
       const searchConditions = columns.map(
-        (col) => sql`CAST(${sql.ref(col)} AS TEXT) LIKE ${searchTerm}`
+        (col) => sql`CAST(${sql.ref(col)} AS TEXT) LIKE ${searchTerm}`,
       );
 
       if (searchConditions.length > 0) {
-        const combined = searchConditions.reduce((acc, cond) =>
-          sql`${acc} OR ${cond}`
+        const combined = searchConditions.reduce(
+          (acc, cond) => sql`${acc} OR ${cond}`,
         );
         query = query.where(sql`(${combined})`);
         countQuery = countQuery.where(sql`(${combined})`);

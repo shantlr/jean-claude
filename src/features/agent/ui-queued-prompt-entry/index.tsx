@@ -7,7 +7,10 @@ interface QueuedPromptEntryProps {
   onCancel: (promptId: string) => void;
 }
 
-export function QueuedPromptEntry({ prompt, onCancel }: QueuedPromptEntryProps) {
+export function QueuedPromptEntry({
+  prompt,
+  onCancel,
+}: QueuedPromptEntryProps) {
   return (
     <div className="relative pl-6 bg-neutral-800/30">
       {/* Dot - hollow/outline to indicate "queued/pending" */}

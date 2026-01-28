@@ -58,7 +58,10 @@ function ToolInputDisplay({
     case 'Read':
     case 'Edit': {
       const filePath = String(input.file_path || '');
-      const { displayPath, isExternal } = formatPathRelativeToWorktree(filePath, worktreePath);
+      const { displayPath, isExternal } = formatPathRelativeToWorktree(
+        filePath,
+        worktreePath,
+      );
       return (
         <code
           className={`block truncate text-sm ${
@@ -80,7 +83,11 @@ function ToolInputDisplay({
       );
 
     case 'WebSearch':
-      return <span className="text-sm text-neutral-300">{String(input.query || '')}</span>;
+      return (
+        <span className="text-sm text-neutral-300">
+          {String(input.query || '')}
+        </span>
+      );
 
     case 'WebFetch':
       return (
@@ -96,7 +103,10 @@ function ToolInputDisplay({
     case 'Task':
       return (
         <div className="text-sm text-neutral-300">
-          Launch <span className="font-medium text-yellow-400">{String(input.subagent_type)}</span>{' '}
+          Launch{' '}
+          <span className="font-medium text-yellow-400">
+            {String(input.subagent_type)}
+          </span>{' '}
           agent: {String(input.description || '')}
         </div>
       );
@@ -140,7 +150,9 @@ function ExitPlanModeDisplay({ input }: { input: Record<string, unknown> }) {
       )}
       {allowedPrompts?.length ? (
         <div>
-          <div className="mb-1 text-xs text-neutral-400">Requested permissions:</div>
+          <div className="mb-1 text-xs text-neutral-400">
+            Requested permissions:
+          </div>
           <ul className="list-inside list-disc space-y-0.5 text-sm text-neutral-300">
             {allowedPrompts.map((p, i) => (
               <li key={i}>
@@ -150,7 +162,9 @@ function ExitPlanModeDisplay({ input }: { input: Record<string, unknown> }) {
           </ul>
         </div>
       ) : !plan ? (
-        <span className="text-sm text-neutral-400">Submit plan for approval</span>
+        <span className="text-sm text-neutral-400">
+          Submit plan for approval
+        </span>
       ) : null}
     </div>
   );

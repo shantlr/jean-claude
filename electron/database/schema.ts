@@ -1,16 +1,15 @@
 import { Generated, Insertable, Selectable, Updateable } from 'kysely';
 
-import type {
-  ProviderType,
-  ProjectType,
-  TaskStatus,
-} from '../../shared/types';
+import type { ProviderType, ProjectType, TaskStatus } from '../../shared/types';
 
 // Re-export shared types for convenience
 export type {
   Provider,
   NewProvider,
   UpdateProvider,
+  Token,
+  NewToken,
+  UpdateToken,
   Project,
   NewProject,
   UpdateProject,
@@ -24,6 +23,7 @@ export type {
 
 // Database table types with Kysely's Generated for auto-generated columns
 export interface Database {
+  tokens: TokenTable;
   providers: ProviderTable;
   projects: ProjectTable;
   tasks: TaskTable;
@@ -31,12 +31,22 @@ export interface Database {
   settings: SettingsTable;
 }
 
+export interface TokenTable {
+  id: Generated<string>;
+  label: string;
+  tokenEncrypted: string;
+  providerType: ProviderType;
+  expiresAt: string | null;
+  createdAt: Generated<string>;
+  updatedAt: string;
+}
+
 export interface ProviderTable {
   id: Generated<string>;
   type: ProviderType;
   label: string;
   baseUrl: string;
-  token: string;
+  tokenId: string | null;
   createdAt: Generated<string>;
   updatedAt: string;
 }
@@ -86,6 +96,10 @@ export interface AgentMessageTable {
 }
 
 // Kysely-specific types for database operations
+export type TokenRow = Selectable<TokenTable>;
+export type NewTokenRow = Insertable<TokenTable>;
+export type UpdateTokenRow = Updateable<TokenTable>;
+
 export type ProviderRow = Selectable<ProviderTable>;
 export type NewProviderRow = Insertable<ProviderTable>;
 export type UpdateProviderRow = Updateable<ProviderTable>;

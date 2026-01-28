@@ -19,6 +19,9 @@ import type {
   Provider,
   NewProvider,
   UpdateProvider,
+  Token,
+  NewToken,
+  UpdateToken,
   InteractionMode,
   AppSettings,
 } from '../../shared/types';
@@ -113,7 +116,9 @@ export interface Api {
     findByProjectId: (projectId: string) => Promise<Task[]>;
     findById: (id: string) => Promise<Task | undefined>;
     create: (data: NewTask) => Promise<Task>;
-    createWithWorktree: (data: NewTask & { useWorktree: boolean }) => Promise<Task>;
+    createWithWorktree: (
+      data: NewTask & { useWorktree: boolean },
+    ) => Promise<Task>;
     update: (id: string, data: UpdateTask) => Promise<Task>;
     delete: (id: string) => Promise<void>;
     markAsRead: (id: string) => Promise<Task>;
@@ -126,20 +131,27 @@ export interface Api {
     reorder: (
       projectId: string,
       activeIds: string[],
-      completedIds: string[]
+      completedIds: string[],
     ) => Promise<Task[]>;
     worktree: {
       getDiff: (taskId: string) => Promise<WorktreeDiffResult>;
       getFileContent: (
         taskId: string,
         filePath: string,
-        status: 'added' | 'modified' | 'deleted'
+        status: 'added' | 'modified' | 'deleted',
       ) => Promise<WorktreeFileContent>;
       getStatus: (taskId: string) => Promise<WorktreeStatus>;
-      commit: (taskId: string, params: { message: string; stageAll: boolean }) => Promise<void>;
+      commit: (
+        taskId: string,
+        params: { message: string; stageAll: boolean },
+      ) => Promise<void>;
       merge: (
         taskId: string,
-        params: { targetBranch: string; squash?: boolean; commitMessage?: string }
+        params: {
+          targetBranch: string;
+          squash?: boolean;
+          commitMessage?: string;
+        },
       ) => Promise<MergeWorktreeResult>;
       getBranches: (taskId: string) => Promise<string[]>;
     };
@@ -152,8 +164,18 @@ export interface Api {
     delete: (id: string) => Promise<void>;
     getDetails: (providerId: string) => Promise<ProviderDetails>;
   };
+  tokens: {
+    findAll: () => Promise<Token[]>;
+    findById: (id: string) => Promise<Token | undefined>;
+    findByProviderType: (providerType: string) => Promise<Token[]>;
+    create: (data: NewToken) => Promise<Token>;
+    update: (id: string, data: UpdateToken) => Promise<Token>;
+    delete: (id: string) => Promise<void>;
+  };
   azureDevOps: {
-    getOrganizations: (token: string) => Promise<AzureDevOpsOrganization[]>;
+    getOrganizations: (tokenId: string) => Promise<AzureDevOpsOrganization[]>;
+    validateToken: (token: string) => Promise<AzureDevOpsOrganization[]>;
+    getTokenExpiration: (tokenId: string) => Promise<string | null>;
   };
   dialog: {
     openDirectory: () => Promise<string | null>;
@@ -161,11 +183,16 @@ export interface Api {
   };
   fs: {
     readPackageJson: (dirPath: string) => Promise<PackageJson | null>;
-    readFile: (filePath: string) => Promise<{ content: string; language: string } | null>;
+    readFile: (
+      filePath: string,
+    ) => Promise<{ content: string; language: string } | null>;
   };
   settings: {
     get: <K extends keyof AppSettings>(key: K) => Promise<AppSettings[K]>;
-    set: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => Promise<void>;
+    set: <K extends keyof AppSettings>(
+      key: K,
+      value: AppSettings[K],
+    ) => Promise<void>;
   };
   shell: {
     openInEditor: (dirPath: string) => Promise<void>;
@@ -177,19 +204,32 @@ export interface Api {
     respond: (
       taskId: string,
       requestId: string,
-      response: PermissionResponse | QuestionResponse
+      response: PermissionResponse | QuestionResponse,
     ) => Promise<void>;
     sendMessage: (taskId: string, message: string) => Promise<void>;
-    queuePrompt: (taskId: string, prompt: string) => Promise<{ promptId: string }>;
+    queuePrompt: (
+      taskId: string,
+      prompt: string,
+    ) => Promise<{ promptId: string }>;
     cancelQueuedPrompt: (taskId: string, promptId: string) => Promise<void>;
     getMessages: (taskId: string) => Promise<AgentMessage[]>;
     getMessageCount: (taskId: string) => Promise<number>;
-    onMessage: (callback: AgentEventCallback<AgentMessageEvent>) => UnsubscribeFn;
+    onMessage: (
+      callback: AgentEventCallback<AgentMessageEvent>,
+    ) => UnsubscribeFn;
     onStatus: (callback: AgentEventCallback<AgentStatusEvent>) => UnsubscribeFn;
-    onPermission: (callback: AgentEventCallback<AgentPermissionEvent>) => UnsubscribeFn;
-    onQuestion: (callback: AgentEventCallback<AgentQuestionEvent>) => UnsubscribeFn;
-    onNameUpdated: (callback: AgentEventCallback<AgentNameUpdatedEvent>) => UnsubscribeFn;
-    onQueueUpdate: (callback: AgentEventCallback<AgentQueueUpdateEvent>) => UnsubscribeFn;
+    onPermission: (
+      callback: AgentEventCallback<AgentPermissionEvent>,
+    ) => UnsubscribeFn;
+    onQuestion: (
+      callback: AgentEventCallback<AgentQuestionEvent>,
+    ) => UnsubscribeFn;
+    onNameUpdated: (
+      callback: AgentEventCallback<AgentNameUpdatedEvent>,
+    ) => UnsubscribeFn;
+    onQueueUpdate: (
+      callback: AgentEventCallback<AgentQueueUpdateEvent>,
+    ) => UnsubscribeFn;
   };
   debug: {
     getTableNames: () => Promise<string[]>;
@@ -216,8 +256,12 @@ export const api: Api = hasWindowApi
       projects: {
         findAll: async () => [],
         findById: async () => undefined,
-        create: async () => { throw new Error('API not available'); },
-        update: async () => { throw new Error('API not available'); },
+        create: async () => {
+          throw new Error('API not available');
+        },
+        update: async () => {
+          throw new Error('API not available');
+        },
         delete: async () => {},
         reorder: async () => [],
         getBranches: async () => [],
@@ -226,37 +270,93 @@ export const api: Api = hasWindowApi
         findAll: async () => [],
         findByProjectId: async () => [],
         findById: async () => undefined,
-        create: async () => { throw new Error('API not available'); },
-        createWithWorktree: async () => { throw new Error('API not available'); },
-        update: async () => { throw new Error('API not available'); },
+        create: async () => {
+          throw new Error('API not available');
+        },
+        createWithWorktree: async () => {
+          throw new Error('API not available');
+        },
+        update: async () => {
+          throw new Error('API not available');
+        },
         delete: async () => {},
-        markAsRead: async () => { throw new Error('API not available'); },
-        updateLastReadIndex: async () => { throw new Error('API not available'); },
-        setMode: async () => { throw new Error('API not available'); },
-        toggleUserCompleted: async () => { throw new Error('API not available'); },
-        clearUserCompleted: async () => { throw new Error('API not available'); },
-        addSessionAllowedTool: async () => { throw new Error('API not available'); },
-        removeSessionAllowedTool: async () => { throw new Error('API not available'); },
+        markAsRead: async () => {
+          throw new Error('API not available');
+        },
+        updateLastReadIndex: async () => {
+          throw new Error('API not available');
+        },
+        setMode: async () => {
+          throw new Error('API not available');
+        },
+        toggleUserCompleted: async () => {
+          throw new Error('API not available');
+        },
+        clearUserCompleted: async () => {
+          throw new Error('API not available');
+        },
+        addSessionAllowedTool: async () => {
+          throw new Error('API not available');
+        },
+        removeSessionAllowedTool: async () => {
+          throw new Error('API not available');
+        },
         reorder: async () => [],
         worktree: {
           getDiff: async () => ({ files: [] }),
-          getFileContent: async () => ({ oldContent: null, newContent: null, isBinary: false }),
-          getStatus: async () => ({ hasUncommittedChanges: false, hasStagedChanges: false, hasUnstagedChanges: false }),
+          getFileContent: async () => ({
+            oldContent: null,
+            newContent: null,
+            isBinary: false,
+          }),
+          getStatus: async () => ({
+            hasUncommittedChanges: false,
+            hasStagedChanges: false,
+            hasUnstagedChanges: false,
+          }),
           commit: async () => {},
-          merge: async () => ({ success: false, error: 'API not available' } as MergeWorktreeResult),
+          merge: async () =>
+            ({
+              success: false,
+              error: 'API not available',
+            }) as MergeWorktreeResult,
           getBranches: async () => [],
         },
       },
       providers: {
         findAll: async () => [],
         findById: async () => undefined,
-        create: async () => { throw new Error('API not available'); },
-        update: async () => { throw new Error('API not available'); },
+        create: async () => {
+          throw new Error('API not available');
+        },
+        update: async () => {
+          throw new Error('API not available');
+        },
         delete: async () => {},
-        getDetails: async () => { throw new Error('API not available'); },
+        getDetails: async () => {
+          throw new Error('API not available');
+        },
+      },
+      tokens: {
+        findAll: async () => [],
+        findById: async () => undefined,
+        findByProviderType: async () => [],
+        create: async () => {
+          throw new Error('API not available');
+        },
+        update: async () => {
+          throw new Error('API not available');
+        },
+        delete: async () => {},
       },
       azureDevOps: {
-        getOrganizations: async () => { throw new Error('API not available'); },
+        getOrganizations: async () => {
+          throw new Error('API not available');
+        },
+        validateToken: async () => {
+          throw new Error('API not available');
+        },
+        getTokenExpiration: async () => null,
       },
       dialog: {
         openDirectory: async () => null,
@@ -267,20 +367,36 @@ export const api: Api = hasWindowApi
         readFile: async () => null,
       },
       settings: {
-        get: async () => { throw new Error('API not available'); },
-        set: async () => { throw new Error('API not available'); },
+        get: async () => {
+          throw new Error('API not available');
+        },
+        set: async () => {
+          throw new Error('API not available');
+        },
       },
       shell: {
         openInEditor: async () => {},
         getAvailableEditors: async () => [],
       },
       agent: {
-        start: async () => { throw new Error('API not available'); },
-        stop: async () => { throw new Error('API not available'); },
-        respond: async () => { throw new Error('API not available'); },
-        sendMessage: async () => { throw new Error('API not available'); },
-        queuePrompt: async () => { throw new Error('API not available'); },
-        cancelQueuedPrompt: async () => { throw new Error('API not available'); },
+        start: async () => {
+          throw new Error('API not available');
+        },
+        stop: async () => {
+          throw new Error('API not available');
+        },
+        respond: async () => {
+          throw new Error('API not available');
+        },
+        sendMessage: async () => {
+          throw new Error('API not available');
+        },
+        queuePrompt: async () => {
+          throw new Error('API not available');
+        },
+        cancelQueuedPrompt: async () => {
+          throw new Error('API not available');
+        },
         getMessages: async () => [],
         getMessageCount: async () => 0,
         onMessage: () => () => {},
@@ -295,6 +411,9 @@ export const api: Api = hasWindowApi
         queryTable: async () => ({ columns: [], rows: [], total: 0 }),
       },
       usage: {
-        get: async () => ({ data: null, error: { type: 'api_error', message: 'API not available' } }),
+        get: async () => ({
+          data: null,
+          error: { type: 'api_error', message: 'API not available' },
+        }),
       },
     } as Api);

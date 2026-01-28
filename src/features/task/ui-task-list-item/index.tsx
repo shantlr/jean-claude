@@ -75,9 +75,14 @@ export function TaskListItem({ task, projectId, isActive }: TaskListItemProps) {
         )}
       </div>
       {task.worktreePath && (
-        <span className="flex items-center gap-1 text-xs text-neutral-500" title={getBranchFromWorktreePath(task.worktreePath)}>
+        <span
+          className="flex items-center gap-1 text-xs text-neutral-500"
+          title={getBranchFromWorktreePath(task.worktreePath)}
+        >
           <GitBranch className="h-3 w-3 shrink-0" />
-          <span className="truncate">{getBranchFromWorktreePath(task.worktreePath)}</span>
+          <span className="truncate">
+            {getBranchFromWorktreePath(task.worktreePath)}
+          </span>
         </span>
       )}
       <span className="text-xs text-neutral-500">

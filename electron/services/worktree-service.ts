@@ -81,7 +81,7 @@ function getWorktreesBaseDir(): string {
  */
 export async function getOrCreateProjectWorktreesPath(
   projectId: string,
-  projectName: string
+  projectName: string,
 ): Promise<string> {
   const project = await ProjectRepository.findById(projectId);
   if (!project) {
@@ -180,8 +180,15 @@ export function generateWorktreeNameFromTaskName(taskName: string): string {
  * Copies Claude local settings from source repo to destination worktree.
  * This ensures the worktree has the same Claude Code permissions.
  */
-async function copyClaudeLocalSettings(sourcePath: string, destPath: string): Promise<void> {
-  const sourceSettings = path.join(sourcePath, '.claude', 'settings.local.json');
+async function copyClaudeLocalSettings(
+  sourcePath: string,
+  destPath: string,
+): Promise<void> {
+  const sourceSettings = path.join(
+    sourcePath,
+    '.claude',
+    'settings.local.json',
+  );
 
   if (!(await pathExists(sourceSettings))) {
     return; // No local settings to copy
@@ -190,7 +197,10 @@ async function copyClaudeLocalSettings(sourcePath: string, destPath: string): Pr
   try {
     const destClaudeDir = path.join(destPath, '.claude');
     await fs.mkdir(destClaudeDir, { recursive: true });
-    await fs.copyFile(sourceSettings, path.join(destClaudeDir, 'settings.local.json'));
+    await fs.copyFile(
+      sourceSettings,
+      path.join(destClaudeDir, 'settings.local.json'),
+    );
   } catch (error) {
     console.warn('Failed to copy Claude local settings to worktree:', error);
     // Don't fail worktree creation for this
@@ -233,7 +243,7 @@ export interface WorktreeFileContent {
  */
 export async function getWorktreeDiff(
   worktreePath: string,
-  startCommitHash: string
+  startCommitHash: string,
 ): Promise<WorktreeDiffResult> {
   // Check if the worktree still exists
   if (!(await pathExists(worktreePath))) {
@@ -248,7 +258,7 @@ export async function getWorktreeDiff(
         cwd: worktreePath,
         encoding: 'utf-8',
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large diffs
-      }
+      },
     );
 
     const trimmedOutput = statusOutput.trim();
@@ -301,7 +311,7 @@ export async function getWorktreeFileContent(
   worktreePath: string,
   startCommitHash: string,
   filePath: string,
-  status: 'added' | 'modified' | 'deleted'
+  status: 'added' | 'modified' | 'deleted',
 ): Promise<WorktreeFileContent> {
   let oldContent: string | null = null;
   let newContent: string | null = null;
@@ -316,7 +326,7 @@ export async function getWorktreeFileContent(
           cwd: worktreePath,
           encoding: 'utf-8',
           maxBuffer: 5 * 1024 * 1024,
-        }
+        },
       );
       oldContent = stdout;
     } catch {
@@ -364,7 +374,7 @@ export async function createWorktree(
   projectId: string,
   projectName: string,
   prompt: string,
-  taskName?: string
+  taskName?: string,
 ): Promise<CreateWorktreeResult> {
   // Verify this is a git repository
   if (!(await isGitRepository(projectPath))) {
@@ -372,7 +382,10 @@ export async function createWorktree(
   }
 
   // Get or create the project's worktrees directory
-  const projectWorktreesPath = await getOrCreateProjectWorktreesPath(projectId, projectName);
+  const projectWorktreesPath = await getOrCreateProjectWorktreesPath(
+    projectId,
+    projectName,
+  );
 
   // Generate worktree name from task name (preferred) or prompt (fallback)
   const worktreeName = taskName
@@ -409,12 +422,17 @@ export async function createWorktree(
 /**
  * Gets the list of local branches for a git repository.
  */
-export async function getProjectBranches(projectPath: string): Promise<string[]> {
+export async function getProjectBranches(
+  projectPath: string,
+): Promise<string[]> {
   try {
-    const { stdout } = await execAsync('git branch --format="%(refname:short)"', {
-      cwd: projectPath,
-      encoding: 'utf-8',
-    });
+    const { stdout } = await execAsync(
+      'git branch --format="%(refname:short)"',
+      {
+        cwd: projectPath,
+        encoding: 'utf-8',
+      },
+    );
     return stdout
       .trim()
       .split('\n')
@@ -433,20 +451,28 @@ export interface WorktreeStatus {
 /**
  * Checks if a worktree has uncommitted changes.
  */
-export async function getWorktreeStatus(worktreePath: string): Promise<WorktreeStatus> {
+export async function getWorktreeStatus(
+  worktreePath: string,
+): Promise<WorktreeStatus> {
   try {
     // Check for staged changes
-    const { stdout: stagedOutput } = await execAsync('git diff --cached --name-only', {
-      cwd: worktreePath,
-      encoding: 'utf-8',
-    });
+    const { stdout: stagedOutput } = await execAsync(
+      'git diff --cached --name-only',
+      {
+        cwd: worktreePath,
+        encoding: 'utf-8',
+      },
+    );
     const hasStagedChanges = stagedOutput.trim().length > 0;
 
     // Check for unstaged changes (including untracked files)
-    const { stdout: unstagedOutput } = await execAsync('git status --porcelain', {
-      cwd: worktreePath,
-      encoding: 'utf-8',
-    });
+    const { stdout: unstagedOutput } = await execAsync(
+      'git status --porcelain',
+      {
+        cwd: worktreePath,
+        encoding: 'utf-8',
+      },
+    );
     const hasUnstagedChanges = unstagedOutput.trim().length > 0;
 
     return {
@@ -468,7 +494,9 @@ export interface CommitWorktreeParams {
 /**
  * Commits changes in a worktree.
  */
-export async function commitWorktreeChanges(params: CommitWorktreeParams): Promise<void> {
+export async function commitWorktreeChanges(
+  params: CommitWorktreeParams,
+): Promise<void> {
   const { worktreePath, message, stageAll } = params;
 
   try {
@@ -504,8 +532,16 @@ export interface MergeWorktreeResult {
  * Merges a worktree branch into target branch and deletes the worktree.
  * Supports both regular merge and squash merge with custom commit message.
  */
-export async function mergeWorktree(params: MergeWorktreeParams): Promise<MergeWorktreeResult> {
-  const { worktreePath, projectPath, targetBranch, squash = false, commitMessage } = params;
+export async function mergeWorktree(
+  params: MergeWorktreeParams,
+): Promise<MergeWorktreeResult> {
+  const {
+    worktreePath,
+    projectPath,
+    targetBranch,
+    squash = false,
+    commitMessage,
+  } = params;
 
   // Check if worktree still exists before attempting operations
   if (!(await pathExists(worktreePath))) {
@@ -514,10 +550,13 @@ export async function mergeWorktree(params: MergeWorktreeParams): Promise<MergeW
 
   try {
     // Get the branch name of the worktree
-    const { stdout: branchOutput } = await execAsync('git rev-parse --abbrev-ref HEAD', {
-      cwd: worktreePath,
-      encoding: 'utf-8',
-    });
+    const { stdout: branchOutput } = await execAsync(
+      'git rev-parse --abbrev-ref HEAD',
+      {
+        cwd: worktreePath,
+        encoding: 'utf-8',
+      },
+    );
     const worktreeBranch = branchOutput.trim();
 
     // Switch to target branch in main repo
@@ -534,7 +573,8 @@ export async function mergeWorktree(params: MergeWorktreeParams): Promise<MergeW
       });
 
       // Commit the squashed changes with the provided message
-      const message = commitMessage || `Squash merge branch '${worktreeBranch}'`;
+      const message =
+        commitMessage || `Squash merge branch '${worktreeBranch}'`;
       await execAsync(`git commit -m ${JSON.stringify(message)}`, {
         cwd: projectPath,
         encoding: 'utf-8',
@@ -548,10 +588,13 @@ export async function mergeWorktree(params: MergeWorktreeParams): Promise<MergeW
     }
 
     // Remove the worktree
-    await execAsync(`git worktree remove ${JSON.stringify(worktreePath)} --force`, {
-      cwd: projectPath,
-      encoding: 'utf-8',
-    });
+    await execAsync(
+      `git worktree remove ${JSON.stringify(worktreePath)} --force`,
+      {
+        cwd: projectPath,
+        encoding: 'utf-8',
+      },
+    );
 
     // Force delete the branch (use -D to handle edge cases where git thinks branch isn't fully merged)
     await execAsync(`git branch -D ${JSON.stringify(worktreeBranch)}`, {
@@ -564,10 +607,14 @@ export async function mergeWorktree(params: MergeWorktreeParams): Promise<MergeW
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     // Check if it's a merge conflict
-    if (errorMessage.includes('CONFLICT') || errorMessage.includes('Automatic merge failed')) {
+    if (
+      errorMessage.includes('CONFLICT') ||
+      errorMessage.includes('Automatic merge failed')
+    ) {
       return {
         success: false,
-        error: 'Merge failed due to conflicts. Resolve manually in your editor.',
+        error:
+          'Merge failed due to conflicts. Resolve manually in your editor.',
       };
     }
 

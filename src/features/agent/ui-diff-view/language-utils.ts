@@ -1,4 +1,4 @@
-import { BundledLanguage, SpecialLanguage } from "shiki";
+import { BundledLanguage, SpecialLanguage } from 'shiki';
 
 /**
  * Map file extensions to Shiki language identifiers.
@@ -44,10 +44,14 @@ const LANGUAGE_MAP: Record<string, BundledLanguage | SpecialLanguage> = {
  * Get Shiki language identifier from a file path.
  * Returns 'text' if the extension is not recognized.
  */
-export function getLanguageFromPath(filePath: string): BundledLanguage | SpecialLanguage {
+export function getLanguageFromPath(
+  filePath: string,
+): BundledLanguage | SpecialLanguage {
   // Extract extension from path (handle paths like "Dockerfile" with no extension)
   const filename = filePath.split('/').pop() || filePath;
-  const ext = filename.includes('.') ? filename.split('.').pop()?.toLowerCase() : filename.toLowerCase();
+  const ext = filename.includes('.')
+    ? filename.split('.').pop()?.toLowerCase()
+    : filename.toLowerCase();
 
   if (!ext) return 'text';
 

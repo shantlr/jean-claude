@@ -16,6 +16,7 @@ import * as m014 from './migrations/014_project_worktrees_path';
 import * as m015 from './migrations/015_task_sort_order';
 import * as m016 from './migrations/016_project_default_branch';
 import * as m017 from './migrations/017_task_branch_name';
+import * as m018 from './migrations/018_tokens_and_providers_rework';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -34,6 +35,7 @@ const migrations: Record<string, Migration> = {
   '015_task_sort_order': m015,
   '016_project_default_branch': m016,
   '017_task_branch_name': m017,
+  '018_tokens_and_providers_rework': m018,
 };
 
 export const migrationProvider: MigrationProvider = {

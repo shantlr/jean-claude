@@ -215,7 +215,6 @@ export function ProjectSidebar() {
           </div>
         )}
       </div>
-
     </aside>
   );
 }

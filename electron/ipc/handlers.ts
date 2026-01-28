@@ -26,11 +26,14 @@ import {
   type InteractionMode,
   type EditorSetting,
   type AppSettings,
+  type NewToken,
+  type UpdateToken,
 } from '../../shared/types';
 import {
   ProjectRepository,
   TaskRepository,
   ProviderRepository,
+  TokenRepository,
   SettingsRepository,
   DebugRepository,
 } from '../database/repositories';
@@ -44,7 +47,12 @@ import {
 } from '../database/schema';
 import { agentService } from '../services/agent-service';
 import { agentUsageService } from '../services/agent-usage-service';
-import { getOrganizations, getProviderDetails } from '../services/azure-devops-service';
+import {
+  getOrganizationsByTokenId,
+  validateTokenAndGetOrganizations,
+  getTokenExpiration,
+  getProviderDetails,
+} from '../services/azure-devops-service';
 import { generateTaskName } from '../services/name-generation-service';
 import {
   createWorktree,
@@ -118,13 +126,14 @@ export function registerIpcHandlers() {
       }
 
       // Create the worktree using the generated task name
-      const { worktreePath, startCommitHash, branchName } = await createWorktree(
-        project.path,
-        project.id,
-        project.name,
-        taskData.prompt,
-        taskName ?? undefined
-      );
+      const { worktreePath, startCommitHash, branchName } =
+        await createWorktree(
+          project.path,
+          project.id,
+          project.name,
+          taskData.prompt,
+          taskName ?? undefined,
+        );
 
       // Create the task with worktree info and generated name
       return TaskRepository.create({
@@ -134,7 +143,7 @@ export function registerIpcHandlers() {
         startCommitHash,
         branchName,
       });
-    }
+    },
   );
   ipcMain.handle('tasks:update', (_, id: string, data: UpdateTask) =>
     TaskRepository.update(id, data),
@@ -143,26 +152,28 @@ export function registerIpcHandlers() {
   ipcMain.handle('tasks:markAsRead', (_, id: string) =>
     TaskRepository.markAsRead(id),
   );
-  ipcMain.handle('tasks:updateLastReadIndex', (_, id: string, lastReadIndex: number) =>
-    TaskRepository.updateLastReadIndex(id, lastReadIndex),
+  ipcMain.handle(
+    'tasks:updateLastReadIndex',
+    (_, id: string, lastReadIndex: number) =>
+      TaskRepository.updateLastReadIndex(id, lastReadIndex),
   );
   ipcMain.handle(
     'tasks:setMode',
     async (_, taskId: string, mode: InteractionMode) => {
       await agentService.setMode(taskId, mode);
       return TaskRepository.findById(taskId);
-    }
+    },
   );
   ipcMain.handle('tasks:toggleUserCompleted', (_, id: string) =>
-    TaskRepository.toggleUserCompleted(id)
+    TaskRepository.toggleUserCompleted(id),
   );
   ipcMain.handle('tasks:clearUserCompleted', (_, id: string) =>
-    TaskRepository.clearUserCompleted(id)
+    TaskRepository.clearUserCompleted(id),
   );
   ipcMain.handle(
     'tasks:reorder',
     (_, projectId: string, activeIds: string[], completedIds: string[]) =>
-      TaskRepository.reorder(projectId, activeIds, completedIds)
+      TaskRepository.reorder(projectId, activeIds, completedIds),
   );
   // Tools that can be session-allowed (security validation)
   const SESSION_ALLOWABLE_TOOLS = ['Edit', 'Write'] as const;
@@ -172,9 +183,13 @@ export function registerIpcHandlers() {
     async (_, taskId: string, toolName: string) => {
       // Validate that the tool is allowed to be session-allowed
       if (
-        !SESSION_ALLOWABLE_TOOLS.includes(toolName as (typeof SESSION_ALLOWABLE_TOOLS)[number])
+        !SESSION_ALLOWABLE_TOOLS.includes(
+          toolName as (typeof SESSION_ALLOWABLE_TOOLS)[number],
+        )
       ) {
-        console.warn(`[IPC] Tool "${toolName}" is not allowed to be session-allowed`);
+        console.warn(
+          `[IPC] Tool "${toolName}" is not allowed to be session-allowed`,
+        );
         return TaskRepository.findById(taskId);
       }
 
@@ -186,7 +201,7 @@ export function registerIpcHandlers() {
         });
       }
       return TaskRepository.findById(taskId);
-    }
+    },
   );
   ipcMain.handle(
     'tasks:removeSessionAllowedTool',
@@ -197,7 +212,7 @@ export function registerIpcHandlers() {
         sessionAllowedTools: currentTools.filter((t) => t !== toolName),
       });
       return TaskRepository.findById(taskId);
-    }
+    },
   );
 
   // Task worktree operations - resolve paths internally from taskId
@@ -215,14 +230,19 @@ export function registerIpcHandlers() {
       _,
       taskId: string,
       filePath: string,
-      status: 'added' | 'modified' | 'deleted'
+      status: 'added' | 'modified' | 'deleted',
     ) => {
       const task = await TaskRepository.findById(taskId);
       if (!task?.worktreePath || !task?.startCommitHash) {
         throw new Error(`Task ${taskId} does not have a worktree`);
       }
-      return getWorktreeFileContent(task.worktreePath, task.startCommitHash, filePath, status);
-    }
+      return getWorktreeFileContent(
+        task.worktreePath,
+        task.startCommitHash,
+        filePath,
+        status,
+      );
+    },
   );
 
   ipcMain.handle('tasks:worktree:getStatus', async (_, taskId: string) => {
@@ -235,13 +255,20 @@ export function registerIpcHandlers() {
 
   ipcMain.handle(
     'tasks:worktree:commit',
-    async (_, taskId: string, params: { message: string; stageAll: boolean }) => {
+    async (
+      _,
+      taskId: string,
+      params: { message: string; stageAll: boolean },
+    ) => {
       const task = await TaskRepository.findById(taskId);
       if (!task?.worktreePath) {
         throw new Error(`Task ${taskId} does not have a worktree`);
       }
-      return commitWorktreeChanges({ worktreePath: task.worktreePath, ...params });
-    }
+      return commitWorktreeChanges({
+        worktreePath: task.worktreePath,
+        ...params,
+      });
+    },
   );
 
   ipcMain.handle(
@@ -249,7 +276,11 @@ export function registerIpcHandlers() {
     async (
       _,
       taskId: string,
-      params: { targetBranch: string; squash?: boolean; commitMessage?: string }
+      params: {
+        targetBranch: string;
+        squash?: boolean;
+        commitMessage?: string;
+      },
     ) => {
       const task = await TaskRepository.findById(taskId);
       if (!task?.worktreePath) {
@@ -266,7 +297,7 @@ export function registerIpcHandlers() {
         squash: params.squash,
         commitMessage: params.commitMessage,
       });
-    }
+    },
   );
 
   ipcMain.handle('tasks:worktree:getBranches', async (_, taskId: string) => {
@@ -296,14 +327,38 @@ export function registerIpcHandlers() {
     ProviderRepository.delete(id),
   );
 
-  // Azure DevOps
-  ipcMain.handle('azureDevOps:getOrganizations', (_, token: string) =>
-    getOrganizations(token)
-  );
-
   // Provider details (fetches projects/repos for a provider)
   ipcMain.handle('providers:getDetails', (_, providerId: string) =>
-    getProviderDetails(providerId)
+    getProviderDetails(providerId),
+  );
+
+  // Tokens
+  ipcMain.handle('tokens:findAll', () => TokenRepository.findAll());
+  ipcMain.handle('tokens:findById', (_, id: string) =>
+    TokenRepository.findById(id),
+  );
+  ipcMain.handle('tokens:findByProviderType', (_, providerType: string) =>
+    TokenRepository.findByProviderType(providerType),
+  );
+  ipcMain.handle('tokens:create', (_, data: NewToken) =>
+    TokenRepository.create(data),
+  );
+  ipcMain.handle('tokens:update', (_, id: string, data: UpdateToken) =>
+    TokenRepository.update(id, data),
+  );
+  ipcMain.handle('tokens:delete', (_, id: string) =>
+    TokenRepository.delete(id),
+  );
+
+  // Azure DevOps
+  ipcMain.handle('azureDevOps:getOrganizations', (_, tokenId: string) =>
+    getOrganizationsByTokenId(tokenId),
+  );
+  ipcMain.handle('azureDevOps:validateToken', (_, token: string) =>
+    validateTokenAndGetOrganizations(token),
+  );
+  ipcMain.handle('azureDevOps:getTokenExpiration', (_, tokenId: string) =>
+    getTokenExpiration(tokenId),
   );
 
   // Dialog
@@ -394,31 +449,31 @@ export function registerIpcHandlers() {
       _,
       taskId: string,
       requestId: string,
-      response: PermissionResponse | QuestionResponse
+      response: PermissionResponse | QuestionResponse,
     ) => {
       return agentService.respond(taskId, requestId, response);
-    }
+    },
   );
 
   ipcMain.handle(
     AGENT_CHANNELS.SEND_MESSAGE,
     (_, taskId: string, message: string) => {
       return agentService.sendMessage(taskId, message);
-    }
+    },
   );
 
   ipcMain.handle(
     AGENT_CHANNELS.QUEUE_PROMPT,
     (_, taskId: string, prompt: string) => {
       return agentService.queuePrompt(taskId, prompt);
-    }
+    },
   );
 
   ipcMain.handle(
     AGENT_CHANNELS.CANCEL_QUEUED_PROMPT,
     (_, taskId: string, promptId: string) => {
       return agentService.cancelQueuedPrompt(taskId, promptId);
-    }
+    },
   );
 
   ipcMain.handle(AGENT_CHANNELS.GET_MESSAGES, (_, taskId: string) => {
@@ -447,7 +502,7 @@ export function registerIpcHandlers() {
       PRESET_EDITORS.map(async (editor) => ({
         id: editor.id,
         available: await isEditorAvailable(editor),
-      }))
+      })),
     );
     return results;
   });
@@ -489,13 +544,15 @@ export function registerIpcHandlers() {
         search?: string;
         limit: number;
         offset: number;
-      }
-    ) => DebugRepository.queryTable(params)
+      },
+    ) => DebugRepository.queryTable(params),
   );
 }
 
 // Helper: check if an editor is available
-async function isEditorAvailable(editor: (typeof PRESET_EDITORS)[number]): Promise<boolean> {
+async function isEditorAvailable(
+  editor: (typeof PRESET_EDITORS)[number],
+): Promise<boolean> {
   try {
     await execAsync(`which ${editor.command}`);
     return true;

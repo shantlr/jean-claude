@@ -16,17 +16,18 @@ export function useTaskMessages(taskId: string) {
 
   const fetchMessages = useCallback(() => {
     fetchingRef.current = taskId;
-    Promise.all([api.agent.getMessages(taskId), api.tasks.findById(taskId)]).then(
-      ([messages, task]) => {
-        if (task) {
-          loadTask(taskId, messages, task.status);
-        }
-        // Clear fetching ref after load completes
-        if (fetchingRef.current === taskId) {
-          fetchingRef.current = null;
-        }
+    Promise.all([
+      api.agent.getMessages(taskId),
+      api.tasks.findById(taskId),
+    ]).then(([messages, task]) => {
+      if (task) {
+        loadTask(taskId, messages, task.status);
       }
-    );
+      // Clear fetching ref after load completes
+      if (fetchingRef.current === taskId) {
+        fetchingRef.current = null;
+      }
+    });
   }, [taskId, loadTask]);
 
   const refetch = useCallback(() => {
@@ -59,7 +60,7 @@ export function useTaskMessages(taskId: string) {
           if (backendCount !== frontendCount) {
             // Out of sync - reload from backend
             console.log(
-              `[useTaskMessages] Sync mismatch for task ${taskId}: frontend=${frontendCount}, backend=${backendCount}. Reloading.`
+              `[useTaskMessages] Sync mismatch for task ${taskId}: frontend=${frontendCount}, backend=${backendCount}. Reloading.`,
             );
             fetchMessages();
           }

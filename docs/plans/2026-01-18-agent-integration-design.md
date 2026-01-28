@@ -31,21 +31,21 @@ Claude Agent SDK integration for task execution with real-time streaming, permis
 
 ### Events (Main → Renderer)
 
-| Channel | Payload | When |
-|---------|---------|------|
-| `agent:message` | `{ taskId, message: SDKMessage }` | Each streamed message from SDK |
-| `agent:status` | `{ taskId, status, error? }` | Status changes (running/waiting/completed/errored) |
-| `agent:permission` | `{ taskId, toolName, input, requestId }` | Tool needs approval |
-| `agent:question` | `{ taskId, questions, requestId }` | AskUserQuestion triggered |
+| Channel            | Payload                                  | When                                               |
+| ------------------ | ---------------------------------------- | -------------------------------------------------- |
+| `agent:message`    | `{ taskId, message: SDKMessage }`        | Each streamed message from SDK                     |
+| `agent:status`     | `{ taskId, status, error? }`             | Status changes (running/waiting/completed/errored) |
+| `agent:permission` | `{ taskId, toolName, input, requestId }` | Tool needs approval                                |
+| `agent:question`   | `{ taskId, questions, requestId }`       | AskUserQuestion triggered                          |
 
 ### Invoke (Renderer → Main)
 
-| Channel | Params | Returns | Purpose |
-|---------|--------|---------|---------|
-| `agent:start` | `{ taskId }` | `void` | Start agent for task |
-| `agent:stop` | `{ taskId }` | `void` | Interrupt running agent |
-| `agent:respond` | `{ taskId, requestId, response }` | `void` | Answer permission or question |
-| `agent:sendMessage` | `{ taskId, message }` | `void` | Send follow-up prompt |
+| Channel             | Params                            | Returns | Purpose                       |
+| ------------------- | --------------------------------- | ------- | ----------------------------- |
+| `agent:start`       | `{ taskId }`                      | `void`  | Start agent for task          |
+| `agent:stop`        | `{ taskId }`                      | `void`  | Interrupt running agent       |
+| `agent:respond`     | `{ taskId, requestId, response }` | `void`  | Answer permission or question |
+| `agent:sendMessage` | `{ taskId, message }`             | `void`  | Send follow-up prompt         |
 
 ## Agent Service
 
@@ -112,20 +112,20 @@ interface ActiveSession {
 
 ### SDK Message Types
 
-| Type | Subtype | Rendering |
-|------|---------|-----------|
-| `system` | `init` | Nothing (internal, captures sessionId) |
-| `assistant` | - | Claude's response with content blocks |
-| `user` | - | User messages (for replay/display) |
-| `result` | - | Final result with cost/usage summary |
+| Type        | Subtype | Rendering                              |
+| ----------- | ------- | -------------------------------------- |
+| `system`    | `init`  | Nothing (internal, captures sessionId) |
+| `assistant` | -       | Claude's response with content blocks  |
+| `user`      | -       | User messages (for replay/display)     |
+| `result`    | -       | Final result with cost/usage summary   |
 
 ### Content Blocks
 
-| Block type | Rendering |
-|------------|-----------|
-| `text` | Markdown with syntax highlighting |
-| `tool_use` | Collapsible card showing tool name + input |
-| `tool_result` | Tool output (code blocks, text, errors) |
+| Block type    | Rendering                                  |
+| ------------- | ------------------------------------------ |
+| `text`        | Markdown with syntax highlighting          |
+| `tool_use`    | Collapsible card showing tool name + input |
+| `tool_result` | Tool output (code blocks, text, errors)    |
 
 ### Libraries
 
@@ -149,18 +149,18 @@ interface ActiveSession {
 
 ### IPC
 
-| Channel | Params | Returns |
-|---------|--------|---------|
+| Channel      | Params                  | Returns                 |
+| ------------ | ----------------------- | ----------------------- |
 | `files:read` | `{ path, projectPath }` | `{ content, language }` |
 
 ## Notifications
 
-| Event | Notification |
-|-------|--------------|
+| Event              | Notification            |
+| ------------------ | ----------------------- |
 | Permission request | "Task X needs approval" |
-| AskUserQuestion | "Task X has a question" |
-| Task completed | "Task X completed" |
-| Task errored | "Task X failed" |
+| AskUserQuestion    | "Task X has a question" |
+| Task completed     | "Task X completed"      |
+| Task errored       | "Task X failed"         |
 
 - Only notify when app window is not focused
 - Click focuses app and navigates to task

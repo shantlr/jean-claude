@@ -28,7 +28,9 @@ export function MergeSuccessDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-md rounded-lg bg-neutral-800 shadow-xl">
         <div className="flex items-center justify-between border-b border-neutral-700 px-4 py-3">
-          <h2 className="text-lg font-semibold text-neutral-100">Worktree Merged</h2>
+          <h2 className="text-lg font-semibold text-neutral-100">
+            Worktree Merged
+          </h2>
           <button
             onClick={() => onClose(false)}
             className="rounded p-1 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"

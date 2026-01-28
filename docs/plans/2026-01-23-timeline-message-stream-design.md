@@ -7,11 +7,13 @@ Rework the message stream from a chat-style layout to a compact vertical timelin
 ## Visual Structure
 
 **Layout:**
+
 - Left side: vertical line (thin, neutral-700) with dots at each entry
 - Dots: small circles (8px) - purple for agent, blue for user
 - Right side: compact content with action summary + expandable details
 
 **Entry anatomy:**
+
 ```
 ● Read src/components/Button.tsx (142 lines)        [collapsed]
 │
@@ -29,6 +31,7 @@ Rework the message stream from a chat-style layout to a compact vertical timelin
 ## Entry Types & Summaries
 
 **Tool entries:**
+
 - `Read` → "Read `filename.tsx` (142 lines)"
 - `Edit` → "Edited `filename.tsx` (+3/-1 lines)"
 - `Write` → "Created `filename.tsx` (85 lines)"
@@ -40,25 +43,30 @@ Rework the message stream from a chat-style layout to a compact vertical timelin
 - Other tools → "Used `ToolName`"
 
 **Text entries (agent thinking/responses):**
+
 - First ~60 chars of text, truncated with "..."
 - e.g., "Let me check the configuration file to understand..."
 
 **User entries:**
+
 - Their prompt text, truncated if long
 - Blue dot, subtle background tint to distinguish
 
 **Result entry (session complete):**
+
 - "Session complete ($0.0234, 12.3s)"
 - Expandable to show full result summary
 
 ## Interaction & Expansion
 
 **Collapsed state (default):**
+
 - Single line per entry
 - Cursor: pointer to indicate clickable
 - Subtle hover state (slightly lighter background)
 
 **Expanded state:**
+
 - Clicking toggles expansion
 - Content appears below the summary line, indented to align with text (past the dot/line)
 - For tools: shows full input/output (file contents, command output, etc.)
@@ -66,18 +74,22 @@ Rework the message stream from a chat-style layout to a compact vertical timelin
 - For user: shows full prompt
 
 **Visual indicator:**
+
 - Small chevron (right when collapsed, down when expanded) on the right side
 
 **Auto-scroll behavior:**
+
 - Keep existing logic: auto-scroll to bottom when near bottom, respect user scroll position otherwise
 
 ## Component Structure
 
 **Files to modify:**
+
 - `src/features/agent/ui-message-stream/index.tsx` - Replace chat layout with timeline layout
 - `src/features/agent/ui-agent-message/index.tsx` - Replace with new `ui-timeline-entry/` component
 
 **New structure:**
+
 ```
 ui-message-stream/
   index.tsx              # Timeline container (vertical line, scroll, auto-scroll logic)
@@ -88,6 +100,7 @@ ui-timeline-entry/
 ```
 
 **Key changes:**
+
 - Remove avatar circles, "You"/"Claude" labels
 - Add vertical line + dots
 - Add expand/collapse state per entry

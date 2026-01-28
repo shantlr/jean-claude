@@ -13,7 +13,9 @@ export function OrganizationList({
 }) {
   const { data: providers = [] } = useProviders();
 
-  const azureDevOpsProviders = providers.filter((p) => p.type === 'azure-devops');
+  const azureDevOpsProviders = providers.filter(
+    (p) => p.type === 'azure-devops',
+  );
 
   if (azureDevOpsProviders.length === 0) {
     return (

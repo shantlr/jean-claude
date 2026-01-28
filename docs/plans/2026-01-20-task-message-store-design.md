@@ -3,6 +3,7 @@
 ## Overview
 
 Rework how task messages are stored on the frontend to enable:
+
 1. **Unread badges** on task list items
 2. **Fast task switching** — messages stay in memory, no re-fetch on every view
 3. **Global message listening** — receive messages from any running task, not just the focused one
@@ -10,6 +11,7 @@ Rework how task messages are stored on the frontend to enable:
 ## Current State
 
 Messages are managed in local React state within `useAgentStream` hook. This means:
+
 - Messages are lost when navigating away from a task
 - Must re-fetch from DB every time task page mounts
 - No way to show unread counts without loading the full task
@@ -38,10 +40,17 @@ interface TaskMessagesStore {
   cacheLimit: number; // default 10, configurable later
 
   // Actions
-  loadTask: (taskId: string, messages: AgentMessage[], status: TaskStatus) => void;
+  loadTask: (
+    taskId: string,
+    messages: AgentMessage[],
+    status: TaskStatus,
+  ) => void;
   appendMessage: (taskId: string, message: AgentMessage) => void;
   setStatus: (taskId: string, status: TaskStatus, error?: string) => void;
-  setPermission: (taskId: string, permission: AgentPermissionEvent | null) => void;
+  setPermission: (
+    taskId: string,
+    permission: AgentPermissionEvent | null,
+  ) => void;
   setQuestion: (taskId: string, question: AgentQuestionEvent | null) => void;
   touchTask: (taskId: string) => void;
   unloadTask: (taskId: string) => void;
@@ -59,6 +68,7 @@ interface TaskMessagesStore {
 - **Default cache limit: 10** — will be configurable in settings later
 
 Eviction happens in `loadTask` action:
+
 1. Check count of inactive (non-running) loaded tasks
 2. If exceeding limit, sort by `lastAccessedAt` ascending
 3. Evict oldest until under limit
@@ -71,7 +81,8 @@ A `TaskMessageManager` component mounts at app root and subscribes to all IPC ev
 // src/features/agent/task-message-manager/index.tsx
 
 export function TaskMessageManager() {
-  const { appendMessage, setStatus, setPermission, setQuestion, isLoaded } = useTaskMessagesStore();
+  const { appendMessage, setStatus, setPermission, setQuestion, isLoaded } =
+    useTaskMessagesStore();
 
   useEffect(() => {
     const unsubs = [
@@ -110,17 +121,19 @@ Mount in root layout alongside providers.
 #### Database: `lastReadIndex` Column
 
 Add to `tasks` table:
+
 - Column: `lastReadIndex INTEGER DEFAULT -1`
 - `-1` means no messages have been read (all are unread)
 
 Repository additions:
+
 - `updateLastReadIndex(taskId: string, index: number)` — called when user views a task
 - `findByProjectId` modified to include `messageCount` via subquery
 
 #### Calculating Unread Count
 
 ```typescript
-const unreadCount = Math.max(0, (messageCount - 1) - lastReadIndex);
+const unreadCount = Math.max(0, messageCount - 1 - lastReadIndex);
 ```
 
 - For task list: use `task.messageCount` from DB query
@@ -129,6 +142,7 @@ const unreadCount = Math.max(0, (messageCount - 1) - lastReadIndex);
 #### When to Mark as Read
 
 When task page mounts or receives focus, call:
+
 ```typescript
 api.tasks.updateLastReadIndex(taskId, messages.length - 1);
 ```
@@ -149,12 +163,11 @@ export function useTaskMessages(taskId: string) {
   useEffect(() => {
     if (!isLoaded) {
       // Fetch from DB and load into store
-      Promise.all([
-        api.agent.getMessages(taskId),
-        api.tasks.get(taskId),
-      ]).then(([messages, task]) => {
-        loadTask(taskId, messages, task.status);
-      });
+      Promise.all([api.agent.getMessages(taskId), api.tasks.get(taskId)]).then(
+        ([messages, task]) => {
+          loadTask(taskId, messages, task.status);
+        },
+      );
     } else {
       touchTask(taskId);
     }
@@ -175,26 +188,26 @@ export function useTaskMessages(taskId: string) {
 
 ### New Files
 
-| File | Purpose |
-|------|---------|
-| `src/stores/task-messages.ts` | Zustand store for task state |
-| `src/features/agent/task-message-manager/index.tsx` | Global IPC listener component |
-| `src/hooks/use-task-messages.ts` | Hook to access/load task from store |
-| `electron/database/migrations/005_task_last_read_index.ts` | Migration for `lastReadIndex` |
+| File                                                       | Purpose                             |
+| ---------------------------------------------------------- | ----------------------------------- |
+| `src/stores/task-messages.ts`                              | Zustand store for task state        |
+| `src/features/agent/task-message-manager/index.tsx`        | Global IPC listener component       |
+| `src/hooks/use-task-messages.ts`                           | Hook to access/load task from store |
+| `electron/database/migrations/005_task_last_read_index.ts` | Migration for `lastReadIndex`       |
 
 ### Modified Files
 
-| File | Changes |
-|------|---------|
-| `electron/database/schema.ts` | Add `lastReadIndex` to `TaskTable` |
-| `electron/database/repositories/tasks.ts` | Add `messageCount` subquery, `updateLastReadIndex` method |
-| `electron/ipc/handlers.ts` | Add handler for `tasks:updateLastReadIndex` |
-| `electron/preload.ts` | Expose `updateLastReadIndex` |
-| `src/lib/api.ts` | Add type for `updateLastReadIndex` |
-| `src/hooks/use-agent.ts` | Refactor to use store, remove local message state |
-| `src/routes/projects/$projectId/tasks/$taskId.tsx` | Use new hooks, mark as read on mount |
-| `src/routes/__root.tsx` | Mount `TaskMessageManager` |
-| Task list component | Display unread badge |
+| File                                               | Changes                                                   |
+| -------------------------------------------------- | --------------------------------------------------------- |
+| `electron/database/schema.ts`                      | Add `lastReadIndex` to `TaskTable`                        |
+| `electron/database/repositories/tasks.ts`          | Add `messageCount` subquery, `updateLastReadIndex` method |
+| `electron/ipc/handlers.ts`                         | Add handler for `tasks:updateLastReadIndex`               |
+| `electron/preload.ts`                              | Expose `updateLastReadIndex`                              |
+| `src/lib/api.ts`                                   | Add type for `updateLastReadIndex`                        |
+| `src/hooks/use-agent.ts`                           | Refactor to use store, remove local message state         |
+| `src/routes/projects/$projectId/tasks/$taskId.tsx` | Use new hooks, mark as read on mount                      |
+| `src/routes/__root.tsx`                            | Mount `TaskMessageManager`                                |
+| Task list component                                | Display unread badge                                      |
 
 ## Data Flow
 

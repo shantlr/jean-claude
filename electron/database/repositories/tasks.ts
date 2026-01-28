@@ -38,18 +38,30 @@ interface UpdateTaskInput {
 }
 
 // Convert SQLite's 0/1 to boolean for userCompleted, and JSON string to array for sessionAllowedTools
-function toTask<T extends TaskRow>(row: T): Omit<T, 'userCompleted' | 'sessionAllowedTools'> & { userCompleted: boolean; sessionAllowedTools: string[] } {
+function toTask<T extends TaskRow>(
+  row: T,
+): Omit<T, 'userCompleted' | 'sessionAllowedTools'> & {
+  userCompleted: boolean;
+  sessionAllowedTools: string[];
+} {
   const { userCompleted, sessionAllowedTools, ...rest } = row;
   return {
     ...rest,
     userCompleted: Boolean(userCompleted),
-    sessionAllowedTools: sessionAllowedTools ? JSON.parse(sessionAllowedTools) : [],
+    sessionAllowedTools: sessionAllowedTools
+      ? JSON.parse(sessionAllowedTools)
+      : [],
   };
 }
 
 function toTaskOrUndefined<T extends TaskRow>(
-  row: T | undefined
-): (Omit<T, 'userCompleted' | 'sessionAllowedTools'> & { userCompleted: boolean; sessionAllowedTools: string[] }) | undefined {
+  row: T | undefined,
+):
+  | (Omit<T, 'userCompleted' | 'sessionAllowedTools'> & {
+      userCompleted: boolean;
+      sessionAllowedTools: string[];
+    })
+  | undefined {
   return row ? toTask(row) : undefined;
 }
 
@@ -58,8 +70,12 @@ function toDbValues(data: CreateTaskInput): NewTaskRow {
   const { userCompleted, sessionAllowedTools, ...rest } = data;
   return {
     ...rest,
-    ...(userCompleted !== undefined && { userCompleted: userCompleted ? 1 : 0 }),
-    ...(sessionAllowedTools !== undefined && { sessionAllowedTools: JSON.stringify(sessionAllowedTools) }),
+    ...(userCompleted !== undefined && {
+      userCompleted: userCompleted ? 1 : 0,
+    }),
+    ...(sessionAllowedTools !== undefined && {
+      sessionAllowedTools: JSON.stringify(sessionAllowedTools),
+    }),
   } as NewTaskRow;
 }
 
@@ -67,8 +83,12 @@ function toDbUpdateValues(data: UpdateTaskInput): Partial<UpdateTaskRow> {
   const { userCompleted, sessionAllowedTools, ...rest } = data;
   return {
     ...rest,
-    ...(userCompleted !== undefined && { userCompleted: userCompleted ? 1 : 0 }),
-    ...(sessionAllowedTools !== undefined && { sessionAllowedTools: JSON.stringify(sessionAllowedTools) }),
+    ...(userCompleted !== undefined && {
+      userCompleted: userCompleted ? 1 : 0,
+    }),
+    ...(sessionAllowedTools !== undefined && {
+      sessionAllowedTools: JSON.stringify(sessionAllowedTools),
+    }),
   };
 }
 
@@ -87,7 +107,7 @@ export const TaskRepository = {
           .selectFrom('agent_messages')
           .whereRef('agent_messages.taskId', '=', 'tasks.id')
           .select((eb2) => eb2.fn.countAll<number>().as('count'))
-          .as('messageCount')
+          .as('messageCount'),
       )
       .where('projectId', '=', projectId)
       .orderBy('userCompleted', 'asc') // Active tasks first (0), then completed (1)
@@ -140,7 +160,10 @@ export const TaskRepository = {
   markAsRead: async (id: string) => {
     const row = await db
       .updateTable('tasks')
-      .set({ readAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
+      .set({
+        readAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -214,7 +237,7 @@ export const TaskRepository = {
   reorder: async (
     projectId: string,
     activeIds: string[],
-    completedIds: string[]
+    completedIds: string[],
   ): Promise<Task[]> => {
     const now = new Date().toISOString();
 
@@ -245,7 +268,7 @@ export const TaskRepository = {
           .selectFrom('agent_messages')
           .whereRef('agent_messages.taskId', '=', 'tasks.id')
           .select((eb2) => eb2.fn.countAll<number>().as('count'))
-          .as('messageCount')
+          .as('messageCount'),
       )
       .where('projectId', '=', projectId)
       .orderBy('userCompleted', 'asc')

@@ -1,8 +1,4 @@
-import {
-  createRootRoute,
-  Outlet,
-  useRouter,
-} from '@tanstack/react-router';
+import { createRootRoute, Outlet, useRouter } from '@tanstack/react-router';
 
 import { TaskMessageManager } from '@/features/agent/task-message-manager';
 import { Header } from '@/layout/ui-header';

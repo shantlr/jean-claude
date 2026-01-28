@@ -23,10 +23,21 @@ interface TaskMessagesStore {
   cacheLimit: number;
 
   // Actions
-  loadTask: (taskId: string, messages: AgentMessage[], status: TaskStatus) => void;
+  loadTask: (
+    taskId: string,
+    messages: AgentMessage[],
+    status: TaskStatus,
+  ) => void;
   appendMessage: (taskId: string, message: AgentMessage) => void;
-  setStatus: (taskId: string, status: TaskStatus, error?: string | null) => void;
-  setPermission: (taskId: string, permission: AgentPermissionEvent | null) => void;
+  setStatus: (
+    taskId: string,
+    status: TaskStatus,
+    error?: string | null,
+  ) => void;
+  setPermission: (
+    taskId: string,
+    permission: AgentPermissionEvent | null,
+  ) => void;
   setQuestion: (taskId: string, question: AgentQuestionEvent | null) => void;
   setQueuedPrompts: (taskId: string, queuedPrompts: QueuedPrompt[]) => void;
   touchTask: (taskId: string) => void;
@@ -41,10 +52,12 @@ const DEFAULT_CACHE_LIMIT = 10;
 
 function evictIfNeeded(
   tasks: Record<string, TaskState>,
-  cacheLimit: number
+  cacheLimit: number,
 ): Record<string, TaskState> {
   const entries = Object.entries(tasks);
-  const inactiveTasks = entries.filter(([, state]) => state.status !== 'running');
+  const inactiveTasks = entries.filter(
+    ([, state]) => state.status !== 'running',
+  );
 
   if (inactiveTasks.length <= cacheLimit) {
     return tasks;

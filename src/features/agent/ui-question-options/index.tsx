@@ -1,7 +1,11 @@
 import { HelpCircle, Send } from 'lucide-react';
 import { useState } from 'react';
 
-import type { AgentQuestionEvent, QuestionResponse, AgentQuestion } from '../../../../shared/agent-types';
+import type {
+  AgentQuestionEvent,
+  QuestionResponse,
+  AgentQuestion,
+} from '../../../../shared/agent-types';
 
 interface QuestionOptionsProps {
   request: AgentQuestionEvent;
@@ -118,7 +122,9 @@ export function QuestionOptions({ request, onRespond }: QuestionOptionsProps) {
     onRespond(request.requestId, { answers });
   };
 
-  const allAnswered = request.questions.every((q) => answers[q.question]?.trim());
+  const allAnswered = request.questions.every((q) =>
+    answers[q.question]?.trim(),
+  );
 
   return (
     <div className="border-t border-teal-700/50 bg-teal-900/20 px-4 py-3">

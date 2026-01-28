@@ -4,7 +4,10 @@ import { useState, useEffect } from 'react';
 interface MergeConfirmDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (params: { squash: boolean; commitMessage?: string }) => Promise<void>;
+  onConfirm: (params: {
+    squash: boolean;
+    commitMessage?: string;
+  }) => Promise<void>;
   branchName: string;
   targetBranch: string;
   isPending: boolean;
@@ -46,7 +49,9 @@ export function MergeConfirmDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-md rounded-lg bg-neutral-800 shadow-xl">
         <div className="flex items-center justify-between border-b border-neutral-700 px-4 py-3">
-          <h2 className="text-lg font-semibold text-neutral-100">Merge Worktree</h2>
+          <h2 className="text-lg font-semibold text-neutral-100">
+            Merge Worktree
+          </h2>
           <button
             onClick={onClose}
             className="rounded p-1 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
@@ -57,7 +62,8 @@ export function MergeConfirmDialog({
 
         <div className="p-4">
           <p className="mb-4 text-neutral-200">
-            Merge branch <span className="font-mono text-blue-400">{branchName}</span> into{' '}
+            Merge branch{' '}
+            <span className="font-mono text-blue-400">{branchName}</span> into{' '}
             <span className="font-mono text-green-400">{targetBranch}</span>?
           </p>
 
@@ -92,7 +98,9 @@ export function MergeConfirmDialog({
             <p className="mb-2">This will:</p>
             <ul className="list-inside list-disc space-y-1">
               {squash ? (
-                <li>Squash all commits into a single commit on {targetBranch}</li>
+                <li>
+                  Squash all commits into a single commit on {targetBranch}
+                </li>
               ) : (
                 <li>Merge all commits into {targetBranch}</li>
               )}
