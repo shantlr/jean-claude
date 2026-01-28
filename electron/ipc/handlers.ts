@@ -56,6 +56,12 @@ import {
   getProviderDetails,
 } from '../services/azure-devops-service';
 import { generateTaskName } from '../services/name-generation-service';
+import {
+  addAllowPermission,
+  buildPermissionString,
+  getSettingsLocalPath,
+  getWorktreeSettingsPath,
+} from '../services/permission-settings-service';
 import { runCommandService } from '../services/run-command-service';
 import {
   createWorktree,
@@ -178,29 +184,22 @@ export function registerIpcHandlers() {
     (_, projectId: string, activeIds: string[], completedIds: string[]) =>
       TaskRepository.reorder(projectId, activeIds, completedIds),
   );
-  // Tools that can be session-allowed (security validation)
-  const SESSION_ALLOWABLE_TOOLS = ['Edit', 'Write'] as const;
-
   ipcMain.handle(
     'tasks:addSessionAllowedTool',
-    async (_, taskId: string, toolName: string) => {
-      // Validate that the tool is allowed to be session-allowed
-      if (
-        !SESSION_ALLOWABLE_TOOLS.includes(
-          toolName as (typeof SESSION_ALLOWABLE_TOOLS)[number],
-        )
-      ) {
-        console.warn(
-          `[IPC] Tool "${toolName}" is not allowed to be session-allowed`,
-        );
-        return TaskRepository.findById(taskId);
-      }
+    async (
+      _,
+      taskId: string,
+      toolName: string,
+      input: Record<string, unknown>,
+    ) => {
+      const permission = buildPermissionString(toolName, input);
+      if (!permission) return TaskRepository.findById(taskId);
 
       const task = await TaskRepository.findById(taskId);
       const currentTools = task?.sessionAllowedTools ?? [];
-      if (!currentTools.includes(toolName)) {
+      if (!currentTools.includes(permission)) {
         await TaskRepository.update(taskId, {
-          sessionAllowedTools: [...currentTools, toolName],
+          sessionAllowedTools: [...currentTools, permission],
         });
       }
       return TaskRepository.findById(taskId);
@@ -214,6 +213,87 @@ export function registerIpcHandlers() {
       await TaskRepository.update(taskId, {
         sessionAllowedTools: currentTools.filter((t) => t !== toolName),
       });
+      return TaskRepository.findById(taskId);
+    },
+  );
+
+  ipcMain.handle(
+    'tasks:allowForProject',
+    async (
+      _,
+      taskId: string,
+      toolName: string,
+      input: Record<string, unknown>,
+    ) => {
+      const permission = buildPermissionString(toolName, input);
+      if (!permission) return TaskRepository.findById(taskId);
+
+      const task = await TaskRepository.findById(taskId);
+      if (!task) throw new Error(`Task ${taskId} not found`);
+      const project = await ProjectRepository.findById(task.projectId);
+      if (!project) throw new Error(`Project ${task.projectId} not found`);
+
+      // Update original repo settings.local.json
+      await addAllowPermission(getSettingsLocalPath(project.path), permission);
+
+      // If worktree task, also update worktree settings.local.json
+      if (task.worktreePath) {
+        await addAllowPermission(
+          getSettingsLocalPath(task.worktreePath),
+          permission,
+        );
+      }
+
+      // Also add to session allowed tools
+      const currentTools = task.sessionAllowedTools ?? [];
+      if (!currentTools.includes(permission)) {
+        await TaskRepository.update(taskId, {
+          sessionAllowedTools: [...currentTools, permission],
+        });
+      }
+
+      return TaskRepository.findById(taskId);
+    },
+  );
+
+  ipcMain.handle(
+    'tasks:allowForProjectWorktrees',
+    async (
+      _,
+      taskId: string,
+      toolName: string,
+      input: Record<string, unknown>,
+    ) => {
+      const permission = buildPermissionString(toolName, input);
+      if (!permission) return TaskRepository.findById(taskId);
+
+      const task = await TaskRepository.findById(taskId);
+      if (!task) throw new Error(`Task ${taskId} not found`);
+      const project = await ProjectRepository.findById(task.projectId);
+      if (!project) throw new Error(`Project ${task.projectId} not found`);
+
+      // Update original repo settings.local.worktrees.json
+      await addAllowPermission(
+        getWorktreeSettingsPath(project.path),
+        permission,
+      );
+
+      // Update worktree settings.local.json (task must be worktree task)
+      if (task.worktreePath) {
+        await addAllowPermission(
+          getSettingsLocalPath(task.worktreePath),
+          permission,
+        );
+      }
+
+      // Also add to session allowed tools
+      const currentTools = task.sessionAllowedTools ?? [];
+      if (!currentTools.includes(permission)) {
+        await TaskRepository.update(taskId, {
+          sessionAllowedTools: [...currentTools, permission],
+        });
+      }
+
       return TaskRepository.findById(taskId);
     },
   );

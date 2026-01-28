@@ -34,6 +34,8 @@ import {
   useClearTaskUserCompleted,
   useAddSessionAllowedTool,
   useRemoveSessionAllowedTool,
+  useAllowForProject,
+  useAllowForProjectWorktrees,
 } from '@/hooks/use-tasks';
 import { PROJECT_HEADER_HEIGHT } from '@/layout/ui-project-sidebar';
 import { api } from '@/lib/api';
@@ -67,6 +69,8 @@ function TaskPanel() {
   const clearUserCompleted = useClearTaskUserCompleted();
   const addSessionAllowedTool = useAddSessionAllowedTool();
   const removeSessionAllowedTool = useRemoveSessionAllowedTool();
+  const allowForProject = useAllowForProject();
+  const allowForProjectWorktrees = useAllowForProjectWorktrees();
   const unloadTask = useTaskMessagesStore((state) => state.unloadTask);
 
   // Navigation tracking
@@ -182,18 +186,9 @@ function TaskPanel() {
     }
   };
 
-  const handleAllowToolForSession = useCallback(
-    (toolName: string) => {
-      addSessionAllowedTool.mutate({ id: taskId, toolName });
-    },
-    [taskId, addSessionAllowedTool],
-  );
-
   const handleAllowToolsForSession = useCallback(
-    (toolNames: string[]) => {
-      toolNames.forEach((toolName) => {
-        addSessionAllowedTool.mutate({ id: taskId, toolName });
-      });
+    (toolName: string, input: Record<string, unknown>) => {
+      addSessionAllowedTool.mutate({ id: taskId, toolName, input });
     },
     [taskId, addSessionAllowedTool],
   );
@@ -203,6 +198,20 @@ function TaskPanel() {
       removeSessionAllowedTool.mutate({ id: taskId, toolName });
     },
     [taskId, removeSessionAllowedTool],
+  );
+
+  const handleAllowForProject = useCallback(
+    (toolName: string, input: Record<string, unknown>) => {
+      allowForProject.mutate({ id: taskId, toolName, input });
+    },
+    [taskId, allowForProject],
+  );
+
+  const handleAllowForProjectWorktrees = useCallback(
+    (toolName: string, input: Record<string, unknown>) => {
+      allowForProjectWorktrees.mutate({ id: taskId, toolName, input });
+    },
+    [taskId, allowForProjectWorktrees],
   );
 
   const getEditorLabel = (setting: EditorSetting): string => {
@@ -462,6 +471,8 @@ function TaskPanel() {
             request={agentState.pendingPermission}
             onRespond={respondToPermission}
             onAllowForSession={handleAllowToolsForSession}
+            onAllowForProject={handleAllowForProject}
+            onAllowForProjectWorktrees={handleAllowForProjectWorktrees}
             onSetMode={(mode) => setTaskMode.mutate({ id: taskId, mode })}
             worktreePath={task.worktreePath}
           />
@@ -513,7 +524,6 @@ function TaskPanel() {
       {rightPane?.type === 'settings' && (
         <TaskSettingsPane
           sessionAllowedTools={task.sessionAllowedTools}
-          onAddTool={handleAllowToolForSession}
           onRemoveTool={handleRemoveSessionAllowedTool}
           onClose={closeRightPane}
         />

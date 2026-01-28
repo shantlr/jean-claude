@@ -134,8 +134,22 @@ export interface Api {
     setMode: (id: string, mode: InteractionMode) => Promise<Task>;
     toggleUserCompleted: (id: string) => Promise<Task>;
     clearUserCompleted: (id: string) => Promise<Task>;
-    addSessionAllowedTool: (id: string, toolName: string) => Promise<Task>;
+    addSessionAllowedTool: (
+      id: string,
+      toolName: string,
+      input: Record<string, unknown>,
+    ) => Promise<Task>;
     removeSessionAllowedTool: (id: string, toolName: string) => Promise<Task>;
+    allowForProject: (
+      id: string,
+      toolName: string,
+      input: Record<string, unknown>,
+    ) => Promise<Task>;
+    allowForProjectWorktrees: (
+      id: string,
+      toolName: string,
+      input: Record<string, unknown>,
+    ) => Promise<Task>;
     reorder: (
       projectId: string,
       activeIds: string[],
@@ -321,6 +335,12 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         removeSessionAllowedTool: async () => {
+          throw new Error('API not available');
+        },
+        allowForProject: async () => {
+          throw new Error('API not available');
+        },
+        allowForProjectWorktrees: async () => {
           throw new Error('API not available');
         },
         reorder: async () => [],

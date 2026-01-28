@@ -19,6 +19,10 @@ import {
 } from '../database/repositories';
 
 import { notificationService } from './notification-service';
+import {
+  buildPermissionString,
+  isToolAllowedByPermissions,
+} from './permission-settings-service';
 
 const SDK_PERMISSION_MODES = {
   ask: 'default',
@@ -106,21 +110,23 @@ class AgentService {
 
   private getSessionAllowButton(
     toolName: string,
+    input: Record<string, unknown>,
   ): SessionAllowButton | undefined {
-    switch (toolName) {
-      case 'ExitPlanMode':
-        return {
-          label: 'Allow and Auto-Edit',
-          toolsToAllow: ['Edit', 'Write'],
-          setModeOnAllow: 'ask',
-        };
-      case 'Edit':
-        return { label: 'Allow Edit for Session', toolsToAllow: ['Edit'] };
-      case 'Write':
-        return { label: 'Allow Write for Session', toolsToAllow: ['Write'] };
-      default:
-        return undefined;
+    if (toolName === 'ExitPlanMode') {
+      return {
+        label: 'Allow and Auto-Edit',
+        toolsToAllow: ['Edit', 'Write'],
+        setModeOnAllow: 'ask',
+      };
     }
+
+    const permission = buildPermissionString(toolName, input);
+    if (!permission) return undefined;
+
+    return {
+      label: `Allow ${toolName} for Session`,
+      toolsToAllow: [permission],
+    };
   }
 
   private async emitPermissionRequest(
@@ -129,7 +135,7 @@ class AgentService {
     toolName: string,
     input: Record<string, unknown>,
   ) {
-    const sessionAllowButton = this.getSessionAllowButton(toolName);
+    const sessionAllowButton = this.getSessionAllowButton(toolName, input);
     this.emit(AGENT_CHANNELS.PERMISSION, {
       taskId,
       requestId,
@@ -414,7 +420,7 @@ class AgentService {
     // Check if tool is in session-allowed list
     const task = await TaskRepository.findById(taskId);
     const allowedTools = task?.sessionAllowedTools ?? [];
-    if (allowedTools.includes(toolName)) {
+    if (isToolAllowedByPermissions(toolName, input, allowedTools)) {
       console.log(
         `[AgentService] Tool ${toolName} is session-allowed for task ${taskId}`,
       );

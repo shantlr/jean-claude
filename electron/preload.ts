@@ -36,10 +36,29 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('tasks:toggleUserCompleted', id),
     clearUserCompleted: (id: string) =>
       ipcRenderer.invoke('tasks:clearUserCompleted', id),
-    addSessionAllowedTool: (id: string, toolName: string) =>
-      ipcRenderer.invoke('tasks:addSessionAllowedTool', id, toolName),
+    addSessionAllowedTool: (
+      id: string,
+      toolName: string,
+      input: Record<string, unknown>,
+    ) => ipcRenderer.invoke('tasks:addSessionAllowedTool', id, toolName, input),
     removeSessionAllowedTool: (id: string, toolName: string) =>
       ipcRenderer.invoke('tasks:removeSessionAllowedTool', id, toolName),
+    allowForProject: (
+      id: string,
+      toolName: string,
+      input: Record<string, unknown>,
+    ) => ipcRenderer.invoke('tasks:allowForProject', id, toolName, input),
+    allowForProjectWorktrees: (
+      id: string,
+      toolName: string,
+      input: Record<string, unknown>,
+    ) =>
+      ipcRenderer.invoke(
+        'tasks:allowForProjectWorktrees',
+        id,
+        toolName,
+        input,
+      ),
     reorder: (projectId: string, activeIds: string[], completedIds: string[]) =>
       ipcRenderer.invoke('tasks:reorder', projectId, activeIds, completedIds),
     worktree: {

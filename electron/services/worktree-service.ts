@@ -8,6 +8,8 @@ import { nanoid } from 'nanoid';
 
 import { ProjectRepository } from '../database/repositories/projects';
 
+import { buildWorktreeSettings } from './permission-settings-service';
+
 const execAsync = promisify(exec);
 
 /**
@@ -174,37 +176,6 @@ export function generateWorktreeNameFromTaskName(taskName: string): string {
   const suffix = nanoid(4);
 
   return `${normalized}-${suffix}`;
-}
-
-/**
- * Copies Claude local settings from source repo to destination worktree.
- * This ensures the worktree has the same Claude Code permissions.
- */
-async function copyClaudeLocalSettings(
-  sourcePath: string,
-  destPath: string,
-): Promise<void> {
-  const sourceSettings = path.join(
-    sourcePath,
-    '.claude',
-    'settings.local.json',
-  );
-
-  if (!(await pathExists(sourceSettings))) {
-    return; // No local settings to copy
-  }
-
-  try {
-    const destClaudeDir = path.join(destPath, '.claude');
-    await fs.mkdir(destClaudeDir, { recursive: true });
-    await fs.copyFile(
-      sourceSettings,
-      path.join(destClaudeDir, 'settings.local.json'),
-    );
-  } catch (error) {
-    console.warn('Failed to copy Claude local settings to worktree:', error);
-    // Don't fail worktree creation for this
-  }
 }
 
 /**
@@ -409,8 +380,12 @@ export async function createWorktree(
     throw new Error(`Failed to create git worktree: ${error}`);
   }
 
-  // Copy Claude local settings if they exist in the main repo
-  await copyClaudeLocalSettings(projectPath, worktreePath);
+  // Build Claude local settings by merging settings.local.json and settings.local.worktrees.json
+  try {
+    await buildWorktreeSettings(projectPath, worktreePath);
+  } catch (error) {
+    console.warn('Failed to build Claude settings for worktree:', error);
+  }
 
   return {
     worktreePath,

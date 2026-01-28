@@ -140,8 +140,15 @@ export function useClearTaskUserCompleted() {
 export function useAddSessionAllowedTool() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, toolName }: { id: string; toolName: string }) =>
-      api.tasks.addSessionAllowedTool(id, toolName),
+    mutationFn: ({
+      id,
+      toolName,
+      input,
+    }: {
+      id: string;
+      toolName: string;
+      input: Record<string, unknown>;
+    }) => api.tasks.addSessionAllowedTool(id, toolName, input),
     onSuccess: (task, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
@@ -157,6 +164,50 @@ export function useRemoveSessionAllowedTool() {
   return useMutation({
     mutationFn: ({ id, toolName }: { id: string; toolName: string }) =>
       api.tasks.removeSessionAllowedTool(id, toolName),
+    onSuccess: (task, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', id] });
+      queryClient.invalidateQueries({
+        queryKey: ['tasks', { projectId: task.projectId }],
+      });
+    },
+  });
+}
+
+export function useAllowForProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      toolName,
+      input,
+    }: {
+      id: string;
+      toolName: string;
+      input: Record<string, unknown>;
+    }) => api.tasks.allowForProject(id, toolName, input),
+    onSuccess: (task, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', id] });
+      queryClient.invalidateQueries({
+        queryKey: ['tasks', { projectId: task.projectId }],
+      });
+    },
+  });
+}
+
+export function useAllowForProjectWorktrees() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      toolName,
+      input,
+    }: {
+      id: string;
+      toolName: string;
+      input: Record<string, unknown>;
+    }) => api.tasks.allowForProjectWorktrees(id, toolName, input),
     onSuccess: (task, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });

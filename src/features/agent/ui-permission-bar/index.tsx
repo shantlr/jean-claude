@@ -174,20 +174,36 @@ export function PermissionBar({
   request,
   onRespond,
   onAllowForSession,
+  onAllowForProject,
+  onAllowForProjectWorktrees,
   onSetMode,
   worktreePath,
 }: {
   request: AgentPermissionEvent;
   onRespond: (requestId: string, response: PermissionResponse) => void;
-  onAllowForSession?: (toolNames: string[]) => void;
+  onAllowForSession?: (
+    toolName: string,
+    input: Record<string, unknown>,
+  ) => void;
+  onAllowForProject?: (
+    toolName: string,
+    input: Record<string, unknown>,
+  ) => void;
+  onAllowForProjectWorktrees?: (
+    toolName: string,
+    input: Record<string, unknown>,
+  ) => void;
   onSetMode?: (mode: InteractionMode) => void;
   worktreePath?: string | null;
 }) {
   const [instruction, setInstruction] = useState('');
 
+  const isExitPlanMode = request.toolName === 'ExitPlanMode';
+  const sessionAllowButton = request.sessionAllowButton;
+
   const handleAllow = () => {
-    if (request.sessionAllowButton?.setModeOnAllow) {
-      onSetMode?.(request.sessionAllowButton.setModeOnAllow);
+    if (sessionAllowButton?.setModeOnAllow) {
+      onSetMode?.(sessionAllowButton.setModeOnAllow);
     }
     onRespond(request.requestId, {
       behavior: 'allow',
@@ -195,12 +211,56 @@ export function PermissionBar({
     });
   };
 
+  // For ExitPlanMode, the session allow is about Edit+Write, not ExitPlanMode itself.
+  // For all other tools, we pass the raw toolName+input to the backend.
+  const allowForSession = () => {
+    if (isExitPlanMode) {
+      // ExitPlanMode special case: allow Edit and Write tools
+      onAllowForSession?.('Edit', {});
+      onAllowForSession?.('Write', {});
+    } else {
+      onAllowForSession?.(request.toolName, request.input);
+    }
+  };
+
   const handleAllowForSession = () => {
-    if (request.sessionAllowButton) {
-      if (request.sessionAllowButton.setModeOnAllow) {
-        onSetMode?.(request.sessionAllowButton.setModeOnAllow);
-      }
-      onAllowForSession?.(request.sessionAllowButton.toolsToAllow);
+    if (sessionAllowButton?.setModeOnAllow) {
+      onSetMode?.(sessionAllowButton.setModeOnAllow);
+    }
+    allowForSession();
+    onRespond(request.requestId, {
+      behavior: 'allow',
+      updatedInput: request.input,
+    });
+  };
+
+  const handleAllowForProject = () => {
+    if (sessionAllowButton?.setModeOnAllow) {
+      onSetMode?.(sessionAllowButton.setModeOnAllow);
+    }
+    allowForSession();
+    if (isExitPlanMode) {
+      onAllowForProject?.('Edit', {});
+      onAllowForProject?.('Write', {});
+    } else {
+      onAllowForProject?.(request.toolName, request.input);
+    }
+    onRespond(request.requestId, {
+      behavior: 'allow',
+      updatedInput: request.input,
+    });
+  };
+
+  const handleAllowForProjectWorktrees = () => {
+    if (sessionAllowButton?.setModeOnAllow) {
+      onSetMode?.(sessionAllowButton.setModeOnAllow);
+    }
+    allowForSession();
+    if (isExitPlanMode) {
+      onAllowForProjectWorktrees?.('Edit', {});
+      onAllowForProjectWorktrees?.('Write', {});
+    } else {
+      onAllowForProjectWorktrees?.(request.toolName, request.input);
     }
     onRespond(request.requestId, {
       behavior: 'allow',
@@ -216,9 +276,6 @@ export function PermissionBar({
   };
 
   console.log('ASKED PERMISSION', request);
-
-  const isExitPlanMode = request.toolName === 'ExitPlanMode';
-  const sessionAllowButton = request.sessionAllowButton;
 
   return (
     <div className="border-t border-yellow-700/50 bg-yellow-900/20 px-4 py-3">
@@ -246,7 +303,7 @@ export function PermissionBar({
         className="mb-3 w-full resize-none rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-yellow-500 focus:outline-none"
         rows={2}
       />
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
         <button
           onClick={handleDeny}
           className="flex items-center gap-1.5 rounded-md bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600"
@@ -268,6 +325,24 @@ export function PermissionBar({
           >
             <ShieldCheck className="h-4 w-4" />
             {sessionAllowButton.label}
+          </button>
+        )}
+        {sessionAllowButton && (
+          <button
+            onClick={handleAllowForProject}
+            className="flex items-center gap-1.5 rounded-md bg-purple-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-500"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            Allow for Project
+          </button>
+        )}
+        {sessionAllowButton && worktreePath && (
+          <button
+            onClick={handleAllowForProjectWorktrees}
+            className="flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-500"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            Allow for Project Worktrees
           </button>
         )}
       </div>
