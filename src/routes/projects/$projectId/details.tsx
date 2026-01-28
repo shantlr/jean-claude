@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { RunCommandsConfig } from '@/features/project/ui-run-commands-config';
 import {
   useProject,
   useProjectBranches,
@@ -200,6 +201,12 @@ function ProjectDetails() {
               {updateProject.isPending ? 'Saving...' : 'Save Changes'}
             </button>
           )}
+
+          {/* Divider */}
+          <div className="border-t border-neutral-700" />
+
+          {/* Run Commands */}
+          <RunCommandsConfig projectId={projectId} projectPath={project.path} />
 
           {/* Danger zone */}
           <div className="border-t border-neutral-700 pt-6">

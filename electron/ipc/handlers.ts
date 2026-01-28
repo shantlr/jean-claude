@@ -21,6 +21,7 @@ import {
   PermissionResponse,
   QuestionResponse,
 } from '../../shared/agent-types';
+import type { NewProjectCommand, UpdateProjectCommand } from '../../shared/run-command-types';
 import {
   PRESET_EDITORS,
   type InteractionMode,
@@ -37,6 +38,7 @@ import {
   SettingsRepository,
   DebugRepository,
 } from '../database/repositories';
+import { ProjectCommandRepository } from '../database/repositories/project-commands';
 import {
   NewProject,
   NewTask,
@@ -54,6 +56,7 @@ import {
   getProviderDetails,
 } from '../services/azure-devops-service';
 import { generateTaskName } from '../services/name-generation-service';
+import { runCommandService } from '../services/run-command-service';
 import {
   createWorktree,
   getWorktreeDiff,
@@ -547,6 +550,50 @@ export function registerIpcHandlers() {
       },
     ) => DebugRepository.queryTable(params),
   );
+
+  // Project Commands
+  ipcMain.handle('project:commands:findByProjectId', (_, projectId: string) =>
+    ProjectCommandRepository.findByProjectId(projectId)
+  );
+  ipcMain.handle('project:commands:create', (_, data: NewProjectCommand) =>
+    ProjectCommandRepository.create(data)
+  );
+  ipcMain.handle(
+    'project:commands:update',
+    (_, { id, data }: { id: string; data: UpdateProjectCommand }) =>
+      ProjectCommandRepository.update(id, data)
+  );
+  ipcMain.handle('project:commands:delete', (_, id: string) =>
+    ProjectCommandRepository.delete(id)
+  );
+
+  // Run Commands
+  ipcMain.handle(
+    'project:commands:run:start',
+    (_, { projectId, workingDir }: { projectId: string; workingDir: string }) =>
+      runCommandService.startCommands(projectId, workingDir)
+  );
+  ipcMain.handle('project:commands:run:stop', (_, projectId: string) =>
+    runCommandService.stopCommands(projectId)
+  );
+  ipcMain.handle('project:commands:run:getStatus', (_, projectId: string) =>
+    runCommandService.getRunStatus(projectId)
+  );
+  ipcMain.handle(
+    'project:commands:run:killPortsForCommand',
+    (_, { projectId, commandId }: { projectId: string; commandId: string }) =>
+      runCommandService.killPortsForCommand(projectId, commandId)
+  );
+  ipcMain.handle('project:commands:run:getPackageScripts', (_, projectPath: string) =>
+    runCommandService.getPackageScripts(projectPath)
+  );
+
+  // Subscribe to run command status changes and forward to renderer
+  runCommandService.onStatusChange((projectId, status) => {
+    BrowserWindow.getAllWindows().forEach((win) => {
+      win.webContents.send('project:commands:run:statusChange', projectId, status);
+    });
+  });
 }
 
 // Helper: check if an editor is available

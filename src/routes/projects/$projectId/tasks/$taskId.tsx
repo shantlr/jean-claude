@@ -19,6 +19,7 @@ import { MessageStream } from '@/features/agent/ui-message-stream';
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
 import { PermissionBar } from '@/features/agent/ui-permission-bar';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
+import { RunButton } from '@/features/agent/ui-run-button';
 import { WorktreeDiffView } from '@/features/agent/ui-worktree-diff-view';
 import { StatusIndicator } from '@/features/task/ui-status-indicator';
 import { TaskSettingsPane } from '@/features/task/ui-task-settings-pane';
@@ -315,6 +316,12 @@ function TaskPanel() {
               {task.sessionId.slice(0, 8)}...
             </button>
           )}
+
+          {/* Run button */}
+          <RunButton
+            projectId={projectId}
+            workingDir={task.worktreePath ?? project.path}
+          />
 
           {/* Open in editor button */}
           <button

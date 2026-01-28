@@ -29,6 +29,7 @@ export interface Database {
   tasks: TaskTable;
   agent_messages: AgentMessageTable;
   settings: SettingsTable;
+  project_commands: ProjectCommandTable;
 }
 
 export interface TokenTable {
@@ -124,3 +125,15 @@ export interface SettingsTable {
 export type SettingsRow = Selectable<SettingsTable>;
 export type NewSettingsRow = Insertable<SettingsTable>;
 export type UpdateSettingsRow = Updateable<SettingsTable>;
+
+export interface ProjectCommandTable {
+  id: Generated<string>;
+  projectId: string;
+  command: string;
+  ports: string; // JSON array stored as text
+  createdAt: Generated<string>;
+}
+
+export type ProjectCommandRow = Selectable<ProjectCommandTable>;
+export type NewProjectCommandRow = Insertable<ProjectCommandTable>;
+export type UpdateProjectCommandRow = Updateable<ProjectCommandTable>;

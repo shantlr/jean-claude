@@ -6,6 +6,7 @@ import fixPath from 'fix-path';
 import { migrateDatabase } from './database';
 import { registerIpcHandlers } from './ipc/handlers';
 import { agentService } from './services/agent-service';
+import { runCommandService } from './services/run-command-service';
 
 // Fix PATH for packaged macOS apps launched from Finder/Dock
 // Only needed when NOT running from terminal (which already has correct PATH)
@@ -61,6 +62,10 @@ app.whenReady().then(async () => {
       createWindow();
     }
   });
+});
+
+app.on('before-quit', async () => {
+  await runCommandService.stopAllCommands();
 });
 
 app.on('window-all-closed', () => {

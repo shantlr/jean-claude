@@ -182,5 +182,30 @@ contextBridge.exposeInMainWorld('api', {
   usage: {
     get: () => ipcRenderer.invoke('agent:usage:get'),
   },
+  projectCommands: {
+    findByProjectId: (projectId: string) =>
+      ipcRenderer.invoke('project:commands:findByProjectId', projectId),
+    create: (data: unknown) => ipcRenderer.invoke('project:commands:create', data),
+    update: (id: string, data: unknown) =>
+      ipcRenderer.invoke('project:commands:update', { id, data }),
+    delete: (id: string) => ipcRenderer.invoke('project:commands:delete', id),
+  },
+  runCommands: {
+    start: (projectId: string, workingDir: string) =>
+      ipcRenderer.invoke('project:commands:run:start', { projectId, workingDir }),
+    stop: (projectId: string) => ipcRenderer.invoke('project:commands:run:stop', projectId),
+    getStatus: (projectId: string) =>
+      ipcRenderer.invoke('project:commands:run:getStatus', projectId),
+    killPortsForCommand: (projectId: string, commandId: string) =>
+      ipcRenderer.invoke('project:commands:run:killPortsForCommand', { projectId, commandId }),
+    getPackageScripts: (projectPath: string) =>
+      ipcRenderer.invoke('project:commands:run:getPackageScripts', projectPath),
+    onStatusChange: (callback: (projectId: string, status: unknown) => void) => {
+      const handler = (_: unknown, projectId: string, status: unknown) =>
+        callback(projectId, status);
+      ipcRenderer.on('project:commands:run:statusChange', handler);
+      return () => ipcRenderer.removeListener('project:commands:run:statusChange', handler);
+    },
+  },
 });
 console.log('Preload script loaded');

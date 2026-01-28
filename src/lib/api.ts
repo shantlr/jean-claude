@@ -10,6 +10,14 @@ import type {
   QuestionResponse,
 } from '../../shared/agent-types';
 import type {
+  ProjectCommand,
+  NewProjectCommand,
+  UpdateProjectCommand,
+  RunStatus,
+  PortsInUseErrorData,
+  PackageScriptsResult,
+} from '../../shared/run-command-types';
+import type {
   Project,
   NewProject,
   UpdateProject,
@@ -238,6 +246,20 @@ export interface Api {
   usage: {
     get: () => Promise<UsageResult>;
   };
+  projectCommands: {
+    findByProjectId: (projectId: string) => Promise<ProjectCommand[]>;
+    create: (data: NewProjectCommand) => Promise<ProjectCommand>;
+    update: (id: string, data: UpdateProjectCommand) => Promise<ProjectCommand>;
+    delete: (id: string) => Promise<void>;
+  };
+  runCommands: {
+    start: (projectId: string, workingDir: string) => Promise<RunStatus | PortsInUseErrorData>;
+    stop: (projectId: string) => Promise<void>;
+    getStatus: (projectId: string) => Promise<RunStatus>;
+    killPortsForCommand: (projectId: string, commandId: string) => Promise<void>;
+    getPackageScripts: (projectPath: string) => Promise<PackageScriptsResult>;
+    onStatusChange: (callback: (projectId: string, status: RunStatus) => void) => () => void;
+  };
 }
 
 declare global {
@@ -415,5 +437,29 @@ export const api: Api = hasWindowApi
           data: null,
           error: { type: 'api_error', message: 'API not available' },
         }),
+      },
+      projectCommands: {
+        findByProjectId: async () => [],
+        create: async () => {
+          throw new Error('API not available');
+        },
+        update: async () => {
+          throw new Error('API not available');
+        },
+        delete: async () => {},
+      },
+      runCommands: {
+        start: async () => ({
+          isRunning: false,
+          commands: [],
+        }),
+        stop: async () => {},
+        getStatus: async () => ({
+          isRunning: false,
+          commands: [],
+        }),
+        killPortsForCommand: async () => {},
+        getPackageScripts: async () => ({ scripts: [], packageManager: null }),
+        onStatusChange: () => () => {},
       },
     } as Api);
