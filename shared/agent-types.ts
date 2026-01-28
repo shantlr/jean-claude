@@ -193,13 +193,13 @@ export interface AgentQueueUpdateEvent {
 export function isSkillToolUseResult(
   result: SkillToolUseResult | TodoToolUseResult,
 ): result is SkillToolUseResult {
-  return 'commandName' in result;
+  return !!result && typeof result === 'object'  && 'commandName' in result;
 }
 
 export function isTodoToolUseResult(
   result: SkillToolUseResult | TodoToolUseResult,
 ): result is TodoToolUseResult {
-  return 'newTodos' in result;
+  return !!result && typeof result === 'object' && 'newTodos' in result;
 }
 
 // IPC channel names
