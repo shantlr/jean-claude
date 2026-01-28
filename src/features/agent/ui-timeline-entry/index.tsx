@@ -4,6 +4,9 @@ import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
 
+import { formatNumber } from '@/lib/number';
+import { formatDuration } from '@/lib/time';
+
 import type {
   AgentMessage,
   CompactMetadata,
@@ -14,7 +17,10 @@ import type {
   ToolResultBlock,
   HiddenSystemSubtype,
 } from '../../../../shared/agent-types';
-import { HIDDEN_SYSTEM_SUBTYPES, isTodoToolUseResult } from '../../../../shared/agent-types';
+import {
+  HIDDEN_SYSTEM_SUBTYPES,
+  isTodoToolUseResult,
+} from '../../../../shared/agent-types';
 import { DiffView } from '../ui-diff-view';
 import { getLanguageFromPath } from '../ui-diff-view/language-utils';
 import { MarkdownContent } from '../ui-markdown-content';
@@ -351,7 +357,10 @@ function ToolEntry({
   // Custom rendering for TodoWrite
   if (block.name === 'TodoWrite') {
     // Case 1: Result available with tool_use_result containing todo data
-    if (parentMessage?.tool_use_result && isTodoToolUseResult(parentMessage.tool_use_result)) {
+    if (
+      parentMessage?.tool_use_result &&
+      isTodoToolUseResult(parentMessage.tool_use_result)
+    ) {
       return (
         <TodoListEntry
           oldTodos={parentMessage.tool_use_result.oldTodos}
@@ -363,13 +372,7 @@ function ToolEntry({
     // Case 2: Pending (no result yet) — show from input
     if (!result && Array.isArray(block.input.todos)) {
       const todos = block.input.todos as TodoItem[];
-      return (
-        <TodoListEntry
-          oldTodos={[]}
-          newTodos={todos}
-          isPending
-        />
-      );
+      return <TodoListEntry oldTodos={[]} newTodos={todos} isPending />;
     }
   }
 
@@ -483,11 +486,13 @@ function ResultEntry({
   message: AgentMessage;
   onFilePathClick?: TimelineEntryProps['onFilePathClick'];
 }) {
-  const cost = message.cost_usd?.toFixed(4) || '0.0000';
-  const duration = message.duration_ms
-    ? (message.duration_ms / 1000).toFixed(1)
-    : '0.0';
-  const summary = `Session complete ($${cost}, ${duration}s)`;
+  const cost = message.total_cost_usd?.toFixed(2) || '0.00';
+  const tokens = formatNumber(
+    (message?.usage?.cache_creation_input_tokens ?? 0) +
+      (message?.usage?.input_tokens ?? 0) +
+      (message?.usage?.output_tokens ?? 0),
+  );
+  const summary = `--- ${tokens} tokens, ${formatDuration(message.duration_ms ?? 0)}, $${cost}`;
 
   const expandedContent = message.result ? (
     <div className="text-xs text-neutral-300">

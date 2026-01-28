@@ -1,3 +1,13 @@
+export function formatDuration(durationMs: number) {
+  if (durationMs > 60 * 1000) {
+    return `${Math.round(durationMs / 1000 / 60)}min`;
+  } else if (durationMs > 1000) {
+    return `${Math.round(durationMs / 1000)}s`;
+  }
+
+  return `${durationMs}ms`;
+}
+
 export function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
