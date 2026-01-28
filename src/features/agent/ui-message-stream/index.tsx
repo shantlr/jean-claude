@@ -132,6 +132,10 @@ export function MessageStream({
     }
   }, [displayMessages.length]);
 
+  console.log({
+    messages,
+  });
+
   if (messages.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-neutral-500">
