@@ -18,7 +18,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
       .execute();
 
     // 3. Clear provider references from projects (to avoid FK issues)
-    await sql`UPDATE projects SET provider_id = NULL`.execute(trx);
+    await sql`UPDATE projects SET providerId = NULL`.execute(trx);
 
     // 4. Drop old providers table
     await trx.schema.dropTable('providers').execute();
