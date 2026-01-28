@@ -9,20 +9,23 @@ import type {
   CompactMetadata,
   ContentBlock,
   TextBlock,
+  TodoItem,
   ToolUseBlock,
   ToolResultBlock,
   HiddenSystemSubtype,
 } from '../../../../shared/agent-types';
-import { HIDDEN_SYSTEM_SUBTYPES } from '../../../../shared/agent-types';
+import { HIDDEN_SYSTEM_SUBTYPES, isTodoToolUseResult } from '../../../../shared/agent-types';
 import { DiffView } from '../ui-diff-view';
 import { getLanguageFromPath } from '../ui-diff-view/language-utils';
 import { MarkdownContent } from '../ui-markdown-content';
+import { TodoListEntry } from '../ui-todo-list-entry';
 
 import { getToolSummary } from './tool-summary';
 
 interface TimelineEntryProps {
   message: AgentMessage;
   toolResultsMap?: Map<string, ToolResultBlock>;
+  parentMessageMap?: Map<string, AgentMessage>;
   onFilePathClick?: (
     filePath: string,
     lineStart?: number,
@@ -305,9 +308,11 @@ function isEditToolInput(
 function ToolEntry({
   block,
   result,
+  parentMessage,
 }: {
   block: ToolUseBlock;
   result?: ToolResultBlock;
+  parentMessage?: AgentMessage;
 }) {
   const summary = getToolSummary(block, result);
   const hasResult = !!result;
@@ -342,6 +347,31 @@ function ToolEntry({
   const formattedInput = isEditTool ? '' : formatToolInput(block.input);
   const formattedResult = result ? formatResultContent(result.content) : '';
   const [expandContent, setExpandContent] = useState(false);
+
+  // Custom rendering for TodoWrite
+  if (block.name === 'TodoWrite') {
+    // Case 1: Result available with tool_use_result containing todo data
+    if (parentMessage?.tool_use_result && isTodoToolUseResult(parentMessage.tool_use_result)) {
+      return (
+        <TodoListEntry
+          oldTodos={parentMessage.tool_use_result.oldTodos}
+          newTodos={parentMessage.tool_use_result.newTodos}
+        />
+      );
+    }
+
+    // Case 2: Pending (no result yet) — show from input
+    if (!result && Array.isArray(block.input.todos)) {
+      const todos = block.input.todos as TodoItem[];
+      return (
+        <TodoListEntry
+          oldTodos={[]}
+          newTodos={todos}
+          isPending
+        />
+      );
+    }
+  }
 
   const expandedContent = (
     <div className="space-y-2 text-xs">
@@ -534,6 +564,7 @@ export function CompactingEntry({
 export function TimelineEntry({
   message,
   toolResultsMap,
+  parentMessageMap,
   onFilePathClick,
 }: TimelineEntryProps) {
   // Skip system messages with hidden subtypes (init, hook_started, hook_completed, etc.)
@@ -598,7 +629,15 @@ export function TimelineEntry({
         );
       } else if (isToolUseBlock(block)) {
         const result = toolResultsMap?.get(block.id);
-        entries.push(<ToolEntry key={i} block={block} result={result} />);
+        const parentMessage = parentMessageMap?.get(block.id);
+        entries.push(
+          <ToolEntry
+            key={i}
+            block={block}
+            result={result}
+            parentMessage={parentMessage}
+          />,
+        );
       }
     }
 

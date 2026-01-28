@@ -51,6 +51,29 @@ function buildToolResultsMap(
   return resultsMap;
 }
 
+// Build a map of tool_use_id -> parent AgentMessage for user messages
+// This gives ToolEntry access to the parent message's tool_use_result field
+function buildParentMessageMap(
+  messages: AgentMessageType[],
+): Map<string, AgentMessageType> {
+  const parentMap = new Map<string, AgentMessageType>();
+
+  for (const message of messages) {
+    if (message.type === 'user' && message.message) {
+      const content = message.message.content;
+      if (Array.isArray(content)) {
+        for (const block of content) {
+          if (block.type === 'tool_result') {
+            parentMap.set(block.tool_use_id, message);
+          }
+        }
+      }
+    }
+  }
+
+  return parentMap;
+}
+
 // Threshold in pixels - if user is within this distance from bottom, auto-scroll
 const SCROLL_THRESHOLD = 10;
 
@@ -68,6 +91,12 @@ export function MessageStream({
   // Build tool results map once when messages change
   const toolResultsMap = useMemo(
     () => buildToolResultsMap(messages),
+    [messages],
+  );
+
+  // Build parent message map for tool_use_id -> parent AgentMessage
+  const parentMessageMap = useMemo(
+    () => buildParentMessageMap(messages),
     [messages],
   );
 
@@ -104,10 +133,6 @@ export function MessageStream({
       bottomRef.current?.scrollIntoView({ behavior: 'instant' });
     }
   }, [displayMessages.length]);
-
-  console.log({
-    messages,
-  });
 
   if (messages.length === 0) {
     return (
@@ -150,6 +175,7 @@ export function MessageStream({
               key={index}
               message={displayMessage.message}
               toolResultsMap={toolResultsMap}
+              parentMessageMap={parentMessageMap}
               onFilePathClick={onFilePathClick}
             />
           );

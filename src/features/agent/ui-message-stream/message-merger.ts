@@ -2,6 +2,7 @@ import type {
   AgentMessage,
   CompactMetadata,
 } from '../../../../shared/agent-types';
+import { isSkillToolUseResult } from '../../../../shared/agent-types';
 
 /**
  * Represents a message ready for display in the timeline.
@@ -29,7 +30,9 @@ export type DisplayMessage =
 function isSkillLaunchMessage(message: AgentMessage): boolean {
   return (
     message.type === 'user' &&
-    typeof message.tool_use_result?.commandName === 'string'
+    !!message.tool_use_result &&
+    isSkillToolUseResult(message.tool_use_result) &&
+    typeof message.tool_use_result.commandName === 'string'
   );
 }
 
@@ -97,7 +100,10 @@ export function mergeSkillMessages(messages: AgentMessage[]): DisplayMessage[] {
         kind: 'skill',
         launchMessage: current,
         promptMessage: next,
-        skillName: current.tool_use_result!.commandName,
+        skillName:
+          current.tool_use_result && isSkillToolUseResult(current.tool_use_result)
+            ? current.tool_use_result.commandName
+            : '',
       });
       processedIndices.add(i);
       processedIndices.add(i + 1);

@@ -21,6 +21,22 @@ export interface CompactMetadata {
   pre_tokens: number;
 }
 
+export interface TodoItem {
+  content: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  activeForm: string;
+}
+
+export interface TodoToolUseResult {
+  oldTodos: TodoItem[];
+  newTodos: TodoItem[];
+}
+
+export interface SkillToolUseResult {
+  success: boolean;
+  commandName: string;
+}
+
 export interface AgentMessage {
   type: 'system' | 'assistant' | 'user' | 'result';
   subtype?: string; // SDK provides various subtypes like 'init', 'hook_started', 'hook_completed', etc.
@@ -33,12 +49,9 @@ export interface AgentMessage {
   duration_api_ms?: number;
   total_cost_usd?: number;
   is_error?: boolean;
-  // SDK-provided fields for skill messages
+  // SDK-provided fields for skill messages and todo updates
   isSynthetic?: boolean;
-  tool_use_result?: {
-    success: boolean;
-    commandName: string;
-  };
+  tool_use_result?: SkillToolUseResult | TodoToolUseResult;
   // SDK-provided fields for compact_boundary messages
   compact_metadata?: CompactMetadata;
 }
@@ -161,6 +174,18 @@ export interface QueuedPrompt {
 export interface AgentQueueUpdateEvent {
   taskId: string;
   queuedPrompts: QueuedPrompt[];
+}
+
+export function isSkillToolUseResult(
+  result: SkillToolUseResult | TodoToolUseResult,
+): result is SkillToolUseResult {
+  return 'commandName' in result;
+}
+
+export function isTodoToolUseResult(
+  result: SkillToolUseResult | TodoToolUseResult,
+): result is TodoToolUseResult {
+  return 'newTodos' in result;
 }
 
 // IPC channel names
