@@ -19,6 +19,9 @@ import type {
   Provider,
   NewProvider,
   UpdateProvider,
+  Token,
+  NewToken,
+  UpdateToken,
   InteractionMode,
   AppSettings,
 } from '../../shared/types';
@@ -152,8 +155,18 @@ export interface Api {
     delete: (id: string) => Promise<void>;
     getDetails: (providerId: string) => Promise<ProviderDetails>;
   };
+  tokens: {
+    findAll: () => Promise<Token[]>;
+    findById: (id: string) => Promise<Token | undefined>;
+    findByProviderType: (providerType: string) => Promise<Token[]>;
+    create: (data: NewToken) => Promise<Token>;
+    update: (id: string, data: UpdateToken) => Promise<Token>;
+    delete: (id: string) => Promise<void>;
+  };
   azureDevOps: {
-    getOrganizations: (token: string) => Promise<AzureDevOpsOrganization[]>;
+    getOrganizations: (tokenId: string) => Promise<AzureDevOpsOrganization[]>;
+    validateToken: (token: string) => Promise<AzureDevOpsOrganization[]>;
+    getTokenExpiration: (tokenId: string) => Promise<string | null>;
   };
   dialog: {
     openDirectory: () => Promise<string | null>;
@@ -255,8 +268,18 @@ export const api: Api = hasWindowApi
         delete: async () => {},
         getDetails: async () => { throw new Error('API not available'); },
       },
+      tokens: {
+        findAll: async () => [],
+        findById: async () => undefined,
+        findByProviderType: async () => [],
+        create: async () => { throw new Error('API not available'); },
+        update: async () => { throw new Error('API not available'); },
+        delete: async () => {},
+      },
       azureDevOps: {
         getOrganizations: async () => { throw new Error('API not available'); },
+        validateToken: async () => { throw new Error('API not available'); },
+        getTokenExpiration: async () => null,
       },
       dialog: {
         openDirectory: async () => null,
