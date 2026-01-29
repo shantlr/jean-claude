@@ -225,6 +225,7 @@ export async function getTokenExpiration(
 export async function queryWorkItems(params: {
   providerId: string;
   projectId: string;
+  projectName: string;
   filters: { states?: string[]; workItemTypes?: string[] };
 }): Promise<AzureDevOpsWorkItem[]> {
   const provider = await ProviderRepository.findById(params.providerId);
@@ -267,9 +268,9 @@ export async function queryWorkItems(params: {
 
   const wiqlQuery = `SELECT [System.Id] FROM WorkItems WHERE ${conditions.join(' AND ')} ORDER BY [System.ChangedDate] DESC`;
 
-  // POST WIQL query
+  // POST WIQL query - use projectName in URL path (Azure DevOps requires name, not GUID)
   const wiqlResponse = await fetch(
-    `https://dev.azure.com/${orgName}/${params.projectId}/_apis/wit/wiql?api-version=7.0&$top=50`,
+    `https://dev.azure.com/${orgName}/${encodeURIComponent(params.projectName)}/_apis/wit/wiql?api-version=7.0&$top=50`,
     {
       method: 'POST',
       headers: {
@@ -310,7 +311,7 @@ export async function queryWorkItems(params: {
   // Map to AzureDevOpsWorkItem[]
   return batchData.value.map((wi) => ({
     id: wi.id,
-    url: `https://dev.azure.com/${orgName}/${params.projectId}/_workitems/edit/${wi.id}`,
+    url: `https://dev.azure.com/${orgName}/${encodeURIComponent(params.projectName)}/_workitems/edit/${wi.id}`,
     fields: {
       title: wi.fields['System.Title'],
       workItemType: wi.fields['System.WorkItemType'],

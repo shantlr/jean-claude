@@ -125,6 +125,7 @@ contextBridge.exposeInMainWorld('api', {
     queryWorkItems: (params: {
       providerId: string;
       projectId: string;
+      projectName: string;
       filters: { states?: string[]; workItemTypes?: string[] };
     }) => ipcRenderer.invoke('azureDevOps:queryWorkItems', params),
     createPullRequest: (params: {

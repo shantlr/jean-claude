@@ -453,6 +453,7 @@ export function registerIpcHandlers() {
       params: {
         providerId: string;
         projectId: string;
+        projectName: string;
         filters: { states?: string[]; workItemTypes?: string[] };
       },
     ) => queryWorkItems(params),

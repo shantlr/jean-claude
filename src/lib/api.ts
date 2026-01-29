@@ -214,6 +214,7 @@ export interface Api {
     queryWorkItems: (params: {
       providerId: string;
       projectId: string;
+      projectName: string;
       filters: { states?: string[]; workItemTypes?: string[] };
     }) => Promise<AzureDevOpsWorkItem[]>;
     createPullRequest: (params: {

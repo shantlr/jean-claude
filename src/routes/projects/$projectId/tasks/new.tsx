@@ -146,6 +146,7 @@ function NewTask() {
                 <WorkItemsBrowser
                   providerId={project!.workItemProviderId!}
                   projectId={project!.workItemProjectId!}
+                  projectName={project!.workItemProjectName!}
                   onSelect={(wi) => {
                     setDraft({
                       name: wi.fields.title.slice(0, 100),

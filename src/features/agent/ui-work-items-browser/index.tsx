@@ -11,11 +11,13 @@ const TYPE_OPTIONS = ['User Story', 'Bug', 'Task', 'Feature'] as const;
 export function WorkItemsBrowser({
   providerId,
   projectId,
+  projectName,
   onSelect,
   onClose,
 }: {
   providerId: string;
   projectId: string;
+  projectName: string;
   onSelect: (workItem: AzureDevOpsWorkItem) => void;
   onClose: () => void;
 }) {
@@ -25,6 +27,7 @@ export function WorkItemsBrowser({
   const { data: workItems, isLoading, error } = useWorkItems({
     providerId,
     projectId,
+    projectName,
     filters: {
       states: selectedStates.length > 0 ? selectedStates : undefined,
       workItemTypes: selectedTypes.length > 0 ? selectedTypes : undefined,
