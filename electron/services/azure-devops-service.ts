@@ -250,8 +250,9 @@ export async function queryWorkItems(params: {
   const authHeader = createAuthHeader(token);
 
   // Build WIQL query conditions
+  // Note: [System.TeamProject] requires the project name, not the GUID
   const conditions: string[] = [
-    `[System.TeamProject] = '${params.projectId}'`,
+    `[System.TeamProject] = '${params.projectName}'`,
   ];
 
   if (params.filters.states && params.filters.states.length > 0) {
