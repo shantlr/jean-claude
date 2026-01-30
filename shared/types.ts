@@ -100,6 +100,14 @@ export interface NewProject {
   color: string;
   sortOrder?: number;
   defaultBranch?: string | null;
+  repoProviderId?: string | null;
+  repoProjectId?: string | null;
+  repoProjectName?: string | null;
+  repoId?: string | null;
+  repoName?: string | null;
+  workItemProviderId?: string | null;
+  workItemProjectId?: string | null;
+  workItemProjectName?: string | null;
   createdAt?: string;
   updatedAt: string;
 }

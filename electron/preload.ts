@@ -141,6 +141,12 @@ contextBridge.exposeInMainWorld('api', {
       description: string;
       isDraft: boolean;
     }) => ipcRenderer.invoke('azureDevOps:createPullRequest', params),
+    cloneRepository: (params: {
+      orgName: string;
+      projectName: string;
+      repoName: string;
+      targetPath: string;
+    }) => ipcRenderer.invoke('azureDevOps:cloneRepository', params),
   },
   dialog: {
     openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),

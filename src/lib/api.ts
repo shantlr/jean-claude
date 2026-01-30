@@ -98,6 +98,18 @@ export interface AzureDevOpsWorkItem {
   };
 }
 
+export interface CloneRepositoryParams {
+  orgName: string;
+  projectName: string;
+  repoName: string;
+  targetPath: string;
+}
+
+export interface CloneRepositoryResult {
+  success: boolean;
+  error?: string;
+}
+
 export interface WorktreeStatus {
   hasUncommittedChanges: boolean;
   hasStagedChanges: boolean;
@@ -234,6 +246,9 @@ export interface Api {
       description: string;
       isDraft: boolean;
     }) => Promise<{ id: number; url: string }>;
+    cloneRepository: (
+      params: CloneRepositoryParams,
+    ) => Promise<CloneRepositoryResult>;
   };
   dialog: {
     openDirectory: () => Promise<string | null>;
@@ -440,6 +455,9 @@ export const api: Api = hasWindowApi
         getTokenExpiration: async () => null,
         queryWorkItems: async () => [],
         createPullRequest: async () => {
+          throw new Error('API not available');
+        },
+        cloneRepository: async () => {
           throw new Error('API not available');
         },
       },

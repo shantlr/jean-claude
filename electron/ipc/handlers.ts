@@ -49,6 +49,8 @@ import {
   getProviderDetails,
   queryWorkItems,
   createPullRequest,
+  cloneRepository,
+  type CloneRepositoryParams,
 } from '../services/azure-devops-service';
 import { generateTaskName } from '../services/name-generation-service';
 import {
@@ -481,6 +483,11 @@ export function registerIpcHandlers() {
         isDraft: boolean;
       },
     ) => createPullRequest(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:cloneRepository',
+    (_, params: CloneRepositoryParams) => cloneRepository(params),
   );
 
   ipcMain.handle(

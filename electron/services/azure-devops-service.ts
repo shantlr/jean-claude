@@ -1,5 +1,7 @@
 // electron/services/azure-devops-service.ts
 
+import { spawn } from 'child_process';
+
 import { ProviderRepository } from '../database/repositories/providers';
 import { TokenRepository } from '../database/repositories/tokens';
 
@@ -456,4 +458,68 @@ export async function getProviderDetails(
   );
 
   return { projects: projectsWithRepos };
+}
+
+export interface CloneRepositoryParams {
+  orgName: string;
+  projectName: string;
+  repoName: string;
+  targetPath: string;
+}
+
+export interface CloneRepositoryResult {
+  success: boolean;
+  error?: string;
+}
+
+export async function cloneRepository(
+  params: CloneRepositoryParams,
+): Promise<CloneRepositoryResult> {
+  const { orgName, projectName, repoName, targetPath } = params;
+
+  // Build SSH URL for Azure DevOps
+  // Format: git@ssh.dev.azure.com:v3/{org}/{project}/{repo}
+  const sshUrl = `git@ssh.dev.azure.com:v3/${orgName}/${encodeURIComponent(projectName)}/${encodeURIComponent(repoName)}`;
+
+  return new Promise((resolve) => {
+    const gitProcess = spawn('git', ['clone', sshUrl, targetPath], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let stderr = '';
+
+    gitProcess.stderr.on('data', (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    gitProcess.on('close', (code) => {
+      if (code === 0) {
+        resolve({ success: true });
+      } else {
+        // Parse common git clone errors for user-friendly messages
+        let errorMessage = stderr.trim();
+
+        if (
+          stderr.includes('Permission denied') ||
+          stderr.includes('Could not read from remote repository')
+        ) {
+          errorMessage =
+            'SSH key not configured or permission denied. Please ensure your SSH key is set up for Azure DevOps.';
+        } else if (stderr.includes('already exists and is not an empty directory')) {
+          errorMessage = 'Target directory already exists and is not empty.';
+        } else if (stderr.includes('Repository not found')) {
+          errorMessage = 'Repository not found. Please check if the repository exists.';
+        }
+
+        resolve({ success: false, error: errorMessage });
+      }
+    });
+
+    gitProcess.on('error', (err) => {
+      resolve({
+        success: false,
+        error: `Failed to run git: ${err.message}`,
+      });
+    });
+  });
 }

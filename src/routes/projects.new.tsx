@@ -4,9 +4,17 @@ import { ArrowLeft, Folder, FolderOpen } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 
+import {
+  AddProjectForm,
+  type ProjectFormData,
+} from '@/features/project/ui-add-project-form';
+import {
+  CloneRepoPane,
+  type CloneResult,
+} from '@/features/project/ui-clone-repo-pane';
 import { useCreateProject } from '@/hooks/use-projects';
 import { api, type DetectedProject } from '@/lib/api';
-import { getRandomColor, PROJECT_COLORS } from '@/lib/colors';
+import { getRandomColor } from '@/lib/colors';
 
 export const Route = createFileRoute('/projects/new')({
   component: AddProjectPage,
@@ -14,18 +22,14 @@ export const Route = createFileRoute('/projects/new')({
 
 type PageState = 'source-selection' | 'form';
 
-interface FormData {
-  name: string;
-  path: string;
-  color: string;
-}
-
 function AddProjectPage() {
   const navigate = useNavigate();
   const createProject = useCreateProject();
 
   const [pageState, setPageState] = useState<PageState>('source-selection');
-  const [formData, setFormData] = useState<FormData | null>(null);
+  const [formData, setFormData] = useState<ProjectFormData | null>(null);
+  const [showClonePane, setShowClonePane] = useState(false);
+  const [isFromClone, setIsFromClone] = useState(false);
 
   const { data: detectedProjects = [], isLoading: isLoadingDetected } =
     useQuery({
@@ -40,7 +44,45 @@ function AddProjectPage() {
     const name = await inferProjectName(selectedPath);
     const color = getRandomColor();
 
-    setFormData({ name, path: selectedPath, color });
+    setFormData({
+      name,
+      path: selectedPath,
+      color,
+      repoProviderId: null,
+      repoProjectId: null,
+      repoProjectName: null,
+      repoId: null,
+      repoName: null,
+      workItemProviderId: null,
+      workItemProjectId: null,
+      workItemProjectName: null,
+    });
+    setIsFromClone(false);
+    setPageState('form');
+  }
+
+  function handleShowClonePane() {
+    setShowClonePane(true);
+  }
+
+  function handleCloneSuccess(result: CloneResult) {
+    setShowClonePane(false);
+
+    setFormData({
+      name: result.repoName,
+      path: result.path,
+      color: getRandomColor(),
+      repoProviderId: result.repoProviderId,
+      repoProjectId: result.repoProjectId,
+      repoProjectName: result.repoProjectName,
+      repoId: result.repoId,
+      repoName: result.repoName,
+      // Pre-fill work item settings with same provider/project
+      workItemProviderId: result.repoProviderId,
+      workItemProjectId: result.repoProjectId,
+      workItemProjectName: result.repoProjectName,
+    });
+    setIsFromClone(true);
     setPageState('form');
   }
 
@@ -48,7 +90,19 @@ function AddProjectPage() {
     const name = await inferProjectName(project.path);
     const color = getRandomColor();
 
-    setFormData({ name, path: project.path, color });
+    setFormData({
+      name,
+      path: project.path,
+      color,
+      repoId: null,
+      repoName: null,
+      repoProviderId: null,
+      repoProjectId: null,
+      repoProjectName: null,
+      workItemProviderId: null,
+      workItemProjectId: null,
+      workItemProjectName: null,
+    });
     setPageState('form');
   }
 
@@ -61,17 +115,32 @@ function AddProjectPage() {
       path: formData.path,
       type: 'local',
       color: formData.color,
+      repoProviderId: formData.repoProviderId,
+      repoProjectId: formData.repoProjectId,
+      repoProjectName: formData.repoProjectName,
+      repoId: formData.repoId,
+      repoName: formData.repoName,
+      workItemProviderId: formData.workItemProviderId,
+      workItemProjectId: formData.workItemProjectId,
+      workItemProjectName: formData.workItemProjectName,
       updatedAt: new Date().toISOString(),
     });
 
     navigate({ to: '/projects/$projectId', params: { projectId: project.id } });
   }
 
+  function handleFormChange(updates: Partial<ProjectFormData>) {
+    if (!formData) return;
+    setFormData({ ...formData, ...updates });
+  }
+
   function handleBack() {
     setPageState('source-selection');
     setFormData(null);
+    setIsFromClone(false);
   }
 
+  // Form state
   if (pageState === 'form' && formData) {
     return (
       <div className="flex h-full items-center justify-center p-6">
@@ -85,87 +154,57 @@ function AddProjectPage() {
             Back
           </button>
 
-          <h1 className="mb-6 text-2xl font-bold">Add Local Project</h1>
+          <h1 className="mb-6 text-2xl font-bold">
+            {isFromClone ? 'Configure Cloned Project' : 'Add Local Project'}
+          </h1>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label
-                htmlFor="name"
-                className="mb-1 block text-sm font-medium text-neutral-300"
-              >
-                Name
-              </label>
-              <input
-                id="name"
-                type="text"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-neutral-300">
-                Path
-              </label>
-              <div className="rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2">
-                <span className="truncate text-sm text-neutral-400">
-                  {formData.path}
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-neutral-300">
-                Color
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {PROJECT_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, color })}
-                    className={`h-8 w-8 cursor-pointer rounded-lg transition-all ${
-                      formData.color === color
-                        ? 'ring-2 ring-white ring-offset-2 ring-offset-neutral-900'
-                        : 'hover:scale-110'
-                    }`}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={createProject.isPending}
-              className="w-full cursor-pointer rounded-lg bg-white px-4 py-2 font-medium text-black transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {createProject.isPending ? 'Adding...' : 'Add Project'}
-            </button>
-          </form>
+          <AddProjectForm
+            formData={formData}
+            onChange={handleFormChange}
+            onSubmit={handleSubmit}
+            isSubmitting={createProject.isPending}
+            repoSectionExpanded={isFromClone}
+            workItemSectionExpanded={false}
+          />
         </div>
       </div>
     );
   }
 
+  // Source selection state
   return (
-    <div className="flex h-full items-center justify-center p-6">
-      <div className="w-full max-w-md">
-        <h1 className="mb-6 text-center text-2xl font-bold">Add Project</h1>
+    <div className="flex h-full">
+      {/* Main content */}
+      <div className="flex flex-1 items-center justify-center p-6">
+        <div className="w-full max-w-md">
+          <h1 className="mb-6 text-center text-2xl font-bold">Add Project</h1>
+          <div className="grid gap-4">
+            <button
+              type="button"
+              onClick={handleSelectLocalFolder}
+              className="flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-neutral-700 bg-neutral-800/50 p-6 transition-colors hover:border-neutral-500 hover:bg-neutral-800"
+            >
+              <Folder className="h-10 w-10 text-neutral-400" />
+              <span className="font-medium">Local Folder</span>
+            </button>
 
-        <div className="grid gap-4">
-          <button
-            type="button"
-            onClick={handleSelectLocalFolder}
-            className="flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-neutral-700 bg-neutral-800/50 p-6 transition-colors hover:border-neutral-500 hover:bg-neutral-800"
-          >
-            <Folder className="h-10 w-10 text-neutral-400" />
-            <span className="font-medium">Browse for folder</span>
-          </button>
+            <button
+              type="button"
+              onClick={handleShowClonePane}
+              className="flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-neutral-700 bg-neutral-800/50 p-6 transition-colors hover:border-blue-500/50 hover:bg-neutral-800"
+            >
+              <div className="flex h-10 w-10 items-center justify-center text-blue-400">
+                <svg
+                  className="h-8 w-8"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M0 8.877L2.247 5.91l8.405-3.416V.022l7.37 5.393L2.966 8.338v8.225L0 15.707zm24-4.45v14.651l-5.753 4.9-9.303-3.057v3.056l-5.978-7.416 15.057 1.798V5.415z" />
+                </svg>
+              </div>
+              <span className="font-medium">Clone from Azure DevOps</span>
+            </button>
+          </div>
         </div>
 
         {/* Detected Projects Section */}
@@ -195,6 +234,14 @@ function AddProjectPage() {
           </div>
         )}
       </div>
+
+      {/* Clone pane */}
+      {showClonePane && (
+        <CloneRepoPane
+          onClose={() => setShowClonePane(false)}
+          onCloneSuccess={handleCloneSuccess}
+        />
+      )}
     </div>
   );
 }
