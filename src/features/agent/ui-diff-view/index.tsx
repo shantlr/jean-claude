@@ -1,7 +1,8 @@
 import { Columns2, AlignJustify } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
 
+import { DiffMinimap, type ViewportInfo } from './diff-minimap';
 import { computeDiff, type DiffLine } from './diff-utils';
 import { getLanguageFromPath } from './language-utils';
 import { SideBySideDiffTable } from './side-by-side-table';
@@ -22,8 +23,29 @@ export function DiffView({ filePath, oldString, newString }: {
   const [state, setState] = useState<DiffState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'inline' | 'side-by-side'>('inline');
+  const [viewport, setViewport] = useState<ViewportInfo | undefined>();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const language = getLanguageFromPath(filePath);
+
+  // Update viewport info on scroll
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      setViewport({
+        scrollTop: container.scrollTop,
+        scrollHeight: container.scrollHeight,
+        clientHeight: container.clientHeight,
+      });
+    }
+  }, []);
+
+  // Initialize viewport info after content loads
+  useEffect(() => {
+    if (state && scrollContainerRef.current) {
+      handleScroll();
+    }
+  }, [state, handleScroll]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -89,28 +111,35 @@ export function DiffView({ filePath, oldString, newString }: {
         </button>
       </div>
 
-      <div className="overflow-auto rounded bg-black/30 pt-8 font-mono text-xs">
-        {viewMode === 'inline' ? (
-          <table className="w-full border-collapse">
-            <tbody>
-              {state.lines.map((line, i) => (
-                <DiffLineRow
-                  key={i}
-                  line={line}
-                  oldTokens={state.oldTokens}
-                  newTokens={state.newTokens}
-                />
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <SideBySideDiffTable
-            oldString={oldString}
-            newString={newString}
-            oldTokens={state.oldTokens}
-            newTokens={state.newTokens}
-          />
-        )}
+      <div className="flex overflow-hidden rounded bg-black/30 pt-8">
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-auto font-mono text-xs"
+        >
+          {viewMode === 'inline' ? (
+            <table className="w-full border-collapse">
+              <tbody>
+                {state.lines.map((line, i) => (
+                  <DiffLineRow
+                    key={i}
+                    line={line}
+                    oldTokens={state.oldTokens}
+                    newTokens={state.newTokens}
+                  />
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <SideBySideDiffTable
+              oldString={oldString}
+              newString={newString}
+              oldTokens={state.oldTokens}
+              newTokens={state.newTokens}
+            />
+          )}
+        </div>
+        <DiffMinimap lines={state.lines} viewport={viewport} />
       </div>
     </div>
   );
