@@ -5,16 +5,8 @@ import { promisify } from 'util';
 
 import { BrowserWindow, ipcMain, dialog } from 'electron';
 
-const execAsync = promisify(exec);
 
-async function pathExists(p: string): Promise<boolean> {
-  try {
-    await fs.access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
+const execAsync = promisify(exec);
 
 import {
   AGENT_CHANNELS,
@@ -47,6 +39,7 @@ import {
   UpdateTask,
   UpdateProvider,
 } from '../database/schema';
+import { pathExists } from '../lib/fs';
 import { agentService } from '../services/agent-service';
 import { agentUsageService } from '../services/agent-usage-service';
 import {

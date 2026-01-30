@@ -2,6 +2,7 @@ import { PermissionResult, query } from '@anthropic-ai/claude-agent-sdk';
 import { BrowserWindow } from 'electron';
 import { nanoid } from 'nanoid';
 
+
 import {
   AGENT_CHANNELS,
   AgentMessage,
@@ -17,6 +18,7 @@ import {
   ProjectRepository,
   AgentMessageRepository,
 } from '../database/repositories';
+import { pathExists } from '../lib/fs';
 
 import { notificationService } from './notification-service';
 import {
@@ -268,6 +270,14 @@ class AgentService {
     const project = await ProjectRepository.findById(task.projectId);
     if (!project) {
       throw new Error(`Project ${task.projectId} not found`);
+    }
+
+    // Validate worktree exists if this is a worktree task
+    if (task.worktreePath && !(await pathExists(task.worktreePath))) {
+      throw new Error(
+        `The worktree for this task has been deleted. To continue working, ` +
+          `create a new task or restore the worktree at: ${task.worktreePath}`,
+      );
     }
 
     if (task.status !== 'running') {

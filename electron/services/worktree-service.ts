@@ -7,22 +7,11 @@ import { app } from 'electron';
 import { nanoid } from 'nanoid';
 
 import { ProjectRepository } from '../database/repositories/projects';
+import { pathExists } from '../lib/fs';
 
 import { buildWorktreeSettings } from './permission-settings-service';
 
 const execAsync = promisify(exec);
-
-/**
- * Checks if a path exists.
- */
-async function pathExists(p: string): Promise<boolean> {
-  try {
-    await fs.access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Checks if a file is binary by looking for null bytes in the first 8KB.
