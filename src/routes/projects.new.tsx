@@ -1,10 +1,11 @@
+import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { ArrowLeft, Folder } from 'lucide-react';
+import { ArrowLeft, Folder, FolderOpen } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 
 import { useCreateProject } from '@/hooks/use-projects';
-import { api } from '@/lib/api';
+import { api, type DetectedProject } from '@/lib/api';
 import { getRandomColor, PROJECT_COLORS } from '@/lib/colors';
 
 export const Route = createFileRoute('/projects/new')({
@@ -26,15 +27,28 @@ function AddProjectPage() {
   const [pageState, setPageState] = useState<PageState>('source-selection');
   const [formData, setFormData] = useState<FormData | null>(null);
 
+  const { data: detectedProjects = [], isLoading: isLoadingDetected } =
+    useQuery({
+      queryKey: ['detected-projects'],
+      queryFn: () => api.projects.getDetected(),
+    });
+
   async function handleSelectLocalFolder() {
     const selectedPath = await api.dialog.openDirectory();
-    console.log('Selected path:', selectedPath);
     if (!selectedPath) return;
 
     const name = await inferProjectName(selectedPath);
     const color = getRandomColor();
 
     setFormData({ name, path: selectedPath, color });
+    setPageState('form');
+  }
+
+  async function handleSelectDetectedProject(project: DetectedProject) {
+    const name = await inferProjectName(project.path);
+    const color = getRandomColor();
+
+    setFormData({ name, path: project.path, color });
     setPageState('form');
   }
 
@@ -147,12 +161,39 @@ function AddProjectPage() {
           <button
             type="button"
             onClick={handleSelectLocalFolder}
-            className="cursor-pointer flex flex-col items-center gap-3 rounded-xl border-2 border-neutral-700 bg-neutral-800/50 p-6 transition-colors hover:border-neutral-500 hover:bg-neutral-800"
+            className="flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-neutral-700 bg-neutral-800/50 p-6 transition-colors hover:border-neutral-500 hover:bg-neutral-800"
           >
             <Folder className="h-10 w-10 text-neutral-400" />
-            <span className="font-medium">Local Folder</span>
+            <span className="font-medium">Browse for folder</span>
           </button>
         </div>
+
+        {/* Detected Projects Section */}
+        {!isLoadingDetected && detectedProjects.length > 0 && (
+          <div className="mt-8">
+            <h2 className="mb-3 text-sm font-medium text-neutral-400">
+              Detected from Claude Code
+            </h2>
+            <div className="space-y-2">
+              {detectedProjects.map((project) => (
+                <button
+                  key={project.path}
+                  type="button"
+                  onClick={() => handleSelectDetectedProject(project)}
+                  className="flex w-full cursor-pointer items-center gap-3 rounded-lg border border-neutral-700 bg-neutral-800/50 px-4 py-3 text-left transition-colors hover:border-neutral-500 hover:bg-neutral-800"
+                >
+                  <FolderOpen className="h-5 w-5 shrink-0 text-neutral-500" />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium">{project.name}</div>
+                    <div className="truncate text-sm text-neutral-500">
+                      {project.path}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

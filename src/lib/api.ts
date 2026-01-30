@@ -55,6 +55,11 @@ export interface WorktreeFileContent {
   isBinary: boolean;
 }
 
+export interface DetectedProject {
+  path: string;
+  name: string;
+}
+
 export interface AzureDevOpsOrganization {
   id: string;
   name: string;
@@ -131,6 +136,7 @@ export interface Api {
     reorder: (orderedIds: string[]) => Promise<Project[]>;
     getBranches: (projectId: string) => Promise<string[]>;
     getCurrentBranch: (projectId: string) => Promise<string>;
+    getDetected: () => Promise<DetectedProject[]>;
   };
   tasks: {
     findAll: () => Promise<Task[]>;
@@ -332,6 +338,7 @@ export const api: Api = hasWindowApi
         reorder: async () => [],
         getBranches: async () => [],
         getCurrentBranch: async () => '',
+        getDetected: async () => [],
       },
       tasks: {
         findAll: async () => [],
