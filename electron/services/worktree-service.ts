@@ -197,6 +197,12 @@ export interface WorktreeFileContent {
  * Gets the list of changed files between a worktree's current state and its starting commit.
  * Does not load file contents - use getWorktreeFileContent for that.
  *
+ * This includes:
+ * - Committed changes since startCommitHash
+ * - Staged but uncommitted changes
+ * - Unstaged changes in tracked files
+ * - Untracked files (new files not yet added to git)
+ *
  * @param worktreePath - The path to the worktree
  * @param startCommitHash - The commit hash to diff against
  * @returns The list of changed files with their status
@@ -205,14 +211,26 @@ export async function getWorktreeDiff(
   worktreePath: string,
   startCommitHash: string,
 ): Promise<WorktreeDiffResult> {
+  console.log('[worktree-diff] getWorktreeDiff called', {
+    worktreePath,
+    startCommitHash,
+  });
+
   // Check if the worktree still exists
   if (!(await pathExists(worktreePath))) {
+    console.log('[worktree-diff] Worktree path does not exist, returning deleted');
     return { files: [], worktreeDeleted: true };
   }
 
   try {
-    // Get list of changed files with their status
-    const { stdout: statusOutput } = await execAsync(
+    // We need to combine two sources to get all changes:
+    // 1. git diff --name-status <commit> - shows changes from startCommit to current working tree
+    //    (includes committed, staged, and unstaged changes to tracked files)
+    // 2. git status --porcelain - shows untracked files that git diff doesn't see
+
+    // First, get changes from startCommit to current working tree (including uncommitted)
+    // Note: Without HEAD, git diff compares against the working tree directly
+    const { stdout: diffOutput } = await execAsync(
       `git diff --name-status ${startCommitHash}`,
       {
         cwd: worktreePath,
@@ -220,35 +238,91 @@ export async function getWorktreeDiff(
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large diffs
       },
     );
+    console.log('[worktree-diff] git diff output length:', diffOutput.length);
 
-    const trimmedOutput = statusOutput.trim();
-    if (!trimmedOutput) {
-      return { files: [] };
-    }
+    // Also get untracked files which git diff doesn't show
+    const { stdout: statusOutput } = await execAsync('git status --porcelain', {
+      cwd: worktreePath,
+      encoding: 'utf-8',
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    console.log('[worktree-diff] git status output length:', statusOutput.length);
 
-    const files: WorktreeDiffFile[] = [];
+    const filesMap = new Map<string, WorktreeDiffFile>();
 
-    for (const line of trimmedOutput.split('\n')) {
-      if (!line) continue;
+    // Parse git diff output
+    const trimmedDiff = diffOutput.trim();
+    if (trimmedDiff) {
+      for (const line of trimmedDiff.split('\n')) {
+        if (!line) continue;
 
-      // Format: "M\tpath/to/file" or "A\tpath" or "D\tpath"
-      const [statusCode, ...pathParts] = line.split('\t');
-      const filePath = pathParts.join('\t'); // Handle paths with tabs (rare but possible)
+        // Format: "M\tpath/to/file" or "A\tpath" or "D\tpath"
+        // Also handles renames: "R100\told\tnew"
+        const parts = line.split('\t');
+        const statusCode = parts[0];
+        // For renames (R) and copies (C), the new path is the last element
+        const filePath =
+          statusCode.startsWith('R') || statusCode.startsWith('C')
+            ? parts[parts.length - 1]
+            : parts.slice(1).join('\t');
 
-      let status: 'added' | 'modified' | 'deleted';
-      if (statusCode.startsWith('A')) {
-        status = 'added';
-      } else if (statusCode.startsWith('D')) {
-        status = 'deleted';
-      } else {
-        status = 'modified';
+        let status: 'added' | 'modified' | 'deleted';
+        if (statusCode.startsWith('A')) {
+          status = 'added';
+        } else if (statusCode.startsWith('D')) {
+          status = 'deleted';
+        } else if (statusCode.startsWith('R') || statusCode.startsWith('C')) {
+          // Renames and copies show as added (the new file)
+          status = 'added';
+        } else {
+          status = 'modified';
+        }
+
+        filesMap.set(filePath, { path: filePath, status });
+        console.log('[worktree-diff] From git diff:', { filePath, status });
       }
-
-      files.push({ path: filePath, status });
     }
+
+    // Parse git status output for untracked files
+    const trimmedStatus = statusOutput.trim();
+    if (trimmedStatus) {
+      for (const line of trimmedStatus.split('\n')) {
+        if (!line) continue;
+
+        // Format: "XY filename" where X is staged status, Y is working tree status
+        // "??" means untracked, "A " means staged new file, " M" means modified, etc.
+        const statusCodes = line.substring(0, 2);
+        const filePath = line.substring(3);
+
+        // Only add untracked files (??) that we haven't already captured
+        // Other statuses should already be in the diff output
+        if (statusCodes === '??' && !filesMap.has(filePath)) {
+          // Check if file existed at startCommit
+          try {
+            await execAsync(`git cat-file -e ${startCommitHash}:"${filePath}"`, {
+              cwd: worktreePath,
+              encoding: 'utf-8',
+            });
+            // File existed at startCommit, so this is modified (shouldn't happen for ??)
+            filesMap.set(filePath, { path: filePath, status: 'modified' });
+          } catch {
+            // File didn't exist at startCommit, so it's added
+            filesMap.set(filePath, { path: filePath, status: 'added' });
+          }
+          console.log('[worktree-diff] From git status (untracked):', {
+            filePath,
+            status: filesMap.get(filePath)?.status,
+          });
+        }
+      }
+    }
+
+    const files = Array.from(filesMap.values());
+    console.log('[worktree-diff] Total files found:', files.length);
 
     return { files };
   } catch (error) {
+    console.error('[worktree-diff] Error getting diff:', error);
     // If we get ENOENT, the worktree was likely deleted between our check and the git command
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
       return { files: [], worktreeDeleted: true };
@@ -273,6 +347,13 @@ export async function getWorktreeFileContent(
   filePath: string,
   status: 'added' | 'modified' | 'deleted',
 ): Promise<WorktreeFileContent> {
+  console.log('[worktree-file-content] getWorktreeFileContent called', {
+    worktreePath,
+    startCommitHash,
+    filePath,
+    status,
+  });
+
   let oldContent: string | null = null;
   let newContent: string | null = null;
   let isBinary = false;
@@ -289,10 +370,14 @@ export async function getWorktreeFileContent(
         },
       );
       oldContent = stdout;
-    } catch {
+      console.log('[worktree-file-content] Got old content, length:', stdout.length);
+    } catch (error) {
       // File might be binary or inaccessible
+      console.log('[worktree-file-content] Failed to get old content:', error);
       oldContent = null;
     }
+  } else {
+    console.log('[worktree-file-content] File is added, no old content to fetch');
   }
 
   // Get new content from the working tree (unless file was deleted)
@@ -301,20 +386,32 @@ export async function getWorktreeFileContent(
     try {
       // Check if file is binary
       if (await isBinaryFile(fullPath)) {
+        console.log('[worktree-file-content] File is binary');
         isBinary = true;
         newContent = null;
       } else {
         newContent = await fs.readFile(fullPath, 'utf-8');
+        console.log('[worktree-file-content] Got new content, length:', newContent.length);
       }
-    } catch {
+    } catch (error) {
+      console.log('[worktree-file-content] Failed to get new content:', error);
       newContent = null;
     }
+  } else {
+    console.log('[worktree-file-content] File is deleted, no new content to fetch');
   }
 
   // Also check if old content indicates binary (null bytes would have caused git show to fail)
   if (oldContent === null && newContent === null && status === 'modified') {
+    console.log('[worktree-file-content] Both contents null for modified file, marking as binary');
     isBinary = true;
   }
+
+  console.log('[worktree-file-content] Returning:', {
+    hasOldContent: oldContent !== null,
+    hasNewContent: newContent !== null,
+    isBinary,
+  });
 
   return { oldContent, newContent, isBinary };
 }
