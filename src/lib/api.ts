@@ -130,6 +130,7 @@ export interface Api {
     delete: (id: string) => Promise<void>;
     reorder: (orderedIds: string[]) => Promise<Project[]>;
     getBranches: (projectId: string) => Promise<string[]>;
+    getCurrentBranch: (projectId: string) => Promise<string>;
   };
   tasks: {
     findAll: () => Promise<Task[]>;
@@ -330,6 +331,7 @@ export const api: Api = hasWindowApi
         delete: async () => {},
         reorder: async () => [],
         getBranches: async () => [],
+        getCurrentBranch: async () => '',
       },
       tasks: {
         findAll: async () => [],

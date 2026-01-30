@@ -15,11 +15,11 @@ import {
 } from '@dnd-kit/sortable';
 import { Link, useParams } from '@tanstack/react-router';
 import clsx from 'clsx';
-import { Plus } from 'lucide-react';
+import { GitBranch, Plus } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 
 import { SortableTaskListItem } from '@/features/task/ui-sortable-task-list-item';
-import { useProject } from '@/hooks/use-projects';
+import { useProject, useProjectCurrentBranch } from '@/hooks/use-projects';
 import { useProjectTasks, useReorderTasks } from '@/hooks/use-tasks';
 
 import type { Task } from '../../../shared/types';
@@ -28,11 +28,12 @@ interface TaskWithMessageCount extends Task {
   messageCount?: number;
 }
 
-export const PROJECT_HEADER_HEIGHT = 48;
+export const PROJECT_HEADER_HEIGHT = 64;
 
 export function ProjectSidebar() {
   const { projectId, taskId } = useParams({ strict: false });
   const { data: project } = useProject(projectId!);
+  const { data: currentBranch } = useProjectCurrentBranch(projectId!);
   const { data: tasks } = useProjectTasks(projectId!);
   const reorderTasks = useReorderTasks();
 
@@ -127,17 +128,25 @@ export function ProjectSidebar() {
         to="/projects/$projectId/details"
         params={{ projectId: project.id }}
         className={clsx(
-          'flex items-center gap-3 border-b border-neutral-700 px-4 py-3 transition-colors hover:bg-neutral-800',
+          'flex flex-col justify-center gap-1 border-b border-neutral-700 px-4 py-2 transition-colors hover:bg-neutral-800',
         )}
         style={{
           height: PROJECT_HEADER_HEIGHT,
         }}
       >
-        <span
-          className="h-3 w-3 rounded-full"
-          style={{ backgroundColor: project.color }}
-        />
-        <span className="truncate font-semibold">{project.name}</span>
+        <div className="flex items-center gap-3">
+          <span
+            className="h-3 w-3 flex-shrink-0 rounded-full"
+            style={{ backgroundColor: project.color }}
+          />
+          <span className="truncate font-semibold">{project.name}</span>
+        </div>
+        {currentBranch && (
+          <div className="flex items-center gap-1.5 pl-6 text-xs text-neutral-400">
+            <GitBranch className="h-3 w-3 flex-shrink-0" />
+            <span className="truncate">{currentBranch}</span>
+          </div>
+        )}
       </Link>
 
       {/* New task button */}

@@ -66,3 +66,16 @@ export function useProjectBranches(projectId: string | null) {
     staleTime: 30000, // Cache for 30 seconds
   });
 }
+
+export function useProjectCurrentBranch(projectId: string | null) {
+  return useQuery({
+    queryKey: ['project-current-branch', projectId],
+    queryFn: () => {
+      if (!projectId) return null;
+      return api.projects.getCurrentBranch(projectId);
+    },
+    enabled: !!projectId,
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
+    staleTime: 2000, // Consider stale after 2 seconds
+  });
+}

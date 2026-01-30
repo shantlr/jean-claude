@@ -63,6 +63,7 @@ import {
   getWorktreeDiff,
   getWorktreeFileContent,
   getProjectBranches,
+  getCurrentBranch,
   getWorktreeStatus,
   commitWorktreeChanges,
   mergeWorktree,
@@ -93,6 +94,13 @@ export function registerIpcHandlers() {
       throw new Error(`Project ${projectId} not found`);
     }
     return getProjectBranches(project.path);
+  });
+  ipcMain.handle('projects:getCurrentBranch', async (_, projectId: string) => {
+    const project = await ProjectRepository.findById(projectId);
+    if (!project) {
+      throw new Error(`Project ${projectId} not found`);
+    }
+    return getCurrentBranch(project.path);
   });
 
   // Tasks

@@ -390,6 +390,17 @@ export async function createWorktree(
 }
 
 /**
+ * Gets the current branch name for a git repository.
+ */
+export async function getCurrentBranch(repoPath: string): Promise<string> {
+  const { stdout } = await execAsync('git rev-parse --abbrev-ref HEAD', {
+    cwd: repoPath,
+    encoding: 'utf-8',
+  });
+  return stdout.trim();
+}
+
+/**
  * Gets the list of local branches for a git repository.
  */
 export async function getProjectBranches(

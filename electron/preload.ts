@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('projects:reorder', orderedIds),
     getBranches: (projectId: string) =>
       ipcRenderer.invoke('projects:getBranches', projectId),
+    getCurrentBranch: (projectId: string) =>
+      ipcRenderer.invoke('projects:getCurrentBranch', projectId),
   },
   tasks: {
     findAll: () => ipcRenderer.invoke('tasks:findAll'),
