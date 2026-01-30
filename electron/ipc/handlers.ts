@@ -115,8 +115,11 @@ export function registerIpcHandlers() {
   );
   ipcMain.handle(
     'tasks:createWithWorktree',
-    async (_, data: NewTask & { useWorktree: boolean }) => {
-      const { useWorktree, ...taskData } = data;
+    async (
+      _,
+      data: NewTask & { useWorktree: boolean; sourceBranch?: string | null },
+    ) => {
+      const { useWorktree, sourceBranch, ...taskData } = data;
 
       if (!useWorktree) {
         // No worktree requested, just create the task normally
@@ -138,6 +141,8 @@ export function registerIpcHandlers() {
       }
 
       // Create the worktree using the generated task name
+      // Use provided sourceBranch, fall back to project defaultBranch, or undefined for current HEAD
+      const effectiveSourceBranch = sourceBranch ?? project.defaultBranch;
       const { worktreePath, startCommitHash, branchName } =
         await createWorktree(
           project.path,
@@ -145,6 +150,7 @@ export function registerIpcHandlers() {
           project.name,
           taskData.prompt,
           taskName ?? undefined,
+          effectiveSourceBranch ?? undefined,
         );
 
       // Create the task with worktree info and generated name

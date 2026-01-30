@@ -8,6 +8,7 @@ interface NewTaskFormDraft {
   name: string;
   prompt: string;
   useWorktree: boolean;
+  sourceBranch: string | null; // null means use project's default branch
   interactionMode: InteractionMode;
   workItemId: string | null;
   workItemUrl: string | null;
@@ -17,6 +18,7 @@ const defaultDraft: NewTaskFormDraft = {
   name: '',
   prompt: '',
   useWorktree: false,
+  sourceBranch: null,
   interactionMode: 'ask',
   workItemId: null,
   workItemUrl: null,

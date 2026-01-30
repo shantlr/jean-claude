@@ -6,7 +6,7 @@ import type { FormEvent } from 'react';
 
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
 import { WorkItemsBrowser } from '@/features/agent/ui-work-items-browser';
-import { useProject } from '@/hooks/use-projects';
+import { useProject, useProjectBranches } from '@/hooks/use-projects';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
 import { useNewTaskFormStore } from '@/stores/new-task-form';
@@ -19,13 +19,28 @@ function NewTask() {
   const { projectId } = Route.useParams();
   const navigate = useNavigate();
   const createTask = useCreateTaskWithWorktree();
-
   const { data: project } = useProject(projectId);
+  const { data: branches = [], isLoading: branchesLoading } =
+    useProjectBranches(projectId);
+
   const [showWorkItems, setShowWorkItems] = useState(false);
-  const hasWorkItemsLink = !!project?.workItemProviderId && !!project?.workItemProjectId;
+  const hasWorkItemsLink =
+    !!project?.workItemProviderId && !!project?.workItemProjectId;
 
   const { draft, setDraft, clearDraft } = useNewTaskFormStore(projectId);
-  const { name, prompt, useWorktree, interactionMode, workItemId, workItemUrl } = draft;
+  const {
+    name,
+    prompt,
+    useWorktree,
+    sourceBranch,
+    interactionMode,
+    workItemId,
+    workItemUrl,
+  } = draft;
+
+  // Determine the effective source branch (draft value or project default)
+  const effectiveSourceBranch =
+    sourceBranch ?? project?.defaultBranch ?? branches[0] ?? null;
 
   async function handleCreateTask(shouldStart: boolean) {
     // Pass null if name is empty - will trigger auto-generation when agent starts
@@ -41,6 +56,7 @@ function NewTask() {
       useWorktree,
       workItemId,
       workItemUrl,
+      sourceBranch: useWorktree ? effectiveSourceBranch : null,
       updatedAt: new Date().toISOString(),
     });
 
@@ -123,20 +139,56 @@ function NewTask() {
           </div>
 
           {/* Use worktree checkbox */}
-          <div className="flex items-center gap-2">
-            <input
-              id="useWorktree"
-              type="checkbox"
-              checked={useWorktree}
-              onChange={(e) => setDraft({ useWorktree: e.target.checked })}
-              className="h-4 w-4 cursor-pointer rounded border-neutral-600 bg-neutral-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-neutral-900"
-            />
-            <label
-              htmlFor="useWorktree"
-              className="cursor-pointer text-sm text-neutral-300"
-            >
-              Create git worktree for isolation
-            </label>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                id="useWorktree"
+                type="checkbox"
+                checked={useWorktree}
+                onChange={(e) => setDraft({ useWorktree: e.target.checked })}
+                className="h-4 w-4 cursor-pointer rounded border-neutral-600 bg-neutral-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-neutral-900"
+              />
+              <label
+                htmlFor="useWorktree"
+                className="cursor-pointer text-sm text-neutral-300"
+              >
+                Create git worktree for isolation
+              </label>
+            </div>
+
+            {/* Source branch selector - shown when worktree is checked */}
+            {useWorktree && (
+              <div className="ml-6">
+                <label
+                  htmlFor="sourceBranch"
+                  className="mb-1 block text-sm font-medium text-neutral-400"
+                >
+                  Base branch
+                </label>
+                <select
+                  id="sourceBranch"
+                  value={effectiveSourceBranch ?? ''}
+                  onChange={(e) =>
+                    setDraft({ sourceBranch: e.target.value || null })
+                  }
+                  disabled={branchesLoading}
+                  className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none disabled:opacity-50"
+                >
+                  {branchesLoading ? (
+                    <option value="">Loading branches...</option>
+                  ) : branches.length === 0 ? (
+                    <option value="">No branches found</option>
+                  ) : (
+                    branches.map((branch) => (
+                      <option key={branch} value={branch}>
+                        {branch}
+                        {branch === project?.defaultBranch ? ' (default)' : ''}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Work Items */}
@@ -150,7 +202,8 @@ function NewTask() {
                   onSelect={(wi) => {
                     setDraft({
                       name: wi.fields.title.slice(0, 100),
-                      prompt: `[AB#${wi.id}] ${wi.fields.title}\n\n${wi.fields.description ?? ''}`.trim(),
+                      prompt:
+                        `[AB#${wi.id}] ${wi.fields.title}\n\n${wi.fields.description ?? ''}`.trim(),
                       workItemId: String(wi.id),
                       workItemUrl: wi.url,
                     });

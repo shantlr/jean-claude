@@ -338,6 +338,7 @@ export async function getWorktreeFileContent(
  * @param projectName - The project name (for directory naming)
  * @param prompt - The task prompt (fallback for worktree naming if taskName not provided)
  * @param taskName - Optional task name to use for worktree naming (preferred over prompt)
+ * @param sourceBranch - Optional branch to base the worktree on (defaults to current HEAD)
  * @returns The path to the created worktree and the starting commit hash
  */
 export async function createWorktree(
@@ -346,6 +347,7 @@ export async function createWorktree(
   projectName: string,
   prompt: string,
   taskName?: string,
+  sourceBranch?: string,
 ): Promise<CreateWorktreeResult> {
   // Verify this is a git repository
   if (!(await isGitRepository(projectPath))) {
@@ -364,18 +366,20 @@ export async function createWorktree(
     : generateWorktreeName(prompt);
   const worktreePath = path.join(projectWorktreesPath, worktreeName);
 
-  // Get current commit hash before creating worktree
-  const startCommitHash = await getCurrentCommitHash(projectPath);
-
   // Create branch name with jean-claude/ prefix
   const branchName = `jean-claude/${worktreeName}`;
 
   // Create the worktree with a new branch
+  // If sourceBranch is provided, use it as the start point; otherwise use current HEAD
   try {
-    await execAsync(`git worktree add "${worktreePath}" -b "${branchName}"`, {
-      cwd: projectPath,
-      encoding: 'utf-8',
-    });
+    const startPoint = sourceBranch ? ` "${sourceBranch}"` : '';
+    await execAsync(
+      `git worktree add "${worktreePath}" -b "${branchName}"${startPoint}`,
+      {
+        cwd: projectPath,
+        encoding: 'utf-8',
+      },
+    );
   } catch (error) {
     throw new Error(`Failed to create git worktree: ${error}`);
   }
@@ -386,6 +390,8 @@ export async function createWorktree(
   } catch (error) {
     console.warn('Failed to build Claude settings for worktree:', error);
   }
+  // Get the commit hash of the worktree HEAD (which is the source branch's HEAD or current HEAD)
+  const startCommitHash = await getCurrentCommitHash(worktreePath);
 
   return {
     worktreePath,

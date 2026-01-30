@@ -43,8 +43,9 @@ export function useCreateTask() {
 export function useCreateTaskWithWorktree() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: NewTask & { useWorktree: boolean }) =>
-      api.tasks.createWithWorktree(data),
+    mutationFn: (
+      data: NewTask & { useWorktree: boolean; sourceBranch?: string | null },
+    ) => api.tasks.createWithWorktree(data),
     onSuccess: (task) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({

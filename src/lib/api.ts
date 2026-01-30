@@ -137,7 +137,7 @@ export interface Api {
     findById: (id: string) => Promise<Task | undefined>;
     create: (data: NewTask) => Promise<Task>;
     createWithWorktree: (
-      data: NewTask & { useWorktree: boolean },
+      data: NewTask & { useWorktree: boolean; sourceBranch?: string | null },
     ) => Promise<Task>;
     update: (id: string, data: UpdateTask) => Promise<Task>;
     delete: (id: string) => Promise<void>;
