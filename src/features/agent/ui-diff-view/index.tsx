@@ -1,8 +1,10 @@
+import { Columns2, AlignJustify } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
 
 import { computeDiff, type DiffLine } from './diff-utils';
 import { getLanguageFromPath } from './language-utils';
+import { SideBySideDiffTable } from './side-by-side-table';
 
 
 interface DiffState {
@@ -19,6 +21,7 @@ export function DiffView({ filePath, oldString, newString }: {
 }) {
   const [state, setState] = useState<DiffState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'inline' | 'side-by-side'>('inline');
 
   const language = getLanguageFromPath(filePath);
 
@@ -71,19 +74,43 @@ export function DiffView({ filePath, oldString, newString }: {
 
   return (
     <div className="relative">
-      <div className="overflow-auto rounded bg-black/30 font-mono text-xs">
-        <table className="w-full border-collapse">
-          <tbody>
-            {state.lines.map((line, i) => (
-              <DiffLineRow
-                key={i}
-                line={line}
-                oldTokens={state.oldTokens}
-                newTokens={state.newTokens}
-              />
-            ))}
-          </tbody>
-        </table>
+      {/* Toggle button */}
+      <div className="absolute right-2 top-2 z-10">
+        <button
+          onClick={() => setViewMode(viewMode === 'inline' ? 'side-by-side' : 'inline')}
+          className="rounded bg-neutral-700 p-1 text-neutral-300 hover:bg-neutral-600 hover:text-neutral-100"
+          title={viewMode === 'inline' ? 'Switch to side-by-side view' : 'Switch to inline view'}
+        >
+          {viewMode === 'inline' ? (
+            <Columns2 className="h-4 w-4" />
+          ) : (
+            <AlignJustify className="h-4 w-4" />
+          )}
+        </button>
+      </div>
+
+      <div className="overflow-auto rounded bg-black/30 pt-8 font-mono text-xs">
+        {viewMode === 'inline' ? (
+          <table className="w-full border-collapse">
+            <tbody>
+              {state.lines.map((line, i) => (
+                <DiffLineRow
+                  key={i}
+                  line={line}
+                  oldTokens={state.oldTokens}
+                  newTokens={state.newTokens}
+                />
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <SideBySideDiffTable
+            oldString={oldString}
+            newString={newString}
+            oldTokens={state.oldTokens}
+            newTokens={state.newTokens}
+          />
+        )}
       </div>
     </div>
   );
