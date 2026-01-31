@@ -398,7 +398,7 @@ function DiffLineRow({
         {/* Content with syntax highlighting */}
         <td
           className={clsx('whitespace-pre-wrap pr-2', {
-            'select-none': !!onMouseDown || !!onMouseUp,
+            'select-none': canComment,
           })}
         >
           {tokens.length > 0 ? (
