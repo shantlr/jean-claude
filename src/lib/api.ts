@@ -138,6 +138,32 @@ export interface QueryTableResult {
   total: number;
 }
 
+export interface TaskWithProject {
+  id: string;
+  projectId: string;
+  projectName: string;
+  projectColor: string;
+  name: string | null;
+  prompt: string;
+  status: string;
+  sessionId: string | null;
+  worktreePath: string | null;
+  startCommitHash: string | null;
+  branchName: string | null;
+  readAt: string | null;
+  lastReadIndex: number;
+  interactionMode: string;
+  userCompleted: boolean;
+  sessionAllowedTools: string[];
+  workItemId: string | null;
+  workItemUrl: string | null;
+  pullRequestId: string | null;
+  pullRequestUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+  messageCount?: number;
+}
+
 export type AgentEventCallback<T> = (event: T) => void;
 export type UnsubscribeFn = () => void;
 
@@ -157,6 +183,7 @@ export interface Api {
   tasks: {
     findAll: () => Promise<Task[]>;
     findByProjectId: (projectId: string) => Promise<Task[]>;
+    findAllActive: () => Promise<TaskWithProject[]>;
     findById: (id: string) => Promise<Task | undefined>;
     create: (data: NewTask) => Promise<Task>;
     createWithWorktree: (
@@ -366,6 +393,7 @@ export const api: Api = hasWindowApi
       tasks: {
         findAll: async () => [],
         findByProjectId: async () => [],
+        findAllActive: async () => [],
         findById: async () => undefined,
         create: async () => {
           throw new Error('API not available');

@@ -124,6 +124,25 @@ export const TaskRepository = {
     return rows.map(toTask);
   },
 
+  findAllActive: async () => {
+    const rows = await db
+      .selectFrom('tasks')
+      .innerJoin('projects', 'projects.id', 'tasks.projectId')
+      .selectAll('tasks')
+      .select(['projects.name as projectName', 'projects.color as projectColor'])
+      .select((eb) =>
+        eb
+          .selectFrom('agent_messages')
+          .whereRef('agent_messages.taskId', '=', 'tasks.id')
+          .select((eb2) => eb2.fn.countAll<number>().as('count'))
+          .as('messageCount'),
+      )
+      .where('tasks.userCompleted', '=', 0)
+      .orderBy('tasks.updatedAt', 'desc')
+      .execute();
+    return rows.map(toTask);
+  },
+
   findById: async (id: string) => {
     const row = await db
       .selectFrom('tasks')

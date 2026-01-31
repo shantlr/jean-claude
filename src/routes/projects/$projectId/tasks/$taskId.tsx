@@ -75,6 +75,7 @@ function TaskPanel() {
   const unloadTask = useTaskMessagesStore((state) => state.unloadTask);
 
   // Navigation tracking
+  const lastLocation = useNavigationStore((s) => s.lastLocation);
   const setLastLocation = useNavigationStore((s) => s.setLastLocation);
   const setLastTaskForProject = useNavigationStore(
     (s) => s.setLastTaskForProject,
@@ -111,9 +112,15 @@ function TaskPanel() {
 
   // Track this location for navigation restoration
   useEffect(() => {
-    setLastLocation(projectId, taskId);
+    // If coming from All Tasks view, keep tracking in that context
+    if (lastLocation.type === 'allTasks') {
+      setLastLocation({ type: 'allTasks', taskId });
+    } else {
+      // Otherwise track in project context
+      setLastLocation({ type: 'project', projectId, taskId });
+    }
     setLastTaskForProject(projectId, taskId);
-  }, [projectId, taskId, setLastLocation, setLastTaskForProject]);
+  }, [projectId, taskId, lastLocation.type, setLastLocation, setLastTaskForProject]);
 
   const handleCopySessionId = useCallback(async () => {
     if (task?.sessionId) {

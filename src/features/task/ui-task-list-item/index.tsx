@@ -21,10 +21,18 @@ export function getUnreadCount(task: TaskWithMessageCount): number {
   return Math.max(0, messageCount - 1 - task.lastReadIndex);
 }
 
-export function TaskListItem({ task, projectId, isActive }: {
+export function TaskListItem({
+  task,
+  projectId,
+  isActive,
+  projectName,
+  projectColor,
+}: {
   task: TaskWithMessageCount;
   projectId: string;
   isActive?: boolean;
+  projectName?: string;
+  projectColor?: string;
 }) {
   const unreadCount = getUnreadCount(task);
   const taskState = useTaskMessagesStore((s) => s.tasks[task.id]);
@@ -61,9 +69,20 @@ export function TaskListItem({ task, projectId, isActive }: {
             toggleUserCompleted.mutate(task.id);
           }}
         />
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">
-          {task.name ?? task.prompt.split('\n')[0].slice(0, 50)}
-        </span>
+        <div className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">
+            {task.name ?? task.prompt.split('\n')[0].slice(0, 50)}
+          </span>
+          {projectName && projectColor && (
+            <div className="flex items-center gap-1.5 text-xs text-neutral-400">
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: projectColor }}
+              />
+              <span className="truncate">{projectName}</span>
+            </div>
+          )}
+        </div>
         {needsAttention && (
           <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
         )}

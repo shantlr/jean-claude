@@ -13,13 +13,55 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from '@dnd-kit/sortable';
-import { Link } from '@tanstack/react-router';
-import { Plus, Settings } from 'lucide-react';
+import { Link, useRouter, useRouterState } from '@tanstack/react-router';
+import clsx from 'clsx';
+import { LayoutList, Plus, Settings } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
+import { getUnreadCount } from '@/features/task/ui-task-list-item';
 import { useProjects, useReorderProjects } from '@/hooks/use-projects';
+import { useAllActiveTasks } from '@/hooks/use-tasks';
+import { useNavigationStore } from '@/stores/navigation';
 
 import { SortableProjectTile } from './sortable-project-tile';
+
+function AllTasksTile() {
+  const { data: tasks } = useAllActiveTasks();
+  const router = useRouter();
+  const lastLocation = useNavigationStore((s) => s.lastLocation);
+
+  const isActive = useRouterState({
+    select: (state) =>
+      state.location.pathname === '/all-tasks' ||
+      lastLocation.type === 'allTasks',
+  });
+
+  const unreadCount =
+    tasks?.reduce((sum, task) => sum + getUnreadCount(task), 0) ?? 0;
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => {
+        router.navigate({ to: '/all-tasks' });
+      }}
+      className={clsx(
+        'cursor-pointer group relative flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-700 text-neutral-300 transition-all hover:bg-neutral-600 hover:text-white',
+        {
+          'ring-white ring-2': isActive,
+        },
+      )}
+    >
+      <LayoutList className="h-5 w-5" />
+      {unreadCount > 0 && (
+        <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white">
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      )}
+    </div>
+  );
+}
 
 export function MainSidebar() {
   const { data: projects } = useProjects();
@@ -66,6 +108,8 @@ export function MainSidebar() {
     <aside className="flex h-full w-[86px] flex-col">
       {/* Project tiles */}
       <div className="flex flex-1 flex-col items-center gap-2 overflow-y-auto px-3 pb-3 pt-12">
+        <AllTasksTile />
+        <div className="my-1 h-px w-8 bg-neutral-700" />
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}

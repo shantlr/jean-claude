@@ -38,9 +38,15 @@ const defaultTaskState: TaskState = {
 const DEFAULT_DIFF_FILE_TREE_WIDTH = 224; // w-56 equivalent
 const MIN_DIFF_FILE_TREE_WIDTH = 150;
 
+// Discriminated union for last location
+export type LastLocation =
+  | { type: 'project'; projectId: string; taskId: string | null }
+  | { type: 'allTasks'; taskId: string | null }
+  | { type: 'none' };
+
 interface NavigationState {
-  // App-level: last visited location
-  lastLocation: { projectId: string | null; taskId: string | null };
+  // App-level: last visited location (project or All Tasks)
+  lastLocation: LastLocation;
 
   // App-level: diff file tree width (global setting)
   diffFileTreeWidth: number;
@@ -52,7 +58,7 @@ interface NavigationState {
   taskState: Record<string, TaskState>; // taskId -> state
 
   // Actions
-  setLastLocation: (projectId: string | null, taskId: string | null) => void;
+  setLastLocation: (location: LastLocation) => void;
   setDiffFileTreeWidth: (width: number) => void;
   setLastTaskForProject: (projectId: string, taskId: string) => void;
   setTaskRightPane: (taskId: string, pane: RightPane | null) => void;
@@ -65,13 +71,12 @@ interface NavigationState {
 const useStore = create<NavigationState>()(
   persist(
     (set) => ({
-      lastLocation: { projectId: null, taskId: null },
+      lastLocation: { type: 'none' } as LastLocation,
       diffFileTreeWidth: DEFAULT_DIFF_FILE_TREE_WIDTH,
       lastTaskByProject: {},
       taskState: {},
 
-      setLastLocation: (projectId, taskId) =>
-        set({ lastLocation: { projectId, taskId } }),
+      setLastLocation: (location) => set({ lastLocation: location }),
 
       setDiffFileTreeWidth: (width) =>
         set({ diffFileTreeWidth: Math.max(MIN_DIFF_FILE_TREE_WIDTH, width) }),
@@ -135,8 +140,9 @@ const useStore = create<NavigationState>()(
         set((state) => {
           const { [projectId]: _, ...restTasks } = state.lastTaskByProject;
           const newLastLocation =
+            state.lastLocation.type === 'project' &&
             state.lastLocation.projectId === projectId
-              ? { projectId: null, taskId: null }
+              ? ({ type: 'none' } as LastLocation)
               : state.lastLocation;
           return {
             lastTaskByProject: restTasks,
@@ -158,11 +164,21 @@ const useStore = create<NavigationState>()(
             }
           }
 
-          // Clear from lastLocation if this was the last visited task
-          const newLastLocation =
-            state.lastLocation.taskId === taskId
-              ? { projectId: state.lastLocation.projectId, taskId: null }
-              : state.lastLocation;
+          // Clear taskId from lastLocation if this was the last visited task
+          let newLastLocation = state.lastLocation;
+          if (state.lastLocation.type === 'project') {
+            if (state.lastLocation.taskId === taskId) {
+              newLastLocation = {
+                type: 'project',
+                projectId: state.lastLocation.projectId,
+                taskId: null,
+              };
+            }
+          } else if (state.lastLocation.type === 'allTasks') {
+            if (state.lastLocation.taskId === taskId) {
+              newLastLocation = { type: 'allTasks', taskId: null };
+            }
+          }
 
           return {
             taskState: restTaskState,

@@ -7,7 +7,12 @@ export const Route = createFileRoute('/')({
   beforeLoad: async () => {
     const { lastLocation, setLastLocation } = useNavigationStore.getState();
 
-    if (lastLocation.projectId) {
+    if (lastLocation.type === 'allTasks') {
+      // Redirect to All Tasks view
+      throw redirect({ to: '/all-tasks' });
+    }
+
+    if (lastLocation.type === 'project') {
       // Validate project still exists
       const project = await api.projects.findById(lastLocation.projectId);
 
@@ -33,7 +38,7 @@ export const Route = createFileRoute('/')({
       }
 
       // Project invalid, clear and fall through
-      setLastLocation(null, null);
+      setLastLocation({ type: 'none' });
     }
 
     throw redirect({ to: '/settings' });

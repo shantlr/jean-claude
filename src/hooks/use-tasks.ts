@@ -19,6 +19,13 @@ export function useProjectTasks(projectId: string) {
   });
 }
 
+export function useAllActiveTasks() {
+  return useQuery({
+    queryKey: ['tasks', 'allActive'],
+    queryFn: () => api.tasks.findAllActive(),
+  });
+}
+
 export function useTask(id: string) {
   return useQuery({
     queryKey: ['tasks', id],
