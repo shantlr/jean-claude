@@ -230,7 +230,7 @@ export async function queryWorkItems(params: {
   providerId: string;
   projectId: string;
   projectName: string;
-  filters: { states?: string[]; workItemTypes?: string[] };
+  filters: { states?: string[]; workItemTypes?: string[]; searchText?: string };
 }): Promise<AzureDevOpsWorkItem[]> {
   const provider = await ProviderRepository.findById(params.providerId);
   if (!provider) {
@@ -269,6 +269,23 @@ export async function queryWorkItems(params: {
       .map((t) => `'${t}'`)
       .join(', ');
     conditions.push(`[System.WorkItemType] IN (${typesList})`);
+  }
+
+  // Add search text filter - search ID (exact match) OR title (contains)
+  if (params.filters.searchText && params.filters.searchText.trim()) {
+    const searchText = params.filters.searchText.trim();
+    // Escape single quotes in search text to prevent WIQL injection
+    const escapedSearch = searchText.replace(/'/g, "''");
+
+    // System.Id is an integer field, so we can only do exact match on it
+    // If search text is numeric, search both ID (exact) and title; otherwise just title
+    if (/^\d+$/.test(searchText)) {
+      conditions.push(
+        `([System.Id] = ${searchText} OR [System.Title] Contains '${escapedSearch}')`,
+      );
+    } else {
+      conditions.push(`[System.Title] Contains '${escapedSearch}'`);
+    }
   }
 
   const wiqlQuery = `SELECT [System.Id] FROM WorkItems WHERE ${conditions.join(' AND ')} ORDER BY [System.ChangedDate] DESC`;

@@ -9,6 +9,7 @@ export function useWorkItems(params: {
   filters: {
     states?: string[];
     workItemTypes?: string[];
+    searchText?: string;
   };
 }) {
   return useQuery<AzureDevOpsWorkItem[]>({

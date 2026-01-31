@@ -480,7 +480,7 @@ export function registerIpcHandlers() {
         providerId: string;
         projectId: string;
         projectName: string;
-        filters: { states?: string[]; workItemTypes?: string[] };
+        filters: { states?: string[]; workItemTypes?: string[]; searchText?: string };
       },
     ) => queryWorkItems(params),
   );

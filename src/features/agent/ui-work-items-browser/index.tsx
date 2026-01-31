@@ -1,7 +1,8 @@
-import { Bug, FileText, Loader2, X } from 'lucide-react';
-import { useState } from 'react';
+import { Bug, FileText, Loader2, Search, X } from 'lucide-react';
 
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useWorkItems } from '@/hooks/use-work-items';
+import { useWorkItemsFiltersStore } from '@/stores/new-task-form';
 
 import type { AzureDevOpsWorkItem } from '../../../lib/api';
 
@@ -9,45 +10,48 @@ const STATE_OPTIONS = ['Active', 'New', 'Resolved', 'Closed'] as const;
 const TYPE_OPTIONS = ['User Story', 'Bug', 'Task', 'Feature'] as const;
 
 export function WorkItemsBrowser({
+  localProjectId,
   providerId,
   projectId,
   projectName,
   onSelect,
   onClose,
 }: {
+  localProjectId: string;
   providerId: string;
   projectId: string;
   projectName: string;
   onSelect: (workItem: AzureDevOpsWorkItem) => void;
   onClose: () => void;
 }) {
-  const [selectedStates, setSelectedStates] = useState<string[]>(['Active']);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const { filters, setFilters } = useWorkItemsFiltersStore(localProjectId);
+  const debouncedSearchText = useDebouncedValue(filters.searchText, 300);
 
   const { data: workItems, isLoading, error } = useWorkItems({
     providerId,
     projectId,
     projectName,
     filters: {
-      states: selectedStates.length > 0 ? selectedStates : undefined,
-      workItemTypes: selectedTypes.length > 0 ? selectedTypes : undefined,
+      states: filters.states.length > 0 ? filters.states : undefined,
+      workItemTypes: filters.types.length > 0 ? filters.types : undefined,
+      searchText: debouncedSearchText || undefined,
     },
   });
 
   function toggleState(state: string) {
-    setSelectedStates((prev) =>
-      prev.includes(state)
-        ? prev.filter((s) => s !== state)
-        : [...prev, state],
-    );
+    setFilters({
+      states: filters.states.includes(state)
+        ? filters.states.filter((s) => s !== state)
+        : [...filters.states, state],
+    });
   }
 
   function toggleType(type: string) {
-    setSelectedTypes((prev) =>
-      prev.includes(type)
-        ? prev.filter((t) => t !== type)
-        : [...prev, type],
-    );
+    setFilters({
+      types: filters.types.includes(type)
+        ? filters.types.filter((t) => t !== type)
+        : [...filters.types, type],
+    });
   }
 
   return (
@@ -66,6 +70,18 @@ export function WorkItemsBrowser({
         </button>
       </div>
 
+      {/* Search input */}
+      <div className="relative mb-3">
+        <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+        <input
+          type="text"
+          value={filters.searchText}
+          onChange={(e) => setFilters({ searchText: e.target.value })}
+          placeholder="Search by title or ID..."
+          className="w-full rounded-md border border-neutral-600 bg-neutral-700 py-1.5 pl-8 pr-3 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+        />
+      </div>
+
       {/* Filters */}
       <div className="mb-3 space-y-2">
         {/* State filter */}
@@ -78,7 +94,7 @@ export function WorkItemsBrowser({
                 type="button"
                 onClick={() => toggleState(state)}
                 className={`cursor-pointer rounded px-2 py-0.5 text-xs transition-colors ${
-                  selectedStates.includes(state)
+                  filters.states.includes(state)
                     ? 'bg-blue-600 text-white'
                     : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
                 }`}
@@ -99,7 +115,7 @@ export function WorkItemsBrowser({
                 type="button"
                 onClick={() => toggleType(type)}
                 className={`cursor-pointer rounded px-2 py-0.5 text-xs transition-colors ${
-                  selectedTypes.includes(type)
+                  filters.types.includes(type)
                     ? 'bg-blue-600 text-white'
                     : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
                 }`}

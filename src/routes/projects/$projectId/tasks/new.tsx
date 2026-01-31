@@ -196,6 +196,7 @@ function NewTask() {
             <div>
               {showWorkItems ? (
                 <WorkItemsBrowser
+                  localProjectId={projectId}
                   providerId={project!.workItemProviderId!}
                   projectId={project!.workItemProjectId!}
                   projectName={project!.workItemProjectName!}
