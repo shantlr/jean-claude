@@ -3,6 +3,17 @@ import { useCallback, useEffect, useRef } from 'react';
 import { api } from '@/lib/api';
 import { useTaskMessagesStore, TaskState } from '@/stores/task-messages';
 
+// Hoisted outside component to avoid recreation on every render
+const DEFAULT_TASK_STATE: TaskState = {
+  messages: [],
+  status: 'waiting',
+  error: null,
+  pendingPermission: null,
+  pendingQuestion: null,
+  queuedPrompts: [],
+  lastAccessedAt: 0,
+};
+
 export function useTaskMessages(taskId: string) {
   const taskState = useTaskMessagesStore((s) => s.tasks[taskId]);
   const loadTask = useTaskMessagesStore((s) => s.loadTask);
@@ -103,17 +114,7 @@ export function useTaskMessages(taskId: string) {
     return () => window.removeEventListener('focus', handleFocus);
   }, [taskId, isLoaded, taskState?.status, fetchPendingRequest]);
 
-  const defaultState: TaskState = {
-    messages: [],
-    status: 'waiting',
-    error: null,
-    pendingPermission: null,
-    pendingQuestion: null,
-    queuedPrompts: [],
-    lastAccessedAt: 0,
-  };
-
-  const state = taskState ?? defaultState;
+  const state = taskState ?? DEFAULT_TASK_STATE;
 
   return {
     messages: state.messages,
