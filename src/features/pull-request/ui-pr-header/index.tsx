@@ -97,7 +97,7 @@ export function PrHeader({ pr }: { pr: AzureDevOpsPullRequestDetails }) {
           {/* TITLE */}
           <h1 className="text-lg font-semibold text-neutral-100">{pr.title}</h1>
 
-          <div className="w-full flex items-center gap-x-4 text-neutral-400">
+          <div className="flex w-full items-center gap-x-4 text-neutral-400">
             <div className="flex items-center gap-1">
               <span className="text-neutral-500">by</span>
               <span>{pr.createdBy.displayName}</span>
@@ -113,7 +113,7 @@ export function PrHeader({ pr }: { pr: AzureDevOpsPullRequestDetails }) {
             </div>
             <div className="grow">{formatRelativeTime(pr.creationDate)}</div>
 
-            <div className="flex -space-x-1 justify-end">
+            <div className="flex justify-end -space-x-1">
               {reviewers.map((reviewer) => (
                 <div
                   key={reviewer.uniqueName}

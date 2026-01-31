@@ -251,13 +251,13 @@ export const PromptTextarea = forwardRef<
   };
 
   return (
-    <div ref={containerRef} className="flex items-end relative flex-1">
+    <div ref={containerRef} className="relative flex flex-1 items-end">
       {/* Autocompletion dropdown */}
       {showDropdown && filteredItems.length > 0 && (
         <div
           ref={dropdownRef}
           className={clsx(
-            'absolute left-0 right-0 max-h-80 overflow-y-auto rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg',
+            'absolute right-0 left-0 max-h-80 overflow-y-auto rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg',
             dropdownPosition === 'top' ? 'bottom-full mb-1' : 'top-full mt-1',
           )}
         >
@@ -332,7 +332,7 @@ export const PromptTextarea = forwardRef<
                   )}
                 </div>
                 {skill.description && (
-                  <div className="text-xs text-neutral-400 line-clamp-2">
+                  <div className="line-clamp-2 text-xs text-neutral-400">
                     {skill.description}
                   </div>
                 )}
@@ -349,7 +349,7 @@ export const PromptTextarea = forwardRef<
         rows={1}
         autoComplete="off"
         className={clsx(
-          'min-h-[40px] w-full resize-none rounded-lg border border-neutral-600 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:cursor-not-allowed disabled:opacity-50',
+          'min-h-[40px] w-full resize-none rounded-lg border border-neutral-600 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
           className,
         )}
         {...textareaProps}

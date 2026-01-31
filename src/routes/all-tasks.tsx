@@ -50,7 +50,7 @@ export const Route = createFileRoute('/all-tasks')({
 
 function AllTasksLayout() {
   return (
-    <div className="flex h-full overflow-hidden rounded-tl-lg border-l border-t border-neutral-800">
+    <div className="flex h-full overflow-hidden rounded-tl-lg border-t border-l border-neutral-800">
       <AllTasksSidebar />
       <div className="flex flex-1 items-center justify-center text-neutral-500">
         No active tasks across projects

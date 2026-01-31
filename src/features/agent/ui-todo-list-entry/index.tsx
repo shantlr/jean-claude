@@ -101,7 +101,7 @@ export function TodoListEntry({
     <div className="relative pl-6">
       {/* Dot - indigo for TodoWrite, with pulse if pending */}
       <div
-        className={`absolute -left-1 top-2.5 h-2 w-2 rounded-full bg-indigo-500 ${isPending ? 'animate-pulse' : ''}`}
+        className={`absolute top-2.5 -left-1 h-2 w-2 rounded-full bg-indigo-500 ${isPending ? 'animate-pulse' : ''}`}
       />
 
       <div className="py-1.5 pr-3">

@@ -96,7 +96,7 @@ function isAsciiArt(code: string): boolean {
 function AsciiArtBlock({ code }: { code: string }) {
   return (
     <div className="overflow-x-auto rounded-lg bg-neutral-900 p-3">
-      <pre className="font-mono text-[10px] leading-tight text-neutral-300 whitespace-pre">
+      <pre className="font-mono text-[10px] leading-tight whitespace-pre text-neutral-300">
         {code}
       </pre>
     </div>
@@ -144,7 +144,7 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
 
   return (
     <div
-      className="overflow-x-auto rounded mb-3 border border-neutral-600 [&_pre]:p-2 [&_pre]:whitespace-pre"
+      className="mb-3 overflow-x-auto rounded border border-neutral-600 [&_pre]:p-2 [&_pre]:whitespace-pre"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -186,7 +186,7 @@ export function MarkdownContent({
           if (isInline) {
             return (
               <code
-                className="rounded bg-neutral-800 border border-neutral-600 px-1 py-0.5"
+                className="rounded border border-neutral-600 bg-neutral-800 px-1 py-0.5"
                 {...props}
               >
                 {children}
@@ -239,7 +239,7 @@ export function MarkdownContent({
           </h3>
         ),
         blockquote: ({ children }) => (
-          <blockquote className="mb-3 border-l-4 border-neutral-600 pl-4 italic text-neutral-400">
+          <blockquote className="mb-3 border-l-4 border-neutral-600 pl-4 text-neutral-400 italic">
             {children}
           </blockquote>
         ),

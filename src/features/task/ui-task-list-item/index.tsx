@@ -54,7 +54,7 @@ export function TaskListItem({
           },
         });
       }}
-      className={`cursor-pointer flex flex-col gap-1 rounded-lg px-3 py-2 transition-colors ${
+      className={`flex cursor-pointer flex-col gap-1 rounded-lg px-3 py-2 transition-colors ${
         isActive ? 'bg-neutral-700' : 'hover:bg-neutral-800'
       }`}
     >

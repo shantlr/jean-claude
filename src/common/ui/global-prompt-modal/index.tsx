@@ -52,7 +52,7 @@ export function GlobalPromptModal() {
 
           {currentPrompt.details && (
             <div className="mt-3 rounded-md bg-neutral-900 p-3">
-              <pre className="whitespace-pre-wrap break-all font-mono text-xs text-neutral-400">
+              <pre className="font-mono text-xs break-all whitespace-pre-wrap text-neutral-400">
                 {currentPrompt.details}
               </pre>
             </div>

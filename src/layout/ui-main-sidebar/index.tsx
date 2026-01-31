@@ -59,16 +59,16 @@ function AllTasksTile() {
       aria-label={`All tasks${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
       aria-current={isActive ? 'page' : undefined}
       className={clsx(
-        'cursor-pointer group relative flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-700 text-neutral-300 transition-colors hover:bg-neutral-600 hover:text-white',
+        'group relative flex h-12 w-12 cursor-pointer items-center justify-center rounded-xl bg-neutral-700 text-neutral-300 transition-colors hover:bg-neutral-600 hover:text-white',
         {
-          'ring-white ring-2': isActive,
+          'ring-2 ring-white': isActive,
         },
       )}
     >
       <LayoutList className="h-5 w-5" aria-hidden />
       {unreadCount > 0 && (
         <span
-          className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white"
+          className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white"
           aria-hidden
         >
           {unreadCount > 9 ? '9+' : unreadCount}
@@ -122,7 +122,7 @@ export function MainSidebar() {
   return (
     <aside className="flex h-full w-[86px] flex-col">
       {/* Project tiles */}
-      <div className="flex flex-1 flex-col items-center gap-2 overflow-y-auto px-3 pb-3 pt-12">
+      <div className="flex flex-1 flex-col items-center gap-2 overflow-y-auto px-3 pt-12 pb-3">
         <AllTasksTile />
         <div className="my-1 h-px w-8 bg-neutral-700" />
         <DndContext
@@ -147,7 +147,7 @@ export function MainSidebar() {
       </div>
 
       {/* Footer */}
-      <div className="flex flex-col items-center gap-2 bg-neutral-800 px-3 py-3 m-2 rounded-xl">
+      <div className="m-2 flex flex-col items-center gap-2 rounded-xl bg-neutral-800 px-3 py-3">
         {/* Add project button */}
         <Link
           to="/projects/new"

@@ -129,7 +129,7 @@ export function TaskList({
       {/* Completed tasks section */}
       {localCompletedTasks.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="px-3 py-1 text-xs font-medium uppercase tracking-wider text-neutral-500">
+          <span className="px-3 py-1 text-xs font-medium tracking-wider text-neutral-500 uppercase">
             Completed
           </span>
           <TaskSection

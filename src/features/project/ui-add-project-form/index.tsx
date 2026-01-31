@@ -381,7 +381,7 @@ export function AddProjectForm({
           value={formData.name}
           onChange={(e) => onChange({ name: e.target.value })}
           autoComplete="off"
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-500/50"
+          className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white placeholder-neutral-500 focus:border-neutral-500 focus:ring-2 focus:ring-neutral-500/50 focus:outline-none"
           required
         />
       </div>

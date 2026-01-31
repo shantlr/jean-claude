@@ -22,7 +22,7 @@ function SettingsLayout() {
   ] as const;
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-tl-lg border-l border-t border-neutral-800 p-6">
+    <div className="flex h-full flex-col overflow-hidden rounded-tl-lg border-t border-l border-neutral-800 p-6">
       {/* Tab navigation */}
       <div className="flex gap-2">
         {tabs.map((tab) => {

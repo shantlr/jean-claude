@@ -353,7 +353,7 @@ export function OrganizationDetailsPane({
 
           {data && (
             <div className="flex flex-col gap-2">
-              <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+              <h4 className="mb-1 text-xs font-medium tracking-wide text-neutral-500 uppercase">
                 Projects ({data.projects.length})
               </h4>
               {data.projects.length === 0 ? (

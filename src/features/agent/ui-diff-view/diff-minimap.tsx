@@ -76,7 +76,7 @@ export function DiffMinimap({
   }
 
   return (
-    <div className="absolute h-full w-2.5  right-0 top-0 border-b-4">
+    <div className="absolute top-0 right-0 h-full w-2.5 border-b-4">
       {/* Change markers */}
       {markers.map((marker, i) => (
         <div
@@ -96,7 +96,7 @@ export function DiffMinimap({
       {/* Viewport indicator */}
       {viewportIndicator && (
         <div
-          className="pointer-events-none absolute left-0 right-0 border border-neutral-400/50 bg-neutral-400/20"
+          className="pointer-events-none absolute right-0 left-0 border border-neutral-400/50 bg-neutral-400/20"
           style={{
             top: `${viewportIndicator.topPercent}%`,
             height: `${viewportIndicator.heightPercent}%`,

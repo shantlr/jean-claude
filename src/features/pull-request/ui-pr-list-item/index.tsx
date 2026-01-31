@@ -52,7 +52,7 @@ export function PrListItem({
           <div className="flex items-center gap-2">
             <span className="text-xs text-neutral-500">#{pr.id}</span>
             {pr.isDraft && (
-              <span className="rounded bg-neutral-700 px-1.5 py-0.5 text-[10px] font-medium uppercase text-neutral-400">
+              <span className="rounded bg-neutral-700 px-1.5 py-0.5 text-[10px] font-medium text-neutral-400 uppercase">
                 Draft
               </span>
             )}

@@ -124,9 +124,9 @@ export function DiffView({
   }
 
   return (
-    <div className="relative overflow-hidden h-full">
+    <div className="relative h-full overflow-hidden">
       {/* Toggle mode button */}
-      <div className="absolute right-4 top-2 z-10">
+      <div className="absolute top-2 right-4 z-10">
         <button
           onClick={() =>
             setViewMode(viewMode === 'inline' ? 'side-by-side' : 'inline')
@@ -149,7 +149,7 @@ export function DiffView({
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="h-full flex-1 overflow-auto font-mono text-xs pt-2 bg-black/30 pb-2"
+        className="h-full flex-1 overflow-auto bg-black/30 pt-2 pb-2 font-mono text-xs"
       >
         {viewMode === 'inline' ? (
           <InlineDiffTable
@@ -360,7 +360,7 @@ function DiffLineRow({
         {/* Add comment button / Old line number */}
         <td
           className={clsx(
-            'w-8 select-none pr-1 text-right align-top relative',
+            'relative w-8 pr-1 text-right align-top select-none',
             line.type === 'deletion' ? 'text-red-400' : 'text-neutral-600',
           )}
         >
@@ -375,7 +375,7 @@ function DiffLineRow({
         {/* New line number */}
         <td
           className={clsx(
-            'w-8 select-none pr-1 text-right align-top',
+            'w-8 pr-1 text-right align-top select-none',
             line.type === 'addition' ? 'text-green-400' : 'text-neutral-600',
           )}
         >
@@ -383,7 +383,7 @@ function DiffLineRow({
         </td>
         {/* Prefix (+/-/space) */}
         <td
-          className={clsx('w-4 select-none text-center align-top', {
+          className={clsx('w-4 text-center align-top select-none', {
             'text-green-400': line.type === 'addition',
             'text-red-400': line.type === 'deletion',
             'text-neutral-600': line.type === 'context',
@@ -397,7 +397,7 @@ function DiffLineRow({
         </td>
         {/* Content with syntax highlighting */}
         <td
-          className={clsx('whitespace-pre-wrap pr-2', {
+          className={clsx('pr-2 whitespace-pre-wrap', {
             'select-none': canComment,
           })}
         >

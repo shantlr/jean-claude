@@ -120,7 +120,7 @@ export function UsageDisplay() {
         <div className="relative h-1.5 w-20 overflow-hidden rounded-full bg-neutral-700">
           <div
             className={clsx(
-              'absolute left-0 top-0 h-full rounded-full transition-all duration-300',
+              'absolute top-0 left-0 h-full rounded-full transition-all duration-300',
               LEVEL_BG_COLORS[level],
             )}
             style={{ width: `${percentage}%` }}

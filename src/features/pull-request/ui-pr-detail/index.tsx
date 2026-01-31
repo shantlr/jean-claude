@@ -182,7 +182,7 @@ export function PrDetail({
               <div
                 onMouseDown={handleMouseDown}
                 className={clsx(
-                  'absolute right-0 top-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500/50',
+                  'absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500/50',
                   isDragging && 'bg-blue-500/50',
                 )}
               />

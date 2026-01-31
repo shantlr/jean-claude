@@ -426,7 +426,7 @@ export function CloneRepoPane({
             {/* Projects/Repos list */}
             {selectedProvider && (
               <div>
-                <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+                <h4 className="mb-2 text-xs font-medium tracking-wide text-neutral-500 uppercase">
                   Projects
                 </h4>
                 <ProviderContent

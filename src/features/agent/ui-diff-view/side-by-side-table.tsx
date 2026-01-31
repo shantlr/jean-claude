@@ -73,8 +73,8 @@ function SideBySideCell({
   if (!line) {
     return (
       <>
-        <td className="w-8 select-none bg-neutral-800/50 pr-1 text-right align-top text-neutral-600" />
-        <td className="w-full whitespace-pre-wrap bg-neutral-800/50 pr-2" />
+        <td className="w-8 bg-neutral-800/50 pr-1 text-right align-top text-neutral-600 select-none" />
+        <td className="w-full bg-neutral-800/50 pr-2 whitespace-pre-wrap" />
       </>
     );
   }
@@ -105,12 +105,12 @@ function SideBySideCell({
     <>
       {/* Line number */}
       <td
-        className={`w-8 select-none pr-1 text-right align-top ${lineNumClass} ${bgClass}`}
+        className={`w-8 pr-1 text-right align-top select-none ${lineNumClass} ${bgClass}`}
       >
         {lineNumber ?? ''}
       </td>
       {/* Content */}
-      <td className={`w-1/2 whitespace-pre-wrap pr-2 ${bgClass}`}>
+      <td className={`w-1/2 pr-2 whitespace-pre-wrap ${bgClass}`}>
         {lineTokens.length > 0 ? (
           lineTokens.map((token, i) => (
             <span key={i} style={{ color: token.color }}>

@@ -142,7 +142,7 @@ export function FilePreviewPane({
         {!isLoading && !error && content && (
           <div className="relative">
             {/* Line numbers */}
-            <div className="absolute left-0 top-0 flex flex-col border-r border-neutral-700 bg-neutral-900 px-2 py-4 text-right text-xs text-neutral-600 select-none">
+            <div className="absolute top-0 left-0 flex flex-col border-r border-neutral-700 bg-neutral-900 px-2 py-4 text-right text-xs text-neutral-600 select-none">
               {content.split('\n').map((_, index) => {
                 const lineNum = index + 1;
                 const isHighlighted =
@@ -162,13 +162,13 @@ export function FilePreviewPane({
             </div>
             {/* Code content */}
             <div
-              className="overflow-x-auto pl-12 text-sm [&_pre]:!bg-transparent [&_pre]:py-4 [&_code_.line]:leading-6"
+              className="overflow-x-auto pl-12 text-sm [&_code_.line]:leading-6 [&_pre]:!bg-transparent [&_pre]:py-4"
               dangerouslySetInnerHTML={{ __html: processedHtml }}
             />
             {/* Highlight overlay */}
             {lineStart && (
               <div
-                className="pointer-events-none absolute left-0 right-0 bg-yellow-500/10"
+                className="pointer-events-none absolute right-0 left-0 bg-yellow-500/10"
                 style={{
                   top: `${(lineStart - 1) * 24 + 16}px`,
                   height: `${((lineEnd || lineStart) - lineStart + 1) * 24}px`,

@@ -8,7 +8,7 @@ export const Route = createFileRoute('/projects/$projectId')({
 
 function ProjectLayout() {
   return (
-    <div className="flex h-full border-l border-t rounded-tl-lg border-neutral-800 overflow-hidden">
+    <div className="flex h-full overflow-hidden rounded-tl-lg border-t border-l border-neutral-800">
       <ProjectSidebar />
       <div className="flex-1 overflow-auto">
         <Outlet />

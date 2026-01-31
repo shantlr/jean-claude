@@ -13,7 +13,7 @@ export function PrOverview({ pr }: { pr: AzureDevOpsPullRequest }) {
             <MarkdownContent content={pr.description} />
           </div>
         ) : (
-          <p className="text-sm italic text-neutral-500">No description</p>
+          <p className="text-sm text-neutral-500 italic">No description</p>
         )}
       </div>
     </div>

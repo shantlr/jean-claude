@@ -102,7 +102,7 @@ function LineNumberedContent({
   if (!hasLineNumbers || !parsedLines) {
     return (
       <div className="relative">
-        <pre className="overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 text-neutral-300">
+        <pre className="overflow-auto rounded bg-black/30 p-2 whitespace-pre-wrap text-neutral-300">
           {content}
         </pre>
       </div>
@@ -118,7 +118,7 @@ function LineNumberedContent({
               const lineTokens = tokens?.[i];
               return (
                 <tr key={i}>
-                  <td className="select-none pr-3 text-right align-top text-neutral-600">
+                  <td className="pr-3 text-right align-top text-neutral-600 select-none">
                     {line.lineNum}
                   </td>
                   <td className="whitespace-pre-wrap">
@@ -199,7 +199,7 @@ function DotEntry({
     <div className={`relative pl-6 ${bgClass}`}>
       {/* Dot - centered on the border-left line (-4px to center 8px dot) */}
       <div
-        className={`absolute -left-1 top-2.5 h-2 w-2 rounded-full ${dotColor} ${isPending ? 'animate-pulse' : ''}`}
+        className={`absolute top-2.5 -left-1 h-2 w-2 rounded-full ${dotColor} ${isPending ? 'animate-pulse' : ''}`}
       />
 
       {/* Content */}
@@ -417,7 +417,7 @@ function ToolEntry({
             {isError ? 'Error' : 'Result'}
           </div>
           {isError ? (
-            <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded bg-red-900/20 p-2 text-neutral-300">
+            <pre className="max-h-64 overflow-auto rounded bg-red-900/20 p-2 whitespace-pre-wrap text-neutral-300">
               {formattedResult}
             </pre>
           ) : (
@@ -459,7 +459,7 @@ function TextEntry({
   return (
     <div className="relative pl-6">
       {/* Dot - gray for text */}
-      <div className="absolute -left-1 top-2.5 h-2 w-2 rounded-full bg-neutral-500" />
+      <div className="absolute top-2.5 -left-1 h-2 w-2 rounded-full bg-neutral-500" />
       <div className="py-1.5 pr-3 text-xs text-neutral-300">
         <MarkdownContent content={text} onFilePathClick={onFilePathClick} />
       </div>
@@ -480,9 +480,9 @@ function UserEntry({
   ) => void;
 }) {
   return (
-    <div className="relative pl-6 bg-purple-500/5">
+    <div className="relative bg-purple-500/5 pl-6">
       {/* Dot - purple for user */}
-      <div className="absolute -left-1 top-2.5 h-2 w-2 rounded-full bg-purple-500" />
+      <div className="absolute top-2.5 -left-1 h-2 w-2 rounded-full bg-purple-500" />
       <div className="py-1.5 pr-3 text-xs text-neutral-300">
         <MarkdownContent content={text} onFilePathClick={onFilePathClick} />
       </div>
@@ -565,7 +565,7 @@ export function CompactingEntry({
     <div className="relative pl-6">
       {/* Dot - orange/amber for compacting */}
       <div
-        className={`absolute -left-1 top-2.5 h-2 w-2 rounded-full bg-amber-500 ${!isComplete ? 'animate-pulse' : ''}`}
+        className={`absolute top-2.5 -left-1 h-2 w-2 rounded-full bg-amber-500 ${!isComplete ? 'animate-pulse' : ''}`}
       />
       <div className="py-1.5 pr-3">
         <div className="flex items-center gap-2">

@@ -74,13 +74,13 @@ export function WorkItemsBrowser({
 
       {/* Search input */}
       <div className="relative mb-3">
-        <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+        <Search className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-neutral-500" />
         <input
           type="text"
           value={filters.searchText}
           onChange={(e) => setFilters({ searchText: e.target.value })}
           placeholder="Search by title or ID..."
-          className="w-full rounded-md border border-neutral-600 bg-neutral-700 py-1.5 pl-8 pr-3 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+          className="w-full rounded-md border border-neutral-600 bg-neutral-700 py-1.5 pr-3 pl-8 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
         />
       </div>
 

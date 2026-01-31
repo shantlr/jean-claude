@@ -53,7 +53,7 @@ function SkillItem({ skill }: { skill: Skill }) {
         <SkillSourceBadge source={skill.source} pluginName={skill.pluginName} />
       </div>
       {isExpanded && (
-        <p className="mt-1 ml-[30px] mr-2 text-[11px] leading-relaxed text-neutral-500">
+        <p className="mt-1 mr-2 ml-[30px] text-[11px] leading-relaxed text-neutral-500">
           {skill.description || 'No description available.'}
         </p>
       )}
@@ -105,7 +105,7 @@ export function TaskSettingsPane({
       {/* Header */}
       <div
         className={clsx(
-          'flex items-center shrink-0 justify-between border-b border-neutral-700 px-4 py-3',
+          'flex shrink-0 items-center justify-between border-b border-neutral-700 px-4 py-3',
         )}
         style={{
           height: PROJECT_HEADER_HEIGHT,
@@ -125,7 +125,7 @@ export function TaskSettingsPane({
       <div className="flex-1 space-y-6 overflow-auto p-4">
         {/* Session Allowed Tools Section */}
         <section>
-          <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <h4 className="mb-3 text-xs font-medium tracking-wide text-neutral-500 uppercase">
             Session Allowed Tools
           </h4>
           {sessionAllowedTools.length === 0 ? (
@@ -162,7 +162,7 @@ export function TaskSettingsPane({
 
         {/* Skills Section */}
         <section>
-          <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <h4 className="mb-2 text-xs font-medium tracking-wide text-neutral-500 uppercase">
             Available Skills
           </h4>
           <SkillsList taskId={taskId} />

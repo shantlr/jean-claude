@@ -53,14 +53,14 @@ export const ToggleableStatusIndicator = ({
     <button
       disabled={disabled}
       className={clsx(
-        'w-3 h-4 flex items-center justify-center',
+        'flex h-4 w-3 items-center justify-center',
         'group/status-indicator',
         status === 'running' ? 'cursor-not-allowed' : 'cursor-pointer',
       )}
       onClick={onClick}
     >
       <CheckCircle2
-        className={clsx('w-3 h-3 status-checked transition-all', {
+        className={clsx('status-checked h-3 w-3 transition-all', {
           hidden: !isChecked && disabled,
           'group-[:not(:hover)]/status-indicator:hidden':
             !isChecked && !disabled,

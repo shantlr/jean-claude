@@ -44,9 +44,9 @@ export function SkillEntry({
   const promptText = getPromptText(promptMessage);
 
   return (
-    <div className="relative pl-6 bg-purple-500/5">
+    <div className="relative bg-purple-500/5 pl-6">
       {/* Purple dot - consistent with user messages */}
-      <div className="absolute -left-1 top-2.5 h-2 w-2 rounded-full bg-purple-500" />
+      <div className="absolute top-2.5 -left-1 h-2 w-2 rounded-full bg-purple-500" />
 
       {/* Clickable header */}
       <div
@@ -56,7 +56,7 @@ export function SkillEntry({
         <Wand2 className="h-3 w-3 shrink-0 text-purple-400" />
         <span className="text-xs text-neutral-300">
           Using{' '}
-          <code className="rounded bg-purple-900/30 border border-purple-700/50 px-1 py-0.5 text-purple-200">
+          <code className="rounded border border-purple-700/50 bg-purple-900/30 px-1 py-0.5 text-purple-200">
             {skillName}
           </code>
         </span>
@@ -69,7 +69,7 @@ export function SkillEntry({
 
       {/* Expanded content */}
       {isExpanded && promptText && (
-        <div className="mb-2 ml-5 border-l border-neutral-700 pl-3 pr-3">
+        <div className="mb-2 ml-5 border-l border-neutral-700 pr-3 pl-3">
           <div className="max-h-96 overflow-auto rounded bg-black/30 p-3 text-xs text-neutral-300">
             <MarkdownContent
               content={promptText}

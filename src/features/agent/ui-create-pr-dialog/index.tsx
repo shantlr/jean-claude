@@ -138,7 +138,7 @@ export function CreatePrDialog({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               autoComplete="off"
-              className="w-full rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 focus:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-500/50"
+              className="w-full rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 focus:border-neutral-500 focus:ring-2 focus:ring-neutral-500/50 focus:outline-none"
             />
           </div>
 
@@ -156,7 +156,7 @@ export function CreatePrDialog({
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
               autoComplete="off"
-              className="w-full resize-none rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 focus:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-500/50"
+              className="w-full resize-none rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 focus:border-neutral-500 focus:ring-2 focus:ring-neutral-500/50 focus:outline-none"
             />
           </div>
 

@@ -293,7 +293,7 @@ function TaskPanel() {
             />
             <h1
               className={clsx(
-                'grow truncate font-semibold whitespace-nowrap overflow-hidden text-ellipsis',
+                'grow truncate overflow-hidden font-semibold text-ellipsis whitespace-nowrap',
                 !task.worktreePath ? 'text-lg' : 'text-sm',
               )}
             >
@@ -313,7 +313,7 @@ function TaskPanel() {
               title="Open project in editor"
             >
               <ExternalLink className="h-4 w-4" />
-              <span className="whitespace-nowrap text-ellipsis overflow-hidden">
+              <span className="overflow-hidden text-ellipsis whitespace-nowrap">
                 {editorSetting ? getEditorLabel(editorSetting) : 'Editor'}
               </span>
             </button>
@@ -350,7 +350,7 @@ function TaskPanel() {
                 <>
                   <button
                     onClick={() => api.shell.openInEditor(task.worktreePath!)}
-                    className="flex min-w-0 max-w-48 items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-300"
+                    className="flex max-w-48 min-w-0 items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-300"
                     title={`Open in ${editorSetting ? getEditorLabel(editorSetting) : 'editor'}`}
                   >
                     <GitBranch className="h-3.5 w-3.5 shrink-0" />
@@ -470,7 +470,7 @@ function TaskPanel() {
                 Prompt
               </div>
               <div className="rounded-lg border border-neutral-700 bg-neutral-800 p-4">
-                <pre className="whitespace-pre-wrap font-sans text-sm">
+                <pre className="font-sans text-sm whitespace-pre-wrap">
                   {task.prompt}
                 </pre>
               </div>

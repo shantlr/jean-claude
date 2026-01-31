@@ -49,9 +49,9 @@ export function ProjectTile({
       aria-label={`${name} project${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
       aria-current={isActive ? 'page' : undefined}
       className={clsx(
-        'cursor-pointer group relative flex h-12 w-12 items-center justify-center rounded-xl text-sm font-bold text-white transition-transform hover:brightness-110',
+        'group relative flex h-12 w-12 cursor-pointer items-center justify-center rounded-xl text-sm font-bold text-white transition-transform hover:brightness-110',
         {
-          'ring-white ring-2': isActive,
+          'ring-2 ring-white': isActive,
         },
       )}
       style={{ backgroundColor: color }}
@@ -59,7 +59,7 @@ export function ProjectTile({
       {initials}
       {unreadCount > 0 && (
         <span
-          className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold"
+          className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold"
           aria-hidden
         >
           {unreadCount > 9 ? '9+' : unreadCount}

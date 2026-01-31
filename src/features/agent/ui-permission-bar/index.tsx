@@ -305,7 +305,7 @@ export function PermissionBar({
         value={instruction}
         onChange={(e) => setInstruction(e.target.value)}
         placeholder="Optional: Tell Claude what to do instead..."
-        className="mb-3 w-full resize-none rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/50"
+        className="mb-3 w-full resize-none rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/50 focus:outline-none"
         rows={2}
         autoComplete="off"
         aria-label="Instructions for Claude"

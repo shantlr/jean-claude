@@ -133,7 +133,7 @@ export function ToolUseCard({
             <div className="mb-1 text-xs font-medium text-neutral-500">
               Input
             </div>
-            <pre className="overflow-x-auto whitespace-pre-wrap text-xs text-neutral-300">
+            <pre className="overflow-x-auto text-xs whitespace-pre-wrap text-neutral-300">
               {formattedInput}
             </pre>
           </div>
@@ -148,7 +148,7 @@ export function ToolUseCard({
               >
                 {isError ? 'Error' : 'Result'}
               </div>
-              <pre className="max-h-64 overflow-auto whitespace-pre-wrap text-xs text-neutral-300">
+              <pre className="max-h-64 overflow-auto text-xs whitespace-pre-wrap text-neutral-300">
                 {formattedResult}
               </pre>
             </div>

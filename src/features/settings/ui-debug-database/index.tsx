@@ -71,13 +71,13 @@ export function DebugDatabase() {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+        <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-500" />
         <input
           type="text"
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
           placeholder="Search across all columns..."
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-800 py-2 pl-10 pr-4 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+          className="w-full rounded-lg border border-neutral-700 bg-neutral-800 py-2 pr-4 pl-10 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
         />
       </div>
 
