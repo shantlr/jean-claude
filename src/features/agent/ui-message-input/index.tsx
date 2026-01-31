@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Send, Square, Loader2, ListPlus } from 'lucide-react';
+import { Send, Square, Loader2, ListPlus, Wand2 } from 'lucide-react';
 import {
   useState,
   useRef,
@@ -9,12 +9,18 @@ import {
   KeyboardEvent,
 } from 'react';
 
+import type { Skill } from '../../../../shared/skill-types';
+
 const DOUBLE_ESCAPE_THRESHOLD = 300; // ms
 
 const COMMANDS = [
   { command: '/init', description: 'Initialize CLAUDE.md in project' },
   { command: '/compact', description: 'Compact conversation history' },
 ];
+
+type DropdownItem =
+  | { type: 'command'; command: string; description: string }
+  | { type: 'skill'; skill: Skill };
 
 export function MessageInput({
   onSend,
@@ -24,6 +30,7 @@ export function MessageInput({
   placeholder = 'Type a message... (Shift+Enter for new line)',
   isRunning = false,
   isStopping = false,
+  skills = [],
 }: {
   onSend: (message: string) => void;
   onQueue?: (message: string) => void;
@@ -32,6 +39,7 @@ export function MessageInput({
   placeholder?: string;
   isRunning?: boolean;
   isStopping?: boolean;
+  skills?: Skill[];
 }) {
   const [value, setValue] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -44,18 +52,35 @@ export function MessageInput({
   const showCommandDropdown = value.startsWith('/') && !dropdownDismissed;
   const searchText = value.slice(1).toLowerCase();
 
-  // Filter commands based on what user typed after /
-  const filteredCommands = useMemo(() => {
+  // Filter commands and skills based on what user typed after /
+  const filteredItems = useMemo((): DropdownItem[] => {
     if (!showCommandDropdown) return [];
-    return COMMANDS.filter((cmd) =>
+
+    const items: DropdownItem[] = [];
+
+    // Filter built-in commands
+    const filteredCommands = COMMANDS.filter((cmd) =>
       cmd.command.toLowerCase().slice(1).startsWith(searchText),
     );
-  }, [showCommandDropdown, searchText]);
+    for (const cmd of filteredCommands) {
+      items.push({ type: 'command', command: cmd.command, description: cmd.description });
+    }
 
-  // Reset selected index when filtered commands change
+    // Filter skills
+    const filteredSkills = skills.filter((skill) =>
+      skill.name.toLowerCase().startsWith(searchText),
+    );
+    for (const skill of filteredSkills) {
+      items.push({ type: 'skill', skill });
+    }
+
+    return items;
+  }, [showCommandDropdown, searchText, skills]);
+
+  // Reset selected index when filtered items change
   useEffect(() => {
     setSelectedIndex(0);
-  }, [filteredCommands.length]);
+  }, [filteredItems.length]);
 
   // Track previous value to detect backspace
   const prevValueRef = useRef(value);
@@ -74,7 +99,7 @@ export function MessageInput({
 
   // Close dropdown on click outside
   useEffect(() => {
-    if (!showCommandDropdown || filteredCommands.length === 0) return;
+    if (!showCommandDropdown || filteredItems.length === 0) return;
 
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -87,9 +112,10 @@ export function MessageInput({
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showCommandDropdown, filteredCommands.length]);
+  }, [showCommandDropdown, filteredItems.length]);
 
-  const selectCommand = useCallback((command: string) => {
+  const selectItem = useCallback((item: DropdownItem) => {
+    const command = item.type === 'command' ? item.command : `/${item.skill.name}`;
     setValue(command);
     setDropdownDismissed(true);
     textareaRef.current?.focus();
@@ -116,11 +142,11 @@ export function MessageInput({
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     // Handle command dropdown navigation
-    if (showCommandDropdown && filteredCommands.length > 0) {
+    if (showCommandDropdown && filteredItems.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setSelectedIndex((prev) =>
-          prev < filteredCommands.length - 1 ? prev + 1 : prev,
+          prev < filteredItems.length - 1 ? prev + 1 : prev,
         );
         return;
       }
@@ -131,7 +157,7 @@ export function MessageInput({
       }
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        selectCommand(filteredCommands[selectedIndex].command);
+        selectItem(filteredItems[selectedIndex]);
         return;
       }
       if (e.key === 'Escape') {
@@ -179,28 +205,91 @@ export function MessageInput({
     }
   };
 
+  // Separate commands and skills for grouped display
+  const commandItems = filteredItems.filter((item) => item.type === 'command');
+  const skillItems = filteredItems.filter((item) => item.type === 'skill');
+
+  // Get the flat index for an item (used for selection highlighting)
+  const getItemIndex = (type: 'command' | 'skill', localIndex: number) => {
+    if (type === 'command') return localIndex;
+    return commandItems.length + localIndex;
+  };
+
   return (
     <div ref={containerRef} className="relative flex flex-1 items-end gap-2">
       {/* Command completion dropdown */}
-      {showCommandDropdown && filteredCommands.length > 0 && (
-        <div className="absolute bottom-full left-0 mb-1 w-64 rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg">
-          {filteredCommands.map((cmd, index) => (
-            <button
-              key={cmd.command}
-              type="button"
-              onClick={() => selectCommand(cmd.command)}
-              onMouseEnter={() => setSelectedIndex(index)}
-              className={clsx(
-                'w-full px-3 py-2 text-left',
-                index === selectedIndex ? 'bg-neutral-700' : 'hover:bg-neutral-700',
-              )}
-            >
-              <div className="text-sm font-medium text-neutral-200">
-                {cmd.command}
-              </div>
-              <div className="text-xs text-neutral-400">{cmd.description}</div>
-            </button>
-          ))}
+      {showCommandDropdown && filteredItems.length > 0 && (
+        <div className="absolute bottom-full left-0 mb-1 max-h-80 w-72 overflow-y-auto rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg">
+          {/* Commands section */}
+          {commandItems.map((item, localIndex) => {
+            if (item.type !== 'command') return null;
+            const index = getItemIndex('command', localIndex);
+            return (
+              <button
+                key={item.command}
+                type="button"
+                onClick={() => selectItem(item)}
+                onMouseEnter={() => setSelectedIndex(index)}
+                className={clsx(
+                  'w-full px-3 py-2 text-left',
+                  index === selectedIndex ? 'bg-neutral-700' : 'hover:bg-neutral-700',
+                )}
+              >
+                <div className="text-sm font-medium text-neutral-200">
+                  {item.command}
+                </div>
+                <div className="text-xs text-neutral-400">{item.description}</div>
+              </button>
+            );
+          })}
+
+          {/* Divider between commands and skills */}
+          {commandItems.length > 0 && skillItems.length > 0 && (
+            <div className="my-1 border-t border-neutral-700" />
+          )}
+
+          {/* Skills section header */}
+          {skillItems.length > 0 && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-500">
+              <Wand2 className="h-3 w-3" />
+              Skills
+            </div>
+          )}
+
+          {/* Skills */}
+          {skillItems.map((item, localIndex) => {
+            if (item.type !== 'skill') return null;
+            const index = getItemIndex('skill', localIndex);
+            const { skill } = item;
+            return (
+              <button
+                key={skill.name}
+                type="button"
+                onClick={() => selectItem(item)}
+                onMouseEnter={() => setSelectedIndex(index)}
+                className={clsx(
+                  'w-full px-3 py-2 text-left',
+                  index === selectedIndex ? 'bg-neutral-700' : 'hover:bg-neutral-700',
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-neutral-200">
+                    /{skill.name}
+                  </span>
+                  {skill.source !== 'user' && (
+                    <span className="rounded bg-neutral-700 px-1.5 py-0.5 text-xs text-neutral-400">
+                      {skill.pluginName ?? skill.source}
+                    </span>
+                  )}
+                </div>
+                {skill.description && (
+                  <div className="text-xs text-neutral-400 line-clamp-2">
+                    {skill.description}
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
       <textarea

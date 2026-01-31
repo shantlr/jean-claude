@@ -29,6 +29,7 @@ import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
 import { useContextUsage } from '@/hooks/use-context-usage';
 import { useProject } from '@/hooks/use-projects';
 import { useEditorSetting } from '@/hooks/use-settings';
+import { useSkills } from '@/hooks/use-skills';
 import {
   useTask,
   useMarkTaskAsRead,
@@ -65,6 +66,7 @@ function TaskPanel() {
   const { data: task } = useTask(taskId);
   const { data: project } = useProject(projectId);
   const { data: editorSetting } = useEditorSetting();
+  const { data: skills } = useSkills(taskId);
   const markAsRead = useMarkTaskAsRead();
   const deleteTask = useDeleteTask();
   const setTaskMode = useSetTaskMode();
@@ -546,6 +548,7 @@ function TaskPanel() {
                 placeholder="Send a follow-up message..."
                 isRunning={isRunning}
                 isStopping={isStopping}
+                skills={skills}
               />
             </div>
           )}
