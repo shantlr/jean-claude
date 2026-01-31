@@ -6,7 +6,9 @@ import type { FormEvent } from 'react';
 
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
 import { WorkItemsBrowser } from '@/features/agent/ui-work-items-browser';
+import { PromptTextarea } from '@/features/common/ui-prompt-textarea';
 import { useProject, useProjectBranches } from '@/hooks/use-projects';
+import { useProjectSkills } from '@/hooks/use-skills';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
 import { useNewTaskFormStore } from '@/stores/new-task-form';
@@ -22,6 +24,7 @@ function NewTask() {
   const { data: project } = useProject(projectId);
   const { data: branches = [], isLoading: branchesLoading } =
     useProjectBranches(projectId);
+  const { data: skills = [] } = useProjectSkills(projectId);
 
   const [showWorkItems, setShowWorkItems] = useState(false);
   const hasWorkItemsLink =
@@ -127,14 +130,15 @@ function NewTask() {
             >
               Prompt
             </label>
-            <textarea
+            <PromptTextarea
               id="prompt"
               value={prompt}
-              onChange={(e) => setDraft({ prompt: e.target.value })}
-              placeholder="Describe what you want the agent to do..."
-              rows={8}
-              required
-              className="w-full resize-none rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
+              onChange={(value) => setDraft({ prompt: value })}
+              placeholder="Describe what you want the agent to do... (type / for commands)"
+              skills={skills}
+              showCommands={false}
+              maxHeight={400}
+              className="min-h-[200px] border-neutral-700 bg-neutral-800 text-white focus:border-neutral-500"
             />
           </div>
 

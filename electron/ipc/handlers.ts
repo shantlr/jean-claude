@@ -122,6 +122,14 @@ export function registerIpcHandlers() {
     }
     return getCurrentBranch(project.path);
   });
+  ipcMain.handle('projects:getSkills', async (_, projectId: string) => {
+    const project = await ProjectRepository.findById(projectId);
+    if (!project) {
+      throw new Error(`Project ${projectId} not found`);
+    }
+    dbg.ipc('projects:getSkills for project: %s, path: %s', projectId, project.path);
+    return getAllSkills(project.path);
+  });
 
   // Tasks
   ipcMain.handle('tasks:findAll', () => TaskRepository.findAll());

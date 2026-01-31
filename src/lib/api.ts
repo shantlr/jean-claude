@@ -195,6 +195,7 @@ export interface Api {
     getBranches: (projectId: string) => Promise<string[]>;
     getCurrentBranch: (projectId: string) => Promise<string>;
     getDetected: () => Promise<DetectedProject[]>;
+    getSkills: (projectId: string) => Promise<Skill[]>;
   };
   tasks: {
     findAll: () => Promise<Task[]>;
@@ -472,6 +473,7 @@ export const api: Api = hasWindowApi
         getBranches: async () => [],
         getCurrentBranch: async () => '',
         getDetected: async () => [],
+        getSkills: async () => [],
       },
       tasks: {
         findAll: async () => [],
