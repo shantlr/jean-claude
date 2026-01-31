@@ -10,6 +10,10 @@ import type {
   QuestionResponse,
 } from '../../shared/agent-types';
 import type {
+  GlobalPrompt,
+  GlobalPromptResponse,
+} from '../../shared/global-prompt-types';
+import type {
   ProjectCommand,
   NewProjectCommand,
   UpdateProjectCommand,
@@ -325,6 +329,10 @@ export interface Api {
     getPackageScripts: (projectPath: string) => Promise<PackageScriptsResult>;
     onStatusChange: (callback: (projectId: string, status: RunStatus) => void) => () => void;
   };
+  globalPrompt: {
+    onShow: (callback: (prompt: GlobalPrompt) => void) => () => void;
+    respond: (response: GlobalPromptResponse) => Promise<void>;
+  };
 }
 
 declare global {
@@ -542,5 +550,9 @@ export const api: Api = hasWindowApi
         killPortsForCommand: async () => {},
         getPackageScripts: async () => ({ scripts: [], packageManager: null }),
         onStatusChange: () => () => {},
+      },
+      globalPrompt: {
+        onShow: () => () => {},
+        respond: async () => {},
       },
     } as Api);

@@ -5,6 +5,8 @@ import { spawn } from 'child_process';
 import { ProviderRepository } from '../database/repositories/providers';
 import { TokenRepository } from '../database/repositories/tokens';
 
+import { sendGlobalPromptToWindow } from './global-prompt-service';
+
 export interface AzureDevOpsOrganization {
   id: string;
   name: string;
@@ -472,6 +474,10 @@ export interface CloneRepositoryResult {
   error?: string;
 }
 
+// Regex patterns to detect SSH host authenticity prompt
+const SSH_AUTHENTICITY_PATTERN = /The authenticity of host '([^']+)'/;
+const FINGERPRINT_PATTERN = /(\w+) key fingerprint is ([^\s.]+)/;
+
 export async function cloneRepository(
   params: CloneRepositoryParams,
 ): Promise<CloneRepositoryResult> {
@@ -483,13 +489,38 @@ export async function cloneRepository(
 
   return new Promise((resolve) => {
     const gitProcess = spawn('git', ['clone', sshUrl, targetPath], {
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ['pipe', 'pipe', 'pipe'],
     });
 
     let stderr = '';
+    let promptHandled = false;
 
-    gitProcess.stderr.on('data', (data: Buffer) => {
+    gitProcess.stderr.on('data', async (data: Buffer) => {
       stderr += data.toString();
+
+      // Check for SSH host authenticity prompt
+      if (!promptHandled && SSH_AUTHENTICITY_PATTERN.test(stderr)) {
+        promptHandled = true;
+
+        const hostMatch = stderr.match(SSH_AUTHENTICITY_PATTERN);
+        const fingerprintMatch = stderr.match(FINGERPRINT_PATTERN);
+
+        const host = hostMatch?.[1] ?? 'unknown';
+        const keyType = fingerprintMatch?.[1] ?? 'Unknown';
+        const fingerprint = fingerprintMatch?.[2] ?? 'unknown';
+
+        const accepted = await sendGlobalPromptToWindow({
+          title: 'Unknown SSH Host',
+          message: `The authenticity of host '${host}' can't be established.`,
+          details: `${keyType} key fingerprint:\n${fingerprint}`,
+          acceptLabel: 'Trust & Connect',
+          rejectLabel: 'Cancel',
+        });
+
+        if (gitProcess.stdin) {
+          gitProcess.stdin.write(accepted ? 'yes\n' : 'no\n');
+        }
+      }
     });
 
     gitProcess.on('close', (code) => {
@@ -509,6 +540,8 @@ export async function cloneRepository(
           errorMessage = 'Target directory already exists and is not empty.';
         } else if (stderr.includes('Repository not found')) {
           errorMessage = 'Repository not found. Please check if the repository exists.';
+        } else if (stderr.includes('Host key verification failed')) {
+          errorMessage = 'SSH host verification was rejected.';
         }
 
         resolve({ success: false, error: errorMessage });

@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 import { AGENT_CHANNELS } from '../shared/agent-types';
+import type { GlobalPrompt, GlobalPromptResponse } from '../shared/global-prompt-types';
 
 contextBridge.exposeInMainWorld('api', {
   platform: process.platform,
@@ -252,6 +253,15 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.on('project:commands:run:statusChange', handler);
       return () => ipcRenderer.removeListener('project:commands:run:statusChange', handler);
     },
+  },
+  globalPrompt: {
+    onShow: (callback: (prompt: GlobalPrompt) => void) => {
+      const handler = (_: unknown, prompt: GlobalPrompt) => callback(prompt);
+      ipcRenderer.on('globalPrompt:show', handler);
+      return () => ipcRenderer.removeListener('globalPrompt:show', handler);
+    },
+    respond: (response: GlobalPromptResponse) =>
+      ipcRenderer.invoke('globalPrompt:respond', response),
   },
 });
 console.log('Preload script loaded');

@@ -1,5 +1,6 @@
 import { createRootRoute, Outlet, useRouter } from '@tanstack/react-router';
 
+import { GlobalPromptModal } from '@/common/ui/global-prompt-modal';
 import { TaskMessageManager } from '@/features/agent/task-message-manager';
 import { Header } from '@/layout/ui-header';
 import { MainSidebar } from '@/layout/ui-main-sidebar';
@@ -54,6 +55,7 @@ function RootLayout() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-neutral-900 text-white">
       <TaskMessageManager />
+      <GlobalPromptModal />
       <MainSidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />

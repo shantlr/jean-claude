@@ -13,6 +13,7 @@ import {
   PermissionResponse,
   QuestionResponse,
 } from '../../shared/agent-types';
+import type { GlobalPromptResponse } from '../../shared/global-prompt-types';
 import type { NewProjectCommand, UpdateProjectCommand } from '../../shared/run-command-types';
 import {
   PRESET_EDITORS,
@@ -52,6 +53,7 @@ import {
   cloneRepository,
   type CloneRepositoryParams,
 } from '../services/azure-devops-service';
+import { handlePromptResponse } from '../services/global-prompt-service';
 import { generateTaskName } from '../services/name-generation-service';
 import {
   addAllowPermission,
@@ -794,6 +796,11 @@ export function registerIpcHandlers() {
       win.webContents.send('project:commands:run:statusChange', projectId, status);
     });
   });
+
+  // Global Prompt
+  ipcMain.handle('globalPrompt:respond', (_, response: GlobalPromptResponse) =>
+    handlePromptResponse(response),
+  );
 }
 
 // Helper: check if an editor is available
