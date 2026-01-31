@@ -1,4 +1,7 @@
+import clsx from 'clsx';
 import { X, Shield } from 'lucide-react';
+
+import { PROJECT_HEADER_HEIGHT } from '@/layout/ui-project-sidebar';
 
 export function TaskSettingsPane({
   sessionAllowedTools,
@@ -12,7 +15,14 @@ export function TaskSettingsPane({
   return (
     <div className="flex h-full w-80 flex-col border-l border-neutral-700 bg-neutral-900">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-neutral-700 px-4 py-3">
+      <div
+        className={clsx(
+          'flex items-center shrink-0 justify-between border-b border-neutral-700 px-4 py-3',
+        )}
+        style={{
+          height: PROJECT_HEADER_HEIGHT,
+        }}
+      >
         <h3 className="text-sm font-medium text-neutral-200">Task Settings</h3>
         <button
           onClick={onClose}
