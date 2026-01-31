@@ -57,6 +57,7 @@ export const PromptTextarea = forwardRef<PromptTextareaRef, PromptTextareaProps>
   ) {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [dropdownDismissed, setDropdownDismissed] = useState(false);
+    const [dropdownPosition, setDropdownPosition] = useState<'top' | 'bottom'>('top');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -74,6 +75,19 @@ export const PromptTextarea = forwardRef<PromptTextareaRef, PromptTextareaProps>
     // Check if we should show the dropdown
     const showDropdown = value.startsWith('/') && !dropdownDismissed;
     const searchText = value.slice(1).toLowerCase();
+
+    // Determine dropdown position based on available space
+    useEffect(() => {
+      if (!showDropdown || !containerRef.current) return;
+
+      const container = containerRef.current;
+      const rect = container.getBoundingClientRect();
+      const spaceAbove = rect.top;
+      const dropdownMaxHeight = 320; // max-h-80 = 20rem = 320px
+
+      // If not enough space above, show below
+      setDropdownPosition(spaceAbove < dropdownMaxHeight ? 'bottom' : 'top');
+    }, [showDropdown]);
 
     // Filter commands and skills based on what user typed after /
     const filteredItems = useMemo((): DropdownItem[] => {
@@ -231,7 +245,10 @@ export const PromptTextarea = forwardRef<PromptTextareaRef, PromptTextareaProps>
         {showDropdown && filteredItems.length > 0 && (
           <div
             ref={dropdownRef}
-            className="absolute bottom-full left-0 right-0 mb-1 max-h-80 overflow-y-auto rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg"
+            className={clsx(
+              'absolute left-0 right-0 max-h-80 overflow-y-auto rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg',
+              dropdownPosition === 'top' ? 'bottom-full mb-1' : 'top-full mt-1',
+            )}
           >
             {/* Commands section */}
             {commandItems.map((item, localIndex) => {
