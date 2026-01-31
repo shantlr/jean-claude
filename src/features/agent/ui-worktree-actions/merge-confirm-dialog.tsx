@@ -108,7 +108,7 @@ export function MergeConfirmDialog({
 
           {error && (
             <div className="mb-4 flex items-start gap-2 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-400">
-              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}

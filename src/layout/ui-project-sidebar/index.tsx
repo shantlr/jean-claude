@@ -136,14 +136,14 @@ export function ProjectSidebar() {
       >
         <div className="flex items-center gap-3">
           <span
-            className="h-3 w-3 flex-shrink-0 rounded-full"
+            className="h-3 w-3 shrink-0 rounded-full"
             style={{ backgroundColor: project.color }}
           />
           <span className="truncate font-semibold">{project.name}</span>
         </div>
         {currentBranch && (
           <div className="flex items-center gap-1.5 pl-6 text-xs text-neutral-400">
-            <GitBranch className="h-3 w-3 flex-shrink-0" />
+            <GitBranch className="h-3 w-3 shrink-0" />
             <span className="truncate">{currentBranch}</span>
           </div>
         )}

@@ -1,4 +1,4 @@
-import { Columns2, AlignJustify } from 'lucide-react';
+import { AlignJustify, Columns2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
 
@@ -7,18 +7,23 @@ import { computeDiff, type DiffLine } from './diff-utils';
 import { getLanguageFromPath } from './language-utils';
 import { SideBySideDiffTable } from './side-by-side-table';
 
-
 interface DiffState {
   lines: DiffLine[];
   oldTokens: ThemedToken[][];
   newTokens: ThemedToken[][];
 }
 
-export function DiffView({ filePath, oldString, newString }: {
+export function DiffView({
+  filePath,
+  oldString,
+  newString,
+  withMinimap,
+}: {
   filePath: string;
   oldString: string;
   newString: string;
   maxHeight?: string;
+  withMinimap?: boolean;
 }) {
   const [state, setState] = useState<DiffState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,13 +100,19 @@ export function DiffView({ filePath, oldString, newString }: {
   }
 
   return (
-    <div className="relative">
-      {/* Toggle button */}
-      <div className="absolute right-2 top-2 z-10">
+    <div className="relative overflow-hidden h-full">
+      {/* Toggle mode button */}
+      <div className="absolute right-4 top-2 z-10">
         <button
-          onClick={() => setViewMode(viewMode === 'inline' ? 'side-by-side' : 'inline')}
-          className="rounded bg-neutral-700 p-1 text-neutral-300 hover:bg-neutral-600 hover:text-neutral-100"
-          title={viewMode === 'inline' ? 'Switch to side-by-side view' : 'Switch to inline view'}
+          onClick={() =>
+            setViewMode(viewMode === 'inline' ? 'side-by-side' : 'inline')
+          }
+          className="rounded bg-neutral-700/70 p-1 text-neutral-300 hover:bg-neutral-600 hover:text-neutral-100"
+          title={
+            viewMode === 'inline'
+              ? 'Switch to side-by-side view'
+              : 'Switch to inline view'
+          }
         >
           {viewMode === 'inline' ? (
             <Columns2 className="h-4 w-4" />
@@ -111,36 +122,34 @@ export function DiffView({ filePath, oldString, newString }: {
         </button>
       </div>
 
-      <div className="flex overflow-hidden rounded bg-black/30 pt-8">
-        <div
-          ref={scrollContainerRef}
-          onScroll={handleScroll}
-          className="flex-1 overflow-auto font-mono text-xs"
-        >
-          {viewMode === 'inline' ? (
-            <table className="w-full border-collapse">
-              <tbody>
-                {state.lines.map((line, i) => (
-                  <DiffLineRow
-                    key={i}
-                    line={line}
-                    oldTokens={state.oldTokens}
-                    newTokens={state.newTokens}
-                  />
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <SideBySideDiffTable
-              oldString={oldString}
-              newString={newString}
-              oldTokens={state.oldTokens}
-              newTokens={state.newTokens}
-            />
-          )}
-        </div>
-        <DiffMinimap lines={state.lines} viewport={viewport} />
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="h-full flex-1 overflow-auto font-mono text-xs pt-2 bg-black/30 pb-2"
+      >
+        {viewMode === 'inline' ? (
+          <table className="w-full border-collapse">
+            <tbody>
+              {state.lines.map((line, i) => (
+                <DiffLineRow
+                  key={i}
+                  line={line}
+                  oldTokens={state.oldTokens}
+                  newTokens={state.newTokens}
+                />
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <SideBySideDiffTable
+            oldString={oldString}
+            newString={newString}
+            oldTokens={state.oldTokens}
+            newTokens={state.newTokens}
+          />
+        )}
       </div>
+      {!!withMinimap && <DiffMinimap lines={state.lines} viewport={viewport} />}
     </div>
   );
 }

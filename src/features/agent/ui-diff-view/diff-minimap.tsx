@@ -76,14 +76,12 @@ export function DiffMinimap({
   }
 
   return (
-    <div className="relative w-2.5 shrink-0 bg-neutral-800">
+    <div className="absolute h-full w-2.5  right-0 top-0 border-b-4">
       {/* Change markers */}
       {markers.map((marker, i) => (
         <div
           key={i}
-          className={
-            marker.type === 'addition' ? 'bg-green-500' : 'bg-red-500'
-          }
+          className={marker.type === 'addition' ? 'bg-green-500' : 'bg-red-500'}
           style={{
             position: 'absolute',
             top: `${marker.startPercent}%`,

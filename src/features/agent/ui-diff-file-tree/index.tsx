@@ -93,11 +93,11 @@ function TreeNodeRow({
           style={{ paddingLeft }}
         >
           {isExpanded ? (
-            <ChevronDown className="h-3.5 w-3.5 flex-shrink-0" />
+            <ChevronDown className="h-3.5 w-3.5 shrink-0" />
           ) : (
-            <ChevronRight className="h-3.5 w-3.5 flex-shrink-0" />
+            <ChevronRight className="h-3.5 w-3.5 shrink-0" />
           )}
-          <Folder className="h-4 w-4 flex-shrink-0 text-neutral-500" />
+          <Folder className="h-4 w-4 shrink-0 text-neutral-500" />
           <span className="truncate">{node.name}</span>
         </button>
         {isExpanded &&
@@ -129,12 +129,10 @@ function TreeNodeRow({
       }`}
       style={{ paddingLeft }}
     >
-      <span className="w-3.5 flex-shrink-0" />
-      <File className="h-4 w-4 flex-shrink-0 text-neutral-500" />
+      <span className="w-3.5 shrink-0" />
+      <File className="h-4 w-4 shrink-0 text-neutral-500" />
       <span className="truncate">{node.name}</span>
-      <span
-        className={`ml-auto flex-shrink-0 text-xs ${statusIndicator.color}`}
-      >
+      <span className={`ml-auto shrink-0 text-xs ${statusIndicator.color}`}>
         {statusIndicator.label}
       </span>
     </button>

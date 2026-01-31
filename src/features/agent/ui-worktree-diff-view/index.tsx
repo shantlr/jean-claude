@@ -13,6 +13,8 @@ import {
 import type { WorktreeDiffFile } from '@/lib/api';
 import { useDiffFileTreeWidth } from '@/stores/navigation';
 
+const HEADER_HEIGHT_CLS = `h-[40px] shrink-0`;
+
 export function WorktreeDiffView({
   taskId,
   selectedFilePath,
@@ -111,10 +113,15 @@ export function WorktreeDiffView({
     >
       {/* File tree sidebar */}
       <div
-        className="relative flex flex-shrink-0 flex-col border-r border-neutral-700"
+        className="relative flex shrink-0 flex-col border-r border-neutral-700"
         style={{ width: fileTreeWidth }}
       >
-        <div className="flex items-center justify-between border-b border-neutral-700 px-3 py-2">
+        <div
+          className={clsx(
+            'flex items-center justify-between border-b border-neutral-700 px-3 py-2',
+            HEADER_HEIGHT_CLS,
+          )}
+        >
           <span className="text-xs font-medium text-neutral-400">
             Changed Files ({files.length})
           </span>
@@ -156,7 +163,11 @@ export function WorktreeDiffView({
       {/* Diff content */}
       <div className="min-w-0 flex-1 overflow-auto">
         {selectedFile ? (
-          <FileDiffContent file={selectedFile} taskId={taskId} />
+          <FileDiffContent
+            file={selectedFile}
+            taskId={taskId}
+            headerClassName={HEADER_HEIGHT_CLS}
+          />
         ) : (
           <div className="flex h-full items-center justify-center text-neutral-500">
             <p>Select a file to view changes</p>
@@ -167,8 +178,13 @@ export function WorktreeDiffView({
   );
 }
 
-function FileDiffContent({ file, taskId }: {
+function FileDiffContent({
+  file,
+  headerClassName,
+  taskId,
+}: {
   file: WorktreeDiffFile;
+  headerClassName?: string;
   taskId: string;
 }) {
   const { data, isLoading, error } = useWorktreeFileContent(
@@ -210,21 +226,27 @@ function FileDiffContent({ file, taskId }: {
   const newString = data?.newContent ?? '';
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-hidden">
       {/* File path header */}
-      <div className="flex items-center gap-2 border-b border-neutral-700 bg-neutral-800/50 px-4 py-2">
+      <div
+        className={clsx(
+          'flex items-center gap-2 border-b border-neutral-700 bg-neutral-800/50 px-4 py-2 overflow-hidden',
+          headerClassName,
+        )}
+      >
         <StatusBadge status={file.status} />
-        <span className="font-mono text-sm text-neutral-300">{file.path}</span>
+        <div className="shrink font-mono text-sm text-neutral-300 whitespace-nowrap text-ellipsis overflow-hidden">
+          {file.path}
+        </div>
       </div>
 
       {/* Diff view */}
-      <div className="min-h-0 flex-1 overflow-auto p-4">
-        <DiffView
-          filePath={file.path}
-          oldString={oldString}
-          newString={newString}
-        />
-      </div>
+      <DiffView
+        filePath={file.path}
+        oldString={oldString}
+        newString={newString}
+        withMinimap
+      />
     </div>
   );
 }
