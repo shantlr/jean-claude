@@ -11,6 +11,8 @@ import {
   AgentQuestion,
   SessionAllowButton,
   QueuedPrompt,
+  AgentPermissionEvent,
+  AgentQuestionEvent,
 } from '../../shared/agent-types';
 import type { InteractionMode } from '../../shared/types';
 import {
@@ -635,6 +637,48 @@ class AgentService {
   getQueuedPrompts(taskId: string): QueuedPrompt[] {
     const session = this.sessions.get(taskId);
     return session?.queuedPrompts ?? [];
+  }
+
+  /**
+   * Get the current pending request for a task (permission or question).
+   * Returns null if no pending request exists.
+   */
+  getPendingRequest(taskId: string): {
+    type: 'permission';
+    data: AgentPermissionEvent;
+  } | {
+    type: 'question';
+    data: AgentQuestionEvent;
+  } | null {
+    const session = this.sessions.get(taskId);
+    if (!session || session.pendingRequests.length === 0) {
+      return null;
+    }
+
+    const request = session.pendingRequests[0];
+    if (request.type === 'question') {
+      return {
+        type: 'question',
+        data: {
+          taskId,
+          requestId: request.requestId,
+          questions: request.input.questions as AgentQuestion[],
+        },
+      };
+    }
+
+    // Permission request
+    const sessionAllowButton = this.getSessionAllowButton(request.toolName, request.input);
+    return {
+      type: 'permission',
+      data: {
+        taskId,
+        requestId: request.requestId,
+        toolName: request.toolName,
+        input: request.input,
+        sessionAllowButton,
+      },
+    };
   }
 
   async setMode(taskId: string, mode: InteractionMode): Promise<void> {

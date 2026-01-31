@@ -690,6 +690,10 @@ export function registerIpcHandlers() {
     return agentService.getMessageCount(taskId);
   });
 
+  ipcMain.handle(AGENT_CHANNELS.GET_PENDING_REQUEST, (_, taskId: string) => {
+    return agentService.getPendingRequest(taskId);
+  });
+
   // Settings
   ipcMain.handle(
     'settings:get',

@@ -318,6 +318,17 @@ export interface Api {
     cancelQueuedPrompt: (taskId: string, promptId: string) => Promise<void>;
     getMessages: (taskId: string) => Promise<AgentMessage[]>;
     getMessageCount: (taskId: string) => Promise<number>;
+    getPendingRequest: (taskId: string) => Promise<
+      | {
+          type: 'permission';
+          data: AgentPermissionEvent;
+        }
+      | {
+          type: 'question';
+          data: AgentQuestionEvent;
+        }
+      | null
+    >;
     onMessage: (
       callback: AgentEventCallback<AgentMessageEvent>,
     ) => UnsubscribeFn;
@@ -538,6 +549,7 @@ export const api: Api = hasWindowApi
         },
         getMessages: async () => [],
         getMessageCount: async () => 0,
+        getPendingRequest: async () => null,
         onMessage: () => () => {},
         onStatus: () => () => {},
         onPermission: () => () => {},

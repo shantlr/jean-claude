@@ -8,11 +8,24 @@ export function useTaskMessages(taskId: string) {
   const loadTask = useTaskMessagesStore((s) => s.loadTask);
   const touchTask = useTaskMessagesStore((s) => s.touchTask);
   const unloadTask = useTaskMessagesStore((s) => s.unloadTask);
+  const setPermission = useTaskMessagesStore((s) => s.setPermission);
+  const setQuestion = useTaskMessagesStore((s) => s.setQuestion);
   const isLoaded = !!taskState;
   // Track which task we're currently fetching to prevent duplicate requests
   const fetchingRef = useRef<string | null>(null);
   // Track which task we've done a sync check for (only relevant when already loaded)
   const syncCheckedRef = useRef<string | null>(null);
+
+  const fetchPendingRequest = useCallback(async () => {
+    const pendingRequest = await api.agent.getPendingRequest(taskId);
+    if (pendingRequest) {
+      if (pendingRequest.type === 'permission') {
+        setPermission(taskId, pendingRequest.data);
+      } else {
+        setQuestion(taskId, pendingRequest.data);
+      }
+    }
+  }, [taskId, setPermission, setQuestion]);
 
   const fetchMessages = useCallback(() => {
     fetchingRef.current = taskId;
@@ -22,13 +35,15 @@ export function useTaskMessages(taskId: string) {
     ]).then(([messages, task]) => {
       if (task) {
         loadTask(taskId, messages, task.status);
+        // Also fetch pending request after loading task
+        fetchPendingRequest();
       }
       // Clear fetching ref after load completes
       if (fetchingRef.current === taskId) {
         fetchingRef.current = null;
       }
     });
-  }, [taskId, loadTask]);
+  }, [taskId, loadTask, fetchPendingRequest]);
 
   const refetch = useCallback(() => {
     // Force a fresh fetch by unloading and re-fetching
@@ -55,6 +70,8 @@ export function useTaskMessages(taskId: string) {
       // Only run sync check once per task open (not on every re-render)
       if (syncCheckedRef.current !== taskId) {
         syncCheckedRef.current = taskId;
+
+        // Check message count sync
         api.agent.getMessageCount(taskId).then((backendCount) => {
           const frontendCount = taskState?.messages.length ?? 0;
           if (backendCount !== frontendCount) {
@@ -65,9 +82,26 @@ export function useTaskMessages(taskId: string) {
             fetchMessages();
           }
         });
+
+        // Also fetch pending request (in case we missed an IPC event)
+        fetchPendingRequest();
       }
     }
-  }, [taskId, isLoaded, touchTask, taskState?.messages.length, fetchMessages]);
+  }, [taskId, isLoaded, touchTask, taskState?.messages.length, fetchMessages, fetchPendingRequest]);
+
+  // Refetch pending request when window regains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      // Only refetch if the task is loaded and in a waiting state
+      if (isLoaded && taskState?.status === 'waiting') {
+        console.log(`[useTaskMessages] Window focused, refetching pending request for task ${taskId}`);
+        fetchPendingRequest();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [taskId, isLoaded, taskState?.status, fetchPendingRequest]);
 
   const defaultState: TaskState = {
     messages: [],

@@ -184,6 +184,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke(AGENT_CHANNELS.GET_MESSAGES, taskId),
     getMessageCount: (taskId: string) =>
       ipcRenderer.invoke(AGENT_CHANNELS.GET_MESSAGE_COUNT, taskId),
+    getPendingRequest: (taskId: string) =>
+      ipcRenderer.invoke(AGENT_CHANNELS.GET_PENDING_REQUEST, taskId),
     onMessage: (callback: (event: unknown) => void) => {
       const handler = (_: unknown, event: unknown) => callback(event);
       ipcRenderer.on(AGENT_CHANNELS.MESSAGE, handler);
