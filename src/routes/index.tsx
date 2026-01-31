@@ -1,46 +1,10 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 
-import { api } from '@/lib/api';
-import { useNavigationStore } from '@/stores/navigation';
+import { resolveLastLocationRedirect } from '@/lib/navigation';
 
 export const Route = createFileRoute('/')({
   beforeLoad: async () => {
-    const { lastLocation, setLastLocation } = useNavigationStore.getState();
-
-    if (lastLocation.type === 'allTasks') {
-      // Redirect to All Tasks view
-      throw redirect({ to: '/all-tasks' });
-    }
-
-    if (lastLocation.type === 'project') {
-      // Validate project still exists
-      const project = await api.projects.findById(lastLocation.projectId);
-
-      if (project) {
-        if (lastLocation.taskId) {
-          // Validate task still exists
-          const task = await api.tasks.findById(lastLocation.taskId);
-          if (task) {
-            throw redirect({
-              to: '/projects/$projectId/tasks/$taskId',
-              params: {
-                projectId: lastLocation.projectId,
-                taskId: lastLocation.taskId,
-              },
-            });
-          }
-        }
-        // Task invalid or not set, go to project
-        throw redirect({
-          to: '/projects/$projectId',
-          params: { projectId: lastLocation.projectId },
-        });
-      }
-
-      // Project invalid, clear and fall through
-      setLastLocation({ type: 'none' });
-    }
-
-    throw redirect({ to: '/settings' });
+    const target = await resolveLastLocationRedirect();
+    throw redirect(target);
   },
 });

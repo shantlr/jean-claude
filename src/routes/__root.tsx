@@ -1,13 +1,21 @@
-import { createRootRoute, Outlet, useRouter } from '@tanstack/react-router';
+import {
+  createRootRoute,
+  Outlet,
+  useNavigate,
+  useRouter,
+} from '@tanstack/react-router';
+import { useEffect } from 'react';
 
 import { GlobalPromptModal } from '@/common/ui/global-prompt-modal';
 import { TaskMessageManager } from '@/features/agent/task-message-manager';
 import { Header } from '@/layout/ui-header';
 import { MainSidebar } from '@/layout/ui-main-sidebar';
+import { resolveLastLocationRedirect } from '@/lib/navigation';
 
 export const Route = createRootRoute({
   component: RootLayout,
   errorComponent: RootErrorBoundary,
+  notFoundComponent: NotFoundRedirect,
 });
 
 function RootErrorBoundary({ error }: { error: Error }) {
@@ -65,4 +73,17 @@ function RootLayout() {
       </div>
     </div>
   );
+}
+
+function NotFoundRedirect() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    resolveLastLocationRedirect().then((target) => {
+      navigate(target);
+    });
+  }, [navigate]);
+
+  // Return null while redirecting
+  return null;
 }
