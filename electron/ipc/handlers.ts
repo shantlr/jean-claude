@@ -72,6 +72,7 @@ import {
   getWorktreeSettingsPath,
 } from '../services/permission-settings-service';
 import { runCommandService } from '../services/run-command-service';
+import { getAllSkills } from '../services/skill-service';
 import {
   createWorktree,
   getWorktreeDiff,
@@ -430,6 +431,20 @@ export function registerIpcHandlers() {
       throw new Error(`Project ${task.projectId} not found`);
     }
     return getProjectBranches(project.path);
+  });
+
+  ipcMain.handle('tasks:getSkills', async (_, taskId: string) => {
+    const task = await TaskRepository.findById(taskId);
+    if (!task) {
+      throw new Error(`Task ${taskId} not found`);
+    }
+    // Use worktree path if available, otherwise use project path
+    const projectPath = task.worktreePath ?? (await ProjectRepository.findById(task.projectId))?.path;
+    if (!projectPath) {
+      throw new Error(`Project ${task.projectId} not found`);
+    }
+    dbg.ipc('tasks:getSkills for task: %s, path: %s', taskId, projectPath);
+    return getAllSkills(projectPath);
   });
 
   // Providers
@@ -945,6 +960,7 @@ export function registerIpcHandlers() {
   ipcMain.handle('globalPrompt:respond', (_, response: GlobalPromptResponse) =>
     handlePromptResponse(response),
   );
+
 }
 
 // Helper: check if an editor is available

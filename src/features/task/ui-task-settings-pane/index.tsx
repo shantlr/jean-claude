@@ -1,14 +1,102 @@
 import clsx from 'clsx';
-import { X, Shield } from 'lucide-react';
+import {
+  X,
+  Shield,
+  Wand2,
+  Loader2,
+  ChevronRight,
+  ChevronDown,
+} from 'lucide-react';
+import { useState } from 'react';
 
+import { useSkills } from '@/hooks/use-skills';
 import { PROJECT_HEADER_HEIGHT } from '@/layout/ui-project-sidebar';
+
+import type { Skill } from '../../../../shared/skill-types';
+
+function SkillSourceBadge({
+  source,
+  pluginName,
+}: {
+  source: Skill['source'];
+  pluginName?: string;
+}) {
+  const config = {
+    user: { label: 'user', className: 'text-blue-400' },
+    project: { label: 'project', className: 'text-green-400' },
+    plugin: { label: pluginName ?? 'plugin', className: 'text-orange-400' },
+  }[source];
+
+  return (
+    <span className={`text-[10px] ${config.className}`}>{config.label}</span>
+  );
+}
+
+function SkillItem({ skill }: { skill: Skill }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div
+      className="cursor-pointer rounded px-2 py-1 hover:bg-neutral-800"
+      onClick={() => setIsExpanded(!isExpanded)}
+    >
+      <div className="flex items-center gap-1.5">
+        {isExpanded ? (
+          <ChevronDown className="h-3 w-3 shrink-0 text-neutral-500" />
+        ) : (
+          <ChevronRight className="h-3 w-3 shrink-0 text-neutral-500" />
+        )}
+        <Wand2 className="h-3 w-3 shrink-0 text-purple-400" />
+        <span className="min-w-0 flex-1 truncate text-xs text-neutral-300">
+          {skill.name}
+        </span>
+        <SkillSourceBadge source={skill.source} pluginName={skill.pluginName} />
+      </div>
+      {isExpanded && (
+        <p className="mt-1 ml-[30px] mr-2 text-[11px] leading-relaxed text-neutral-500">
+          {skill.description || 'No description available.'}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function SkillsList({ taskId }: { taskId: string }) {
+  const { data: skills, isLoading, error } = useSkills(taskId);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-2">
+        <Loader2 className="h-3 w-3 animate-spin text-neutral-500" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <p className="text-xs text-red-400">Failed to load skills</p>;
+  }
+
+  if (!skills || skills.length === 0) {
+    return <p className="text-xs text-neutral-600">No skills available.</p>;
+  }
+
+  return (
+    <div className="space-y-0.5">
+      {skills.map((skill) => (
+        <SkillItem key={`${skill.source}-${skill.name}`} skill={skill} />
+      ))}
+    </div>
+  );
+}
 
 export function TaskSettingsPane({
   sessionAllowedTools,
+  taskId,
   onRemoveTool,
   onClose,
 }: {
   sessionAllowedTools: string[];
+  taskId: string;
   onRemoveTool: (toolName: string) => void;
   onClose: () => void;
 }) {
@@ -34,7 +122,8 @@ export function TaskSettingsPane({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 space-y-6 overflow-auto p-4">
+        {/* Session Allowed Tools Section */}
         <section>
           <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">
             Session Allowed Tools
@@ -69,6 +158,14 @@ export function TaskSettingsPane({
               ))}
             </div>
           )}
+        </section>
+
+        {/* Skills Section */}
+        <section>
+          <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            Available Skills
+          </h4>
+          <SkillsList taskId={taskId} />
         </section>
       </div>
     </div>

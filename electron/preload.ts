@@ -66,6 +66,7 @@ contextBridge.exposeInMainWorld('api', {
       ),
     reorder: (projectId: string, activeIds: string[], completedIds: string[]) =>
       ipcRenderer.invoke('tasks:reorder', projectId, activeIds, completedIds),
+    getSkills: (taskId: string) => ipcRenderer.invoke('tasks:getSkills', taskId),
     worktree: {
       getDiff: (taskId: string) =>
         ipcRenderer.invoke('tasks:worktree:getDiff', taskId),

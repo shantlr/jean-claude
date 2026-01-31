@@ -566,6 +566,7 @@ function TaskPanel() {
       {rightPane?.type === 'settings' && (
         <TaskSettingsPane
           sessionAllowedTools={task.sessionAllowedTools}
+          taskId={taskId}
           onRemoveTool={handleRemoveSessionAllowedTool}
           onClose={closeRightPane}
         />

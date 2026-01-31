@@ -28,6 +28,7 @@ import type {
   PortsInUseErrorData,
   PackageScriptsResult,
 } from '../../shared/run-command-types';
+import type { Skill } from '../../shared/skill-types';
 import type {
   Project,
   NewProject,
@@ -232,6 +233,7 @@ export interface Api {
       activeIds: string[],
       completedIds: string[],
     ) => Promise<Task[]>;
+    getSkills: (taskId: string) => Promise<Skill[]>;
     worktree: {
       getDiff: (taskId: string) => Promise<WorktreeDiffResult>;
       getFileContent: (
@@ -514,6 +516,7 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         reorder: async () => [],
+        getSkills: async () => [],
         worktree: {
           getDiff: async () => ({ files: [] }),
           getFileContent: async () => ({
