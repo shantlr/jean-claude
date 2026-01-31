@@ -1,9 +1,20 @@
 import clsx from 'clsx';
 import { Send, Square, Loader2, ListPlus } from 'lucide-react';
-import { useState, useRef, useCallback, KeyboardEvent } from 'react';
-
+import {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  KeyboardEvent,
+} from 'react';
 
 const DOUBLE_ESCAPE_THRESHOLD = 300; // ms
+
+const COMMANDS = [
+  { command: '/init', description: 'Initialize CLAUDE.md in project' },
+  { command: '/compact', description: 'Compact conversation history' },
+];
 
 export function MessageInput({
   onSend,
@@ -23,8 +34,66 @@ export function MessageInput({
   isStopping?: boolean;
 }) {
   const [value, setValue] = useState('');
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const lastEscapeRef = useRef<number>(0);
+
+  // Check if we should show the command dropdown
+  const [dropdownDismissed, setDropdownDismissed] = useState(false);
+  const showCommandDropdown = value.startsWith('/') && !dropdownDismissed;
+  const searchText = value.slice(1).toLowerCase();
+
+  // Filter commands based on what user typed after /
+  const filteredCommands = useMemo(() => {
+    if (!showCommandDropdown) return [];
+    return COMMANDS.filter((cmd) =>
+      cmd.command.toLowerCase().slice(1).startsWith(searchText),
+    );
+  }, [showCommandDropdown, searchText]);
+
+  // Reset selected index when filtered commands change
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [filteredCommands.length]);
+
+  // Track previous value to detect backspace
+  const prevValueRef = useRef(value);
+  useEffect(() => {
+    if (dropdownDismissed && value.startsWith('/')) {
+      // Re-show dropdown when user deletes characters (backspace)
+      if (value.length < prevValueRef.current.length) {
+        setDropdownDismissed(false);
+      }
+      // Keep dismissed while adding characters after selection
+    } else {
+      setDropdownDismissed(false);
+    }
+    prevValueRef.current = value;
+  }, [value, dropdownDismissed]);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    if (!showCommandDropdown || filteredCommands.length === 0) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setDropdownDismissed(true);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showCommandDropdown, filteredCommands.length]);
+
+  const selectCommand = useCallback((command: string) => {
+    setValue(command);
+    setDropdownDismissed(true);
+    textareaRef.current?.focus();
+  }, []);
 
   const handleSubmit = useCallback(() => {
     const trimmed = value.trim();
@@ -46,6 +115,32 @@ export function MessageInput({
   }, [value, disabled, isRunning, onSend, onQueue]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Handle command dropdown navigation
+    if (showCommandDropdown && filteredCommands.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex((prev) =>
+          prev < filteredCommands.length - 1 ? prev + 1 : prev,
+        );
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : prev));
+        return;
+      }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        selectCommand(filteredCommands[selectedIndex].command);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setDropdownDismissed(true);
+        return;
+      }
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
@@ -85,7 +180,29 @@ export function MessageInput({
   };
 
   return (
-    <div className="flex flex-1 items-end gap-2">
+    <div ref={containerRef} className="relative flex flex-1 items-end gap-2">
+      {/* Command completion dropdown */}
+      {showCommandDropdown && filteredCommands.length > 0 && (
+        <div className="absolute bottom-full left-0 mb-1 w-64 rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg">
+          {filteredCommands.map((cmd, index) => (
+            <button
+              key={cmd.command}
+              type="button"
+              onClick={() => selectCommand(cmd.command)}
+              onMouseEnter={() => setSelectedIndex(index)}
+              className={clsx(
+                'w-full px-3 py-2 text-left',
+                index === selectedIndex ? 'bg-neutral-700' : 'hover:bg-neutral-700',
+              )}
+            >
+              <div className="text-sm font-medium text-neutral-200">
+                {cmd.command}
+              </div>
+              <div className="text-xs text-neutral-400">{cmd.description}</div>
+            </button>
+          ))}
+        </div>
+      )}
       <textarea
         ref={textareaRef}
         value={value}
