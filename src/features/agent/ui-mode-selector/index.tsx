@@ -14,7 +14,11 @@ const MODES: { value: InteractionMode; label: string; description: string }[] =
     },
   ];
 
-export function ModeSelector({ value, onChange, disabled }: {
+export function ModeSelector({
+  value,
+  onChange,
+  disabled,
+}: {
   value: InteractionMode;
   onChange: (mode: InteractionMode) => void;
   disabled?: boolean;
@@ -52,7 +56,7 @@ export function ModeSelector({ value, onChange, disabled }: {
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-label={`Interaction mode: ${selectedMode.label}`}
-        className="flex items-center gap-1 rounded-md border border-neutral-600 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-300 hover:border-neutral-500 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex min-h-[40px] items-center gap-1 rounded-md border border-neutral-600 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-300 hover:border-neutral-500 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <span>{selectedMode.label}</span>
         <ChevronDown className="h-3 w-3" aria-hidden />
