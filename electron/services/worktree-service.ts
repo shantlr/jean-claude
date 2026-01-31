@@ -14,6 +14,14 @@ import { buildWorktreeSettings } from './permission-settings-service';
 const execAsync = promisify(exec);
 
 /**
+ * Escapes a string for safe use in shell commands within double quotes.
+ * Handles characters that have special meaning in bash: $ ` \ " !
+ */
+function escapeForShell(str: string): string {
+  return str.replace(/[$`\\!"]/g, '\\$&');
+}
+
+/**
  * Checks if a file is binary by looking for null bytes in the first 8KB.
  */
 async function isBinaryFile(filePath: string): Promise<boolean> {
@@ -306,7 +314,7 @@ export async function getWorktreeDiff(
         if (statusCodes === '??' && !filePath.endsWith('/') && !filesMap.has(filePath)) {
           // Check if file existed at startCommit
           try {
-            await execAsync(`git cat-file -e ${startCommitHash}:"${filePath}"`, {
+            await execAsync(`git cat-file -e ${startCommitHash}:"${escapeForShell(filePath)}"`, {
               cwd: worktreePath,
               encoding: 'utf-8',
             });
@@ -369,7 +377,7 @@ export async function getWorktreeFileContent(
   if (status !== 'added') {
     try {
       const { stdout } = await execAsync(
-        `git show ${startCommitHash}:"${filePath}"`,
+        `git show ${startCommitHash}:"${escapeForShell(filePath)}"`,
         {
           cwd: worktreePath,
           encoding: 'utf-8',
