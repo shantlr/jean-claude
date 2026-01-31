@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 
+import { ContextUsageDisplay } from '@/features/agent/ui-context-usage-display';
 import { FilePreviewPane } from '@/features/agent/ui-file-preview-pane';
 import { MessageInput } from '@/features/agent/ui-message-input';
 import { MessageStream } from '@/features/agent/ui-message-stream';
@@ -25,6 +26,7 @@ import { WorktreeDiffView } from '@/features/agent/ui-worktree-diff-view';
 import { StatusIndicator } from '@/features/task/ui-status-indicator';
 import { TaskSettingsPane } from '@/features/task/ui-task-settings-pane';
 import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
+import { useContextUsage } from '@/hooks/use-context-usage';
 import { useProject } from '@/hooks/use-projects';
 import { useEditorSetting } from '@/hooks/use-settings';
 import {
@@ -38,7 +40,6 @@ import {
   useAllowForProject,
   useAllowForProjectWorktrees,
 } from '@/hooks/use-tasks';
-import { PROJECT_HEADER_HEIGHT } from '@/layout/ui-project-sidebar';
 import { api } from '@/lib/api';
 import { getBranchFromWorktreePath } from '@/lib/worktree';
 import {
@@ -97,6 +98,7 @@ function TaskPanel() {
   } = useDiffViewState(taskId);
 
   const agentState = useAgentStream(taskId);
+  const contextUsage = useContextUsage(agentState.messages);
   const {
     stop,
     respondToPermission,
@@ -120,7 +122,13 @@ function TaskPanel() {
       setLastLocation({ type: 'project', projectId, taskId });
     }
     setLastTaskForProject(projectId, taskId);
-  }, [projectId, taskId, lastLocation.type, setLastLocation, setLastTaskForProject]);
+  }, [
+    projectId,
+    taskId,
+    lastLocation.type,
+    setLastLocation,
+    setLastTaskForProject,
+  ]);
 
   const handleCopySessionId = useCallback(async () => {
     if (task?.sessionId) {
@@ -270,115 +278,130 @@ function TaskPanel() {
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
-        <div
-          className="flex items-center gap-3 border-b border-neutral-700 px-6 py-4"
-          style={{
-            height: PROJECT_HEADER_HEIGHT,
-          }}
-        >
-          <StatusIndicator
-            status={
-              agentState.status !== 'waiting' ? agentState.status : task.status
-            }
-            className="h-3 w-3"
-          />
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex flex-col border-b border-neutral-700 px-6 py-3">
+          {/* Top row: Status, title, and action buttons */}
+          <div className="flex items-center gap-3">
+            <StatusIndicator
+              status={
+                agentState.status !== 'waiting'
+                  ? agentState.status
+                  : task.status
+              }
+              className="h-3 w-3"
+            />
             <h1
               className={clsx(
-                'truncate font-semibold whitespace-nowrap overflow-hidden text-ellipsis',
+                'grow truncate font-semibold whitespace-nowrap overflow-hidden text-ellipsis',
                 !task.worktreePath ? 'text-lg' : 'text-sm',
               )}
             >
               {task.name ?? task.prompt.split('\n')[0]}
             </h1>
-            {task.worktreePath && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => api.shell.openInEditor(task.worktreePath!)}
-                  className="flex min-w-0 max-w-48 items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-300"
-                  title={`Open in ${editorSetting ? getEditorLabel(editorSetting) : 'editor'}`}
-                >
-                  <GitBranch className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">
-                    {task.branchName ??
-                      getBranchFromWorktreePath(task.worktreePath)}
-                  </span>
-                </button>
-                <button
-                  onClick={toggleDiffView}
-                  className={`flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium transition-colors ${
-                    isDiffViewOpen
-                      ? 'bg-purple-500/20 text-purple-400'
-                      : 'text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300'
-                  }`}
-                  title="View git diff"
-                >
-                  <GitCompare className="h-3.5 w-3.5" />
-                  Diff
-                </button>
+
+            {/* Run button */}
+            <RunButton
+              projectId={projectId}
+              workingDir={task.worktreePath ?? project.path}
+            />
+
+            {/* Open in editor button */}
+            <button
+              onClick={handleOpenInEditor}
+              className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-1 text-sm font-medium text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
+              title="Open project in editor"
+            >
+              <ExternalLink className="h-4 w-4" />
+              <span className="whitespace-nowrap text-ellipsis overflow-hidden">
+                {editorSetting ? getEditorLabel(editorSetting) : 'Editor'}
+              </span>
+            </button>
+
+            {/* Delete button */}
+            {!isRunning && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center gap-2 rounded-md px-3 py-1 text-sm font-medium text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-red-400"
+                title="Delete task"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* Settings button */}
+            <button
+              onClick={handleToggleSettingsPane}
+              className={clsx(
+                'flex items-center rounded-md px-2 py-1.5 text-sm font-medium transition-colors',
+                rightPane?.type === 'settings'
+                  ? 'bg-neutral-700 text-neutral-200'
+                  : 'text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200',
+              )}
+              title="Task settings"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="flex justify-between">
+            <div className="flex items-center gap-2">
+              {task.worktreePath && (
+                <>
+                  <button
+                    onClick={() => api.shell.openInEditor(task.worktreePath!)}
+                    className="flex min-w-0 max-w-48 items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-300"
+                    title={`Open in ${editorSetting ? getEditorLabel(editorSetting) : 'editor'}`}
+                  >
+                    <GitBranch className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">
+                      {task.branchName ??
+                        getBranchFromWorktreePath(task.worktreePath)}
+                    </span>
+                  </button>
+                  <button
+                    onClick={toggleDiffView}
+                    className={clsx(
+                      'flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium transition-colors',
+                      isDiffViewOpen
+                        ? 'bg-purple-500/20 text-purple-400'
+                        : 'text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300',
+                    )}
+                    title="View git diff"
+                  >
+                    <GitCompare className="h-3.5 w-3.5" />
+                    Diff
+                  </button>
+                </>
+              )}
+              {task.pullRequestId && task.pullRequestUrl && (
+                <PrBadge
+                  pullRequestId={task.pullRequestId}
+                  pullRequestUrl={task.pullRequestUrl}
+                />
+              )}
+            </div>
+            {(task.sessionId || contextUsage.hasData) && (
+              <div className="flex items-center gap-3 pl-6">
+                {/* Context usage display */}
+                <ContextUsageDisplay contextUsage={contextUsage} />
+
+                {/* Session ID */}
+                {task.sessionId && (
+                  <button
+                    onClick={handleCopySessionId}
+                    className="flex items-center gap-1 rounded px-2 py-0.5 font-mono text-xs text-neutral-500 transition-colors hover:bg-neutral-700 hover:text-neutral-300"
+                    title="Click to copy session ID"
+                  >
+                    {copiedSessionId ? (
+                      <Check className="h-3 w-3 text-green-500" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                    {task.sessionId.slice(0, 8)}...
+                  </button>
+                )}
               </div>
             )}
-            {task.pullRequestId && task.pullRequestUrl && (
-              <PrBadge
-                pullRequestId={task.pullRequestId}
-                pullRequestUrl={task.pullRequestUrl}
-              />
-            )}
           </div>
-          {task.sessionId && (
-            <button
-              onClick={handleCopySessionId}
-              className="flex items-center gap-1 rounded px-2 py-1 font-mono text-xs text-neutral-500 transition-colors hover:bg-neutral-700 hover:text-neutral-300"
-              title="Click to copy session ID"
-            >
-              {copiedSessionId ? (
-                <Check className="h-3 w-3 text-green-500" />
-              ) : (
-                <Copy className="h-3 w-3" />
-              )}
-              {task.sessionId.slice(0, 8)}...
-            </button>
-          )}
-
-          {/* Run button */}
-          <RunButton
-            projectId={projectId}
-            workingDir={task.worktreePath ?? project.path}
-          />
-
-          {/* Open in editor button */}
-          <button
-            onClick={handleOpenInEditor}
-            className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
-            title="Open project in editor"
-          >
-            <ExternalLink className="h-4 w-4" />
-            {editorSetting ? getEditorLabel(editorSetting) : 'Editor'}
-          </button>
-
-          {/* Delete button */}
-          {!isRunning && (
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-red-400"
-              title="Delete task"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          )}
-
-          {/* Settings button */}
-          <button
-            onClick={handleToggleSettingsPane}
-            className={`flex items-center rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${
-              rightPane?.type === 'settings'
-                ? 'bg-neutral-700 text-neutral-200'
-                : 'text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200'
-            }`}
-            title="Task settings"
-          >
-            <Settings className="h-4 w-4" />
-          </button>
         </div>
 
         {/* Delete confirmation dialog */}

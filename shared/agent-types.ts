@@ -37,6 +37,17 @@ export interface SkillToolUseResult {
   commandName: string;
 }
 
+// Per-model usage statistics from SDK result messages
+export interface ModelUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadInputTokens: number;
+  cacheCreationInputTokens: number;
+  webSearchRequests: number;
+  costUSD: number;
+  contextWindow: number;
+}
+
 export interface AgentMessage {
   type: 'system' | 'assistant' | 'user' | 'result';
   subtype?: string; // SDK provides various subtypes like 'init', 'hook_started', 'hook_completed', etc.
@@ -67,7 +78,9 @@ export interface AgentMessage {
       web_fetch_requests?: number;
       web_search_requests?: number;
     };
-  }
+  };
+  // SDK-provided per-model usage stats (available on result messages)
+  modelUsage?: Record<string, ModelUsage>;
 }
 
 export interface AssistantMessage {

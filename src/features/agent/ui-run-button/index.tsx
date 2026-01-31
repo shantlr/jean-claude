@@ -1,3 +1,4 @@
+import clsx from 'clsx';
 import { Play, Square } from 'lucide-react';
 
 import { useProjectCommands } from '@/hooks/use-project-commands';
@@ -5,7 +6,10 @@ import { useRunCommands } from '@/hooks/use-run-commands';
 
 import { KillPortsModal } from './kill-ports-modal';
 
-export function RunButton({ projectId, workingDir }: {
+export function RunButton({
+  projectId,
+  workingDir,
+}: {
   projectId: string;
   workingDir: string;
 }) {
@@ -27,7 +31,8 @@ export function RunButton({ projectId, workingDir }: {
     return null;
   }
 
-  const runningCount = status?.commands.filter((c) => c.status === 'running').length ?? 0;
+  const runningCount =
+    status?.commands.filter((c) => c.status === 'running').length ?? 0;
   const totalCount = status?.commands.length ?? 0;
 
   const handleClick = () => {
@@ -44,11 +49,12 @@ export function RunButton({ projectId, workingDir }: {
         <button
           onClick={handleClick}
           disabled={isStarting || isStopping}
-          className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 ${
+          className={clsx(
+            'flex items-center gap-2 rounded-md px-3 py-1 text-sm font-medium transition-colors disabled:opacity-50',
             isRunning
               ? 'bg-red-600 text-white hover:bg-red-700'
-              : 'bg-green-600 text-white hover:bg-green-700'
-          }`}
+              : 'bg-green-600 text-white hover:bg-green-700',
+          )}
           title={isRunning ? 'Stop all commands' : 'Run all commands'}
         >
           {isRunning ? (
@@ -65,11 +71,12 @@ export function RunButton({ projectId, workingDir }: {
         </button>
         {isRunning && totalCount > 0 && (
           <span
-            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+            className={clsx(
+              'rounded-full px-2 py-0.5 text-xs font-medium',
               runningCount === totalCount
                 ? 'bg-green-500/20 text-green-400'
-                : 'bg-yellow-500/20 text-yellow-400'
-            }`}
+                : 'bg-yellow-500/20 text-yellow-400',
+            )}
           >
             {runningCount}/{totalCount}
           </span>
