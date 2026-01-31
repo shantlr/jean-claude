@@ -14,52 +14,60 @@ export function TaskMessageManager() {
   const isLoaded = useTaskMessagesStore((s) => s.isLoaded);
 
   useEffect(() => {
-    console.log('Subscribing to task message manager events');
+    const subscriptionId = Date.now();
+    console.log(
+      `[TaskMessageManager] Subscribing (subscriptionId=${subscriptionId})`,
+    );
     const unsubMessage = api.agent.onMessage(({ taskId, message }) => {
+      const loaded = isLoaded(taskId);
       console.log(
-        `[TaskMessageManager] Received message for task ${taskId}, type: ${message.type}`,
-        { isLoaded },
+        `[TaskMessageManager] Received message for task ${taskId}, type: ${message.type}, isLoaded: ${loaded}, subscriptionId: ${subscriptionId}`,
       );
-      if (isLoaded(taskId)) {
+      if (loaded) {
         appendMessage(taskId, message);
+      } else {
+        console.warn(
+          `[TaskMessageManager] DROPPING message for unloaded task ${taskId}`,
+        );
       }
     });
 
     const unsubStatus = api.agent.onStatus(({ taskId, status, error }) => {
+      const loaded = isLoaded(taskId);
       console.log(
-        `[TaskMessageManager] Received status for task ${taskId}: ${status}`,
-        { isLoaded },
+        `[TaskMessageManager] Received status for task ${taskId}: ${status}, isLoaded: ${loaded}`,
       );
-      if (isLoaded(taskId)) {
+      if (loaded) {
         setStatus(taskId, status, error);
+      } else {
+        console.warn(
+          `[TaskMessageManager] DROPPING status for unloaded task ${taskId}`,
+        );
       }
     });
 
     const unsubPermission = api.agent.onPermission((event) => {
+      const loaded = isLoaded(event.taskId);
       console.log(
-        `[TaskMessageManager] Received permission for task ${event.taskId}`,
-        { isLoaded },
+        `[TaskMessageManager] Received permission for task ${event.taskId}, isLoaded: ${loaded}`,
       );
-      if (isLoaded(event.taskId)) {
+      if (loaded) {
         setPermission(event.taskId, event);
       }
     });
 
     const unsubQuestion = api.agent.onQuestion((event) => {
+      const loaded = isLoaded(event.taskId);
       console.log(
-        `[TaskMessageManager] Received question for task ${event.taskId}`,
-        { isLoaded },
+        `[TaskMessageManager] Received question for task ${event.taskId}, isLoaded: ${loaded}`,
       );
-      if (isLoaded(event.taskId)) {
+      if (loaded) {
         setQuestion(event.taskId, event);
       }
     });
 
     const unsubNameUpdated = api.agent.onNameUpdated(({ taskId }) => {
-      console.log(
-        `[TaskMessageManager] Received name update for task ${taskId}`,
-        { isLoaded },
-      );
+      console.log(`[TaskMessageManager] Received name update for task ${taskId}`);
       // Invalidate task queries so the UI refreshes with the new name
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
@@ -67,18 +75,20 @@ export function TaskMessageManager() {
 
     const unsubQueueUpdate = api.agent.onQueueUpdate(
       ({ taskId, queuedPrompts }) => {
+        const loaded = isLoaded(taskId);
         console.log(
-          `[TaskMessageManager] Received queue update for task ${taskId}`,
-          { isLoaded },
+          `[TaskMessageManager] Received queue update for task ${taskId}, isLoaded: ${loaded}`,
         );
-        if (isLoaded(taskId)) {
+        if (loaded) {
           setQueuedPrompts(taskId, queuedPrompts);
         }
       },
     );
 
     return () => {
-      console.log('Unsubscribing from task message manager events');
+      console.log(
+        `[TaskMessageManager] Unsubscribing (subscriptionId=${subscriptionId})`,
+      );
       unsubMessage();
       unsubStatus();
       unsubPermission();
