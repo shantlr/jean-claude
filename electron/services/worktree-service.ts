@@ -241,11 +241,16 @@ export async function getWorktreeDiff(
     console.log('[worktree-diff] git diff output length:', diffOutput.length);
 
     // Also get untracked files which git diff doesn't show
-    const { stdout: statusOutput } = await execAsync('git status --porcelain', {
-      cwd: worktreePath,
-      encoding: 'utf-8',
-      maxBuffer: 10 * 1024 * 1024,
-    });
+    // Use --untracked-files=all to list individual files in new directories
+    // (default mode shows new directories as "folder/" which can't be diffed)
+    const { stdout: statusOutput } = await execAsync(
+      'git status --porcelain --untracked-files=all',
+      {
+        cwd: worktreePath,
+        encoding: 'utf-8',
+        maxBuffer: 10 * 1024 * 1024,
+      },
+    );
     console.log('[worktree-diff] git status output length:', statusOutput.length);
 
     const filesMap = new Map<string, WorktreeDiffFile>();
@@ -296,7 +301,9 @@ export async function getWorktreeDiff(
 
         // Only add untracked files (??) that we haven't already captured
         // Other statuses should already be in the diff output
-        if (statusCodes === '??' && !filesMap.has(filePath)) {
+        // Skip directory entries (paths ending with '/') - git status shows untracked
+        // directories this way, but we can only diff individual files
+        if (statusCodes === '??' && !filePath.endsWith('/') && !filesMap.has(filePath)) {
           // Check if file existed at startCommit
           try {
             await execAsync(`git cat-file -e ${startCommitHash}:"${filePath}"`, {
