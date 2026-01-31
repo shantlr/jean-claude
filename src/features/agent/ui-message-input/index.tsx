@@ -45,6 +45,7 @@ export function MessageInput({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const lastEscapeRef = useRef<number>(0);
 
   // Check if we should show the command dropdown
@@ -81,6 +82,17 @@ export function MessageInput({
   useEffect(() => {
     setSelectedIndex(0);
   }, [filteredItems.length]);
+
+  // Auto-scroll to selected item in dropdown
+  useEffect(() => {
+    if (!dropdownRef.current) return;
+    const selectedElement = dropdownRef.current.querySelector(
+      `[data-index="${selectedIndex}"]`,
+    );
+    if (selectedElement) {
+      selectedElement.scrollIntoView({ block: 'nearest' });
+    }
+  }, [selectedIndex]);
 
   // Track previous value to detect backspace
   const prevValueRef = useRef(value);
@@ -219,7 +231,10 @@ export function MessageInput({
     <div ref={containerRef} className="relative flex flex-1 items-end gap-2">
       {/* Command completion dropdown */}
       {showCommandDropdown && filteredItems.length > 0 && (
-        <div className="absolute bottom-full left-0 mb-1 max-h-80 w-72 overflow-y-auto rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg">
+        <div
+          ref={dropdownRef}
+          className="absolute bottom-full left-0 right-12 mb-1 max-h-80 overflow-y-auto rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg"
+        >
           {/* Commands section */}
           {commandItems.map((item, localIndex) => {
             if (item.type !== 'command') return null;
@@ -228,14 +243,15 @@ export function MessageInput({
               <button
                 key={item.command}
                 type="button"
+                data-index={index}
                 onClick={() => selectItem(item)}
                 onMouseEnter={() => setSelectedIndex(index)}
                 className={clsx(
-                  'w-full px-3 py-2 text-left',
+                  'w-full px-3 py-1.5 text-left',
                   index === selectedIndex ? 'bg-neutral-700' : 'hover:bg-neutral-700',
                 )}
               >
-                <div className="text-sm font-medium text-neutral-200">
+                <div className="text-xs font-medium text-neutral-200">
                   {item.command}
                 </div>
                 <div className="text-xs text-neutral-400">{item.description}</div>
@@ -265,19 +281,20 @@ export function MessageInput({
               <button
                 key={skill.name}
                 type="button"
+                data-index={index}
                 onClick={() => selectItem(item)}
                 onMouseEnter={() => setSelectedIndex(index)}
                 className={clsx(
-                  'w-full px-3 py-2 text-left',
+                  'w-full px-3 py-1.5 text-left',
                   index === selectedIndex ? 'bg-neutral-700' : 'hover:bg-neutral-700',
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-neutral-200">
+                  <span className="text-xs font-medium text-neutral-200">
                     /{skill.name}
                   </span>
                   {skill.source !== 'user' && (
-                    <span className="rounded bg-neutral-700 px-1.5 py-0.5 text-xs text-neutral-400">
+                    <span className="rounded bg-neutral-700 px-1 py-0.5 text-xs text-neutral-400">
                       {skill.pluginName ?? skill.source}
                     </span>
                   )}
