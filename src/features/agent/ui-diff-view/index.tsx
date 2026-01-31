@@ -1,4 +1,6 @@
-import { AlignJustify, Columns2 } from 'lucide-react';
+import clsx from 'clsx';
+import { AlignJustify, Columns2, MessageSquarePlus } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
 
@@ -13,17 +15,39 @@ interface DiffState {
   newTokens: ThemedToken[][];
 }
 
+export interface InlineComment {
+  line: number;
+  content: ReactNode;
+}
+
+export interface LineRange {
+  start: number;
+  end: number;
+}
+
 export function DiffView({
   filePath,
   oldString,
   newString,
   withMinimap,
+  onAddCommentClick,
+  inlineComments,
+  commentFormLineRange,
+  commentForm,
 }: {
   filePath: string;
   oldString: string;
   newString: string;
   maxHeight?: string;
   withMinimap?: boolean;
+  /** Called when user selects lines to comment on */
+  onAddCommentClick?: (lineRange: LineRange) => void;
+  /** Inline comments to render below specific lines */
+  inlineComments?: InlineComment[];
+  /** Line range where comment form should be shown (shows after end line) */
+  commentFormLineRange?: LineRange | null;
+  /** Comment form to render inline */
+  commentForm?: ReactNode;
 }) {
   const [state, setState] = useState<DiffState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -128,18 +152,15 @@ export function DiffView({
         className="h-full flex-1 overflow-auto font-mono text-xs pt-2 bg-black/30 pb-2"
       >
         {viewMode === 'inline' ? (
-          <table className="w-full border-collapse">
-            <tbody>
-              {state.lines.map((line, i) => (
-                <DiffLineRow
-                  key={i}
-                  line={line}
-                  oldTokens={state.oldTokens}
-                  newTokens={state.newTokens}
-                />
-              ))}
-            </tbody>
-          </table>
+          <InlineDiffTable
+            lines={state.lines}
+            oldTokens={state.oldTokens}
+            newTokens={state.newTokens}
+            onAddCommentClick={onAddCommentClick}
+            inlineComments={inlineComments}
+            commentFormLineRange={commentFormLineRange}
+            commentForm={commentForm}
+          />
         ) : (
           <SideBySideDiffTable
             oldString={oldString}
@@ -154,39 +175,160 @@ export function DiffView({
   );
 }
 
+function InlineDiffTable({
+  lines,
+  oldTokens,
+  newTokens,
+  onAddCommentClick,
+  inlineComments,
+  commentFormLineRange,
+  commentForm,
+}: {
+  lines: DiffLine[];
+  oldTokens: ThemedToken[][];
+  newTokens: ThemedToken[][];
+  onAddCommentClick?: (lineRange: LineRange) => void;
+  inlineComments?: InlineComment[];
+  commentFormLineRange?: LineRange | null;
+  commentForm?: ReactNode;
+}) {
+  const [selectionStart, setSelectionStart] = useState<number | null>(null);
+  const [hoveredLine, setHoveredLine] = useState<number | null>(null);
+
+  const handleLineMouseDown = useCallback(
+    (lineNumber: number) => {
+      if (!onAddCommentClick) return;
+      setSelectionStart(lineNumber);
+    },
+    [onAddCommentClick],
+  );
+
+  const handleLineMouseUp = useCallback(
+    (lineNumber: number) => {
+      if (!onAddCommentClick || selectionStart === null) return;
+
+      const start = Math.min(selectionStart, lineNumber);
+      const end = Math.max(selectionStart, lineNumber);
+      onAddCommentClick({ start, end });
+      setSelectionStart(null);
+    },
+    [onAddCommentClick, selectionStart],
+  );
+
+  const handleMouseLeaveTable = useCallback(() => {
+    setSelectionStart(null);
+    setHoveredLine(null);
+  }, []);
+
+  // Check if a line is in the selection range
+  const isLineInSelection = useCallback(
+    (lineNumber: number) => {
+      if (selectionStart === null || hoveredLine === null) return false;
+      const start = Math.min(selectionStart, hoveredLine);
+      const end = Math.max(selectionStart, hoveredLine);
+      return lineNumber >= start && lineNumber <= end;
+    },
+    [selectionStart, hoveredLine],
+  );
+
+  // Check if a line is in the comment form range
+  const isLineInCommentRange = useCallback(
+    (lineNumber: number) => {
+      if (!commentFormLineRange) return false;
+      return (
+        lineNumber >= commentFormLineRange.start &&
+        lineNumber <= commentFormLineRange.end
+      );
+    },
+    [commentFormLineRange],
+  );
+
+  // Track which lines we've already rendered (to avoid duplicates for same newLineNumber)
+  const renderedNewLineNumbers = new Set<number>();
+
+  return (
+    <table
+      className="w-full border-collapse"
+      onMouseLeave={handleMouseLeaveTable}
+    >
+      <tbody>
+        {lines.map((line, i) => {
+          // Use newLineNumber for comments (the line in the new version)
+          const lineNumber = line.newLineNumber;
+
+          // Skip rendering comments/form for lines we've already processed
+          // This prevents duplicate forms when deletion+addition have same effective position
+          const shouldRenderExtras =
+            lineNumber !== undefined && !renderedNewLineNumbers.has(lineNumber);
+          if (lineNumber !== undefined) {
+            renderedNewLineNumbers.add(lineNumber);
+          }
+
+          const lineComments =
+            shouldRenderExtras && lineNumber
+              ? inlineComments?.filter((c) => c.line === lineNumber)
+              : undefined;
+
+          const showCommentForm =
+            shouldRenderExtras &&
+            commentFormLineRange &&
+            lineNumber === commentFormLineRange.end;
+
+          const isSelected = lineNumber ? isLineInSelection(lineNumber) : false;
+          const isInCommentRange = lineNumber
+            ? isLineInCommentRange(lineNumber)
+            : false;
+
+          return (
+            <DiffLineRow
+              key={i}
+              line={line}
+              oldTokens={oldTokens}
+              newTokens={newTokens}
+              canComment={!!onAddCommentClick && lineNumber !== undefined}
+              isHovered={hoveredLine === lineNumber}
+              isSelected={isSelected}
+              isInCommentRange={isInCommentRange}
+              onMouseEnter={() => lineNumber && setHoveredLine(lineNumber)}
+              onMouseDown={() => lineNumber && handleLineMouseDown(lineNumber)}
+              onMouseUp={() => lineNumber && handleLineMouseUp(lineNumber)}
+              inlineComments={lineComments}
+              commentForm={showCommentForm ? commentForm : undefined}
+            />
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
 function DiffLineRow({
   line,
   oldTokens,
   newTokens,
+  canComment,
+  isHovered,
+  isSelected,
+  isInCommentRange,
+  onMouseEnter,
+  onMouseDown,
+  onMouseUp,
+  inlineComments,
+  commentForm,
 }: {
   line: DiffLine;
   oldTokens: ThemedToken[][];
   newTokens: ThemedToken[][];
+  canComment: boolean;
+  isHovered: boolean;
+  isSelected: boolean;
+  isInCommentRange: boolean;
+  onMouseEnter: () => void;
+  onMouseDown: () => void;
+  onMouseUp: () => void;
+  inlineComments?: InlineComment[];
+  commentForm?: ReactNode;
 }) {
-  // Background colors for diff lines
-  const bgClass =
-    line.type === 'addition'
-      ? 'bg-green-500/20'
-      : line.type === 'deletion'
-        ? 'bg-red-500/20'
-        : '';
-
-  // Line number colors
-  const oldNumClass =
-    line.type === 'deletion' ? 'text-red-400' : 'text-neutral-600';
-  const newNumClass =
-    line.type === 'addition' ? 'text-green-400' : 'text-neutral-600';
-
-  // Prefix character (+/-/space)
-  const prefix =
-    line.type === 'addition' ? '+' : line.type === 'deletion' ? '-' : ' ';
-  const prefixClass =
-    line.type === 'addition'
-      ? 'text-green-400'
-      : line.type === 'deletion'
-        ? 'text-red-400'
-        : 'text-neutral-600';
-
   // Get tokens for this line based on type
   // For deletions, use old tokens; for additions, use new tokens; for context, prefer new
   const lineIndex =
@@ -200,35 +342,100 @@ function DiffLineRow({
       : newTokens[lineIndex] || [];
 
   return (
-    <tr className={bgClass}>
-      {/* Old line number */}
-      <td
-        className={`w-8 select-none pr-1 text-right align-top ${oldNumClass}`}
+    <>
+      <tr
+        className={clsx({
+          'bg-blue-500/30': isSelected,
+          'bg-blue-500/10': !isSelected && isInCommentRange,
+          'bg-green-500/20':
+            !isSelected && !isInCommentRange && line.type === 'addition',
+          'bg-red-500/20':
+            !isSelected && !isInCommentRange && line.type === 'deletion',
+        })}
+        onMouseEnter={onMouseEnter}
+        onMouseDown={canComment ? onMouseDown : undefined}
+        onMouseUp={canComment ? onMouseUp : undefined}
+        style={{ cursor: canComment ? 'pointer' : undefined }}
       >
-        {line.oldLineNumber ?? ''}
-      </td>
-      {/* New line number */}
-      <td
-        className={`w-8 select-none pr-1 text-right align-top ${newNumClass}`}
-      >
-        {line.newLineNumber ?? ''}
-      </td>
-      {/* Prefix (+/-/space) */}
-      <td className={`w-4 select-none text-center align-top ${prefixClass}`}>
-        {prefix}
-      </td>
-      {/* Content with syntax highlighting */}
-      <td className="whitespace-pre-wrap pr-2">
-        {tokens.length > 0 ? (
-          tokens.map((token, i) => (
-            <span key={i} style={{ color: token.color }}>
-              {token.content}
+        {/* Add comment button / Old line number */}
+        <td
+          className={clsx(
+            'w-8 select-none pr-1 text-right align-top relative',
+            line.type === 'deletion' ? 'text-red-400' : 'text-neutral-600',
+          )}
+        >
+          {canComment && isHovered ? (
+            <span className="flex h-full w-full items-center justify-center text-blue-400">
+              <MessageSquarePlus className="h-3 w-3" />
             </span>
-          ))
-        ) : (
-          <span className="text-neutral-300">{line.content}</span>
-        )}
-      </td>
-    </tr>
+          ) : (
+            (line.oldLineNumber ?? '')
+          )}
+        </td>
+        {/* New line number */}
+        <td
+          className={clsx(
+            'w-8 select-none pr-1 text-right align-top',
+            line.type === 'addition' ? 'text-green-400' : 'text-neutral-600',
+          )}
+        >
+          {line.newLineNumber ?? ''}
+        </td>
+        {/* Prefix (+/-/space) */}
+        <td
+          className={clsx('w-4 select-none text-center align-top', {
+            'text-green-400': line.type === 'addition',
+            'text-red-400': line.type === 'deletion',
+            'text-neutral-600': line.type === 'context',
+          })}
+        >
+          {line.type === 'addition'
+            ? '+'
+            : line.type === 'deletion'
+              ? '-'
+              : ' '}
+        </td>
+        {/* Content with syntax highlighting */}
+        <td
+          className={clsx('whitespace-pre-wrap pr-2', {
+            'select-none': !!onMouseDown || !!onMouseUp,
+          })}
+        >
+          {tokens.length > 0 ? (
+            tokens.map((token, i) => (
+              <span key={i} style={{ color: token.color }}>
+                {token.content}
+              </span>
+            ))
+          ) : (
+            <span className="text-neutral-300">{line.content}</span>
+          )}
+        </td>
+      </tr>
+
+      {/* Inline comments for this line */}
+      {inlineComments && inlineComments.length > 0 && (
+        <tr>
+          <td colSpan={4} className="p-0">
+            <div className="border-y border-neutral-700 bg-neutral-800/80 px-4 py-2">
+              {inlineComments.map((comment, i) => (
+                <div key={i}>{comment.content}</div>
+              ))}
+            </div>
+          </td>
+        </tr>
+      )}
+
+      {/* Comment form for this line */}
+      {commentForm && (
+        <tr>
+          <td colSpan={4} className="p-0">
+            <div className="border-y border-blue-600/50 bg-neutral-800/90 px-4 py-3">
+              {commentForm}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }

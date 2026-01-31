@@ -23,6 +23,7 @@ import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$p
 import { Route as ProjectsProjectIdDetailsRouteImport } from './routes/projects/$projectId/details'
 import { Route as ProjectsProjectIdTasksNewRouteImport } from './routes/projects/$projectId/tasks/new'
 import { Route as ProjectsProjectIdTasksTaskIdRouteImport } from './routes/projects/$projectId/tasks/$taskId'
+import { Route as ProjectsProjectIdPrsPrIdRouteImport } from './routes/projects/$projectId/prs/$prId'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -97,6 +98,12 @@ const ProjectsProjectIdTasksTaskIdRoute =
     path: '/tasks/$taskId',
     getParentRoute: () => ProjectsProjectIdRoute,
   } as any)
+const ProjectsProjectIdPrsPrIdRoute =
+  ProjectsProjectIdPrsPrIdRouteImport.update({
+    id: '/prs/$prId',
+    path: '/prs/$prId',
+    getParentRoute: () => ProjectsProjectIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof SettingsIndexRoute
   '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
+  '/projects/$projectId/prs/$prId': typeof ProjectsProjectIdPrsPrIdRoute
   '/projects/$projectId/tasks/$taskId': typeof ProjectsProjectIdTasksTaskIdRoute
   '/projects/$projectId/tasks/new': typeof ProjectsProjectIdTasksNewRoute
 }
@@ -125,6 +133,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsIndexRoute
   '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute
   '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
+  '/projects/$projectId/prs/$prId': typeof ProjectsProjectIdPrsPrIdRoute
   '/projects/$projectId/tasks/$taskId': typeof ProjectsProjectIdTasksTaskIdRoute
   '/projects/$projectId/tasks/new': typeof ProjectsProjectIdTasksNewRoute
 }
@@ -142,6 +151,7 @@ export interface FileRoutesById {
   '/settings/': typeof SettingsIndexRoute
   '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
+  '/projects/$projectId/prs/$prId': typeof ProjectsProjectIdPrsPrIdRoute
   '/projects/$projectId/tasks/$taskId': typeof ProjectsProjectIdTasksTaskIdRoute
   '/projects/$projectId/tasks/new': typeof ProjectsProjectIdTasksNewRoute
 }
@@ -160,6 +170,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/projects/$projectId/details'
     | '/projects/$projectId/'
+    | '/projects/$projectId/prs/$prId'
     | '/projects/$projectId/tasks/$taskId'
     | '/projects/$projectId/tasks/new'
   fileRoutesByTo: FileRoutesByTo
@@ -174,6 +185,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/projects/$projectId/details'
     | '/projects/$projectId'
+    | '/projects/$projectId/prs/$prId'
     | '/projects/$projectId/tasks/$taskId'
     | '/projects/$projectId/tasks/new'
   id:
@@ -190,6 +202,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/projects/$projectId/details'
     | '/projects/$projectId/'
+    | '/projects/$projectId/prs/$prId'
     | '/projects/$projectId/tasks/$taskId'
     | '/projects/$projectId/tasks/new'
   fileRoutesById: FileRoutesById
@@ -302,6 +315,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectIdTasksTaskIdRouteImport
       parentRoute: typeof ProjectsProjectIdRoute
     }
+    '/projects/$projectId/prs/$prId': {
+      id: '/projects/$projectId/prs/$prId'
+      path: '/prs/$prId'
+      fullPath: '/projects/$projectId/prs/$prId'
+      preLoaderRoute: typeof ProjectsProjectIdPrsPrIdRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
   }
 }
 
@@ -328,6 +348,7 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
 interface ProjectsProjectIdRouteChildren {
   ProjectsProjectIdDetailsRoute: typeof ProjectsProjectIdDetailsRoute
   ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
+  ProjectsProjectIdPrsPrIdRoute: typeof ProjectsProjectIdPrsPrIdRoute
   ProjectsProjectIdTasksTaskIdRoute: typeof ProjectsProjectIdTasksTaskIdRoute
   ProjectsProjectIdTasksNewRoute: typeof ProjectsProjectIdTasksNewRoute
 }
@@ -335,6 +356,7 @@ interface ProjectsProjectIdRouteChildren {
 const ProjectsProjectIdRouteChildren: ProjectsProjectIdRouteChildren = {
   ProjectsProjectIdDetailsRoute: ProjectsProjectIdDetailsRoute,
   ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,
+  ProjectsProjectIdPrsPrIdRoute: ProjectsProjectIdPrsPrIdRoute,
   ProjectsProjectIdTasksTaskIdRoute: ProjectsProjectIdTasksTaskIdRoute,
   ProjectsProjectIdTasksNewRoute: ProjectsProjectIdTasksNewRoute,
 }

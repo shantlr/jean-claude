@@ -2,10 +2,28 @@
 
 import { spawn } from 'child_process';
 
+import type {
+  AzureDevOpsPullRequest,
+  AzureDevOpsPullRequestDetails,
+  AzureDevOpsCommit,
+  AzureDevOpsFileChange,
+  AzureDevOpsCommentThread,
+  AzureDevOpsComment,
+} from '../../shared/azure-devops-types';
 import { ProviderRepository } from '../database/repositories/providers';
 import { TokenRepository } from '../database/repositories/tokens';
 
 import { sendGlobalPromptToWindow } from './global-prompt-service';
+
+
+export type {
+  AzureDevOpsPullRequest,
+  AzureDevOpsPullRequestDetails,
+  AzureDevOpsCommit,
+  AzureDevOpsFileChange,
+  AzureDevOpsCommentThread,
+  AzureDevOpsComment,
+};
 
 export interface AzureDevOpsOrganization {
   id: string;
@@ -572,4 +590,631 @@ export async function cloneRepository(
       });
     });
   });
+}
+
+// Helper to get auth header and org name from provider
+async function getProviderAuth(providerId: string): Promise<{
+  authHeader: string;
+  orgName: string;
+}> {
+  const provider = await ProviderRepository.findById(providerId);
+  if (!provider) {
+    throw new Error(`Provider not found: ${providerId}`);
+  }
+  if (!provider.tokenId) {
+    throw new Error(`Provider has no associated token: ${providerId}`);
+  }
+
+  const token = await TokenRepository.getDecryptedToken(provider.tokenId);
+  if (!token) {
+    throw new Error(`Token not found for provider: ${providerId}`);
+  }
+
+  const orgName = provider.baseUrl.split('/').pop();
+  if (!orgName) {
+    throw new Error(`Invalid provider baseUrl: ${provider.baseUrl}`);
+  }
+
+  return {
+    authHeader: createAuthHeader(token),
+    orgName,
+  };
+}
+
+// Pull Request API response types
+interface PullRequestResponse {
+  pullRequestId: number;
+  title: string;
+  status: string;
+  isDraft: boolean;
+  createdBy: {
+    displayName: string;
+    uniqueName: string;
+    imageUrl?: string;
+  };
+  creationDate: string;
+  sourceRefName: string;
+  targetRefName: string;
+  description?: string;
+  mergeStatus?: string;
+  reviewers?: Array<{
+    displayName: string;
+    uniqueName: string;
+    imageUrl?: string;
+    vote: number;
+  }>;
+}
+
+interface PullRequestsListResponse {
+  count: number;
+  value: PullRequestResponse[];
+}
+
+// GitUserDate from Azure DevOps API
+interface GitUserDate {
+  date: string;
+  email: string;
+  name: string;
+  imageUrl?: string;
+}
+
+// GitCommitRef from Azure DevOps API
+interface CommitResponse {
+  commitId: string;
+  author: GitUserDate;
+  committer?: GitUserDate;
+  comment: string;
+  commentTruncated?: boolean;
+  url: string;
+  remoteUrl?: string;
+  parents?: string[];
+}
+
+interface CommitsListResponse {
+  count: number;
+  value: CommitResponse[];
+}
+
+// GitPullRequestChange from Azure DevOps API
+// changeType can be: None(0), Add(1), Edit(2), Encoding(4), Rename(8), Delete(16),
+// Undelete(32), Branch(64), Merge(128), Lock(256), Rollback(512), SourceRename(1024),
+// TargetRename(2048), Property(4096), All(8191)
+// The API returns string values like "add", "edit", "delete", "rename", etc.
+interface ChangeResponse {
+  changeTrackingId?: number;
+  changeId?: number;
+  changeType: string; // e.g., "add", "edit", "delete", "rename", "edit, rename"
+  item?: {
+    objectId?: string;
+    originalObjectId?: string;
+    path: string;
+    url?: string;
+  };
+  originalPath?: string;
+  sourceServerItem?: string;
+  url?: string;
+}
+
+// GitPullRequestIterationChanges from Azure DevOps API
+interface ChangesListResponse {
+  changeEntries: ChangeResponse[];
+  nextSkip?: number;
+  nextTop?: number;
+}
+
+interface CommentResponse {
+  id: number;
+  parentCommentId?: number;
+  content: string;
+  commentType?: string; // 'unknown', 'text', 'codeChange', 'system'
+  isDeleted?: boolean;
+  author: {
+    displayName: string;
+    uniqueName: string;
+    imageUrl?: string;
+  };
+  publishedDate: string;
+  lastUpdatedDate: string;
+  lastContentUpdatedDate?: string;
+}
+
+interface ThreadResponse {
+  id: number;
+  status?: string; // 'unknown', 'active', 'fixed', 'wontFix', 'closed', 'byDesign', 'pending'
+  publishedDate?: string;
+  lastUpdatedDate?: string;
+  threadContext?: {
+    filePath: string;
+    leftFileStart?: { line: number; offset?: number };
+    leftFileEnd?: { line: number; offset?: number };
+    rightFileStart?: { line: number; offset?: number };
+    rightFileEnd?: { line: number; offset?: number };
+  };
+  pullRequestThreadContext?: {
+    iterationContext?: {
+      firstComparingIteration: number;
+      secondComparingIteration: number;
+    };
+    changeTrackingId?: number;
+  };
+  comments: CommentResponse[];
+  isDeleted: boolean;
+  properties?: Record<string, unknown>;
+}
+
+interface ThreadsListResponse {
+  count: number;
+  value: ThreadResponse[];
+}
+
+function mapPrStatus(status: string): 'active' | 'completed' | 'abandoned' {
+  switch (status.toLowerCase()) {
+    case 'active':
+      return 'active';
+    case 'completed':
+      return 'completed';
+    case 'abandoned':
+      return 'abandoned';
+    default:
+      return 'active';
+  }
+}
+
+function mapChangeType(changeType: string): 'add' | 'edit' | 'delete' | 'rename' {
+  // changeType can be a single value or combined (e.g., "edit, rename")
+  const lowerType = changeType.toLowerCase();
+
+  // Check for specific types - order matters for combined types
+  if (lowerType.includes('delete')) {
+    return 'delete';
+  }
+  if (lowerType.includes('rename') || lowerType.includes('sourcerename') || lowerType.includes('targetrename')) {
+    return 'rename';
+  }
+  if (lowerType.includes('add')) {
+    return 'add';
+  }
+  if (lowerType.includes('edit') || lowerType.includes('merge') || lowerType.includes('encoding')) {
+    return 'edit';
+  }
+
+  return 'edit';
+}
+
+function mapThreadStatus(
+  status?: string,
+): 'active' | 'fixed' | 'wontFix' | 'closed' | 'byDesign' | 'pending' | 'unknown' {
+  if (!status) return 'unknown';
+  switch (status.toLowerCase()) {
+    case 'active':
+      return 'active';
+    case 'fixed':
+      return 'fixed';
+    case 'wontfix':
+      return 'wontFix';
+    case 'closed':
+      return 'closed';
+    case 'bydesign':
+      return 'byDesign';
+    case 'pending':
+      return 'pending';
+    default:
+      return 'unknown';
+  }
+}
+
+function mapCommentType(
+  commentType?: string,
+): 'text' | 'codeChange' | 'system' | 'unknown' {
+  if (!commentType) return 'text';
+  switch (commentType.toLowerCase()) {
+    case 'text':
+      return 'text';
+    case 'codechange':
+      return 'codeChange';
+    case 'system':
+      return 'system';
+    default:
+      return 'unknown';
+  }
+}
+
+export async function listPullRequests(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  status?: 'active' | 'completed' | 'abandoned' | 'all';
+}): Promise<AzureDevOpsPullRequest[]> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const statusParam = params.status === 'all' ? 'all' : (params.status ?? 'active');
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests?searchCriteria.status=${statusParam}&api-version=7.0`;
+
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader },
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to list pull requests: ${error}`);
+  }
+
+  const data: PullRequestsListResponse = await response.json();
+
+  return data.value.map((pr) => ({
+    id: pr.pullRequestId,
+    title: pr.title,
+    status: mapPrStatus(pr.status),
+    isDraft: pr.isDraft,
+    createdBy: {
+      displayName: pr.createdBy.displayName,
+      uniqueName: pr.createdBy.uniqueName,
+      imageUrl: pr.createdBy.imageUrl,
+    },
+    creationDate: pr.creationDate,
+    sourceRefName: pr.sourceRefName,
+    targetRefName: pr.targetRefName,
+    url: `https://dev.azure.com/${orgName}/${params.projectId}/_git/${params.repoId}/pullrequest/${pr.pullRequestId}`,
+  }));
+}
+
+export async function getPullRequest(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+}): Promise<AzureDevOpsPullRequestDetails> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}?api-version=7.0`;
+
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader },
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to get pull request: ${error}`);
+  }
+
+  const pr: PullRequestResponse = await response.json();
+
+  return {
+    id: pr.pullRequestId,
+    title: pr.title,
+    status: mapPrStatus(pr.status),
+    isDraft: pr.isDraft,
+    createdBy: {
+      displayName: pr.createdBy.displayName,
+      uniqueName: pr.createdBy.uniqueName,
+      imageUrl: pr.createdBy.imageUrl,
+    },
+    creationDate: pr.creationDate,
+    sourceRefName: pr.sourceRefName,
+    targetRefName: pr.targetRefName,
+    url: `https://dev.azure.com/${orgName}/${params.projectId}/_git/${params.repoId}/pullrequest/${pr.pullRequestId}`,
+    description: pr.description ?? '',
+    mergeStatus: pr.mergeStatus as AzureDevOpsPullRequestDetails['mergeStatus'],
+    reviewers: (pr.reviewers ?? []).map((r) => ({
+      displayName: r.displayName,
+      uniqueName: r.uniqueName,
+      imageUrl: r.imageUrl,
+      vote: r.vote,
+    })),
+  };
+}
+
+export async function getPullRequestCommits(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+}): Promise<AzureDevOpsCommit[]> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}/commits?api-version=7.0`;
+
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader },
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to get pull request commits: ${error}`);
+  }
+
+  const data: CommitsListResponse = await response.json();
+
+  return data.value.map((commit) => ({
+    commitId: commit.commitId,
+    author: {
+      name: commit.author.name,
+      email: commit.author.email,
+      date: commit.author.date,
+    },
+    comment: commit.comment,
+    url: commit.url,
+  }));
+}
+
+export async function getPullRequestChanges(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+}): Promise<AzureDevOpsFileChange[]> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  // First get the iterations to find the latest one
+  const iterationsUrl = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}/iterations?api-version=7.0`;
+  const iterationsResponse = await fetch(iterationsUrl, {
+    headers: { Authorization: authHeader },
+  });
+
+  if (!iterationsResponse.ok) {
+    const error = await iterationsResponse.text();
+    throw new Error(`Failed to get pull request iterations: ${error}`);
+  }
+
+  const iterationsData: { count: number; value: Array<{ id: number }> } =
+    await iterationsResponse.json();
+
+  if (iterationsData.count === 0) {
+    return [];
+  }
+
+  // Get changes from the latest iteration
+  const latestIterationId = iterationsData.value[iterationsData.value.length - 1].id;
+  const changesUrl = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}/iterations/${latestIterationId}/changes?api-version=7.0`;
+
+  const changesResponse = await fetch(changesUrl, {
+    headers: { Authorization: authHeader },
+  });
+
+  if (!changesResponse.ok) {
+    const error = await changesResponse.text();
+    throw new Error(`Failed to get pull request changes: ${error}`);
+  }
+
+  const data: ChangesListResponse = await changesResponse.json();
+
+  return data.changeEntries
+    .filter((change) => change.item?.path) // Filter out entries without paths
+    .map((change) => ({
+      path: change.item!.path,
+      changeType: mapChangeType(change.changeType),
+      originalPath: change.originalPath,
+    }));
+}
+
+export async function getPullRequestFileContent(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+  filePath: string;
+  version: 'base' | 'head';
+}): Promise<string> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  // First get the PR to find source and target refs
+  const prUrl = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}?api-version=7.0`;
+  const prResponse = await fetch(prUrl, {
+    headers: { Authorization: authHeader },
+  });
+
+  if (!prResponse.ok) {
+    const error = await prResponse.text();
+    throw new Error(`Failed to get pull request: ${error}`);
+  }
+
+  const pr: { sourceRefName: string; targetRefName: string } = await prResponse.json();
+
+  // Determine which version to fetch
+  const versionDescriptor =
+    params.version === 'base'
+      ? pr.targetRefName.replace('refs/heads/', '')
+      : pr.sourceRefName.replace('refs/heads/', '');
+
+  const contentUrl = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/items?path=${encodeURIComponent(params.filePath)}&versionDescriptor.version=${encodeURIComponent(versionDescriptor)}&versionDescriptor.versionType=branch&api-version=7.0`;
+
+  const response = await fetch(contentUrl, {
+    headers: { Authorization: authHeader },
+  });
+
+  if (!response.ok) {
+    // File might not exist in base (new file) or head (deleted file)
+    if (response.status === 404) {
+      return '';
+    }
+    const error = await response.text();
+    throw new Error(`Failed to get file content: ${error}`);
+  }
+
+  return response.text();
+}
+
+export async function getPullRequestThreads(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+}): Promise<AzureDevOpsCommentThread[]> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}/threads?api-version=7.0`;
+
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader },
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to get pull request threads: ${error}`);
+  }
+
+  const data: ThreadsListResponse = await response.json();
+
+  return data.value
+    // Filter out threads that only contain system comments
+    .filter((thread) => {
+      if (thread.isDeleted) return false;
+      // Keep thread if it has at least one non-system comment
+      return thread.comments.some(
+        (c) => c.commentType !== 'system' && c.content,
+      );
+    })
+    .map((thread) => ({
+      id: thread.id,
+      status: mapThreadStatus(thread.status),
+      threadContext: thread.threadContext
+        ? {
+            filePath: thread.threadContext.filePath,
+            rightFileStart: thread.threadContext.rightFileStart,
+            rightFileEnd: thread.threadContext.rightFileEnd,
+          }
+        : undefined,
+      comments: thread.comments
+        // Filter out system comments within threads
+        .filter((c) => c.commentType !== 'system')
+        .map((comment) => ({
+          id: comment.id,
+          parentCommentId: comment.parentCommentId,
+          content: comment.content,
+          commentType: mapCommentType(comment.commentType),
+          author: {
+            displayName: comment.author.displayName,
+            uniqueName: comment.author.uniqueName,
+            imageUrl: comment.author.imageUrl,
+          },
+          publishedDate: comment.publishedDate,
+          lastUpdatedDate: comment.lastUpdatedDate,
+        })),
+      isDeleted: thread.isDeleted,
+    }));
+}
+
+export async function addPullRequestComment(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+  content: string;
+}): Promise<AzureDevOpsCommentThread> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}/threads?api-version=7.0`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: authHeader,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      comments: [{ content: params.content, commentType: 1 }],
+      status: 'active',
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to add comment: ${error}`);
+  }
+
+  const thread: ThreadResponse = await response.json();
+
+
+  return {
+    id: thread.id,
+    status: mapThreadStatus(thread.status),
+    threadContext: thread.threadContext
+      ? {
+          filePath: thread.threadContext.filePath,
+          rightFileStart: thread.threadContext.rightFileStart,
+          rightFileEnd: thread.threadContext.rightFileEnd,
+        }
+      : undefined,
+    comments: thread.comments.map((comment) => ({
+      id: comment.id,
+      parentCommentId: comment.parentCommentId,
+      content: comment.content,
+      commentType: mapCommentType(comment.commentType),
+      author: {
+        displayName: comment.author.displayName,
+        uniqueName: comment.author.uniqueName,
+        imageUrl: comment.author.imageUrl,
+      },
+      publishedDate: comment.publishedDate,
+      lastUpdatedDate: comment.lastUpdatedDate,
+    })),
+    isDeleted: thread.isDeleted,
+  };
+}
+
+export async function addPullRequestFileComment(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+  filePath: string;
+  line: number;
+  lineEnd?: number;
+  content: string;
+}): Promise<AzureDevOpsCommentThread> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}/threads?api-version=7.0`;
+
+  const endLine = params.lineEnd ?? params.line;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: authHeader,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      comments: [{ content: params.content, commentType: 1 }],
+      status: 'active',
+      threadContext: {
+        filePath: params.filePath,
+        rightFileStart: { line: params.line, offset: 1 },
+        rightFileEnd: { line: endLine, offset: 1 },
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to add file comment: ${error}`);
+  }
+
+  const thread: ThreadResponse = await response.json();
+
+  return {
+    id: thread.id,
+    status: mapThreadStatus(thread.status),
+    threadContext: thread.threadContext
+      ? {
+          filePath: thread.threadContext.filePath,
+          rightFileStart: thread.threadContext.rightFileStart,
+          rightFileEnd: thread.threadContext.rightFileEnd,
+        }
+      : undefined,
+    comments: thread.comments.map((comment) => ({
+      id: comment.id,
+      parentCommentId: comment.parentCommentId,
+      content: comment.content,
+      commentType: mapCommentType(comment.commentType),
+      author: {
+        displayName: comment.author.displayName,
+        uniqueName: comment.author.uniqueName,
+        imageUrl: comment.author.imageUrl,
+      },
+      publishedDate: comment.publishedDate,
+      lastUpdatedDate: comment.lastUpdatedDate,
+    })),
+    isDeleted: thread.isDeleted,
+  };
 }

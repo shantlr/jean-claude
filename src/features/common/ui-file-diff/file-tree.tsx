@@ -1,13 +1,15 @@
 import { ChevronDown, ChevronRight, File, Folder } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
-import type { WorktreeDiffFile } from '@/lib/api';
+import { getStatusIndicator } from './status-badge';
+import type { DiffFile, DiffFileStatus } from './types';
 
 interface TreeNode {
   name: string;
   path: string;
   type: 'folder' | 'file';
-  status?: 'added' | 'modified' | 'deleted';
+  status?: DiffFileStatus;
+  originalPath?: string;
   children?: TreeNode[];
 }
 
@@ -16,7 +18,7 @@ export function DiffFileTree({
   selectedPath,
   onSelectFile,
 }: {
-  files: WorktreeDiffFile[];
+  files: DiffFile[];
   selectedPath: string | null;
   onSelectFile: (path: string) => void;
 }) {
@@ -82,7 +84,7 @@ function TreeNodeRow({
 }) {
   const isExpanded = expandedFolders.has(node.path);
   const isSelected = node.path === selectedPath;
-  const paddingLeft = 8 + depth * 16;
+  const paddingLeft = 8 + depth * 6;
 
   if (node.type === 'folder') {
     return (
@@ -117,7 +119,7 @@ function TreeNodeRow({
   }
 
   // File node
-  const statusIndicator = getStatusIndicator(node.status);
+  const statusIndicator = getStatusIndicatorOrEmpty(node.status);
 
   return (
     <button
@@ -132,6 +134,11 @@ function TreeNodeRow({
       <span className="w-3.5 shrink-0" />
       <File className="h-4 w-4 shrink-0 text-neutral-500" />
       <span className="truncate">{node.name}</span>
+      {node.status === 'renamed' && node.originalPath && (
+        <span className="truncate text-xs text-neutral-500">
+          ← {getFileName(node.originalPath)}
+        </span>
+      )}
       <span className={`ml-auto shrink-0 text-xs ${statusIndicator.color}`}>
         {statusIndicator.label}
       </span>
@@ -139,20 +146,16 @@ function TreeNodeRow({
   );
 }
 
-function getStatusIndicator(status?: 'added' | 'modified' | 'deleted') {
-  switch (status) {
-    case 'added':
-      return { label: '+', color: 'text-green-400' };
-    case 'deleted':
-      return { label: '-', color: 'text-red-400' };
-    case 'modified':
-      return { label: 'M', color: 'text-orange-400' };
-    default:
-      return { label: '', color: '' };
-  }
+function getStatusIndicatorOrEmpty(status?: DiffFileStatus) {
+  if (!status) return { label: '', color: '' };
+  return getStatusIndicator(status);
 }
 
-function buildTree(files: WorktreeDiffFile[]): TreeNode[] {
+function getFileName(path: string) {
+  return path.split('/').pop() || path;
+}
+
+function buildTree(files: DiffFile[]): TreeNode[] {
   const root: TreeNode[] = [];
   const folderMap = new Map<string, TreeNode>();
 
@@ -196,6 +199,7 @@ function buildTree(files: WorktreeDiffFile[]): TreeNode[] {
       path: file.path,
       type: 'file',
       status: file.status,
+      originalPath: file.originalPath,
     });
 
     // Sort the current level

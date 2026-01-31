@@ -28,7 +28,6 @@ import { TodoListEntry } from '../ui-todo-list-entry';
 
 import { getToolSummary } from './tool-summary';
 
-
 function isTextBlock(block: ContentBlock): block is TextBlock {
   return block.type === 'text';
 }

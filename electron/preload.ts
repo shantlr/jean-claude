@@ -149,6 +149,61 @@ contextBridge.exposeInMainWorld('api', {
       repoName: string;
       targetPath: string;
     }) => ipcRenderer.invoke('azureDevOps:cloneRepository', params),
+    listPullRequests: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      status?: 'active' | 'completed' | 'abandoned' | 'all';
+    }) => ipcRenderer.invoke('azureDevOps:listPullRequests', params),
+    getPullRequest: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+    }) => ipcRenderer.invoke('azureDevOps:getPullRequest', params),
+    getPullRequestCommits: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+    }) => ipcRenderer.invoke('azureDevOps:getPullRequestCommits', params),
+    getPullRequestChanges: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+    }) => ipcRenderer.invoke('azureDevOps:getPullRequestChanges', params),
+    getPullRequestFileContent: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      filePath: string;
+      version: 'base' | 'head';
+    }) => ipcRenderer.invoke('azureDevOps:getPullRequestFileContent', params),
+    getPullRequestThreads: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+    }) => ipcRenderer.invoke('azureDevOps:getPullRequestThreads', params),
+    addPullRequestComment: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      content: string;
+    }) => ipcRenderer.invoke('azureDevOps:addPullRequestComment', params),
+    addPullRequestFileComment: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      filePath: string;
+      line: number;
+      lineEnd?: number;
+      content: string;
+    }) => ipcRenderer.invoke('azureDevOps:addPullRequestFileComment', params),
   },
   dialog: {
     openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),

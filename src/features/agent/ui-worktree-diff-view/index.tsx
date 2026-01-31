@@ -2,9 +2,13 @@ import clsx from 'clsx';
 import { FileX, FolderX, Loader2, RefreshCw } from 'lucide-react';
 import { useMemo } from 'react';
 
-import { DiffFileTree } from '@/features/agent/ui-diff-file-tree';
-import { DiffView } from '@/features/agent/ui-diff-view';
 import { WorktreeActions } from '@/features/agent/ui-worktree-actions';
+import {
+  DiffFileTree,
+  FileDiffContent,
+  normalizeWorktreeStatus,
+} from '@/features/common/ui-file-diff';
+import type { DiffFile } from '@/features/common/ui-file-diff';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import {
   useWorktreeDiff,
@@ -59,6 +63,14 @@ export function WorktreeDiffView({
     if (!selectedFilePath || !data?.files) return null;
     return data.files.find((f) => f.path === selectedFilePath) ?? null;
   }, [selectedFilePath, data?.files]);
+
+  // Convert worktree files to unified DiffFile format for the tree
+  const diffFiles: DiffFile[] = useMemo(() => {
+    return (data?.files ?? []).map((f) => ({
+      path: f.path,
+      status: normalizeWorktreeStatus(f.status),
+    }));
+  }, [data?.files]);
 
   if (isLoading) {
     return (
@@ -134,7 +146,7 @@ export function WorktreeDiffView({
           </button>
         </div>
         <DiffFileTree
-          files={files}
+          files={diffFiles}
           selectedPath={selectedFilePath}
           onSelectFile={onSelectFile}
         />
@@ -163,7 +175,7 @@ export function WorktreeDiffView({
       {/* Diff content */}
       <div className="min-w-0 flex-1 overflow-auto">
         {selectedFile ? (
-          <FileDiffContent
+          <WorktreeFileDiffContent
             file={selectedFile}
             taskId={taskId}
             headerClassName={HEADER_HEIGHT_CLS}
@@ -178,7 +190,7 @@ export function WorktreeDiffView({
   );
 }
 
-function FileDiffContent({
+function WorktreeFileDiffContent({
   file,
   headerClassName,
   taskId,
@@ -193,14 +205,6 @@ function FileDiffContent({
     file.status,
   );
 
-  if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-neutral-500" />
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 text-neutral-500">
@@ -210,63 +214,20 @@ function FileDiffContent({
     );
   }
 
-  // Handle binary files
-  if (data?.isBinary) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 text-neutral-500">
-        <p>Binary file changed</p>
-        <p className="text-xs">{file.path}</p>
-      </div>
-    );
-  }
-
-  // For added files, oldContent is null
-  // For deleted files, newContent is null
-  const oldString = data?.oldContent ?? '';
-  const newString = data?.newContent ?? '';
-
-  return (
-    <div className="flex h-full flex-col overflow-hidden">
-      {/* File path header */}
-      <div
-        className={clsx(
-          'flex items-center gap-2 border-b border-neutral-700 bg-neutral-800/50 px-4 py-2 overflow-hidden',
-          headerClassName,
-        )}
-      >
-        <StatusBadge status={file.status} />
-        <div className="shrink font-mono text-sm text-neutral-300 whitespace-nowrap text-ellipsis overflow-hidden">
-          {file.path}
-        </div>
-      </div>
-
-      {/* Diff view */}
-      <DiffView
-        filePath={file.path}
-        oldString={oldString}
-        newString={newString}
-        withMinimap
-      />
-    </div>
-  );
-}
-
-function StatusBadge({ status }: { status: 'added' | 'modified' | 'deleted' }) {
-  const config = {
-    added: { label: 'Added', bg: 'bg-green-500/20', text: 'text-green-400' },
-    modified: {
-      label: 'Modified',
-      bg: 'bg-orange-500/20',
-      text: 'text-orange-400',
-    },
-    deleted: { label: 'Deleted', bg: 'bg-red-500/20', text: 'text-red-400' },
+  // Convert to unified DiffFile type
+  const diffFile: DiffFile = {
+    path: file.path,
+    status: normalizeWorktreeStatus(file.status),
   };
 
-  const { label, bg, text } = config[status];
-
   return (
-    <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${bg} ${text}`}>
-      {label}
-    </span>
+    <FileDiffContent
+      file={diffFile}
+      oldContent={data?.oldContent ?? ''}
+      newContent={data?.newContent ?? ''}
+      isLoading={isLoading}
+      isBinary={data?.isBinary}
+      headerClassName={headerClassName}
+    />
   );
 }

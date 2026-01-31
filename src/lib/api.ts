@@ -10,6 +10,13 @@ import type {
   QuestionResponse,
 } from '../../shared/agent-types';
 import type {
+  AzureDevOpsPullRequest,
+  AzureDevOpsPullRequestDetails,
+  AzureDevOpsCommit,
+  AzureDevOpsFileChange,
+  AzureDevOpsCommentThread,
+} from '../../shared/azure-devops-types';
+import type {
   GlobalPrompt,
   GlobalPromptResponse,
 } from '../../shared/global-prompt-types';
@@ -38,6 +45,14 @@ import type {
   AppSettings,
 } from '../../shared/types';
 import type { UsageResult } from '../../shared/usage-types';
+
+export type {
+  AzureDevOpsPullRequest,
+  AzureDevOpsPullRequestDetails,
+  AzureDevOpsCommit,
+  AzureDevOpsFileChange,
+  AzureDevOpsCommentThread,
+};
 
 export interface PackageJson {
   name?: string;
@@ -280,6 +295,61 @@ export interface Api {
     cloneRepository: (
       params: CloneRepositoryParams,
     ) => Promise<CloneRepositoryResult>;
+    listPullRequests: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      status?: 'active' | 'completed' | 'abandoned' | 'all';
+    }) => Promise<AzureDevOpsPullRequest[]>;
+    getPullRequest: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+    }) => Promise<AzureDevOpsPullRequestDetails>;
+    getPullRequestCommits: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+    }) => Promise<AzureDevOpsCommit[]>;
+    getPullRequestChanges: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+    }) => Promise<AzureDevOpsFileChange[]>;
+    getPullRequestFileContent: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      filePath: string;
+      version: 'base' | 'head';
+    }) => Promise<string>;
+    getPullRequestThreads: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+    }) => Promise<AzureDevOpsCommentThread[]>;
+    addPullRequestComment: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      content: string;
+    }) => Promise<AzureDevOpsCommentThread>;
+    addPullRequestFileComment: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      filePath: string;
+      line: number;
+      lineEnd?: number;
+      content: string;
+    }) => Promise<AzureDevOpsCommentThread>;
   };
   dialog: {
     openDirectory: () => Promise<string | null>;
@@ -505,6 +575,20 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         cloneRepository: async () => {
+          throw new Error('API not available');
+        },
+        listPullRequests: async () => [],
+        getPullRequest: async () => {
+          throw new Error('API not available');
+        },
+        getPullRequestCommits: async () => [],
+        getPullRequestChanges: async () => [],
+        getPullRequestFileContent: async () => '',
+        getPullRequestThreads: async () => [],
+        addPullRequestComment: async () => {
+          throw new Error('API not available');
+        },
+        addPullRequestFileComment: async () => {
           throw new Error('API not available');
         },
       },

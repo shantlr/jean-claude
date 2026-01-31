@@ -53,6 +53,14 @@ import {
   queryWorkItems,
   createPullRequest,
   cloneRepository,
+  listPullRequests,
+  getPullRequest,
+  getPullRequestCommits,
+  getPullRequestChanges,
+  getPullRequestFileContent,
+  getPullRequestThreads,
+  addPullRequestComment,
+  addPullRequestFileComment,
   type CloneRepositoryParams,
 } from '../services/azure-devops-service';
 import { handlePromptResponse } from '../services/global-prompt-service';
@@ -505,6 +513,118 @@ export function registerIpcHandlers() {
   ipcMain.handle(
     'azureDevOps:cloneRepository',
     (_, params: CloneRepositoryParams) => cloneRepository(params),
+  );
+
+  // Azure DevOps Pull Requests
+  ipcMain.handle(
+    'azureDevOps:listPullRequests',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        status?: 'active' | 'completed' | 'abandoned' | 'all';
+      },
+    ) => listPullRequests(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:getPullRequest',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        pullRequestId: number;
+      },
+    ) => getPullRequest(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:getPullRequestCommits',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        pullRequestId: number;
+      },
+    ) => getPullRequestCommits(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:getPullRequestChanges',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        pullRequestId: number;
+      },
+    ) => getPullRequestChanges(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:getPullRequestFileContent',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        pullRequestId: number;
+        filePath: string;
+        version: 'base' | 'head';
+      },
+    ) => getPullRequestFileContent(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:getPullRequestThreads',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        pullRequestId: number;
+      },
+    ) => getPullRequestThreads(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:addPullRequestComment',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        pullRequestId: number;
+        content: string;
+      },
+    ) => addPullRequestComment(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:addPullRequestFileComment',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        pullRequestId: number;
+        filePath: string;
+        line: number;
+        lineEnd?: number;
+        content: string;
+      },
+    ) => addPullRequestFileComment(params),
   );
 
   ipcMain.handle(
