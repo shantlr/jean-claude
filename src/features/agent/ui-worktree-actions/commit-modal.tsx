@@ -91,7 +91,9 @@ export function CommitModal({
               disabled={!message.trim() || isPending}
               className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+              {isPending && (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              )}
               Commit
             </button>
           </div>

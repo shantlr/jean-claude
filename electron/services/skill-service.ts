@@ -165,7 +165,12 @@ async function getProjectSkills(projectPath: string): Promise<ParsedSkill[]> {
  * Get all skills from installed plugins in ~/.claude/plugins/cache.
  */
 async function getPluginSkills(): Promise<ParsedSkill[]> {
-  const pluginsCacheDir = path.join(os.homedir(), '.claude', 'plugins', 'cache');
+  const pluginsCacheDir = path.join(
+    os.homedir(),
+    '.claude',
+    'plugins',
+    'cache',
+  );
   const skills: ParsedSkill[] = [];
 
   try {
@@ -191,11 +196,7 @@ async function getPluginSkills(): Promise<ParsedSkill[]> {
         for (const versionDir of versionDirs) {
           if (!versionDir.isDirectory()) continue;
 
-          const skillsPath = path.join(
-            pluginPath,
-            versionDir.name,
-            'skills',
-          );
+          const skillsPath = path.join(pluginPath, versionDir.name, 'skills');
 
           try {
             const skillDirs = await fs.readdir(skillsPath, {
@@ -233,7 +234,9 @@ async function getPluginSkills(): Promise<ParsedSkill[]> {
  * Combines user skills, project skills, and plugin skills.
  * Deduplicates by name, with priority: project > user > plugin.
  */
-export async function getAllSkills(projectPath: string): Promise<ParsedSkill[]> {
+export async function getAllSkills(
+  projectPath: string,
+): Promise<ParsedSkill[]> {
   const [userSkills, projectSkills, pluginSkills] = await Promise.all([
     getUserSkills(),
     getProjectSkills(projectPath),

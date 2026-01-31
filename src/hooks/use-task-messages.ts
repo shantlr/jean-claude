@@ -98,14 +98,23 @@ export function useTaskMessages(taskId: string) {
         fetchPendingRequest();
       }
     }
-  }, [taskId, isLoaded, touchTask, taskState?.messages.length, fetchMessages, fetchPendingRequest]);
+  }, [
+    taskId,
+    isLoaded,
+    touchTask,
+    taskState?.messages.length,
+    fetchMessages,
+    fetchPendingRequest,
+  ]);
 
   // Refetch pending request when window regains focus
   useEffect(() => {
     const handleFocus = () => {
       // Only refetch if the task is loaded and in a waiting state
       if (isLoaded && taskState?.status === 'waiting') {
-        console.log(`[useTaskMessages] Window focused, refetching pending request for task ${taskId}`);
+        console.log(
+          `[useTaskMessages] Window focused, refetching pending request for task ${taskId}`,
+        );
         fetchPendingRequest();
       }
     };

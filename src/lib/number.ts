@@ -6,4 +6,4 @@ export const formatNumber = (num: number): string => {
     return (num / 1_000).toFixed(1).replace(/\.0$/, '') + 'K';
   }
   return num.toString();
-}
+};

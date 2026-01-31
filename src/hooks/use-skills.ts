@@ -5,7 +5,8 @@ import { api } from '@/lib/api';
 export const skillsQueryKeys = {
   all: ['skills'] as const,
   byTask: (taskId: string) => [...skillsQueryKeys.all, 'task', taskId] as const,
-  byProject: (projectId: string) => [...skillsQueryKeys.all, 'project', projectId] as const,
+  byProject: (projectId: string) =>
+    [...skillsQueryKeys.all, 'project', projectId] as const,
 };
 
 export function useSkills(taskId: string | undefined) {

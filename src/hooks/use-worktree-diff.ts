@@ -13,7 +13,12 @@ export function useWorktreeDiff(
 ) {
   const queryClient = useQueryClient();
 
-  const { data, isLoading, refetch: refetchQuery, error } = useQuery<WorktreeDiffResult>({
+  const {
+    data,
+    isLoading,
+    refetch: refetchQuery,
+    error,
+  } = useQuery<WorktreeDiffResult>({
     queryKey: ['worktree-diff', taskId],
     queryFn: () => {
       if (!taskId) {

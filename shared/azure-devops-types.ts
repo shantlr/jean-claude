@@ -60,7 +60,14 @@ export interface AzureDevOpsComment {
 
 export interface AzureDevOpsCommentThread {
   id: number;
-  status: 'active' | 'fixed' | 'wontFix' | 'closed' | 'byDesign' | 'pending' | 'unknown';
+  status:
+    | 'active'
+    | 'fixed'
+    | 'wontFix'
+    | 'closed'
+    | 'byDesign'
+    | 'pending'
+    | 'unknown';
   threadContext?: {
     filePath: string;
     rightFileStart?: { line: number };

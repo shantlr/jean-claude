@@ -15,7 +15,6 @@ import { TokenRepository } from '../database/repositories/tokens';
 
 import { sendGlobalPromptToWindow } from './global-prompt-service';
 
-
 export type {
   AzureDevOpsPullRequest,
   AzureDevOpsPullRequestDetails,
@@ -571,10 +570,13 @@ export async function cloneRepository(
         ) {
           errorMessage =
             'SSH key not configured or permission denied. Please ensure your SSH key is set up for Azure DevOps.';
-        } else if (stderr.includes('already exists and is not an empty directory')) {
+        } else if (
+          stderr.includes('already exists and is not an empty directory')
+        ) {
           errorMessage = 'Target directory already exists and is not empty.';
         } else if (stderr.includes('Repository not found')) {
-          errorMessage = 'Repository not found. Please check if the repository exists.';
+          errorMessage =
+            'Repository not found. Please check if the repository exists.';
         } else if (stderr.includes('Host key verification failed')) {
           errorMessage = 'SSH host verification was rejected.';
         }
@@ -760,7 +762,9 @@ function mapPrStatus(status: string): 'active' | 'completed' | 'abandoned' {
   }
 }
 
-function mapChangeType(changeType: string): 'add' | 'edit' | 'delete' | 'rename' {
+function mapChangeType(
+  changeType: string,
+): 'add' | 'edit' | 'delete' | 'rename' {
   // changeType can be a single value or combined (e.g., "edit, rename")
   const lowerType = changeType.toLowerCase();
 
@@ -768,13 +772,21 @@ function mapChangeType(changeType: string): 'add' | 'edit' | 'delete' | 'rename'
   if (lowerType.includes('delete')) {
     return 'delete';
   }
-  if (lowerType.includes('rename') || lowerType.includes('sourcerename') || lowerType.includes('targetrename')) {
+  if (
+    lowerType.includes('rename') ||
+    lowerType.includes('sourcerename') ||
+    lowerType.includes('targetrename')
+  ) {
     return 'rename';
   }
   if (lowerType.includes('add')) {
     return 'add';
   }
-  if (lowerType.includes('edit') || lowerType.includes('merge') || lowerType.includes('encoding')) {
+  if (
+    lowerType.includes('edit') ||
+    lowerType.includes('merge') ||
+    lowerType.includes('encoding')
+  ) {
     return 'edit';
   }
 
@@ -783,7 +795,14 @@ function mapChangeType(changeType: string): 'add' | 'edit' | 'delete' | 'rename'
 
 function mapThreadStatus(
   status?: string,
-): 'active' | 'fixed' | 'wontFix' | 'closed' | 'byDesign' | 'pending' | 'unknown' {
+):
+  | 'active'
+  | 'fixed'
+  | 'wontFix'
+  | 'closed'
+  | 'byDesign'
+  | 'pending'
+  | 'unknown' {
   if (!status) return 'unknown';
   switch (status.toLowerCase()) {
     case 'active':
@@ -827,7 +846,8 @@ export async function listPullRequests(params: {
 }): Promise<AzureDevOpsPullRequest[]> {
   const { authHeader, orgName } = await getProviderAuth(params.providerId);
 
-  const statusParam = params.status === 'all' ? 'all' : (params.status ?? 'active');
+  const statusParam =
+    params.status === 'all' ? 'all' : (params.status ?? 'active');
   const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests?searchCriteria.status=${statusParam}&api-version=7.0`;
 
   const response = await fetch(url, {
@@ -964,7 +984,8 @@ export async function getPullRequestChanges(params: {
   }
 
   // Get changes from the latest iteration
-  const latestIterationId = iterationsData.value[iterationsData.value.length - 1].id;
+  const latestIterationId =
+    iterationsData.value[iterationsData.value.length - 1].id;
   const changesUrl = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}/iterations/${latestIterationId}/changes?api-version=7.0`;
 
   const changesResponse = await fetch(changesUrl, {
@@ -1008,7 +1029,8 @@ export async function getPullRequestFileContent(params: {
     throw new Error(`Failed to get pull request: ${error}`);
   }
 
-  const pr: { sourceRefName: string; targetRefName: string } = await prResponse.json();
+  const pr: { sourceRefName: string; targetRefName: string } =
+    await prResponse.json();
 
   // Determine which version to fetch
   const versionDescriptor =
@@ -1055,43 +1077,45 @@ export async function getPullRequestThreads(params: {
 
   const data: ThreadsListResponse = await response.json();
 
-  return data.value
-    // Filter out threads that only contain system comments
-    .filter((thread) => {
-      if (thread.isDeleted) return false;
-      // Keep thread if it has at least one non-system comment
-      return thread.comments.some(
-        (c) => c.commentType !== 'system' && c.content,
-      );
-    })
-    .map((thread) => ({
-      id: thread.id,
-      status: mapThreadStatus(thread.status),
-      threadContext: thread.threadContext
-        ? {
-            filePath: thread.threadContext.filePath,
-            rightFileStart: thread.threadContext.rightFileStart,
-            rightFileEnd: thread.threadContext.rightFileEnd,
-          }
-        : undefined,
-      comments: thread.comments
-        // Filter out system comments within threads
-        .filter((c) => c.commentType !== 'system')
-        .map((comment) => ({
-          id: comment.id,
-          parentCommentId: comment.parentCommentId,
-          content: comment.content,
-          commentType: mapCommentType(comment.commentType),
-          author: {
-            displayName: comment.author.displayName,
-            uniqueName: comment.author.uniqueName,
-            imageUrl: comment.author.imageUrl,
-          },
-          publishedDate: comment.publishedDate,
-          lastUpdatedDate: comment.lastUpdatedDate,
-        })),
-      isDeleted: thread.isDeleted,
-    }));
+  return (
+    data.value
+      // Filter out threads that only contain system comments
+      .filter((thread) => {
+        if (thread.isDeleted) return false;
+        // Keep thread if it has at least one non-system comment
+        return thread.comments.some(
+          (c) => c.commentType !== 'system' && c.content,
+        );
+      })
+      .map((thread) => ({
+        id: thread.id,
+        status: mapThreadStatus(thread.status),
+        threadContext: thread.threadContext
+          ? {
+              filePath: thread.threadContext.filePath,
+              rightFileStart: thread.threadContext.rightFileStart,
+              rightFileEnd: thread.threadContext.rightFileEnd,
+            }
+          : undefined,
+        comments: thread.comments
+          // Filter out system comments within threads
+          .filter((c) => c.commentType !== 'system')
+          .map((comment) => ({
+            id: comment.id,
+            parentCommentId: comment.parentCommentId,
+            content: comment.content,
+            commentType: mapCommentType(comment.commentType),
+            author: {
+              displayName: comment.author.displayName,
+              uniqueName: comment.author.uniqueName,
+              imageUrl: comment.author.imageUrl,
+            },
+            publishedDate: comment.publishedDate,
+            lastUpdatedDate: comment.lastUpdatedDate,
+          })),
+        isDeleted: thread.isDeleted,
+      }))
+  );
 }
 
 export async function addPullRequestComment(params: {
@@ -1123,7 +1147,6 @@ export async function addPullRequestComment(params: {
   }
 
   const thread: ThreadResponse = await response.json();
-
 
   return {
     id: thread.id,

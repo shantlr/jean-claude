@@ -5,7 +5,10 @@ import {
   normalizeAzureChangeType,
 } from '@/features/common/ui-file-diff';
 import type { DiffFile, CommentThread } from '@/features/common/ui-file-diff';
-import type { AzureDevOpsFileChange, AzureDevOpsCommentThread } from '@/lib/api';
+import type {
+  AzureDevOpsFileChange,
+  AzureDevOpsCommentThread,
+} from '@/lib/api';
 
 import { PrCommentForm } from '../ui-pr-comment-form';
 

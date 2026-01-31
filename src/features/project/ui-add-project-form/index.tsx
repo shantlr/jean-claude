@@ -43,9 +43,7 @@ function RepoSection({
   );
 
   const hasValues =
-    formData.repoProviderId ||
-    formData.repoProjectId ||
-    formData.repoId;
+    formData.repoProviderId || formData.repoProjectId || formData.repoId;
 
   return (
     <div className="rounded-lg border border-neutral-700 bg-neutral-800/30">
@@ -56,9 +54,15 @@ function RepoSection({
         className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left hover:bg-neutral-700/30"
       >
         {isExpanded ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
+          <ChevronDown
+            className="h-4 w-4 shrink-0 text-neutral-500"
+            aria-hidden
+          />
         ) : (
-          <ChevronRight className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
+          <ChevronRight
+            className="h-4 w-4 shrink-0 text-neutral-500"
+            aria-hidden
+          />
         )}
         <span className="flex-1 text-sm font-medium text-neutral-300">
           Repository
@@ -126,7 +130,10 @@ function RepoProjectSelector({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-2">
-        <Loader2 className="h-4 w-4 animate-spin text-neutral-500" aria-hidden />
+        <Loader2
+          className="h-4 w-4 animate-spin text-neutral-500"
+          aria-hidden
+        />
         <span className="sr-only">Loading…</span>
       </div>
     );
@@ -148,7 +155,9 @@ function RepoProjectSelector({
         <select
           value={formData.repoProjectId || ''}
           onChange={(e) => {
-            const project = projects.find((p) => p.project.id === e.target.value);
+            const project = projects.find(
+              (p) => p.project.id === e.target.value,
+            );
             onChange({
               repoProjectId: e.target.value || null,
               repoProjectName: project?.project.name || null,
@@ -218,8 +227,7 @@ function WorkItemSection({
     (p) => p.id === formData.workItemProviderId,
   );
 
-  const hasValues =
-    formData.workItemProviderId || formData.workItemProjectId;
+  const hasValues = formData.workItemProviderId || formData.workItemProjectId;
 
   return (
     <div className="rounded-lg border border-neutral-700 bg-neutral-800/30">
@@ -230,9 +238,15 @@ function WorkItemSection({
         className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left hover:bg-neutral-700/30"
       >
         {isExpanded ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
+          <ChevronDown
+            className="h-4 w-4 shrink-0 text-neutral-500"
+            aria-hidden
+          />
         ) : (
-          <ChevronRight className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
+          <ChevronRight
+            className="h-4 w-4 shrink-0 text-neutral-500"
+            aria-hidden
+          />
         )}
         <span className="flex-1 text-sm font-medium text-neutral-300">
           Work Items
@@ -298,7 +312,10 @@ function WorkItemProjectSelector({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-2">
-        <Loader2 className="h-4 w-4 animate-spin text-neutral-500" aria-hidden />
+        <Loader2
+          className="h-4 w-4 animate-spin text-neutral-500"
+          aria-hidden
+        />
         <span className="sr-only">Loading…</span>
       </div>
     );
@@ -386,7 +403,11 @@ export function AddProjectForm({
         <label className="mb-1 block text-sm font-medium text-neutral-300">
           Color
         </label>
-        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Project color">
+        <div
+          className="flex flex-wrap gap-2"
+          role="radiogroup"
+          aria-label="Project color"
+        >
           {PROJECT_COLORS.map((color) => (
             <button
               key={color}

@@ -10,7 +10,7 @@ import type {
 const pendingPrompts = new Map<string, (accepted: boolean) => void>();
 
 export function sendGlobalPromptToWindow(
-  prompt: Omit<GlobalPrompt, 'id'>
+  prompt: Omit<GlobalPrompt, 'id'>,
 ): Promise<boolean> {
   const id = randomUUID();
   const fullPrompt: GlobalPrompt = { ...prompt, id };

@@ -27,7 +27,11 @@ export function WorkItemsBrowser({
   const { filters, setFilters } = useWorkItemsFiltersStore(localProjectId);
   const debouncedSearchText = useDebouncedValue(filters.searchText, 300);
 
-  const { data: workItems, isLoading, error } = useWorkItems({
+  const {
+    data: workItems,
+    isLoading,
+    error,
+  } = useWorkItems({
     providerId,
     projectId,
     projectName,
@@ -58,9 +62,7 @@ export function WorkItemsBrowser({
     <div className="rounded-lg border border-neutral-700 bg-neutral-800 p-3">
       {/* Header */}
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-sm font-medium text-neutral-200">
-          Work Items
-        </span>
+        <span className="text-sm font-medium text-neutral-200">Work Items</span>
         <button
           type="button"
           onClick={onClose}
@@ -155,9 +157,7 @@ export function WorkItemsBrowser({
             onClick={() => onSelect(wi)}
             className="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left transition-colors hover:bg-neutral-700"
           >
-            <span className="shrink-0 text-xs text-neutral-500">
-              {wi.id}
-            </span>
+            <span className="shrink-0 text-xs text-neutral-500">{wi.id}</span>
             {wi.fields.workItemType === 'Bug' ? (
               <Bug className="h-3.5 w-3.5 shrink-0 text-red-400" />
             ) : (

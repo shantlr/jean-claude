@@ -1,7 +1,9 @@
 import js from '@eslint/js';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
+import prettier from 'eslint-config-prettier';
 import importPlugin from 'eslint-plugin-import';
+import prettierPlugin from 'eslint-plugin-prettier';
 import react from 'eslint-plugin-react';
 import reactCompiler from 'eslint-plugin-react-compiler';
 import reactHooks from 'eslint-plugin-react-hooks';
@@ -17,6 +19,7 @@ export default [
       'react-compiler': reactCompiler,
       'react-hooks': reactHooks,
       import: importPlugin,
+      prettier: prettierPlugin,
     },
     languageOptions: {
       parser: tsParser,
@@ -58,9 +61,11 @@ export default [
           alphabetize: { order: 'asc' },
         },
       ],
+      'prettier/prettier': 'error',
     },
   },
   {
     ignores: ['out/**', 'node_modules/**'],
   },
+  prettier,
 ];

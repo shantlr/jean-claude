@@ -1,4 +1,8 @@
-import type { ProjectCommand, NewProjectCommand, UpdateProjectCommand } from '../../../shared/run-command-types';
+import type {
+  ProjectCommand,
+  NewProjectCommand,
+  UpdateProjectCommand,
+} from '../../../shared/run-command-types';
 import { db } from '../index';
 
 function parseRow(row: {
@@ -50,7 +54,10 @@ export const ProjectCommandRepository = {
     return parseRow(row);
   },
 
-  update: async (id: string, data: UpdateProjectCommand): Promise<ProjectCommand> => {
+  update: async (
+    id: string,
+    data: UpdateProjectCommand,
+  ): Promise<ProjectCommand> => {
     const updateData: Record<string, unknown> = {};
     if (data.command !== undefined) updateData.command = data.command;
     if (data.ports !== undefined) updateData.ports = JSON.stringify(data.ports);

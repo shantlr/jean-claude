@@ -82,13 +82,10 @@ export function WorkItemsLink({ project }: { project: Project }) {
           <div className="flex items-center gap-2">
             <ListTodo className="h-4 w-4 text-blue-400" />
             <div>
-              <p className="text-sm font-medium text-neutral-200">
-                Work Items
-              </p>
+              <p className="text-sm font-medium text-neutral-200">Work Items</p>
               <p className="text-sm text-neutral-400">
-                {azureProviders.find(
-                  (p) => p.id === project.workItemProviderId,
-                )?.label ?? 'Unknown'}{' '}
+                {azureProviders.find((p) => p.id === project.workItemProviderId)
+                  ?.label ?? 'Unknown'}{' '}
                 / {project.workItemProjectName}
               </p>
             </div>
@@ -115,9 +112,7 @@ export function WorkItemsLink({ project }: { project: Project }) {
     <div className="rounded-lg border border-neutral-700 bg-neutral-900 p-4">
       <div className="mb-3 flex items-center gap-2">
         <ListTodo className="h-4 w-4 text-neutral-400" />
-        <p className="text-sm font-medium text-neutral-200">
-          Link Work Items
-        </p>
+        <p className="text-sm font-medium text-neutral-200">Link Work Items</p>
       </div>
 
       <div className="space-y-3">

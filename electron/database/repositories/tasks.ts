@@ -130,7 +130,10 @@ export const TaskRepository = {
       .selectFrom('tasks')
       .innerJoin('projects', 'projects.id', 'tasks.projectId')
       .selectAll('tasks')
-      .select(['projects.name as projectName', 'projects.color as projectColor'])
+      .select([
+        'projects.name as projectName',
+        'projects.color as projectColor',
+      ])
       .select((eb) =>
         eb
           .selectFrom('agent_messages')

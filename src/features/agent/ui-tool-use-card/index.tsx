@@ -13,7 +13,6 @@ import type {
   ContentBlock,
 } from '../../../../shared/agent-types';
 
-
 // Format tool input for display
 function formatInput(input: Record<string, unknown>): string {
   // Special handling for common tools
@@ -76,7 +75,10 @@ const TOOL_COLORS: Record<string, string> = {
   Skill: 'bg-violet-900/50 border-violet-700',
 };
 
-export function ToolUseCard({ block, result }: {
+export function ToolUseCard({
+  block,
+  result,
+}: {
   block: ToolUseBlock;
   result?: ToolResultBlock;
 }) {

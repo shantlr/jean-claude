@@ -131,7 +131,8 @@ export function getToolSummary(
       const todos = input.todos as Array<{ status: string }> | undefined;
       if (todos) {
         const completed = todos.filter((t) => t.status === 'completed').length;
-        if (hasResult) return `Updated todo list (${completed}/${todos.length} completed)`;
+        if (hasResult)
+          return `Updated todo list (${completed}/${todos.length} completed)`;
         return `Updating todo list (${todos.length} items)...`;
       }
       if (hasResult) return 'Updated todo list';

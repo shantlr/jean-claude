@@ -103,9 +103,7 @@ export function RepoLink({ project }: { project: Project }) {
           <div className="flex items-center gap-2">
             <Link2 className="h-4 w-4 text-blue-400" />
             <div>
-              <p className="text-sm font-medium text-neutral-200">
-                Repository
-              </p>
+              <p className="text-sm font-medium text-neutral-200">Repository</p>
               <p className="text-sm text-neutral-400">
                 {azureProviders.find((p) => p.id === project.repoProviderId)
                   ?.label ?? 'Unknown'}{' '}
@@ -135,9 +133,7 @@ export function RepoLink({ project }: { project: Project }) {
     <div className="rounded-lg border border-neutral-700 bg-neutral-900 p-4">
       <div className="mb-3 flex items-center gap-2">
         <Link2 className="h-4 w-4 text-neutral-400" />
-        <p className="text-sm font-medium text-neutral-200">
-          Link Repository
-        </p>
+        <p className="text-sm font-medium text-neutral-200">Link Repository</p>
       </div>
 
       <div className="space-y-3">

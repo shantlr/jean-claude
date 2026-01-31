@@ -25,7 +25,8 @@ export function RunCommandsConfig({
   const updateCommand = useUpdateProjectCommand();
   const deleteCommand = useDeleteProjectCommand();
 
-  const workspaceScripts = scriptsData?.workspacePackages?.flatMap((p) => p.scripts) ?? [];
+  const workspaceScripts =
+    scriptsData?.workspacePackages?.flatMap((p) => p.scripts) ?? [];
   const suggestions = [...(scriptsData?.scripts ?? []), ...workspaceScripts];
 
   const handleAddCommand = () => {

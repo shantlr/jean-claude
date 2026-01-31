@@ -104,7 +104,10 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
 
           {tokensLoading ? (
             <div className="flex items-center justify-center py-4">
-              <Loader2 className="h-5 w-5 animate-spin text-neutral-400" aria-hidden />
+              <Loader2
+                className="h-5 w-5 animate-spin text-neutral-400"
+                aria-hidden
+              />
               <span className="sr-only">Loading…</span>
             </div>
           ) : tokens.length === 0 ? (
@@ -133,7 +136,10 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
                   </span>
                   {getOrganizations.isPending &&
                     selectedTokenId === token.id && (
-                      <Loader2 className="h-4 w-4 animate-spin text-neutral-400" aria-hidden />
+                      <Loader2
+                        className="h-4 w-4 animate-spin text-neutral-400"
+                        aria-hidden
+                      />
                     )}
                 </button>
               ))}

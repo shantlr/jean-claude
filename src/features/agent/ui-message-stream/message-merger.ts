@@ -101,7 +101,8 @@ export function mergeSkillMessages(messages: AgentMessage[]): DisplayMessage[] {
         launchMessage: current,
         promptMessage: next,
         skillName:
-          current.tool_use_result && isSkillToolUseResult(current.tool_use_result)
+          current.tool_use_result &&
+          isSkillToolUseResult(current.tool_use_result)
             ? current.tool_use_result.commandName
             : '',
       });

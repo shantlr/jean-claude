@@ -206,7 +206,7 @@ export interface AgentQueueUpdateEvent {
 export function isSkillToolUseResult(
   result: SkillToolUseResult | TodoToolUseResult,
 ): result is SkillToolUseResult {
-  return !!result && typeof result === 'object'  && 'commandName' in result;
+  return !!result && typeof result === 'object' && 'commandName' in result;
 }
 
 export function isTodoToolUseResult(

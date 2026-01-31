@@ -3,7 +3,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { codeToHtml } from 'shiki';
 
-
 // Pattern to match file paths like src/foo.ts:42-50 or just src/foo.ts:42 or src/foo.ts
 const FILE_PATH_PATTERN =
   /([\w\-./]+\.(ts|tsx|js|jsx|py|go|rs|md|json|yaml|yml|toml|sql|sh|css|html|rb|java|kt|swift|c|cpp|h|hpp|cs|php|scss|less|xml|ini|dockerfile))(?::(\d+)(?:-(\d+))?)?/g;
@@ -69,7 +68,6 @@ function TextWithFilePaths({
 
   return <>{parts}</>;
 }
-
 
 // Detect ASCII art by looking for box-drawing characters or repeated patterns
 function isAsciiArt(code: string): boolean {

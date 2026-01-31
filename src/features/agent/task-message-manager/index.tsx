@@ -67,7 +67,9 @@ export function TaskMessageManager() {
     });
 
     const unsubNameUpdated = api.agent.onNameUpdated(({ taskId }) => {
-      console.log(`[TaskMessageManager] Received name update for task ${taskId}`);
+      console.log(
+        `[TaskMessageManager] Received name update for task ${taskId}`,
+      );
       // Invalidate task queries so the UI refreshes with the new name
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });

@@ -27,7 +27,10 @@ export async function migrateDatabase() {
 
   results?.forEach((result) => {
     if (result.status === 'Success') {
-      dbg.dbMigration('Migration "%s" executed successfully', result.migrationName);
+      dbg.dbMigration(
+        'Migration "%s" executed successfully',
+        result.migrationName,
+      );
     } else if (result.status === 'Error') {
       dbg.dbMigration('Migration "%s" failed', result.migrationName);
     }

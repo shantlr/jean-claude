@@ -1,7 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 import { AGENT_CHANNELS } from '../shared/agent-types';
-import type { GlobalPrompt, GlobalPromptResponse } from '../shared/global-prompt-types';
+import type {
+  GlobalPrompt,
+  GlobalPromptResponse,
+} from '../shared/global-prompt-types';
 
 contextBridge.exposeInMainWorld('api', {
   platform: process.platform,
@@ -60,15 +63,11 @@ contextBridge.exposeInMainWorld('api', {
       toolName: string,
       input: Record<string, unknown>,
     ) =>
-      ipcRenderer.invoke(
-        'tasks:allowForProjectWorktrees',
-        id,
-        toolName,
-        input,
-      ),
+      ipcRenderer.invoke('tasks:allowForProjectWorktrees', id, toolName, input),
     reorder: (projectId: string, activeIds: string[], completedIds: string[]) =>
       ipcRenderer.invoke('tasks:reorder', projectId, activeIds, completedIds),
-    getSkills: (taskId: string) => ipcRenderer.invoke('tasks:getSkills', taskId),
+    getSkills: (taskId: string) =>
+      ipcRenderer.invoke('tasks:getSkills', taskId),
     worktree: {
       getDiff: (taskId: string) =>
         ipcRenderer.invoke('tasks:worktree:getDiff', taskId),
@@ -134,7 +133,11 @@ contextBridge.exposeInMainWorld('api', {
       providerId: string;
       projectId: string;
       projectName: string;
-      filters: { states?: string[]; workItemTypes?: string[]; searchText?: string };
+      filters: {
+        states?: string[];
+        workItemTypes?: string[];
+        searchText?: string;
+      };
     }) => ipcRenderer.invoke('azureDevOps:queryWorkItems', params),
     createPullRequest: (params: {
       providerId: string;
@@ -293,26 +296,40 @@ contextBridge.exposeInMainWorld('api', {
   projectCommands: {
     findByProjectId: (projectId: string) =>
       ipcRenderer.invoke('project:commands:findByProjectId', projectId),
-    create: (data: unknown) => ipcRenderer.invoke('project:commands:create', data),
+    create: (data: unknown) =>
+      ipcRenderer.invoke('project:commands:create', data),
     update: (id: string, data: unknown) =>
       ipcRenderer.invoke('project:commands:update', { id, data }),
     delete: (id: string) => ipcRenderer.invoke('project:commands:delete', id),
   },
   runCommands: {
     start: (projectId: string, workingDir: string) =>
-      ipcRenderer.invoke('project:commands:run:start', { projectId, workingDir }),
-    stop: (projectId: string) => ipcRenderer.invoke('project:commands:run:stop', projectId),
+      ipcRenderer.invoke('project:commands:run:start', {
+        projectId,
+        workingDir,
+      }),
+    stop: (projectId: string) =>
+      ipcRenderer.invoke('project:commands:run:stop', projectId),
     getStatus: (projectId: string) =>
       ipcRenderer.invoke('project:commands:run:getStatus', projectId),
     killPortsForCommand: (projectId: string, commandId: string) =>
-      ipcRenderer.invoke('project:commands:run:killPortsForCommand', { projectId, commandId }),
+      ipcRenderer.invoke('project:commands:run:killPortsForCommand', {
+        projectId,
+        commandId,
+      }),
     getPackageScripts: (projectPath: string) =>
       ipcRenderer.invoke('project:commands:run:getPackageScripts', projectPath),
-    onStatusChange: (callback: (projectId: string, status: unknown) => void) => {
+    onStatusChange: (
+      callback: (projectId: string, status: unknown) => void,
+    ) => {
       const handler = (_: unknown, projectId: string, status: unknown) =>
         callback(projectId, status);
       ipcRenderer.on('project:commands:run:statusChange', handler);
-      return () => ipcRenderer.removeListener('project:commands:run:statusChange', handler);
+      return () =>
+        ipcRenderer.removeListener(
+          'project:commands:run:statusChange',
+          handler,
+        );
     },
   },
   globalPrompt: {

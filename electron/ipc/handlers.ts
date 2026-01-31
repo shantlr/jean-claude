@@ -6,7 +6,6 @@ import { promisify } from 'util';
 
 import { BrowserWindow, ipcMain, dialog } from 'electron';
 
-
 const execAsync = promisify(exec);
 
 import {
@@ -15,7 +14,10 @@ import {
   QuestionResponse,
 } from '../../shared/agent-types';
 import type { GlobalPromptResponse } from '../../shared/global-prompt-types';
-import type { NewProjectCommand, UpdateProjectCommand } from '../../shared/run-command-types';
+import type {
+  NewProjectCommand,
+  UpdateProjectCommand,
+} from '../../shared/run-command-types';
 import {
   PRESET_EDITORS,
   type InteractionMode,
@@ -127,7 +129,11 @@ export function registerIpcHandlers() {
     if (!project) {
       throw new Error(`Project ${projectId} not found`);
     }
-    dbg.ipc('projects:getSkills for project: %s, path: %s', projectId, project.path);
+    dbg.ipc(
+      'projects:getSkills for project: %s, path: %s',
+      projectId,
+      project.path,
+    );
     return getAllSkills(project.path);
   });
 
@@ -150,7 +156,11 @@ export function registerIpcHandlers() {
       data: NewTask & { useWorktree: boolean; sourceBranch?: string | null },
     ) => {
       const { useWorktree, sourceBranch, ...taskData } = data;
-      dbg.ipc('tasks:createWithWorktree useWorktree=%s, sourceBranch=%s', useWorktree, sourceBranch);
+      dbg.ipc(
+        'tasks:createWithWorktree useWorktree=%s, sourceBranch=%s',
+        useWorktree,
+        sourceBranch,
+      );
 
       if (!useWorktree) {
         // No worktree requested, just create the task normally
@@ -177,7 +187,10 @@ export function registerIpcHandlers() {
       // Create the worktree using the generated task name
       // Use provided sourceBranch, fall back to project defaultBranch, or undefined for current HEAD
       const effectiveSourceBranch = sourceBranch ?? project.defaultBranch;
-      dbg.ipc('Creating worktree from branch: %s', effectiveSourceBranch ?? 'HEAD');
+      dbg.ipc(
+        'Creating worktree from branch: %s',
+        effectiveSourceBranch ?? 'HEAD',
+      );
       const { worktreePath, startCommitHash, branchName } =
         await createWorktree(
           project.path,
@@ -447,7 +460,9 @@ export function registerIpcHandlers() {
       throw new Error(`Task ${taskId} not found`);
     }
     // Use worktree path if available, otherwise use project path
-    const projectPath = task.worktreePath ?? (await ProjectRepository.findById(task.projectId))?.path;
+    const projectPath =
+      task.worktreePath ??
+      (await ProjectRepository.findById(task.projectId))?.path;
     if (!projectPath) {
       throw new Error(`Project ${task.projectId} not found`);
     }
@@ -511,7 +526,11 @@ export function registerIpcHandlers() {
         providerId: string;
         projectId: string;
         projectName: string;
-        filters: { states?: string[]; workItemTypes?: string[]; searchText?: string };
+        filters: {
+          states?: string[];
+          workItemTypes?: string[];
+          searchText?: string;
+        };
       },
     ) => queryWorkItems(params),
   );
@@ -650,21 +669,16 @@ export function registerIpcHandlers() {
     ) => addPullRequestFileComment(params),
   );
 
-  ipcMain.handle(
-    'tasks:worktree:pushBranch',
-    async (_, taskId: string) => {
-      const task = await TaskRepository.findById(taskId);
-      if (!task?.worktreePath || !task?.branchName) {
-        throw new Error(
-          `Task ${taskId} does not have a worktree with a branch`,
-        );
-      }
-      return pushBranch({
-        worktreePath: task.worktreePath,
-        branchName: task.branchName,
-      });
-    },
-  );
+  ipcMain.handle('tasks:worktree:pushBranch', async (_, taskId: string) => {
+    const task = await TaskRepository.findById(taskId);
+    if (!task?.worktreePath || !task?.branchName) {
+      throw new Error(`Task ${taskId} does not have a worktree with a branch`);
+    }
+    return pushBranch({
+      worktreePath: task.worktreePath,
+      branchName: task.branchName,
+    });
+  });
 
   // Dialog
   ipcMain.handle('dialog:openDirectory', async (event) => {
@@ -922,45 +936,51 @@ export function registerIpcHandlers() {
 
   // Project Commands
   ipcMain.handle('project:commands:findByProjectId', (_, projectId: string) =>
-    ProjectCommandRepository.findByProjectId(projectId)
+    ProjectCommandRepository.findByProjectId(projectId),
   );
   ipcMain.handle('project:commands:create', (_, data: NewProjectCommand) =>
-    ProjectCommandRepository.create(data)
+    ProjectCommandRepository.create(data),
   );
   ipcMain.handle(
     'project:commands:update',
     (_, { id, data }: { id: string; data: UpdateProjectCommand }) =>
-      ProjectCommandRepository.update(id, data)
+      ProjectCommandRepository.update(id, data),
   );
   ipcMain.handle('project:commands:delete', (_, id: string) =>
-    ProjectCommandRepository.delete(id)
+    ProjectCommandRepository.delete(id),
   );
 
   // Run Commands
   ipcMain.handle(
     'project:commands:run:start',
     (_, { projectId, workingDir }: { projectId: string; workingDir: string }) =>
-      runCommandService.startCommands(projectId, workingDir)
+      runCommandService.startCommands(projectId, workingDir),
   );
   ipcMain.handle('project:commands:run:stop', (_, projectId: string) =>
-    runCommandService.stopCommands(projectId)
+    runCommandService.stopCommands(projectId),
   );
   ipcMain.handle('project:commands:run:getStatus', (_, projectId: string) =>
-    runCommandService.getRunStatus(projectId)
+    runCommandService.getRunStatus(projectId),
   );
   ipcMain.handle(
     'project:commands:run:killPortsForCommand',
     (_, { projectId, commandId }: { projectId: string; commandId: string }) =>
-      runCommandService.killPortsForCommand(projectId, commandId)
+      runCommandService.killPortsForCommand(projectId, commandId),
   );
-  ipcMain.handle('project:commands:run:getPackageScripts', (_, projectPath: string) =>
-    runCommandService.getPackageScripts(projectPath)
+  ipcMain.handle(
+    'project:commands:run:getPackageScripts',
+    (_, projectPath: string) =>
+      runCommandService.getPackageScripts(projectPath),
   );
 
   // Subscribe to run command status changes and forward to renderer
   runCommandService.onStatusChange((projectId, status) => {
     BrowserWindow.getAllWindows().forEach((win) => {
-      win.webContents.send('project:commands:run:statusChange', projectId, status);
+      win.webContents.send(
+        'project:commands:run:statusChange',
+        projectId,
+        status,
+      );
     });
   });
 
@@ -968,7 +988,6 @@ export function registerIpcHandlers() {
   ipcMain.handle('globalPrompt:respond', (_, response: GlobalPromptResponse) =>
     handlePromptResponse(response),
   );
-
 }
 
 // Helper: check if an editor is available

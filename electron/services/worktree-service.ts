@@ -309,13 +309,20 @@ export async function getWorktreeDiff(
         // Other statuses should already be in the diff output
         // Skip directory entries (paths ending with '/') - git status shows untracked
         // directories this way, but we can only diff individual files
-        if (statusCodes === '??' && !filePath.endsWith('/') && !filesMap.has(filePath)) {
+        if (
+          statusCodes === '??' &&
+          !filePath.endsWith('/') &&
+          !filesMap.has(filePath)
+        ) {
           // Check if file existed at startCommit
           try {
-            await execAsync(`git cat-file -e ${startCommitHash}:"${escapeForShell(filePath)}"`, {
-              cwd: worktreePath,
-              encoding: 'utf-8',
-            });
+            await execAsync(
+              `git cat-file -e ${startCommitHash}:"${escapeForShell(filePath)}"`,
+              {
+                cwd: worktreePath,
+                encoding: 'utf-8',
+              },
+            );
             // File existed at startCommit, so this is modified (shouldn't happen for ??)
             filesMap.set(filePath, { path: filePath, status: 'modified' });
           } catch {
@@ -600,7 +607,11 @@ export async function commitWorktreeChanges(
   params: CommitWorktreeParams,
 ): Promise<void> {
   const { worktreePath, message, stageAll } = params;
-  dbg.worktree('commitWorktreeChanges: %o', { worktreePath, stageAll, messageLength: message.length });
+  dbg.worktree('commitWorktreeChanges: %o', {
+    worktreePath,
+    stageAll,
+    messageLength: message.length,
+  });
 
   try {
     if (stageAll) {
@@ -650,7 +661,12 @@ export async function mergeWorktree(
     commitMessage,
   } = params;
 
-  dbg.worktree('mergeWorktree: %o', { worktreePath, projectPath, targetBranch, squash });
+  dbg.worktree('mergeWorktree: %o', {
+    worktreePath,
+    projectPath,
+    targetBranch,
+    squash,
+  });
 
   // Check if worktree still exists before attempting operations
   if (!(await pathExists(worktreePath))) {

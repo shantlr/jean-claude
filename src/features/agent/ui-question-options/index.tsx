@@ -110,7 +110,10 @@ function QuestionInput({
   );
 }
 
-export function QuestionOptions({ request, onRespond }: {
+export function QuestionOptions({
+  request,
+  onRespond,
+}: {
   request: AgentQuestionEvent;
   onRespond: (requestId: string, response: QuestionResponse) => void;
 }) {

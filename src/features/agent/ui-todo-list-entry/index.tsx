@@ -28,7 +28,13 @@ function getChangedIndices(
   return changed;
 }
 
-function TodoCheckbox({ item, isChanged }: { item: TodoItem; isChanged: boolean }) {
+function TodoCheckbox({
+  item,
+  isChanged,
+}: {
+  item: TodoItem;
+  isChanged: boolean;
+}) {
   const isCompleted = item.status === 'completed';
   const isInProgress = item.status === 'in_progress';
 
@@ -87,19 +93,21 @@ export function TodoListEntry({
   isPending?: boolean;
 }) {
   const changedIndices = getChangedIndices(oldTodos, newTodos);
-  const completedCount = newTodos.filter((t) => t.status === 'completed').length;
+  const completedCount = newTodos.filter(
+    (t) => t.status === 'completed',
+  ).length;
 
   return (
     <div className="relative pl-6">
       {/* Dot - indigo for TodoWrite, with pulse if pending */}
-      <div className={`absolute -left-1 top-2.5 h-2 w-2 rounded-full bg-indigo-500 ${isPending ? 'animate-pulse' : ''}`} />
+      <div
+        className={`absolute -left-1 top-2.5 h-2 w-2 rounded-full bg-indigo-500 ${isPending ? 'animate-pulse' : ''}`}
+      />
 
       <div className="py-1.5 pr-3">
         {/* Summary header */}
         <div className="mb-1.5 flex items-center gap-2 text-xs text-neutral-400">
-          {isPending && (
-            <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
-          )}
+          {isPending && <Loader2 className="h-3 w-3 shrink-0 animate-spin" />}
           <span>
             {isPending
               ? `Updating todo list (${newTodos.length} items)...`

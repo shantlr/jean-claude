@@ -116,9 +116,13 @@ class RunCommandService {
 
   async startCommands(
     projectId: string,
-    workingDir: string
+    workingDir: string,
   ): Promise<RunStatus | PortsInUseErrorData> {
-    dbg.runCommand('Starting commands for project %s in %s', projectId, workingDir);
+    dbg.runCommand(
+      'Starting commands for project %s in %s',
+      projectId,
+      workingDir,
+    );
     const commands = await ProjectCommandRepository.findByProjectId(projectId);
     if (commands.length === 0) {
       dbg.runCommand('No commands configured for project %s', projectId);
@@ -173,10 +177,18 @@ class RunCommandService {
         status: 'running',
       };
 
-      dbg.runCommand('Process started with PID %d for command: %s', childProcess.pid, cmd.command);
+      dbg.runCommand(
+        'Process started with PID %d for command: %s',
+        childProcess.pid,
+        cmd.command,
+      );
 
       childProcess.on('exit', (code) => {
-        dbg.runCommand('Process %d exited with code %d', childProcess.pid, code);
+        dbg.runCommand(
+          'Process %d exited with code %d',
+          childProcess.pid,
+          code,
+        );
         trackedProcess.status = code === 0 ? 'stopped' : 'errored';
         this.notifyStatusChange(projectId);
       });
@@ -202,7 +214,11 @@ class RunCommandService {
     for (const t of tracked) {
       if (t.process.pid && t.status === 'running') {
         try {
-          dbg.runCommand('Sending SIGTERM to PID %d (%s)', t.process.pid, t.command);
+          dbg.runCommand(
+            'Sending SIGTERM to PID %d (%s)',
+            t.process.pid,
+            t.command,
+          );
           process.kill(t.process.pid, 'SIGTERM');
         } catch {
           dbg.runCommand('Process %d may already be dead', t.process.pid);
@@ -214,7 +230,10 @@ class RunCommandService {
     dbg.runCommand('Commands stopped for project %s', projectId);
   }
 
-  async killPortsForCommand(projectId: string, commandId: string): Promise<void> {
+  async killPortsForCommand(
+    projectId: string,
+    commandId: string,
+  ): Promise<void> {
     const command = await ProjectCommandRepository.findById(commandId);
     if (!command || command.projectId !== projectId) return;
 
@@ -247,17 +266,27 @@ class RunCommandService {
       scripts = Object.keys(rootPkg.scripts ?? {});
     } catch {
       // Invalid or missing package.json
-      return { scripts: [], packageManager: null, isWorkspace: false, workspacePackages: [] };
+      return {
+        scripts: [],
+        packageManager: null,
+        isWorkspace: false,
+        workspacePackages: [],
+      };
     }
 
     // Detect package manager
     const packageManager = await this.detectPackageManager(projectPath);
 
     // Prefix root scripts with package manager
-    const prefixedScripts = packageManager ? scripts.map((s) => `${packageManager} ${s}`) : scripts;
+    const prefixedScripts = packageManager
+      ? scripts.map((s) => `${packageManager} ${s}`)
+      : scripts;
 
     // Detect workspace globs
-    const workspaceGlobs = await this.detectWorkspaceGlobs(projectPath, rootPkg);
+    const workspaceGlobs = await this.detectWorkspaceGlobs(
+      projectPath,
+      rootPkg,
+    );
     if (!workspaceGlobs || workspaceGlobs.length === 0) {
       return {
         scripts: prefixedScripts,
@@ -268,17 +297,23 @@ class RunCommandService {
     }
 
     // Resolve globs to package directories
-    const packageDirs = await this.resolveWorkspaceGlobs(projectPath, workspaceGlobs);
+    const packageDirs = await this.resolveWorkspaceGlobs(
+      projectPath,
+      workspaceGlobs,
+    );
 
     // Read each sub-package in parallel
     const workspacePackagesResults = await Promise.all(
       packageDirs.map(async (dir) => {
         try {
           const pkgContent = await readFile(join(dir, 'package.json'), 'utf-8');
-          const pkg = JSON.parse(pkgContent) as { name?: string; scripts?: Record<string, string> };
+          const pkg = JSON.parse(pkgContent) as {
+            name?: string;
+            scripts?: Record<string, string>;
+          };
           if (!pkg.name) return null; // Skip packages without a name
           const pkgScripts = Object.keys(pkg.scripts ?? {}).map((s) =>
-            this.formatFilterCommand(packageManager, pkg.name!, s)
+            this.formatFilterCommand(packageManager, pkg.name!, s),
           );
           return {
             name: pkg.name,
@@ -288,11 +323,11 @@ class RunCommandService {
         } catch {
           return null; // Skip invalid packages
         }
-      })
+      }),
     );
 
     const workspacePackages = workspacePackagesResults.filter(
-      (p): p is WorkspacePackage => p !== null
+      (p): p is WorkspacePackage => p !== null,
     );
 
     return {
@@ -304,7 +339,7 @@ class RunCommandService {
   }
 
   private async detectPackageManager(
-    projectPath: string
+    projectPath: string,
   ): Promise<PackageScriptsResult['packageManager']> {
     const checks: [string, PackageScriptsResult['packageManager']][] = [
       ['pnpm-lock.yaml', 'pnpm'],
@@ -327,7 +362,7 @@ class RunCommandService {
 
   private async detectWorkspaceGlobs(
     projectPath: string,
-    rootPkg: { workspaces?: string[] | { packages: string[] } }
+    rootPkg: { workspaces?: string[] | { packages: string[] } },
   ): Promise<string[] | null> {
     // Check pnpm-workspace.yaml first
     try {
@@ -359,7 +394,10 @@ class RunCommandService {
     return null;
   }
 
-  private async resolveWorkspaceGlobs(projectPath: string, globs: string[]): Promise<string[]> {
+  private async resolveWorkspaceGlobs(
+    projectPath: string,
+    globs: string[],
+  ): Promise<string[]> {
     const results: string[] = [];
 
     for (const pattern of globs) {
@@ -380,7 +418,7 @@ class RunCommandService {
         } catch {
           // No package.json, skip
         }
-      })
+      }),
     );
 
     return validDirs;
@@ -389,7 +427,7 @@ class RunCommandService {
   private formatFilterCommand(
     packageManager: PackageScriptsResult['packageManager'],
     packageName: string,
-    script: string
+    script: string,
   ): string {
     switch (packageManager) {
       case 'pnpm':

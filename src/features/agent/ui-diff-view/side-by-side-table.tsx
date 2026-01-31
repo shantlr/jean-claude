@@ -1,7 +1,11 @@
 import { useMemo } from 'react';
 import type { ThemedToken } from 'shiki';
 
-import { computeSideBySideDiff, type DiffLine, type SideBySideRow } from './diff-utils';
+import {
+  computeSideBySideDiff,
+  type DiffLine,
+  type SideBySideRow,
+} from './diff-utils';
 
 export function SideBySideDiffTable({
   oldString,
@@ -16,7 +20,7 @@ export function SideBySideDiffTable({
 }) {
   const rows = useMemo(
     () => computeSideBySideDiff(oldString, newString),
-    [oldString, newString]
+    [oldString, newString],
   );
 
   return (
@@ -47,19 +51,11 @@ function SideBySideRowComponent({
   return (
     <tr>
       {/* Left side (old/deletions) */}
-      <SideBySideCell
-        line={row.left}
-        tokens={oldTokens}
-        side="left"
-      />
+      <SideBySideCell line={row.left} tokens={oldTokens} side="left" />
       {/* Divider */}
       <td className="w-px bg-neutral-700" />
       {/* Right side (new/additions) */}
-      <SideBySideCell
-        line={row.right}
-        tokens={newTokens}
-        side="right"
-      />
+      <SideBySideCell line={row.right} tokens={newTokens} side="right" />
     </tr>
   );
 }

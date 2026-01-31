@@ -2,7 +2,6 @@ import { PermissionResult, query } from '@anthropic-ai/claude-agent-sdk';
 import { BrowserWindow } from 'electron';
 import { nanoid } from 'nanoid';
 
-
 import {
   AGENT_CHANNELS,
   AgentMessage,
@@ -81,7 +80,12 @@ class AgentService {
     status: 'running' | 'waiting' | 'completed' | 'errored' | 'interrupted',
     error?: string,
   ) {
-    dbg.agentSession('Task %s status → %s%s', taskId, status, error ? ` (${error})` : '');
+    dbg.agentSession(
+      'Task %s status → %s%s',
+      taskId,
+      status,
+      error ? ` (${error})` : '',
+    );
     this.emit(AGENT_CHANNELS.STATUS, { taskId, status, error });
   }
 
@@ -106,13 +110,14 @@ class AgentService {
         dbg.agent('Failed to persist message: %O', error);
       }
     } else {
-      dbg.agent(
-        'No session found for task %s, message not persisted',
-        taskId,
-      );
+      dbg.agent('No session found for task %s, message not persisted', taskId);
     }
 
-    dbg.agentMessage('Emitting message for task %s, type: %s', taskId, message.type);
+    dbg.agentMessage(
+      'Emitting message for task %s, type: %s',
+      taskId,
+      message.type,
+    );
     this.emit(AGENT_CHANNELS.MESSAGE, { taskId, message });
   }
 
@@ -360,7 +365,11 @@ class AgentService {
         session.sessionId = message.session_id;
         await TaskRepository.update(taskId, { sessionId: message.session_id });
         hasUpdatedSessionId = true;
-        dbg.agentSession('Captured session ID for task %s: %s', taskId, message.session_id);
+        dbg.agentSession(
+          'Captured session ID for task %s: %s',
+          taskId,
+          message.session_id,
+        );
       }
 
       await this.emitMessage(taskId, message);
@@ -455,7 +464,11 @@ class AgentService {
     const task = await TaskRepository.findById(taskId);
     const allowedTools = task?.sessionAllowedTools ?? [];
     if (isToolAllowedByPermissions(toolName, input, allowedTools)) {
-      dbg.agentPermission('Tool %s is session-allowed for task %s', toolName, taskId);
+      dbg.agentPermission(
+        'Tool %s is session-allowed for task %s',
+        toolName,
+        taskId,
+      );
       return { behavior: 'allow', updatedInput: input };
     }
 
@@ -549,7 +562,11 @@ class AgentService {
     requestId: string,
     response: PermissionResponse | QuestionResponse,
   ): Promise<void> {
-    dbg.agentPermission('Responding to request %s for task %s', requestId, taskId);
+    dbg.agentPermission(
+      'Responding to request %s for task %s',
+      requestId,
+      taskId,
+    );
     const session = this.sessions.get(taskId);
     if (!session) {
       throw new Error(`No active session for task ${taskId}`);
@@ -667,13 +684,16 @@ class AgentService {
    * Get the current pending request for a task (permission or question).
    * Returns null if no pending request exists.
    */
-  getPendingRequest(taskId: string): {
-    type: 'permission';
-    data: AgentPermissionEvent;
-  } | {
-    type: 'question';
-    data: AgentQuestionEvent;
-  } | null {
+  getPendingRequest(taskId: string):
+    | {
+        type: 'permission';
+        data: AgentPermissionEvent;
+      }
+    | {
+        type: 'question';
+        data: AgentQuestionEvent;
+      }
+    | null {
     const session = this.sessions.get(taskId);
     if (!session || session.pendingRequests.length === 0) {
       return null;
@@ -692,7 +712,10 @@ class AgentService {
     }
 
     // Permission request
-    const sessionAllowButton = this.getSessionAllowButton(request.toolName, request.input);
+    const sessionAllowButton = this.getSessionAllowButton(
+      request.toolName,
+      request.input,
+    );
     return {
       type: 'permission',
       data: {
@@ -721,7 +744,11 @@ class AgentService {
 
   async getMessages(taskId: string): Promise<AgentMessage[]> {
     const messages = await AgentMessageRepository.findByTaskId(taskId);
-    dbg.agentMessage('getMessages for task %s: found %d messages', taskId, messages.length);
+    dbg.agentMessage(
+      'getMessages for task %s: found %d messages',
+      taskId,
+      messages.length,
+    );
     return messages;
   }
 

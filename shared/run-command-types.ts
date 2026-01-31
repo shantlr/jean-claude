@@ -11,7 +11,9 @@ export interface ProjectCommand {
 }
 
 export type NewProjectCommand = Omit<ProjectCommand, 'id' | 'createdAt'>;
-export type UpdateProjectCommand = Partial<Pick<ProjectCommand, 'command' | 'ports'>>;
+export type UpdateProjectCommand = Partial<
+  Pick<ProjectCommand, 'command' | 'ports'>
+>;
 
 export interface CommandRunStatus {
   id: string;
@@ -38,7 +40,9 @@ export interface PortsInUseErrorData {
   portsInUse: PortInUse[];
 }
 
-export function isPortsInUseError(error: unknown): error is PortsInUseErrorData {
+export function isPortsInUseError(
+  error: unknown,
+): error is PortsInUseErrorData {
   return (
     typeof error === 'object' &&
     error !== null &&

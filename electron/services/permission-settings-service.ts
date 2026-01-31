@@ -26,10 +26,17 @@ async function readSettingsFile(filePath: string): Promise<ClaudeSettings> {
 /**
  * Writes a Claude settings JSON file, creating the .claude directory if needed.
  */
-async function writeSettingsFile(filePath: string, settings: ClaudeSettings): Promise<void> {
+async function writeSettingsFile(
+  filePath: string,
+  settings: ClaudeSettings,
+): Promise<void> {
   const dir = path.dirname(filePath);
   await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(filePath, JSON.stringify(settings, null, 2) + '\n', 'utf-8');
+  await fs.writeFile(
+    filePath,
+    JSON.stringify(settings, null, 2) + '\n',
+    'utf-8',
+  );
 }
 
 /**
@@ -45,9 +52,14 @@ function isBareBash(permission: string): boolean {
  * Creates the file if it doesn't exist. Deduplicates entries.
  * Rejects bare "Bash" (without a specific command) for security.
  */
-export async function addAllowPermission(settingsPath: string, permission: string): Promise<void> {
+export async function addAllowPermission(
+  settingsPath: string,
+  permission: string,
+): Promise<void> {
   if (isBareBash(permission)) {
-    dbg.agentPermission('Refusing to allow bare "Bash" — a specific command is required');
+    dbg.agentPermission(
+      'Refusing to allow bare "Bash" — a specific command is required',
+    );
     return;
   }
   const settings = await readSettingsFile(settingsPath);
@@ -145,9 +157,14 @@ export function getWorktreeSettingsPath(rootDir: string): string {
  * Reads both settings.local.json and settings.local.worktrees.json from the source repo,
  * merges their permissions, and writes the result to the worktree.
  */
-export async function buildWorktreeSettings(sourcePath: string, destPath: string): Promise<void> {
+export async function buildWorktreeSettings(
+  sourcePath: string,
+  destPath: string,
+): Promise<void> {
   const baseSettings = await readSettingsFile(getSettingsLocalPath(sourcePath));
-  const worktreeSettings = await readSettingsFile(getWorktreeSettingsPath(sourcePath));
+  const worktreeSettings = await readSettingsFile(
+    getWorktreeSettingsPath(sourcePath),
+  );
   const merged = mergePermissions(baseSettings, worktreeSettings);
 
   // Only write if there's something to write

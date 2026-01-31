@@ -8,7 +8,7 @@ export interface DiffLine {
 }
 
 export interface SideBySideRow {
-  left: DiffLine | null;  // null = gap (addition on right)
+  left: DiffLine | null; // null = gap (addition on right)
   right: DiffLine | null; // null = gap (deletion on left)
 }
 
@@ -64,7 +64,10 @@ export function computeDiff(oldStr: string, newStr: string): DiffLine[] {
  * Context lines appear on both sides. Deletions appear on left with gap on right.
  * Additions appear on right with gap on left.
  */
-export function computeSideBySideDiff(oldStr: string, newStr: string): SideBySideRow[] {
+export function computeSideBySideDiff(
+  oldStr: string,
+  newStr: string,
+): SideBySideRow[] {
   const lines = computeDiff(oldStr, newStr);
   const rows: SideBySideRow[] = [];
 

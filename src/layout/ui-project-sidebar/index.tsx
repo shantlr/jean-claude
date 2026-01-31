@@ -19,8 +19,9 @@ export function ProjectSidebar() {
   const { data: project } = useProject(projectId!);
   const { data: currentBranch } = useProjectCurrentBranch(projectId!);
   const { data: tasks } = useProjectTasks(projectId!);
-  const { data: pullRequests, isLoading: isPrsLoading } =
-    usePullRequests(projectId!);
+  const { data: pullRequests, isLoading: isPrsLoading } = usePullRequests(
+    projectId!,
+  );
 
   const [viewMode, setViewMode] = useState<ViewMode>('tasks');
 

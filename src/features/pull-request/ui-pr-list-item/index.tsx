@@ -5,7 +5,10 @@ import { GitPullRequest, GitMerge } from 'lucide-react';
 import type { AzureDevOpsPullRequest } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/time';
 
-function getStatusIcon(status: AzureDevOpsPullRequest['status'], isDraft: boolean) {
+function getStatusIcon(
+  status: AzureDevOpsPullRequest['status'],
+  isDraft: boolean,
+) {
   if (isDraft) {
     return <GitPullRequest className="h-4 w-4 text-neutral-500" />;
   }
@@ -38,9 +41,7 @@ export function PrListItem({
       params={{ projectId, prId: String(pr.id) }}
       className={clsx(
         'group flex flex-col gap-1 rounded-lg px-3 py-2 transition-colors',
-        isActive
-          ? 'bg-neutral-700'
-          : 'hover:bg-neutral-800',
+        isActive ? 'bg-neutral-700' : 'hover:bg-neutral-800',
       )}
     >
       <div className="flex items-start gap-2">

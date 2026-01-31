@@ -282,7 +282,10 @@ export function PermissionBar({
   return (
     <div className="border-t border-yellow-700/50 bg-yellow-900/20 px-4 py-3">
       <div className="mb-3 flex items-start gap-3">
-        <Shield className="mt-0.5 h-5 w-5 shrink-0 text-yellow-500" aria-hidden />
+        <Shield
+          className="mt-0.5 h-5 w-5 shrink-0 text-yellow-500"
+          aria-hidden
+        />
         <div className="min-w-0 flex-1">
           <div className="mb-1 text-xs font-medium text-yellow-400">
             Permission Required: {request.toolName}

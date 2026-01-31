@@ -11,7 +11,11 @@ const statusConfig: Record<
     text: 'text-orange-400',
   },
   deleted: { label: 'Deleted', bg: 'bg-red-500/20', text: 'text-red-400' },
-  renamed: { label: 'Renamed', bg: 'bg-yellow-500/20', text: 'text-yellow-400' },
+  renamed: {
+    label: 'Renamed',
+    bg: 'bg-yellow-500/20',
+    text: 'text-yellow-400',
+  },
 };
 
 export function DiffStatusBadge({ status }: { status: DiffFileStatus }) {

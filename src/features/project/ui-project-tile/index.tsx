@@ -6,7 +6,11 @@ import { getUnreadCount } from '@/features/task/ui-task-list-item';
 import { useProjectTasks } from '@/hooks/use-tasks';
 import { getInitials } from '@/lib/colors';
 
-export function ProjectTile({ id, name, color }: {
+export function ProjectTile({
+  id,
+  name,
+  color,
+}: {
   id: string;
   name: string;
   color: string;

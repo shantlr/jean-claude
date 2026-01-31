@@ -10,7 +10,11 @@ import { agentService } from './services/agent-service';
 import { runCommandService } from './services/run-command-service';
 
 dbg.main('Starting Jean-Claude main process');
-dbg.main('Node version: %s, Electron version: %s', process.versions.node, process.versions.electron);
+dbg.main(
+  'Node version: %s, Electron version: %s',
+  process.versions.node,
+  process.versions.electron,
+);
 dbg.main('Platform: %s, Arch: %s', process.platform, process.arch);
 
 // Fix PATH for packaged macOS apps launched from Finder/Dock

@@ -2,12 +2,16 @@ import { useState, useEffect, useCallback } from 'react';
 
 import { api } from '@/lib/api';
 
-import type { RunStatus, PortsInUseErrorData } from '../../shared/run-command-types';
+import type {
+  RunStatus,
+  PortsInUseErrorData,
+} from '../../shared/run-command-types';
 import { isPortsInUseError } from '../../shared/run-command-types';
 
 export function useRunCommands(projectId: string, workingDir: string) {
   const [status, setStatus] = useState<RunStatus | null>(null);
-  const [portsInUseError, setPortsInUseError] = useState<PortsInUseErrorData | null>(null);
+  const [portsInUseError, setPortsInUseError] =
+    useState<PortsInUseErrorData | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
 
@@ -18,11 +22,13 @@ export function useRunCommands(projectId: string, workingDir: string) {
 
   // Subscribe to status changes
   useEffect(() => {
-    const unsubscribe = api.runCommands.onStatusChange((changedProjectId, newStatus) => {
-      if (changedProjectId === projectId) {
-        setStatus(newStatus);
-      }
-    });
+    const unsubscribe = api.runCommands.onStatusChange(
+      (changedProjectId, newStatus) => {
+        if (changedProjectId === projectId) {
+          setStatus(newStatus);
+        }
+      },
+    );
     return unsubscribe;
   }, [projectId]);
 
@@ -54,7 +60,9 @@ export function useRunCommands(projectId: string, workingDir: string) {
     if (!portsInUseError) return;
 
     // Kill ports for each affected command
-    const commandIds = [...new Set(portsInUseError.portsInUse.map((p) => p.commandId))];
+    const commandIds = [
+      ...new Set(portsInUseError.portsInUse.map((p) => p.commandId)),
+    ];
     for (const commandId of commandIds) {
       await api.runCommands.killPortsForCommand(projectId, commandId);
     }
