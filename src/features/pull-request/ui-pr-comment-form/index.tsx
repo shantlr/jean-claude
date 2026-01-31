@@ -36,8 +36,8 @@ export function PrCommentForm({
         disabled={!content.trim() || isSubmitting}
         className="flex items-center gap-1 self-end rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <Send className="h-4 w-4" />
-        {isSubmitting ? 'Sending...' : 'Send'}
+        <Send className="h-4 w-4" aria-hidden />
+        {isSubmitting ? 'Sending…' : 'Send'}
       </button>
     </form>
   );

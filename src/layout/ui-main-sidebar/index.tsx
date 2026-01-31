@@ -16,7 +16,7 @@ import {
 import { Link, useRouter, useRouterState } from '@tanstack/react-router';
 import clsx from 'clsx';
 import { LayoutList, Plus, Settings } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type KeyboardEvent } from 'react';
 
 import { getUnreadCount } from '@/features/task/ui-task-list-item';
 import { useProjects, useReorderProjects } from '@/hooks/use-projects';
@@ -39,23 +39,38 @@ function AllTasksTile() {
   const unreadCount =
     tasks?.reduce((sum, task) => sum + getUnreadCount(task), 0) ?? 0;
 
+  const handleClick = () => {
+    router.navigate({ to: '/all-tasks' });
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick();
+    }
+  };
+
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={() => {
-        router.navigate({ to: '/all-tasks' });
-      }}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      aria-label={`All tasks${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
+      aria-current={isActive ? 'page' : undefined}
       className={clsx(
-        'cursor-pointer group relative flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-700 text-neutral-300 transition-all hover:bg-neutral-600 hover:text-white',
+        'cursor-pointer group relative flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-700 text-neutral-300 transition-colors hover:bg-neutral-600 hover:text-white',
         {
           'ring-white ring-2': isActive,
         },
       )}
     >
-      <LayoutList className="h-5 w-5" />
+      <LayoutList className="h-5 w-5" aria-hidden />
       {unreadCount > 0 && (
-        <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white">
+        <span
+          className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white"
+          aria-hidden
+        >
           {unreadCount > 9 ? '9+' : unreadCount}
         </span>
       )}
@@ -136,17 +151,19 @@ export function MainSidebar() {
         {/* Add project button */}
         <Link
           to="/projects/new"
+          aria-label="Add new project"
           className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-dashed border-neutral-600 text-neutral-400 transition-colors hover:border-neutral-400 hover:text-white"
         >
-          <Plus className="h-5 w-5" />
+          <Plus className="h-5 w-5" aria-hidden />
         </Link>
 
         {/* Settings button */}
         <Link
           to="/settings"
+          aria-label="Settings"
           className="flex h-12 w-12 items-center justify-center rounded-xl text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white data-[status=active]:bg-neutral-800 data-[status=active]:text-white"
         >
-          <Settings className="h-5 w-5" />
+          <Settings className="h-5 w-5" aria-hidden />
         </Link>
       </div>
     </aside>

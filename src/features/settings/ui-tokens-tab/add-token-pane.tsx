@@ -60,9 +60,10 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
         <h3 className="font-medium text-neutral-200">Add Token</h3>
         <button
           onClick={onClose}
+          aria-label="Close pane"
           className="cursor-pointer rounded-lg p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
         >
-          <X className="h-4 w-4" />
+          <X className="h-4 w-4" aria-hidden />
         </button>
       </div>
 
@@ -85,28 +86,39 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-neutral-400">
+          <label
+            htmlFor="token-label"
+            className="mb-2 block text-sm font-medium text-neutral-400"
+          >
             Label
           </label>
           <input
+            id="token-label"
             type="text"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="e.g., Work Azure PAT"
-            className="w-full rounded-lg border border-neutral-600 bg-neutral-700 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+            autoComplete="off"
+            className="w-full rounded-lg border border-neutral-600 bg-neutral-700 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           />
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-neutral-400">
+          <label
+            htmlFor="token-pat"
+            className="mb-2 block text-sm font-medium text-neutral-400"
+          >
             Personal Access Token
           </label>
           <input
+            id="token-pat"
             type="password"
             value={token}
             onChange={(e) => setToken(e.target.value)}
             placeholder="Enter your PAT"
-            className="w-full rounded-lg border border-neutral-600 bg-neutral-700 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+            autoComplete="off"
+            spellCheck={false}
+            className="w-full rounded-lg border border-neutral-600 bg-neutral-700 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           />
         </div>
 
@@ -130,7 +142,7 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
             className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300"
           >
             How to create a PAT
-            <ExternalLink className="h-3 w-3" />
+            <ExternalLink className="h-3 w-3" aria-hidden />
           </a>
         )}
 
@@ -147,8 +159,8 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
         >
           {step === 'validating' ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Validating...
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              Validating…
             </>
           ) : (
             'Add Token'

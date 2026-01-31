@@ -49,18 +49,27 @@ export function ModeSelector({ value, onChange, disabled }: {
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-label={`Interaction mode: ${selectedMode.label}`}
         className="flex items-center gap-1 rounded-md border border-neutral-600 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-300 hover:border-neutral-500 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <span>{selectedMode.label}</span>
-        <ChevronDown className="h-3 w-3" />
+        <ChevronDown className="h-3 w-3" aria-hidden />
       </button>
 
       {isOpen && (
-        <div className="absolute bottom-full left-0 mb-1 w-56 rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg">
+        <div
+          role="listbox"
+          aria-label="Interaction modes"
+          className="absolute bottom-full left-0 mb-1 w-56 rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg"
+        >
           {MODES.map((mode) => (
             <button
               key={mode.value}
               type="button"
+              role="option"
+              aria-selected={mode.value === value}
               onClick={() => handleSelect(mode.value)}
               className={`w-full px-3 py-2 text-left hover:bg-neutral-700 ${
                 mode.value === value ? 'bg-neutral-700' : ''

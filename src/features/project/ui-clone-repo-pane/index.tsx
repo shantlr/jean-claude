@@ -99,16 +99,17 @@ function RepoRow({
       <div className="rounded-lg border border-neutral-600 bg-neutral-800/50 p-3">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <GitBranch className="h-4 w-4 text-neutral-500" />
+            <GitBranch className="h-4 w-4 text-neutral-500" aria-hidden />
             <span className="text-sm font-medium text-neutral-200">
               {repo.name}
             </span>
           </div>
           <button
             onClick={() => setShowCloneConfig(false)}
+            aria-label="Cancel clone"
             className="cursor-pointer rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden />
           </button>
         </div>
 
@@ -122,9 +123,9 @@ function RepoRow({
                 onClick={handleSelectFolder}
                 className="flex flex-1 cursor-pointer items-center gap-2 rounded-lg border border-neutral-600 bg-neutral-700/50 px-3 py-2 text-left text-sm hover:border-neutral-500"
               >
-                <Folder className="h-4 w-4 shrink-0 text-neutral-500" />
+                <Folder className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
                 <span className="flex-1 truncate text-neutral-300">
-                  {cloneConfig.parentPath || 'Select parent folder...'}
+                  {cloneConfig.parentPath || 'Select parent folder…'}
                 </span>
               </button>
             </div>
@@ -163,12 +164,12 @@ function RepoRow({
           >
             {isCloning ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Cloning...
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                Cloning…
               </>
             ) : (
               <>
-                <Download className="h-4 w-4" />
+                <Download className="h-4 w-4" aria-hidden />
                 Clone Repository
               </>
             )}
@@ -180,14 +181,14 @@ function RepoRow({
 
   return (
     <div className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-neutral-700/50">
-      <GitBranch className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
+      <GitBranch className="h-3.5 w-3.5 shrink-0 text-neutral-500" aria-hidden />
       <span className="flex-1 truncate text-sm text-neutral-400">
         {repo.name}
       </span>
       <button
         onClick={() => setShowCloneConfig(true)}
         className="shrink-0 cursor-pointer rounded px-2 py-1 text-xs font-medium text-blue-400 hover:bg-blue-500/20"
-        title="Clone repository"
+        aria-label={`Clone ${repo.name}`}
       >
         Clone
       </button>
@@ -196,9 +197,9 @@ function RepoRow({
         target="_blank"
         rel="noopener noreferrer"
         className="shrink-0 rounded p-1 text-neutral-500 hover:bg-neutral-600 hover:text-neutral-300"
-        title="Open repository in browser"
+        aria-label={`Open ${repo.name} in browser`}
       >
-        <ExternalLink className="h-3 w-3" />
+        <ExternalLink className="h-3 w-3" aria-hidden />
       </a>
     </div>
   );
@@ -221,12 +222,13 @@ function ProjectAccordion({
     <div className="rounded-lg border border-neutral-700 bg-neutral-800/30">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
+        aria-expanded={isExpanded}
         className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left hover:bg-neutral-700/50"
       >
         {isExpanded ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-neutral-500" />
+          <ChevronDown className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
         ) : (
-          <ChevronRight className="h-4 w-4 shrink-0 text-neutral-500" />
+          <ChevronRight className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
         )}
         <span className="flex-1 truncate text-sm font-medium text-neutral-200">
           {project.name}
@@ -271,7 +273,8 @@ function ProviderContent({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
+        <Loader2 className="h-6 w-6 animate-spin text-neutral-500" aria-hidden />
+        <span className="sr-only">Loading…</span>
       </div>
     );
   }
@@ -341,6 +344,7 @@ export function CloneRepoPane({
               className="h-3.5 w-3.5"
               viewBox="0 0 24 24"
               fill="currentColor"
+              aria-hidden
             >
               <path d="M0 8.877L2.247 5.91l8.405-3.416V.022l7.37 5.393L2.966 8.338v8.225L0 15.707zm24-4.45v14.651l-5.753 4.9-9.303-3.057v3.056l-5.978-7.416 15.057 1.798V5.415z" />
             </svg>
@@ -349,9 +353,10 @@ export function CloneRepoPane({
         </div>
         <button
           onClick={onClose}
+          aria-label="Close pane"
           className="cursor-pointer rounded-lg p-2 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
         >
-          <X className="h-4 w-4" />
+          <X className="h-4 w-4" aria-hidden />
         </button>
       </div>
 
@@ -359,7 +364,8 @@ export function CloneRepoPane({
       <div className="flex-1 overflow-y-auto p-4">
         {isLoadingProviders && (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
+            <Loader2 className="h-6 w-6 animate-spin text-neutral-500" aria-hidden />
+            <span className="sr-only">Loading…</span>
           </div>
         )}
 

@@ -32,16 +32,17 @@ export function GlobalPromptModal() {
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-neutral-700 px-4 py-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500/20">
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+            <AlertTriangle className="h-4 w-4 text-yellow-500" aria-hidden />
           </div>
           <h2 className="flex-1 text-lg font-semibold text-neutral-100">
             {currentPrompt.title}
           </h2>
           <button
             onClick={() => handleResponse(false)}
+            aria-label="Close dialog"
             className="rounded p-1 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5" aria-hidden />
           </button>
         </div>
 

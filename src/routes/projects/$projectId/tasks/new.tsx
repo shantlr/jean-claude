@@ -97,7 +97,7 @@ function NewTask() {
           }
           className="mb-6 flex cursor-pointer items-center gap-2 text-neutral-400 transition-colors hover:text-white"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" aria-hidden />
           Back
         </button>
 
@@ -118,6 +118,7 @@ function NewTask() {
               value={name}
               onChange={(e) => setDraft({ name: e.target.value })}
               placeholder="Auto-generated from prompt if empty"
+              autoComplete="off"
               className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
             />
           </div>
@@ -179,7 +180,7 @@ function NewTask() {
                   className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none disabled:opacity-50"
                 >
                   {branchesLoading ? (
-                    <option value="">Loading branches...</option>
+                    <option value="">Loading branches…</option>
                   ) : branches.length === 0 ? (
                     <option value="">No branches found</option>
                   ) : (
@@ -222,7 +223,7 @@ function NewTask() {
                   onClick={() => setShowWorkItems(true)}
                   className="flex cursor-pointer items-center gap-2 text-sm text-neutral-400 transition-colors hover:text-white"
                 >
-                  <ListTodo className="h-4 w-4" />
+                  <ListTodo className="h-4 w-4" aria-hidden />
                   {workItemId ? `From AB#${workItemId}` : 'From Work Item'}
                 </button>
               )}
@@ -248,7 +249,7 @@ function NewTask() {
               disabled={createTask.isPending || !prompt.trim()}
               className="cursor-pointer rounded-lg bg-white px-4 py-2 font-medium text-black transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {createTask.isPending ? 'Creating...' : 'Start'}
+              {createTask.isPending ? 'Creating…' : 'Start'}
             </button>
           </div>
         </form>

@@ -118,7 +118,7 @@ export function DiffView({
   if (isLoading || !state) {
     return (
       <div className="flex items-center justify-center rounded bg-black/30 p-2">
-        <span className="text-xs text-neutral-500">Loading diff...</span>
+        <span className="text-xs text-neutral-500">Loading diff…</span>
       </div>
     );
   }
@@ -132,16 +132,16 @@ export function DiffView({
             setViewMode(viewMode === 'inline' ? 'side-by-side' : 'inline')
           }
           className="rounded bg-neutral-700/70 p-1 text-neutral-300 hover:bg-neutral-600 hover:text-neutral-100"
-          title={
+          aria-label={
             viewMode === 'inline'
               ? 'Switch to side-by-side view'
               : 'Switch to inline view'
           }
         >
           {viewMode === 'inline' ? (
-            <Columns2 className="h-4 w-4" />
+            <Columns2 className="h-4 w-4" aria-hidden />
           ) : (
-            <AlignJustify className="h-4 w-4" />
+            <AlignJustify className="h-4 w-4" aria-hidden />
           )}
         </button>
       </div>
@@ -366,7 +366,7 @@ function DiffLineRow({
         >
           {canComment && isHovered ? (
             <span className="flex h-full w-full items-center justify-center text-blue-400">
-              <MessageSquarePlus className="h-3 w-3" />
+              <MessageSquarePlus className="h-3 w-3" aria-hidden />
             </span>
           ) : (
             (line.oldLineNumber ?? '')

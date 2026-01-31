@@ -135,9 +135,11 @@ function ExitPlanModeDisplay({ input }: { input: Record<string, unknown> }) {
           <button
             onClick={() => setIsPlanCollapsed(!isPlanCollapsed)}
             className="mb-2 flex items-center gap-1 text-xs text-neutral-400 hover:text-neutral-300"
+            aria-expanded={!isPlanCollapsed}
           >
             <ChevronDown
               className={`h-4 w-4 transition-transform ${isPlanCollapsed ? '-rotate-90' : ''}`}
+              aria-hidden
             />
             {isPlanCollapsed ? 'Show plan' : 'Hide plan'}
           </button>
@@ -280,7 +282,7 @@ export function PermissionBar({
   return (
     <div className="border-t border-yellow-700/50 bg-yellow-900/20 px-4 py-3">
       <div className="mb-3 flex items-start gap-3">
-        <Shield className="mt-0.5 h-5 w-5 shrink-0 text-yellow-500" />
+        <Shield className="mt-0.5 h-5 w-5 shrink-0 text-yellow-500" aria-hidden />
         <div className="min-w-0 flex-1">
           <div className="mb-1 text-xs font-medium text-yellow-400">
             Permission Required: {request.toolName}
@@ -300,22 +302,24 @@ export function PermissionBar({
         value={instruction}
         onChange={(e) => setInstruction(e.target.value)}
         placeholder="Optional: Tell Claude what to do instead..."
-        className="mb-3 w-full resize-none rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-yellow-500 focus:outline-none"
+        className="mb-3 w-full resize-none rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/50"
         rows={2}
+        autoComplete="off"
+        aria-label="Instructions for Claude"
       />
       <div className="flex flex-wrap justify-end gap-2">
         <button
           onClick={handleDeny}
           className="flex items-center gap-1.5 rounded-md bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600"
         >
-          <X className="h-4 w-4" />
+          <X className="h-4 w-4" aria-hidden />
           Deny
         </button>
         <button
           onClick={handleAllow}
           className="flex items-center gap-1.5 rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-500"
         >
-          <Check className="h-4 w-4" />
+          <Check className="h-4 w-4" aria-hidden />
           Allow
         </button>
         {sessionAllowButton && (
@@ -323,7 +327,7 @@ export function PermissionBar({
             onClick={handleAllowForSession}
             className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
           >
-            <ShieldCheck className="h-4 w-4" />
+            <ShieldCheck className="h-4 w-4" aria-hidden />
             {sessionAllowButton.label}
           </button>
         )}
@@ -332,7 +336,7 @@ export function PermissionBar({
             onClick={handleAllowForProject}
             className="flex items-center gap-1.5 rounded-md bg-purple-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-500"
           >
-            <ShieldCheck className="h-4 w-4" />
+            <ShieldCheck className="h-4 w-4" aria-hidden />
             Allow for Project
           </button>
         )}
@@ -341,7 +345,7 @@ export function PermissionBar({
             onClick={handleAllowForProjectWorktrees}
             className="flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-500"
           >
-            <ShieldCheck className="h-4 w-4" />
+            <ShieldCheck className="h-4 w-4" aria-hidden />
             Allow for Project Worktrees
           </button>
         )}

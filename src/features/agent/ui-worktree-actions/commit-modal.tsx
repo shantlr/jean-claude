@@ -35,23 +35,29 @@ export function CommitModal({
           </h2>
           <button
             onClick={onClose}
+            aria-label="Close dialog"
             className="rounded p-1 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5" aria-hidden />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-4">
           <div className="mb-4">
-            <label className="mb-2 block text-sm font-medium text-neutral-300">
+            <label
+              htmlFor="commit-message"
+              className="mb-2 block text-sm font-medium text-neutral-300"
+            >
               Commit message
             </label>
             <textarea
+              id="commit-message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Describe your changes"
               rows={3}
-              className="w-full rounded-md border border-neutral-600 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+              autoComplete="off"
+              className="w-full rounded-md border border-neutral-600 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               autoFocus
             />
           </div>
@@ -85,7 +91,7 @@ export function CommitModal({
               disabled={!message.trim() || isPending}
               className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
               Commit
             </button>
           </div>

@@ -2,7 +2,10 @@ import clsx from 'clsx';
 import { Send, Square, Loader2, ListPlus } from 'lucide-react';
 import { useState, useRef, useCallback, KeyboardEvent } from 'react';
 
-import { PromptTextarea, PromptTextareaRef } from '@/features/common/ui-prompt-textarea';
+import {
+  PromptTextarea,
+  PromptTextareaRef,
+} from '@/features/common/ui-prompt-textarea';
 
 import type { Skill } from '../../../../shared/skill-types';
 
@@ -100,15 +103,15 @@ export function MessageInput({
             ? 'bg-amber-600 hover:bg-amber-500'
             : 'bg-blue-600 hover:bg-blue-500',
         )}
-        title={isRunning ? 'Queue this message' : 'Send message'}
+        aria-label={isRunning ? 'Queue this message' : 'Send message'}
       >
         {isRunning ? (
           <>
-            <ListPlus className="h-4 w-4" />
+            <ListPlus className="h-4 w-4" aria-hidden />
             <span className="text-sm font-medium">Queue</span>
           </>
         ) : (
-          <Send className="h-5 w-5" />
+          <Send className="h-5 w-5" aria-hidden />
         )}
       </button>
       {isRunning && onStop && (
@@ -116,12 +119,12 @@ export function MessageInput({
           onClick={onStop}
           disabled={isStopping}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-600 text-white hover:bg-red-500 disabled:opacity-50"
-          title="Stop agent"
+          aria-label={isStopping ? 'Stopping agent' : 'Stop agent'}
         >
           {isStopping ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
+            <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
           ) : (
-            <Square className="h-5 w-5" />
+            <Square className="h-5 w-5" aria-hidden />
           )}
         </button>
       )}

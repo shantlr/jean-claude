@@ -99,7 +99,7 @@ export function CreatePrDialog({
             rel="noopener noreferrer"
             className="mb-4 flex items-center gap-2 text-sm text-blue-400 hover:underline"
           >
-            <ExternalLink className="h-4 w-4" />
+            <ExternalLink className="h-4 w-4" aria-hidden />
             Open in Azure DevOps
           </a>
           <button
@@ -126,27 +126,37 @@ export function CreatePrDialog({
         <div className="space-y-3">
           {/* Title */}
           <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-400">
+            <label
+              htmlFor="pr-title"
+              className="mb-1 block text-xs font-medium text-neutral-400"
+            >
               Title
             </label>
             <input
+              id="pr-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 focus:border-neutral-500 focus:outline-none"
+              autoComplete="off"
+              className="w-full rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 focus:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-500/50"
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-400">
+            <label
+              htmlFor="pr-description"
+              className="mb-1 block text-xs font-medium text-neutral-400"
+            >
               Description
             </label>
             <textarea
+              id="pr-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="w-full resize-none rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 focus:border-neutral-500 focus:outline-none"
+              autoComplete="off"
+              className="w-full resize-none rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 focus:border-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-500/50"
             />
           </div>
 
@@ -202,8 +212,8 @@ export function CreatePrDialog({
               disabled={isPending || !title.trim()}
               className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isPending ? 'Creating\u2026' : 'Create PR'}
+              {isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+              {isPending ? 'Creating…' : 'Create PR'}
             </button>
           </div>
         </div>

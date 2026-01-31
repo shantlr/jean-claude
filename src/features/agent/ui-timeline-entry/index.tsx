@@ -210,9 +210,9 @@ function DotEntry({
         {/* Summary row */}
         <div className="flex items-center gap-2">
           {isPending && (
-            <Loader2 className="h-3 w-3 shrink-0 animate-spin text-neutral-400" />
+            <Loader2 className="h-3 w-3 shrink-0 animate-spin text-neutral-400" aria-hidden />
           )}
-          {isError && <AlertCircle className="h-3 w-3 shrink-0 text-red-400" />}
+          {isError && <AlertCircle className="h-3 w-3 shrink-0 text-red-400" aria-hidden />}
           <span className="text-xs text-neutral-300">
             <SummaryText text={summary} codeStyle={codeStyle} />
           </span>
@@ -381,6 +381,13 @@ function ToolEntry({
             event.stopPropagation();
             event.preventDefault();
             setExpandContent((v) => !v);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.stopPropagation();
+              event.preventDefault();
+              setExpandContent((v) => !v);
+            }
           }}
         >
           {editInput ? (
@@ -555,10 +562,10 @@ export function CompactingEntry({
       <div className="py-1.5 pr-3">
         <div className="flex items-center gap-2">
           {!isComplete && (
-            <Loader2 className="h-3 w-3 shrink-0 animate-spin text-amber-400" />
+            <Loader2 className="h-3 w-3 shrink-0 animate-spin text-amber-400" aria-hidden />
           )}
           {isComplete && (
-            <PackageOpen className="h-3 w-3 shrink-0 text-amber-400" />
+            <PackageOpen className="h-3 w-3 shrink-0 text-amber-400" aria-hidden />
           )}
           <span className="text-xs text-neutral-400">{summary}</span>
         </div>

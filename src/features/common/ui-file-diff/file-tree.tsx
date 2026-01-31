@@ -91,15 +91,16 @@ function TreeNodeRow({
       <>
         <button
           onClick={() => onToggleFolder(node.path)}
+          aria-expanded={isExpanded}
           className="flex w-full items-center gap-1.5 px-2 py-1 text-left text-sm text-neutral-400 hover:bg-neutral-700/50"
           style={{ paddingLeft }}
         >
           {isExpanded ? (
-            <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+            <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
           ) : (
-            <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+            <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
           )}
-          <Folder className="h-4 w-4 shrink-0 text-neutral-500" />
+          <Folder className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
           <span className="truncate">{node.name}</span>
         </button>
         {isExpanded &&
@@ -124,6 +125,7 @@ function TreeNodeRow({
   return (
     <button
       onClick={() => onSelectFile(node.path)}
+      aria-current={isSelected ? 'true' : undefined}
       className={`flex w-full items-center gap-1.5 px-2 py-1 text-left text-sm transition-colors ${
         isSelected
           ? 'bg-neutral-700 text-neutral-100'
@@ -131,8 +133,8 @@ function TreeNodeRow({
       }`}
       style={{ paddingLeft }}
     >
-      <span className="w-3.5 shrink-0" />
-      <File className="h-4 w-4 shrink-0 text-neutral-500" />
+      <span className="w-3.5 shrink-0" aria-hidden />
+      <File className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
       <span className="truncate">{node.name}</span>
       {node.status === 'renamed' && node.originalPath && (
         <span className="truncate text-xs text-neutral-500">

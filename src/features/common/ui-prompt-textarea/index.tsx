@@ -282,7 +282,7 @@ export const PromptTextarea = forwardRef<PromptTextareaRef, PromptTextareaProps>
             {/* Skills section header */}
             {skillItems.length > 0 && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-500">
-                <Wand2 className="h-3 w-3" />
+                <Wand2 className="h-3 w-3" aria-hidden />
                 Skills
               </div>
             )}
@@ -330,8 +330,9 @@ export const PromptTextarea = forwardRef<PromptTextareaRef, PromptTextareaProps>
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           rows={1}
+          autoComplete="off"
           className={clsx(
-            'min-h-[40px] w-full resize-none rounded-lg border border-neutral-600 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+            'min-h-[40px] w-full resize-none rounded-lg border border-neutral-600 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:cursor-not-allowed disabled:opacity-50',
             className,
           )}
           {...textareaProps}

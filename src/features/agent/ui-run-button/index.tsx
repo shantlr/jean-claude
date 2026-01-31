@@ -55,16 +55,16 @@ export function RunButton({
               ? 'bg-red-600 text-white hover:bg-red-700'
               : 'bg-green-600 text-white hover:bg-green-700',
           )}
-          title={isRunning ? 'Stop all commands' : 'Run all commands'}
+          aria-label={isRunning ? 'Stop all commands' : 'Run all commands'}
         >
           {isRunning ? (
             <>
-              <Square className="h-4 w-4" />
+              <Square className="h-4 w-4" aria-hidden />
               Stop
             </>
           ) : (
             <>
-              <Play className="h-4 w-4" />
+              <Play className="h-4 w-4" aria-hidden />
               Run
             </>
           )}
