@@ -1,7 +1,9 @@
 import { ChildProcess, spawn, exec } from 'child_process';
-import { existsSync, readFileSync } from 'fs';
-import { join } from 'path';
+import { readFile, stat } from 'fs/promises';
+import { join, relative } from 'path';
 import { promisify } from 'util';
+
+import { glob } from 'glob';
 
 import type {
   RunStatus,
@@ -9,6 +11,7 @@ import type {
   PortInUse,
   PortsInUseErrorData,
   PackageScriptsResult,
+  WorkspacePackage,
 } from '../../shared/run-command-types';
 import { ProjectCommandRepository } from '../database/repositories/project-commands';
 import { dbg } from '../lib/debug';
@@ -231,36 +234,175 @@ class RunCommandService {
 
   async getPackageScripts(projectPath: string): Promise<PackageScriptsResult> {
     const packageJsonPath = join(projectPath, 'package.json');
-    if (!existsSync(packageJsonPath)) {
-      return { scripts: [], packageManager: null };
-    }
 
+    // Read root package.json
     let scripts: string[] = [];
+    let rootPkg: {
+      scripts?: Record<string, string>;
+      workspaces?: string[] | { packages: string[] };
+    } = {};
     try {
-      const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-      scripts = Object.keys(packageJson.scripts ?? {});
+      const content = await readFile(packageJsonPath, 'utf-8');
+      rootPkg = JSON.parse(content);
+      scripts = Object.keys(rootPkg.scripts ?? {});
     } catch {
-      // Invalid package.json
+      // Invalid or missing package.json
+      return { scripts: [], packageManager: null, isWorkspace: false, workspacePackages: [] };
     }
 
     // Detect package manager
-    let packageManager: PackageScriptsResult['packageManager'] = null;
-    if (existsSync(join(projectPath, 'pnpm-lock.yaml'))) {
-      packageManager = 'pnpm';
-    } else if (existsSync(join(projectPath, 'yarn.lock'))) {
-      packageManager = 'yarn';
-    } else if (existsSync(join(projectPath, 'bun.lockb'))) {
-      packageManager = 'bun';
-    } else if (existsSync(join(projectPath, 'package-lock.json'))) {
-      packageManager = 'npm';
+    const packageManager = await this.detectPackageManager(projectPath);
+
+    // Prefix root scripts with package manager
+    const prefixedScripts = packageManager ? scripts.map((s) => `${packageManager} ${s}`) : scripts;
+
+    // Detect workspace globs
+    const workspaceGlobs = await this.detectWorkspaceGlobs(projectPath, rootPkg);
+    if (!workspaceGlobs || workspaceGlobs.length === 0) {
+      return {
+        scripts: prefixedScripts,
+        packageManager,
+        isWorkspace: false,
+        workspacePackages: [],
+      };
     }
 
-    // Prefix scripts with package manager
-    const prefixedScripts = packageManager
-      ? scripts.map((s) => `${packageManager} ${s}`)
-      : scripts;
+    // Resolve globs to package directories
+    const packageDirs = await this.resolveWorkspaceGlobs(projectPath, workspaceGlobs);
 
-    return { scripts: prefixedScripts, packageManager };
+    // Read each sub-package in parallel
+    const workspacePackagesResults = await Promise.all(
+      packageDirs.map(async (dir) => {
+        try {
+          const pkgContent = await readFile(join(dir, 'package.json'), 'utf-8');
+          const pkg = JSON.parse(pkgContent) as { name?: string; scripts?: Record<string, string> };
+          if (!pkg.name) return null; // Skip packages without a name
+          const pkgScripts = Object.keys(pkg.scripts ?? {}).map((s) =>
+            this.formatFilterCommand(packageManager, pkg.name!, s)
+          );
+          return {
+            name: pkg.name,
+            path: relative(projectPath, dir),
+            scripts: pkgScripts,
+          };
+        } catch {
+          return null; // Skip invalid packages
+        }
+      })
+    );
+
+    const workspacePackages = workspacePackagesResults.filter(
+      (p): p is WorkspacePackage => p !== null
+    );
+
+    return {
+      scripts: prefixedScripts,
+      packageManager,
+      isWorkspace: true,
+      workspacePackages,
+    };
+  }
+
+  private async detectPackageManager(
+    projectPath: string
+  ): Promise<PackageScriptsResult['packageManager']> {
+    const checks: [string, PackageScriptsResult['packageManager']][] = [
+      ['pnpm-lock.yaml', 'pnpm'],
+      ['yarn.lock', 'yarn'],
+      ['bun.lockb', 'bun'],
+      ['package-lock.json', 'npm'],
+    ];
+
+    for (const [file, manager] of checks) {
+      try {
+        await stat(join(projectPath, file));
+        return manager;
+      } catch {
+        // File doesn't exist
+      }
+    }
+
+    return null;
+  }
+
+  private async detectWorkspaceGlobs(
+    projectPath: string,
+    rootPkg: { workspaces?: string[] | { packages: string[] } }
+  ): Promise<string[] | null> {
+    // Check pnpm-workspace.yaml first
+    try {
+      const pnpmWorkspacePath = join(projectPath, 'pnpm-workspace.yaml');
+      const content = await readFile(pnpmWorkspacePath, 'utf-8');
+      // Simple YAML parsing for packages field
+      const match = content.match(/packages:\s*\n((?:\s+-\s+.+\n?)+)/);
+      if (match) {
+        const packages = match[1]
+          .split('\n')
+          .map((line) => line.replace(/^\s*-\s*['"]?|['"]?\s*$/g, ''))
+          .filter(Boolean);
+        if (packages.length > 0) return packages;
+      }
+    } catch {
+      // No pnpm-workspace.yaml
+    }
+
+    // Check package.json workspaces field
+    if (rootPkg.workspaces) {
+      if (Array.isArray(rootPkg.workspaces)) {
+        return rootPkg.workspaces;
+      }
+      if (rootPkg.workspaces.packages) {
+        return rootPkg.workspaces.packages;
+      }
+    }
+
+    return null;
+  }
+
+  private async resolveWorkspaceGlobs(projectPath: string, globs: string[]): Promise<string[]> {
+    const results: string[] = [];
+
+    for (const pattern of globs) {
+      const matches = await glob(pattern, {
+        cwd: projectPath,
+        absolute: true,
+      });
+      results.push(...matches);
+    }
+
+    // Filter to only directories with package.json
+    const validDirs: string[] = [];
+    await Promise.all(
+      results.map(async (dir) => {
+        try {
+          await stat(join(dir, 'package.json'));
+          validDirs.push(dir);
+        } catch {
+          // No package.json, skip
+        }
+      })
+    );
+
+    return validDirs;
+  }
+
+  private formatFilterCommand(
+    packageManager: PackageScriptsResult['packageManager'],
+    packageName: string,
+    script: string
+  ): string {
+    switch (packageManager) {
+      case 'pnpm':
+        return `pnpm --filter ${packageName} ${script}`;
+      case 'npm':
+        return `npm -w ${packageName} run ${script}`;
+      case 'yarn':
+        return `yarn workspace ${packageName} ${script}`;
+      case 'bun':
+        return `bun --filter ${packageName} ${script}`;
+      default:
+        return script;
+    }
   }
 }
 

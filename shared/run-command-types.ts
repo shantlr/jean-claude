@@ -47,7 +47,15 @@ export function isPortsInUseError(error: unknown): error is PortsInUseErrorData 
   );
 }
 
+export interface WorkspacePackage {
+  name: string; // e.g., "@app/web"
+  path: string; // relative path, e.g., "packages/web"
+  scripts: string[]; // prefixed with filter syntax
+}
+
 export interface PackageScriptsResult {
   scripts: string[];
   packageManager: 'pnpm' | 'npm' | 'yarn' | 'bun' | null;
+  isWorkspace: boolean;
+  workspacePackages: WorkspacePackage[];
 }
