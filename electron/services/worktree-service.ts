@@ -7,6 +7,7 @@ import { app } from 'electron';
 import { nanoid } from 'nanoid';
 
 import { ProjectRepository } from '../database/repositories/projects';
+import { dbg } from '../lib/debug';
 import { pathExists } from '../lib/fs';
 
 import { buildWorktreeSettings } from './permission-settings-service';
@@ -219,14 +220,11 @@ export async function getWorktreeDiff(
   worktreePath: string,
   startCommitHash: string,
 ): Promise<WorktreeDiffResult> {
-  console.log('[worktree-diff] getWorktreeDiff called', {
-    worktreePath,
-    startCommitHash,
-  });
+  dbg.worktree('getWorktreeDiff called %o', { worktreePath, startCommitHash });
 
   // Check if the worktree still exists
   if (!(await pathExists(worktreePath))) {
-    console.log('[worktree-diff] Worktree path does not exist, returning deleted');
+    dbg.worktree('Worktree path does not exist, returning deleted');
     return { files: [], worktreeDeleted: true };
   }
 
@@ -246,7 +244,7 @@ export async function getWorktreeDiff(
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large diffs
       },
     );
-    console.log('[worktree-diff] git diff output length:', diffOutput.length);
+    dbg.worktree('git diff output length: %d', diffOutput.length);
 
     // Also get untracked files which git diff doesn't show
     // Use --untracked-files=all to list individual files in new directories
@@ -259,7 +257,7 @@ export async function getWorktreeDiff(
         maxBuffer: 10 * 1024 * 1024,
       },
     );
-    console.log('[worktree-diff] git status output length:', statusOutput.length);
+    dbg.worktree('git status output length: %d', statusOutput.length);
 
     const filesMap = new Map<string, WorktreeDiffFile>();
 
@@ -292,7 +290,7 @@ export async function getWorktreeDiff(
         }
 
         filesMap.set(filePath, { path: filePath, status });
-        console.log('[worktree-diff] From git diff:', { filePath, status });
+        dbg.worktree('From git diff: %o', { filePath, status });
       }
     }
 
@@ -324,7 +322,7 @@ export async function getWorktreeDiff(
             // File didn't exist at startCommit, so it's added
             filesMap.set(filePath, { path: filePath, status: 'added' });
           }
-          console.log('[worktree-diff] From git status (untracked):', {
+          dbg.worktree('From git status (untracked): %o', {
             filePath,
             status: filesMap.get(filePath)?.status,
           });
@@ -333,11 +331,11 @@ export async function getWorktreeDiff(
     }
 
     const files = Array.from(filesMap.values());
-    console.log('[worktree-diff] Total files found:', files.length);
+    dbg.worktree('Total files found: %d', files.length);
 
     return { files };
   } catch (error) {
-    console.error('[worktree-diff] Error getting diff:', error);
+    dbg.worktree('Error getting diff: %O', error);
     // If we get ENOENT, the worktree was likely deleted between our check and the git command
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
       return { files: [], worktreeDeleted: true };
@@ -362,7 +360,7 @@ export async function getWorktreeFileContent(
   filePath: string,
   status: 'added' | 'modified' | 'deleted',
 ): Promise<WorktreeFileContent> {
-  console.log('[worktree-file-content] getWorktreeFileContent called', {
+  dbg.worktree('getWorktreeFileContent called %o', {
     worktreePath,
     startCommitHash,
     filePath,
@@ -385,14 +383,14 @@ export async function getWorktreeFileContent(
         },
       );
       oldContent = stdout;
-      console.log('[worktree-file-content] Got old content, length:', stdout.length);
+      dbg.worktree('Got old content, length: %d', stdout.length);
     } catch (error) {
       // File might be binary or inaccessible
-      console.log('[worktree-file-content] Failed to get old content:', error);
+      dbg.worktree('Failed to get old content: %O', error);
       oldContent = null;
     }
   } else {
-    console.log('[worktree-file-content] File is added, no old content to fetch');
+    dbg.worktree('File is added, no old content to fetch');
   }
 
   // Get new content from the working tree (unless file was deleted)
@@ -401,28 +399,28 @@ export async function getWorktreeFileContent(
     try {
       // Check if file is binary
       if (await isBinaryFile(fullPath)) {
-        console.log('[worktree-file-content] File is binary');
+        dbg.worktree('File is binary');
         isBinary = true;
         newContent = null;
       } else {
         newContent = await fs.readFile(fullPath, 'utf-8');
-        console.log('[worktree-file-content] Got new content, length:', newContent.length);
+        dbg.worktree('Got new content, length: %d', newContent.length);
       }
     } catch (error) {
-      console.log('[worktree-file-content] Failed to get new content:', error);
+      dbg.worktree('Failed to get new content: %O', error);
       newContent = null;
     }
   } else {
-    console.log('[worktree-file-content] File is deleted, no new content to fetch');
+    dbg.worktree('File is deleted, no new content to fetch');
   }
 
   // Also check if old content indicates binary (null bytes would have caused git show to fail)
   if (oldContent === null && newContent === null && status === 'modified') {
-    console.log('[worktree-file-content] Both contents null for modified file, marking as binary');
+    dbg.worktree('Both contents null for modified file, marking as binary');
     isBinary = true;
   }
 
-  console.log('[worktree-file-content] Returning:', {
+  dbg.worktree('Returning: %o', {
     hasOldContent: oldContent !== null,
     hasNewContent: newContent !== null,
     isBinary,
@@ -450,6 +448,13 @@ export async function createWorktree(
   taskName?: string,
   sourceBranch?: string,
 ): Promise<CreateWorktreeResult> {
+  dbg.worktree('createWorktree called %o', {
+    projectPath,
+    projectId,
+    taskName,
+    sourceBranch,
+  });
+
   // Verify this is a git repository
   if (!(await isGitRepository(projectPath))) {
     throw new Error(`Project path is not a git repository: ${projectPath}`);
@@ -460,6 +465,7 @@ export async function createWorktree(
     projectId,
     projectName,
   );
+  dbg.worktree('Using worktrees directory: %s', projectWorktreesPath);
 
   // Generate worktree name from task name (preferred) or prompt (fallback)
   const worktreeName = taskName
@@ -469,19 +475,21 @@ export async function createWorktree(
 
   // Create branch name with jean-claude/ prefix
   const branchName = `jean-claude/${worktreeName}`;
+  dbg.worktree('Creating worktree: %s, branch: %s', worktreePath, branchName);
 
   // Create the worktree with a new branch
   // If sourceBranch is provided, use it as the start point; otherwise use current HEAD
   try {
     const startPoint = sourceBranch ? ` "${sourceBranch}"` : '';
-    await execAsync(
-      `git worktree add "${worktreePath}" -b "${branchName}"${startPoint}`,
-      {
-        cwd: projectPath,
-        encoding: 'utf-8',
-      },
-    );
+    const cmd = `git worktree add "${worktreePath}" -b "${branchName}"${startPoint}`;
+    dbg.worktree('Running: %s', cmd);
+    await execAsync(cmd, {
+      cwd: projectPath,
+      encoding: 'utf-8',
+    });
+    dbg.worktree('Worktree created successfully');
   } catch (error) {
+    dbg.worktree('Failed to create worktree: %O', error);
     throw new Error(`Failed to create git worktree: ${error}`);
   }
 
@@ -489,10 +497,11 @@ export async function createWorktree(
   try {
     await buildWorktreeSettings(projectPath, worktreePath);
   } catch (error) {
-    console.warn('Failed to build Claude settings for worktree:', error);
+    dbg.worktree('Failed to build Claude settings for worktree: %O', error);
   }
   // Get the commit hash of the worktree HEAD (which is the source branch's HEAD or current HEAD)
   const startCommitHash = await getCurrentCommitHash(worktreePath);
+  dbg.worktree('Worktree ready, startCommitHash: %s', startCommitHash);
 
   return {
     worktreePath,
@@ -591,19 +600,24 @@ export async function commitWorktreeChanges(
   params: CommitWorktreeParams,
 ): Promise<void> {
   const { worktreePath, message, stageAll } = params;
+  dbg.worktree('commitWorktreeChanges: %o', { worktreePath, stageAll, messageLength: message.length });
 
   try {
     if (stageAll) {
       // Stage all changes including untracked files
+      dbg.worktree('Staging all changes');
       await execAsync('git add -A', { cwd: worktreePath, encoding: 'utf-8' });
     }
 
     // Commit with the provided message
+    dbg.worktree('Creating commit');
     await execAsync(`git commit -m ${JSON.stringify(message)}`, {
       cwd: worktreePath,
       encoding: 'utf-8',
     });
+    dbg.worktree('Commit successful');
   } catch (error) {
+    dbg.worktree('Commit failed: %O', error);
     throw new Error(`Failed to commit changes: ${error}`);
   }
 }
@@ -636,8 +650,11 @@ export async function mergeWorktree(
     commitMessage,
   } = params;
 
+  dbg.worktree('mergeWorktree: %o', { worktreePath, projectPath, targetBranch, squash });
+
   // Check if worktree still exists before attempting operations
   if (!(await pathExists(worktreePath))) {
+    dbg.worktree('Worktree no longer exists at %s', worktreePath);
     return { success: false, error: 'Worktree no longer exists' };
   }
 
@@ -651,8 +668,10 @@ export async function mergeWorktree(
       },
     );
     const worktreeBranch = branchOutput.trim();
+    dbg.worktree('Merging branch %s into %s', worktreeBranch, targetBranch);
 
     // Switch to target branch in main repo
+    dbg.worktree('Checking out target branch %s', targetBranch);
     await execAsync(`git checkout ${JSON.stringify(targetBranch)}`, {
       cwd: projectPath,
       encoding: 'utf-8',
@@ -660,6 +679,7 @@ export async function mergeWorktree(
 
     if (squash) {
       // Squash merge: combine all commits into staged changes, then commit with custom message
+      dbg.worktree('Performing squash merge');
       await execAsync(`git merge --squash ${JSON.stringify(worktreeBranch)}`, {
         cwd: projectPath,
         encoding: 'utf-8',
@@ -674,13 +694,16 @@ export async function mergeWorktree(
       });
     } else {
       // Regular merge
+      dbg.worktree('Performing regular merge');
       await execAsync(`git merge ${JSON.stringify(worktreeBranch)}`, {
         cwd: projectPath,
         encoding: 'utf-8',
       });
     }
+    dbg.worktree('Merge successful');
 
     // Remove the worktree
+    dbg.worktree('Removing worktree');
     await execAsync(
       `git worktree remove ${JSON.stringify(worktreePath)} --force`,
       {
@@ -690,14 +713,17 @@ export async function mergeWorktree(
     );
 
     // Force delete the branch (use -D to handle edge cases where git thinks branch isn't fully merged)
+    dbg.worktree('Deleting branch %s', worktreeBranch);
     await execAsync(`git branch -D ${JSON.stringify(worktreeBranch)}`, {
       cwd: projectPath,
       encoding: 'utf-8',
     });
 
+    dbg.worktree('Merge complete, worktree cleaned up');
     return { success: true };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    dbg.worktree('Merge failed: %s', errorMessage);
 
     // Check if it's a merge conflict
     if (
@@ -724,7 +750,9 @@ export async function pushBranch(params: {
   remote?: string;
 }): Promise<void> {
   const remote = params.remote ?? 'origin';
+  dbg.worktree('pushBranch: %s to %s', params.branchName, remote);
   await execAsync(`git push -u ${remote} ${params.branchName}`, {
     cwd: params.worktreePath,
   });
+  dbg.worktree('Push successful');
 }

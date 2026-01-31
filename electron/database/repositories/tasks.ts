@@ -1,4 +1,5 @@
 import { InteractionMode, Task, TaskStatus } from '../../../shared/types';
+import { dbg } from '../../lib/debug';
 import { db } from '../index';
 import { NewTaskRow, TaskRow, UpdateTaskRow } from '../schema';
 
@@ -153,6 +154,7 @@ export const TaskRepository = {
   },
 
   create: async (data: CreateTaskInput) => {
+    dbg.db('tasks.create projectId=%s, name=%s', data.projectId, data.name);
     // Shift all existing active tasks in this project down (increment sortOrder)
     await db
       .updateTable('tasks')
@@ -169,10 +171,12 @@ export const TaskRepository = {
       .values({ ...toDbValues(data), sortOrder: 0 })
       .returningAll()
       .executeTakeFirstOrThrow();
+    dbg.db('tasks.create created id=%s', row.id);
     return toTask(row);
   },
 
   update: async (id: string, data: UpdateTaskInput) => {
+    dbg.db('tasks.update id=%s %o', id, Object.keys(data));
     const row = await db
       .updateTable('tasks')
       .set({ ...toDbUpdateValues(data), updatedAt: new Date().toISOString() })
@@ -182,7 +186,10 @@ export const TaskRepository = {
     return toTask(row);
   },
 
-  delete: (id: string) => db.deleteFrom('tasks').where('id', '=', id).execute(),
+  delete: (id: string) => {
+    dbg.db('tasks.delete id=%s', id);
+    return db.deleteFrom('tasks').where('id', '=', id).execute();
+  },
 
   markAsRead: async (id: string) => {
     const row = await db

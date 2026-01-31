@@ -1,4 +1,5 @@
 import { SETTINGS_DEFINITIONS, AppSettings } from '../../../shared/types';
+import { dbg } from '../../lib/debug';
 import { db } from '../index';
 
 export const SettingsRepository = {
@@ -18,10 +19,10 @@ export const SettingsRepository = {
       if (SETTINGS_DEFINITIONS[key].validate(parsed)) {
         return parsed;
       }
-      console.warn(`[Settings] Invalid value for "${key}", using default`);
+      dbg.db('Invalid value for setting "%s", using default', key);
       return SETTINGS_DEFINITIONS[key].defaultValue;
     } catch (e) {
-      console.warn(`[Settings] Failed to parse "${key}", using default:`, e);
+      dbg.db('Failed to parse setting "%s", using default: %O', key, e);
       return SETTINGS_DEFINITIONS[key].defaultValue;
     }
   },

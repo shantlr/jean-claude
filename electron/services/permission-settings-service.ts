@@ -1,6 +1,8 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
+import { dbg } from '../lib/debug';
+
 interface ClaudeSettings {
   permissions?: {
     allow?: string[];
@@ -45,7 +47,7 @@ function isBareBash(permission: string): boolean {
  */
 export async function addAllowPermission(settingsPath: string, permission: string): Promise<void> {
   if (isBareBash(permission)) {
-    console.warn(`[PermissionSettings] Refusing to allow bare "Bash" — a specific command is required`);
+    dbg.agentPermission('Refusing to allow bare "Bash" — a specific command is required');
     return;
   }
   const settings = await readSettingsFile(settingsPath);

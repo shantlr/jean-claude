@@ -20,6 +20,7 @@ import {
   ProjectRepository,
   AgentMessageRepository,
 } from '../database/repositories';
+import { dbg } from '../lib/debug';
 import { pathExists } from '../lib/fs';
 
 import { notificationService } from './notification-service';
@@ -80,6 +81,7 @@ class AgentService {
     status: 'running' | 'waiting' | 'completed' | 'errored' | 'interrupted',
     error?: string,
   ) {
+    dbg.agentSession('Task %s status → %s%s', taskId, status, error ? ` (${error})` : '');
     this.emit(AGENT_CHANNELS.STATUS, { taskId, status, error });
   }
 
@@ -88,8 +90,11 @@ class AgentService {
     const session = this.sessions.get(taskId);
     if (session) {
       try {
-        console.log(
-          `[AgentService] Persisting message ${session.messageIndex} for task ${taskId}, type: ${message.type}`,
+        dbg.agentMessage(
+          'Persisting message %d for task %s, type: %s',
+          session.messageIndex,
+          taskId,
+          message.type,
         );
         await AgentMessageRepository.create(
           taskId,
@@ -98,17 +103,16 @@ class AgentService {
         );
         session.messageIndex++;
       } catch (error) {
-        console.error('Failed to persist message:', error);
+        dbg.agent('Failed to persist message: %O', error);
       }
     } else {
-      console.warn(
-        `[AgentService] No session found for task ${taskId}, message not persisted`,
+      dbg.agent(
+        'No session found for task %s, message not persisted',
+        taskId,
       );
     }
 
-    console.log(
-      `[AgentService] Emitting message for task ${taskId}, type: ${message.type}`,
-    );
+    dbg.agentMessage('Emitting message for task %s, type: %s', taskId, message.type);
     this.emit(AGENT_CHANNELS.MESSAGE, { taskId, message });
   }
 
@@ -216,17 +220,12 @@ class AgentService {
           const name = msg.structured_output.name.slice(0, 40);
           await TaskRepository.update(taskId, { name });
           this.emitTaskNameUpdated(taskId, name);
-          console.log(
-            `[AgentService] Generated task name for ${taskId}: ${name}`,
-          );
+          dbg.agent('Generated task name for %s: %s', taskId, name);
           break;
         }
       }
     } catch (error) {
-      console.error(
-        `[AgentService] Failed to generate task name for ${taskId}:`,
-        error,
-      );
+      dbg.agent('Failed to generate task name for %s: %O', taskId, error);
       // Non-fatal - task keeps its original name
     }
   }
@@ -251,6 +250,12 @@ class AgentService {
     };
 
     this.sessions.set(taskId, session);
+    dbg.agentSession(
+      'Created session for task %s (resuming: %s, messageIndex: %d)',
+      taskId,
+      session.sessionId ? 'yes' : 'no',
+      existingMessageCount,
+    );
     return session;
   }
 
@@ -282,6 +287,18 @@ class AgentService {
       );
     }
 
+    const sdkPermissionMode =
+      SDK_PERMISSION_MODES[(task.interactionMode ?? 'ask') as InteractionMode];
+    const workingDir = task.worktreePath ?? project.path;
+
+    dbg.agentSession(
+      'runQuery for task %s: mode=%s, cwd=%s, resuming=%s',
+      taskId,
+      sdkPermissionMode,
+      workingDir,
+      session.sessionId ? 'yes' : 'no',
+    );
+
     if (task.status !== 'running') {
       await TaskRepository.update(taskId, { status: 'running' });
       this.emitStatus(taskId, 'running');
@@ -289,10 +306,6 @@ class AgentService {
 
     // Create new abort controller for this query iteration
     session.abortController = new AbortController();
-
-    const sdkPermissionMode =
-      SDK_PERMISSION_MODES[(task.interactionMode ?? 'ask') as InteractionMode];
-    const workingDir = task.worktreePath ?? project.path;
 
     const queryOptions: NonNullable<Parameters<typeof query>[0]['options']> = {
       cwd: workingDir,
@@ -315,7 +328,7 @@ class AgentService {
       // NOTE: fire-and-forget
       void this.generateTaskName(taskId, options.initialPrompt ?? prompt).catch(
         (err) => {
-          console.error('Error generating task name:', err);
+          dbg.agent('Error generating task name: %O', err);
         },
       );
     }
@@ -329,6 +342,7 @@ class AgentService {
       },
     });
 
+    dbg.agentSession('Starting SDK query for task %s', taskId);
     const generator = query({ prompt, options: queryOptions });
     session.queryInstance = generator;
     session.messageGenerator = generator;
@@ -336,6 +350,7 @@ class AgentService {
 
     for await (const rawMessage of generator) {
       if (session.abortController.signal.aborted) {
+        dbg.agentSession('Task %s aborted, breaking message loop', taskId);
         break;
       }
 
@@ -345,15 +360,24 @@ class AgentService {
         session.sessionId = message.session_id;
         await TaskRepository.update(taskId, { sessionId: message.session_id });
         hasUpdatedSessionId = true;
+        dbg.agentSession('Captured session ID for task %s: %s', taskId, message.session_id);
       }
 
       await this.emitMessage(taskId, message);
 
       // Handle result message
       if (message.type === 'result') {
+        dbg.agentSession(
+          'Task %s received result (is_error: %s, queued: %d)',
+          taskId,
+          message.is_error,
+          session.queuedPrompts.length,
+        );
+
         // Check for queued prompts
         const nextPrompt = session.queuedPrompts.shift();
         if (nextPrompt && !message.is_error) {
+          dbg.agentSession('Task %s processing next queued prompt', taskId);
           this.emitPromptQueueUpdate(taskId, session.queuedPrompts);
           // Recursively process next queued prompt
           // Don't clean up session, recursion will handles it
@@ -400,7 +424,7 @@ class AgentService {
     this.emitStatus(taskId, 'running');
 
     try {
-      console.log(`[AgentService] Starting agent for task ${taskId}`);
+      dbg.agentSession('Starting agent for task %s', taskId);
       await this.runQuery(taskId, task.prompt, session, {
         generateNameOnInit: true,
         initialPrompt: task.prompt,
@@ -420,12 +444,10 @@ class AgentService {
     toolName: string,
     input: Record<string, unknown>,
   ): Promise<PermissionResult> {
-    console.log(
-      `[AgentService] handleToolRequest called for task ${taskId}, tool: ${toolName}`,
-    );
+    dbg.agentPermission('Tool request for task %s: %s', taskId, toolName);
     const session = this.sessions.get(taskId);
     if (!session) {
-      console.log(`[AgentService] No session found for task ${taskId}`);
+      dbg.agentPermission('No session found for task %s', taskId);
       return { behavior: 'deny', message: 'Session not found' };
     }
 
@@ -433,9 +455,7 @@ class AgentService {
     const task = await TaskRepository.findById(taskId);
     const allowedTools = task?.sessionAllowedTools ?? [];
     if (isToolAllowedByPermissions(toolName, input, allowedTools)) {
-      console.log(
-        `[AgentService] Tool ${toolName} is session-allowed for task ${taskId}`,
-      );
+      dbg.agentPermission('Tool %s is session-allowed for task %s', toolName, taskId);
       return { behavior: 'allow', updatedInput: input };
     }
 
@@ -498,8 +518,10 @@ class AgentService {
   }
 
   async stop(taskId: string): Promise<void> {
+    dbg.agentSession('Stopping task %s', taskId);
     const session = this.sessions.get(taskId);
     if (!session) {
+      dbg.agentSession('No session found for task %s, nothing to stop', taskId);
       return;
     }
 
@@ -519,6 +541,7 @@ class AgentService {
     await TaskRepository.update(taskId, { status: 'interrupted' });
     this.emitStatus(taskId, 'interrupted', 'Stopped by user');
     this.sessions.delete(taskId);
+    dbg.agentSession('Task %s stopped and session cleaned up', taskId);
   }
 
   async respond(
@@ -526,6 +549,7 @@ class AgentService {
     requestId: string,
     response: PermissionResponse | QuestionResponse,
   ): Promise<void> {
+    dbg.agentPermission('Responding to request %s for task %s', requestId, taskId);
     const session = this.sessions.get(taskId);
     if (!session) {
       throw new Error(`No active session for task ${taskId}`);
@@ -539,6 +563,12 @@ class AgentService {
     }
 
     const [request] = session.pendingRequests.splice(requestIndex, 1);
+    dbg.agentPermission(
+      'Resolved %s request for tool %s (remaining pending: %d)',
+      request.type,
+      request.toolName,
+      session.pendingRequests.length,
+    );
     request.resolve(response);
 
     // If there are more pending requests, emit the next one
@@ -571,9 +601,7 @@ class AgentService {
     const session = await this.createSession(taskId);
 
     try {
-      console.log(
-        `[AgentService] Sending follow-up message for task ${taskId}`,
-      );
+      dbg.agentSession('Sending follow-up message for task %s', taskId);
       await this.runQuery(taskId, message, session);
     } catch (error) {
       const errorMessage =
@@ -603,9 +631,7 @@ class AgentService {
     session.queuedPrompts.push(queuedPrompt);
     this.emitPromptQueueUpdate(taskId, session.queuedPrompts);
 
-    console.log(
-      `[AgentService] Queued prompt ${queuedPrompt.id} for task ${taskId}`,
-    );
+    dbg.agent('Queued prompt %s for task %s', queuedPrompt.id, taskId);
     return { promptId: queuedPrompt.id };
   }
 
@@ -626,9 +652,7 @@ class AgentService {
     session.queuedPrompts.splice(index, 1);
     this.emitPromptQueueUpdate(taskId, session.queuedPrompts);
 
-    console.log(
-      `[AgentService] Cancelled queued prompt ${promptId} for task ${taskId}`,
-    );
+    dbg.agent('Cancelled queued prompt %s for task %s', promptId, taskId);
   }
 
   /**
@@ -682,9 +706,11 @@ class AgentService {
   }
 
   async setMode(taskId: string, mode: InteractionMode): Promise<void> {
+    dbg.agentSession('Setting mode for task %s to %s', taskId, mode);
     const session = this.sessions.get(taskId);
     if (session?.queryInstance) {
       await session.queryInstance.setPermissionMode(SDK_PERMISSION_MODES[mode]);
+      dbg.agentSession('Updated SDK permission mode for active session');
     }
     await TaskRepository.update(taskId, { interactionMode: mode });
   }
@@ -695,9 +721,7 @@ class AgentService {
 
   async getMessages(taskId: string): Promise<AgentMessage[]> {
     const messages = await AgentMessageRepository.findByTaskId(taskId);
-    console.log(
-      `[AgentService] getMessages for task ${taskId}: found ${messages.length} messages`,
-    );
+    dbg.agentMessage('getMessages for task %s: found %d messages', taskId, messages.length);
     return messages;
   }
 
@@ -722,9 +746,7 @@ class AgentService {
     }
 
     if (staleTasks.length > 0) {
-      console.log(
-        `[AgentService] Recovered ${staleTasks.length} stale task(s) on startup`,
-      );
+      dbg.agent('Recovered %d stale task(s) on startup', staleTasks.length);
     }
   }
 }

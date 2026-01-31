@@ -6,6 +6,7 @@ import { promisify } from 'util';
 
 import { BrowserWindow, ipcMain, dialog } from 'electron';
 
+
 const execAsync = promisify(exec);
 
 import {
@@ -40,6 +41,7 @@ import {
   UpdateTask,
   UpdateProvider,
 } from '../database/schema';
+import { dbg } from '../lib/debug';
 import { pathExists } from '../lib/fs';
 import { agentService } from '../services/agent-service';
 import { agentUsageService } from '../services/agent-usage-service';
@@ -75,20 +77,25 @@ import {
 } from '../services/worktree-service';
 
 export function registerIpcHandlers() {
+  dbg.ipc('Registering IPC handlers');
+
   // Projects
   ipcMain.handle('projects:findAll', () => ProjectRepository.findAll());
   ipcMain.handle('projects:findById', (_, id: string) =>
     ProjectRepository.findById(id),
   );
-  ipcMain.handle('projects:create', (_, data: NewProject) =>
-    ProjectRepository.create(data),
-  );
-  ipcMain.handle('projects:update', (_, id: string, data: UpdateProject) =>
-    ProjectRepository.update(id, data),
-  );
-  ipcMain.handle('projects:delete', (_, id: string) =>
-    ProjectRepository.delete(id),
-  );
+  ipcMain.handle('projects:create', (_, data: NewProject) => {
+    dbg.ipc('projects:create %o', { name: data.name, path: data.path });
+    return ProjectRepository.create(data);
+  });
+  ipcMain.handle('projects:update', (_, id: string, data: UpdateProject) => {
+    dbg.ipc('projects:update %s %o', id, data);
+    return ProjectRepository.update(id, data);
+  });
+  ipcMain.handle('projects:delete', (_, id: string) => {
+    dbg.ipc('projects:delete %s', id);
+    return ProjectRepository.delete(id);
+  });
   ipcMain.handle('projects:reorder', (_, orderedIds: string[]) =>
     ProjectRepository.reorder(orderedIds),
   );
@@ -126,9 +133,11 @@ export function registerIpcHandlers() {
       data: NewTask & { useWorktree: boolean; sourceBranch?: string | null },
     ) => {
       const { useWorktree, sourceBranch, ...taskData } = data;
+      dbg.ipc('tasks:createWithWorktree useWorktree=%s, sourceBranch=%s', useWorktree, sourceBranch);
 
       if (!useWorktree) {
         // No worktree requested, just create the task normally
+        dbg.ipc('Creating task without worktree');
         return TaskRepository.create(taskData);
       }
 
@@ -142,13 +151,16 @@ export function registerIpcHandlers() {
       // This allows the worktree directory to use the same name
       let taskName = taskData.name;
       if (!taskName) {
+        dbg.ipc('Generating task name from prompt');
         taskName = await generateTaskName(taskData.prompt);
+        dbg.ipc('Generated task name: %s', taskName);
         // taskName may still be null if generation fails - that's ok
       }
 
       // Create the worktree using the generated task name
       // Use provided sourceBranch, fall back to project defaultBranch, or undefined for current HEAD
       const effectiveSourceBranch = sourceBranch ?? project.defaultBranch;
+      dbg.ipc('Creating worktree from branch: %s', effectiveSourceBranch ?? 'HEAD');
       const { worktreePath, startCommitHash, branchName } =
         await createWorktree(
           project.path,
@@ -158,6 +170,8 @@ export function registerIpcHandlers() {
           taskName ?? undefined,
           effectiveSourceBranch ?? undefined,
         );
+
+      dbg.ipc('Worktree created: %s, branch: %s', worktreePath, branchName);
 
       // Create the task with worktree info and generated name
       return TaskRepository.create({
@@ -511,13 +525,12 @@ export function registerIpcHandlers() {
 
   // Dialog
   ipcMain.handle('dialog:openDirectory', async (event) => {
-    console.log('dialog:openDirectory called');
+    dbg.ipc('dialog:openDirectory called');
     const window = BrowserWindow.fromWebContents(event.sender);
-    console.log('window:', window);
     const result = await dialog.showOpenDialog(window!, {
       properties: ['openDirectory'],
     });
-    console.log('dialog result:', result);
+    dbg.ipc('dialog:openDirectory result: %o', result);
     return result.canceled ? null : result.filePaths[0];
   });
 
@@ -573,7 +586,7 @@ export function registerIpcHandlers() {
 
       return detectedProjects;
     } catch (error) {
-      console.error('Error reading ~/.claude.json (ignored):', error);
+      dbg.ipc('Error reading ~/.claude.json (ignored): %O', error);
       // If file doesn't exist or can't be parsed, return empty array
       return [];
     }
@@ -638,6 +651,7 @@ export function registerIpcHandlers() {
 
   // Agent
   ipcMain.handle(AGENT_CHANNELS.START, (event, taskId: string) => {
+    dbg.ipc('agent:start %s', taskId);
     const window = BrowserWindow.fromWebContents(event.sender);
     if (window) {
       agentService.setMainWindow(window);
@@ -646,6 +660,7 @@ export function registerIpcHandlers() {
   });
 
   ipcMain.handle(AGENT_CHANNELS.STOP, (_, taskId: string) => {
+    dbg.ipc('agent:stop %s', taskId);
     return agentService.stop(taskId);
   });
 
@@ -657,6 +672,7 @@ export function registerIpcHandlers() {
       requestId: string,
       response: PermissionResponse | QuestionResponse,
     ) => {
+      dbg.ipc('agent:respond task=%s, request=%s', taskId, requestId);
       return agentService.respond(taskId, requestId, response);
     },
   );
@@ -664,6 +680,7 @@ export function registerIpcHandlers() {
   ipcMain.handle(
     AGENT_CHANNELS.SEND_MESSAGE,
     (_, taskId: string, message: string) => {
+      dbg.ipc('agent:sendMessage %s (length: %d)', taskId, message.length);
       return agentService.sendMessage(taskId, message);
     },
   );
@@ -671,6 +688,7 @@ export function registerIpcHandlers() {
   ipcMain.handle(
     AGENT_CHANNELS.QUEUE_PROMPT,
     (_, taskId: string, prompt: string) => {
+      dbg.ipc('agent:queuePrompt %s', taskId);
       return agentService.queuePrompt(taskId, prompt);
     },
   );
@@ -678,6 +696,7 @@ export function registerIpcHandlers() {
   ipcMain.handle(
     AGENT_CHANNELS.CANCEL_QUEUED_PROMPT,
     (_, taskId: string, promptId: string) => {
+      dbg.ipc('agent:cancelQueuedPrompt task=%s, prompt=%s', taskId, promptId);
       return agentService.cancelQueuedPrompt(taskId, promptId);
     },
   );

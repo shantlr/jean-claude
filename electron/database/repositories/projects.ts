@@ -1,3 +1,4 @@
+import { dbg } from '../../lib/debug';
 import { db } from '../index';
 import { NewProject, UpdateProject } from '../schema';
 
@@ -13,6 +14,7 @@ export const ProjectRepository = {
       .executeTakeFirst(),
 
   create: async (data: NewProject) => {
+    dbg.db('projects.create name=%s, path=%s', data.name, data.path);
     // Get max sortOrder and add 1 for new project
     const result = await db
       .selectFrom('projects')
@@ -21,25 +23,32 @@ export const ProjectRepository = {
 
     const nextSortOrder = ((result?.maxOrder as number | null) ?? -1) + 1;
 
-    return db
+    const row = await db
       .insertInto('projects')
       .values({ ...data, sortOrder: data.sortOrder ?? nextSortOrder })
       .returningAll()
       .executeTakeFirstOrThrow();
+    dbg.db('projects.create created id=%s', row.id);
+    return row;
   },
 
-  update: (id: string, data: UpdateProject) =>
-    db
+  update: (id: string, data: UpdateProject) => {
+    dbg.db('projects.update id=%s %o', id, Object.keys(data));
+    return db
       .updateTable('projects')
       .set({ ...data, updatedAt: new Date().toISOString() })
       .where('id', '=', id)
       .returningAll()
-      .executeTakeFirstOrThrow(),
+      .executeTakeFirstOrThrow();
+  },
 
-  delete: (id: string) =>
-    db.deleteFrom('projects').where('id', '=', id).execute(),
+  delete: (id: string) => {
+    dbg.db('projects.delete id=%s', id);
+    return db.deleteFrom('projects').where('id', '=', id).execute();
+  },
 
   reorder: async (orderedIds: string[]) => {
+    dbg.db('projects.reorder %d projects', orderedIds.length);
     const now = new Date().toISOString();
 
     // Update each project's sortOrder based on position in array

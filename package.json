@@ -17,6 +17,7 @@
   "scripts": {
     "postinstall": "electron-rebuild",
     "dev": "electron-vite dev",
+    "dev:quiet": "DEBUG= electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "preview:mac": "pnpm package && open dist/mac/Jean-Claude.app",
@@ -39,6 +40,7 @@
     "@tanstack/react-router": "^1.151.3",
     "better-sqlite3": "^12.6.2",
     "clsx": "^2.1.1",
+    "debug": "^4.4.3",
     "diff": "^8.0.3",
     "fix-path": "^5.0.0",
     "kysely": "^0.28.10",
@@ -73,6 +75,7 @@
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/router-plugin": "^1.151.4",
     "@types/better-sqlite3": "^7.6.13",
+    "@types/debug": "^4.1.12",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@typescript-eslint/eslint-plugin": "^8.53.0",

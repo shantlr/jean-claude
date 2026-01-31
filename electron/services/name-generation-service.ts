@@ -1,5 +1,7 @@
 import { query } from '@anthropic-ai/claude-agent-sdk';
 
+import { dbg } from '../lib/debug';
+
 const TASK_NAME_SCHEMA = {
   type: 'object',
   properties: {
@@ -43,10 +45,7 @@ export async function generateTaskName(prompt: string): Promise<string | null> {
 
     return null;
   } catch (error) {
-    console.error(
-      '[NameGenerationService] Failed to generate task name:',
-      error,
-    );
+    dbg.agent('Failed to generate task name: %O', error);
     return null;
   }
 }

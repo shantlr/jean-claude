@@ -1,6 +1,7 @@
 import { query } from '@anthropic-ai/claude-agent-sdk';
 
 import { TaskRepository } from '../database/repositories';
+import { dbg } from '../lib/debug';
 
 type TaskId = string;
 type ActiveTask = {
@@ -38,12 +39,12 @@ export const TASK_SERVICE = {
         if (activeTask.abortController.signal.aborted) {
           break;
         }
-        console.log(`[TaskService] Task ${taskId} message:`, message);
+        dbg.agent('Task %s message: %O', taskId, message);
       }
 
       // this.emit(AGENT_CHANNELS.MESSAGE, { taskId, message });
     } catch (error) {
-      console.error(`[TaskService] Task ${taskId} error:`, error);
+      dbg.agent('Task %s error: %O', taskId, error);
       await TaskRepository.update(taskId, { status: 'errored' });
     }
     await TaskRepository.update(taskId, { status: 'completed' });

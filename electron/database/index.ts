@@ -4,6 +4,8 @@ import Database from 'better-sqlite3';
 import { app } from 'electron';
 import { Kysely, Migrator, SqliteDialect } from 'kysely';
 
+import { dbg } from '../lib/debug';
+
 import { migrationProvider } from './migrator';
 import { Database as DatabaseSchema } from './schema';
 
@@ -25,14 +27,14 @@ export async function migrateDatabase() {
 
   results?.forEach((result) => {
     if (result.status === 'Success') {
-      console.log(`Migration "${result.migrationName}" executed successfully`);
+      dbg.dbMigration('Migration "%s" executed successfully', result.migrationName);
     } else if (result.status === 'Error') {
-      console.error(`Migration "${result.migrationName}" failed`);
+      dbg.dbMigration('Migration "%s" failed', result.migrationName);
     }
   });
 
   if (error) {
-    console.error('Migration failed:', error);
+    dbg.dbMigration('Migration failed: %O', error);
     throw error;
   }
 }
