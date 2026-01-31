@@ -107,7 +107,9 @@ export function RepoLink({ project }: { project: Project }) {
                 Repository
               </p>
               <p className="text-sm text-neutral-400">
-                {project.repoProjectName} / {project.repoName}
+                {azureProviders.find((p) => p.id === project.repoProviderId)
+                  ?.label ?? 'Unknown'}{' '}
+                / {project.repoProjectName} / {project.repoName}
               </p>
             </div>
           </div>

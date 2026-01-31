@@ -86,7 +86,10 @@ export function WorkItemsLink({ project }: { project: Project }) {
                 Work Items
               </p>
               <p className="text-sm text-neutral-400">
-                {project.workItemProjectName}
+                {azureProviders.find(
+                  (p) => p.id === project.workItemProviderId,
+                )?.label ?? 'Unknown'}{' '}
+                / {project.workItemProjectName}
               </p>
             </div>
           </div>
