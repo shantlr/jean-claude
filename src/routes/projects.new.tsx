@@ -173,9 +173,9 @@ function AddProjectPage() {
 
   // Source selection state
   return (
-    <div className="flex h-full">
+    <div className="flex h-full p-2">
       {/* Main content */}
-      <div className="flex flex-1 items-center justify-center p-6">
+      <div className="flex flex-1 items-center justify-center gap-4 p-6">
         <div className="w-full max-w-md">
           <h1 className="mb-6 text-center text-2xl font-bold">Add Project</h1>
           <div className="grid gap-4">

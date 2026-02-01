@@ -367,6 +367,7 @@ Components are organized by location:
 - Components outside `src/common/ui/`: prefix with `ui-` (e.g., `ui-message-stream`)
 - Components inside `src/common/ui/`: no prefix (e.g., `status-indicator`)
 - Hooks: prefix with `use-` (e.g., `use-projects.ts`)
+- Utility modules: prefix with `utils-` (e.g., `utils-search-highlight.tsx`)
 
 #### Folder Structure
 

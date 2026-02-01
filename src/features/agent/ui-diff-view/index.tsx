@@ -5,9 +5,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
 
 import { DiffMinimap, type ViewportInfo } from './diff-minimap';
+import { DiffSearchBar } from './diff-search-bar';
 import { computeDiff, type DiffLine } from './diff-utils';
 import { getLanguageFromPath } from './language-utils';
 import { SideBySideDiffTable } from './side-by-side-table';
+import { useDiffSearch, type SearchMatch } from './use-diff-search';
+import {
+  renderTokensWithHighlights,
+  renderWithHighlights,
+} from './utils-search-highlight';
 
 interface DiffState {
   lines: DiffLine[];
@@ -115,6 +121,23 @@ export function DiffView({
       .finally(() => setIsLoading(false));
   }, [oldString, newString, language]);
 
+  // Search functionality
+  const {
+    isSearchOpen,
+    searchQuery,
+    setSearchQuery,
+    matches,
+    currentMatchIndex,
+    totalMatches,
+    searchBarRef,
+    closeSearch,
+    goToNextMatch,
+    goToPreviousMatch,
+  } = useDiffSearch({
+    lines: state?.lines ?? [],
+    scrollContainerRef,
+  });
+
   if (isLoading || !state) {
     return (
       <div className="flex items-center justify-center rounded bg-black/30 p-2">
@@ -125,8 +148,20 @@ export function DiffView({
 
   return (
     <div className="relative h-full overflow-hidden">
-      {/* Toggle mode button */}
-      <div className="absolute top-2 right-4 z-10">
+      {/* Search bar and toggle mode button */}
+      <div className="absolute top-2 right-4 z-10 flex items-center gap-2">
+        {isSearchOpen && (
+          <DiffSearchBar
+            ref={searchBarRef}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            currentMatch={totalMatches > 0 ? currentMatchIndex + 1 : 0}
+            totalMatches={totalMatches}
+            onNext={goToNextMatch}
+            onPrevious={goToPreviousMatch}
+            onClose={closeSearch}
+          />
+        )}
         <button
           onClick={() =>
             setViewMode(viewMode === 'inline' ? 'side-by-side' : 'inline')
@@ -165,6 +200,8 @@ export function DiffView({
             inlineComments={inlineComments}
             commentFormLineRange={commentFormLineRange}
             commentForm={commentForm}
+            searchMatches={matches}
+            currentMatchIndex={currentMatchIndex}
           />
         ) : (
           <SideBySideDiffTable
@@ -172,6 +209,8 @@ export function DiffView({
             newString={newString}
             oldTokens={state.oldTokens}
             newTokens={state.newTokens}
+            searchMatches={matches}
+            currentMatchIndex={currentMatchIndex}
           />
         )}
       </div>
@@ -188,6 +227,8 @@ function InlineDiffTable({
   inlineComments,
   commentFormLineRange,
   commentForm,
+  searchMatches,
+  currentMatchIndex,
 }: {
   lines: DiffLine[];
   oldTokens: ThemedToken[][];
@@ -196,6 +237,8 @@ function InlineDiffTable({
   inlineComments?: InlineComment[];
   commentFormLineRange?: LineRange | null;
   commentForm?: ReactNode;
+  searchMatches: SearchMatch[];
+  currentMatchIndex: number;
 }) {
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [hoveredLine, setHoveredLine] = useState<number | null>(null);
@@ -284,6 +327,14 @@ function InlineDiffTable({
             ? isLineInCommentRange(lineNumber)
             : false;
 
+          // Find search matches for this line
+          const lineMatches = searchMatches.filter((m) => m.lineIndex === i);
+          const isCurrentMatchLine =
+            searchMatches[currentMatchIndex]?.lineIndex === i;
+          const currentMatchInLine = isCurrentMatchLine
+            ? searchMatches[currentMatchIndex]
+            : null;
+
           return (
             <DiffLineRow
               key={i}
@@ -299,6 +350,8 @@ function InlineDiffTable({
               onMouseUp={() => lineNumber && handleLineMouseUp(lineNumber)}
               inlineComments={lineComments}
               commentForm={showCommentForm ? commentForm : undefined}
+              searchMatches={lineMatches}
+              currentMatch={currentMatchInLine}
             />
           );
         })}
@@ -320,6 +373,8 @@ function DiffLineRow({
   onMouseUp,
   inlineComments,
   commentForm,
+  searchMatches,
+  currentMatch,
 }: {
   line: DiffLine;
   oldTokens: ThemedToken[][];
@@ -333,6 +388,8 @@ function DiffLineRow({
   onMouseUp: () => void;
   inlineComments?: InlineComment[];
   commentForm?: ReactNode;
+  searchMatches: SearchMatch[];
+  currentMatch: SearchMatch | null;
 }) {
   // Get tokens for this line based on type
   // For deletions, use old tokens; for additions, use new tokens; for context, prefer new
@@ -345,6 +402,25 @@ function DiffLineRow({
     line.type === 'deletion'
       ? oldTokens[lineIndex] || []
       : newTokens[lineIndex] || [];
+
+  // Render content with search highlights
+  const renderedContent =
+    tokens.length > 0 ? (
+      renderTokensWithHighlights({
+        tokens,
+        content: line.content,
+        searchMatches,
+        currentMatch,
+      })
+    ) : searchMatches.length > 0 ? (
+      renderWithHighlights({
+        text: line.content,
+        searchMatches,
+        currentMatch,
+      })
+    ) : (
+      <span className="text-neutral-300">{line.content}</span>
+    );
 
   return (
     <>
@@ -400,21 +476,13 @@ function DiffLineRow({
               ? '-'
               : ' '}
         </td>
-        {/* Content with syntax highlighting */}
+        {/* Content with syntax highlighting and search highlights */}
         <td
           className={clsx('pr-2 whitespace-pre-wrap', {
             'select-none': canComment,
           })}
         >
-          {tokens.length > 0 ? (
-            tokens.map((token, i) => (
-              <span key={i} style={{ color: token.color }}>
-                {token.content}
-              </span>
-            ))
-          ) : (
-            <span className="text-neutral-300">{line.content}</span>
-          )}
+          {renderedContent}
         </td>
       </tr>
 
