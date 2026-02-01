@@ -18,6 +18,7 @@
     "postinstall": "electron-rebuild",
     "dev": "electron-vite dev",
     "dev:quiet": "DEBUG= electron-vite dev",
+    "dev:tmp": "./scripts/dev-tmp.sh",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "preview:mac": "pnpm package && open dist/mac/Jean-Claude.app",
