@@ -125,12 +125,12 @@ export function MessageStream({
     isNearBottomRef.current = true;
   }, []);
 
-  // Auto-scroll to bottom when new messages arrive, but only if user is near bottom
+  // Auto-scroll to bottom when new messages arrive or prompts are queued, but only if user is near bottom
   useEffect(() => {
     if (isNearBottomRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: 'instant' });
     }
-  }, [displayMessages.length]);
+  }, [displayMessages.length, queuedPrompts.length]);
 
   console.log({
     messages,
