@@ -81,7 +81,7 @@ export function DiffMinimap({
       {markers.map((marker, i) => (
         <div
           key={i}
-          className={marker.type === 'addition' ? 'bg-green-500' : 'bg-red-500'}
+          className={marker.type === 'addition' ? 'bg-green-800' : 'bg-red-800'}
           style={{
             position: 'absolute',
             top: `${marker.startPercent}%`,
@@ -96,7 +96,7 @@ export function DiffMinimap({
       {/* Viewport indicator */}
       {viewportIndicator && (
         <div
-          className="pointer-events-none absolute right-0 left-0 border border-neutral-400/50 bg-neutral-400/20"
+          className="pointer-events-none absolute right-0 left-0 rounded border border-neutral-300/80 bg-neutral-400/20"
           style={{
             top: `${viewportIndicator.topPercent}%`,
             height: `${viewportIndicator.heightPercent}%`,

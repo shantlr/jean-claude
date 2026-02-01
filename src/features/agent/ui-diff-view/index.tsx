@@ -149,7 +149,12 @@ export function DiffView({
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="h-full flex-1 overflow-auto bg-black/30 pt-2 pb-2 font-mono text-xs"
+        className={clsx(
+          'h-full flex-1 overflow-auto bg-black/30 pt-2 pb-2 font-mono text-xs',
+          {
+            'no-scrollbar': !!withMinimap,
+          },
+        )}
       >
         {viewMode === 'inline' ? (
           <InlineDiffTable
