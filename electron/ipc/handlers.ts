@@ -1059,7 +1059,11 @@ export function registerIpcHandlers() {
   ipcMain.handle(
     'unifiedMcp:getServers',
     async (_, projectId: string, projectPath: string) => {
-      dbg.ipc('unifiedMcp:getServers projectId=%s, projectPath=%s', projectId, projectPath);
+      dbg.ipc(
+        'unifiedMcp:getServers projectId=%s, projectPath=%s',
+        projectId,
+        projectPath,
+      );
       const result = await getUnifiedMcpServers(projectId, projectPath);
       dbg.ipc('unifiedMcp:getServers result count=%d', result.length);
       return result;

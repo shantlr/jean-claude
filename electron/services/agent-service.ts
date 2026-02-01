@@ -463,7 +463,19 @@ class AgentService {
     // Check if tool is in session-allowed list
     const task = await TaskRepository.findById(taskId);
     const allowedTools = task?.sessionAllowedTools ?? [];
-    if (isToolAllowedByPermissions(toolName, input, allowedTools)) {
+
+    // Determine working directory: worktree path if present, otherwise project path
+    let workingDir: string | undefined;
+    if (task?.worktreePath) {
+      workingDir = task.worktreePath;
+    } else if (task?.projectId) {
+      const project = await ProjectRepository.findById(task.projectId);
+      workingDir = project?.path;
+    }
+
+    if (
+      isToolAllowedByPermissions(toolName, input, allowedTools, { workingDir })
+    ) {
       dbg.agentPermission(
         'Tool %s is session-allowed for task %s',
         toolName,

@@ -94,21 +94,105 @@ export function buildPermissionString(
 }
 
 /**
+ * Checks if a path is within an allowed directory (normalized, no symlink resolution).
+ */
+function isPathWithinDirectory(
+  targetPath: string,
+  allowedDir: string,
+): boolean {
+  const normalizedTarget = path.normalize(targetPath);
+  const normalizedAllowed = path.normalize(allowedDir);
+  // Ensure the path starts with the allowed directory followed by a separator or is exact match
+  return (
+    normalizedTarget === normalizedAllowed ||
+    normalizedTarget.startsWith(normalizedAllowed + path.sep)
+  );
+}
+
+/**
+ * Checks if a Bash command is a "mkdir -p" with all paths within the allowed directory.
+ * Returns true only if the command is exactly "mkdir -p <paths>" where all paths are subpaths
+ * of the allowed directory.
+ */
+function isMkdirInAllowedPath(command: string, allowedDir: string): boolean {
+  // Match "mkdir -p" followed by one or more paths
+  // We need to be strict: only "mkdir -p", no other flags
+  const mkdirMatch = command.match(/^mkdir\s+-p\s+(.+)$/);
+  if (!mkdirMatch) return false;
+
+  const pathsPart = mkdirMatch[1];
+
+  // Parse the paths, handling quoted strings
+  const paths: string[] = [];
+  let current = '';
+  let inQuote: string | null = null;
+
+  for (let i = 0; i < pathsPart.length; i++) {
+    const char = pathsPart[i];
+
+    if (inQuote) {
+      if (char === inQuote) {
+        inQuote = null;
+      } else {
+        current += char;
+      }
+    } else if (char === '"' || char === "'") {
+      inQuote = char;
+    } else if (char === ' ' || char === '\t') {
+      if (current) {
+        paths.push(current);
+        current = '';
+      }
+    } else {
+      current += char;
+    }
+  }
+  if (current) {
+    paths.push(current);
+  }
+
+  // All paths must be absolute and within the allowed directory
+  return (
+    paths.length > 0 &&
+    paths.every(
+      (p) => path.isAbsolute(p) && isPathWithinDirectory(p, allowedDir),
+    )
+  );
+}
+
+/**
  * Checks if a tool use is allowed by a list of permission strings.
  * For Bash: requires exact match like "Bash(npm test)". Bare "Bash" never matches.
  * For others: requires tool name match like "Edit".
+ *
+ * When workingDir is provided and Write permission is granted, also auto-allows
+ * "mkdir -p <paths>" commands where all paths are within workingDir.
  */
 export function isToolAllowedByPermissions(
   toolName: string,
   input: Record<string, unknown>,
   permissions: string[],
+  options?: { workingDir?: string },
 ): boolean {
   if (toolName === 'Bash') {
     const command = String(input.command || '');
     const permStr = `Bash(${command})`;
     // Never allow bare "Bash" or "Bash()" — a specific command is required
     if (isBareBash(permStr)) return false;
-    return permissions.includes(permStr);
+
+    // Check exact permission match first
+    if (permissions.includes(permStr)) return true;
+
+    // If Write is allowed and workingDir is provided, auto-allow mkdir -p within workingDir
+    if (
+      options?.workingDir &&
+      permissions.includes('Write') &&
+      isMkdirInAllowedPath(command, options.workingDir)
+    ) {
+      return true;
+    }
+
+    return false;
   }
   // Never allow bare "Bash" in the permissions list for non-Bash tools either
   return !isBareBash(toolName) && permissions.includes(toolName);
