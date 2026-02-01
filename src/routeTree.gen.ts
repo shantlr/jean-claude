@@ -14,6 +14,7 @@ import { Route as AllTasksRouteImport } from './routes/all-tasks'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as SettingsTokensRouteImport } from './routes/settings/tokens'
+import { Route as SettingsMcpServersRouteImport } from './routes/settings/mcp-servers'
 import { Route as SettingsGeneralRouteImport } from './routes/settings/general'
 import { Route as SettingsDebugRouteImport } from './routes/settings/debug'
 import { Route as SettingsAzureDevopsRouteImport } from './routes/settings/azure-devops'
@@ -48,6 +49,11 @@ const SettingsIndexRoute = SettingsIndexRouteImport.update({
 const SettingsTokensRoute = SettingsTokensRouteImport.update({
   id: '/tokens',
   path: '/tokens',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsMcpServersRoute = SettingsMcpServersRouteImport.update({
+  id: '/mcp-servers',
+  path: '/mcp-servers',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsGeneralRoute = SettingsGeneralRouteImport.update({
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/settings/azure-devops': typeof SettingsAzureDevopsRoute
   '/settings/debug': typeof SettingsDebugRoute
   '/settings/general': typeof SettingsGeneralRoute
+  '/settings/mcp-servers': typeof SettingsMcpServersRoute
   '/settings/tokens': typeof SettingsTokensRoute
   '/settings/': typeof SettingsIndexRoute
   '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/settings/azure-devops': typeof SettingsAzureDevopsRoute
   '/settings/debug': typeof SettingsDebugRoute
   '/settings/general': typeof SettingsGeneralRoute
+  '/settings/mcp-servers': typeof SettingsMcpServersRoute
   '/settings/tokens': typeof SettingsTokensRoute
   '/settings': typeof SettingsIndexRoute
   '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/settings/azure-devops': typeof SettingsAzureDevopsRoute
   '/settings/debug': typeof SettingsDebugRoute
   '/settings/general': typeof SettingsGeneralRoute
+  '/settings/mcp-servers': typeof SettingsMcpServersRoute
   '/settings/tokens': typeof SettingsTokensRoute
   '/settings/': typeof SettingsIndexRoute
   '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | '/settings/azure-devops'
     | '/settings/debug'
     | '/settings/general'
+    | '/settings/mcp-servers'
     | '/settings/tokens'
     | '/settings/'
     | '/projects/$projectId/details'
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/settings/azure-devops'
     | '/settings/debug'
     | '/settings/general'
+    | '/settings/mcp-servers'
     | '/settings/tokens'
     | '/settings'
     | '/projects/$projectId/details'
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/settings/azure-devops'
     | '/settings/debug'
     | '/settings/general'
+    | '/settings/mcp-servers'
     | '/settings/tokens'
     | '/settings/'
     | '/projects/$projectId/details'
@@ -250,6 +262,13 @@ declare module '@tanstack/react-router' {
       path: '/tokens'
       fullPath: '/settings/tokens'
       preLoaderRoute: typeof SettingsTokensRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/mcp-servers': {
+      id: '/settings/mcp-servers'
+      path: '/mcp-servers'
+      fullPath: '/settings/mcp-servers'
+      preLoaderRoute: typeof SettingsMcpServersRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/general': {
@@ -329,6 +348,7 @@ interface SettingsRouteChildren {
   SettingsAzureDevopsRoute: typeof SettingsAzureDevopsRoute
   SettingsDebugRoute: typeof SettingsDebugRoute
   SettingsGeneralRoute: typeof SettingsGeneralRoute
+  SettingsMcpServersRoute: typeof SettingsMcpServersRoute
   SettingsTokensRoute: typeof SettingsTokensRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
@@ -337,6 +357,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAzureDevopsRoute: SettingsAzureDevopsRoute,
   SettingsDebugRoute: SettingsDebugRoute,
   SettingsGeneralRoute: SettingsGeneralRoute,
+  SettingsMcpServersRoute: SettingsMcpServersRoute,
   SettingsTokensRoute: SettingsTokensRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }

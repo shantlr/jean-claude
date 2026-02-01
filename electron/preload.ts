@@ -341,5 +341,52 @@ contextBridge.exposeInMainWorld('api', {
     respond: (response: GlobalPromptResponse) =>
       ipcRenderer.invoke('globalPrompt:respond', response),
   },
+  mcpTemplates: {
+    findAll: () => ipcRenderer.invoke('mcpTemplates:findAll'),
+    findById: (id: string) => ipcRenderer.invoke('mcpTemplates:findById', id),
+    create: (data: unknown) => ipcRenderer.invoke('mcpTemplates:create', data),
+    update: (id: string, data: unknown) =>
+      ipcRenderer.invoke('mcpTemplates:update', id, data),
+    delete: (id: string) => ipcRenderer.invoke('mcpTemplates:delete', id),
+    getPresets: () => ipcRenderer.invoke('mcpTemplates:getPresets'),
+    getEnabledForProject: (projectId: string) =>
+      ipcRenderer.invoke('mcpTemplates:getEnabledForProject', projectId),
+  },
+  projectMcpOverrides: {
+    findByProjectId: (projectId: string) =>
+      ipcRenderer.invoke('projectMcpOverrides:findByProjectId', projectId),
+    upsert: (data: unknown) =>
+      ipcRenderer.invoke('projectMcpOverrides:upsert', data),
+    delete: (projectId: string, mcpTemplateId: string) =>
+      ipcRenderer.invoke(
+        'projectMcpOverrides:delete',
+        projectId,
+        mcpTemplateId,
+      ),
+  },
+  unifiedMcp: {
+    getServers: (projectId: string, projectPath: string) =>
+      ipcRenderer.invoke('unifiedMcp:getServers', projectId, projectPath),
+    activate: (projectPath: string, name: string, command: string) =>
+      ipcRenderer.invoke('unifiedMcp:activate', projectPath, name, command),
+    deactivate: (projectPath: string, name: string) =>
+      ipcRenderer.invoke('unifiedMcp:deactivate', projectPath, name),
+    substituteVariables: (
+      commandTemplate: string,
+      userVariables: Record<string, string>,
+      context: {
+        projectPath: string;
+        projectName: string;
+        branchName: string;
+        mainRepoPath: string;
+      },
+    ) =>
+      ipcRenderer.invoke(
+        'unifiedMcp:substituteVariables',
+        commandTemplate,
+        userVariables,
+        context,
+      ),
+  },
 });
 console.log('Preload script loaded');

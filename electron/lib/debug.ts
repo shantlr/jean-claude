@@ -47,6 +47,7 @@ export const dbg = {
   encryption: createDebug(`${BASE}:encryption`),
   runCommand: createDebug(`${BASE}:run-command`),
   skill: createDebug(`${BASE}:skill`),
+  mcp: createDebug(`${BASE}:mcp`),
 };
 
 // Re-export for custom namespace creation

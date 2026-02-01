@@ -21,6 +21,15 @@ import type {
   GlobalPromptResponse,
 } from '../../shared/global-prompt-types';
 import type {
+  McpServerTemplate,
+  McpPreset,
+  NewMcpServerTemplate,
+  UpdateMcpServerTemplate,
+  ProjectMcpOverride,
+  NewProjectMcpOverride,
+  UnifiedMcpServer,
+} from '../../shared/mcp-types';
+import type {
   ProjectCommand,
   NewProjectCommand,
   UpdateProjectCommand,
@@ -456,6 +465,45 @@ export interface Api {
     onShow: (callback: (prompt: GlobalPrompt) => void) => () => void;
     respond: (response: GlobalPromptResponse) => Promise<void>;
   };
+  mcpTemplates: {
+    findAll: () => Promise<McpServerTemplate[]>;
+    findById: (id: string) => Promise<McpServerTemplate | undefined>;
+    create: (data: NewMcpServerTemplate) => Promise<McpServerTemplate>;
+    update: (
+      id: string,
+      data: UpdateMcpServerTemplate,
+    ) => Promise<McpServerTemplate>;
+    delete: (id: string) => Promise<void>;
+    getPresets: () => Promise<McpPreset[]>;
+    getEnabledForProject: (projectId: string) => Promise<McpServerTemplate[]>;
+  };
+  projectMcpOverrides: {
+    findByProjectId: (projectId: string) => Promise<ProjectMcpOverride[]>;
+    upsert: (data: NewProjectMcpOverride) => Promise<ProjectMcpOverride>;
+    delete: (projectId: string, mcpTemplateId: string) => Promise<void>;
+  };
+  unifiedMcp: {
+    getServers: (
+      projectId: string,
+      projectPath: string,
+    ) => Promise<UnifiedMcpServer[]>;
+    activate: (
+      projectPath: string,
+      name: string,
+      command: string,
+    ) => Promise<void>;
+    deactivate: (projectPath: string, name: string) => Promise<void>;
+    substituteVariables: (
+      commandTemplate: string,
+      userVariables: Record<string, string>,
+      context: {
+        projectPath: string;
+        projectName: string;
+        branchName: string;
+        mainRepoPath: string;
+      },
+    ) => Promise<string>;
+  };
 }
 
 declare global {
@@ -695,5 +743,31 @@ export const api: Api = hasWindowApi
       globalPrompt: {
         onShow: () => () => {},
         respond: async () => {},
+      },
+      mcpTemplates: {
+        findAll: async () => [],
+        findById: async () => undefined,
+        create: async () => {
+          throw new Error('API not available');
+        },
+        update: async () => {
+          throw new Error('API not available');
+        },
+        delete: async () => {},
+        getPresets: async () => [],
+        getEnabledForProject: async () => [],
+      },
+      projectMcpOverrides: {
+        findByProjectId: async () => [],
+        upsert: async () => {
+          throw new Error('API not available');
+        },
+        delete: async () => {},
+      },
+      unifiedMcp: {
+        getServers: async () => [],
+        activate: async () => {},
+        deactivate: async () => {},
+        substituteVariables: async (commandTemplate) => commandTemplate,
       },
     } as Api);

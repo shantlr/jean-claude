@@ -15,6 +15,11 @@ import {
 } from '../../shared/agent-types';
 import type { GlobalPromptResponse } from '../../shared/global-prompt-types';
 import type {
+  NewMcpServerTemplate,
+  UpdateMcpServerTemplate,
+  NewProjectMcpOverride,
+} from '../../shared/mcp-types';
+import type {
   NewProjectCommand,
   UpdateProjectCommand,
 } from '../../shared/run-command-types';
@@ -34,7 +39,9 @@ import {
   SettingsRepository,
   DebugRepository,
 } from '../database/repositories';
+import { McpTemplateRepository } from '../database/repositories/mcp-templates';
 import { ProjectCommandRepository } from '../database/repositories/project-commands';
+import { ProjectMcpOverrideRepository } from '../database/repositories/project-mcp-overrides';
 import {
   NewProject,
   NewTask,
@@ -66,6 +73,14 @@ import {
   type CloneRepositoryParams,
 } from '../services/azure-devops-service';
 import { handlePromptResponse } from '../services/global-prompt-service';
+import {
+  MCP_PRESETS,
+  getEnabledTemplatesForProject,
+  getUnifiedMcpServers,
+  activateMcpServer,
+  deactivateMcpServer,
+  substituteVariables,
+} from '../services/mcp-template-service';
 import { generateTaskName } from '../services/name-generation-service';
 import {
   addAllowPermission,
@@ -987,6 +1002,104 @@ export function registerIpcHandlers() {
   // Global Prompt
   ipcMain.handle('globalPrompt:respond', (_, response: GlobalPromptResponse) =>
     handlePromptResponse(response),
+  );
+
+  // MCP Templates
+  ipcMain.handle('mcpTemplates:findAll', () => McpTemplateRepository.findAll());
+  ipcMain.handle('mcpTemplates:findById', (_, id: string) =>
+    McpTemplateRepository.findById(id),
+  );
+  ipcMain.handle('mcpTemplates:create', (_, data: NewMcpServerTemplate) =>
+    McpTemplateRepository.create(data),
+  );
+  ipcMain.handle(
+    'mcpTemplates:update',
+    (_, id: string, data: UpdateMcpServerTemplate) =>
+      McpTemplateRepository.update(id, data),
+  );
+  ipcMain.handle('mcpTemplates:delete', (_, id: string) =>
+    McpTemplateRepository.delete(id),
+  );
+  ipcMain.handle('mcpTemplates:getPresets', () => MCP_PRESETS);
+  ipcMain.handle('mcpTemplates:getEnabledForProject', (_, projectId: string) =>
+    getEnabledTemplatesForProject(projectId),
+  );
+
+  // Project MCP Overrides
+  ipcMain.handle(
+    'projectMcpOverrides:findByProjectId',
+    (_, projectId: string) => {
+      dbg.ipc('projectMcpOverrides:findByProjectId %s', projectId);
+      return ProjectMcpOverrideRepository.findByProjectId(projectId);
+    },
+  );
+  ipcMain.handle(
+    'projectMcpOverrides:upsert',
+    async (_, data: NewProjectMcpOverride) => {
+      dbg.ipc('projectMcpOverrides:upsert %o', data);
+      const result = await ProjectMcpOverrideRepository.upsert(data);
+      dbg.ipc('projectMcpOverrides:upsert result %o', result);
+      return result;
+    },
+  );
+  ipcMain.handle(
+    'projectMcpOverrides:delete',
+    async (_, projectId: string, mcpTemplateId: string) => {
+      dbg.ipc(
+        'projectMcpOverrides:delete projectId=%s, mcpTemplateId=%s',
+        projectId,
+        mcpTemplateId,
+      );
+      await ProjectMcpOverrideRepository.delete(projectId, mcpTemplateId);
+      dbg.ipc('projectMcpOverrides:delete completed');
+    },
+  );
+
+  // Unified MCP servers
+  ipcMain.handle(
+    'unifiedMcp:getServers',
+    async (_, projectId: string, projectPath: string) => {
+      dbg.ipc('unifiedMcp:getServers projectId=%s, projectPath=%s', projectId, projectPath);
+      const result = await getUnifiedMcpServers(projectId, projectPath);
+      dbg.ipc('unifiedMcp:getServers result count=%d', result.length);
+      return result;
+    },
+  );
+
+  ipcMain.handle(
+    'unifiedMcp:activate',
+    async (_, projectPath: string, name: string, command: string) => {
+      dbg.ipc('unifiedMcp:activate path=%s, name=%s', projectPath, name);
+      await activateMcpServer(projectPath, name, command);
+      dbg.ipc('unifiedMcp:activate completed');
+    },
+  );
+
+  ipcMain.handle(
+    'unifiedMcp:deactivate',
+    async (_, projectPath: string, name: string) => {
+      dbg.ipc('unifiedMcp:deactivate path=%s, name=%s', projectPath, name);
+      await deactivateMcpServer(projectPath, name);
+      dbg.ipc('unifiedMcp:deactivate completed');
+    },
+  );
+
+  ipcMain.handle(
+    'unifiedMcp:substituteVariables',
+    async (
+      _,
+      commandTemplate: string,
+      userVariables: Record<string, string>,
+      context: {
+        projectPath: string;
+        projectName: string;
+        branchName: string;
+        mainRepoPath: string;
+      },
+    ) => {
+      dbg.ipc('unifiedMcp:substituteVariables template=%s', commandTemplate);
+      return substituteVariables(commandTemplate, userVariables, context);
+    },
   );
 }
 

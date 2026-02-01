@@ -10,6 +10,7 @@ import { ProjectRepository } from '../database/repositories/projects';
 import { dbg } from '../lib/debug';
 import { pathExists } from '../lib/fs';
 
+import { installMcpForWorktree } from './mcp-template-service';
 import { buildWorktreeSettings } from './permission-settings-service';
 
 const execAsync = promisify(exec);
@@ -506,6 +507,21 @@ export async function createWorktree(
   } catch (error) {
     dbg.worktree('Failed to build Claude settings for worktree: %O', error);
   }
+
+  // Install MCP servers for this worktree
+  try {
+    await installMcpForWorktree({
+      worktreePath,
+      projectId,
+      projectName,
+      branchName,
+      mainRepoPath: projectPath,
+    });
+  } catch (error) {
+    dbg.worktree('Failed to install MCP servers for worktree: %O', error);
+    // Don't throw — MCP setup failure shouldn't block worktree creation
+  }
+
   // Get the commit hash of the worktree HEAD (which is the source branch's HEAD or current HEAD)
   const startCommitHash = await getCurrentCommitHash(worktreePath);
   dbg.worktree('Worktree ready, startCommitHash: %s', startCommitHash);

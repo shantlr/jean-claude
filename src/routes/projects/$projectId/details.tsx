@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { ProjectMcpSettings } from '@/features/project/ui-project-mcp-settings';
 import { RepoLink } from '@/features/project/ui-repo-link';
 import { RunCommandsConfig } from '@/features/project/ui-run-commands-config';
 import { WorkItemsLink } from '@/features/project/ui-work-items-link';
@@ -220,6 +221,11 @@ function ProjectDetails() {
 
           {/* Run Commands */}
           <RunCommandsConfig projectId={projectId} projectPath={project.path} />
+
+          {/* MCP Server Templates */}
+          <div className="border-t border-neutral-700 pt-6">
+            <ProjectMcpSettings projectId={projectId} />
+          </div>
 
           {/* Danger zone */}
           <div className="border-t border-neutral-700 pt-6">

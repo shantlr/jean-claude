@@ -30,6 +30,8 @@ export interface Database {
   agent_messages: AgentMessageTable;
   settings: SettingsTable;
   project_commands: ProjectCommandTable;
+  mcp_templates: McpTemplateTable;
+  project_mcp_overrides: ProjectMcpOverrideTable;
 }
 
 export interface TokenTable {
@@ -152,3 +154,27 @@ export interface ProjectCommandTable {
 export type ProjectCommandRow = Selectable<ProjectCommandTable>;
 export type NewProjectCommandRow = Insertable<ProjectCommandTable>;
 export type UpdateProjectCommandRow = Updateable<ProjectCommandTable>;
+
+export interface McpTemplateTable {
+  id: Generated<string>;
+  name: string;
+  commandTemplate: string;
+  variables: string; // JSON
+  installOnCreateWorktree: number; // boolean as 0/1
+  presetId: string | null;
+  createdAt: Generated<string>;
+  updatedAt: string;
+}
+
+export interface ProjectMcpOverrideTable {
+  projectId: string;
+  mcpTemplateId: string;
+  enabled: number; // boolean as 0/1
+}
+
+export type McpTemplateRow = Selectable<McpTemplateTable>;
+export type NewMcpTemplateRow = Insertable<McpTemplateTable>;
+export type UpdateMcpTemplateRow = Updateable<McpTemplateTable>;
+
+export type ProjectMcpOverrideRow = Selectable<ProjectMcpOverrideTable>;
+export type NewProjectMcpOverrideRow = Insertable<ProjectMcpOverrideTable>;

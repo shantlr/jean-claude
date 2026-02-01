@@ -16,6 +16,7 @@ function SettingsLayout() {
 
   const tabs = [
     { to: '/settings/general', label: 'General' },
+    { to: '/settings/mcp-servers', label: 'MCP Servers' },
     { to: '/settings/tokens', label: 'Tokens' },
     { to: '/settings/azure-devops', label: 'Azure DevOps' },
     { to: '/settings/debug', label: 'Debug' },
