@@ -20,6 +20,7 @@ import type {
 import {
   HIDDEN_SYSTEM_SUBTYPES,
   isTodoToolUseResult,
+  isWriteToolUseResult,
 } from '../../../../shared/agent-types';
 import { DiffView } from '../ui-diff-view';
 import { getLanguageFromPath } from '../ui-diff-view/language-utils';
@@ -327,6 +328,13 @@ function ToolEntry({
   const isEditTool = block.name === 'Edit' && isEditToolInput(block.input);
   const isWriteTool = block.name === 'Write';
 
+  // Check if we have structured Write/Edit result data
+  const writeToolResult =
+    parentMessage?.tool_use_result &&
+    isWriteToolUseResult(parentMessage.tool_use_result)
+      ? parentMessage.tool_use_result
+      : null;
+
   // Auto-expand Edit and Write tools
   const shouldAutoExpand = isEditTool || isWriteTool;
 
@@ -347,7 +355,9 @@ function ToolEntry({
       ? block.input.file_path
       : undefined;
 
-  const formattedInput = isEditTool ? '' : formatToolInput(block.input);
+  // For Write/Edit tools with structured result, use DiffView instead of showing raw input
+  const hasDiffView = isEditTool || (isWriteTool && writeToolResult);
+  const formattedInput = hasDiffView ? '' : formatToolInput(block.input);
   const formattedResult = result ? formatResultContent(result.content) : '';
   const [expandContent, setExpandContent] = useState(false);
 
@@ -373,11 +383,34 @@ function ToolEntry({
     }
   }
 
+  // Get diff view content based on tool type
+  const getDiffViewContent = () => {
+    if (editInput) {
+      return (
+        <DiffView
+          filePath={editInput.file_path}
+          oldString={editInput.old_string}
+          newString={editInput.new_string}
+        />
+      );
+    }
+    if (isWriteTool && writeToolResult) {
+      return (
+        <DiffView
+          filePath={writeToolResult.filePath}
+          oldString={writeToolResult.originalFile}
+          newString={writeToolResult.content}
+        />
+      );
+    }
+    return <LineNumberedContent content={formattedInput} />;
+  };
+
   const expandedContent = (
     <div className="space-y-2 text-xs">
       <div>
         <div className="mb-1 font-medium text-neutral-500">
-          {isEditTool ? 'Changes' : 'Input'}
+          {hasDiffView ? 'Changes' : 'Input'}
         </div>
         <div
           className={clsx('cursor-pointer', {
@@ -398,18 +431,11 @@ function ToolEntry({
             }
           }}
         >
-          {editInput ? (
-            <DiffView
-              filePath={editInput.file_path}
-              oldString={editInput.old_string}
-              newString={editInput.new_string}
-            />
-          ) : (
-            <LineNumberedContent content={formattedInput} />
-          )}
+          {getDiffViewContent()}
         </div>
       </div>
-      {hasResult && (
+      {/* Only show Result section for non-diff tools or errors */}
+      {hasResult && !hasDiffView && (
         <div>
           <div
             className={`mb-1 font-medium ${isError ? 'text-red-400' : 'text-neutral-500'}`}
@@ -426,6 +452,15 @@ function ToolEntry({
               filePath={readFilePath}
             />
           )}
+        </div>
+      )}
+      {/* Show error for diff tools */}
+      {hasResult && hasDiffView && isError && (
+        <div>
+          <div className="mb-1 font-medium text-red-400">Error</div>
+          <pre className="max-h-64 overflow-auto rounded bg-red-900/20 p-2 whitespace-pre-wrap text-neutral-300">
+            {formattedResult}
+          </pre>
         </div>
       )}
     </div>

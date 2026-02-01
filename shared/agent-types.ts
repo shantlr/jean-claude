@@ -37,6 +37,24 @@ export interface SkillToolUseResult {
   commandName: string;
 }
 
+// Structured patch hunk from Write/Edit tool results
+export interface PatchHunk {
+  oldStart: number;
+  oldLines: number;
+  newStart: number;
+  newLines: number;
+  lines: string[];
+}
+
+// Result from Write/Edit tools with structured diff data
+export interface WriteToolUseResult {
+  type: 'update';
+  filePath: string;
+  content: string;
+  structuredPatch: PatchHunk[];
+  originalFile: string;
+}
+
 // Per-model usage statistics from SDK result messages
 export interface ModelUsage {
   inputTokens: number;
@@ -62,7 +80,7 @@ export interface AgentMessage {
   is_error?: boolean;
   // SDK-provided fields for skill messages and todo updates
   isSynthetic?: boolean;
-  tool_use_result?: SkillToolUseResult | TodoToolUseResult;
+  tool_use_result?: SkillToolUseResult | TodoToolUseResult | WriteToolUseResult;
   // SDK-provided fields for compact_boundary messages
   compact_metadata?: CompactMetadata;
   usage?: {
@@ -204,15 +222,27 @@ export interface AgentQueueUpdateEvent {
 }
 
 export function isSkillToolUseResult(
-  result: SkillToolUseResult | TodoToolUseResult,
+  result: SkillToolUseResult | TodoToolUseResult | WriteToolUseResult,
 ): result is SkillToolUseResult {
   return !!result && typeof result === 'object' && 'commandName' in result;
 }
 
 export function isTodoToolUseResult(
-  result: SkillToolUseResult | TodoToolUseResult,
+  result: SkillToolUseResult | TodoToolUseResult | WriteToolUseResult,
 ): result is TodoToolUseResult {
   return !!result && typeof result === 'object' && 'newTodos' in result;
+}
+
+export function isWriteToolUseResult(
+  result: SkillToolUseResult | TodoToolUseResult | WriteToolUseResult,
+): result is WriteToolUseResult {
+  return (
+    !!result &&
+    typeof result === 'object' &&
+    'type' in result &&
+    result.type === 'update' &&
+    'originalFile' in result
+  );
 }
 
 // IPC channel names
