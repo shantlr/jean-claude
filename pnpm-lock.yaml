@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@anthropic-ai/claude-agent-sdk':
-        specifier: ^0.2.22
-        version: 0.2.22(zod@4.3.5)
+        specifier: ^0.2.29
+        version: 0.2.29(zod@4.3.5)
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -168,8 +168,8 @@ packages:
   7zip-bin@5.2.0:
     resolution: {integrity: sha512-ukTPVhqG4jNzMro2qA9HSCSSVJN3aN7tlb+hfqYCt3ER0yWroeA2VR38MNrOHLQ/cVj+DaIMad0kFCtWWowh/A==}
 
-  '@anthropic-ai/claude-agent-sdk@0.2.22':
-    resolution: {integrity: sha512-AO39PYe8nAfqx748UmQQ26BZAX91sOQomYFdtf5AwMwgOIH0BumrNHsHtrmgBZalsseWn84LAFfKtG5ylGR5Nw==}
+  '@anthropic-ai/claude-agent-sdk@0.2.29':
+    resolution: {integrity: sha512-b+655n4ZqqAiMQEL3P44e9UurkI7WWanWTQQQTEcKngL5YCjjXExEPEJRxrmqp8mQXs0kLErZhObx0ZuwibOhA==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       zod: ^4.0.0
@@ -4493,7 +4493,7 @@ snapshots:
 
   7zip-bin@5.2.0: {}
 
-  '@anthropic-ai/claude-agent-sdk@0.2.22(zod@4.3.5)':
+  '@anthropic-ai/claude-agent-sdk@0.2.29(zod@4.3.5)':
     dependencies:
       zod: 4.3.5
     optionalDependencies:
