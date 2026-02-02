@@ -220,24 +220,96 @@ export interface WorktreeFileContent {
 }
 
 /**
- * Gets the list of changed files between a worktree's current state and its starting commit.
- * Does not load file contents - use getWorktreeFileContent for that.
+ * Gets the commit hash to use as the diff base.
+ * If sourceBranch is provided, uses the merge-base between HEAD and the source branch.
+ * This ensures we only see changes unique to this branch, even after merging
+ * the source branch to resolve conflicts or stay up-to-date.
+ * Falls back to startCommitHash if sourceBranch is not available or merge-base fails.
+ *
+ * @param worktreePath - The path to the worktree
+ * @param startCommitHash - The fallback commit hash
+ * @param sourceBranch - The source branch to compute merge-base against
+ * @returns The commit hash to use for diffing
+ */
+async function getDiffBaseCommit(
+  worktreePath: string,
+  startCommitHash: string,
+  sourceBranch: string | null,
+): Promise<string> {
+  if (!sourceBranch) {
+    dbg.worktree('No sourceBranch, using startCommitHash: %s', startCommitHash);
+    return startCommitHash;
+  }
+
+  try {
+    // Try with origin/ prefix first (most common case for tracking branches)
+    const { stdout: mergeBase } = await execAsync(
+      `git merge-base HEAD origin/${sourceBranch}`,
+      {
+        cwd: worktreePath,
+        encoding: 'utf-8',
+      },
+    );
+    const base = mergeBase.trim();
+    dbg.worktree(
+      'Using merge-base with origin/%s: %s',
+      sourceBranch,
+      base,
+    );
+    return base;
+  } catch {
+    // Try without origin/ prefix (local branch)
+    try {
+      const { stdout: mergeBase } = await execAsync(
+        `git merge-base HEAD ${sourceBranch}`,
+        {
+          cwd: worktreePath,
+          encoding: 'utf-8',
+        },
+      );
+      const base = mergeBase.trim();
+      dbg.worktree('Using merge-base with %s: %s', sourceBranch, base);
+      return base;
+    } catch {
+      // Fall back to startCommitHash if merge-base fails
+      dbg.worktree(
+        'merge-base failed, falling back to startCommitHash: %s',
+        startCommitHash,
+      );
+      return startCommitHash;
+    }
+  }
+}
+
+/**
+ * Gets the list of changed files between a worktree's current state and its divergence point
+ * from the source branch. Does not load file contents - use getWorktreeFileContent for that.
+ *
+ * This shows only changes unique to this branch by using git merge-base to find where
+ * the branch diverged from the source. This means changes merged in from the source
+ * branch (e.g., to resolve conflicts) won't appear in the diff.
  *
  * This includes:
- * - Committed changes since startCommitHash
+ * - Committed changes since diverging from source branch
  * - Staged but uncommitted changes
  * - Unstaged changes in tracked files
  * - Untracked files (new files not yet added to git)
  *
  * @param worktreePath - The path to the worktree
- * @param startCommitHash - The commit hash to diff against
+ * @param startCommitHash - Fallback commit hash (used if sourceBranch unavailable)
+ * @param sourceBranch - The source branch to compute diff against (optional)
  * @returns The list of changed files with their status
  */
 export async function getWorktreeDiff(
   worktreePath: string,
   startCommitHash: string,
+  sourceBranch?: string | null,
 ): Promise<WorktreeDiffResult> {
-  dbg.worktree('getWorktreeDiff called %o', { worktreePath, startCommitHash });
+  dbg.worktree('getWorktreeDiff called %o', {
+    worktreePath,
+    startCommitHash,
+    sourceBranch,
+  });
 
   // Check if the worktree still exists
   if (!(await pathExists(worktreePath))) {
@@ -246,15 +318,22 @@ export async function getWorktreeDiff(
   }
 
   try {
+    // Get the appropriate base commit for diffing
+    const baseCommit = await getDiffBaseCommit(
+      worktreePath,
+      startCommitHash,
+      sourceBranch ?? null,
+    );
+
     // We need to combine two sources to get all changes:
-    // 1. git diff --name-status <commit> - shows changes from startCommit to current working tree
+    // 1. git diff --name-status <commit> - shows changes from baseCommit to current working tree
     //    (includes committed, staged, and unstaged changes to tracked files)
     // 2. git status --porcelain - shows untracked files that git diff doesn't see
 
-    // First, get changes from startCommit to current working tree (including uncommitted)
+    // First, get changes from baseCommit to current working tree (including uncommitted)
     // Note: Without HEAD, git diff compares against the working tree directly
     const { stdout: diffOutput } = await execAsync(
-      `git diff --name-status ${startCommitHash}`,
+      `git diff --name-status ${baseCommit}`,
       {
         cwd: worktreePath,
         encoding: 'utf-8',
@@ -331,19 +410,19 @@ export async function getWorktreeDiff(
           !filePath.endsWith('/') &&
           !filesMap.has(filePath)
         ) {
-          // Check if file existed at startCommit
+          // Check if file existed at baseCommit
           try {
             await execAsync(
-              `git cat-file -e ${startCommitHash}:"${escapeForShell(filePath)}"`,
+              `git cat-file -e ${baseCommit}:"${escapeForShell(filePath)}"`,
               {
                 cwd: worktreePath,
                 encoding: 'utf-8',
               },
             );
-            // File existed at startCommit, so this is modified (shouldn't happen for ??)
+            // File existed at baseCommit, so this is modified (shouldn't happen for ??)
             filesMap.set(filePath, { path: filePath, status: 'modified' });
           } catch {
-            // File didn't exist at startCommit, so it's added
+            // File didn't exist at baseCommit, so it's added
             filesMap.set(filePath, { path: filePath, status: 'added' });
           }
           dbg.worktree('From git status (untracked): %o', {
@@ -370,12 +449,17 @@ export async function getWorktreeDiff(
 
 /**
  * Gets the content of a specific file for diff viewing.
- * Loads the old content from the starting commit and new content from the working tree.
+ * Loads the old content from the diff base and new content from the working tree.
+ *
+ * Uses the same merge-base logic as getWorktreeDiff to ensure consistency:
+ * if sourceBranch is provided, the "old" content comes from the merge-base,
+ * otherwise falls back to startCommitHash.
  *
  * @param worktreePath - The path to the worktree
- * @param startCommitHash - The commit hash to diff against
+ * @param startCommitHash - Fallback commit hash (used if sourceBranch unavailable)
  * @param filePath - The relative path of the file within the worktree
  * @param status - The file status (added/modified/deleted)
+ * @param sourceBranch - The source branch to compute diff against (optional)
  * @returns The old and new content of the file
  */
 export async function getWorktreeFileContent(
@@ -383,23 +467,32 @@ export async function getWorktreeFileContent(
   startCommitHash: string,
   filePath: string,
   status: 'added' | 'modified' | 'deleted',
+  sourceBranch?: string | null,
 ): Promise<WorktreeFileContent> {
   dbg.worktree('getWorktreeFileContent called %o', {
     worktreePath,
     startCommitHash,
     filePath,
     status,
+    sourceBranch,
   });
+
+  // Get the appropriate base commit for diffing
+  const baseCommit = await getDiffBaseCommit(
+    worktreePath,
+    startCommitHash,
+    sourceBranch ?? null,
+  );
 
   let oldContent: string | null = null;
   let newContent: string | null = null;
   let isBinary = false;
 
-  // Get old content from the starting commit (unless file was added)
+  // Get old content from the base commit (unless file was added)
   if (status !== 'added') {
     try {
       const { stdout } = await execAsync(
-        `git show ${startCommitHash}:"${escapeForShell(filePath)}"`,
+        `git show ${baseCommit}:"${escapeForShell(filePath)}"`,
         {
           cwd: worktreePath,
           encoding: 'utf-8',

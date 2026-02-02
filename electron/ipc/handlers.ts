@@ -383,7 +383,11 @@ export function registerIpcHandlers() {
     if (!task?.worktreePath || !task?.startCommitHash) {
       throw new Error(`Task ${taskId} does not have a worktree`);
     }
-    return getWorktreeDiff(task.worktreePath, task.startCommitHash);
+    return getWorktreeDiff(
+      task.worktreePath,
+      task.startCommitHash,
+      task.sourceBranch,
+    );
   });
 
   ipcMain.handle(
@@ -403,6 +407,7 @@ export function registerIpcHandlers() {
         task.startCommitHash,
         filePath,
         status,
+        task.sourceBranch,
       );
     },
   );
