@@ -497,7 +497,7 @@ export async function createWorktree(
     : generateWorktreeName(prompt);
   const worktreePath = path.join(projectWorktreesPath, worktreeName);
 
-// Determine the actual source branch (either the provided one or the current branch)
+  // Determine the actual source branch (either the provided one or the current branch)
   const actualSourceBranch =
     sourceBranch ?? (await getCurrentBranchName(projectPath));
 

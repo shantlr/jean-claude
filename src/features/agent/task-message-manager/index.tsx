@@ -4,6 +4,8 @@ import { useEffect } from 'react';
 import { api } from '@/lib/api';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 
+import { isWriteToolUseResult } from '../../../../shared/agent-types';
+
 export function TaskMessageManager() {
   const queryClient = useQueryClient();
   const appendMessage = useTaskMessagesStore((s) => s.appendMessage);
@@ -29,6 +31,19 @@ export function TaskMessageManager() {
         console.warn(
           `[TaskMessageManager] DROPPING message for unloaded task ${taskId}`,
         );
+      }
+
+      // Invalidate worktree diff when a file is edited/written
+      if (
+        message.tool_use_result &&
+        isWriteToolUseResult(message.tool_use_result)
+      ) {
+        queryClient.invalidateQueries({
+          queryKey: ['worktree-diff', taskId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ['worktree-file-content', taskId],
+        });
       }
     });
 

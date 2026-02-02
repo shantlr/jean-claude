@@ -144,14 +144,16 @@ export function TaskSettingsPane({
         {/* Source Info Section */}
         {(sourceBranch || sourceCommit) && (
           <section>
-            <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            <h4 className="mb-3 text-xs font-medium tracking-wide text-neutral-500 uppercase">
               Source
             </h4>
             <div className="space-y-2">
               {sourceBranch && (
                 <div className="flex items-center gap-2 rounded-md bg-neutral-800 px-3 py-2.5">
                   <GitBranch className="h-4 w-4 text-neutral-500" />
-                  <span className="text-sm text-neutral-200">{sourceBranch}</span>
+                  <span className="text-sm text-neutral-200">
+                    {sourceBranch}
+                  </span>
                 </div>
               )}
               {sourceCommit && (

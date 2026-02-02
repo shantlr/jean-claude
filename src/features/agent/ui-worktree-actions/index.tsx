@@ -65,8 +65,12 @@ export function WorktreeActions({
   useEffect(() => {
     if (branches && branches.length > 0 && !selectedBranch) {
       const defaultTarget =
-        (sourceBranch && branches.includes(sourceBranch) ? sourceBranch : null) ??
-        (defaultBranch && branches.includes(defaultBranch) ? defaultBranch : null) ??
+        (sourceBranch && branches.includes(sourceBranch)
+          ? sourceBranch
+          : null) ??
+        (defaultBranch && branches.includes(defaultBranch)
+          ? defaultBranch
+          : null) ??
         (branches.includes('main')
           ? 'main'
           : branches.includes('master')

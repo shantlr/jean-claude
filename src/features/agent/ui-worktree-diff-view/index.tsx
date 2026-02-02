@@ -113,9 +113,16 @@ export function WorktreeDiffView({
 
   if (files.length === 0) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 text-neutral-500">
+      <div className="flex h-full flex-col items-center justify-center gap-3 text-neutral-500">
         <FileX className="h-8 w-8" />
         <p>No changes yet</p>
+        <button
+          onClick={refresh}
+          className="flex items-center gap-2 rounded-md bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-600"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Refresh
+        </button>
       </div>
     );
   }
