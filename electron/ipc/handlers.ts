@@ -1,4 +1,5 @@
 import { exec, spawn } from 'child_process';
+import * as crypto from 'crypto';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
@@ -1113,6 +1114,185 @@ export function registerIpcHandlers() {
     ) => {
       dbg.ipc('unifiedMcp:substituteVariables template=%s', commandTemplate);
       return substituteVariables(commandTemplate, userVariables, context);
+    },
+  );
+
+  // Claude Projects Cleanup
+  ipcMain.handle('claudeProjects:findNonExistent', async () => {
+    dbg.ipc('claudeProjects:findNonExistent');
+    const claudeJsonPath = path.join(os.homedir(), '.claude.json');
+    const claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
+
+    const nonExistentProjects: Array<{
+      path: string;
+      folderName: string;
+      source: 'json' | 'folder' | 'both';
+    }> = [];
+
+    // Track which paths we've seen
+    const pathsFromJson = new Set<string>();
+    const pathsFromFolders = new Set<string>();
+
+    // 1. Read ~/.claude.json
+    let claudeJsonContent = '';
+    try {
+      claudeJsonContent = await fs.readFile(claudeJsonPath, 'utf-8');
+      const claudeJson = JSON.parse(claudeJsonContent) as {
+        projects?: Record<string, unknown>;
+      };
+
+      if (claudeJson.projects) {
+        for (const projectPath of Object.keys(claudeJson.projects)) {
+          const exists = await pathExists(projectPath);
+          if (!exists) {
+            pathsFromJson.add(projectPath);
+          }
+        }
+      }
+    } catch (error) {
+      dbg.ipc('Error reading ~/.claude.json: %O', error);
+      // File doesn't exist or can't be parsed - that's ok
+    }
+
+    // 2. Read ~/.claude/projects/ folders
+    try {
+      const folders = await fs.readdir(claudeProjectsDir);
+      for (const folderName of folders) {
+        // Decode folder name back to path
+        // Folder names are like: -Users-plin--idling
+        // Which decodes to: /Users/plin/.idling
+        const decodedPath = folderName
+          .replace(/^-/, '/') // Leading - becomes /
+          .replace(/--/g, '/.') // -- becomes /.
+          .replace(/-/g, '/'); // Single - becomes /
+
+        const exists = await pathExists(decodedPath);
+        if (!exists) {
+          pathsFromFolders.add(decodedPath);
+        }
+      }
+    } catch (error) {
+      dbg.ipc('Error reading ~/.claude/projects/: %O', error);
+      // Directory doesn't exist - that's ok
+    }
+
+    // 3. Combine results
+    const allPaths = new Set([...pathsFromJson, ...pathsFromFolders]);
+    for (const projectPath of allPaths) {
+      const inJson = pathsFromJson.has(projectPath);
+      const inFolder = pathsFromFolders.has(projectPath);
+      const source = inJson && inFolder ? 'both' : inJson ? 'json' : 'folder';
+
+      // Encode path to folder name for deletion
+      const folderName = projectPath
+        .replace(/^\//g, '-') // Leading / becomes -
+        .replace(/\/\./g, '--') // /. becomes --
+        .replace(/\//g, '-'); // / becomes -
+
+      nonExistentProjects.push({ path: projectPath, folderName, source });
+    }
+
+    // Sort by path for consistent display
+    nonExistentProjects.sort((a, b) => a.path.localeCompare(b.path));
+
+    // Compute content hash for safety check
+    const contentHash = crypto
+      .createHash('md5')
+      .update(claudeJsonContent)
+      .digest('hex');
+
+    dbg.ipc(
+      'claudeProjects:findNonExistent found %d projects',
+      nonExistentProjects.length,
+    );
+    return { projects: nonExistentProjects, contentHash };
+  });
+
+  ipcMain.handle(
+    'claudeProjects:cleanup',
+    async (
+      _,
+      params: {
+        paths: string[];
+        contentHash: string;
+      },
+    ) => {
+      dbg.ipc('claudeProjects:cleanup paths=%o', params.paths);
+      const claudeJsonPath = path.join(os.homedir(), '.claude.json');
+      const claudeProjectsDir = path.join(os.homedir(), '.claude', 'projects');
+
+      let removedCount = 0;
+
+      // 1. Re-read and verify ~/.claude.json hasn't changed
+      let claudeJsonContent = '';
+      let claudeJson: { projects?: Record<string, unknown> } = {};
+      try {
+        claudeJsonContent = await fs.readFile(claudeJsonPath, 'utf-8');
+        const currentHash = crypto
+          .createHash('md5')
+          .update(claudeJsonContent)
+          .digest('hex');
+
+        if (currentHash !== params.contentHash) {
+          return {
+            success: false,
+            removedCount: 0,
+            error:
+              'The claude.json file was modified since scanning. Please scan again.',
+          };
+        }
+
+        claudeJson = JSON.parse(claudeJsonContent);
+      } catch (error) {
+        dbg.ipc('Error reading ~/.claude.json: %O', error);
+        // If file doesn't exist, we can still clean up folders
+      }
+
+      // 2. Remove from ~/.claude.json
+      if (claudeJson.projects) {
+        for (const projectPath of params.paths) {
+          if (projectPath in claudeJson.projects) {
+            delete claudeJson.projects[projectPath];
+            removedCount++;
+          }
+        }
+
+        // Write back
+        try {
+          await fs.writeFile(
+            claudeJsonPath,
+            JSON.stringify(claudeJson, null, 2),
+            'utf-8',
+          );
+        } catch (error) {
+          dbg.ipc('Error writing ~/.claude.json: %O', error);
+          return {
+            success: false,
+            removedCount,
+            error: 'Failed to write claude.json',
+          };
+        }
+      }
+
+      // 3. Remove folders from ~/.claude/projects/
+      for (const projectPath of params.paths) {
+        const folderName = projectPath
+          .replace(/^\//g, '-')
+          .replace(/\/\./g, '--')
+          .replace(/\//g, '-');
+
+        const folderPath = path.join(claudeProjectsDir, folderName);
+        try {
+          await fs.rm(folderPath, { recursive: true, force: true });
+          dbg.ipc('Removed folder: %s', folderPath);
+        } catch (error) {
+          dbg.ipc('Error removing folder %s: %O', folderPath, error);
+          // Continue with other folders
+        }
+      }
+
+      dbg.ipc('claudeProjects:cleanup removed %d projects', removedCount);
+      return { success: true, removedCount };
     },
   );
 }

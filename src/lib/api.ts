@@ -89,6 +89,23 @@ export interface DetectedProject {
   name: string;
 }
 
+export interface NonExistentClaudeProject {
+  path: string;
+  folderName: string;
+  source: 'json' | 'folder' | 'both';
+}
+
+export interface ClaudeProjectsScanResult {
+  projects: NonExistentClaudeProject[];
+  contentHash: string;
+}
+
+export interface ClaudeProjectsCleanupResult {
+  success: boolean;
+  removedCount: number;
+  error?: string;
+}
+
 export interface AzureDevOpsOrganization {
   id: string;
   name: string;
@@ -504,6 +521,13 @@ export interface Api {
       },
     ) => Promise<string>;
   };
+  claudeProjects: {
+    findNonExistent: () => Promise<ClaudeProjectsScanResult>;
+    cleanup: (params: {
+      paths: string[];
+      contentHash: string;
+    }) => Promise<ClaudeProjectsCleanupResult>;
+  };
 }
 
 declare global {
@@ -769,5 +793,13 @@ export const api: Api = hasWindowApi
         activate: async () => {},
         deactivate: async () => {},
         substituteVariables: async (commandTemplate) => commandTemplate,
+      },
+      claudeProjects: {
+        findNonExistent: async () => ({ projects: [], contentHash: '' }),
+        cleanup: async () => ({
+          success: false,
+          removedCount: 0,
+          error: 'API not available',
+        }),
       },
     } as Api);

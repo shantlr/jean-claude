@@ -388,5 +388,10 @@ contextBridge.exposeInMainWorld('api', {
         context,
       ),
   },
+  claudeProjects: {
+    findNonExistent: () => ipcRenderer.invoke('claudeProjects:findNonExistent'),
+    cleanup: (params: { paths: string[]; contentHash: string }) =>
+      ipcRenderer.invoke('claudeProjects:cleanup', params),
+  },
 });
 console.log('Preload script loaded');
