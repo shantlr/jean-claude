@@ -443,6 +443,7 @@ function TaskPanel() {
               branchName={
                 task.branchName ?? getBranchFromWorktreePath(task.worktreePath)
               }
+              sourceBranch={task.sourceBranch}
               defaultBranch={project.defaultBranch}
               taskName={task.name}
               taskPrompt={task.prompt}
@@ -569,6 +570,8 @@ function TaskPanel() {
       {rightPane?.type === 'settings' && (
         <TaskSettingsPane
           sessionAllowedTools={task.sessionAllowedTools}
+          sourceBranch={task.sourceBranch}
+          sourceCommit={task.startCommitHash}
           taskId={taskId}
           onRemoveTool={handleRemoveSessionAllowedTool}
           onClose={closeRightPane}

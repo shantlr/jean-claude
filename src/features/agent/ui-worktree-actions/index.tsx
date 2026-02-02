@@ -17,6 +17,7 @@ import { MergeSuccessDialog } from './merge-success-dialog';
 export function WorktreeActions({
   taskId,
   branchName,
+  sourceBranch,
   defaultBranch,
   taskName,
   taskPrompt,
@@ -28,6 +29,7 @@ export function WorktreeActions({
 }: {
   taskId: string;
   branchName: string;
+  sourceBranch: string | null;
   defaultBranch: string | null;
   taskName: string | null;
   taskPrompt: string;
@@ -41,8 +43,9 @@ export function WorktreeActions({
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false);
   const [isMergeConfirmOpen, setIsMergeConfirmOpen] = useState(false);
   const [isMergeSuccessOpen, setIsMergeSuccessOpen] = useState(false);
+  // Priority: sourceBranch (where worktree was created from) > defaultBranch (project setting) > 'main'
   const [selectedBranch, setSelectedBranch] = useState<string>(
-    defaultBranch ?? 'main',
+    sourceBranch ?? defaultBranch ?? 'main',
   );
   const [isPrDialogOpen, setIsPrDialogOpen] = useState(false);
   const hasRepoLink = !!repoProviderId && !!repoProjectId && !!repoId;
@@ -58,10 +61,12 @@ export function WorktreeActions({
   const canMerge = !status?.hasUncommittedChanges && !isStatusLoading;
 
   // Set default branch when branches load
+  // Priority: sourceBranch > defaultBranch > main > master > first branch
   useEffect(() => {
     if (branches && branches.length > 0 && !selectedBranch) {
       const defaultTarget =
-        defaultBranch ??
+        (sourceBranch && branches.includes(sourceBranch) ? sourceBranch : null) ??
+        (defaultBranch && branches.includes(defaultBranch) ? defaultBranch : null) ??
         (branches.includes('main')
           ? 'main'
           : branches.includes('master')
@@ -69,7 +74,7 @@ export function WorktreeActions({
             : branches[0]);
       setSelectedBranch(defaultTarget);
     }
-  }, [branches, defaultBranch, selectedBranch]);
+  }, [branches, sourceBranch, defaultBranch, selectedBranch]);
 
   const handleCommit = async (message: string, stageAll: boolean) => {
     await commitMutation.mutateAsync({ taskId, message, stageAll });

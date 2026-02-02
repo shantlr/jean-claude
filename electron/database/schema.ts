@@ -88,6 +88,7 @@ export interface TaskTable {
   sessionId: string | null;
   worktreePath: string | null;
   startCommitHash: string | null;
+  sourceBranch: string | null;
   branchName: string | null;
   readAt: string | null;
   lastReadIndex: number;

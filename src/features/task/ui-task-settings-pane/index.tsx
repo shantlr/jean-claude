@@ -6,6 +6,10 @@ import {
   Loader2,
   ChevronRight,
   ChevronDown,
+  GitBranch,
+  GitCommitHorizontal,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -91,15 +95,29 @@ function SkillsList({ taskId }: { taskId: string }) {
 
 export function TaskSettingsPane({
   sessionAllowedTools,
+  sourceBranch,
+  sourceCommit,
   taskId,
   onRemoveTool,
   onClose,
 }: {
   sessionAllowedTools: string[];
+  sourceBranch: string | null;
+  sourceCommit: string | null;
   taskId: string;
   onRemoveTool: (toolName: string) => void;
   onClose: () => void;
 }) {
+  const [copiedCommit, setCopiedCommit] = useState(false);
+
+  const handleCopyCommit = async () => {
+    if (sourceCommit) {
+      await navigator.clipboard.writeText(sourceCommit);
+      setCopiedCommit(true);
+      setTimeout(() => setCopiedCommit(false), 2000);
+    }
+  };
+
   return (
     <div className="flex h-full w-80 flex-col border-l border-neutral-700 bg-neutral-900">
       {/* Header */}
@@ -123,6 +141,42 @@ export function TaskSettingsPane({
 
       {/* Content */}
       <div className="flex-1 space-y-6 overflow-auto p-4">
+        {/* Source Info Section */}
+        {(sourceBranch || sourceCommit) && (
+          <section>
+            <h4 className="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">
+              Source
+            </h4>
+            <div className="space-y-2">
+              {sourceBranch && (
+                <div className="flex items-center gap-2 rounded-md bg-neutral-800 px-3 py-2.5">
+                  <GitBranch className="h-4 w-4 text-neutral-500" />
+                  <span className="text-sm text-neutral-200">{sourceBranch}</span>
+                </div>
+              )}
+              {sourceCommit && (
+                <div className="flex items-center gap-2 rounded-md bg-neutral-800 px-3 py-2.5">
+                  <GitCommitHorizontal className="h-4 w-4 text-neutral-500" />
+                  <span className="flex-1 truncate font-mono text-sm text-neutral-200">
+                    {sourceCommit.slice(0, 8)}
+                  </span>
+                  <button
+                    onClick={handleCopyCommit}
+                    className="rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
+                    title="Copy full commit hash"
+                  >
+                    {copiedCommit ? (
+                      <Check className="h-3.5 w-3.5 text-green-500" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* Session Allowed Tools Section */}
         <section>
           <h4 className="mb-3 text-xs font-medium tracking-wide text-neutral-500 uppercase">

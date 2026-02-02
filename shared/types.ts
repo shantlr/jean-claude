@@ -142,6 +142,7 @@ export interface Task {
   sessionId: string | null;
   worktreePath: string | null;
   startCommitHash: string | null;
+  sourceBranch: string | null;
   branchName: string | null;
   readAt: string | null;
   lastReadIndex: number;
@@ -165,6 +166,7 @@ export interface NewTask {
   sessionId?: string | null;
   worktreePath?: string | null;
   startCommitHash?: string | null;
+  sourceBranch?: string | null;
   branchName?: string | null;
   readAt?: string | null;
   lastReadIndex?: number;
@@ -187,6 +189,7 @@ export interface UpdateTask {
   sessionId?: string | null;
   worktreePath?: string | null;
   startCommitHash?: string | null;
+  sourceBranch?: string | null;
   branchName?: string | null;
   readAt?: string | null;
   lastReadIndex?: number;

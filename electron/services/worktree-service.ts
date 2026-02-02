@@ -146,6 +146,21 @@ export async function getCurrentCommitHash(repoPath: string): Promise<string> {
 }
 
 /**
+ * Gets the current branch name for a git repository.
+ */
+export async function getCurrentBranchName(repoPath: string): Promise<string> {
+  try {
+    const { stdout } = await execAsync('git rev-parse --abbrev-ref HEAD', {
+      cwd: repoPath,
+      encoding: 'utf-8',
+    });
+    return stdout.trim();
+  } catch (error) {
+    throw new Error(`Failed to get current branch name: ${error}`);
+  }
+}
+
+/**
  * Checks if a path is a git repository.
  */
 export async function isGitRepository(repoPath: string): Promise<boolean> {
@@ -164,6 +179,7 @@ export interface CreateWorktreeResult {
   worktreePath: string;
   startCommitHash: string;
   branchName: string;
+  sourceBranch: string;
 }
 
 /**
@@ -481,6 +497,10 @@ export async function createWorktree(
     : generateWorktreeName(prompt);
   const worktreePath = path.join(projectWorktreesPath, worktreeName);
 
+// Determine the actual source branch (either the provided one or the current branch)
+  const actualSourceBranch =
+    sourceBranch ?? (await getCurrentBranchName(projectPath));
+
   // Create branch name with jean-claude/ prefix
   const branchName = `jean-claude/${worktreeName}`;
   dbg.worktree('Creating worktree: %s, branch: %s', worktreePath, branchName);
@@ -530,6 +550,7 @@ export async function createWorktree(
     worktreePath,
     startCommitHash,
     branchName,
+    sourceBranch: actualSourceBranch,
   };
 }
 

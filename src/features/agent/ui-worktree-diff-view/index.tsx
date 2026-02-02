@@ -24,6 +24,7 @@ export function WorktreeDiffView({
   selectedFilePath,
   onSelectFile,
   branchName,
+  sourceBranch,
   defaultBranch,
   taskName,
   taskPrompt,
@@ -37,6 +38,7 @@ export function WorktreeDiffView({
   selectedFilePath: string | null;
   onSelectFile: (path: string | null) => void;
   branchName: string;
+  sourceBranch: string | null;
   defaultBranch: string | null;
   taskName: string | null;
   taskPrompt: string;
@@ -153,6 +155,7 @@ export function WorktreeDiffView({
         <WorktreeActions
           taskId={taskId}
           branchName={branchName}
+          sourceBranch={sourceBranch}
           defaultBranch={defaultBranch}
           taskName={taskName}
           taskPrompt={taskPrompt}

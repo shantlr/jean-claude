@@ -206,15 +206,19 @@ export function registerIpcHandlers() {
         'Creating worktree from branch: %s',
         effectiveSourceBranch ?? 'HEAD',
       );
-      const { worktreePath, startCommitHash, branchName } =
-        await createWorktree(
-          project.path,
-          project.id,
-          project.name,
-          taskData.prompt,
-          taskName ?? undefined,
-          effectiveSourceBranch ?? undefined,
-        );
+      const {
+        worktreePath,
+        startCommitHash,
+        branchName,
+        sourceBranch: actualSourceBranch,
+      } = await createWorktree(
+        project.path,
+        project.id,
+        project.name,
+        taskData.prompt,
+        taskName ?? undefined,
+        effectiveSourceBranch ?? undefined,
+      );
 
       dbg.ipc('Worktree created: %s, branch: %s', worktreePath, branchName);
 
@@ -225,6 +229,7 @@ export function registerIpcHandlers() {
         worktreePath,
         startCommitHash,
         branchName,
+        sourceBranch: actualSourceBranch,
       });
     },
   );

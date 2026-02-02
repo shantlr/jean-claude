@@ -13,6 +13,8 @@ interface CreateTaskInput {
   sessionId?: string | null;
   worktreePath?: string | null;
   startCommitHash?: string | null;
+  sourceBranch?: string | null;
+  branchName?: string | null;
   readAt?: string | null;
   lastReadIndex?: number;
   interactionMode?: InteractionMode;
@@ -34,6 +36,8 @@ interface UpdateTaskInput {
   sessionId?: string | null;
   worktreePath?: string | null;
   startCommitHash?: string | null;
+  sourceBranch?: string | null;
+  branchName?: string | null;
   readAt?: string | null;
   lastReadIndex?: number;
   interactionMode?: InteractionMode;
