@@ -1,51 +1,64 @@
-import { LayoutList } from 'lucide-react';
+import clsx from 'clsx';
+import type { MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useState } from 'react';
 
-import { TaskListItem } from '@/features/task/ui-task-list-item';
-import { useAllActiveTasks } from '@/hooks/use-tasks';
-import { useNavigationStore } from '@/stores/navigation';
+import { TaskList } from '@/features/task/ui-task-list';
+import { useSidebarWidth } from '@/stores/navigation';
 
-export const ALL_TASKS_HEADER_HEIGHT = 64;
+export const ALL_TASKS_HEADER_HEIGHT = 48;
 
 export function AllTasksSidebar() {
-  const { data: tasks } = useAllActiveTasks();
-  const lastLocation = useNavigationStore((s) => s.lastLocation);
-  const activeTaskId =
-    lastLocation.type === 'allTasks' ? lastLocation.taskId : null;
+  const { width, setWidth, minWidth, maxWidth } = useSidebarWidth();
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleMouseDown = useCallback(
+    (e: ReactMouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setIsDragging(true);
+
+      const startX = e.clientX;
+      const startWidth = width;
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        const delta = moveEvent.clientX - startX;
+        const newWidth = Math.min(
+          Math.max(startWidth + delta, minWidth),
+          maxWidth,
+        );
+        setWidth(newWidth);
+      };
+
+      const handleMouseUp = () => {
+        setIsDragging(false);
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    },
+    [width, minWidth, maxWidth, setWidth],
+  );
 
   return (
-    <aside className="flex h-full w-64 flex-col border-r border-neutral-700 bg-neutral-900">
-      {/* Header */}
-      <div
-        className="flex items-center gap-3 border-b border-neutral-700 px-4"
-        style={{ height: ALL_TASKS_HEADER_HEIGHT }}
-      >
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-700">
-          <LayoutList className="h-4 w-4 text-neutral-300" />
-        </div>
-        <span className="font-semibold">All Tasks</span>
-      </div>
+    <aside
+      className={clsx(
+        'relative flex h-full shrink-0 flex-col bg-neutral-900',
+        isDragging && 'select-none',
+      )}
+      style={{ width }}
+    >
+      {/* Task list with project filter tabs */}
+      <TaskList />
 
-      {/* Task list */}
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
-        {tasks && tasks.length > 0 ? (
-          <div className="flex flex-col gap-1">
-            {tasks.map((task) => (
-              <TaskListItem
-                key={task.id}
-                task={task}
-                projectId={task.projectId}
-                isActive={task.id === activeTaskId}
-                projectName={task.projectName}
-                projectColor={task.projectColor}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="flex h-full items-center justify-center text-sm text-neutral-500">
-            No active tasks
-          </div>
+      {/* Resize handle */}
+      <div
+        onMouseDown={handleMouseDown}
+        className={clsx(
+          'absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500/50',
+          isDragging && 'bg-blue-500/50',
         )}
-      </div>
+      />
     </aside>
   );
 }

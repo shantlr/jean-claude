@@ -32,6 +32,7 @@ export interface Database {
   project_commands: ProjectCommandTable;
   mcp_templates: McpTemplateTable;
   project_mcp_overrides: ProjectMcpOverrideTable;
+  task_summaries: TaskSummaryTable;
 }
 
 export interface TokenTable {
@@ -179,3 +180,16 @@ export type UpdateMcpTemplateRow = Updateable<McpTemplateTable>;
 
 export type ProjectMcpOverrideRow = Selectable<ProjectMcpOverrideTable>;
 export type NewProjectMcpOverrideRow = Insertable<ProjectMcpOverrideTable>;
+
+export interface TaskSummaryTable {
+  id: Generated<string>;
+  taskId: string;
+  commitHash: string;
+  summary: string; // JSON containing "What I Did" and "Key Decisions"
+  annotations: string; // JSON containing file/line annotations
+  createdAt: Generated<string>;
+}
+
+export type TaskSummaryRow = Selectable<TaskSummaryTable>;
+export type NewTaskSummaryRow = Insertable<TaskSummaryTable>;
+export type UpdateTaskSummaryRow = Updateable<TaskSummaryTable>;

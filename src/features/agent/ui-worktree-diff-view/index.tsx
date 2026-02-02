@@ -1,7 +1,9 @@
 import clsx from 'clsx';
 import { FileX, FolderX, Loader2, RefreshCw } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 
+import { getFilesWithAnnotations } from '@/features/agent/ui-diff-annotation';
+import { SummaryPanel } from '@/features/agent/ui-summary-panel';
 import { WorktreeActions } from '@/features/agent/ui-worktree-actions';
 import {
   DiffFileTree,
@@ -10,11 +12,13 @@ import {
 } from '@/features/common/ui-file-diff';
 import type { DiffFile } from '@/features/common/ui-file-diff';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
+import { useTaskSummary, useGenerateSummary } from '@/hooks/use-task-summary';
 import {
   useWorktreeDiff,
   useWorktreeFileContent,
 } from '@/hooks/use-worktree-diff';
-import type { WorktreeDiffFile } from '@/lib/api';
+import type { FileAnnotation, WorktreeDiffFile } from '@/lib/api';
+import { useKeyboardBindings } from '@/lib/keyboard-bindings';
 import { useDiffFileTreeWidth } from '@/stores/navigation';
 
 const HEADER_HEIGHT_CLS = `h-[40px] shrink-0`;
@@ -49,6 +53,8 @@ export function WorktreeDiffView({
   onMergeComplete: () => void;
 }) {
   const { data, isLoading, error, refresh } = useWorktreeDiff(taskId, true);
+  const { data: summary, isLoading: isSummaryLoading } = useTaskSummary(taskId);
+  const generateSummary = useGenerateSummary();
   const {
     width: fileTreeWidth,
     setWidth: setFileTreeWidth,
@@ -59,6 +65,26 @@ export function WorktreeDiffView({
     minWidth,
     maxWidthFraction: 0.5,
     onWidthChange: setFileTreeWidth,
+  });
+
+  // Get annotations from summary (memoized to avoid recreating array on each render)
+  const annotations: FileAnnotation[] = useMemo(() => {
+    return summary?.annotations ?? [];
+  }, [summary?.annotations]);
+
+  // Handle summary generation
+  const handleGenerateSummary = useCallback(() => {
+    generateSummary.mutate(taskId);
+  }, [generateSummary, taskId]);
+
+  // Keyboard shortcut for generating summary (cmd+shift+s)
+  useKeyboardBindings('worktree-diff-view', {
+    'cmd+shift+s': () => {
+      if (!summary && !generateSummary.isPending) {
+        handleGenerateSummary();
+      }
+      return true;
+    },
   });
 
   const selectedFile = useMemo(() => {
@@ -73,6 +99,11 @@ export function WorktreeDiffView({
       status: normalizeWorktreeStatus(f.status),
     }));
   }, [data?.files]);
+
+  // Build set of files that have annotations for the tree indicator
+  const filesWithAnnotations = useMemo(() => {
+    return getFilesWithAnnotations(annotations);
+  }, [annotations]);
 
   if (isLoading) {
     return (
@@ -158,6 +189,7 @@ export function WorktreeDiffView({
           files={diffFiles}
           selectedPath={selectedFilePath}
           onSelectFile={onSelectFile}
+          filesWithAnnotations={filesWithAnnotations}
         />
         <WorktreeActions
           taskId={taskId}
@@ -183,18 +215,29 @@ export function WorktreeDiffView({
       </div>
 
       {/* Diff content */}
-      <div className="min-w-0 flex-1 overflow-auto">
-        {selectedFile ? (
-          <WorktreeFileDiffContent
-            file={selectedFile}
-            taskId={taskId}
-            headerClassName={HEADER_HEIGHT_CLS}
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-neutral-500">
-            <p>Select a file to view changes</p>
-          </div>
-        )}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        {/* Summary panel at top */}
+        <SummaryPanel
+          summary={summary?.summary ?? null}
+          isLoading={generateSummary.isPending || isSummaryLoading}
+          onGenerate={handleGenerateSummary}
+        />
+
+        {/* File diff content */}
+        <div className="flex-1 overflow-auto">
+          {selectedFile ? (
+            <WorktreeFileDiffContent
+              file={selectedFile}
+              taskId={taskId}
+              headerClassName={HEADER_HEIGHT_CLS}
+              annotations={annotations}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-neutral-500">
+              <p>Select a file to view changes</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -204,10 +247,12 @@ function WorktreeFileDiffContent({
   file,
   headerClassName,
   taskId,
+  annotations,
 }: {
   file: WorktreeDiffFile;
   headerClassName?: string;
   taskId: string;
+  annotations?: FileAnnotation[];
 }) {
   const { data, isLoading, error } = useWorktreeFileContent(
     taskId,
@@ -238,6 +283,7 @@ function WorktreeFileDiffContent({
       isLoading={isLoading}
       isBinary={data?.isBinary}
       headerClassName={headerClassName}
+      annotations={annotations}
     />
   );
 }

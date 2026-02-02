@@ -39,6 +39,7 @@ import {
   TokenRepository,
   SettingsRepository,
   DebugRepository,
+  TaskSummaryRepository,
 } from '../database/repositories';
 import { McpTemplateRepository } from '../database/repositories/mcp-templates';
 import { ProjectCommandRepository } from '../database/repositories/project-commands';
@@ -97,6 +98,7 @@ import {
   getWorktreeFileContent,
   getProjectBranches,
   getCurrentBranch,
+  getCurrentCommitHash,
   getWorktreeStatus,
   commitWorktreeChanges,
   mergeWorktree,
@@ -168,70 +170,92 @@ export function registerIpcHandlers() {
   ipcMain.handle(
     'tasks:createWithWorktree',
     async (
-      _,
-      data: NewTask & { useWorktree: boolean; sourceBranch?: string | null },
+      event,
+      data: NewTask & {
+        useWorktree: boolean;
+        sourceBranch?: string | null;
+        autoStart?: boolean;
+      },
     ) => {
-      const { useWorktree, sourceBranch, ...taskData } = data;
+      const { useWorktree, sourceBranch, autoStart, ...taskData } = data;
       dbg.ipc(
-        'tasks:createWithWorktree useWorktree=%s, sourceBranch=%s',
+        'tasks:createWithWorktree useWorktree=%s, sourceBranch=%s, autoStart=%s',
         useWorktree,
         sourceBranch,
+        autoStart,
       );
+
+      let task;
 
       if (!useWorktree) {
         // No worktree requested, just create the task normally
         dbg.ipc('Creating task without worktree');
-        return TaskRepository.create(taskData);
+        task = await TaskRepository.create(taskData);
+      } else {
+        // Get the project to access its path and name
+        const project = await ProjectRepository.findById(taskData.projectId);
+        if (!project) {
+          throw new Error(`Project ${taskData.projectId} not found`);
+        }
+
+        // Generate task name first (if not already provided)
+        // This allows the worktree directory to use the same name
+        let taskName = taskData.name;
+        if (!taskName) {
+          dbg.ipc('Generating task name from prompt');
+          taskName = await generateTaskName(taskData.prompt);
+          dbg.ipc('Generated task name: %s', taskName);
+          // taskName may still be null if generation fails - that's ok
+        }
+
+        // Create the worktree using the generated task name
+        // Use provided sourceBranch, fall back to project defaultBranch, or undefined for current HEAD
+        const effectiveSourceBranch = sourceBranch ?? project.defaultBranch;
+        dbg.ipc(
+          'Creating worktree from branch: %s',
+          effectiveSourceBranch ?? 'HEAD',
+        );
+        const {
+          worktreePath,
+          startCommitHash,
+          branchName,
+          sourceBranch: actualSourceBranch,
+        } = await createWorktree(
+          project.path,
+          project.id,
+          project.name,
+          taskData.prompt,
+          taskName ?? undefined,
+          effectiveSourceBranch ?? undefined,
+        );
+
+        dbg.ipc('Worktree created: %s, branch: %s', worktreePath, branchName);
+
+        // Create the task with worktree info and generated name
+        task = await TaskRepository.create({
+          ...taskData,
+          name: taskName,
+          worktreePath,
+          startCommitHash,
+          branchName,
+          sourceBranch: actualSourceBranch,
+        });
       }
 
-      // Get the project to access its path and name
-      const project = await ProjectRepository.findById(taskData.projectId);
-      if (!project) {
-        throw new Error(`Project ${taskData.projectId} not found`);
+      // Auto-start the agent if requested
+      if (autoStart && task) {
+        dbg.ipc('Auto-starting agent for task %s', task.id);
+        const window = BrowserWindow.fromWebContents(event.sender);
+        if (window) {
+          agentService.setMainWindow(window);
+        }
+        // Start agent in background (don't await to return task immediately)
+        agentService.start(task.id).catch((err) => {
+          dbg.ipc('Error auto-starting agent for task %s: %O', task.id, err);
+        });
       }
 
-      // Generate task name first (if not already provided)
-      // This allows the worktree directory to use the same name
-      let taskName = taskData.name;
-      if (!taskName) {
-        dbg.ipc('Generating task name from prompt');
-        taskName = await generateTaskName(taskData.prompt);
-        dbg.ipc('Generated task name: %s', taskName);
-        // taskName may still be null if generation fails - that's ok
-      }
-
-      // Create the worktree using the generated task name
-      // Use provided sourceBranch, fall back to project defaultBranch, or undefined for current HEAD
-      const effectiveSourceBranch = sourceBranch ?? project.defaultBranch;
-      dbg.ipc(
-        'Creating worktree from branch: %s',
-        effectiveSourceBranch ?? 'HEAD',
-      );
-      const {
-        worktreePath,
-        startCommitHash,
-        branchName,
-        sourceBranch: actualSourceBranch,
-      } = await createWorktree(
-        project.path,
-        project.id,
-        project.name,
-        taskData.prompt,
-        taskName ?? undefined,
-        effectiveSourceBranch ?? undefined,
-      );
-
-      dbg.ipc('Worktree created: %s, branch: %s', worktreePath, branchName);
-
-      // Create the task with worktree info and generated name
-      return TaskRepository.create({
-        ...taskData,
-        name: taskName,
-        worktreePath,
-        startCommitHash,
-        branchName,
-        sourceBranch: actualSourceBranch,
-      });
+      return task;
     },
   );
   ipcMain.handle('tasks:update', (_, id: string, data: UpdateTask) =>
@@ -1014,6 +1038,79 @@ export function registerIpcHandlers() {
   ipcMain.handle('globalPrompt:respond', (_, response: GlobalPromptResponse) =>
     handlePromptResponse(response),
   );
+
+  // Task Summaries
+  ipcMain.handle('tasks:summary:get', async (_, taskId: string) => {
+    dbg.ipc('tasks:summary:get %s', taskId);
+    return TaskSummaryRepository.findByTaskId(taskId);
+  });
+
+  ipcMain.handle('tasks:summary:generate', async (_, taskId: string) => {
+    dbg.ipc('tasks:summary:generate %s', taskId);
+
+    // Get the task to access worktree info
+    const task = await TaskRepository.findById(taskId);
+    if (!task) {
+      throw new Error(`Task ${taskId} not found`);
+    }
+    if (!task.worktreePath || !task.startCommitHash) {
+      throw new Error(`Task ${taskId} does not have a worktree`);
+    }
+
+    // Get current commit hash in worktree
+    const currentCommitHash = await getCurrentCommitHash(task.worktreePath);
+
+    // Check if we already have a summary for this commit
+    const existingSummary = await TaskSummaryRepository.findByTaskAndCommit(
+      taskId,
+      currentCommitHash,
+    );
+    if (existingSummary) {
+      dbg.ipc('Found existing summary for commit %s', currentCommitHash);
+      return existingSummary;
+    }
+
+    // Get the worktree diff to include in the summary generation
+    const diff = await getWorktreeDiff(task.worktreePath, task.startCommitHash);
+    dbg.ipc('Got diff with %d files', diff.files.length);
+
+    // For now, create a placeholder summary
+    // Real AI generation can be added later by calling AgentService
+    const placeholderSummary = {
+      whatIDid: `Modified ${diff.files.length} file(s) in this worktree.`,
+      keyDecisions:
+        diff.files.length > 0
+          ? diff.files
+              .slice(0, 5)
+              .map((f) => `- ${f.status}: ${f.path}`)
+              .join('\n') +
+            (diff.files.length > 5
+              ? `\n- ... and ${diff.files.length - 5} more files`
+              : '')
+          : '- No changes detected',
+    };
+
+    // Create placeholder annotations for modified/added files
+    const annotations = diff.files
+      .filter((f) => f.status !== 'deleted')
+      .slice(0, 10)
+      .map((f) => ({
+        filePath: f.path,
+        lineNumber: 1,
+        explanation: `File was ${f.status}`,
+      }));
+
+    // Store and return the summary
+    const summary = await TaskSummaryRepository.create({
+      taskId,
+      commitHash: currentCommitHash,
+      summary: placeholderSummary,
+      annotations,
+    });
+
+    dbg.ipc('Created new summary for task %s', taskId);
+    return summary;
+  });
 
   // MCP Templates
   ipcMain.handle('mcpTemplates:findAll', () => McpTemplateRepository.findAll());

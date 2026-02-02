@@ -1,0 +1,106 @@
+import { useRouter } from '@tanstack/react-router';
+import clsx from 'clsx';
+import { AlertCircle } from 'lucide-react';
+
+import { StatusIndicator } from '@/features/task/ui-status-indicator';
+import { getUnreadCount } from '@/features/task/ui-task-list-item';
+import type { TaskWithProject } from '@/lib/api';
+import {
+  formatKeyForDisplay,
+  Kbd,
+  type BindingKey,
+} from '@/lib/keyboard-bindings';
+import { formatRelativeTime } from '@/lib/time';
+import { useTaskMessagesStore } from '@/stores/task-messages';
+
+import type { TaskStatus } from '../../../../shared/types';
+
+export function TaskSummaryCard({
+  task,
+  index,
+  projectName,
+  isSelected,
+}: {
+  task: TaskWithProject;
+  index: number;
+  projectName: string;
+  isSelected?: boolean;
+}) {
+  const router = useRouter();
+  const unreadCount = getUnreadCount(task);
+  const taskState = useTaskMessagesStore((s) => s.tasks[task.id]);
+  const needsAttention =
+    taskState?.pendingPermission || taskState?.pendingQuestion;
+
+  const displayNumber = index + 1;
+  const displayName = task.name ?? task.prompt.split('\n')[0].slice(0, 30);
+
+  // Build tooltip with shortcut hint for tasks 1-9
+  const shortcutHint =
+    displayNumber <= 9
+      ? `${formatKeyForDisplay(`cmd+${displayNumber}` as BindingKey)}`
+      : '';
+  const cardTitle = `${shortcutHint}${displayName}`;
+
+  return (
+    <div
+      role="link"
+      tabIndex={0}
+      title={cardTitle}
+      onClick={() => {
+        router.navigate({
+          to: '/projects/$projectId/tasks/$taskId',
+          params: {
+            projectId: task.projectId,
+            taskId: task.id,
+          },
+        });
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          router.navigate({
+            to: '/projects/$projectId/tasks/$taskId',
+            params: {
+              projectId: task.projectId,
+              taskId: task.id,
+            },
+          });
+        }
+      }}
+      className={clsx(
+        'flex cursor-pointer flex-col gap-1 rounded-lg border px-3 py-2 transition-colors',
+        isSelected
+          ? 'border-blue-500 bg-neutral-700'
+          : 'border-transparent hover:bg-neutral-800',
+      )}
+    >
+      {/* Top row: status, name, number badge */}
+      <div className="flex items-center gap-1">
+        <StatusIndicator status={task.status as TaskStatus} />
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+          {displayName}
+        </span>
+        <Kbd
+          shortcut={`cmd+${displayNumber.toString() as '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'}`}
+          className="mr-0.5"
+        />
+        {needsAttention ? (
+          <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
+        ) : unreadCount > 0 ? (
+          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-500 px-1.5 text-xs font-medium">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        ) : null}
+      </div>
+
+      {/* Bottom row: project tag, time */}
+      <div className="flex items-center gap-2 text-xs text-neutral-400">
+        <span className="truncate">{projectName}</span>
+        <span className="ml-auto shrink-0">
+          {formatRelativeTime(task.createdAt)}
+        </span>
+      </div>
+    </div>
+  );
+}

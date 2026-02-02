@@ -42,6 +42,7 @@ import {
   useAllowForProjectWorktrees,
 } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
+import { formatKeyForDisplay } from '@/lib/keyboard-bindings';
 import { getBranchFromWorktreePath } from '@/lib/worktree';
 import {
   useNavigationStore,
@@ -78,7 +79,6 @@ function TaskPanel() {
   const unloadTask = useTaskMessagesStore((state) => state.unloadTask);
 
   // Navigation tracking
-  const lastLocation = useNavigationStore((s) => s.lastLocation);
   const setLastLocation = useNavigationStore((s) => s.setLastLocation);
   const setLastTaskForProject = useNavigationStore(
     (s) => s.setLastTaskForProject,
@@ -116,21 +116,9 @@ function TaskPanel() {
 
   // Track this location for navigation restoration
   useEffect(() => {
-    // If coming from All Tasks view, keep tracking in that context
-    if (lastLocation.type === 'allTasks') {
-      setLastLocation({ type: 'allTasks', taskId });
-    } else {
-      // Otherwise track in project context
-      setLastLocation({ type: 'project', projectId, taskId });
-    }
+    setLastLocation({ type: 'project', projectId, taskId });
     setLastTaskForProject(projectId, taskId);
-  }, [
-    projectId,
-    taskId,
-    lastLocation.type,
-    setLastLocation,
-    setLastTaskForProject,
-  ]);
+  }, [projectId, taskId, setLastLocation, setLastTaskForProject]);
 
   const handleCopySessionId = useCallback(async () => {
     if (task?.sessionId) {
@@ -276,11 +264,11 @@ function TaskPanel() {
   console.log('RENDER TASK PAGE');
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full w-full overflow-hidden">
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
-        <div className="flex flex-col border-b border-neutral-700 px-6 py-3">
+        <div className="flex flex-col border-b border-neutral-700 p-2">
           {/* Top row: Status, title, and action buttons */}
           <div className="flex items-center gap-3">
             <StatusIndicator
@@ -310,7 +298,7 @@ function TaskPanel() {
             <button
               onClick={handleOpenInEditor}
               className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-1 text-sm font-medium text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
-              title="Open project in editor"
+              title={`Open project in editor (${formatKeyForDisplay('cmd+o')})`}
             >
               <ExternalLink className="h-4 w-4" />
               <span className="overflow-hidden text-ellipsis whitespace-nowrap">
@@ -367,7 +355,7 @@ function TaskPanel() {
                         ? 'bg-purple-500/20 text-purple-400'
                         : 'text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300',
                     )}
-                    title="View git diff"
+                    title={`Toggle diff view (${formatKeyForDisplay('cmd+d')})`}
                   >
                     <GitCompare className="h-3.5 w-3.5" />
                     Diff

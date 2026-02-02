@@ -13,7 +13,11 @@ interface TaskWithMessageCount extends Task {
   messageCount?: number;
 }
 
-export function getUnreadCount(task: TaskWithMessageCount): number {
+export function getUnreadCount(task: {
+  status: string;
+  messageCount?: number;
+  lastReadIndex: number;
+}): number {
   if (task.status === 'running') return 0;
   const messageCount = task.messageCount ?? 0;
   if (messageCount === 0) return 0;

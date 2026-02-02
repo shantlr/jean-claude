@@ -336,7 +336,7 @@ docs/plans/            # Design and implementation documents
 - Coding agent does not need to try to run `pnpm dev` itself; it should focus on implementing features as per the roadmap and designs.
 - When writeing design documents, implementation documents or exectuting implementation task you don't need commit
 - When implementation is done, run `pnpm lint --fix` first
-
+- To verify typescript, run `pnpm ts-check` (instead of `tsc` directly)
 ## Coding Guidelines
 
 ### General Principles

@@ -21,6 +21,7 @@ import * as m019 from './migrations/019_project_commands';
 import * as m020 from './migrations/020_provider_integration';
 import * as m021 from './migrations/021_mcp_templates';
 import * as m022 from './migrations/022_task_source_branch';
+import * as m023 from './migrations/023_add_task_summaries';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -44,6 +45,7 @@ const migrations: Record<string, Migration> = {
   '020_provider_integration': m020,
   '021_mcp_templates': m021,
   '022_task_source_branch': m022,
+  '023_add_task_summaries': m023,
 };
 
 export const migrationProvider: MigrationProvider = {

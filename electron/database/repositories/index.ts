@@ -5,3 +5,4 @@ export { TokenRepository } from './tokens';
 export { AgentMessageRepository } from './agent-messages';
 export { SettingsRepository } from './settings';
 export { DebugRepository } from './debug';
+export { TaskSummaryRepository } from './task-summaries';

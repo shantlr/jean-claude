@@ -3,11 +3,16 @@ import type { ComponentType } from 'react';
 import { useState, useCallback, useMemo } from 'react';
 
 import {
+  useAnnotationsAsInlineComments,
+  fileHasAnnotations,
+} from '@/features/agent/ui-diff-annotation';
+import {
   DiffView,
   type InlineComment,
   type LineRange,
 } from '@/features/agent/ui-diff-view';
 import { MarkdownContent } from '@/features/agent/ui-markdown-content';
+import type { FileAnnotation } from '@/lib/api';
 
 import { FileDiffHeader } from './file-diff-header';
 import type { DiffFile, CommentThread } from './types';
@@ -24,6 +29,8 @@ export function FileDiffContent({
   onAddComment,
   isAddingComment,
   CommentForm,
+  // Optional annotation support
+  annotations,
 }: {
   file: DiffFile;
   oldContent: string;
@@ -45,6 +52,8 @@ export function FileDiffContent({
     isSubmitting?: boolean;
     placeholder?: string;
   }>;
+  // Annotation props - optional
+  annotations?: FileAnnotation[];
 }) {
   const [commentFormLineRange, setCommentFormLineRange] =
     useState<LineRange | null>(null);
@@ -83,8 +92,19 @@ export function FileDiffContent({
 
   const hasCommentSupport = !!onAddComment && !!CommentForm;
 
+  // Get annotation inline comments using the hook
+  const { inlineComments: annotationComments } = useAnnotationsAsInlineComments(
+    {
+      annotations: annotations ?? [],
+      filePath: file.path,
+    },
+  );
+
+  // Check if file has annotations for the header badge
+  const hasAnnotations = fileHasAnnotations(annotations ?? [], file.path);
+
   // Convert threads to inline comments for DiffView
-  const inlineComments: InlineComment[] = useMemo(() => {
+  const threadComments: InlineComment[] = useMemo(() => {
     return fileThreads.map((thread) => ({
       line: thread.line!,
       content: (
@@ -103,6 +123,11 @@ export function FileDiffContent({
       ),
     }));
   }, [fileThreads]);
+
+  // Merge thread comments and annotation comments
+  const inlineComments: InlineComment[] = useMemo(() => {
+    return [...threadComments, ...annotationComments];
+  }, [threadComments, annotationComments]);
 
   // Format the line range label
   const lineRangeLabel = useMemo(() => {
@@ -172,6 +197,7 @@ export function FileDiffContent({
         file={file}
         className={headerClassName}
         commentCount={fileThreads.length}
+        hasAnnotations={hasAnnotations}
       />
 
       {/* Diff view with inline comments */}

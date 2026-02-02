@@ -1,7 +1,7 @@
 import { MarkdownContent } from '@/features/agent/ui-markdown-content';
-import type { AzureDevOpsPullRequest } from '@/lib/api';
+import type { AzureDevOpsPullRequestDetails } from '@/lib/api';
 
-export function PrOverview({ pr }: { pr: AzureDevOpsPullRequest }) {
+export function PrOverview({ pr }: { pr: AzureDevOpsPullRequestDetails }) {
   return (
     <div className="h-full overflow-y-auto p-4">
       <div className="max-w-3xl">

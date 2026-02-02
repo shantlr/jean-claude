@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 
 import type { GlobalPrompt } from '../../../../shared/global-prompt-types';
 
-export function GlobalPromptModal() {
+export function GlobalPromptFromBackModal() {
   const [promptQueue, setPromptQueue] = useState<GlobalPrompt[]>([]);
 
   useEffect(() => {

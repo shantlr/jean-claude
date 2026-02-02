@@ -89,6 +89,27 @@ export interface DetectedProject {
   name: string;
 }
 
+// Task Summary types
+export interface TaskSummaryContent {
+  whatIDid: string;
+  keyDecisions: string;
+}
+
+export interface FileAnnotation {
+  filePath: string;
+  lineNumber: number;
+  explanation: string;
+}
+
+export interface TaskSummary {
+  id: string;
+  taskId: string;
+  commitHash: string;
+  summary: TaskSummaryContent;
+  annotations: FileAnnotation[];
+  createdAt: string;
+}
+
 export interface NonExistentClaudeProject {
   path: string;
   folderName: string;
@@ -230,7 +251,11 @@ export interface Api {
     findById: (id: string) => Promise<Task | undefined>;
     create: (data: NewTask) => Promise<Task>;
     createWithWorktree: (
-      data: NewTask & { useWorktree: boolean; sourceBranch?: string | null },
+      data: NewTask & {
+        useWorktree: boolean;
+        sourceBranch?: string | null;
+        autoStart?: boolean;
+      },
     ) => Promise<Task>;
     update: (id: string, data: UpdateTask) => Promise<Task>;
     delete: (id: string) => Promise<void>;
@@ -283,6 +308,10 @@ export interface Api {
       ) => Promise<MergeWorktreeResult>;
       getBranches: (taskId: string) => Promise<string[]>;
       pushBranch: (taskId: string) => Promise<void>;
+    };
+    summary: {
+      get: (taskId: string) => Promise<TaskSummary | undefined>;
+      generate: (taskId: string) => Promise<TaskSummary>;
     };
   };
   providers: {
@@ -624,6 +653,12 @@ export const api: Api = hasWindowApi
           getBranches: async () => [],
           pushBranch: async () => {},
         },
+        summary: {
+          get: async () => undefined,
+          generate: async () => {
+            throw new Error('API not available');
+          },
+        },
       },
       providers: {
         findAll: async () => [],
@@ -761,7 +796,12 @@ export const api: Api = hasWindowApi
           commands: [],
         }),
         killPortsForCommand: async () => {},
-        getPackageScripts: async () => ({ scripts: [], packageManager: null }),
+        getPackageScripts: async () => ({
+          scripts: [],
+          packageManager: null,
+          isWorkspace: false,
+          workspacePackages: [],
+        }),
         onStatusChange: () => () => {},
       },
       globalPrompt: {

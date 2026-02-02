@@ -38,10 +38,14 @@ const defaultTaskState: TaskState = {
 const DEFAULT_DIFF_FILE_TREE_WIDTH = 224; // w-56 equivalent
 const MIN_DIFF_FILE_TREE_WIDTH = 150;
 
+// Constants for sidebar width
+const DEFAULT_SIDEBAR_WIDTH = 256; // w-64 equivalent
+const MIN_SIDEBAR_WIDTH = 200;
+const MAX_SIDEBAR_WIDTH = 400;
+
 // Discriminated union for last location
 export type LastLocation =
   | { type: 'project'; projectId: string; taskId: string | null }
-  | { type: 'allTasks'; taskId: string | null }
   | { type: 'none' };
 
 interface NavigationState {
@@ -50,6 +54,12 @@ interface NavigationState {
 
   // App-level: diff file tree width (global setting)
   diffFileTreeWidth: number;
+
+  // App-level: sidebar width (global setting)
+  sidebarWidth: number;
+
+  // App-level: project filter for session list ('all' or specific projectId)
+  projectFilter: string | 'all';
 
   // Per-project: last viewed task
   lastTaskByProject: Record<string, string>; // projectId -> taskId
@@ -60,6 +70,8 @@ interface NavigationState {
   // Actions
   setLastLocation: (location: LastLocation) => void;
   setDiffFileTreeWidth: (width: number) => void;
+  setSidebarWidth: (width: number) => void;
+  setProjectFilter: (filter: string | 'all') => void;
   setLastTaskForProject: (projectId: string, taskId: string) => void;
   setTaskRightPane: (taskId: string, pane: RightPane | null) => void;
   setDiffViewOpen: (taskId: string, isOpen: boolean) => void;
@@ -73,6 +85,8 @@ const useStore = create<NavigationState>()(
     (set) => ({
       lastLocation: { type: 'none' } as LastLocation,
       diffFileTreeWidth: DEFAULT_DIFF_FILE_TREE_WIDTH,
+      sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
+      projectFilter: 'all' as string | 'all',
       lastTaskByProject: {},
       taskState: {},
 
@@ -80,6 +94,16 @@ const useStore = create<NavigationState>()(
 
       setDiffFileTreeWidth: (width) =>
         set({ diffFileTreeWidth: Math.max(MIN_DIFF_FILE_TREE_WIDTH, width) }),
+
+      setSidebarWidth: (width) =>
+        set({
+          sidebarWidth: Math.min(
+            Math.max(MIN_SIDEBAR_WIDTH, width),
+            MAX_SIDEBAR_WIDTH,
+          ),
+        }),
+
+      setProjectFilter: (filter) => set({ projectFilter: filter }),
 
       setLastTaskForProject: (projectId, taskId) =>
         set((state) => ({
@@ -174,10 +198,6 @@ const useStore = create<NavigationState>()(
                 taskId: null,
               };
             }
-          } else if (state.lastLocation.type === 'allTasks') {
-            if (state.lastLocation.taskId === taskId) {
-              newLastLocation = { type: 'allTasks', taskId: null };
-            }
           }
 
           return {
@@ -199,6 +219,13 @@ export function useLastLocation() {
   const lastLocation = useStore((state) => state.lastLocation);
   const setLastLocation = useStore((state) => state.setLastLocation);
   return { lastLocation, setLastLocation };
+}
+
+// Hook for project filter
+export function useProjectFilter() {
+  const projectFilter = useStore((state) => state.projectFilter);
+  const setProjectFilter = useStore((state) => state.setProjectFilter);
+  return { projectFilter, setProjectFilter };
 }
 
 // Hook for per-project last task
@@ -315,4 +342,16 @@ export function useDiffFileTreeWidth() {
   const width = useStore((state) => state.diffFileTreeWidth);
   const setWidth = useStore((state) => state.setDiffFileTreeWidth);
   return { width, setWidth, minWidth: MIN_DIFF_FILE_TREE_WIDTH };
+}
+
+// Hook for sidebar width
+export function useSidebarWidth() {
+  const width = useStore((state) => state.sidebarWidth);
+  const setWidth = useStore((state) => state.setSidebarWidth);
+  return {
+    width,
+    setWidth,
+    minWidth: MIN_SIDEBAR_WIDTH,
+    maxWidth: MAX_SIDEBAR_WIDTH,
+  };
 }

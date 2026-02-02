@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { api, QueryTableParams } from '@/lib/api';
+import { api, QueryTableParams, QueryTableResult } from '@/lib/api';
 
 export function useDebugTableNames() {
   return useQuery({
@@ -10,7 +10,7 @@ export function useDebugTableNames() {
 }
 
 export function useDebugTableQuery(params: QueryTableParams | null) {
-  return useQuery({
+  return useQuery<QueryTableResult>({
     queryKey: ['debug', 'table', params?.table, params?.search, params?.offset],
     queryFn: () => api.debug.queryTable(params!),
     enabled: params !== null,

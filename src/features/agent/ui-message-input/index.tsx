@@ -6,6 +6,7 @@ import {
   PromptTextarea,
   PromptTextareaRef,
 } from '@/features/common/ui-prompt-textarea';
+import { formatKeyForDisplay } from '@/lib/keyboard-bindings';
 
 import type { Skill } from '../../../../shared/skill-types';
 
@@ -104,6 +105,11 @@ export function MessageInput({
             : 'bg-blue-600 hover:bg-blue-500',
         )}
         aria-label={isRunning ? 'Queue this message' : 'Send message'}
+        title={
+          isRunning
+            ? `Queue message (${formatKeyForDisplay('enter')})`
+            : `Send message (${formatKeyForDisplay('enter')})`
+        }
       >
         {isRunning ? (
           <>
@@ -120,6 +126,11 @@ export function MessageInput({
           disabled={isStopping}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-600 text-white hover:bg-red-500 disabled:opacity-50"
           aria-label={isStopping ? 'Stopping agent' : 'Stop agent'}
+          title={
+            isStopping
+              ? 'Stopping agent...'
+              : `Stop agent (${formatKeyForDisplay('escape')} twice)`
+          }
         >
           {isStopping ? (
             <Loader2 className="h-5 w-5 animate-spin" aria-hidden />

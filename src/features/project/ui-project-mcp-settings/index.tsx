@@ -29,7 +29,7 @@ export function ProjectMcpSettings({ projectId }: { projectId: string }) {
   const [pendingAction, setPendingAction] = useState<string | null>(null);
 
   const handleActiveToggle = async (
-    server: (typeof servers)[number],
+    server: NonNullable<typeof servers>[number],
     newActive: boolean,
   ) => {
     if (!project) return;
@@ -68,7 +68,7 @@ export function ProjectMcpSettings({ projectId }: { projectId: string }) {
   };
 
   const handleWorktreeToggle = async (
-    server: (typeof servers)[number],
+    server: NonNullable<typeof servers>[number],
     newValue: boolean,
   ) => {
     if (!server.template) return;

@@ -28,7 +28,7 @@
     "package:win": "electron-vite build && electron-builder --win",
     "package:linux": "electron-vite build && electron-builder --linux",
     "icons": "rm -rf resources/icons && npx electron-icon-builder --output=./resources --flatten --input",
-    "ts-check": "tsc --noEmit",
+    "ts-check": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
@@ -44,6 +44,7 @@
     "debug": "^4.4.3",
     "diff": "^8.0.3",
     "fix-path": "^5.0.0",
+    "fuse.js": "^7.1.0",
     "glob": "^13.0.0",
     "kysely": "^0.28.10",
     "lucide-react": "^0.562.0",
@@ -53,6 +54,7 @@
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "shiki": "^3.21.0",
+    "turndown": "^7.2.2",
     "uuid": "^13.0.0",
     "zustand": "^5.0.10"
   },
@@ -80,6 +82,7 @@
     "@types/debug": "^4.1.12",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/turndown": "^5.0.6",
     "@typescript-eslint/eslint-plugin": "^8.53.0",
     "@typescript-eslint/parser": "^8.53.0",
     "@vitejs/plugin-react": "^4.3.4",
@@ -100,7 +103,7 @@
     "prettier": "^3.8.0",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwindcss": "^4.1.18",
-    "typescript": "^5.7.2",
+    "typescript": "^5.9.3",
     "vite": "^6.4.1"
   }
 }

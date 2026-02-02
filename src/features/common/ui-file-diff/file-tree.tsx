@@ -1,5 +1,11 @@
-import { ChevronDown, ChevronRight, File, Folder } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import {
+  ChevronDown,
+  ChevronRight,
+  File,
+  Folder,
+  MessageCircle,
+} from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
 
 import { getStatusIndicator } from './status-badge';
 import type { DiffFile, DiffFileStatus } from './types';
@@ -17,10 +23,13 @@ export function DiffFileTree({
   files,
   selectedPath,
   onSelectFile,
+  filesWithAnnotations,
 }: {
   files: DiffFile[];
   selectedPath: string | null;
   onSelectFile: (path: string) => void;
+  /** Set of file paths that have annotations */
+  filesWithAnnotations?: Set<string>;
 }) {
   const tree = useMemo(() => buildTree(files), [files]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => {
@@ -50,6 +59,11 @@ export function DiffFileTree({
     });
   };
 
+  const hasAnnotation = useCallback(
+    (path: string) => filesWithAnnotations?.has(path) ?? false,
+    [filesWithAnnotations],
+  );
+
   return (
     <div className="flex flex-col overflow-auto py-2">
       {tree.map((node) => (
@@ -61,6 +75,7 @@ export function DiffFileTree({
           expandedFolders={expandedFolders}
           onSelectFile={onSelectFile}
           onToggleFolder={toggleFolder}
+          hasAnnotation={hasAnnotation}
         />
       ))}
     </div>
@@ -74,6 +89,7 @@ function TreeNodeRow({
   expandedFolders,
   onSelectFile,
   onToggleFolder,
+  hasAnnotation,
 }: {
   node: TreeNode;
   depth: number;
@@ -81,6 +97,7 @@ function TreeNodeRow({
   expandedFolders: Set<string>;
   onSelectFile: (path: string) => void;
   onToggleFolder: (path: string) => void;
+  hasAnnotation: (path: string) => boolean;
 }) {
   const isExpanded = expandedFolders.has(node.path);
   const isSelected = node.path === selectedPath;
@@ -113,6 +130,7 @@ function TreeNodeRow({
               expandedFolders={expandedFolders}
               onSelectFile={onSelectFile}
               onToggleFolder={onToggleFolder}
+              hasAnnotation={hasAnnotation}
             />
           ))}
       </>
@@ -121,6 +139,7 @@ function TreeNodeRow({
 
   // File node
   const statusIndicator = getStatusIndicatorOrEmpty(node.status);
+  const fileHasAnnotation = hasAnnotation(node.path);
 
   return (
     <button
@@ -140,6 +159,12 @@ function TreeNodeRow({
         <span className="truncate text-xs text-neutral-500">
           ← {getFileName(node.originalPath)}
         </span>
+      )}
+      {fileHasAnnotation && (
+        <MessageCircle
+          className="ml-1 h-3 w-3 shrink-0 text-amber-400/70"
+          aria-label="Has AI annotations"
+        />
       )}
       <span className={`ml-auto shrink-0 text-xs ${statusIndicator.color}`}>
         {statusIndicator.label}

@@ -251,11 +251,7 @@ async function getDiffBaseCommit(
       },
     );
     const base = mergeBase.trim();
-    dbg.worktree(
-      'Using merge-base with origin/%s: %s',
-      sourceBranch,
-      base,
-    );
+    dbg.worktree('Using merge-base with origin/%s: %s', sourceBranch, base);
     return base;
   } catch {
     // Try without origin/ prefix (local branch)

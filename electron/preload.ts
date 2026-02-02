@@ -101,6 +101,11 @@ contextBridge.exposeInMainWorld('api', {
       pushBranch: (taskId: string) =>
         ipcRenderer.invoke('tasks:worktree:pushBranch', taskId),
     },
+    summary: {
+      get: (taskId: string) => ipcRenderer.invoke('tasks:summary:get', taskId),
+      generate: (taskId: string) =>
+        ipcRenderer.invoke('tasks:summary:generate', taskId),
+    },
   },
   providers: {
     findAll: () => ipcRenderer.invoke('providers:findAll'),

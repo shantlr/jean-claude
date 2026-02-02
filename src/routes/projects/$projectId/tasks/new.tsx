@@ -10,7 +10,6 @@ import { PromptTextarea } from '@/features/common/ui-prompt-textarea';
 import { useProject, useProjectBranches } from '@/hooks/use-projects';
 import { useProjectSkills } from '@/hooks/use-skills';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
-import { api } from '@/lib/api';
 import { useNewTaskFormStore } from '@/stores/new-task-form';
 
 export const Route = createFileRoute('/projects/$projectId/tasks/new')({
@@ -61,21 +60,17 @@ function NewTask() {
       workItemUrl,
       sourceBranch: useWorktree ? effectiveSourceBranch : null,
       updatedAt: new Date().toISOString(),
+      autoStart: shouldStart,
     });
 
     // Clear the draft now that we've submitted
     clearDraft();
 
-    // Navigate to the task first
+    // Navigate to the task
     navigate({
       to: '/projects/$projectId/tasks/$taskId',
       params: { projectId, taskId: task.id },
     });
-
-    // Start the agent after navigation if requested
-    if (shouldStart) {
-      api.agent.start(task.id);
-    }
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
