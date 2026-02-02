@@ -18,24 +18,6 @@ import { PROJECT_HEADER_HEIGHT } from '@/layout/ui-project-sidebar';
 
 import type { Skill } from '../../../../shared/skill-types';
 
-function SkillSourceBadge({
-  source,
-  pluginName,
-}: {
-  source: Skill['source'];
-  pluginName?: string;
-}) {
-  const config = {
-    user: { label: 'user', className: 'text-blue-400' },
-    project: { label: 'project', className: 'text-green-400' },
-    plugin: { label: pluginName ?? 'plugin', className: 'text-orange-400' },
-  }[source];
-
-  return (
-    <span className={`text-[10px] ${config.className}`}>{config.label}</span>
-  );
-}
-
 function SkillItem({ skill }: { skill: Skill }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -54,13 +36,86 @@ function SkillItem({ skill }: { skill: Skill }) {
         <span className="min-w-0 flex-1 truncate text-xs text-neutral-300">
           {skill.name}
         </span>
-        <SkillSourceBadge source={skill.source} pluginName={skill.pluginName} />
       </div>
       {isExpanded && (
         <p className="mt-1 mr-2 ml-[30px] text-[11px] leading-relaxed text-neutral-500">
           {skill.description || 'No description available.'}
         </p>
       )}
+    </div>
+  );
+}
+
+interface SkillGroup {
+  key: string;
+  label: string;
+  className: string;
+  skills: Skill[];
+}
+
+function groupSkills(skills: Skill[]): SkillGroup[] {
+  const groups: SkillGroup[] = [];
+
+  // Group by source, with plugins further grouped by pluginName
+  const projectSkills = skills.filter((s) => s.source === 'project');
+  const userSkills = skills.filter((s) => s.source === 'user');
+  const pluginSkills = skills.filter((s) => s.source === 'plugin');
+
+  // Group plugin skills by pluginName
+  const pluginsByName = new Map<string, Skill[]>();
+  for (const skill of pluginSkills) {
+    const name = skill.pluginName ?? 'plugin';
+    const existing = pluginsByName.get(name) ?? [];
+    existing.push(skill);
+    pluginsByName.set(name, existing);
+  }
+
+  // Add groups in priority order: project > user > plugins
+  if (projectSkills.length > 0) {
+    groups.push({
+      key: 'project',
+      label: 'Project',
+      className: 'text-green-400',
+      skills: projectSkills,
+    });
+  }
+
+  if (userSkills.length > 0) {
+    groups.push({
+      key: 'user',
+      label: 'User',
+      className: 'text-blue-400',
+      skills: userSkills,
+    });
+  }
+
+  for (const [pluginName, skills] of pluginsByName) {
+    groups.push({
+      key: `plugin-${pluginName}`,
+      label: pluginName,
+      className: 'text-orange-400',
+      skills,
+    });
+  }
+
+  return groups;
+}
+
+function SkillGroupSection({ group }: { group: SkillGroup }) {
+  return (
+    <div>
+      <div className="mb-1 px-2">
+        <span
+          className={`text-[10px] font-medium uppercase ${group.className}`}
+        >
+          {group.label}
+        </span>
+      </div>
+      <div className="space-y-0.5">
+        {group.skills.map((skill) => (
+          <SkillItem key={`${skill.source}-${skill.name}`} skill={skill} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -84,10 +139,12 @@ function SkillsList({ taskId }: { taskId: string }) {
     return <p className="text-xs text-neutral-600">No skills available.</p>;
   }
 
+  const groups = groupSkills(skills);
+
   return (
-    <div className="space-y-0.5">
-      {skills.map((skill) => (
-        <SkillItem key={`${skill.source}-${skill.name}`} skill={skill} />
+    <div className="space-y-4">
+      {groups.map((group) => (
+        <SkillGroupSection key={group.key} group={group} />
       ))}
     </div>
   );
