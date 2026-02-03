@@ -19,6 +19,7 @@ import { Route as SettingsDebugRouteImport } from './routes/settings/debug'
 import { Route as SettingsAzureDevopsRouteImport } from './routes/settings/azure-devops'
 import { Route as ProjectsNewRouteImport } from './routes/projects/new'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projectId'
+import { Route as AllTaskIdRouteImport } from './routes/all/$taskId'
 import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$projectId/index'
 import { Route as ProjectsProjectIdDetailsRouteImport } from './routes/projects/$projectId/details'
 import { Route as ProjectsProjectIdTasksNewRouteImport } from './routes/projects/$projectId/tasks/new'
@@ -75,6 +76,11 @@ const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
   path: '/projects/$projectId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AllTaskIdRoute = AllTaskIdRouteImport.update({
+  id: '/all/$taskId',
+  path: '/all/$taskId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectsProjectIdIndexRoute = ProjectsProjectIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -108,6 +114,7 @@ const ProjectsProjectIdPrsPrIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/all/$taskId': typeof AllTaskIdRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/projects/new': typeof ProjectsNewRoute
   '/settings/azure-devops': typeof SettingsAzureDevopsRoute
@@ -124,6 +131,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/all/$taskId': typeof AllTaskIdRoute
   '/projects/new': typeof ProjectsNewRoute
   '/settings/azure-devops': typeof SettingsAzureDevopsRoute
   '/settings/debug': typeof SettingsDebugRoute
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/all/$taskId': typeof AllTaskIdRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/projects/new': typeof ProjectsNewRoute
   '/settings/azure-devops': typeof SettingsAzureDevopsRoute
@@ -160,6 +169,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/settings'
+    | '/all/$taskId'
     | '/projects/$projectId'
     | '/projects/new'
     | '/settings/azure-devops'
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/all/$taskId'
     | '/projects/new'
     | '/settings/azure-devops'
     | '/settings/debug'
@@ -192,6 +203,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/settings'
+    | '/all/$taskId'
     | '/projects/$projectId'
     | '/projects/new'
     | '/settings/azure-devops'
@@ -210,6 +222,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SettingsRoute: typeof SettingsRouteWithChildren
+  AllTaskIdRoute: typeof AllTaskIdRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRouteWithChildren
   ProjectsNewRoute: typeof ProjectsNewRoute
 }
@@ -284,6 +297,13 @@ declare module '@tanstack/react-router' {
       path: '/projects/$projectId'
       fullPath: '/projects/$projectId'
       preLoaderRoute: typeof ProjectsProjectIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/all/$taskId': {
+      id: '/all/$taskId'
+      path: '/all/$taskId'
+      fullPath: '/all/$taskId'
+      preLoaderRoute: typeof AllTaskIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects/$projectId/': {
@@ -368,6 +388,7 @@ const ProjectsProjectIdRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SettingsRoute: SettingsRouteWithChildren,
+  AllTaskIdRoute: AllTaskIdRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRouteWithChildren,
   ProjectsNewRoute: ProjectsNewRoute,
 }

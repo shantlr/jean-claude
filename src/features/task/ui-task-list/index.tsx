@@ -44,13 +44,21 @@ export function TaskList() {
     (index: number) => {
       const task = filteredTasks[index];
       if (task) {
-        navigate({
-          to: '/projects/$projectId/tasks/$taskId',
-          params: { projectId: task.projectId, taskId: task.id },
-        });
+        // If we're in "all" view, stay in all view
+        if (projectFilter === 'all') {
+          navigate({
+            to: '/all/$taskId',
+            params: { taskId: task.id },
+          });
+        } else {
+          navigate({
+            to: '/projects/$projectId/tasks/$taskId',
+            params: { projectId: task.projectId, taskId: task.id },
+          });
+        }
       }
     },
-    [filteredTasks, navigate],
+    [filteredTasks, navigate, projectFilter],
   );
 
   const navigateRelative = useCallback(

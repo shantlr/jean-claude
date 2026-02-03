@@ -11,6 +11,7 @@ import {
   type BindingKey,
 } from '@/lib/keyboard-bindings';
 import { formatRelativeTime } from '@/lib/time';
+import { useProjectFilter } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 
 import type { TaskStatus } from '../../../../shared/types';
@@ -29,6 +30,7 @@ export function TaskSummaryCard({
   const router = useRouter();
   const unreadCount = getUnreadCount(task);
   const taskState = useTaskMessagesStore((s) => s.tasks[task.id]);
+  const { projectFilter } = useProjectFilter();
   const needsAttention =
     taskState?.pendingPermission || taskState?.pendingQuestion;
 
@@ -42,30 +44,35 @@ export function TaskSummaryCard({
       : '';
   const cardTitle = `${shortcutHint}${displayName}`;
 
+  const handleNavigate = () => {
+    // If we're in "all" view, stay in all view
+    if (projectFilter === 'all') {
+      router.navigate({
+        to: '/all/$taskId',
+        params: { taskId: task.id },
+      });
+    } else {
+      // Otherwise navigate to project-specific route
+      router.navigate({
+        to: '/projects/$projectId/tasks/$taskId',
+        params: {
+          projectId: task.projectId,
+          taskId: task.id,
+        },
+      });
+    }
+  };
+
   return (
     <div
       role="link"
       tabIndex={0}
       title={cardTitle}
-      onClick={() => {
-        router.navigate({
-          to: '/projects/$projectId/tasks/$taskId',
-          params: {
-            projectId: task.projectId,
-            taskId: task.id,
-          },
-        });
-      }}
+      onClick={handleNavigate}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          router.navigate({
-            to: '/projects/$projectId/tasks/$taskId',
-            params: {
-              projectId: task.projectId,
-              taskId: task.id,
-            },
-          });
+          handleNavigate();
         }
       }}
       className={clsx(
