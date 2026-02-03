@@ -1,4 +1,3 @@
-// src/lib/keyboard-bindings/utils.ts
 import type { BindingKey } from './types';
 
 const KEY_MAP: Record<string, string> = {

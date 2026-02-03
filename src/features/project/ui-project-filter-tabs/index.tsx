@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import { Plus } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 
-import { useKeyboardBindings } from '@/lib/keyboard-bindings';
+import { useCommands } from '@/common/hooks/use-commands';
 import { useProjectFilter } from '@/stores/navigation';
 
 import type { Project } from '../../../../shared/types';
@@ -17,37 +17,47 @@ export function ProjectFilterTabs({ projects }: { projects: Project[] }) {
     [projects],
   );
 
-  useKeyboardBindings('project-filter-tabs', {
-    'cmd+right': () => {
-      const currentIndex = sortedProjects.findIndex(
-        (p) => p.id === projectFilter,
-      );
-      const nextIndex =
-        currentIndex === -1
-          ? 0
-          : (currentIndex + 1) % (sortedProjects.length + 1);
-      if (nextIndex === sortedProjects.length) {
-        setProjectFilter('all');
-      } else {
-        setProjectFilter(sortedProjects[nextIndex].id);
-      }
+  useCommands('project-filter-tabs', [
+    {
+      label: 'Next Tab',
+      shortcut: 'cmd+right',
+      hideInCommandPalette: true,
+      handler: () => {
+        const currentIndex = sortedProjects.findIndex(
+          (p) => p.id === projectFilter,
+        );
+        const nextIndex =
+          currentIndex === -1
+            ? 0
+            : (currentIndex + 1) % (sortedProjects.length + 1);
+        if (nextIndex === sortedProjects.length) {
+          setProjectFilter('all');
+        } else {
+          setProjectFilter(sortedProjects[nextIndex].id);
+        }
+      },
     },
-    'cmd+left': () => {
-      const currentIndex = sortedProjects.findIndex(
-        (p) => p.id === projectFilter,
-      );
-      const prevIndex =
-        currentIndex === -1
-          ? sortedProjects.length - 1
-          : (currentIndex - 1 + (sortedProjects.length + 1)) %
-            (sortedProjects.length + 1);
-      if (prevIndex === sortedProjects.length) {
-        setProjectFilter('all');
-      } else {
-        setProjectFilter(sortedProjects[prevIndex].id);
-      }
+    {
+      label: 'Previous Tab',
+      hideInCommandPalette: true,
+      shortcut: 'cmd+left',
+      handler: () => {
+        const currentIndex = sortedProjects.findIndex(
+          (p) => p.id === projectFilter,
+        );
+        const prevIndex =
+          currentIndex === -1
+            ? sortedProjects.length - 1
+            : (currentIndex - 1 + (sortedProjects.length + 1)) %
+              (sortedProjects.length + 1);
+        if (prevIndex === sortedProjects.length) {
+          setProjectFilter('all');
+        } else {
+          setProjectFilter(sortedProjects[prevIndex].id);
+        }
+      },
     },
-  });
+  ]);
 
   // Scroll to active tab on mount or filter change
   useEffect(() => {

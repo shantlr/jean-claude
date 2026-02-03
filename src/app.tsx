@@ -1,12 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
 
-import { RootCommandPalette } from '@/lib/command-palette';
-import {
-  KeyboardLayoutProvider,
-  RootKeyboardBindings,
-} from '@/lib/keyboard-bindings';
-
+import { RootKeyboardBindings } from './common/context/keyboard-bindings';
+import { DetectKeyboardLayout } from './common/context/keyboard-layout';
 import { routeTree } from './routeTree.gen';
 
 const queryClient = new QueryClient();
@@ -20,14 +16,13 @@ declare module '@tanstack/react-router' {
 
 export default function App() {
   return (
-    <KeyboardLayoutProvider>
+    <>
+      <DetectKeyboardLayout />
       <RootKeyboardBindings>
-        <RootCommandPalette>
-          <QueryClientProvider client={queryClient}>
-            <RouterProvider router={router} />
-          </QueryClientProvider>
-        </RootCommandPalette>
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>
       </RootKeyboardBindings>
-    </KeyboardLayoutProvider>
+    </>
   );
 }

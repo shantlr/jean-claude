@@ -1,4 +1,3 @@
-// src/features/settings/ui-mcp-servers-settings/mcp-template-list.tsx
 import { Trash2, Server } from 'lucide-react';
 
 import type { McpServerTemplate } from '../../../../shared/mcp-types';

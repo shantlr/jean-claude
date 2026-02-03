@@ -1,4 +1,3 @@
-// src/lib/keyboard-bindings/root-keyboard-bindings.tsx
 import {
   createContext,
   useCallback,
@@ -10,18 +9,30 @@ import {
   type RefObject,
 } from 'react';
 
-import type { BindingConfig, BindingContext, Bindings } from './types';
+import type { BindingKey } from './types';
 import { formatKeyboardEvent, isTypingInInput } from './utils';
 
-interface RootKeyboardBindingsContextValue {
+const RootKeyboardBindingsContext = createContext<{
   register: (id: string, bindings: RefObject<Bindings>) => () => void;
-}
+} | null>(null);
 
-const RootKeyboardBindingsContext =
-  createContext<RootKeyboardBindingsContextValue | null>(null);
+type BindingHandler = (event: KeyboardEvent) => boolean | void;
+interface BindingConfig {
+  handler: BindingHandler;
+  /** If true, skip this binding when focus is on an input/textarea */
+  ignoreIfInput?: boolean;
+}
+type Bindings = {
+  [key in BindingKey]?: BindingHandler | BindingConfig;
+};
 
 export function RootKeyboardBindings({ children }: { children: ReactNode }) {
-  const contextsRef = useRef<BindingContext[]>([]);
+  const contextsRef = useRef<
+    {
+      id: string;
+      bindings: RefObject<Bindings>;
+    }[]
+  >([]);
 
   const register = useCallback((id: string, bindings: RefObject<Bindings>) => {
     // Remove existing if re-registering
@@ -55,7 +66,7 @@ export function RootKeyboardBindings({ children }: { children: ReactNode }) {
         if (config.ignoreIfInput && inInput) continue;
 
         const handled = config.handler(event);
-        if (handled) {
+        if (handled === true || handled === undefined) {
           event.preventDefault();
           event.stopPropagation();
           return;
@@ -79,7 +90,7 @@ export function RootKeyboardBindings({ children }: { children: ReactNode }) {
   );
 }
 
-export function useRootKeyboardBindings(): RootKeyboardBindingsContextValue {
+function useRootKeyboardBindings() {
   const context = useContext(RootKeyboardBindingsContext);
   if (!context) {
     throw new Error(
@@ -87,4 +98,27 @@ export function useRootKeyboardBindings(): RootKeyboardBindingsContextValue {
     );
   }
   return context;
+}
+
+/**
+ * @example
+ * ```
+ * useRegisterKeyboardBindings('my-component', {
+ *   'cmd+k': () => {
+ *     // Do something
+ *    return true; // Indicate handled
+ *   },
+ * })
+ */
+export function useRegisterKeyboardBindings(
+  id: string,
+  bindings: Bindings,
+): void {
+  const root = useRootKeyboardBindings();
+  const bindingsRef = useRef(bindings);
+  bindingsRef.current = bindings;
+
+  useEffect(() => {
+    return root.register(id, bindingsRef);
+  }, [id, root]);
 }

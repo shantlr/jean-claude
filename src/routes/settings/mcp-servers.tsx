@@ -1,4 +1,3 @@
-// src/routes/settings/mcp-servers.tsx
 import { createFileRoute } from '@tanstack/react-router';
 
 import { McpServersSettings } from '@/features/settings/ui-mcp-servers-settings';

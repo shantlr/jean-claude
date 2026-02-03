@@ -2,11 +2,11 @@ import clsx from 'clsx';
 import { Send, Square, Loader2, ListPlus } from 'lucide-react';
 import { useState, useRef, useCallback, KeyboardEvent } from 'react';
 
+import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
 import {
   PromptTextarea,
   PromptTextareaRef,
 } from '@/features/common/ui-prompt-textarea';
-import { formatKeyForDisplay } from '@/lib/keyboard-bindings';
 
 import type { Skill } from '../../../../shared/skill-types';
 

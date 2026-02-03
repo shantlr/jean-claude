@@ -1,9 +1,11 @@
-// src/lib/keyboard-bindings/kbd.tsx
 import clsx from 'clsx';
 
-import { getLayoutAwareDigit, useKeyboardLayout } from './keyboard-layout';
-import type { BindingKey } from './types';
-import { formatKeyForDisplay } from './utils';
+import type { BindingKey } from '../../context/keyboard-bindings/types';
+import { formatKeyForDisplay } from '../../context/keyboard-bindings/utils';
+import {
+  getLayoutAwareDigit,
+  useKeyboardLayout,
+} from '../../context/keyboard-layout';
 
 export function Kbd({
   shortcut,
@@ -12,7 +14,7 @@ export function Kbd({
   shortcut: BindingKey;
   className?: string;
 }) {
-  const { layoutMap } = useKeyboardLayout();
+  const layoutMap = useKeyboardLayout();
 
   // Format the key, replacing digits with layout-aware versions
   let display = formatKeyForDisplay(shortcut);

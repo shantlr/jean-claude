@@ -6,16 +6,13 @@ import {
 } from '@tanstack/react-router';
 import { useCallback, useEffect } from 'react';
 
+import { useCommands } from '@/common/hooks/use-commands';
 import { GlobalPromptFromBackModal } from '@/common/ui/global-prompt-from-back-modal';
 import { TaskMessageManager } from '@/features/agent/task-message-manager';
-import { GlobalCommands } from '@/features/command-palette/global-commands';
-import { TaskCommands } from '@/features/command-palette/task-commands';
 import { CommandPaletteOverlay } from '@/features/command-palette/ui-command-palette-overlay';
-import { KeyboardHelpOverlay } from '@/features/common/ui-keyboard-help';
 import { NewTaskOverlay } from '@/features/new-task/ui-new-task-overlay';
 import { AllTasksSidebar } from '@/layout/ui-all-tasks-sidebar';
 import { Header } from '@/layout/ui-header';
-import { useKeyboardBindings } from '@/lib/keyboard-bindings';
 import { resolveLastLocationRedirect } from '@/lib/navigation';
 import { useNewTaskDraft } from '@/stores/new-task-draft';
 import { useOverlaysStore } from '@/stores/overlays';
@@ -72,16 +69,35 @@ function CommandPaletteContainer() {
   const toggle = useOverlaysStore((s) => s.toggle);
   const close = useOverlaysStore((s) => s.close);
 
-  useKeyboardBindings('command-palette-trigger', {
-    'cmd+p': () => {
-      toggle('command-palette');
-      return true;
+  useCommands('command-palette-trigger', [
+    {
+      shortcut: 'cmd+p',
+      label: 'Open Command Palette',
+      handler: () => {
+        toggle('command-palette');
+      },
+      hideInCommandPalette: true,
     },
-  });
+  ]);
 
   if (!isOpen) return null;
   return <CommandPaletteOverlay onClose={() => close('command-palette')} />;
 }
+
+const GlobalCommands = () => {
+  const navigate = useNavigate();
+
+  useCommands('global-commands', [
+    {
+      label: 'Settings',
+      shortcut: 'cmd+,',
+      handler: () => {
+        navigate({ to: '/settings' });
+      },
+    },
+  ]);
+  return null;
+};
 
 function NewTaskContainer() {
   const isOpen = useOverlaysStore((s) => s.activeOverlay === 'new-task');
@@ -95,33 +111,20 @@ function NewTaskContainer() {
     close('new-task');
   }, [discardDraft, close]);
 
-  useKeyboardBindings('new-task-trigger', {
-    'cmd+n': () => {
-      toggle('new-task');
-      return true;
+  useCommands('new-task-trigger', [
+    {
+      shortcut: 'cmd+n',
+      label: 'New Task',
+      handler: () => {
+        toggle('new-task');
+      },
     },
-  });
+  ]);
 
   if (!isOpen) return null;
   return (
     <NewTaskOverlay onClose={handleClose} onDiscardDraft={handleDiscardDraft} />
   );
-}
-
-function KeyboardHelpContainer() {
-  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'keyboard-help');
-  const toggle = useOverlaysStore((s) => s.toggle);
-  const close = useOverlaysStore((s) => s.close);
-
-  useKeyboardBindings('keyboard-help-trigger', {
-    'cmd+/': () => {
-      toggle('keyboard-help');
-      return true;
-    },
-  });
-
-  if (!isOpen) return null;
-  return <KeyboardHelpOverlay onClose={() => close('keyboard-help')} />;
 }
 
 function RootLayout() {
@@ -130,11 +133,12 @@ function RootLayout() {
       <TaskMessageManager />
       <GlobalPromptFromBackModal />
       <GlobalCommands />
-      <TaskCommands />
+      {/* <TaskCommands /> */}
+
       {/* Overlay containers */}
       <NewTaskContainer />
       <CommandPaletteContainer />
-      <KeyboardHelpContainer />
+
       <div className="flex h-full w-full flex-1 flex-col overflow-hidden">
         <Header />
         <main className="flex h-full w-full overflow-hidden">

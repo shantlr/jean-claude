@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { FileX, FolderX, Loader2, RefreshCw } from 'lucide-react';
 import { useMemo, useCallback } from 'react';
 
+import { useCommands } from '@/common/hooks/use-commands';
 import { getFilesWithAnnotations } from '@/features/agent/ui-diff-annotation';
 import { SummaryPanel } from '@/features/agent/ui-summary-panel';
 import { WorktreeActions } from '@/features/agent/ui-worktree-actions';
@@ -18,7 +19,6 @@ import {
   useWorktreeFileContent,
 } from '@/hooks/use-worktree-diff';
 import type { FileAnnotation, WorktreeDiffFile } from '@/lib/api';
-import { useKeyboardBindings } from '@/lib/keyboard-bindings';
 import { useDiffFileTreeWidth } from '@/stores/navigation';
 
 const HEADER_HEIGHT_CLS = `h-[40px] shrink-0`;
@@ -78,14 +78,17 @@ export function WorktreeDiffView({
   }, [generateSummary, taskId]);
 
   // Keyboard shortcut for generating summary (cmd+shift+s)
-  useKeyboardBindings('worktree-diff-view', {
-    'cmd+shift+s': () => {
-      if (!summary && !generateSummary.isPending) {
-        handleGenerateSummary();
-      }
-      return true;
+  useCommands('worktree-diff-view-summary', [
+    {
+      label: 'Generate Summary',
+      shortcut: 'cmd+shift+s',
+      handler: () => {
+        if (!summary && !generateSummary.isPending) {
+          handleGenerateSummary();
+        }
+      },
     },
-  });
+  ]);
 
   const selectedFile = useMemo(() => {
     if (!selectedFilePath || !data?.files) return null;

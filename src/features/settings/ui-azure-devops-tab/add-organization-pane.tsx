@@ -1,4 +1,3 @@
-// src/features/settings/ui-azure-devops-tab/add-organization-pane.tsx
 import { Link } from '@tanstack/react-router';
 import { Loader2, X } from 'lucide-react';
 import { useState } from 'react';

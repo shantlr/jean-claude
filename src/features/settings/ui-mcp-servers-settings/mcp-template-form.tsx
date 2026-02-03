@@ -1,4 +1,3 @@
-// src/features/settings/ui-mcp-servers-settings/mcp-template-form.tsx
 import { FolderOpen, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 

@@ -285,6 +285,13 @@ export function useTaskState(taskId: string) {
     () => setTaskRightPaneAction(taskId, null),
     [taskId, setTaskRightPaneAction],
   );
+  const toggleRightPane = useCallback(() => {
+    if (taskState.rightPane) {
+      closeRightPane();
+    } else {
+      openSettings();
+    }
+  }, [taskState.rightPane, closeRightPane, openSettings]);
 
   return {
     taskState,
@@ -293,6 +300,7 @@ export function useTaskState(taskId: string) {
     openFilePreview,
     openSettings,
     closeRightPane,
+    toggleRightPane,
   };
 }
 

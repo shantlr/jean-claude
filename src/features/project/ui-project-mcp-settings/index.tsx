@@ -1,4 +1,3 @@
-// src/features/project/ui-project-mcp-settings/index.tsx
 import { Server } from 'lucide-react';
 import { useState } from 'react';
 

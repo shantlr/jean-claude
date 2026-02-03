@@ -2,11 +2,11 @@ import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { Settings } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
+import { useCommands } from '@/common/hooks/use-commands';
 import { ProjectFilterTabs } from '@/features/project/ui-project-filter-tabs';
 import { TaskSummaryCard } from '@/features/task/ui-task-summary-card';
 import { useProjects } from '@/hooks/use-projects';
 import { useAllActiveTasks } from '@/hooks/use-tasks';
-import { useKeyboardBindings } from '@/lib/keyboard-bindings';
 import { useProjectFilter } from '@/stores/navigation';
 
 export function TaskList() {
@@ -93,62 +93,6 @@ export function TaskList() {
     [tabOptions, projectFilter, setProjectFilter],
   );
 
-  // Keyboard bindings for task navigation
-  useKeyboardBindings('task-list-navigation', {
-    'cmd+1': () => {
-      navigateToTask(0);
-      return true;
-    },
-    'cmd+2': () => {
-      navigateToTask(1);
-      return true;
-    },
-    'cmd+3': () => {
-      navigateToTask(2);
-      return true;
-    },
-    'cmd+4': () => {
-      navigateToTask(3);
-      return true;
-    },
-    'cmd+5': () => {
-      navigateToTask(4);
-      return true;
-    },
-    'cmd+6': () => {
-      navigateToTask(5);
-      return true;
-    },
-    'cmd+7': () => {
-      navigateToTask(6);
-      return true;
-    },
-    'cmd+8': () => {
-      navigateToTask(7);
-      return true;
-    },
-    'cmd+9': () => {
-      navigateToTask(8);
-      return true;
-    },
-    'cmd+up': () => {
-      navigateRelative('prev');
-      return true;
-    },
-    'cmd+down': () => {
-      navigateRelative('next');
-      return true;
-    },
-    'cmd+tab': () => {
-      navigateTab('next');
-      return true;
-    },
-    'cmd+shift+tab': () => {
-      navigateTab('prev');
-      return true;
-    },
-  });
-
   // Get selected project for settings button
   const selectedProject = useMemo(
     () =>
@@ -157,6 +101,123 @@ export function TaskList() {
         : null,
     [projects, projectFilter],
   );
+
+  // Keyboard bindings for task navigation
+  useCommands('task-list-navigation', [
+    {
+      label: 'Go to Task 1',
+      shortcut: 'cmd+1',
+      handler: () => {
+        navigateToTask(0);
+      },
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Go to Task 2',
+      shortcut: 'cmd+2',
+      handler: () => {
+        navigateToTask(1);
+      },
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Go to Task 3',
+      shortcut: 'cmd+3',
+      handler: () => {
+        navigateToTask(2);
+      },
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Go to Task 4',
+      shortcut: 'cmd+4',
+      handler: () => {
+        navigateToTask(3);
+      },
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Go to Task 5',
+      shortcut: 'cmd+5',
+      handler: () => {
+        navigateToTask(4);
+      },
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Go to Task 6',
+      shortcut: 'cmd+6',
+      handler: () => {
+        navigateToTask(5);
+      },
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Go to Task 7',
+      shortcut: 'cmd+7',
+      handler: () => {
+        navigateToTask(6);
+      },
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Go to Task 8',
+      shortcut: 'cmd+8',
+      handler: () => {
+        navigateToTask(7);
+      },
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Go to Task 9',
+      shortcut: 'cmd+9',
+      handler: () => {
+        navigateToTask(8);
+      },
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Go to Previous Task',
+      shortcut: 'cmd+up',
+      handler: () => {
+        navigateRelative('prev');
+      },
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Go to Next Task',
+      shortcut: 'cmd+down',
+      handler: () => {
+        navigateRelative('next');
+      },
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Next Tab',
+      shortcut: 'tab',
+      handler: () => {
+        navigateTab('next');
+      },
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Previous Tab',
+      shortcut: 'shift+tab',
+      handler: () => {
+        navigateTab('prev');
+      },
+      hideInCommandPalette: true,
+    },
+    !!selectedProject && {
+      label: 'Open Project Settings',
+      handler: () => {
+        navigate({
+          to: '/projects/$projectId/details',
+          params: { projectId: selectedProject.id },
+        });
+      },
+    },
+  ]);
 
   return (
     <div className="flex h-full flex-col">

@@ -1,4 +1,3 @@
-// src/features/new-task/ui-work-item-list/index.tsx
 import clsx from 'clsx';
 import { Bug, BookOpen, CheckSquare, FileText } from 'lucide-react';
 import { useEffect, useRef } from 'react';

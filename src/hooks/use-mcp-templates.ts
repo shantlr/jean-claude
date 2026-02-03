@@ -1,4 +1,3 @@
-// src/hooks/use-mcp-templates.ts
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';

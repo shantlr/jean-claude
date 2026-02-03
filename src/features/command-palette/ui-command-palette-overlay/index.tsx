@@ -1,84 +1,47 @@
-// src/features/command-palette/ui-command-palette-overlay/index.tsx
 import clsx from 'clsx';
 import Fuse from 'fuse.js';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { groupBy, map } from 'lodash-es';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { useCommandPalette, type Command } from '@/lib/command-palette';
-import {
-  useKeyboardBindings,
-  Kbd,
-  type BindingKey,
-} from '@/lib/keyboard-bindings';
-
-// Group commands by section
-function groupBySection(commands: Command[]): Record<string, Command[]> {
-  const groups: Record<string, Command[]> = {};
-  for (const cmd of commands) {
-    const section = cmd.section ?? 'commands';
-    if (!groups[section]) groups[section] = [];
-    groups[section].push(cmd);
-  }
-  return groups;
-}
-
-const SECTION_LABELS: Record<string, string> = {
-  'current-task': 'Current Task',
-  sessions: 'Sessions',
-  commands: 'Commands',
-};
-
-// Section display order
-const SECTION_ORDER = ['current-task', 'sessions', 'commands'];
+import { useCommands, useCommandSources } from '@/common/hooks/use-commands';
+import { Kbd } from '@/common/ui/kbd';
 
 export function CommandPaletteOverlay({ onClose }: { onClose: () => void }) {
-  const { getCommands } = useCommandPalette();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const commands = getCommands();
+  const cmdCources = useCommandSources();
 
-  // Create Fuse instance for fuzzy search
-  const fuse = useMemo(
-    () =>
-      new Fuse(commands, {
-        keys: ['label', 'keywords'],
-        threshold: 0.4,
-        ignoreLocation: true,
-      }),
-    [commands],
-  );
+  const allCmds = cmdCources
+    .flatMap(
+      (source) =>
+        source.commands.current?.map((cmd, idx) => ({
+          ...cmd,
+          id: `${source.id}_${idx}`,
+          shortcuts: Array.isArray(cmd.shortcut)
+            ? cmd.shortcut
+            : cmd.shortcut
+              ? [cmd.shortcut]
+              : [],
+        })) ?? [],
+    )
+    .filter((cmd) => !cmd.hideInCommandPalette);
 
-  // Filter commands using fuzzy search
-  const filteredCommands = useMemo(() => {
-    if (!query.trim()) return commands;
-    return fuse.search(query).map((r) => r.item);
-  }, [commands, query, fuse]);
+  const fuse = new Fuse(allCmds, {
+    keys: ['label', 'keywords'],
+    threshold: 0.4,
+    ignoreLocation: true,
+  });
 
-  // Group and sort commands by section, then flatten to get display order
-  const { groupedCommands, sortedSections, displayedCommands } = useMemo(() => {
-    const grouped = groupBySection(filteredCommands);
-    const sections = Object.keys(grouped).sort((a, b) => {
-      const aIndex = SECTION_ORDER.indexOf(a);
-      const bIndex = SECTION_ORDER.indexOf(b);
-      const aOrder = aIndex === -1 ? SECTION_ORDER.length : aIndex;
-      const bOrder = bIndex === -1 ? SECTION_ORDER.length : bIndex;
-      return aOrder - bOrder;
-    });
-    // Flatten in display order for consistent indexing
-    const displayed = sections.flatMap((section) => grouped[section]);
-    return {
-      groupedCommands: grouped,
-      sortedSections: sections,
-      displayedCommands: displayed,
-    };
-  }, [filteredCommands]);
+  const filteredCmds = query ? fuse.search(query).map((r) => r.item) : allCmds;
+  const bySection = groupBy(filteredCmds, (cmd) => cmd.section ?? '');
 
   const handleSelect = useCallback(
-    (command: Command) => {
+    (command: (typeof allCmds)[number]) => {
       onClose();
-      command.onSelect();
+      command.handler();
     },
     [onClose],
   );
@@ -89,64 +52,78 @@ export function CommandPaletteOverlay({ onClose }: { onClose: () => void }) {
   }, []);
 
   // Scroll selected item into view
-  useEffect(() => {
-    if (!listRef.current) return;
-    const container = listRef.current;
-    const selectedElement = container.querySelector(
-      '[data-selected="true"]',
-    ) as HTMLElement | null;
-    if (!selectedElement) return;
+  // useEffect(() => {
+  //   if (!listRef.current) return;
+  //   const container = listRef.current;
+  //   const selectedElement = container.querySelector(
+  //     '[data-selected="true"]',
+  //   ) as HTMLElement | null;
+  //   if (!selectedElement) return;
 
-    const containerRect = container.getBoundingClientRect();
-    const elementRect = selectedElement.getBoundingClientRect();
+  //   const containerRect = container.getBoundingClientRect();
+  //   const elementRect = selectedElement.getBoundingClientRect();
 
-    // Check if element is above visible area
-    if (elementRect.top < containerRect.top) {
-      container.scrollTop -= containerRect.top - elementRect.top;
-    }
-    // Check if element is below visible area
-    else if (elementRect.bottom > containerRect.bottom) {
-      container.scrollTop += elementRect.bottom - containerRect.bottom;
-    }
-  }, [selectedIndex]);
+  //   // Check if element is above visible area
+  //   if (elementRect.top < containerRect.top) {
+  //     container.scrollTop -= containerRect.top - elementRect.top;
+  //   }
+  //   // Check if element is below visible area
+  //   else if (elementRect.bottom > containerRect.bottom) {
+  //     container.scrollTop += elementRect.bottom - containerRect.bottom;
+  //   }
+  // }, [selectedIndex]);
 
-  useKeyboardBindings('command-palette-overlay', {
-    'cmd+p': () => {
-      onClose();
-      return true;
+  useCommands('command-palette-overlay', [
+    {
+      label: 'Close Command Palette',
+      shortcut: ['escape', 'cmd+p'],
+      handler: () => {
+        onClose();
+      },
+      hideInCommandPalette: true,
     },
-    escape: () => {
-      onClose();
-      return true;
+    {
+      label: 'Execute Selected Command',
+      shortcut: 'enter',
+      handler: () => {
+        const cmd = filteredCmds[selectedIndex];
+        if (cmd) handleSelect(cmd);
+      },
+      hideInCommandPalette: true,
     },
-    enter: () => {
-      const cmd = displayedCommands[selectedIndex];
-      if (cmd) handleSelect(cmd);
-      return true;
+    {
+      label: 'Select Previous Command',
+      shortcut: 'up',
+      handler: () => {
+        setSelectedIndex((i) => Math.max(0, i - 1));
+      },
+      hideInCommandPalette: true,
     },
-    up: () => {
-      setSelectedIndex((i) => Math.max(0, i - 1));
-      return true;
+    {
+      label: 'Select Next Command',
+      shortcut: 'down',
+      handler: () => {
+        setSelectedIndex((i) => Math.min(filteredCmds.length - 1, i + 1));
+      },
+      hideInCommandPalette: true,
     },
-    down: () => {
-      setSelectedIndex((i) => Math.min(displayedCommands.length - 1, i + 1));
-      return true;
+    {
+      label: 'Select First Command',
+      shortcut: 'cmd+up',
+      handler: () => {
+        setSelectedIndex(0);
+      },
+      hideInCommandPalette: true,
     },
-    'cmd+up': () => {
-      setSelectedIndex(0);
-      return true;
+    {
+      label: 'Select Last Command',
+      shortcut: 'cmd+down',
+      handler: () => {
+        setSelectedIndex(filteredCmds.length - 1);
+      },
+      hideInCommandPalette: true,
     },
-    'cmd+down': () => {
-      setSelectedIndex(displayedCommands.length - 1);
-      return true;
-    },
-  });
-
-  // Reset selection when query changes
-  const handleQueryChange = (value: string) => {
-    setQuery(value);
-    setSelectedIndex(0);
-  };
+  ]);
 
   let itemIndex = 0;
 
@@ -167,26 +144,30 @@ export function CommandPaletteOverlay({ onClose }: { onClose: () => void }) {
             placeholder="Search..."
             autoFocus
             value={query}
-            onChange={(e) => handleQueryChange(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelectedIndex(0);
+            }}
             className="placeholder:text-muted-foreground flex-1 bg-transparent text-sm outline-none"
           />
         </div>
 
         {/* Results */}
         <div ref={listRef} className="my-2 overflow-y-auto p-2">
-          {displayedCommands.length === 0 ? (
+          {filteredCmds.length === 0 ? (
             <div className="text-muted-foreground py-6 text-center text-sm">
               No matching commands
             </div>
           ) : (
-            sortedSections.map((section) => {
-              const cmds = groupedCommands[section];
+            map(bySection, (sectionCmds, sectionName) => {
+              // const cmds = groupedCommands[section];
               return (
-                <div key={section} className="mt-4 mb-2 first:mt-0">
+                <div key={sectionName} className="mt-4 mb-2 first:mt-0">
                   <div className="mb-2 px-2 text-[11px] font-semibold tracking-wider text-neutral-500 uppercase">
-                    {SECTION_LABELS[section] ?? section}
+                    {sectionName}
+                    {/* {SECTION_LABELS[section] ?? section} */}
                   </div>
-                  {cmds.map((cmd) => {
+                  {sectionCmds.map((cmd) => {
                     const currentIndex = itemIndex++;
                     const isSelected = currentIndex === selectedIndex;
                     return (
@@ -202,9 +183,9 @@ export function CommandPaletteOverlay({ onClose }: { onClose: () => void }) {
                         )}
                       >
                         <span>{cmd.label}</span>
-                        {cmd.shortcut && (
-                          <Kbd shortcut={cmd.shortcut as BindingKey} />
-                        )}
+                        {cmd.shortcuts.map((shortcut, i) => (
+                          <Kbd key={i} shortcut={shortcut} />
+                        ))}
                       </button>
                     );
                   })}

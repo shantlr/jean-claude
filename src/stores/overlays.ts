@@ -1,4 +1,3 @@
-// src/stores/overlays.ts
 // Global overlay state - only one overlay can be open at a time
 // Opening an overlay automatically closes any other open overlay
 

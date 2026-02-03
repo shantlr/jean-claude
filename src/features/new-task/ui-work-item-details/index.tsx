@@ -1,11 +1,10 @@
-// src/features/new-task/ui-work-item-details/index.tsx
 import { Bug, BookOpen, CheckSquare, FileText } from 'lucide-react';
 import { useMemo } from 'react';
 import TurndownService from 'turndown';
 
+import { Kbd } from '@/common/ui/kbd';
 import { MarkdownContent } from '@/features/agent/ui-markdown-content';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
-import { Kbd } from '@/lib/keyboard-bindings';
 
 // Turndown instance for HTML to Markdown conversion
 const turndown = new TurndownService({

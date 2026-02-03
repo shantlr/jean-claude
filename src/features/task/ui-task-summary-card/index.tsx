@@ -2,13 +2,11 @@ import { useRouter } from '@tanstack/react-router';
 import clsx from 'clsx';
 import { AlertCircle } from 'lucide-react';
 
+import { NumberKey } from '@/common/context/keyboard-bindings/types';
+import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
+import { Kbd } from '@/common/ui/kbd';
 import { StatusIndicator } from '@/features/task/ui-status-indicator';
 import type { TaskWithProject } from '@/lib/api';
-import {
-  formatKeyForDisplay,
-  Kbd,
-  type BindingKey,
-} from '@/lib/keyboard-bindings';
 import { formatRelativeTime } from '@/lib/time';
 import { useProjectFilter } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
@@ -50,7 +48,7 @@ export function TaskSummaryCard({
   // Build tooltip with shortcut hint for tasks 1-9
   const shortcutHint =
     displayNumber <= 9
-      ? `${formatKeyForDisplay(`cmd+${displayNumber}` as BindingKey)}`
+      ? `${formatKeyForDisplay(`cmd+${displayNumber as unknown as NumberKey}`)}`
       : '';
   const cardTitle = `${shortcutHint}${displayName}`;
 

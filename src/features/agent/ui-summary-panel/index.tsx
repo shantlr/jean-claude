@@ -1,8 +1,8 @@
 import { ChevronDown, ChevronRight, Loader2, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 
+import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
 import type { TaskSummaryContent } from '@/lib/api';
-import { formatKeyForDisplay } from '@/lib/keyboard-bindings';
 
 import { MarkdownContent } from '../ui-markdown-content';
 

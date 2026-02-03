@@ -344,6 +344,7 @@ docs/plans/            # Design and implementation documents
 - Write TypeScript with strict mode enabled
 - File and folder names should be kebab-case
 - Favorise single object parameter for functions over multiple positional parameters
+- Avoid defining types/interface when you can inline them (only define when reused)
 
 ### React Components
 

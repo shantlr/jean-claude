@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 
+import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
+import { useCommands } from '@/common/hooks/use-commands';
 import { ContextUsageDisplay } from '@/features/agent/ui-context-usage-display';
 import { FilePreviewPane } from '@/features/agent/ui-file-preview-pane';
 import { MessageInput } from '@/features/agent/ui-message-input';
@@ -39,9 +41,9 @@ import {
   useRemoveSessionAllowedTool,
   useAllowForProject,
   useAllowForProjectWorktrees,
+  useToggleTaskUserCompleted,
 } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
-import { formatKeyForDisplay } from '@/lib/keyboard-bindings';
 import { getBranchFromWorktreePath } from '@/lib/worktree';
 import {
   useNavigationStore,
@@ -88,8 +90,13 @@ export function TaskPanel({
   );
 
   // Task state from store (replaces useState for pane state)
-  const { rightPane, openFilePreview, openSettings, closeRightPane } =
-    useTaskState(taskId);
+  const {
+    rightPane,
+    openFilePreview,
+    openSettings,
+    closeRightPane,
+    toggleRightPane,
+  } = useTaskState(taskId);
 
   // Diff view state
   const {
@@ -247,6 +254,68 @@ export function TaskPanel({
       toggleDiffView();
     }
   }, [isDiffViewOpen, toggleDiffView]);
+
+  const toggleUserCompleted = useToggleTaskUserCompleted();
+  useCommands('task-panel', [
+    {
+      label: 'Toggle Diff View',
+      shortcut: 'cmd+d',
+      section: 'Task',
+      handler: () => {
+        toggleDiffView();
+      },
+    },
+    {
+      label: 'Toggle Task Settings',
+      section: 'Task',
+      handler: () => {
+        toggleRightPane();
+      },
+    },
+    {
+      label: 'Open Project in Editor',
+      shortcut: 'cmd+o',
+      section: 'Task',
+      handler: () => {
+        handleOpenInEditor();
+      },
+    },
+    !!task?.worktreePath && {
+      label: 'Open Worktree in Editor',
+      shortcut: 'cmd+w',
+      section: 'Task',
+      handler: () => {
+        if (task?.worktreePath) {
+          api.shell.openInEditor(task.worktreePath);
+        }
+      },
+    },
+    !!task?.pullRequestUrl && {
+      label: 'Open Pull Request in Browser',
+      section: 'Task',
+      handler: () => {
+        if (task?.pullRequestUrl) {
+          window.open(task.pullRequestUrl!, '_blank');
+        }
+      },
+    },
+    {
+      label: task?.userCompleted
+        ? 'Mark Task as Active'
+        : 'Mark Task as Complete',
+      section: 'Task',
+      handler: () => {
+        toggleUserCompleted.mutate(taskId);
+      },
+    },
+    {
+      label: 'Copy Session ID',
+      section: 'Task',
+      handler: () => {
+        handleCopySessionId();
+      },
+    },
+  ]);
 
   if (!task || !project) {
     return (

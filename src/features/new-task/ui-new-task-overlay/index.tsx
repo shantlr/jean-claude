@@ -1,4 +1,3 @@
-// src/features/new-task/ui-new-task-overlay/index.tsx
 import { useRouter } from '@tanstack/react-router';
 import clsx from 'clsx';
 import Fuse from 'fuse.js';
@@ -11,11 +10,12 @@ import React, {
   useState,
 } from 'react';
 
+import { useCommands } from '@/common/hooks/use-commands';
+import { Kbd } from '@/common/ui/kbd';
 import { useProjects, useProjectBranches } from '@/hooks/use-projects';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
 import { useWorkItems } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
-import { useKeyboardBindings, Kbd } from '@/lib/keyboard-bindings';
 import { useNewTaskDraft, type InputMode } from '@/stores/new-task-draft';
 
 import type { Project } from '../../../../shared/types';
@@ -355,94 +355,113 @@ export function NewTaskOverlay({
       : (draft?.prompt ?? '');
 
   // Register keyboard shortcuts
-  useKeyboardBindings('new-task-overlay', {
-    'cmd+n': () => {
-      onClose();
-      return true;
+  useCommands('new-task-overlay', [
+    {
+      label: 'Close New Task Overlay',
+      shortcut: 'cmd+n',
+      handler: () => {
+        onClose();
+      },
     },
-    escape: () => {
-      onClose();
-      return true;
+    {
+      label: 'Discard Draft and Close',
+      shortcut: 'cmd+shift+escape',
+      handler: () => {
+        onDiscardDraft();
+      },
     },
-    'cmd+shift+escape': () => {
-      onDiscardDraft();
-      return true;
+    {
+      label: 'Toggle Worktree',
+      shortcut: 'cmd+b',
+      handler: () => {
+        toggleWorktree();
+      },
     },
-    'cmd+b': () => {
-      toggleWorktree();
-      return true;
+    {
+      label: 'Toggle Interaction Mode',
+      shortcut: 'cmd+i',
+      handler: () => {
+        toggleInteractionMode();
+      },
     },
-    'cmd+i': () => {
-      toggleInteractionMode();
-      return true;
+    {
+      label: 'Start Task',
+      shortcut: 'cmd+enter',
+      handler: () => {
+        handleStartTask();
+      },
     },
-    'cmd+enter': () => {
-      handleStartTask();
-      return true;
+    {
+      label: 'Navigate to Next Project Tab',
+      shortcut: ['tab', 'cmd+right'],
+      handler: () => {
+        navigateTab('next');
+      },
     },
-    tab: () => {
-      navigateTab('next');
-      return true;
+    {
+      label: 'Navigate to Previous Project Tab',
+      shortcut: ['shift+tab', 'cmd+left'],
+      handler: () => {
+        navigateTab('prev');
+      },
     },
-    'cmd+right': () => {
-      navigateTab('next');
-      return true;
-    },
-    'shift+tab': () => {
-      navigateTab('prev');
-      return true;
-    },
-    'cmd+left': () => {
-      navigateTab('prev');
-      return true;
-    },
-    up: () => {
-      if (inputMode === 'search') {
+    {
+      label: 'Navigate Work Items Up',
+      shortcut: 'up',
+      handler: () => {
         navigateWorkItems('up');
-        return true;
-      }
-      return false;
+      },
     },
-    down: () => {
-      if (inputMode === 'search') {
+    {
+      label: 'Navigate Work Items Down',
+      shortcut: 'down',
+      handler: () => {
         navigateWorkItems('down');
-        return true;
-      }
-      return false;
+      },
     },
-    'cmd+up': () => {
-      if (inputMode === 'search') {
+    {
+      label: 'Navigate to First Work Item',
+      shortcut: 'cmd+up',
+      handler: () => {
         navigateWorkItems('first');
-        return true;
-      }
-      return false;
+      },
     },
-    'cmd+down': () => {
-      if (inputMode === 'search') {
+    {
+      label: 'Navigate to Last Work Item',
+      shortcut: 'cmd+down',
+      handler: () => {
         navigateWorkItems('last');
-        return true;
-      }
-      return false;
+      },
     },
-    enter: () => {
-      if (inputMode === 'search') {
+    {
+      label: 'Select Highlighted Work Item',
+      shortcut: 'enter',
+      handler: () => {
         selectHighlightedWorkItem();
-        return true;
-      }
-      return false;
+      },
     },
-    'cmd+o': () => {
-      if (inputMode === 'search') {
+    {
+      label: 'Open Highlighted Work Item in Browser',
+      shortcut: 'cmd+o',
+      handler: () => {
         openHighlightedWorkItem();
-        return true;
-      }
-      return false;
+      },
     },
-    'cmd+m': () => {
-      toggleInputMode();
-      return true;
+    {
+      label: 'Start Task',
+      shortcut: 'cmd+enter',
+      handler: () => {
+        handleStartTask();
+      },
     },
-  });
+    {
+      label: 'Toggle Input Mode',
+      shortcut: 'cmd+m',
+      handler: () => {
+        toggleInputMode();
+      },
+    },
+  ]);
 
   // Handle clicking outside to close
   const handleOverlayClick = useCallback(() => {
