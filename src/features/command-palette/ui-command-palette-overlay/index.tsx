@@ -51,28 +51,6 @@ export function CommandPaletteOverlay({ onClose }: { onClose: () => void }) {
     inputRef.current?.focus();
   }, []);
 
-  // Scroll selected item into view
-  // useEffect(() => {
-  //   if (!listRef.current) return;
-  //   const container = listRef.current;
-  //   const selectedElement = container.querySelector(
-  //     '[data-selected="true"]',
-  //   ) as HTMLElement | null;
-  //   if (!selectedElement) return;
-
-  //   const containerRect = container.getBoundingClientRect();
-  //   const elementRect = selectedElement.getBoundingClientRect();
-
-  //   // Check if element is above visible area
-  //   if (elementRect.top < containerRect.top) {
-  //     container.scrollTop -= containerRect.top - elementRect.top;
-  //   }
-  //   // Check if element is below visible area
-  //   else if (elementRect.bottom > containerRect.bottom) {
-  //     container.scrollTop += elementRect.bottom - containerRect.bottom;
-  //   }
-  // }, [selectedIndex]);
-
   useCommands('command-palette-overlay', [
     {
       label: 'Close Command Palette',
