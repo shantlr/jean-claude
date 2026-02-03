@@ -483,10 +483,7 @@ export function NewTaskOverlay({
               onKeyDown={handleKeyDown}
               placeholder={getPlaceholder(inputMode)}
               disabled={createTaskMutation.isPending}
-              className={clsx(
-                'placeholder:text-muted-foreground flex-1 resize-none bg-transparent text-sm outline-none disabled:opacity-50',
-                inputMode === 'prompt' && 'min-h-[60px]',
-              )}
+              className="placeholder:text-muted-foreground field-sizing-content max-h-[40svh] min-h-[60px] flex-1 resize-none bg-transparent text-sm outline-none disabled:opacity-50"
             />
           </div>
         </div>
