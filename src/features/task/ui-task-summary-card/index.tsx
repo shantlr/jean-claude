@@ -3,7 +3,6 @@ import clsx from 'clsx';
 import { AlertCircle } from 'lucide-react';
 
 import { StatusIndicator } from '@/features/task/ui-status-indicator';
-import { getUnreadCount } from '@/features/task/ui-task-list-item';
 import type { TaskWithProject } from '@/lib/api';
 import {
   formatKeyForDisplay,
@@ -15,6 +14,17 @@ import { useProjectFilter } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 
 import type { TaskStatus } from '../../../../shared/types';
+
+function getUnreadCount(task: {
+  status: string;
+  messageCount?: number;
+  lastReadIndex: number;
+}): number {
+  if (task.status === 'running') return 0;
+  const messageCount = task.messageCount ?? 0;
+  if (messageCount === 0) return 0;
+  return Math.max(0, messageCount - 1 - task.lastReadIndex);
+}
 
 export function TaskSummaryCard({
   task,

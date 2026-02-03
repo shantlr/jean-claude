@@ -14,7 +14,6 @@ import {
 import { useState } from 'react';
 
 import { useSkills } from '@/hooks/use-skills';
-import { PROJECT_HEADER_HEIGHT } from '@/layout/ui-project-sidebar';
 
 import type { Skill } from '../../../../shared/skill-types';
 
@@ -182,9 +181,6 @@ export function TaskSettingsPane({
         className={clsx(
           'flex shrink-0 items-center justify-between border-b border-neutral-700 px-4 py-3',
         )}
-        style={{
-          height: PROJECT_HEADER_HEIGHT,
-        }}
       >
         <h3 className="text-sm font-medium text-neutral-200">Task Settings</h3>
         <button
