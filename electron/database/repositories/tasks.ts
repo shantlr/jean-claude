@@ -146,7 +146,7 @@ export const TaskRepository = {
           .as('messageCount'),
       )
       .where('tasks.userCompleted', '=', 0)
-      .orderBy('tasks.updatedAt', 'desc')
+      .orderBy('tasks.createdAt', 'desc')
       .execute();
     return rows.map(toTask);
   },
