@@ -118,10 +118,6 @@ function KeyboardHelpContainer() {
       toggle('keyboard-help');
       return true;
     },
-    'shift+/': () => {
-      toggle('keyboard-help');
-      return true;
-    },
   });
 
   if (!isOpen) return null;
