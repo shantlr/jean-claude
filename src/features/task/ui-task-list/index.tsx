@@ -93,14 +93,26 @@ export function TaskList() {
     [tabOptions, projectFilter, setProjectFilter],
   );
 
+  const selectedTask = useMemo(() => {
+    return activeTasks.find((t) => t.id === currentTaskId);
+  }, [activeTasks, currentTaskId]);
+
   // Get selected project for settings button
-  const selectedProject = useMemo(
-    () =>
-      projectFilter !== 'all'
-        ? projects.find((p) => p.id === projectFilter)
-        : null,
-    [projects, projectFilter],
-  );
+  // Show project settings based on:
+  // 1. If a specific project filter is active, use that project
+  // 2. If "all" filter is active and a task is selected, use that task's project
+  const selectedProject = useMemo(() => {
+    if (projectFilter !== 'all') {
+      return projects.find((p) => p.id === projectFilter) ?? null;
+    }
+    // In "all" view, derive from selected task
+    if (currentTaskId) {
+      if (selectedTask) {
+        return projects.find((p) => p.id === selectedTask.projectId) ?? null;
+      }
+    }
+    return null;
+  }, [projectFilter, currentTaskId, projects, selectedTask]);
 
   // Keyboard bindings for task navigation
   useCommands('task-list-navigation', [
