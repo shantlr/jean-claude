@@ -128,7 +128,7 @@ export function NewTaskOverlay({
     providerId: selectedProject?.workItemProviderId ?? '',
     projectId: selectedProject?.workItemProjectId ?? '',
     projectName: selectedProject?.workItemProjectName ?? '',
-    filters: {},
+    filters: { excludeWorkItemTypes: ['Test Suite'] },
   });
 
   // Fetch branches for the selected project
@@ -718,7 +718,7 @@ function SearchModeContent({
     providerId: project?.workItemProviderId ?? '',
     projectId: project?.workItemProjectId ?? '',
     projectName: project?.workItemProjectName ?? '',
-    filters: {},
+    filters: { excludeWorkItemTypes: ['Test Suite'] },
   });
 
   // Create Fuse instance for fuzzy search

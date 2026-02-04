@@ -357,6 +357,7 @@ export interface Api {
       filters: {
         states?: string[];
         workItemTypes?: string[];
+        excludeWorkItemTypes?: string[];
         searchText?: string;
       };
     }) => Promise<AzureDevOpsWorkItem[]>;

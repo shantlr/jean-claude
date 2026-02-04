@@ -588,6 +588,7 @@ export function registerIpcHandlers() {
         filters: {
           states?: string[];
           workItemTypes?: string[];
+          excludeWorkItemTypes?: string[];
           searchText?: string;
         };
       },

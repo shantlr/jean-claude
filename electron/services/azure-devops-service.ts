@@ -253,7 +253,12 @@ export async function queryWorkItems(params: {
   providerId: string;
   projectId: string;
   projectName: string;
-  filters: { states?: string[]; workItemTypes?: string[]; searchText?: string };
+  filters: {
+    states?: string[];
+    workItemTypes?: string[];
+    excludeWorkItemTypes?: string[];
+    searchText?: string;
+  };
 }): Promise<AzureDevOpsWorkItem[]> {
   const provider = await ProviderRepository.findById(params.providerId);
   if (!provider) {
@@ -294,6 +299,16 @@ export async function queryWorkItems(params: {
     conditions.push(`[System.WorkItemType] IN (${typesList})`);
   }
 
+  // Exclude specific work item types
+  if (
+    params.filters.excludeWorkItemTypes &&
+    params.filters.excludeWorkItemTypes.length > 0
+  ) {
+    for (const excludeType of params.filters.excludeWorkItemTypes) {
+      conditions.push(`[System.WorkItemType] <> '${excludeType}'`);
+    }
+  }
+
   // Add search text filter - search ID (exact match) OR title (contains)
   if (params.filters.searchText && params.filters.searchText.trim()) {
     const searchText = params.filters.searchText.trim();
@@ -315,7 +330,7 @@ export async function queryWorkItems(params: {
 
   // POST WIQL query - use projectName in URL path (Azure DevOps requires name, not GUID)
   const wiqlResponse = await fetch(
-    `https://dev.azure.com/${orgName}/${encodeURIComponent(params.projectName)}/_apis/wit/wiql?api-version=7.0&$top=50`,
+    `https://dev.azure.com/${orgName}/${encodeURIComponent(params.projectName)}/_apis/wit/wiql?api-version=7.0&$top=200`,
     {
       method: 'POST',
       headers: {

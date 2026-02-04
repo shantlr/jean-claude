@@ -145,6 +145,7 @@ contextBridge.exposeInMainWorld('api', {
       filters: {
         states?: string[];
         workItemTypes?: string[];
+        excludeWorkItemTypes?: string[];
         searchText?: string;
       };
     }) => ipcRenderer.invoke('azureDevOps:queryWorkItems', params),
