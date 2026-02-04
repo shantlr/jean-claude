@@ -20,8 +20,8 @@ interface CreateTaskInput {
   interactionMode?: InteractionMode;
   userCompleted?: boolean;
   sessionAllowedTools?: string[];
-  workItemId?: string | null;
-  workItemUrl?: string | null;
+  workItemIds?: string[] | null;
+  workItemUrls?: string[] | null;
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
   createdAt?: string;
@@ -43,22 +43,38 @@ interface UpdateTaskInput {
   interactionMode?: InteractionMode;
   userCompleted?: boolean;
   sessionAllowedTools?: string[];
-  workItemId?: string | null;
-  workItemUrl?: string | null;
+  workItemIds?: string[] | null;
+  workItemUrls?: string[] | null;
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
   updatedAt?: string;
 }
 
-// Convert SQLite's 0/1 to boolean for userCompleted, and JSON string to array for sessionAllowedTools
+// Convert SQLite's 0/1 to boolean for userCompleted, and JSON strings to arrays
 function toTask<T extends TaskRow>(
   row: T,
-): Omit<T, 'userCompleted' | 'sessionAllowedTools' | 'interactionMode'> & {
+): Omit<
+  T,
+  | 'userCompleted'
+  | 'sessionAllowedTools'
+  | 'interactionMode'
+  | 'workItemIds'
+  | 'workItemUrls'
+> & {
   userCompleted: boolean;
   sessionAllowedTools: string[];
   interactionMode: InteractionMode;
+  workItemIds: string[] | null;
+  workItemUrls: string[] | null;
 } {
-  const { userCompleted, sessionAllowedTools, interactionMode, ...rest } = row;
+  const {
+    userCompleted,
+    sessionAllowedTools,
+    interactionMode,
+    workItemIds,
+    workItemUrls,
+    ...rest
+  } = row;
   return {
     ...rest,
     userCompleted: Boolean(userCompleted),
@@ -66,24 +82,41 @@ function toTask<T extends TaskRow>(
       ? JSON.parse(sessionAllowedTools)
       : [],
     interactionMode: interactionMode as InteractionMode,
+    workItemIds: workItemIds ? JSON.parse(workItemIds) : null,
+    workItemUrls: workItemUrls ? JSON.parse(workItemUrls) : null,
   };
 }
 
 function toTaskOrUndefined<T extends TaskRow>(
   row: T | undefined,
 ):
-  | (Omit<T, 'userCompleted' | 'sessionAllowedTools' | 'interactionMode'> & {
+  | (Omit<
+      T,
+      | 'userCompleted'
+      | 'sessionAllowedTools'
+      | 'interactionMode'
+      | 'workItemIds'
+      | 'workItemUrls'
+    > & {
       userCompleted: boolean;
       sessionAllowedTools: string[];
       interactionMode: InteractionMode;
+      workItemIds: string[] | null;
+      workItemUrls: string[] | null;
     })
   | undefined {
   return row ? toTask(row) : undefined;
 }
 
-// Convert boolean userCompleted to number and sessionAllowedTools to JSON for database
+// Convert boolean userCompleted to number and arrays to JSON for database
 function toDbValues(data: CreateTaskInput): NewTaskRow {
-  const { userCompleted, sessionAllowedTools, ...rest } = data;
+  const {
+    userCompleted,
+    sessionAllowedTools,
+    workItemIds,
+    workItemUrls,
+    ...rest
+  } = data;
   return {
     ...rest,
     ...(userCompleted !== undefined && {
@@ -91,12 +124,24 @@ function toDbValues(data: CreateTaskInput): NewTaskRow {
     }),
     ...(sessionAllowedTools !== undefined && {
       sessionAllowedTools: JSON.stringify(sessionAllowedTools),
+    }),
+    ...(workItemIds !== undefined && {
+      workItemIds: workItemIds ? JSON.stringify(workItemIds) : null,
+    }),
+    ...(workItemUrls !== undefined && {
+      workItemUrls: workItemUrls ? JSON.stringify(workItemUrls) : null,
     }),
   } as NewTaskRow;
 }
 
 function toDbUpdateValues(data: UpdateTaskInput): Partial<UpdateTaskRow> {
-  const { userCompleted, sessionAllowedTools, ...rest } = data;
+  const {
+    userCompleted,
+    sessionAllowedTools,
+    workItemIds,
+    workItemUrls,
+    ...rest
+  } = data;
   return {
     ...rest,
     ...(userCompleted !== undefined && {
@@ -104,6 +149,12 @@ function toDbUpdateValues(data: UpdateTaskInput): Partial<UpdateTaskRow> {
     }),
     ...(sessionAllowedTools !== undefined && {
       sessionAllowedTools: JSON.stringify(sessionAllowedTools),
+    }),
+    ...(workItemIds !== undefined && {
+      workItemIds: workItemIds ? JSON.stringify(workItemIds) : null,
+    }),
+    ...(workItemUrls !== undefined && {
+      workItemUrls: workItemUrls ? JSON.stringify(workItemUrls) : null,
     }),
   };
 }

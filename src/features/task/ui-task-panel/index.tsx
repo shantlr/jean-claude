@@ -431,6 +431,31 @@ export function TaskPanel({
                   </button>
                 </>
               )}
+              {/* Work item badges */}
+              {task.workItemIds &&
+                task.workItemIds.length > 0 &&
+                task.workItemIds.map((workItemId, index) => {
+                  const workItemUrl = task.workItemUrls?.[index];
+                  return (
+                    <button
+                      key={workItemId}
+                      onClick={() => {
+                        if (workItemUrl) {
+                          window.open(workItemUrl, '_blank');
+                        }
+                      }}
+                      disabled={!workItemUrl}
+                      className="flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium text-blue-400 transition-colors hover:bg-neutral-700 hover:text-blue-300 disabled:cursor-default disabled:text-neutral-500 disabled:hover:bg-transparent"
+                      title={
+                        workItemUrl
+                          ? `Open work item #${workItemId} in browser`
+                          : `Work item #${workItemId}`
+                      }
+                    >
+                      #{workItemId}
+                    </button>
+                  );
+                })}
               {task.pullRequestId && task.pullRequestUrl && (
                 <PrBadge
                   pullRequestId={task.pullRequestId}
@@ -504,7 +529,7 @@ export function TaskPanel({
               defaultBranch={project.defaultBranch}
               taskName={task.name}
               taskPrompt={task.prompt}
-              workItemId={task.workItemId}
+              workItemId={task.workItemIds?.[0] ?? null}
               repoProviderId={project.repoProviderId}
               repoProjectId={project.repoProjectId}
               repoId={project.repoId}

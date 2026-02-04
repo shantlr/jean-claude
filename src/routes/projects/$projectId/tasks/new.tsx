@@ -36,8 +36,8 @@ function NewTask() {
     useWorktree,
     sourceBranch,
     interactionMode,
-    workItemId,
-    workItemUrl,
+    workItemIds,
+    workItemUrls,
   } = draft;
 
   // Determine the effective source branch (draft value or project default)
@@ -56,8 +56,8 @@ function NewTask() {
       status: 'waiting',
       interactionMode,
       useWorktree,
-      workItemId,
-      workItemUrl,
+      workItemIds,
+      workItemUrls,
       sourceBranch: useWorktree ? effectiveSourceBranch : null,
       updatedAt: new Date().toISOString(),
       autoStart: shouldStart,
@@ -205,8 +205,8 @@ function NewTask() {
                       name: wi.fields.title.slice(0, 100),
                       prompt:
                         `[AB#${wi.id}] ${wi.fields.title}\n\n${wi.fields.description ?? ''}`.trim(),
-                      workItemId: String(wi.id),
-                      workItemUrl: wi.url,
+                      workItemIds: [String(wi.id)],
+                      workItemUrls: [wi.url],
                     });
                     setShowWorkItems(false);
                   }}
@@ -219,7 +219,9 @@ function NewTask() {
                   className="flex cursor-pointer items-center gap-2 text-sm text-neutral-400 transition-colors hover:text-white"
                 >
                   <ListTodo className="h-4 w-4" aria-hidden />
-                  {workItemId ? `From AB#${workItemId}` : 'From Work Item'}
+                  {workItemIds?.length
+                    ? `From AB#${workItemIds[0]}`
+                    : 'From Work Item'}
                 </button>
               )}
             </div>

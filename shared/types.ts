@@ -149,8 +149,8 @@ export interface Task {
   interactionMode: InteractionMode;
   userCompleted: boolean;
   sessionAllowedTools: string[];
-  workItemId: string | null;
-  workItemUrl: string | null;
+  workItemIds: string[] | null;
+  workItemUrls: string[] | null;
   pullRequestId: string | null;
   pullRequestUrl: string | null;
   createdAt: string;
@@ -173,8 +173,8 @@ export interface NewTask {
   interactionMode?: InteractionMode;
   userCompleted?: boolean;
   sessionAllowedTools?: string[];
-  workItemId?: string | null;
-  workItemUrl?: string | null;
+  workItemIds?: string[] | null;
+  workItemUrls?: string[] | null;
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
   createdAt?: string;
@@ -196,8 +196,8 @@ export interface UpdateTask {
   interactionMode?: InteractionMode;
   userCompleted?: boolean;
   sessionAllowedTools?: string[];
-  workItemId?: string | null;
-  workItemUrl?: string | null;
+  workItemIds?: string[] | null;
+  workItemUrls?: string[] | null;
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
   updatedAt?: string;

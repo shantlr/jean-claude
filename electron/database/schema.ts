@@ -97,9 +97,9 @@ export interface TaskTable {
   userCompleted: number; // SQLite stores booleans as 0/1
   sessionAllowedTools: string | null; // JSON array of tool names
   sortOrder: number;
-  // Provider integration tracking
-  workItemId: string | null;
-  workItemUrl: string | null;
+  // Provider integration tracking (JSON arrays)
+  workItemIds: string | null; // JSON array: ["123", "456"]
+  workItemUrls: string | null; // JSON array: ["url1", "url2"]
   pullRequestId: string | null;
   pullRequestUrl: string | null;
   createdAt: Generated<string>;

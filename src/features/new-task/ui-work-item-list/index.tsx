@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Bug, BookOpen, CheckSquare, FileText } from 'lucide-react';
+import { Bug, BookOpen, CheckSquare, FileText, Check } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
 import { useCurrentAzureUser } from '@/hooks/use-work-items';
@@ -72,18 +72,36 @@ function getStatusColor(status: string): string {
   }
 }
 
+// Checkbox component for multi-select
+function SelectionCheckbox({ checked }: { checked: boolean }) {
+  return (
+    <div
+      className={clsx(
+        'flex h-4 w-4 shrink-0 items-center justify-center rounded border',
+        checked
+          ? 'border-blue-500 bg-blue-500 text-white'
+          : 'border-neutral-500 bg-transparent',
+      )}
+    >
+      {checked ? <Check className="h-3 w-3" /> : null}
+    </div>
+  );
+}
+
 export function WorkItemList({
   workItems,
   highlightedIndex,
-  selectedWorkItemId,
+  selectedWorkItemIds,
   providerId,
-  onSelect,
+  onToggleSelect,
+  onHighlight,
 }: {
   workItems: AzureDevOpsWorkItem[];
   highlightedIndex: number;
-  selectedWorkItemId: string | null;
+  selectedWorkItemIds: string[];
   providerId?: string;
-  onSelect: (workItem: AzureDevOpsWorkItem) => void;
+  onToggleSelect: (workItem: AzureDevOpsWorkItem) => void;
+  onHighlight: (workItem: AzureDevOpsWorkItem) => void;
 }) {
   const itemRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
   const { data: currentUser } = useCurrentAzureUser(providerId ?? null);
@@ -109,7 +127,7 @@ export function WorkItemList({
     <div role="listbox" aria-label="Work items" className="space-y-0.5">
       {workItems.map((workItem, index) => {
         const isHighlighted = index === highlightedIndex;
-        const isSelected = selectedWorkItemId === workItem.id.toString();
+        const isSelected = selectedWorkItemIds.includes(workItem.id.toString());
         const itemId = `work-item-${workItem.id}`;
 
         return (
@@ -126,14 +144,17 @@ export function WorkItemList({
             type="button"
             role="option"
             aria-selected={isHighlighted || isSelected}
-            onClick={() => onSelect(workItem)}
+            onClick={() => onToggleSelect(workItem)}
+            onMouseEnter={() => onHighlight(workItem)}
             className={clsx(
               'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left',
-              isSelected && 'border-l-2 border-blue-500 bg-blue-600/20',
-              isHighlighted && !isSelected && 'bg-neutral-700/50',
-              !isHighlighted && !isSelected && 'hover:bg-neutral-700/30',
+              isHighlighted && 'bg-neutral-700/50',
+              !isHighlighted && 'hover:bg-neutral-700/30',
             )}
           >
+            {/* Selection checkbox */}
+            <SelectionCheckbox checked={isSelected} />
+
             {/* Type icon */}
             <WorkItemTypeIcon type={workItem.fields.workItemType} />
 

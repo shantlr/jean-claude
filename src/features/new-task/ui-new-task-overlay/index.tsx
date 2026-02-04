@@ -1,6 +1,7 @@
 import { useRouter } from '@tanstack/react-router';
 import clsx from 'clsx';
 import Fuse from 'fuse.js';
+import { ChevronRight } from 'lucide-react';
 import React, {
   startTransition,
   useCallback,
@@ -19,6 +20,11 @@ import type { AzureDevOpsWorkItem } from '@/lib/api';
 import { useNewTaskDraft, type InputMode } from '@/stores/new-task-draft';
 
 import type { Project } from '../../../../shared/types';
+import {
+  PromptComposer,
+  generateInitialTemplate,
+  expandTemplate,
+} from '../ui-prompt-composer';
 import { WorkItemDetails } from '../ui-work-item-details';
 import { WorkItemList } from '../ui-work-item-list';
 
@@ -99,6 +105,9 @@ export function NewTaskOverlay({
     string | null
   >(null);
 
+  // Prompt template state (not persisted - derived from selections)
+  const [promptTemplate, setPromptTemplate] = useState<string>('');
+
   // Sort projects by sortOrder
   const sortedProjects = useMemo(
     () => [...projects].sort((a, b) => a.sortOrder - b.sortOrder),
@@ -165,6 +174,12 @@ export function NewTaskOverlay({
     return fuse.search(filter).map((r) => r.item);
   }, [workItems, draft?.workItemsFilter, fuse]);
 
+  // Get selected work items objects
+  const selectedWorkItems = useMemo(() => {
+    const ids = draft?.workItemIds ?? [];
+    return workItems.filter((wi) => ids.includes(wi.id.toString()));
+  }, [workItems, draft?.workItemIds]);
+
   // Input mode from draft, constrained by project capabilities
   // - "all" selected: force search mode
   // - project without work items: force prompt mode
@@ -175,6 +190,9 @@ export function NewTaskOverlay({
     ? (draft?.inputMode ?? 'search')
     : getAutoInputMode(selectedProjectId, projects);
 
+  // Current search step (only relevant in search mode)
+  const searchStep = draft?.searchStep ?? 'select';
+
   // Toggle input mode
   const toggleInputMode = useCallback(() => {
     if (!canToggleMode) return;
@@ -182,20 +200,40 @@ export function NewTaskOverlay({
     updateDraft({ inputMode: newMode });
   }, [inputMode, canToggleMode, updateDraft]);
 
+  // Check if we can advance to compose step
+  const canAdvanceToCompose = useMemo(() => {
+    if (inputMode !== 'search') return false;
+    if (searchStep !== 'select') return false;
+    return (draft?.workItemIds ?? []).length > 0;
+  }, [inputMode, searchStep, draft?.workItemIds]);
+
   // Check if we can start a task
   const canStartTask = useMemo(() => {
     if (!draft) return false;
     // Prevent double-submission
     if (createTaskMutation.isPending) return false;
 
-    // In search mode, need a selected work item
-    if (inputMode === 'search') {
-      return !!draft.workItemId && !!selectedProjectId;
+    // In search mode compose step, need the expanded prompt
+    if (inputMode === 'search' && searchStep === 'compose') {
+      const expanded = expandTemplate(promptTemplate, selectedWorkItems);
+      return !!expanded.trim() && !!selectedProjectId;
     }
 
     // In prompt mode, need text and a project
-    return !!draft.prompt.trim() && !!selectedProjectId;
-  }, [draft, inputMode, selectedProjectId, createTaskMutation.isPending]);
+    if (inputMode === 'prompt') {
+      return !!draft.prompt.trim() && !!selectedProjectId;
+    }
+
+    return false;
+  }, [
+    draft,
+    inputMode,
+    searchStep,
+    promptTemplate,
+    selectedWorkItems,
+    selectedProjectId,
+    createTaskMutation.isPending,
+  ]);
 
   // Navigate project tabs
   const navigateTab = useCallback(
@@ -255,12 +293,15 @@ export function NewTaskOverlay({
     [filteredWorkItems, highlightedWorkItemId],
   );
 
-  // Select the highlighted work item
-  const selectHighlightedWorkItem = useCallback(() => {
-    if (highlightedWorkItemId) {
-      updateDraft({ workItemId: highlightedWorkItemId });
-    }
-  }, [highlightedWorkItemId, updateDraft]);
+  // Toggle selection of highlighted work item
+  const toggleHighlightedWorkItem = useCallback(() => {
+    if (!highlightedWorkItemId) return;
+    const currentIds = draft?.workItemIds ?? [];
+    const newIds = currentIds.includes(highlightedWorkItemId)
+      ? currentIds.filter((id) => id !== highlightedWorkItemId)
+      : [...currentIds, highlightedWorkItemId];
+    updateDraft({ workItemIds: newIds });
+  }, [highlightedWorkItemId, draft?.workItemIds, updateDraft]);
 
   // Open highlighted work item in browser
   const openHighlightedWorkItem = useCallback(() => {
@@ -273,30 +314,68 @@ export function NewTaskOverlay({
     }
   }, [filteredWorkItems, highlightedWorkItemId]);
 
-  // Handle work item selection from list click
-  const handleWorkItemSelect = useCallback(
+  // Handle work item toggle from list click
+  const handleWorkItemToggle = useCallback(
     (workItem: AzureDevOpsWorkItem) => {
       const workItemId = workItem.id.toString();
-      setHighlightedWorkItemId(workItemId);
-      updateDraft({ workItemId });
+      const currentIds = draft?.workItemIds ?? [];
+      const newIds = currentIds.includes(workItemId)
+        ? currentIds.filter((id) => id !== workItemId)
+        : [...currentIds, workItemId];
+      updateDraft({ workItemIds: newIds });
     },
-    [updateDraft],
+    [draft?.workItemIds, updateDraft],
   );
+
+  // Handle work item highlight from mouse
+  const handleWorkItemHighlight = useCallback(
+    (workItem: AzureDevOpsWorkItem) => {
+      setHighlightedWorkItemId(workItem.id.toString());
+    },
+    [],
+  );
+
+  // Advance to compose step
+  const advanceToCompose = useCallback(() => {
+    if (!canAdvanceToCompose) return;
+    const template = generateInitialTemplate(draft?.workItemIds ?? []);
+    setPromptTemplate(template);
+    updateDraft({ searchStep: 'compose' });
+  }, [canAdvanceToCompose, draft?.workItemIds, updateDraft]);
+
+  // Go back to select step
+  const backToSelect = useCallback(() => {
+    updateDraft({ searchStep: 'select' });
+  }, [updateDraft]);
 
   // Start task handler
   const handleStartTask = useCallback(async () => {
     if (!canStartTask || !draft || !selectedProjectId) return;
 
     try {
+      // Determine the final prompt
+      let finalPrompt: string;
+      let workItemIds: string[] | null = null;
+      let workItemUrls: string[] | null = null;
+
+      if (inputMode === 'search' && searchStep === 'compose') {
+        // Expand the template to get the final prompt
+        finalPrompt = expandTemplate(promptTemplate, selectedWorkItems);
+        workItemIds = draft.workItemIds;
+        workItemUrls = selectedWorkItems.map((wi) => wi.url);
+      } else {
+        finalPrompt = draft.prompt;
+      }
+
       // Build task data
       const task = await createTaskMutation.mutateAsync({
         projectId: selectedProjectId,
-        prompt: draft.prompt || `Work on item #${draft.workItemId}`,
+        prompt: finalPrompt,
         interactionMode: draft.interactionMode,
         useWorktree: draft.createWorktree,
         sourceBranch: draft.sourceBranch,
-        workItemId: draft.workItemId,
-        workItemUrl: null as string | null, // Would be set from work item details
+        workItemIds,
+        workItemUrls,
         updatedAt: new Date().toISOString(),
         autoStart: true,
       });
@@ -321,11 +400,37 @@ export function NewTaskOverlay({
     canStartTask,
     draft,
     selectedProjectId,
+    inputMode,
+    searchStep,
+    promptTemplate,
+    selectedWorkItems,
     createTaskMutation,
     clearDraft,
     onClose,
     router,
   ]);
+
+  // Handle Cmd+Enter based on current state
+  const handleCmdEnter = useCallback(() => {
+    if (inputMode === 'search' && searchStep === 'select') {
+      // In select step, advance to compose
+      advanceToCompose();
+    } else {
+      // In compose or prompt mode, start task
+      handleStartTask();
+    }
+  }, [inputMode, searchStep, advanceToCompose, handleStartTask]);
+
+  // Handle Escape based on current state
+  const handleEscape = useCallback(() => {
+    if (inputMode === 'search' && searchStep === 'compose') {
+      // In compose step, go back to select
+      backToSelect();
+    } else {
+      // Otherwise close overlay
+      onClose();
+    }
+  }, [inputMode, searchStep, backToSelect, onClose]);
 
   // Focus input on mount
   useEffect(() => {
@@ -358,9 +463,16 @@ export function NewTaskOverlay({
   useCommands('new-task-overlay', [
     {
       label: 'Close New Task Overlay',
-      shortcut: ['cmd+n', 'escape'],
+      shortcut: 'cmd+n',
       handler: () => {
         onClose();
+      },
+    },
+    {
+      label: 'Close or Go Back',
+      shortcut: 'escape',
+      handler: () => {
+        handleEscape();
       },
     },
     {
@@ -385,10 +497,10 @@ export function NewTaskOverlay({
       },
     },
     {
-      label: 'Start Task',
+      label: 'Next / Start Task',
       shortcut: 'cmd+enter',
       handler: () => {
-        handleStartTask();
+        handleCmdEnter();
       },
     },
     {
@@ -434,10 +546,10 @@ export function NewTaskOverlay({
       },
     },
     inputMode === 'search' && {
-      label: 'Select Highlighted Work Item',
+      label: 'Toggle Work Item Selection',
       shortcut: 'enter',
       handler: () => {
-        selectHighlightedWorkItem();
+        toggleHighlightedWorkItem();
       },
     },
     inputMode === 'search' && {
@@ -445,13 +557,6 @@ export function NewTaskOverlay({
       shortcut: 'cmd+o',
       handler: () => {
         openHighlightedWorkItem();
-      },
-    },
-    {
-      label: 'Start Task',
-      shortcut: 'cmd+enter',
-      handler: () => {
-        handleStartTask();
       },
     },
     {
@@ -473,15 +578,23 @@ export function NewTaskOverlay({
     e.stopPropagation();
   }, []);
 
-  // Prevent Enter in search mode (in prompt mode it adds newline)
+  // Prevent Enter in search mode select step (in prompt mode it adds newline)
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Enter' && inputMode === 'search') {
+      if (
+        e.key === 'Enter' &&
+        inputMode === 'search' &&
+        searchStep === 'select'
+      ) {
         e.preventDefault();
       }
     },
-    [inputMode],
+    [inputMode, searchStep],
   );
+
+  // Show search input only in select step
+  const showSearchInput = inputMode === 'search' && searchStep === 'select';
+  const showPromptInput = inputMode === 'prompt';
 
   return (
     <div
@@ -492,72 +605,90 @@ export function NewTaskOverlay({
         className="flex max-h-[80svh] w-[90svw] max-w-[1280px] flex-col overflow-hidden rounded-lg border border-neutral-700 bg-neutral-800 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5),0_0_100px_-20px_rgba(0,0,0,0.6)]"
         onClick={handleModalClick}
       >
-        {/* Search/Prompt input */}
-        <div className="flex shrink-0 items-start border-b border-neutral-700 px-4 py-3">
-          <div className="flex flex-1 flex-col">
-            <textarea
-              ref={inputRef}
-              value={inputValue}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              placeholder={getPlaceholder(inputMode)}
-              disabled={createTaskMutation.isPending}
-              className="placeholder:text-muted-foreground field-sizing-content max-h-[40svh] min-h-[60px] flex-1 resize-none bg-transparent text-sm outline-none disabled:opacity-50"
-            />
+        {/* Search/Prompt input - only show in select or prompt mode */}
+        {(showSearchInput || showPromptInput) && (
+          <div className="flex shrink-0 items-start border-b border-neutral-700 px-4 py-3">
+            <div className="flex flex-1 flex-col">
+              <textarea
+                ref={inputRef}
+                value={inputValue}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                placeholder={getPlaceholder(inputMode)}
+                disabled={createTaskMutation.isPending}
+                className="placeholder:text-muted-foreground field-sizing-content max-h-[40svh] min-h-[60px] flex-1 resize-none bg-transparent text-sm outline-none disabled:opacity-50"
+              />
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Project tabs */}
-        <div className="border-border flex shrink-0 items-center gap-1 overflow-x-auto border-b border-neutral-700 px-4 py-2">
-          {/* All tab */}
-          <button
-            onClick={() => setSelectedProjectId(null)}
-            disabled={createTaskMutation.isPending}
-            className={clsx(
-              'shrink-0 rounded px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50',
-              selectedProjectId === null
-                ? 'bg-neutral-700 text-white'
-                : 'text-neutral-400 hover:bg-neutral-800 hover:text-white',
-            )}
-          >
-            All
-          </button>
-
-          {/* Separator */}
-          <div className="h-4 w-px shrink-0 bg-neutral-700" />
-
-          {/* Project tabs */}
-          {sortedProjects.map((project) => (
+        {/* Project tabs - only show in select or prompt mode */}
+        {(showSearchInput || showPromptInput) && (
+          <div className="border-border flex shrink-0 items-center gap-1 overflow-x-auto border-b border-neutral-700 px-4 py-2">
+            {/* All tab */}
             <button
-              key={project.id}
-              onClick={() => setSelectedProjectId(project.id)}
+              onClick={() => setSelectedProjectId(null)}
               disabled={createTaskMutation.isPending}
               className={clsx(
-                'flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50',
-                selectedProjectId === project.id
+                'shrink-0 rounded px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50',
+                selectedProjectId === null
                   ? 'bg-neutral-700 text-white'
                   : 'text-neutral-400 hover:bg-neutral-800 hover:text-white',
               )}
             >
-              <span
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: project.color }}
-              />
-              <span className="max-w-20 truncate">{project.name}</span>
+              All
             </button>
-          ))}
-        </div>
+
+            {/* Separator */}
+            <div className="h-4 w-px shrink-0 bg-neutral-700" />
+
+            {/* Project tabs */}
+            {sortedProjects.map((project) => (
+              <button
+                key={project.id}
+                onClick={() => setSelectedProjectId(project.id)}
+                disabled={createTaskMutation.isPending}
+                className={clsx(
+                  'flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50',
+                  selectedProjectId === project.id
+                    ? 'bg-neutral-700 text-white'
+                    : 'text-neutral-400 hover:bg-neutral-800 hover:text-white',
+                )}
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: project.color }}
+                />
+                <span className="max-w-20 truncate">{project.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Main content area */}
-        {inputMode === 'search' && (
+        {inputMode === 'search' && searchStep === 'select' && (
           <div className="flex h-full w-full grow flex-col overflow-hidden border-b border-neutral-700 p-2">
             <SearchModeContent
               projectId={selectedProjectId}
               project={selectedProject}
               filter={draft?.workItemsFilter ?? ''}
-              selectedWorkItemId={draft?.workItemId ?? null}
+              selectedWorkItemIds={draft?.workItemIds ?? []}
               highlightedWorkItemId={highlightedWorkItemId}
-              onWorkItemSelect={handleWorkItemSelect}
+              onWorkItemToggle={handleWorkItemToggle}
+              onWorkItemHighlight={handleWorkItemHighlight}
+              onAdvanceToCompose={advanceToCompose}
+              canAdvance={canAdvanceToCompose}
+            />
+          </div>
+        )}
+
+        {inputMode === 'search' && searchStep === 'compose' && (
+          <div className="flex h-full w-full grow flex-col overflow-hidden border-b border-neutral-700 p-4">
+            <PromptComposer
+              template={promptTemplate}
+              workItems={selectedWorkItems}
+              onTemplateChange={setPromptTemplate}
+              onBack={backToSelect}
             />
           </div>
         )}
@@ -660,31 +791,49 @@ export function NewTaskOverlay({
               </span>
             ) : (
               <>
-                <span className="flex items-center gap-1">
-                  <Kbd shortcut="tab" /> project
-                </span>
-                {canToggleMode && (
+                {showSearchInput && (
+                  <span className="flex items-center gap-1">
+                    <Kbd shortcut="tab" /> project
+                  </span>
+                )}
+                {canToggleMode && showSearchInput && (
                   <span className="flex items-center gap-1">
                     <Kbd shortcut="cmd+m" />{' '}
                     {inputMode === 'search' ? 'prompt' : 'search'}
                   </span>
                 )}
-                {inputMode === 'search' && (
-                  <span className="flex items-center gap-1">
-                    <Kbd shortcut="up" /> <Kbd shortcut="down" /> navigate
-                  </span>
+                {inputMode === 'search' && searchStep === 'select' && (
+                  <>
+                    <span className="flex items-center gap-1">
+                      <Kbd shortcut="up" /> <Kbd shortcut="down" /> navigate
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Kbd shortcut="enter" /> select
+                    </span>
+                    {canAdvanceToCompose && (
+                      <span className="flex items-center gap-1">
+                        <Kbd shortcut="cmd+enter" /> next
+                      </span>
+                    )}
+                  </>
                 )}
-                {((inputMode === 'search' && !!highlightedWorkItemId) ||
-                  inputMode === 'prompt') && (
+                {inputMode === 'search' && searchStep === 'compose' && (
+                  <>
+                    <span className="flex items-center gap-1">
+                      <Kbd shortcut="escape" /> back
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Kbd shortcut="cmd+enter" /> start
+                    </span>
+                  </>
+                )}
+                {inputMode === 'prompt' && (
                   <span className="flex items-center gap-1">
                     <Kbd shortcut="cmd+enter" /> start
                   </span>
                 )}
                 <span className="flex items-center gap-1">
                   <Kbd shortcut="cmd+shift+escape" /> discard
-                </span>
-                <span className="flex items-center gap-1">
-                  <Kbd shortcut="escape" /> close
                 </span>
               </>
             )}
@@ -700,16 +849,22 @@ function SearchModeContent({
   projectId,
   project,
   filter,
-  selectedWorkItemId,
+  selectedWorkItemIds,
   highlightedWorkItemId,
-  onWorkItemSelect,
+  onWorkItemToggle,
+  onWorkItemHighlight,
+  onAdvanceToCompose,
+  canAdvance,
 }: {
   projectId: string | null;
   project: Project | null;
   filter: string;
-  selectedWorkItemId: string | null;
+  selectedWorkItemIds: string[];
   highlightedWorkItemId: string | null;
-  onWorkItemSelect: (workItem: AzureDevOpsWorkItem) => void;
+  onWorkItemToggle: (workItem: AzureDevOpsWorkItem) => void;
+  onWorkItemHighlight: (workItem: AzureDevOpsWorkItem) => void;
+  onAdvanceToCompose: () => void;
+  canAdvance: boolean;
 }) {
   const hasWorkItems = projectHasWorkItems(project);
 
@@ -764,16 +919,17 @@ function SearchModeContent({
         highlightedIndex < filteredWorkItems.length
       ) {
         setHighlightedWorkItem(filteredWorkItems[highlightedIndex]);
-      } else if (selectedWorkItemId) {
-        const selected = workItems.find(
-          (wi) => wi.id.toString() === selectedWorkItemId,
+      } else if (selectedWorkItemIds.length > 0) {
+        // Show first selected work item if no highlight
+        const firstSelected = workItems.find(
+          (wi) => wi.id.toString() === selectedWorkItemIds[0],
         );
-        setHighlightedWorkItem(selected ?? null);
+        setHighlightedWorkItem(firstSelected ?? null);
       } else {
         setHighlightedWorkItem(null);
       }
     });
-  }, [filteredWorkItems, highlightedIndex, selectedWorkItemId, workItems]);
+  }, [filteredWorkItems, highlightedIndex, selectedWorkItemIds, workItems]);
 
   // Show appropriate content based on context
   if (projectId === null) {
@@ -814,16 +970,34 @@ function SearchModeContent({
     <div className="flex h-full w-full gap-2 overflow-hidden">
       {/* Work items list */}
       <div className="flex w-full flex-col overflow-hidden">
-        <div className="mb-2 text-xs font-medium text-neutral-400 uppercase">
-          Work Items ({filteredWorkItems.length})
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-xs font-medium text-neutral-400 uppercase">
+            Work Items ({filteredWorkItems.length})
+            {selectedWorkItemIds.length > 0 && (
+              <span className="ml-2 text-blue-400">
+                {selectedWorkItemIds.length} selected
+              </span>
+            )}
+          </span>
+          {canAdvance && (
+            <button
+              onClick={onAdvanceToCompose}
+              className="flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-500"
+            >
+              Next
+              <ChevronRight className="h-3 w-3" />
+              <Kbd shortcut="cmd+enter" className="ml-1" />
+            </button>
+          )}
         </div>
         <div className="overflow-y-auto">
           <WorkItemList
             workItems={filteredWorkItems}
             highlightedIndex={highlightedIndex}
-            selectedWorkItemId={selectedWorkItemId}
+            selectedWorkItemIds={selectedWorkItemIds}
             providerId={project?.workItemProviderId ?? undefined}
-            onSelect={onWorkItemSelect}
+            onToggleSelect={onWorkItemToggle}
+            onHighlight={onWorkItemHighlight}
           />
         </div>
       </div>

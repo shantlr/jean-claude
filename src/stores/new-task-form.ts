@@ -10,8 +10,8 @@ interface NewTaskFormDraft {
   useWorktree: boolean;
   sourceBranch: string | null; // null means use project's default branch
   interactionMode: InteractionMode;
-  workItemId: string | null;
-  workItemUrl: string | null;
+  workItemIds: string[] | null;
+  workItemUrls: string[] | null;
 }
 
 interface WorkItemsFilters {
@@ -26,8 +26,8 @@ const defaultDraft: NewTaskFormDraft = {
   useWorktree: false,
   sourceBranch: null,
   interactionMode: 'ask',
-  workItemId: null,
-  workItemUrl: null,
+  workItemIds: null,
+  workItemUrls: null,
 };
 
 const defaultWorkItemsFilters: WorkItemsFilters = {

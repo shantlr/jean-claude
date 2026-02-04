@@ -73,6 +73,7 @@ import {
   addPullRequestComment,
   addPullRequestFileComment,
   getCurrentUser,
+  updateWorkItemState,
   type CloneRepositoryParams,
 } from '../services/azure-devops-service';
 import { handlePromptResponse } from '../services/global-prompt-service';
@@ -172,9 +173,35 @@ export function registerIpcHandlers() {
   ipcMain.handle('tasks:findById', (_, id: string) =>
     TaskRepository.findById(id),
   );
-  ipcMain.handle('tasks:create', (_, data: NewTask) =>
-    TaskRepository.create(data),
-  );
+  ipcMain.handle('tasks:create', async (_, data: NewTask) => {
+    const task = await TaskRepository.create(data);
+
+    // Update associated work items to "Active" state (fire and forget, ignore failures)
+    if (task?.workItemIds && task.workItemIds.length > 0) {
+      const project = await ProjectRepository.findById(data.projectId);
+      if (project?.workItemProviderId) {
+        dbg.ipc(
+          'Updating %d work items to Active state',
+          task.workItemIds.length,
+        );
+        for (const workItemId of task.workItemIds) {
+          updateWorkItemState({
+            providerId: project.workItemProviderId,
+            workItemId: parseInt(workItemId, 10),
+            state: 'Active',
+          }).catch((err) => {
+            dbg.ipc(
+              'Failed to update work item %s to Active: %O',
+              workItemId,
+              err,
+            );
+          });
+        }
+      }
+    }
+
+    return task;
+  });
   ipcMain.handle(
     'tasks:createWithWorktree',
     async (
@@ -248,6 +275,32 @@ export function registerIpcHandlers() {
           branchName,
           sourceBranch: actualSourceBranch,
         });
+      }
+
+      // Update associated work items to "Active" state (fire and forget, ignore failures)
+      if (task?.workItemIds && task.workItemIds.length > 0) {
+        const projectForWorkItems = await ProjectRepository.findById(
+          taskData.projectId,
+        );
+        if (projectForWorkItems?.workItemProviderId) {
+          dbg.ipc(
+            'Updating %d work items to Active state',
+            task.workItemIds.length,
+          );
+          for (const workItemId of task.workItemIds) {
+            updateWorkItemState({
+              providerId: projectForWorkItems.workItemProviderId,
+              workItemId: parseInt(workItemId, 10),
+              state: 'Active',
+            }).catch((err) => {
+              dbg.ipc(
+                'Failed to update work item %s to Active: %O',
+                workItemId,
+                err,
+              );
+            });
+          }
+        }
       }
 
       // Auto-start the agent if requested

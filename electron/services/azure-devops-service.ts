@@ -1224,6 +1224,37 @@ export async function addPullRequestComment(params: {
   };
 }
 
+export async function updateWorkItemState(params: {
+  providerId: string;
+  workItemId: number;
+  state: string;
+}): Promise<void> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  // Use JSON Patch to update the work item state
+  const url = `https://dev.azure.com/${orgName}/_apis/wit/workitems/${params.workItemId}?api-version=7.0`;
+
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Authorization: authHeader,
+      'Content-Type': 'application/json-patch+json',
+    },
+    body: JSON.stringify([
+      {
+        op: 'add',
+        path: '/fields/System.State',
+        value: params.state,
+      },
+    ]),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to update work item state: ${error}`);
+  }
+}
+
 export async function addPullRequestFileComment(params: {
   providerId: string;
   projectId: string;

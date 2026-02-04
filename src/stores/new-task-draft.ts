@@ -5,13 +5,15 @@ import { persist } from 'zustand/middleware';
 import type { InteractionMode } from '../../shared/types';
 
 export type InputMode = 'search' | 'prompt';
+export type SearchStep = 'select' | 'compose';
 
 export interface NewTaskDraft {
   inputMode: InputMode;
   interactionMode: InteractionMode;
   // Search mode state
-  workItemId: string | null;
+  workItemIds: string[]; // Changed from workItemId: string | null
   workItemsFilter: string;
+  searchStep: SearchStep; // NEW: which step in search mode
   // Prompt mode state
   prompt: string;
   // Shared state
@@ -35,8 +37,9 @@ interface NewTaskDraftState {
 const defaultDraft: NewTaskDraft = {
   inputMode: 'search',
   interactionMode: 'ask',
-  workItemId: null,
+  workItemIds: [],
   workItemsFilter: '',
+  searchStep: 'select',
   prompt: '',
   createWorktree: true,
   sourceBranch: null,
