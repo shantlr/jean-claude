@@ -822,6 +822,7 @@ function SearchModeContent({
             workItems={filteredWorkItems}
             highlightedIndex={highlightedIndex}
             selectedWorkItemId={selectedWorkItemId}
+            providerId={project?.workItemProviderId ?? undefined}
             onSelect={onWorkItemSelect}
           />
         </div>

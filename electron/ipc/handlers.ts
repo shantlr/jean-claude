@@ -72,6 +72,7 @@ import {
   getPullRequestThreads,
   addPullRequestComment,
   addPullRequestFileComment,
+  getCurrentUser,
   type CloneRepositoryParams,
 } from '../services/azure-devops-service';
 import { handlePromptResponse } from '../services/global-prompt-service';
@@ -572,6 +573,9 @@ export function registerIpcHandlers() {
   );
   ipcMain.handle('azureDevOps:getTokenExpiration', (_, tokenId: string) =>
     getTokenExpiration(tokenId),
+  );
+  ipcMain.handle('azureDevOps:getCurrentUser', (_, providerId: string) =>
+    getCurrentUser(providerId),
   );
   ipcMain.handle(
     'azureDevOps:queryWorkItems',

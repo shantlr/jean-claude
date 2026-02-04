@@ -133,6 +133,12 @@ export interface AzureDevOpsOrganization {
   url: string;
 }
 
+export interface AzureDevOpsUser {
+  id: string;
+  displayName: string;
+  emailAddress: string;
+}
+
 export interface ProviderProject {
   id: string;
   name: string;
@@ -343,6 +349,7 @@ export interface Api {
     getOrganizations: (tokenId: string) => Promise<AzureDevOpsOrganization[]>;
     validateToken: (token: string) => Promise<AzureDevOpsOrganization[]>;
     getTokenExpiration: (tokenId: string) => Promise<string | null>;
+    getCurrentUser: (providerId: string) => Promise<AzureDevOpsUser>;
     queryWorkItems: (params: {
       providerId: string;
       projectId: string;
@@ -704,6 +711,9 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         getTokenExpiration: async () => null,
+        getCurrentUser: async () => {
+          throw new Error('API not available');
+        },
         queryWorkItems: async () => [],
         createPullRequest: async () => {
           throw new Error('API not available');

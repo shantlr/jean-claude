@@ -136,6 +136,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('azureDevOps:validateToken', token),
     getTokenExpiration: (tokenId: string) =>
       ipcRenderer.invoke('azureDevOps:getTokenExpiration', tokenId),
+    getCurrentUser: (providerId: string) =>
+      ipcRenderer.invoke('azureDevOps:getCurrentUser', providerId),
     queryWorkItems: (params: {
       providerId: string;
       projectId: string;

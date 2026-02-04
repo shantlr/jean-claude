@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { Bug, BookOpen, CheckSquare, FileText } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
+import { useCurrentAzureUser } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
 
 // Get icon component for work item type
@@ -29,11 +30,22 @@ function getInitials(name: string): string {
 }
 
 // Owner avatar circle with initials
-function OwnerAvatar({ name }: { name: string }) {
+function OwnerAvatar({
+  name,
+  isCurrentUser,
+}: {
+  name: string;
+  isCurrentUser: boolean;
+}) {
   return (
     <div
-      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neutral-600 text-[9px] font-medium text-neutral-200"
-      title={name}
+      className={clsx(
+        'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium',
+        isCurrentUser
+          ? 'bg-blue-500 text-white ring-1 ring-blue-400'
+          : 'bg-neutral-600 text-neutral-200',
+      )}
+      title={isCurrentUser ? `${name} (you)` : name}
     >
       {getInitials(name)}
     </div>
@@ -64,14 +76,17 @@ export function WorkItemList({
   workItems,
   highlightedIndex,
   selectedWorkItemId,
+  providerId,
   onSelect,
 }: {
   workItems: AzureDevOpsWorkItem[];
   highlightedIndex: number;
   selectedWorkItemId: string | null;
+  providerId?: string;
   onSelect: (workItem: AzureDevOpsWorkItem) => void;
 }) {
   const itemRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
+  const { data: currentUser } = useCurrentAzureUser(providerId ?? null);
 
   // Scroll highlighted item into view
   useEffect(() => {
@@ -144,7 +159,13 @@ export function WorkItemList({
 
             {/* Owner avatar */}
             {workItem.fields.assignedTo && (
-              <OwnerAvatar name={workItem.fields.assignedTo} />
+              <OwnerAvatar
+                name={workItem.fields.assignedTo}
+                isCurrentUser={
+                  !!currentUser?.displayName &&
+                  workItem.fields.assignedTo === currentUser.displayName
+                }
+              />
             )}
           </button>
         );

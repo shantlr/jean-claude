@@ -30,6 +30,12 @@ export interface AzureDevOpsOrganization {
   url: string;
 }
 
+export interface AzureDevOpsUser {
+  id: string;
+  displayName: string;
+  emailAddress: string;
+}
+
 export interface AzureDevOpsProject {
   id: string;
   name: string;
@@ -620,6 +626,34 @@ async function getProviderAuth(providerId: string): Promise<{
   return {
     authHeader: createAuthHeader(token),
     orgName,
+  };
+}
+
+export async function getCurrentUser(
+  providerId: string,
+): Promise<AzureDevOpsUser> {
+  const { authHeader } = await getProviderAuth(providerId);
+
+  const profileResponse = await fetch(
+    'https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.0',
+    {
+      headers: {
+        Authorization: authHeader,
+      },
+    },
+  );
+
+  if (!profileResponse.ok) {
+    const error = await profileResponse.text();
+    throw new Error(`Failed to fetch user profile: ${error}`);
+  }
+
+  const profile: ProfileResponse = await profileResponse.json();
+
+  return {
+    id: profile.id,
+    displayName: profile.displayName,
+    emailAddress: profile.emailAddress,
   };
 }
 
