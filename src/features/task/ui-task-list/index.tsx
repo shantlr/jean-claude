@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { ChevronDown, Settings } from 'lucide-react';
+import { ChevronDown, GitPullRequest, Settings } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
@@ -255,6 +255,23 @@ export function TaskList() {
         });
       },
     },
+    !!selectedProject?.repoId && {
+      label: 'Open Pull Requests',
+      shortcut: 'cmd+shift+p',
+      handler: () => {
+        if (projectFilter === 'all') {
+          navigate({
+            to: '/all/prs/$projectId',
+            params: { projectId: selectedProject.id },
+          });
+        } else {
+          navigate({
+            to: '/projects/$projectId/prs',
+            params: { projectId: selectedProject.id },
+          });
+        }
+      },
+    },
   ]);
 
   return (
@@ -321,11 +338,11 @@ export function TaskList() {
         )}
       </div>
 
-      {/* Project settings button (when a project is selected) */}
+      {/* Project actions (when a project is selected) */}
       {selectedProject && (
         <>
           <div className="mx-2 border-t border-neutral-800" />
-          <div className="p-2">
+          <div className="flex items-center gap-1 p-2">
             <Link
               to="/projects/$projectId/details"
               params={{ projectId: selectedProject.id }}
@@ -334,6 +351,22 @@ export function TaskList() {
               <Settings size={14} />
               <span>Project Settings</span>
             </Link>
+            {/* PR button - only show when project has repo linked */}
+            {selectedProject.repoId && (
+              <Link
+                to={
+                  projectFilter === 'all'
+                    ? '/all/prs/$projectId'
+                    : '/projects/$projectId/prs'
+                }
+                params={{ projectId: selectedProject.id }}
+                className="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white"
+                title="View Pull Requests"
+              >
+                <GitPullRequest size={14} />
+                <span>PRs</span>
+              </Link>
+            )}
           </div>
         </>
       )}

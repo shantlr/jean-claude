@@ -22,9 +22,12 @@ import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projec
 import { Route as AllTaskIdRouteImport } from './routes/all/$taskId'
 import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$projectId/index'
 import { Route as ProjectsProjectIdDetailsRouteImport } from './routes/projects/$projectId/details'
+import { Route as ProjectsProjectIdPrsIndexRouteImport } from './routes/projects/$projectId/prs/index'
+import { Route as AllPrsProjectIdIndexRouteImport } from './routes/all/prs/$projectId/index'
 import { Route as ProjectsProjectIdTasksNewRouteImport } from './routes/projects/$projectId/tasks/new'
 import { Route as ProjectsProjectIdTasksTaskIdRouteImport } from './routes/projects/$projectId/tasks/$taskId'
 import { Route as ProjectsProjectIdPrsPrIdRouteImport } from './routes/projects/$projectId/prs/$prId'
+import { Route as AllPrsProjectIdPrIdRouteImport } from './routes/all/prs/$projectId/$prId'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -92,6 +95,17 @@ const ProjectsProjectIdDetailsRoute =
     path: '/details',
     getParentRoute: () => ProjectsProjectIdRoute,
   } as any)
+const ProjectsProjectIdPrsIndexRoute =
+  ProjectsProjectIdPrsIndexRouteImport.update({
+    id: '/prs/',
+    path: '/prs/',
+    getParentRoute: () => ProjectsProjectIdRoute,
+  } as any)
+const AllPrsProjectIdIndexRoute = AllPrsProjectIdIndexRouteImport.update({
+  id: '/all/prs/$projectId/',
+  path: '/all/prs/$projectId/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectsProjectIdTasksNewRoute =
   ProjectsProjectIdTasksNewRouteImport.update({
     id: '/tasks/new',
@@ -110,6 +124,11 @@ const ProjectsProjectIdPrsPrIdRoute =
     path: '/prs/$prId',
     getParentRoute: () => ProjectsProjectIdRoute,
   } as any)
+const AllPrsProjectIdPrIdRoute = AllPrsProjectIdPrIdRouteImport.update({
+  id: '/all/prs/$projectId/$prId',
+  path: '/all/prs/$projectId/$prId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -125,9 +144,12 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof SettingsIndexRoute
   '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
+  '/all/prs/$projectId/$prId': typeof AllPrsProjectIdPrIdRoute
   '/projects/$projectId/prs/$prId': typeof ProjectsProjectIdPrsPrIdRoute
   '/projects/$projectId/tasks/$taskId': typeof ProjectsProjectIdTasksTaskIdRoute
   '/projects/$projectId/tasks/new': typeof ProjectsProjectIdTasksNewRoute
+  '/all/prs/$projectId/': typeof AllPrsProjectIdIndexRoute
+  '/projects/$projectId/prs/': typeof ProjectsProjectIdPrsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -141,9 +163,12 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsIndexRoute
   '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute
   '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
+  '/all/prs/$projectId/$prId': typeof AllPrsProjectIdPrIdRoute
   '/projects/$projectId/prs/$prId': typeof ProjectsProjectIdPrsPrIdRoute
   '/projects/$projectId/tasks/$taskId': typeof ProjectsProjectIdTasksTaskIdRoute
   '/projects/$projectId/tasks/new': typeof ProjectsProjectIdTasksNewRoute
+  '/all/prs/$projectId': typeof AllPrsProjectIdIndexRoute
+  '/projects/$projectId/prs': typeof ProjectsProjectIdPrsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -160,9 +185,12 @@ export interface FileRoutesById {
   '/settings/': typeof SettingsIndexRoute
   '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
+  '/all/prs/$projectId/$prId': typeof AllPrsProjectIdPrIdRoute
   '/projects/$projectId/prs/$prId': typeof ProjectsProjectIdPrsPrIdRoute
   '/projects/$projectId/tasks/$taskId': typeof ProjectsProjectIdTasksTaskIdRoute
   '/projects/$projectId/tasks/new': typeof ProjectsProjectIdTasksNewRoute
+  '/all/prs/$projectId/': typeof AllPrsProjectIdIndexRoute
+  '/projects/$projectId/prs/': typeof ProjectsProjectIdPrsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -180,9 +208,12 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/projects/$projectId/details'
     | '/projects/$projectId/'
+    | '/all/prs/$projectId/$prId'
     | '/projects/$projectId/prs/$prId'
     | '/projects/$projectId/tasks/$taskId'
     | '/projects/$projectId/tasks/new'
+    | '/all/prs/$projectId/'
+    | '/projects/$projectId/prs/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -196,9 +227,12 @@ export interface FileRouteTypes {
     | '/settings'
     | '/projects/$projectId/details'
     | '/projects/$projectId'
+    | '/all/prs/$projectId/$prId'
     | '/projects/$projectId/prs/$prId'
     | '/projects/$projectId/tasks/$taskId'
     | '/projects/$projectId/tasks/new'
+    | '/all/prs/$projectId'
+    | '/projects/$projectId/prs'
   id:
     | '__root__'
     | '/'
@@ -214,9 +248,12 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/projects/$projectId/details'
     | '/projects/$projectId/'
+    | '/all/prs/$projectId/$prId'
     | '/projects/$projectId/prs/$prId'
     | '/projects/$projectId/tasks/$taskId'
     | '/projects/$projectId/tasks/new'
+    | '/all/prs/$projectId/'
+    | '/projects/$projectId/prs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -225,6 +262,8 @@ export interface RootRouteChildren {
   AllTaskIdRoute: typeof AllTaskIdRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRouteWithChildren
   ProjectsNewRoute: typeof ProjectsNewRoute
+  AllPrsProjectIdPrIdRoute: typeof AllPrsProjectIdPrIdRoute
+  AllPrsProjectIdIndexRoute: typeof AllPrsProjectIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -320,6 +359,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectIdDetailsRouteImport
       parentRoute: typeof ProjectsProjectIdRoute
     }
+    '/projects/$projectId/prs/': {
+      id: '/projects/$projectId/prs/'
+      path: '/prs'
+      fullPath: '/projects/$projectId/prs/'
+      preLoaderRoute: typeof ProjectsProjectIdPrsIndexRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/all/prs/$projectId/': {
+      id: '/all/prs/$projectId/'
+      path: '/all/prs/$projectId'
+      fullPath: '/all/prs/$projectId/'
+      preLoaderRoute: typeof AllPrsProjectIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projects/$projectId/tasks/new': {
       id: '/projects/$projectId/tasks/new'
       path: '/tasks/new'
@@ -340,6 +393,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/projects/$projectId/prs/$prId'
       preLoaderRoute: typeof ProjectsProjectIdPrsPrIdRouteImport
       parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/all/prs/$projectId/$prId': {
+      id: '/all/prs/$projectId/$prId'
+      path: '/all/prs/$projectId/$prId'
+      fullPath: '/all/prs/$projectId/$prId'
+      preLoaderRoute: typeof AllPrsProjectIdPrIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -372,6 +432,7 @@ interface ProjectsProjectIdRouteChildren {
   ProjectsProjectIdPrsPrIdRoute: typeof ProjectsProjectIdPrsPrIdRoute
   ProjectsProjectIdTasksTaskIdRoute: typeof ProjectsProjectIdTasksTaskIdRoute
   ProjectsProjectIdTasksNewRoute: typeof ProjectsProjectIdTasksNewRoute
+  ProjectsProjectIdPrsIndexRoute: typeof ProjectsProjectIdPrsIndexRoute
 }
 
 const ProjectsProjectIdRouteChildren: ProjectsProjectIdRouteChildren = {
@@ -380,6 +441,7 @@ const ProjectsProjectIdRouteChildren: ProjectsProjectIdRouteChildren = {
   ProjectsProjectIdPrsPrIdRoute: ProjectsProjectIdPrsPrIdRoute,
   ProjectsProjectIdTasksTaskIdRoute: ProjectsProjectIdTasksTaskIdRoute,
   ProjectsProjectIdTasksNewRoute: ProjectsProjectIdTasksNewRoute,
+  ProjectsProjectIdPrsIndexRoute: ProjectsProjectIdPrsIndexRoute,
 }
 
 const ProjectsProjectIdRouteWithChildren =
@@ -391,6 +453,8 @@ const rootRouteChildren: RootRouteChildren = {
   AllTaskIdRoute: AllTaskIdRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRouteWithChildren,
   ProjectsNewRoute: ProjectsNewRoute,
+  AllPrsProjectIdPrIdRoute: AllPrsProjectIdPrIdRoute,
+  AllPrsProjectIdIndexRoute: AllPrsProjectIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -30,15 +30,27 @@ export function PrListItem({
   pr,
   projectId,
   isActive,
+  basePath = 'project',
 }: {
   pr: AzureDevOpsPullRequest;
   projectId: string;
   isActive: boolean;
+  basePath?: 'project' | 'all';
 }) {
+  const linkProps =
+    basePath === 'all'
+      ? {
+          to: '/all/prs/$projectId/$prId' as const,
+          params: { projectId, prId: String(pr.id) },
+        }
+      : {
+          to: '/projects/$projectId/prs/$prId' as const,
+          params: { projectId, prId: String(pr.id) },
+        };
+
   return (
     <Link
-      to="/projects/$projectId/prs/$prId"
-      params={{ projectId, prId: String(pr.id) }}
+      {...linkProps}
       className={clsx(
         'group flex flex-col gap-1 rounded-lg px-3 py-2 transition-colors',
         isActive ? 'bg-neutral-700' : 'hover:bg-neutral-800',
