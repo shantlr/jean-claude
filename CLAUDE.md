@@ -30,7 +30,7 @@ The renderer calls `window.api.*` methods which are defined in `preload.ts` and 
 ### State Management
 
 - **Server state**: TanStack React Query with hooks in `src/hooks/` (useProjects, useTasks, useProviders, useSettings, useAgent)
-- **UI state**: Zustand stores in `src/stores/` (navigation, new task form, task message cache)
+- **UI state**: Zustand stores in `src/stores/` (navigation, new task draft, task message cache, overlays, ui)
 - **Routing**: TanStack Router with file-based routes in `src/routes/`
 
 #### Zustand Usage
@@ -50,7 +50,7 @@ const draft = getDraft(id);
 For stores keyed by ID, expose a custom hook that takes the ID and returns bound actions:
 
 ```ts
-export function useNewTaskFormStore(projectId: string) {
+export function useNewTaskDraftStore(projectId: string) {
   const draft = useStore((state) => state.drafts[projectId] ?? defaultDraft);
   const setDraftAction = useStore((state) => state.setDraft);
   const setDraft = useCallback(
@@ -60,6 +60,26 @@ export function useNewTaskFormStore(projectId: string) {
   return { draft, setDraft };
 }
 ```
+
+#### Overlay Pattern
+
+Global overlays (modals that can only have one open at a time) use the `overlays` store:
+
+```ts
+// Open an overlay
+const open = useOverlaysStore((s) => s.open);
+open('command-palette');
+
+// Check if overlay is open
+const overlay = useOverlaysStore((s) => s.overlay);
+if (overlay === 'new-task') { ... }
+
+// Close current overlay
+const close = useOverlaysStore((s) => s.close);
+close();
+```
+
+Available overlay types: `'new-task' | 'command-palette'`
 
 ### Database
 
@@ -148,11 +168,14 @@ Key points:
 ### Key Entities
 
 - **Projects**: Local directories or git-provider repos (has color for tile display, defaultBranch for worktree merges, optional repo/work item linking)
-- **Tasks**: Work units with agent sessions (status: running/waiting/completed/errored, interactionMode: ask/auto/plan, branchName for worktree tasks, optional pullRequestId/pullRequestUrl)
+- **Tasks**: Work units with agent sessions (status: running/waiting/completed/errored, interactionMode: ask/auto/plan, branchName for worktree tasks, sourceBranch for tracking origin, optional pullRequestId/pullRequestUrl)
 - **Providers**: Git provider credentials (Azure DevOps, GitHub, GitLab)
 - **Settings**: App configuration (key-value pairs, e.g., editor preference)
 - **Agent Messages**: Persisted messages from agent sessions (messageIndex for ordering)
 - **Project Commands**: Run command configurations per project (command string, ports to monitor)
+- **MCP Templates**: Model Context Protocol server configurations with variable substitution
+- **Project MCP Overrides**: Per-project enable/disable of MCP templates
+- **Task Summaries**: AI-generated summaries with "What I Did", "Key Decisions", and file annotations
 
 ### Agent Integration
 
@@ -166,7 +189,9 @@ The agent service (`electron/services/agent-service.ts`) manages Claude Agent SD
 - **Message Queue**: Users can queue messages while the agent is busy; queued prompts execute sequentially
 - **Usage Tracking**: Claude Code OAuth usage stats displayed in header (5-hour and 7-day limits)
 
-Agent events flow via IPC channels: `agent:message`, `agent:status`, `agent:permission`, `agent:question`, `agent:queue-update`
+Agent events flow via IPC channels: `agent:message`, `agent:status`, `agent:permission`, `agent:question`, `agent:queue-update`, `agent:name-updated`
+
+**Task Name Generation**: Task names are auto-generated from prompts using Claude Haiku with structured JSON output. Names are limited to 40 characters for worktree directory compatibility. Handled by `name-generation-service.ts`.
 
 **Permission Allow Modes**: When granting permissions, users can choose scope:
 - Session only (default)
@@ -260,6 +285,74 @@ Unified interface for displaying diffs from different sources:
 - **Components**: `src/features/common/ui-file-diff/` with file tree, status badge, diff content, header
 - **Usage**: Shared by worktree diff view and PR diff view
 
+### MCP Template System
+
+The MCP (Model Context Protocol) template service manages MCP server configurations:
+
+- **Service**: `mcp-template-service.ts` handles template CRUD, presets, and variable substitution
+- **Presets**: Built-in MCP templates (e.g., Serena) with predefined commands and variables
+- **User Templates**: Custom templates stored in database with configurable variables
+- **Project Overrides**: Per-project enable/disable of templates via `project_mcp_overrides` table
+- **Variable Types**: Supports folder, file, and text input types for template variables
+- **Auto-install**: Templates can be configured to auto-install when creating worktrees
+- **Settings UI**: Managed via `/settings/mcp-servers` route
+
+### Task Summaries
+
+AI-generated summaries for completed tasks:
+
+- **Content**: "What I Did" and "Key Decisions" sections with markdown formatting
+- **Annotations**: File-level annotations with line numbers and explanations
+- **Storage**: Unique per `(taskId, commitHash)` pair in `task_summaries` table
+- **Generation**: On-demand via `useGenerateSummary()` mutation
+- **Display**: Summary panel in task sidebar with unread indicator
+
+### Encryption Service
+
+Secure credential storage using Electron's `safeStorage` API:
+
+- **Service**: `encryption-service.ts` provides `encrypt()` and `decrypt()` functions
+- **Usage**: Secures token storage and sensitive credentials in the database
+
+### Keyboard Bindings System
+
+Global keyboard binding system using React Context (`src/common/context/keyboard-bindings/`):
+
+- **`RootKeyboardBindings`**: Provider wrapping the entire app (in `src/app.tsx`)
+- **`useRegisterKeyboardBindings`**: Hook for components to register bindings
+- **`BindingKey` type**: Type-safe binding definitions with full modifier support (cmd/ctrl/alt/shift)
+- **Priority**: Most recently registered bindings are checked first; first handler to return `true` or `undefined` stops propagation
+- **Input awareness**: Bindings can use `ignoreIfInput` config to skip when typing in input/textarea
+
+### Keyboard Layout Detection
+
+Support for AZERTY and other keyboard layouts (`src/common/context/keyboard-layout/`):
+
+- **`DetectKeyboardLayout`**: Component that discovers user's keyboard layout via Keyboard API (rendered in `src/app.tsx`)
+- **`useKeyboardLayout()`**: Hook to access detected layout mappings
+- **`getLayoutAwareDigit()`**: Utility to get correct display character for digit keys based on detected layout
+- Physical key codes used for digit binding to support layout-independent shortcuts
+
+### Commands System
+
+Unified command registration that handles both keyboard shortcuts and command palette entries:
+
+- **`useCommands(id, commandArray)`**: Single hook for components to register commands (`src/common/hooks/use-commands/`)
+  - Defines label, shortcut (single or multiple), handler, keywords, section, and hideInCommandPalette
+  - Automatically registers bindings AND command palette entries
+  - Zustand store maintains prioritized source list
+- **`useCommandSources()`**: Hook to retrieve all registered commands for command palette
+- **Decentralized registration**: Commands defined where they're used (e.g., global commands in `src/routes/__root.tsx`)
+
+### Command Palette
+
+Global command search and execution overlay:
+
+- **`CommandPaletteOverlay`**: Fuzzy search over all registered commands using Fuse.js
+- **Organization**: Commands grouped by section for better discovery
+- **Shortcuts**: Cmd+K to open (registered via `useCommands`)
+- **`<Kbd>` component**: Renders styled keyboard shortcut display with layout-aware symbols (`src/common/ui/kbd/`)
+
 ## File Structure
 
 ```
@@ -272,18 +365,23 @@ electron/              # Main process
     agent-service.ts   # Claude Agent SDK integration
     agent-usage-service.ts  # Claude Code OAuth usage stats
     azure-devops-service.ts # Azure DevOps API integration (repos, PRs, work items)
+    encryption-service.ts   # Secure credential storage via Electron safeStorage
     global-prompt-service.ts  # Main→renderer prompt dialogs
+    mcp-template-service.ts # MCP server template management and presets
+    name-generation-service.ts  # Auto-generate task names via Claude Haiku
     notification-service.ts
     permission-settings-service.ts  # Worktree permission management
     run-command-service.ts  # Shell command execution with port monitoring
     skill-service.ts   # Claude Code skills discovery and loading
+    task-service.ts    # Task lifecycle management with Agent SDK query()
     worktree-service.ts     # Git worktree creation, diff, commit, merge
 
 shared/                # Types shared between main and renderer
   types.ts             # Domain types (Project, Task, Provider, InteractionMode)
-  agent-types.ts       # Agent-specific types (AgentMessage, ContentBlock, etc.)
+  agent-types.ts       # Agent-specific types (AgentMessage, ContentBlock, TodoItem, etc.)
   azure-devops-types.ts  # Azure DevOps API types (PRs, work items, repos)
   global-prompt-types.ts # Main→renderer prompt dialog types
+  mcp-types.ts         # MCP template, preset, and variable types
   run-command-types.ts # Run command configuration types
   skill-types.ts       # Skill discovery and metadata types
   usage-types.ts       # Claude usage API types
@@ -292,18 +390,28 @@ src/                   # Renderer (React)
   routes/              # TanStack Router file-based routes
   layout/              # App shell components (header, sidebars)
   features/            # Feature-based components
-    agent/             # Message stream, timeline, tool cards, mode selector, diff view, worktree actions
-    common/            # Shared feature components (ui-file-diff for unified diff display)
-    project/           # Project tile, repo/work items linking, clone pane, run commands config
+    agent/             # Message stream, timeline, tool cards, mode selector, diff view, worktree actions, todo list, summary panel
+    command-palette/   # Command palette overlay (ui-command-palette-overlay)
+    common/            # Shared feature components (ui-file-diff)
+    new-task/          # New task overlay, work item list and details
+    project/           # Project tile, repo/work items linking, clone pane, run commands config, MCP settings
     pull-request/      # PR viewing (detail, header, overview, diff, commits, comments)
-    task/              # Task list item, task settings pane
-    settings/          # General settings, debug viewer, Azure DevOps management
-  common/ui/           # Atomic reusable UI components
+    task/              # Task list item, task settings pane, task summary card
+    settings/          # General settings, debug viewer, Azure DevOps management, MCP servers, tokens
+  common/              # Shared infrastructure
+    context/           # React contexts
+      keyboard-bindings/   # Global keyboard binding system (RootKeyboardBindings, useRegisterKeyboardBindings)
+      keyboard-layout/     # Keyboard layout detection (DetectKeyboardLayout, useKeyboardLayout)
+    hooks/             # Shared hooks
+      use-commands/    # Unified command + keyboard binding registration
+    ui/                # Atomic reusable UI components (kbd, status-indicator, etc.)
   hooks/               # React Query and custom hooks
   stores/              # Zustand stores for UI state
     navigation.ts      # Last visited location, per-task pane state, diff view state
-    new-task-form.ts   # Per-project task form drafts
+    new-task-draft.ts  # Per-project task drafts with search/prompt modes
+    overlays.ts        # Global overlay state (new-task, command-palette)
     task-messages.ts   # Queued prompts by task
+    ui.ts              # UI-wide state (sidebar collapsed)
   lib/                 # Utilities (api.ts, colors.ts, time.ts, worktree.ts)
 
 docs/plans/            # Design and implementation documents
@@ -318,6 +426,8 @@ docs/plans/            # Design and implementation documents
 | `/settings` | Settings layout with tabbed navigation |
 | `/settings/general` | Configure editor preferences |
 | `/settings/azure-devops` | Manage Azure DevOps organizations and PAT tokens |
+| `/settings/tokens` | Manage tokens for different providers |
+| `/settings/mcp-servers` | Manage MCP server templates and presets |
 | `/settings/debug` | Debug database viewer |
 | `/projects/new` | Wizard to add project: local folder, clone repo, or link Azure DevOps repo |
 | `/projects/:projectId` | Project layout with sidebar listing tasks and PRs |
@@ -337,6 +447,7 @@ docs/plans/            # Design and implementation documents
 - When writeing design documents, implementation documents or exectuting implementation task you don't need commit
 - When implementation is done, run `pnpm lint --fix` first
 - To verify typescript, run `pnpm ts-check` (instead of `tsc` directly)
+
 ## Coding Guidelines
 
 ### General Principles
