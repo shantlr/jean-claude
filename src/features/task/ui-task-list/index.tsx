@@ -1,13 +1,15 @@
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { ChevronDown, GitPullRequest, Settings } from 'lucide-react';
+import { ChevronDown, Settings } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { ProjectFilterTabs } from '@/features/project/ui-project-filter-tabs';
+import { SidebarContentTabs } from '@/features/project/ui-sidebar-content-tabs';
+import { PrSidebarList } from '@/features/pull-request/ui-pr-sidebar-list';
 import { TaskSummaryCard } from '@/features/task/ui-task-summary-card';
 import { useProjects } from '@/hooks/use-projects';
 import { useAllActiveTasks, useAllCompletedTasks } from '@/hooks/use-tasks';
-import { useProjectFilter } from '@/stores/navigation';
+import { useProjectFilter, useSidebarTab } from '@/stores/navigation';
 
 const COMPLETED_TASKS_PAGE_SIZE = 5;
 
@@ -25,6 +27,7 @@ export function TaskList() {
     isFetchingNextPage,
   } = useAllCompletedTasks({ limit: COMPLETED_TASKS_PAGE_SIZE });
   const { projectFilter, setProjectFilter } = useProjectFilter();
+  const { sidebarTab } = useSidebarTab();
 
   // Flatten completed tasks from paginated data
   const completedTasks = useMemo(
@@ -139,6 +142,18 @@ export function TaskList() {
     }
     return null;
   }, [projectFilter, currentTaskId, projects, selectedTask]);
+
+  // Determine if we should show the Tasks/PRs tabs
+  // Show only in "all" view OR when selected project has a repo
+  const showContentTabs = useMemo(() => {
+    if (projectFilter === 'all') {
+      // In "all" view, show tabs if any project has a repo
+      return projects.some((p) => p.repoId);
+    }
+    // In specific project view, show tabs if that project has a repo
+    const project = projects.find((p) => p.id === projectFilter);
+    return !!project?.repoId;
+  }, [projectFilter, projects]);
 
   // Keyboard bindings for task navigation
   useCommands('task-list-navigation', [
@@ -255,23 +270,6 @@ export function TaskList() {
         });
       },
     },
-    !!selectedProject?.repoId && {
-      label: 'Open Pull Requests',
-      shortcut: 'cmd+shift+p',
-      handler: () => {
-        if (projectFilter === 'all') {
-          navigate({
-            to: '/all/prs/$projectId',
-            params: { projectId: selectedProject.id },
-          });
-        } else {
-          navigate({
-            to: '/projects/$projectId/prs',
-            params: { projectId: selectedProject.id },
-          });
-        }
-      },
-    },
   ]);
 
   return (
@@ -279,95 +277,89 @@ export function TaskList() {
       {/* Project filter tabs */}
       <ProjectFilterTabs projects={projects} />
 
+      {/* Task/PR content tabs - only show when applicable */}
+      {showContentTabs && <SidebarContentTabs />}
+
       {/* Divider */}
       <div className="mx-2 border-b border-neutral-800" />
 
-      {/* Task cards */}
-      <div className="flex-1 space-y-1 overflow-y-auto p-2">
-        {/* Active tasks section */}
-        {filteredActiveTasks.length === 0 ? (
-          <div className="py-8 text-center text-sm text-neutral-500">
-            No active tasks
-          </div>
-        ) : (
-          filteredActiveTasks.map((task, index) => (
-            <TaskSummaryCard
-              key={task.id}
-              task={task}
-              index={index}
-              projectName={task.projectName}
-              isSelected={task.id === currentTaskId}
-            />
-          ))
-        )}
-
-        {/* Completed tasks section */}
-        {filteredCompletedTasks.length > 0 && (
-          <>
-            <div className="flex items-center gap-2 px-1 pt-4 pb-1">
-              <span className="text-xs font-medium text-neutral-500">
-                Completed
-              </span>
-              <div className="h-px flex-1 bg-neutral-800" />
-            </div>
-            {filteredCompletedTasks.map((task) => (
-              <TaskSummaryCard
-                key={task.id}
-                task={task}
-                projectName={task.projectName}
-                isSelected={task.id === currentTaskId}
-              />
-            ))}
-            {hasNextPage && (
-              <button
-                onClick={() => fetchNextPage()}
-                disabled={isFetchingNextPage}
-                className="flex w-full items-center justify-center gap-1 rounded px-2 py-1.5 text-xs text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-300 disabled:opacity-50"
-              >
-                {isFetchingNextPage ? (
-                  'Loading...'
-                ) : (
-                  <>
-                    <ChevronDown size={14} />
-                    <span>Load more</span>
-                  </>
-                )}
-              </button>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Project actions (when a project is selected) */}
-      {selectedProject && (
+      {/* Content area - show tasks or PRs based on selected tab */}
+      {sidebarTab === 'prs' && showContentTabs ? (
+        <PrSidebarList />
+      ) : (
         <>
-          <div className="mx-2 border-t border-neutral-800" />
-          <div className="flex items-center gap-1 p-2">
-            <Link
-              to="/projects/$projectId/details"
-              params={{ projectId: selectedProject.id }}
-              className="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white"
-            >
-              <Settings size={14} />
-              <span>Project Settings</span>
-            </Link>
-            {/* PR button - only show when project has repo linked */}
-            {selectedProject.repoId && (
-              <Link
-                to={
-                  projectFilter === 'all'
-                    ? '/all/prs/$projectId'
-                    : '/projects/$projectId/prs'
-                }
-                params={{ projectId: selectedProject.id }}
-                className="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white"
-                title="View Pull Requests"
-              >
-                <GitPullRequest size={14} />
-                <span>PRs</span>
-              </Link>
+          {/* Task cards */}
+          <div className="flex-1 space-y-1 overflow-y-auto p-2">
+            {/* Active tasks section */}
+            {filteredActiveTasks.length === 0 ? (
+              <div className="py-8 text-center text-sm text-neutral-500">
+                No active tasks
+              </div>
+            ) : (
+              filteredActiveTasks.map((task, index) => (
+                <TaskSummaryCard
+                  key={task.id}
+                  task={task}
+                  index={index}
+                  projectName={task.projectName}
+                  isSelected={task.id === currentTaskId}
+                />
+              ))
+            )}
+
+            {/* Completed tasks section */}
+            {filteredCompletedTasks.length > 0 && (
+              <>
+                <div className="flex items-center gap-2 px-1 pt-4 pb-1">
+                  <span className="text-xs font-medium text-neutral-500">
+                    Completed
+                  </span>
+                  <div className="h-px flex-1 bg-neutral-800" />
+                </div>
+                {filteredCompletedTasks.map((task) => (
+                  <TaskSummaryCard
+                    key={task.id}
+                    task={task}
+                    projectName={task.projectName}
+                    isSelected={task.id === currentTaskId}
+                  />
+                ))}
+                {hasNextPage && (
+                  <button
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                    className="flex w-full items-center justify-center gap-1 rounded px-2 py-1.5 text-xs text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-300 disabled:opacity-50"
+                  >
+                    {isFetchingNextPage ? (
+                      'Loading...'
+                    ) : (
+                      <>
+                        <ChevronDown size={14} />
+                        <span>Load more</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </>
             )}
           </div>
+
+          {/* Project actions (when a project is selected) */}
+          {selectedProject && (
+            <>
+              <div className="mx-2 border-t border-neutral-800" />
+              <div className="flex items-center gap-1 p-2">
+                <Link
+                  to="/projects/$projectId/details"
+                  params={{ projectId: selectedProject.id }}
+                  className="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white"
+                >
+                  <Settings size={14} />
+                  <span>Project Settings</span>
+                </Link>
+              </div>
+            </>
+          )}
         </>
       )}
     </div>

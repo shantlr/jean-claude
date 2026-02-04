@@ -5,9 +5,9 @@ import { useCallback, useState } from 'react';
 import { TaskList } from '@/features/task/ui-task-list';
 import { useSidebarWidth } from '@/stores/navigation';
 
-export const ALL_TASKS_HEADER_HEIGHT = 48;
+export const MAIN_SIDEBAR_HEADER_HEIGHT = 48;
 
-export function AllTasksSidebar() {
+export function MainSidebar() {
   const { width, setWidth, minWidth, maxWidth } = useSidebarWidth();
   const [isDragging, setIsDragging] = useState(false);
 

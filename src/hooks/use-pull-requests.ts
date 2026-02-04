@@ -46,6 +46,71 @@ export function usePullRequests(
   });
 }
 
+// Extended PR type with project info for "all projects" view
+export type PullRequestWithProject = AzureDevOpsPullRequest & {
+  projectId: string;
+  projectName: string;
+  projectColor: string;
+};
+
+export function useAllProjectsPullRequests(
+  projects: Array<{
+    id: string;
+    name: string;
+    color: string;
+    repoProviderId: string | null;
+    repoProjectId: string | null;
+    repoId: string | null;
+  }>,
+  status: 'active' | 'completed' | 'abandoned' | 'all' = 'active',
+) {
+  // Filter to only projects with repo configured
+  const projectsWithRepo = projects.filter(
+    (p) => p.repoProviderId && p.repoProjectId && p.repoId,
+  );
+
+  return useQuery<PullRequestWithProject[]>({
+    queryKey: [
+      'all-projects-pull-requests',
+      status,
+      projectsWithRepo.map((p) => p.id),
+    ],
+    queryFn: async () => {
+      const results = await Promise.all(
+        projectsWithRepo.map(async (project) => {
+          try {
+            const prs = await api.azureDevOps.listPullRequests({
+              providerId: project.repoProviderId!,
+              projectId: project.repoProjectId!,
+              repoId: project.repoId!,
+              status,
+            });
+            return prs.map((pr) => ({
+              ...pr,
+              projectId: project.id,
+              projectName: project.name,
+              projectColor: project.color,
+            }));
+          } catch {
+            // If one project fails, don't fail the entire query
+            return [];
+          }
+        }),
+      );
+      // Flatten and sort by creation date (newest first)
+      return results
+        .flat()
+        .sort(
+          (a, b) =>
+            new Date(b.creationDate).getTime() -
+            new Date(a.creationDate).getTime(),
+        );
+    },
+    enabled: projectsWithRepo.length > 0,
+    staleTime: 60_000,
+  });
+}
+
 export function usePullRequest(projectId: string, prId: number) {
   const repoInfo = useProjectRepoInfo(projectId);
 

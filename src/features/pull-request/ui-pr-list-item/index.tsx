@@ -22,20 +22,20 @@ function getStatusIcon(
   }
 }
 
-function getBranchName(refName: string) {
-  return refName.replace('refs/heads/', '');
-}
-
 export function PrListItem({
   pr,
   projectId,
   isActive,
   basePath = 'project',
+  projectName,
+  projectColor,
 }: {
   pr: AzureDevOpsPullRequest;
   projectId: string;
   isActive: boolean;
   basePath?: 'project' | 'all';
+  projectName?: string;
+  projectColor?: string;
 }) {
   const linkProps =
     basePath === 'all'
@@ -75,9 +75,17 @@ export function PrListItem({
         </div>
       </div>
       <div className="flex items-center gap-2 pl-6 text-xs text-neutral-500">
+        {projectName && projectColor && (
+          <>
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ backgroundColor: projectColor }}
+            />
+            <span className="max-w-16 truncate">{projectName}</span>
+            <span>·</span>
+          </>
+        )}
         <span className="truncate">{pr.createdBy.displayName}</span>
-        <span>·</span>
-        <span className="truncate">{getBranchName(pr.targetRefName)}</span>
         <span>·</span>
         <span className="shrink-0">{formatRelativeTime(pr.creationDate)}</span>
       </div>

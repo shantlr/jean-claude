@@ -61,6 +61,9 @@ interface NavigationState {
   // App-level: project filter for session list ('all' or specific projectId)
   projectFilter: string | 'all';
 
+  // App-level: sidebar content tab ('tasks' or 'prs')
+  sidebarTab: 'tasks' | 'prs';
+
   // Per-project: last viewed task
   lastTaskByProject: Record<string, string>; // projectId -> taskId
 
@@ -72,6 +75,7 @@ interface NavigationState {
   setDiffFileTreeWidth: (width: number) => void;
   setSidebarWidth: (width: number) => void;
   setProjectFilter: (filter: string | 'all') => void;
+  setSidebarTab: (tab: 'tasks' | 'prs') => void;
   setLastTaskForProject: (projectId: string, taskId: string) => void;
   setTaskRightPane: (taskId: string, pane: RightPane | null) => void;
   setDiffViewOpen: (taskId: string, isOpen: boolean) => void;
@@ -87,6 +91,7 @@ const useStore = create<NavigationState>()(
       diffFileTreeWidth: DEFAULT_DIFF_FILE_TREE_WIDTH,
       sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
       projectFilter: 'all' as string | 'all',
+      sidebarTab: 'tasks' as 'tasks' | 'prs',
       lastTaskByProject: {},
       taskState: {},
 
@@ -104,6 +109,8 @@ const useStore = create<NavigationState>()(
         }),
 
       setProjectFilter: (filter) => set({ projectFilter: filter }),
+
+      setSidebarTab: (tab) => set({ sidebarTab: tab }),
 
       setLastTaskForProject: (projectId, taskId) =>
         set((state) => ({
@@ -226,6 +233,13 @@ export function useProjectFilter() {
   const projectFilter = useStore((state) => state.projectFilter);
   const setProjectFilter = useStore((state) => state.setProjectFilter);
   return { projectFilter, setProjectFilter };
+}
+
+// Hook for sidebar tab
+export function useSidebarTab() {
+  const sidebarTab = useStore((state) => state.sidebarTab);
+  const setSidebarTab = useStore((state) => state.setSidebarTab);
+  return { sidebarTab, setSidebarTab };
 }
 
 // Hook for per-project last task

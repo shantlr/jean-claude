@@ -11,8 +11,8 @@ import { GlobalPromptFromBackModal } from '@/common/ui/global-prompt-from-back-m
 import { TaskMessageManager } from '@/features/agent/task-message-manager';
 import { CommandPaletteOverlay } from '@/features/command-palette/ui-command-palette-overlay';
 import { NewTaskOverlay } from '@/features/new-task/ui-new-task-overlay';
-import { AllTasksSidebar } from '@/layout/ui-all-tasks-sidebar';
 import { Header } from '@/layout/ui-header';
+import { MainSidebar } from '@/layout/ui-main-sidebar';
 import { resolveLastLocationRedirect } from '@/lib/navigation';
 import { useNewTaskDraft } from '@/stores/new-task-draft';
 import { useOverlaysStore } from '@/stores/overlays';
@@ -142,7 +142,7 @@ function RootLayout() {
       <div className="flex h-full w-full flex-1 flex-col overflow-hidden">
         <Header />
         <main className="flex h-full w-full overflow-hidden">
-          <AllTasksSidebar />
+          <MainSidebar />
           <Outlet />
         </main>
       </div>
