@@ -101,7 +101,7 @@ export function DebugDatabase() {
               {isLoading ? (
                 <tr>
                   <td
-                    colSpan={data?.columns.length || 1}
+                    colSpan={1}
                     className="px-4 py-8 text-center text-neutral-500"
                   >
                     Loading...

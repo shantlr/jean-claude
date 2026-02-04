@@ -1,4 +1,4 @@
-import { sql } from 'kysely';
+import { sql, ExpressionWrapper, SqlBool } from 'kysely';
 
 import { db } from '../index';
 import type { Database } from '../schema';
@@ -44,7 +44,7 @@ export const DebugRepository = {
     // Get column names using pragma
     const pragmaResult = db
       .selectFrom(sql`pragma_table_info(${sql.lit(tableName)})`.as('info'))
-      .select('name')
+      .select(sql<string>`name`.as('name'))
       .execute();
 
     const columns = (await pragmaResult).map((row) => row.name as string);
@@ -64,8 +64,14 @@ export const DebugRepository = {
         const combined = searchConditions.reduce(
           (acc, cond) => sql`${acc} OR ${cond}`,
         );
-        query = query.where(sql`(${combined})`);
-        countQuery = countQuery.where(sql`(${combined})`);
+        const whereClause =
+          sql<SqlBool>`(${combined})` as unknown as ExpressionWrapper<
+            Database,
+            keyof Database,
+            SqlBool
+          >;
+        query = query.where(whereClause);
+        countQuery = countQuery.where(whereClause);
       }
     }
 

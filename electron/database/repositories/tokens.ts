@@ -1,5 +1,10 @@
 // electron/database/repositories/tokens.ts
-import type { Token, NewToken, UpdateToken } from '../../../shared/types';
+import type {
+  Token,
+  NewToken,
+  UpdateToken,
+  ProviderType,
+} from '../../../shared/types';
 import { encryptionService } from '../../services/encryption-service';
 import { db } from '../index';
 import type { TokenRow } from '../schema';
@@ -35,7 +40,7 @@ export const TokenRepository = {
     const rows = await db
       .selectFrom('tokens')
       .selectAll()
-      .where('providerType', '=', providerType)
+      .where('providerType', '=', providerType as ProviderType)
       .execute();
     return rows.map(toToken);
   },

@@ -53,26 +53,29 @@ interface UpdateTaskInput {
 // Convert SQLite's 0/1 to boolean for userCompleted, and JSON string to array for sessionAllowedTools
 function toTask<T extends TaskRow>(
   row: T,
-): Omit<T, 'userCompleted' | 'sessionAllowedTools'> & {
+): Omit<T, 'userCompleted' | 'sessionAllowedTools' | 'interactionMode'> & {
   userCompleted: boolean;
   sessionAllowedTools: string[];
+  interactionMode: InteractionMode;
 } {
-  const { userCompleted, sessionAllowedTools, ...rest } = row;
+  const { userCompleted, sessionAllowedTools, interactionMode, ...rest } = row;
   return {
     ...rest,
     userCompleted: Boolean(userCompleted),
     sessionAllowedTools: sessionAllowedTools
       ? JSON.parse(sessionAllowedTools)
       : [],
+    interactionMode: interactionMode as InteractionMode,
   };
 }
 
 function toTaskOrUndefined<T extends TaskRow>(
   row: T | undefined,
 ):
-  | (Omit<T, 'userCompleted' | 'sessionAllowedTools'> & {
+  | (Omit<T, 'userCompleted' | 'sessionAllowedTools' | 'interactionMode'> & {
       userCompleted: boolean;
       sessionAllowedTools: string[];
+      interactionMode: InteractionMode;
     })
   | undefined {
   return row ? toTask(row) : undefined;

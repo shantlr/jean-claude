@@ -42,13 +42,23 @@ const TASK_NAME_SCHEMA = {
   required: ['name'],
 } as const;
 
-interface PendingRequest {
+interface PendingPermissionRequest {
   requestId: string;
-  type: 'permission' | 'question';
+  type: 'permission';
   toolName: string;
   input: Record<string, unknown>;
-  resolve: (response: PermissionResponse | QuestionResponse) => void;
+  resolve: (response: PermissionResult) => void;
 }
+
+interface PendingQuestionRequest {
+  requestId: string;
+  type: 'question';
+  toolName: string;
+  input: Record<string, unknown>;
+  resolve: (response: QuestionResponse) => void;
+}
+
+type PendingRequest = PendingPermissionRequest | PendingQuestionRequest;
 
 interface ActiveSession {
   taskId: string;
@@ -598,7 +608,13 @@ class AgentService {
       request.toolName,
       session.pendingRequests.length,
     );
-    request.resolve(response);
+
+    // Resolve with the appropriate response type based on request type
+    if (request.type === 'permission') {
+      request.resolve(response as PermissionResult);
+    } else {
+      request.resolve(response as QuestionResponse);
+    }
 
     // If there are more pending requests, emit the next one
     if (session.pendingRequests.length > 0) {
