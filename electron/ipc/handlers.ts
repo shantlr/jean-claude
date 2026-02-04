@@ -93,10 +93,12 @@ import {
 } from '../services/permission-settings-service';
 import { runCommandService } from '../services/run-command-service';
 import { getAllSkills } from '../services/skill-service';
+import { generateSummary } from '../services/summary-generation-service';
 import {
   createWorktree,
   getWorktreeDiff,
   getWorktreeFileContent,
+  getWorktreeUnifiedDiff,
   getProjectBranches,
   getCurrentBranch,
   getCurrentCommitHash,
@@ -1080,42 +1082,44 @@ export function registerIpcHandlers() {
       return existingSummary;
     }
 
-    // Get the worktree diff to include in the summary generation
-    const diff = await getWorktreeDiff(task.worktreePath, task.startCommitHash);
+    // Get the worktree diff (file list and status)
+    const diff = await getWorktreeDiff(
+      task.worktreePath,
+      task.startCommitHash,
+      task.sourceBranch,
+    );
     dbg.ipc('Got diff with %d files', diff.files.length);
 
-    // For now, create a placeholder summary
-    // Real AI generation can be added later by calling AgentService
-    const placeholderSummary = {
-      whatIDid: `Modified ${diff.files.length} file(s) in this worktree.`,
-      keyDecisions:
-        diff.files.length > 0
-          ? diff.files
-              .slice(0, 5)
-              .map((f) => `- ${f.status}: ${f.path}`)
-              .join('\n') +
-            (diff.files.length > 5
-              ? `\n- ... and ${diff.files.length - 5} more files`
-              : '')
-          : '- No changes detected',
-    };
+    // Get the unified diff content for AI analysis
+    const unifiedDiff = await getWorktreeUnifiedDiff(
+      task.worktreePath,
+      task.startCommitHash,
+      task.sourceBranch,
+    );
+    dbg.ipc('Got unified diff, length: %d', unifiedDiff.length);
 
-    // Create placeholder annotations for modified/added files
-    const annotations = diff.files
-      .filter((f) => f.status !== 'deleted')
-      .slice(0, 10)
-      .map((f) => ({
-        filePath: f.path,
-        lineNumber: 1,
-        explanation: `File was ${f.status}`,
-      }));
+    // Build file list with diff content for the summary generator
+    const filesWithDiff = diff.files.map((f) => ({
+      path: f.path,
+      status: f.status,
+      // Extract the relevant portion of the unified diff for this file
+      // The unified diff format starts file sections with "diff --git a/path b/path"
+      diff: extractFileDiff(unifiedDiff, f.path),
+    }));
+
+    // Generate the summary using Claude
+    const generated = await generateSummary(filesWithDiff, task.prompt);
+    dbg.ipc(
+      'Generated summary with %d annotations',
+      generated.annotations.length,
+    );
 
     // Store and return the summary
     const summary = await TaskSummaryRepository.create({
       taskId,
       commitHash: currentCommitHash,
-      summary: placeholderSummary,
-      annotations,
+      summary: generated.summary,
+      annotations: generated.annotations,
     });
 
     dbg.ipc('Created new summary for task %s', taskId);
@@ -1440,4 +1444,28 @@ function openInEditor(dirPath: string, setting: EditorSetting): void {
       stdio: 'ignore',
     }).unref();
   }
+}
+
+/**
+ * Extracts the diff section for a specific file from a unified diff output.
+ * Returns undefined if the file's diff section is not found.
+ */
+function extractFileDiff(
+  unifiedDiff: string,
+  filePath: string,
+): string | undefined {
+  // The unified diff format starts each file section with:
+  // "diff --git a/path/to/file b/path/to/file"
+  const fileMarker = `diff --git a/${filePath} b/${filePath}`;
+  const startIndex = unifiedDiff.indexOf(fileMarker);
+
+  if (startIndex === -1) {
+    return undefined;
+  }
+
+  // Find the end of this file's diff section (start of next file or end of string)
+  const nextFileIndex = unifiedDiff.indexOf('\ndiff --git ', startIndex + 1);
+  const endIndex = nextFileIndex === -1 ? unifiedDiff.length : nextFileIndex;
+
+  return unifiedDiff.slice(startIndex, endIndex).trim();
 }

@@ -898,3 +898,56 @@ export async function pushBranch(params: {
   });
   dbg.worktree('Push successful');
 }
+
+/**
+ * Gets the unified diff content for all changed files in a worktree.
+ * This is useful for AI summary generation where we need the actual diff text.
+ *
+ * @param worktreePath - The path to the worktree
+ * @param startCommitHash - Fallback commit hash (used if sourceBranch unavailable)
+ * @param sourceBranch - The source branch to compute diff against (optional)
+ * @returns The unified diff output as a string
+ */
+export async function getWorktreeUnifiedDiff(
+  worktreePath: string,
+  startCommitHash: string,
+  sourceBranch?: string | null,
+): Promise<string> {
+  dbg.worktree('getWorktreeUnifiedDiff called %o', {
+    worktreePath,
+    startCommitHash,
+    sourceBranch,
+  });
+
+  // Check if the worktree still exists
+  if (!(await pathExists(worktreePath))) {
+    dbg.worktree('Worktree path does not exist');
+    return '';
+  }
+
+  try {
+    // Get the appropriate base commit for diffing
+    const baseCommit = await getDiffBaseCommit(
+      worktreePath,
+      startCommitHash,
+      sourceBranch ?? null,
+    );
+
+    // Get the unified diff from baseCommit to current working tree
+    // Limit context lines to keep the output manageable
+    const { stdout: diffOutput } = await execAsync(
+      `git diff -U3 ${baseCommit}`,
+      {
+        cwd: worktreePath,
+        encoding: 'utf-8',
+        maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large diffs
+      },
+    );
+
+    dbg.worktree('Got unified diff, length: %d', diffOutput.length);
+    return diffOutput;
+  } catch (error) {
+    dbg.worktree('Error getting unified diff: %O', error);
+    return '';
+  }
+}
