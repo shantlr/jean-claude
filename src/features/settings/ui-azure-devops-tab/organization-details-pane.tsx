@@ -12,14 +12,13 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import { useModal } from '@/common/context/modal';
 import { useCreateProject } from '@/hooks/use-projects';
-import { useProviderDetails, useDeleteProvider } from '@/hooks/use-providers';
+import { useDeleteProvider, useProviderDetails } from '@/hooks/use-providers';
 import { api, type ProviderProject, type ProviderRepo } from '@/lib/api';
 import { getRandomColor } from '@/lib/colors';
 
 import type { Provider } from '../../../../shared/types';
-
-import { DeleteProviderDialog } from './delete-provider-dialog';
 
 interface CloneConfig {
   parentPath: string;
@@ -281,108 +280,110 @@ export function OrganizationDetailsPane({
 }) {
   const { data, isLoading, error } = useProviderDetails(provider.id);
   const deleteProvider = useDeleteProvider();
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const modal = useModal();
 
-  const handleDelete = () => {
-    deleteProvider.mutate(provider.id, {
-      onSuccess: () => {
-        setShowDeleteDialog(false);
+  const handleDeleteClick = () => {
+    modal.confirm({
+      title: 'Delete Organization',
+      content: (
+        <>
+          Are you sure you want to delete{' '}
+          <span className="font-semibold">{provider.label}</span>? This will
+          remove the organization and its credentials. This action cannot be
+          undone.
+        </>
+      ),
+      confirmLabel: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        await deleteProvider.mutateAsync(provider.id);
         onClose();
       },
     });
   };
 
   return (
-    <>
-      <DeleteProviderDialog
-        isOpen={showDeleteDialog}
-        onClose={() => setShowDeleteDialog(false)}
-        onConfirm={handleDelete}
-        provider={provider}
-        isPending={deleteProvider.isPending}
-      />
-      <div className="flex h-full w-96 shrink-0 flex-col rounded-lg border border-neutral-700 bg-neutral-800/50">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-neutral-700 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/20 text-blue-400">
-              <svg
-                className="h-3.5 w-3.5"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M0 8.877L2.247 5.91l8.405-3.416V.022l7.37 5.393L2.966 8.338v8.225L0 15.707zm24-4.45v14.651l-5.753 4.9-9.303-3.057v3.056l-5.978-7.416 15.057 1.798V5.415z" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-medium text-neutral-200">{provider.label}</h3>
-            </div>
+    <div className="flex h-full w-96 shrink-0 flex-col rounded-lg border border-neutral-700 bg-neutral-800/50">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-neutral-700 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/20 text-blue-400">
+            <svg
+              className="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path d="M0 8.877L2.247 5.91l8.405-3.416V.022l7.37 5.393L2.966 8.338v8.225L0 15.707zm24-4.45v14.651l-5.753 4.9-9.303-3.057v3.056l-5.978-7.416 15.057 1.798V5.415z" />
+            </svg>
           </div>
-          <div className="flex items-center gap-1">
-            <a
-              href={provider.baseUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-lg p-2 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
-              title="Open organization in browser"
-            >
-              <ExternalLink className="h-4 w-4" />
-            </a>
-            <button
-              onClick={onClose}
-              className="cursor-pointer rounded-lg p-2 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
-            >
-              <X className="h-4 w-4" />
-            </button>
+          <div>
+            <h3 className="font-medium text-neutral-200">{provider.label}</h3>
           </div>
         </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {isLoading && (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
-            </div>
-          )}
-
-          {error && (
-            <div className="rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-400">
-              {error.message}
-            </div>
-          )}
-
-          {data && (
-            <div className="flex flex-col gap-2">
-              <h4 className="mb-1 text-xs font-medium tracking-wide text-neutral-500 uppercase">
-                Projects ({data.projects.length})
-              </h4>
-              {data.projects.length === 0 ? (
-                <p className="text-sm text-neutral-500">No projects found</p>
-              ) : (
-                data.projects.map(({ project, repos }) => (
-                  <ProjectAccordion
-                    key={project.id}
-                    project={project}
-                    repos={repos}
-                    provider={provider}
-                  />
-                ))
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Footer with delete button */}
-        <div className="border-t border-neutral-700 px-4 py-3">
-          <button
-            onClick={() => setShowDeleteDialog(true)}
-            className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-red-500/50 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20"
+        <div className="flex items-center gap-1">
+          <a
+            href={provider.baseUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg p-2 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
+            title="Open organization in browser"
           >
-            <Trash2 className="h-4 w-4" />
-            Delete Organization
+            <ExternalLink className="h-4 w-4" />
+          </a>
+          <button
+            onClick={onClose}
+            className="cursor-pointer rounded-lg p-2 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
+          >
+            <X className="h-4 w-4" />
           </button>
         </div>
       </div>
-    </>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {isLoading && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+            {error.message}
+          </div>
+        )}
+
+        {data && (
+          <div className="flex flex-col gap-2">
+            <h4 className="mb-1 text-xs font-medium tracking-wide text-neutral-500 uppercase">
+              Projects ({data.projects.length})
+            </h4>
+            {data.projects.length === 0 ? (
+              <p className="text-sm text-neutral-500">No projects found</p>
+            ) : (
+              data.projects.map(({ project, repos }) => (
+                <ProjectAccordion
+                  key={project.id}
+                  project={project}
+                  repos={repos}
+                  provider={provider}
+                />
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Footer with delete button */}
+      <div className="border-t border-neutral-700 px-4 py-3">
+        <button
+          onClick={handleDeleteClick}
+          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-red-500/50 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20"
+        >
+          <Trash2 className="h-4 w-4" />
+          Delete Organization
+        </button>
+      </div>
+    </div>
   );
 }

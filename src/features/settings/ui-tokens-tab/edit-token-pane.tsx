@@ -1,12 +1,11 @@
 import { Loader2, RefreshCw, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
+import { useModal } from '@/common/context/modal';
 import { useGetAzureDevOpsTokenExpiration } from '@/hooks/use-azure-devops';
 import { useDeleteToken, useUpdateToken } from '@/hooks/use-tokens';
 
 import type { Token } from '../../../../shared/types';
-
-import { DeleteTokenDialog } from './delete-token-dialog';
 
 export function EditTokenPane({
   token,
@@ -20,9 +19,9 @@ export function EditTokenPane({
   const [expiresAt, setExpiresAt] = useState(
     token.expiresAt ? token.expiresAt.split('T')[0] : '',
   );
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const modal = useModal();
   const updateToken = useUpdateToken();
   const deleteToken = useDeleteToken();
   const getExpiration = useGetAzureDevOpsTokenExpiration();
@@ -56,9 +55,22 @@ export function EditTokenPane({
     }
   };
 
-  const handleDelete = async () => {
-    await deleteToken.mutateAsync(token.id);
-    onClose();
+  const handleDeleteClick = () => {
+    modal.confirm({
+      title: 'Delete Token',
+      content: (
+        <>
+          Are you sure you want to delete <strong>{token.label}</strong>? Any
+          providers using this token will be disconnected.
+        </>
+      ),
+      confirmLabel: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        await deleteToken.mutateAsync(token.id);
+        onClose();
+      },
+    });
   };
 
   const hasChanges =
@@ -141,7 +153,7 @@ export function EditTokenPane({
 
           <div className="flex gap-2">
             <button
-              onClick={() => setShowDeleteDialog(true)}
+              onClick={handleDeleteClick}
               className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-red-500/50 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20"
             >
               <Trash2 className="h-4 w-4" />
@@ -160,15 +172,6 @@ export function EditTokenPane({
           </div>
         </div>
       </div>
-
-      {showDeleteDialog && (
-        <DeleteTokenDialog
-          tokenLabel={token.label}
-          onConfirm={handleDelete}
-          onCancel={() => setShowDeleteDialog(false)}
-          isDeleting={deleteToken.isPending}
-        />
-      )}
     </>
   );
 }

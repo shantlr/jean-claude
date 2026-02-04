@@ -3,6 +3,7 @@ import { RouterProvider, createRouter } from '@tanstack/react-router';
 
 import { RootKeyboardBindings } from './common/context/keyboard-bindings';
 import { DetectKeyboardLayout } from './common/context/keyboard-layout';
+import { ModalProvider } from './common/context/modal';
 import { routeTree } from './routeTree.gen';
 
 const queryClient = new QueryClient();
@@ -19,9 +20,11 @@ export default function App() {
     <>
       <DetectKeyboardLayout />
       <RootKeyboardBindings>
-        <QueryClientProvider client={queryClient}>
-          <RouterProvider router={router} />
-        </QueryClientProvider>
+        <ModalProvider>
+          <QueryClientProvider client={queryClient}>
+            <RouterProvider router={router} />
+          </QueryClientProvider>
+        </ModalProvider>
       </RootKeyboardBindings>
     </>
   );
