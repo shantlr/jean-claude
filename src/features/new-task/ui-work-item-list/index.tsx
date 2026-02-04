@@ -19,6 +19,27 @@ function WorkItemTypeIcon({ type }: { type: string }) {
   }
 }
 
+// Get initials from a display name (e.g., "John Smith" -> "JS")
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) {
+    return parts[0].charAt(0).toUpperCase();
+  }
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
+
+// Owner avatar circle with initials
+function OwnerAvatar({ name }: { name: string }) {
+  return (
+    <div
+      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neutral-600 text-[9px] font-medium text-neutral-200"
+      title={name}
+    >
+      {getInitials(name)}
+    </div>
+  );
+}
+
 // Status badge colors
 function getStatusColor(status: string): string {
   switch (status.toLowerCase()) {
@@ -120,6 +141,11 @@ export function WorkItemList({
             >
               {workItem.fields.state}
             </span>
+
+            {/* Owner avatar */}
+            {workItem.fields.assignedTo && (
+              <OwnerAvatar name={workItem.fields.assignedTo} />
+            )}
           </button>
         );
       })}
