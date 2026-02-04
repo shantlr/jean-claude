@@ -137,7 +137,7 @@ export function NewTaskOverlay({
     providerId: selectedProject?.workItemProviderId ?? '',
     projectId: selectedProject?.workItemProjectId ?? '',
     projectName: selectedProject?.workItemProjectName ?? '',
-    filters: { excludeWorkItemTypes: ['Test Suite'] },
+    filters: { excludeWorkItemTypes: ['Test Suite', 'Epic', 'Feature'] },
   });
 
   // Fetch branches for the selected project
@@ -873,7 +873,7 @@ function SearchModeContent({
     providerId: project?.workItemProviderId ?? '',
     projectId: project?.workItemProjectId ?? '',
     projectName: project?.workItemProjectName ?? '',
-    filters: { excludeWorkItemTypes: ['Test Suite'] },
+    filters: { excludeWorkItemTypes: ['Test Suite', 'Epic', 'Feature'] },
   });
 
   // Create Fuse instance for fuzzy search
@@ -993,7 +993,7 @@ function SearchModeContent({
         <div className="overflow-y-auto">
           <WorkItemList
             workItems={filteredWorkItems}
-            highlightedIndex={highlightedIndex}
+            highlightedWorkItemId={highlightedWorkItemId}
             selectedWorkItemIds={selectedWorkItemIds}
             providerId={project?.workItemProviderId ?? undefined}
             onToggleSelect={onWorkItemToggle}

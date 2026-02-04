@@ -1,9 +1,45 @@
 import clsx from 'clsx';
 import { Bug, BookOpen, CheckSquare, FileText, Check } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { useCurrentAzureUser } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
+
+// Group work items so children appear right after their parents
+function groupWorkItemsByParent(
+  workItems: AzureDevOpsWorkItem[],
+): AzureDevOpsWorkItem[] {
+  // Create a set of IDs in the current list for quick lookup
+  const idsInList = new Set(workItems.map((wi) => wi.id));
+
+  // Find work items that are parents (have children in the list)
+  const childrenByParent = new Map<number, AzureDevOpsWorkItem[]>();
+  const topLevelItems: AzureDevOpsWorkItem[] = [];
+
+  for (const item of workItems) {
+    if (item.parentId && idsInList.has(item.parentId)) {
+      // This item has a parent in the list - group it under the parent
+      const siblings = childrenByParent.get(item.parentId) ?? [];
+      siblings.push(item);
+      childrenByParent.set(item.parentId, siblings);
+    } else {
+      // This is a top-level item (no parent in the list)
+      topLevelItems.push(item);
+    }
+  }
+
+  // Build the final list: parent followed by its children
+  const result: AzureDevOpsWorkItem[] = [];
+  for (const item of topLevelItems) {
+    result.push(item);
+    const children = childrenByParent.get(item.id);
+    if (children) {
+      result.push(...children);
+    }
+  }
+
+  return result;
+}
 
 // Get icon component for work item type
 function WorkItemTypeIcon({ type }: { type: string }) {
@@ -90,14 +126,14 @@ function SelectionCheckbox({ checked }: { checked: boolean }) {
 
 export function WorkItemList({
   workItems,
-  highlightedIndex,
+  highlightedWorkItemId,
   selectedWorkItemIds,
   providerId,
   onToggleSelect,
   onHighlight,
 }: {
   workItems: AzureDevOpsWorkItem[];
-  highlightedIndex: number;
+  highlightedWorkItemId: string | null;
   selectedWorkItemIds: string[];
   providerId?: string;
   onToggleSelect: (workItem: AzureDevOpsWorkItem) => void;
@@ -106,13 +142,30 @@ export function WorkItemList({
   const itemRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
   const { data: currentUser } = useCurrentAzureUser(providerId ?? null);
 
+  // Group work items so children appear after their parents
+  const { groupedItems, parentIdsInList } = useMemo(() => {
+    const idsInList = new Set(workItems.map((wi) => wi.id));
+    return {
+      groupedItems: groupWorkItemsByParent(workItems),
+      parentIdsInList: idsInList,
+    };
+  }, [workItems]);
+
+  // Find the highlighted index in the grouped list
+  const highlightedIndex = useMemo(() => {
+    if (highlightedWorkItemId === null) return -1;
+    return groupedItems.findIndex(
+      (wi) => wi.id.toString() === highlightedWorkItemId,
+    );
+  }, [groupedItems, highlightedWorkItemId]);
+
   // Scroll highlighted item into view
   useEffect(() => {
-    if (highlightedIndex >= 0 && highlightedIndex < workItems.length) {
+    if (highlightedIndex >= 0 && highlightedIndex < groupedItems.length) {
       const itemElement = itemRefs.current.get(highlightedIndex);
       itemElement?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
     }
-  }, [highlightedIndex, workItems.length]);
+  }, [highlightedIndex, groupedItems.length]);
 
   // Empty state: no work items
   if (workItems.length === 0) {
@@ -125,10 +178,13 @@ export function WorkItemList({
 
   return (
     <div role="listbox" aria-label="Work items" className="space-y-0.5">
-      {workItems.map((workItem, index) => {
+      {groupedItems.map((workItem, index) => {
         const isHighlighted = index === highlightedIndex;
         const isSelected = selectedWorkItemIds.includes(workItem.id.toString());
         const itemId = `work-item-${workItem.id}`;
+        // Check if this item has a parent that is in the current list
+        const hasParentInList =
+          workItem.parentId && parentIdsInList.has(workItem.parentId);
 
         return (
           <button
@@ -150,6 +206,7 @@ export function WorkItemList({
               'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left',
               isHighlighted && 'bg-neutral-700/50',
               !isHighlighted && 'hover:bg-neutral-700/30',
+              hasParentInList && 'pl-6', // Add left indent for child items
             )}
           >
             {/* Selection checkbox */}

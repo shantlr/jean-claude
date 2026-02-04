@@ -169,6 +169,7 @@ export interface AzureDevOpsWorkItem {
     assignedTo?: string;
     description?: string;
   };
+  parentId?: number;
 }
 
 export interface CloneRepositoryParams {

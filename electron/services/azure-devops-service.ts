@@ -66,10 +66,20 @@ export interface AzureDevOpsWorkItem {
     assignedTo?: string;
     description?: string;
   };
+  parentId?: number;
 }
 
 interface WiqlResponse {
   workItems: Array<{ id: number; url: string }>;
+}
+
+interface WorkItemRelation {
+  rel: string;
+  url: string;
+  attributes: {
+    name?: string;
+    isLocked?: boolean;
+  };
 }
 
 interface WorkItemsBatchResponse {
@@ -84,6 +94,7 @@ interface WorkItemsBatchResponse {
       'System.AssignedTo'?: { displayName: string };
       'System.Description'?: string;
     };
+    relations?: WorkItemRelation[];
   }>;
 }
 
@@ -352,10 +363,11 @@ export async function queryWorkItems(params: {
     return [];
   }
 
-  // Batch-fetch work item details
+  // Batch-fetch work item details with relations to get parent info
+  // Note: $expand=relations cannot be used with the fields parameter, so we fetch all fields
   const ids = wiqlData.workItems.map((wi) => wi.id);
   const batchResponse = await fetch(
-    `https://dev.azure.com/${orgName}/_apis/wit/workitems?ids=${ids.join(',')}&fields=System.Title,System.WorkItemType,System.State,System.AssignedTo,System.Description&api-version=7.0`,
+    `https://dev.azure.com/${orgName}/_apis/wit/workitems?ids=${ids.join(',')}&$expand=relations&api-version=7.0`,
     {
       headers: { Authorization: authHeader },
     },
@@ -368,6 +380,19 @@ export async function queryWorkItems(params: {
 
   const batchData: WorkItemsBatchResponse = await batchResponse.json();
 
+  // Helper to extract parent ID from relations
+  const getParentId = (relations?: WorkItemRelation[]): number | undefined => {
+    if (!relations) return undefined;
+    // Parent relation type is System.LinkTypes.Hierarchy-Reverse
+    const parentRelation = relations.find(
+      (r) => r.rel === 'System.LinkTypes.Hierarchy-Reverse',
+    );
+    if (!parentRelation) return undefined;
+    // URL format: https://dev.azure.com/{org}/_apis/wit/workItems/{id}
+    const match = parentRelation.url.match(/\/workItems\/(\d+)$/i);
+    return match ? parseInt(match[1], 10) : undefined;
+  };
+
   // Map to AzureDevOpsWorkItem[]
   return batchData.value.map((wi) => ({
     id: wi.id,
@@ -379,6 +404,7 @@ export async function queryWorkItems(params: {
       assignedTo: wi.fields['System.AssignedTo']?.displayName,
       description: wi.fields['System.Description'],
     },
+    parentId: getParentId(wi.relations),
   }));
 }
 

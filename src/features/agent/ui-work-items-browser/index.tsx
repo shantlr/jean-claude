@@ -38,7 +38,7 @@ export function WorkItemsBrowser({
     filters: {
       states: filters.states.length > 0 ? filters.states : undefined,
       workItemTypes: filters.types.length > 0 ? filters.types : undefined,
-      excludeWorkItemTypes: ['Test Suite'],
+      excludeWorkItemTypes: ['Test Suite', 'Epic', 'Feature'],
       searchText: debouncedSearchText || undefined,
     },
   });
