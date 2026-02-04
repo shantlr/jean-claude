@@ -1,13 +1,15 @@
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { Settings } from 'lucide-react';
+import { ChevronDown, Settings } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { ProjectFilterTabs } from '@/features/project/ui-project-filter-tabs';
 import { TaskSummaryCard } from '@/features/task/ui-task-summary-card';
 import { useProjects } from '@/hooks/use-projects';
-import { useAllActiveTasks } from '@/hooks/use-tasks';
+import { useAllActiveTasks, useAllCompletedTasks } from '@/hooks/use-tasks';
 import { useProjectFilter } from '@/stores/navigation';
+
+const COMPLETED_TASKS_PAGE_SIZE = 5;
 
 export function TaskList() {
   const navigate = useNavigate();
@@ -16,7 +18,19 @@ export function TaskList() {
 
   const { data: projects = [] } = useProjects();
   const { data: activeTasks = [] } = useAllActiveTasks();
+  const {
+    data: completedTasksData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useAllCompletedTasks({ limit: COMPLETED_TASKS_PAGE_SIZE });
   const { projectFilter, setProjectFilter } = useProjectFilter();
+
+  // Flatten completed tasks from paginated data
+  const completedTasks = useMemo(
+    () => completedTasksData?.pages.flatMap((page) => page.tasks) ?? [],
+    [completedTasksData],
+  );
 
   // Sort projects for tab navigation
   const sortedProjects = useMemo(
@@ -25,12 +39,20 @@ export function TaskList() {
   );
 
   // Filter tasks by selected project
-  const filteredTasks = useMemo(
+  const filteredActiveTasks = useMemo(
     () =>
       projectFilter === 'all'
         ? activeTasks
         : activeTasks.filter((t) => t.projectId === projectFilter),
     [activeTasks, projectFilter],
+  );
+
+  const filteredCompletedTasks = useMemo(
+    () =>
+      projectFilter === 'all'
+        ? completedTasks
+        : completedTasks.filter((t) => t.projectId === projectFilter),
+    [completedTasks, projectFilter],
   );
 
   // Tab options: 'all' + project IDs (sorted)
@@ -42,7 +64,7 @@ export function TaskList() {
   // Navigation helpers
   const navigateToTask = useCallback(
     (index: number) => {
-      const task = filteredTasks[index];
+      const task = filteredActiveTasks[index];
       if (task) {
         // If we're in "all" view, stay in all view
         if (projectFilter === 'all') {
@@ -58,27 +80,28 @@ export function TaskList() {
         }
       }
     },
-    [filteredTasks, navigate, projectFilter],
+    [filteredActiveTasks, navigate, projectFilter],
   );
 
   const navigateRelative = useCallback(
     (direction: 'prev' | 'next') => {
-      if (filteredTasks.length === 0) return;
-      const currentIndex = filteredTasks.findIndex(
+      if (filteredActiveTasks.length === 0) return;
+      const currentIndex = filteredActiveTasks.findIndex(
         (t) => t.id === currentTaskId,
       );
       let newIndex: number;
       if (currentIndex === -1) {
-        newIndex = direction === 'next' ? 0 : filteredTasks.length - 1;
+        newIndex = direction === 'next' ? 0 : filteredActiveTasks.length - 1;
       } else {
         newIndex =
           direction === 'next'
-            ? (currentIndex + 1) % filteredTasks.length
-            : (currentIndex - 1 + filteredTasks.length) % filteredTasks.length;
+            ? (currentIndex + 1) % filteredActiveTasks.length
+            : (currentIndex - 1 + filteredActiveTasks.length) %
+              filteredActiveTasks.length;
       }
       navigateToTask(newIndex);
     },
-    [filteredTasks, currentTaskId, navigateToTask],
+    [filteredActiveTasks, currentTaskId, navigateToTask],
   );
 
   const navigateTab = useCallback(
@@ -94,8 +117,11 @@ export function TaskList() {
   );
 
   const selectedTask = useMemo(() => {
-    return activeTasks.find((t) => t.id === currentTaskId);
-  }, [activeTasks, currentTaskId]);
+    return (
+      activeTasks.find((t) => t.id === currentTaskId) ??
+      completedTasks.find((t) => t.id === currentTaskId)
+    );
+  }, [activeTasks, completedTasks, currentTaskId]);
 
   // Get selected project for settings button
   // Show project settings based on:
@@ -241,12 +267,13 @@ export function TaskList() {
 
       {/* Task cards */}
       <div className="flex-1 space-y-1 overflow-y-auto p-2">
-        {filteredTasks.length === 0 ? (
+        {/* Active tasks section */}
+        {filteredActiveTasks.length === 0 ? (
           <div className="py-8 text-center text-sm text-neutral-500">
             No active tasks
           </div>
         ) : (
-          filteredTasks.map((task, index) => (
+          filteredActiveTasks.map((task, index) => (
             <TaskSummaryCard
               key={task.id}
               task={task}
@@ -255,6 +282,42 @@ export function TaskList() {
               isSelected={task.id === currentTaskId}
             />
           ))
+        )}
+
+        {/* Completed tasks section */}
+        {filteredCompletedTasks.length > 0 && (
+          <>
+            <div className="flex items-center gap-2 px-1 pt-4 pb-1">
+              <span className="text-xs font-medium text-neutral-500">
+                Completed
+              </span>
+              <div className="h-px flex-1 bg-neutral-800" />
+            </div>
+            {filteredCompletedTasks.map((task) => (
+              <TaskSummaryCard
+                key={task.id}
+                task={task}
+                projectName={task.projectName}
+                isSelected={task.id === currentTaskId}
+              />
+            ))}
+            {hasNextPage && (
+              <button
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="flex w-full items-center justify-center gap-1 rounded px-2 py-1.5 text-xs text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-300 disabled:opacity-50"
+              >
+                {isFetchingNextPage ? (
+                  'Loading...'
+                ) : (
+                  <>
+                    <ChevronDown size={14} />
+                    <span>Load more</span>
+                  </>
+                )}
+              </button>
+            )}
+          </>
         )}
       </div>
 

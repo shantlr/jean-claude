@@ -151,6 +151,47 @@ export const TaskRepository = {
     return rows.map(toTask);
   },
 
+  findAllCompleted: async ({
+    limit,
+    offset,
+  }: {
+    limit: number;
+    offset: number;
+  }) => {
+    const rows = await db
+      .selectFrom('tasks')
+      .innerJoin('projects', 'projects.id', 'tasks.projectId')
+      .selectAll('tasks')
+      .select([
+        'projects.name as projectName',
+        'projects.color as projectColor',
+      ])
+      .select((eb) =>
+        eb
+          .selectFrom('agent_messages')
+          .whereRef('agent_messages.taskId', '=', 'tasks.id')
+          .select((eb2) => eb2.fn.countAll<number>().as('count'))
+          .as('messageCount'),
+      )
+      .where('tasks.userCompleted', '=', 1)
+      .orderBy('tasks.updatedAt', 'desc')
+      .limit(limit)
+      .offset(offset)
+      .execute();
+
+    // Get total count for pagination
+    const countResult = await db
+      .selectFrom('tasks')
+      .select((eb) => eb.fn.countAll<number>().as('total'))
+      .where('userCompleted', '=', 1)
+      .executeTakeFirstOrThrow();
+
+    return {
+      tasks: rows.map(toTask),
+      total: countResult.total,
+    };
+  },
+
   findById: async (id: string) => {
     const row = await db
       .selectFrom('tasks')

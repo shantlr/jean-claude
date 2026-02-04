@@ -227,6 +227,11 @@ export interface TaskWithProject {
   messageCount?: number;
 }
 
+export interface CompletedTasksResult {
+  tasks: TaskWithProject[];
+  total: number;
+}
+
 export type AgentEventCallback<T> = (event: T) => void;
 export type UnsubscribeFn = () => void;
 
@@ -248,6 +253,10 @@ export interface Api {
     findAll: () => Promise<Task[]>;
     findByProjectId: (projectId: string) => Promise<Task[]>;
     findAllActive: () => Promise<TaskWithProject[]>;
+    findAllCompleted: (params: {
+      limit: number;
+      offset: number;
+    }) => Promise<CompletedTasksResult>;
     findById: (id: string) => Promise<Task | undefined>;
     create: (data: NewTask) => Promise<Task>;
     createWithWorktree: (
@@ -592,6 +601,7 @@ export const api: Api = hasWindowApi
         findAll: async () => [],
         findByProjectId: async () => [],
         findAllActive: async () => [],
+        findAllCompleted: async () => ({ tasks: [], total: 0 }),
         findById: async () => undefined,
         create: async () => {
           throw new Error('API not available');

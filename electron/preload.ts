@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld('api', {
     findByProjectId: (projectId: string) =>
       ipcRenderer.invoke('tasks:findByProjectId', projectId),
     findAllActive: () => ipcRenderer.invoke('tasks:findAllActive'),
+    findAllCompleted: (params: { limit: number; offset: number }) =>
+      ipcRenderer.invoke('tasks:findAllCompleted', params),
     findById: (id: string) => ipcRenderer.invoke('tasks:findById', id),
     create: (data: unknown) => ipcRenderer.invoke('tasks:create', data),
     createWithWorktree: (data: unknown) =>

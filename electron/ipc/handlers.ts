@@ -161,6 +161,11 @@ export function registerIpcHandlers() {
     TaskRepository.findByProjectId(projectId),
   );
   ipcMain.handle('tasks:findAllActive', () => TaskRepository.findAllActive());
+  ipcMain.handle(
+    'tasks:findAllCompleted',
+    (_, params: { limit: number; offset: number }) =>
+      TaskRepository.findAllCompleted(params),
+  );
   ipcMain.handle('tasks:findById', (_, id: string) =>
     TaskRepository.findById(id),
   );

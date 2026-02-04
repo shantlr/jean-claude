@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
 
@@ -23,6 +28,22 @@ export function useAllActiveTasks() {
   return useQuery({
     queryKey: ['tasks', 'allActive'],
     queryFn: () => api.tasks.findAllActive(),
+  });
+}
+
+export function useAllCompletedTasks({ limit }: { limit: number }) {
+  return useInfiniteQuery({
+    queryKey: ['tasks', 'allCompleted', { limit }],
+    queryFn: ({ pageParam = 0 }) =>
+      api.tasks.findAllCompleted({ limit, offset: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const loadedCount = allPages.reduce(
+        (acc, page) => acc + page.tasks.length,
+        0,
+      );
+      return loadedCount < lastPage.total ? loadedCount : undefined;
+    },
   });
 }
 
@@ -126,11 +147,12 @@ export function useToggleTaskUserCompleted() {
   return useMutation({
     mutationFn: (id: string) => api.tasks.toggleUserCompleted(id),
     onSuccess: (task, id) => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
       queryClient.invalidateQueries({
         queryKey: ['tasks', { projectId: task.projectId }],
       });
+      queryClient.invalidateQueries({ queryKey: ['tasks', 'allActive'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', 'allCompleted'] });
     },
   });
 }
@@ -140,11 +162,12 @@ export function useClearTaskUserCompleted() {
   return useMutation({
     mutationFn: (id: string) => api.tasks.clearUserCompleted(id),
     onSuccess: (task, id) => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
       queryClient.invalidateQueries({
         queryKey: ['tasks', { projectId: task.projectId }],
       });
+      queryClient.invalidateQueries({ queryKey: ['tasks', 'allActive'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', 'allCompleted'] });
     },
   });
 }

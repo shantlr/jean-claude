@@ -31,7 +31,7 @@ export function TaskSummaryCard({
   isSelected,
 }: {
   task: TaskWithProject;
-  index: number;
+  index?: number;
   projectName: string;
   isSelected?: boolean;
 }) {
@@ -42,12 +42,12 @@ export function TaskSummaryCard({
   const needsAttention =
     taskState?.pendingPermission || taskState?.pendingQuestion;
 
-  const displayNumber = index + 1;
+  const displayNumber = index !== undefined ? index + 1 : undefined;
   const displayName = task.name ?? task.prompt.split('\n')[0].slice(0, 30);
 
   // Build tooltip with shortcut hint for tasks 1-9
   const shortcutHint =
-    displayNumber <= 9
+    displayNumber !== undefined && displayNumber <= 9
       ? `${formatKeyForDisplay(`cmd+${displayNumber as unknown as NumberKey}`)}`
       : '';
   const cardTitle = `${shortcutHint}${displayName}`;
@@ -96,10 +96,12 @@ export function TaskSummaryCard({
         <span className="min-w-0 flex-1 truncate text-sm font-medium">
           {displayName}
         </span>
-        <Kbd
-          shortcut={`cmd+${displayNumber.toString() as '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'}`}
-          className="mr-0.5"
-        />
+        {displayNumber !== undefined && displayNumber <= 9 && (
+          <Kbd
+            shortcut={`cmd+${displayNumber.toString() as '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'}`}
+            className="mr-0.5"
+          />
+        )}
         {needsAttention ? (
           <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
         ) : unreadCount > 0 ? (
