@@ -1,6 +1,8 @@
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { useCommands } from '@/common/hooks/use-commands';
+import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
 
 export function MergeConfirmDialog({
@@ -37,11 +39,25 @@ export function MergeConfirmDialog({
   }, [isOpen, defaultCommitMessage]);
 
   const handleConfirm = () => {
+    if (isPending || (squash && !commitMessage.trim())) return;
     onConfirm({
       squash,
       commitMessage: squash ? commitMessage : undefined,
     });
   };
+
+  useCommands('merge-confirm-dialog', [
+    isOpen && {
+      label: 'Merge',
+      shortcut: 'cmd+enter',
+      hideInCommandPalette: true,
+      handler: () => {
+        handleConfirm();
+      },
+    },
+  ]);
+
+  if (!isOpen) return null;
 
   return (
     <Modal
@@ -120,6 +136,7 @@ export function MergeConfirmDialog({
         >
           {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
           {squash ? 'Squash & Merge' : 'Merge'}
+          <Kbd shortcut="cmd+enter" />
         </button>
       </div>
     </Modal>

@@ -1,6 +1,8 @@
 import { Loader2 } from 'lucide-react';
 import React, { useState } from 'react';
 
+import { useCommands } from '@/common/hooks/use-commands';
+import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
 
 export function CommitModal({
@@ -19,12 +21,25 @@ export function CommitModal({
   const [message, setMessage] = useState('');
   const [stageAll, setStageAll] = useState(true);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!message.trim()) return;
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!message.trim() || isPending) return;
     await onCommit(message.trim(), stageAll);
     setMessage('');
   };
+
+  useCommands('commit-modal', [
+    isOpen && {
+      label: 'Commit',
+      shortcut: 'cmd+enter',
+      hideInCommandPalette: true,
+      handler: () => {
+        handleSubmit();
+      },
+    },
+  ]);
+
+  if (!isOpen) return null;
 
   return (
     <Modal
@@ -88,6 +103,7 @@ export function CommitModal({
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             )}
             Commit
+            <Kbd shortcut="cmd+enter" />
           </button>
         </div>
       </form>
