@@ -358,7 +358,7 @@ export function NewTaskOverlay({
   useCommands('new-task-overlay', [
     {
       label: 'Close New Task Overlay',
-      shortcut: 'cmd+n',
+      shortcut: ['cmd+n', 'escape'],
       handler: () => {
         onClose();
       },
