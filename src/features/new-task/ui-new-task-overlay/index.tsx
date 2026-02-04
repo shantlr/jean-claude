@@ -405,42 +405,42 @@ export function NewTaskOverlay({
         navigateTab('prev');
       },
     },
-    {
+    inputMode === 'search' && {
       label: 'Navigate Work Items Up',
       shortcut: 'up',
       handler: () => {
         navigateWorkItems('up');
       },
     },
-    {
+    inputMode === 'search' && {
       label: 'Navigate Work Items Down',
       shortcut: 'down',
       handler: () => {
         navigateWorkItems('down');
       },
     },
-    {
+    inputMode === 'search' && {
       label: 'Navigate to First Work Item',
       shortcut: 'cmd+up',
       handler: () => {
         navigateWorkItems('first');
       },
     },
-    {
+    inputMode === 'search' && {
       label: 'Navigate to Last Work Item',
       shortcut: 'cmd+down',
       handler: () => {
         navigateWorkItems('last');
       },
     },
-    {
+    inputMode === 'search' && {
       label: 'Select Highlighted Work Item',
       shortcut: 'enter',
       handler: () => {
         selectHighlightedWorkItem();
       },
     },
-    {
+    inputMode === 'search' && {
       label: 'Open Highlighted Work Item in Browser',
       shortcut: 'cmd+o',
       handler: () => {
