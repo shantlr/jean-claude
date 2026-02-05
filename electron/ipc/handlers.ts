@@ -841,6 +841,12 @@ export function registerIpcHandlers() {
           continue;
         }
 
+        // Skip paths inside ~/.jean-claude (internal app directory)
+        const jeanClaudeDir = path.join(os.homedir(), '.jean-claude');
+        if (projectPath.startsWith(jeanClaudeDir)) {
+          continue;
+        }
+
         // Check if path still exists
         const exists = await pathExists(projectPath);
         if (!exists) {

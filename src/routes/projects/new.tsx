@@ -173,10 +173,11 @@ function AddProjectPage() {
 
   // Source selection state
   return (
-    <div className="flex h-full p-2">
+    <div className="flex h-full w-full overflow-hidden p-2">
       {/* Main content */}
-      <div className="flex flex-1 items-center justify-center gap-4 p-6">
-        <div className="w-full max-w-md">
+      <div className="flex w-full flex-1 items-center justify-center gap-8 p-6">
+        {/* Add Project Section */}
+        <div className="w-80">
           <h1 className="mb-6 text-center text-2xl font-bold">Add Project</h1>
           <div className="grid gap-4">
             <button
@@ -209,27 +210,31 @@ function AddProjectPage() {
 
         {/* Detected Projects Section */}
         {!isLoadingDetected && detectedProjects.length > 0 && (
-          <div className="mt-8">
+          <div className="flex w-80 flex-col self-stretch">
             <h2 className="mb-3 text-sm font-medium text-neutral-400">
               Detected from Claude Code
             </h2>
-            <div className="space-y-2">
-              {detectedProjects.map((project) => (
-                <button
-                  key={project.path}
-                  type="button"
-                  onClick={() => handleSelectDetectedProject(project)}
-                  className="flex w-full cursor-pointer items-center gap-3 rounded-lg border border-neutral-700 bg-neutral-800/50 px-4 py-3 text-left transition-colors hover:border-neutral-500 hover:bg-neutral-800"
-                >
-                  <FolderOpen className="h-5 w-5 shrink-0 text-neutral-500" />
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium">{project.name}</div>
-                    <div className="truncate text-sm text-neutral-500">
-                      {project.path}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="space-y-2">
+                {detectedProjects.map((project) => (
+                  <button
+                    key={project.path}
+                    type="button"
+                    onClick={() => handleSelectDetectedProject(project)}
+                    className="flex w-full cursor-pointer items-center gap-3 rounded-lg border border-neutral-700 bg-neutral-800/50 px-4 py-3 text-left transition-colors hover:border-neutral-500 hover:bg-neutral-800"
+                  >
+                    <FolderOpen className="h-5 w-5 shrink-0 text-neutral-500" />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium">
+                        {decodeURIComponent(project.name)}
+                      </div>
+                      <div className="truncate text-xs text-neutral-500">
+                        {project.path}
+                      </div>
                     </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
