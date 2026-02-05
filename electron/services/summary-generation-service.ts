@@ -140,23 +140,23 @@ ${diffContent}
 2. **Key Decisions**: List the important architectural or design decisions as markdown bullet points. Explain WHY certain approaches were chosen, trade-offs considered, etc.
 
 3. **Annotations**: Only annotate files where the reasoning is NOT obvious from the code itself. Skip straightforward changes like:
-   - Simple bug fixes with obvious causes
-   - Renaming or moving files
-   - Adding imports
-   - Formatting changes
-   - Direct implementation of clear requirements
+  - Simple bug fixes with obvious causes
+  - Renaming or moving files
+  - Adding imports
+  - Formatting changes
+  - Direct implementation of clear requirements
 
-   DO annotate when:
-   - A non-obvious approach was chosen
-   - There's a subtle reason for the implementation
-   - The change has implications that aren't immediately clear
-   - A workaround was needed
-   - **Specialized syntax requiring domain knowledge**: bash scripts, shell commands, regex patterns, SQL queries, complex git commands, or any code that may be unfamiliar to a general developer
+  DO annotate when:
+  - A non-obvious approach was chosen
+  - There's a subtle reason for the implementation
+  - The change has implications that aren't immediately clear
+  - A workaround was needed
+  - **Specialized syntax requiring domain knowledge**: bash scripts, shell commands, regex patterns, SQL queries, complex git commands, or any code that may be unfamiliar to a general developer
 
-   **Include examples** in annotations when they help illustrate the point. For instance:
-   - For regex: explain what it matches with a concrete example (e.g., "Matches filenames like 'pnpm-lock.yaml' or 'yarn.lock'")
-   - For bash: explain what the command does (e.g., "\`git rev-parse --verify HEAD\` returns the current commit SHA")
-   - For non-obvious patterns: show a before/after or input/output example
+  **Include examples** in annotations when they help illustrate the point. For instance:
+  - For regex: explain what it matches with a concrete example (e.g., "Matches filenames like 'pnpm-lock.yaml' or 'yarn.lock'")
+  - For bash: explain what the command does (e.g., "\`git rev-parse --verify HEAD\` returns the current commit SHA")
+  - For non-obvious patterns: show a before/after or input/output example
 
 Generate the summary now.`;
 
@@ -172,6 +172,7 @@ Generate the summary now.`;
         type: 'json_schema',
         schema: SUMMARY_SCHEMA,
       },
+      persistSession: false,
     },
   });
 

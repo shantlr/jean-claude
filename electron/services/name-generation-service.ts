@@ -30,6 +30,7 @@ export async function generateTaskName(prompt: string): Promise<string | null> {
           type: 'json_schema',
           schema: TASK_NAME_SCHEMA,
         },
+        persistSession: false,
       },
     });
 
