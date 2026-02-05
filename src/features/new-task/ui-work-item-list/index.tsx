@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { Bug, BookOpen, CheckSquare, FileText, Check } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
 
+import { UserAvatar } from '@/common/ui/user-avatar';
 import { useCurrentAzureUser } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
 
@@ -54,38 +55,6 @@ function WorkItemTypeIcon({ type }: { type: string }) {
     default:
       return <FileText className="h-3.5 w-3.5 shrink-0 text-neutral-400" />;
   }
-}
-
-// Get initials from a display name (e.g., "John Smith" -> "JS")
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) {
-    return parts[0].charAt(0).toUpperCase();
-  }
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-}
-
-// Owner avatar circle with initials
-function OwnerAvatar({
-  name,
-  isCurrentUser,
-}: {
-  name: string;
-  isCurrentUser: boolean;
-}) {
-  return (
-    <div
-      className={clsx(
-        'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium',
-        isCurrentUser
-          ? 'bg-blue-500 text-white ring-1 ring-blue-400'
-          : 'bg-neutral-600 text-neutral-200',
-      )}
-      title={isCurrentUser ? `${name} (you)` : name}
-    >
-      {getInitials(name)}
-    </div>
-  );
 }
 
 // Status badge colors
@@ -243,9 +212,15 @@ export function WorkItemList({
 
             {/* Owner avatar */}
             {workItem.fields.assignedTo && (
-              <OwnerAvatar
+              <UserAvatar
                 name={workItem.fields.assignedTo}
-                isCurrentUser={
+                title={
+                  currentUser?.displayName &&
+                  workItem.fields.assignedTo === currentUser.displayName
+                    ? `${workItem.fields.assignedTo} (you)`
+                    : workItem.fields.assignedTo
+                }
+                highlight={
                   !!currentUser?.displayName &&
                   workItem.fields.assignedTo === currentUser.displayName
                 }

@@ -1,5 +1,6 @@
 import { ExternalLink, GitPullRequest, GitMerge } from 'lucide-react';
 
+import { UserAvatar, getVoteLabel } from '@/common/ui/user-avatar';
 import type { AzureDevOpsPullRequestDetails } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/time';
 
@@ -44,37 +45,10 @@ function getBranchName(refName: string) {
   return refName.replace('refs/heads/', '');
 }
 
-function getVoteBorderColor(vote: number) {
-  if (vote >= 10) return 'border-green-500';
-  if (vote > 0) return 'border-green-400';
-  if (vote === 0) return 'border-neutral-600';
-  if (vote > -10) return 'border-yellow-500';
-  return 'border-red-500';
-}
-
-function getVoteLabel(vote: number) {
-  if (vote === 10) return 'Approved';
-  if (vote === 5) return 'Approved with suggestions';
-  if (vote === -5) return 'Waiting for author';
-  if (vote === -10) return 'Rejected';
-  return 'No vote';
-}
-
-function getInitials(displayName: string) {
-  const parts = displayName.trim().split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }
-  return displayName.slice(0, 2).toUpperCase();
-}
-
-function isGroupReviewer(uniqueName: string) {
-  // Group reviewers typically have uniqueName starting with 'vstfs:' or containing backslash for team names
-  return uniqueName.startsWith('vstfs:') || uniqueName.includes('\\');
-}
-
 export function PrHeader({ pr }: { pr: AzureDevOpsPullRequestDetails }) {
-  const reviewers = pr.reviewers.filter((r) => !isGroupReviewer(r.uniqueName));
+  // Filter out group reviewers (isContainer) - only show individual users
+  const reviewers = pr.reviewers.filter((r) => !r.isContainer);
+
   return (
     <div className="border-b border-neutral-700 p-2">
       <div className="flex items-start justify-between">
@@ -115,13 +89,14 @@ export function PrHeader({ pr }: { pr: AzureDevOpsPullRequestDetails }) {
 
             <div className="flex justify-end -space-x-1">
               {reviewers.map((reviewer) => (
-                <div
+                <UserAvatar
                   key={reviewer.uniqueName}
-                  title={`${reviewer.displayName} - ${getVoteLabel(reviewer.vote)}`}
-                  className={`flex h-7 w-7 items-center justify-center rounded-full border-2 bg-neutral-700 text-xs font-medium text-neutral-200 ${getVoteBorderColor(reviewer.vote)}`}
-                >
-                  {getInitials(reviewer.displayName)}
-                </div>
+                  name={reviewer.displayName}
+                  title={`${reviewer.displayName} - ${getVoteLabel(reviewer.voteStatus)}`}
+                  size="md"
+                  vote={reviewer.voteStatus}
+                  variant="border"
+                />
               ))}
             </div>
           </div>

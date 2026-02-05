@@ -1,5 +1,12 @@
 // Azure DevOps Pull Request types
 
+export type ReviewerVoteStatus =
+  | 'approved'
+  | 'approved-with-suggestions'
+  | 'waiting'
+  | 'rejected'
+  | 'none';
+
 export interface AzureDevOpsPullRequest {
   id: number;
   title: string;
@@ -14,17 +21,18 @@ export interface AzureDevOpsPullRequest {
   sourceRefName: string; // refs/heads/feature-branch
   targetRefName: string; // refs/heads/main
   url: string; // Web URL to PR
+  reviewers: Array<{
+    displayName: string;
+    uniqueName: string;
+    imageUrl?: string;
+    voteStatus: ReviewerVoteStatus;
+    isContainer?: boolean; // true if this is a group, false/undefined if user
+  }>;
 }
 
 export interface AzureDevOpsPullRequestDetails extends AzureDevOpsPullRequest {
   description: string;
   mergeStatus?: 'succeeded' | 'conflicts' | 'failure' | 'notSet';
-  reviewers: Array<{
-    displayName: string;
-    uniqueName: string;
-    imageUrl?: string;
-    vote: number; // -10 rejected, -5 waiting, 0 none, 5 approved with suggestions, 10 approved
-  }>;
 }
 
 export interface AzureDevOpsCommit {

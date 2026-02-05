@@ -9,6 +9,7 @@ import type {
   AzureDevOpsFileChange,
   AzureDevOpsCommentThread,
   AzureDevOpsComment,
+  ReviewerVoteStatus,
 } from '../../shared/azure-devops-types';
 import { ProviderRepository } from '../database/repositories/providers';
 import { TokenRepository } from '../database/repositories/tokens';
@@ -719,6 +720,7 @@ interface PullRequestResponse {
     uniqueName: string;
     imageUrl?: string;
     vote: number;
+    isContainer?: boolean; // true if this is a group, false/undefined if user
   }>;
 }
 
@@ -837,6 +839,14 @@ function mapPrStatus(status: string): 'active' | 'completed' | 'abandoned' {
   }
 }
 
+function mapVoteToStatus(vote: number): ReviewerVoteStatus {
+  if (vote === 10) return 'approved';
+  if (vote === 5) return 'approved-with-suggestions';
+  if (vote === -5) return 'waiting';
+  if (vote <= -10) return 'rejected';
+  return 'none';
+}
+
 function mapChangeType(
   changeType: string,
 ): 'add' | 'edit' | 'delete' | 'rename' {
@@ -950,6 +960,13 @@ export async function listPullRequests(params: {
     sourceRefName: pr.sourceRefName,
     targetRefName: pr.targetRefName,
     url: `https://dev.azure.com/${orgName}/${params.projectId}/_git/${params.repoId}/pullrequest/${pr.pullRequestId}`,
+    reviewers: (pr.reviewers ?? []).map((r) => ({
+      displayName: r.displayName,
+      uniqueName: r.uniqueName,
+      imageUrl: r.imageUrl,
+      voteStatus: mapVoteToStatus(r.vote),
+      isContainer: r.isContainer,
+    })),
   }));
 }
 
@@ -994,7 +1011,8 @@ export async function getPullRequest(params: {
       displayName: r.displayName,
       uniqueName: r.uniqueName,
       imageUrl: r.imageUrl,
-      vote: r.vote,
+      voteStatus: mapVoteToStatus(r.vote),
+      isContainer: r.isContainer,
     })),
   };
 }
