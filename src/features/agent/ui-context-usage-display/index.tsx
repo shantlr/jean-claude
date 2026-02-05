@@ -19,12 +19,62 @@ const LEVEL_COLORS: Record<ContextLevel, string> = {
   critical: 'text-orange-400',
 };
 
-const LEVEL_BG_COLORS: Record<ContextLevel, string> = {
-  low: 'bg-blue-500',
-  medium: 'bg-green-500',
-  high: 'bg-yellow-500',
-  critical: 'bg-orange-500',
+const LEVEL_STROKE_COLORS: Record<ContextLevel, string> = {
+  low: 'stroke-blue-500',
+  medium: 'stroke-green-500',
+  high: 'stroke-yellow-500',
+  critical: 'stroke-orange-500',
 };
+
+function PieLoader({
+  percentage,
+  level,
+  size = 16,
+}: {
+  percentage: number;
+  level: ContextLevel;
+  size?: number;
+}) {
+  const strokeWidth = 2.5;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className="shrink-0 -rotate-90"
+    >
+      {/* Background circle */}
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        className="text-neutral-700"
+      />
+      {/* Progress circle */}
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={strokeDashoffset}
+        className={clsx(
+          'transition-all duration-300',
+          LEVEL_STROKE_COLORS[level],
+        )}
+      />
+    </svg>
+  );
+}
 
 export function ContextUsageDisplay({
   contextUsage,
@@ -40,16 +90,8 @@ export function ContextUsageDisplay({
 
   return (
     <div className="flex items-center gap-1.5" title={tooltipText}>
-      {/* Progress bar */}
-      <div className="relative h-1 w-12 overflow-hidden rounded-full bg-neutral-700">
-        <div
-          className={clsx(
-            'absolute top-0 left-0 h-full rounded-full transition-all duration-300',
-            LEVEL_BG_COLORS[level],
-          )}
-          style={{ width: `${contextUsage.percentage}%` }}
-        />
-      </div>
+      {/* Pie loader */}
+      <PieLoader percentage={contextUsage.percentage} level={level} />
       {/* Percentage text */}
       <span className={clsx('text-xs font-medium', LEVEL_COLORS[level])}>
         {contextUsage.percentage.toFixed(0)}% (
