@@ -9,6 +9,7 @@ import {
   Settings,
   GitBranch,
   GitCompare,
+  GitPullRequest,
 } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 
@@ -23,6 +24,7 @@ import { PermissionBar } from '@/features/agent/ui-permission-bar';
 import { PrBadge } from '@/features/agent/ui-pr-badge';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
 import { RunButton } from '@/features/agent/ui-run-button';
+import { TaskPrView } from '@/features/task/ui-task-pr-view';
 import { WorktreeDiffView } from '@/features/agent/ui-worktree-diff-view';
 import { StatusIndicator } from '@/features/task/ui-status-indicator';
 import { TaskSettingsPane } from '@/features/task/ui-task-settings-pane';
@@ -49,6 +51,7 @@ import {
   useNavigationStore,
   useTaskState,
   useDiffViewState,
+  usePrViewState,
 } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 
@@ -105,6 +108,13 @@ export function TaskPanel({
     toggleDiffView,
     selectFile: selectDiffFile,
   } = useDiffViewState(taskId);
+
+  // PR view state
+  const {
+    isOpen: isPrViewOpen,
+    togglePrView,
+    closePrView,
+  } = usePrViewState(taskId);
 
   const agentState = useAgentStream(taskId);
   const contextUsage = useContextUsage(agentState.messages);
@@ -431,6 +441,22 @@ export function TaskPanel({
                   </button>
                 </>
               )}
+              {/* PR button - visible when repo is linked */}
+              {project.repoProviderId && task.worktreePath && (
+                <button
+                  onClick={togglePrView}
+                  className={clsx(
+                    'flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium transition-colors',
+                    isPrViewOpen
+                      ? 'bg-blue-500/20 text-blue-400'
+                      : 'text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300',
+                  )}
+                  title="View or link pull request"
+                >
+                  <GitPullRequest className="h-3.5 w-3.5" />
+                  PR
+                </button>
+              )}
               {/* Work item badges */}
               {task.workItemIds &&
                 task.workItemIds.length > 0 &&
@@ -515,9 +541,23 @@ export function TaskPanel({
           </div>
         )}
 
-        {/* Main content area: Diff view OR Message stream */}
+        {/* Main content area: PR view OR Diff view OR Message stream */}
         <div className="min-h-0 flex-1">
-          {isDiffViewOpen && task.worktreePath ? (
+          {isPrViewOpen ? (
+            <TaskPrView
+              taskId={taskId}
+              projectId={project.id}
+              branchName={
+                task.branchName ??
+                (task.worktreePath
+                  ? getBranchFromWorktreePath(task.worktreePath)
+                  : null)
+              }
+              pullRequestId={task.pullRequestId ?? null}
+              hasRepoLinked={!!project.repoProviderId}
+              onClose={closePrView}
+            />
+          ) : isDiffViewOpen && task.worktreePath ? (
             <WorktreeDiffView
               taskId={taskId}
               selectedFilePath={diffSelectedFile}

@@ -19,9 +19,14 @@ interface DiffViewState {
   selectedFilePath: string | null;
 }
 
+interface PrViewState {
+  isOpen: boolean;
+}
+
 interface TaskState {
   rightPane: RightPane | null;
   diffView: DiffViewState;
+  prView: PrViewState;
 }
 
 const defaultDiffViewState: DiffViewState = {
@@ -29,9 +34,14 @@ const defaultDiffViewState: DiffViewState = {
   selectedFilePath: null,
 };
 
+const defaultPrViewState: PrViewState = {
+  isOpen: false,
+};
+
 const defaultTaskState: TaskState = {
   rightPane: null,
   diffView: defaultDiffViewState,
+  prView: defaultPrViewState,
 };
 
 // Constants for diff file tree width
@@ -80,6 +90,7 @@ interface NavigationState {
   setTaskRightPane: (taskId: string, pane: RightPane | null) => void;
   setDiffViewOpen: (taskId: string, isOpen: boolean) => void;
   setDiffViewSelectedFile: (taskId: string, filePath: string | null) => void;
+  setPrViewOpen: (taskId: string, isOpen: boolean) => void;
   clearProjectNavHistoryState: (projectId: string) => void;
   clearTaskNavHistoryState: (taskId: string) => void;
 }
@@ -162,6 +173,21 @@ const useStore = create<NavigationState>()(
               diffView: {
                 ...(state.taskState[taskId]?.diffView ?? defaultDiffViewState),
                 selectedFilePath: filePath,
+              },
+            },
+          },
+        })),
+
+      setPrViewOpen: (taskId, isOpen) =>
+        set((state) => ({
+          taskState: {
+            ...state.taskState,
+            [taskId]: {
+              ...defaultTaskState,
+              ...state.taskState[taskId],
+              prView: {
+                ...(state.taskState[taskId]?.prView ?? defaultPrViewState),
+                isOpen,
               },
             },
           },
@@ -356,6 +382,36 @@ export function useDiffViewState(taskId: string) {
     openDiffView,
     closeDiffView,
     selectFile,
+  };
+}
+
+// Hook for PR view state
+export function usePrViewState(taskId: string) {
+  const prView = useStore(
+    (state) => state.taskState[taskId]?.prView ?? defaultPrViewState,
+  );
+  const setPrViewOpenAction = useStore((state) => state.setPrViewOpen);
+
+  const togglePrView = useCallback(
+    () => setPrViewOpenAction(taskId, !prView.isOpen),
+    [taskId, prView.isOpen, setPrViewOpenAction],
+  );
+
+  const openPrView = useCallback(
+    () => setPrViewOpenAction(taskId, true),
+    [taskId, setPrViewOpenAction],
+  );
+
+  const closePrView = useCallback(
+    () => setPrViewOpenAction(taskId, false),
+    [taskId, setPrViewOpenAction],
+  );
+
+  return {
+    isOpen: prView.isOpen,
+    togglePrView,
+    openPrView,
+    closePrView,
   };
 }
 
