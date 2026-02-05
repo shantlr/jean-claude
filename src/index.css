@@ -7,3 +7,36 @@ button {
 @utility no-scrollbar {
   @apply [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
 }
+
+/* Animated gradient border for running tasks */
+@keyframes gradient-rotate {
+  0% {
+    --gradient-angle: 0deg;
+  }
+  100% {
+    --gradient-angle: 360deg;
+  }
+}
+
+@property --gradient-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@utility running-border {
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(var(--color-neutral-800), var(--color-neutral-800)) padding-box,
+    conic-gradient(
+        from var(--gradient-angle),
+        var(--color-blue-500),
+        var(--color-purple-500),
+        var(--color-blue-400),
+        var(--color-blue-500)
+      )
+      border-box;
+  border: 1px solid transparent;
+  animation: gradient-rotate 1.5s linear infinite;
+  box-shadow: 0 0 4px 0px color-mix(in srgb, var(--color-blue-500) 35%, transparent);
+}
