@@ -1,6 +1,6 @@
 import { useRouter } from '@tanstack/react-router';
 import clsx from 'clsx';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, GitPullRequest } from 'lucide-react';
 
 import { NumberKey } from '@/common/context/keyboard-bindings/types';
 import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
@@ -93,6 +93,9 @@ export function TaskSummaryCard({
       {/* Top row: status, name, number badge */}
       <div className="flex items-center gap-1">
         <StatusIndicator status={task.status as TaskStatus} />
+        {task.pullRequestId && (
+          <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-green-500" />
+        )}
         <span className="min-w-0 flex-1 truncate text-sm font-medium">
           {displayName}
         </span>
