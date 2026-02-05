@@ -5,31 +5,32 @@ import {
   Link,
   ExternalLink,
   ArrowLeft,
+  Plus,
 } from 'lucide-react';
-import { useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 
 import { PrDetail } from '@/features/pull-request/ui-pr-detail';
+import { useProject } from '@/hooks/use-projects';
 import { usePullRequests } from '@/hooks/use-pull-requests';
-import { useUpdateTask } from '@/hooks/use-tasks';
+import { useTask, useUpdateTask } from '@/hooks/use-tasks';
 import type { AzureDevOpsPullRequest } from '@/lib/api';
+
+import { PrCreationForm } from './pr-creation-form';
 
 export function TaskPrView({
   taskId,
   projectId,
-  branchName,
-  pullRequestId,
-  hasRepoLinked,
   onClose,
 }: {
   taskId: string;
   projectId: string;
-  branchName: string | null;
-  pullRequestId: string | null;
-  hasRepoLinked: boolean;
   onClose: () => void;
 }) {
+  const { data: task } = useTask(taskId);
+  const { data: project } = useProject(projectId);
+
   // If PR is linked, show the PR detail view
-  if (pullRequestId) {
+  if (task?.pullRequestId) {
     return (
       <div className="flex h-full flex-col">
         <div className="flex items-center gap-2 border-b border-neutral-700 px-3 py-2">
@@ -41,11 +42,11 @@ export function TaskPrView({
             Back
           </button>
           <span className="text-sm font-medium text-neutral-300">
-            Pull Request #{pullRequestId}
+            Pull Request #{task.pullRequestId}
           </span>
         </div>
         <div className="min-h-0 flex-1">
-          <PrDetail projectId={projectId} prId={Number(pullRequestId)} />
+          <PrDetail projectId={projectId} prId={Number(task.pullRequestId)} />
         </div>
       </div>
     );
@@ -56,8 +57,8 @@ export function TaskPrView({
     <PrLinkingView
       taskId={taskId}
       projectId={projectId}
-      branchName={branchName}
-      hasRepoLinked={hasRepoLinked}
+      task={task}
+      project={project}
       onClose={onClose}
     />
   );
@@ -66,21 +67,40 @@ export function TaskPrView({
 function PrLinkingView({
   taskId,
   projectId,
-  branchName,
-  hasRepoLinked,
+  task,
+  project,
   onClose,
 }: {
   taskId: string;
   projectId: string;
-  branchName: string | null;
-  hasRepoLinked: boolean;
+  task:
+    | {
+        branchName: string | null;
+        name: string | null;
+        prompt: string;
+        sourceBranch: string | null;
+        workItemIds: string[] | null;
+      }
+    | undefined;
+  project:
+    | {
+        repoProviderId: string | null;
+        repoProjectId: string | null;
+        repoId: string | null;
+        defaultBranch: string | null;
+      }
+    | undefined;
   onClose: () => void;
 }) {
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const { data: allPrs, isLoading: isPrsLoading } = usePullRequests(
     projectId,
     'all',
   );
   const updateTask = useUpdateTask();
+
+  const branchName = task?.branchName ?? null;
+  const hasRepoLinked = !!project?.repoProviderId;
 
   // Filter PRs that match the branch name
   const matchingPrs = useMemo(() => {
@@ -164,18 +184,44 @@ function PrLinkingView({
             </p>
           </div>
         ) : matchingPrs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
-            <GitPullRequest className="h-12 w-12 text-neutral-600" />
-            <p className="text-neutral-400">
-              No pull requests found for branch{' '}
-              <code className="rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-sm">
-                {branchName}
-              </code>
-            </p>
-            <p className="text-sm text-neutral-500">
-              Create a pull request from the diff view or your git provider.
-            </p>
-          </div>
+          showCreateForm &&
+          branchName &&
+          project?.repoProviderId &&
+          project?.repoProjectId &&
+          project?.repoId ? (
+            <PrCreationForm
+              taskId={taskId}
+              projectId={projectId}
+              onSuccess={onClose}
+              onCancel={() => setShowCreateForm(false)}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+              <GitPullRequest className="h-12 w-12 text-neutral-600" />
+              <p className="text-neutral-400">
+                No pull requests found for branch{' '}
+                <code className="rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-sm">
+                  {branchName}
+                </code>
+              </p>
+              {branchName &&
+              project?.repoProviderId &&
+              project?.repoProjectId &&
+              project?.repoId ? (
+                <button
+                  onClick={() => setShowCreateForm(true)}
+                  className="mt-2 flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create Pull Request
+                </button>
+              ) : (
+                <p className="text-sm text-neutral-500">
+                  Create a pull request from the diff view or your git provider.
+                </p>
+              )}
+            </div>
+          )
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-neutral-400">

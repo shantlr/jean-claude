@@ -547,14 +547,6 @@ export function TaskPanel({
             <TaskPrView
               taskId={taskId}
               projectId={project.id}
-              branchName={
-                task.branchName ??
-                (task.worktreePath
-                  ? getBranchFromWorktreePath(task.worktreePath)
-                  : null)
-              }
-              pullRequestId={task.pullRequestId ?? null}
-              hasRepoLinked={!!project.repoProviderId}
               onClose={closePrView}
             />
           ) : isDiffViewOpen && task.worktreePath ? (
