@@ -261,13 +261,22 @@ export function NewTaskOverlay({
   }, [draft?.interactionMode, updateDraft]);
 
   // Navigate work items with arrow keys
+  // Uses DOM querySelector to match the visual order displayed in WorkItemList
   const navigateWorkItems = useCallback(
     (direction: 'up' | 'down' | 'first' | 'last') => {
-      if (filteredWorkItems.length === 0) return;
+      // Find all work item elements in the DOM (in visual order)
+      const listEl = document.querySelector('[data-work-item-list]');
+      if (!listEl) return;
 
+      const items = Array.from(
+        listEl.querySelectorAll<HTMLElement>('[data-work-item-id]'),
+      );
+      if (items.length === 0) return;
+
+      // Find current highlight index
       const currentIndex = highlightedWorkItemId
-        ? filteredWorkItems.findIndex(
-            (wi) => wi.id.toString() === highlightedWorkItemId,
+        ? items.findIndex(
+            (el) => el.dataset.workItemId === highlightedWorkItemId,
           )
         : -1;
 
@@ -275,22 +284,24 @@ export function NewTaskOverlay({
       if (direction === 'first') {
         newIndex = 0;
       } else if (direction === 'last') {
-        newIndex = filteredWorkItems.length - 1;
+        newIndex = items.length - 1;
       } else if (currentIndex === -1) {
         // No current highlight, start at first/last
-        newIndex = direction === 'down' ? 0 : filteredWorkItems.length - 1;
+        newIndex = direction === 'down' ? 0 : items.length - 1;
       } else {
         // Move up/down with wrapping
         newIndex =
           direction === 'down'
-            ? (currentIndex + 1) % filteredWorkItems.length
-            : (currentIndex - 1 + filteredWorkItems.length) %
-              filteredWorkItems.length;
+            ? (currentIndex + 1) % items.length
+            : (currentIndex - 1 + items.length) % items.length;
       }
 
-      setHighlightedWorkItemId(filteredWorkItems[newIndex].id.toString());
+      const newId = items[newIndex].dataset.workItemId;
+      if (newId) {
+        setHighlightedWorkItemId(newId);
+      }
     },
-    [filteredWorkItems, highlightedWorkItemId],
+    [highlightedWorkItemId],
   );
 
   // Toggle selection of highlighted work item

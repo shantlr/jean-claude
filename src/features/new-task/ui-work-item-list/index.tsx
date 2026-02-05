@@ -177,7 +177,12 @@ export function WorkItemList({
   }
 
   return (
-    <div role="listbox" aria-label="Work items" className="space-y-0.5">
+    <div
+      role="listbox"
+      aria-label="Work items"
+      className="space-y-0.5"
+      data-work-item-list
+    >
       {groupedItems.map((workItem, index) => {
         const isHighlighted = index === highlightedIndex;
         const isSelected = selectedWorkItemIds.includes(workItem.id.toString());
@@ -190,6 +195,7 @@ export function WorkItemList({
           <button
             key={workItem.id}
             id={itemId}
+            data-work-item-id={workItem.id}
             ref={(el) => {
               if (el) {
                 itemRefs.current.set(index, el);
