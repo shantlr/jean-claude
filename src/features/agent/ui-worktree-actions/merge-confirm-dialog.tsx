@@ -1,4 +1,4 @@
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
@@ -12,7 +12,6 @@ export function MergeConfirmDialog({
   branchName,
   targetBranch,
   isPending,
-  error,
   defaultCommitMessage,
 }: {
   isOpen: boolean;
@@ -24,7 +23,6 @@ export function MergeConfirmDialog({
   branchName: string;
   targetBranch: string;
   isPending: boolean;
-  error?: string;
   defaultCommitMessage?: string;
 }) {
   const [squash, setSquash] = useState(false);
@@ -109,15 +107,9 @@ export function MergeConfirmDialog({
             <li>Merge all commits into {targetBranch}</li>
           )}
           <li>Delete the worktree and branch</li>
+          <li>Mark the task as completed</li>
         </ul>
       </div>
-
-      {error && (
-        <div className="mb-4 flex items-start gap-2 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-400">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
 
       <div className="flex justify-end gap-3">
         <button

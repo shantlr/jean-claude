@@ -1,6 +1,8 @@
 import { GitCommit, GitMerge, GitPullRequest, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
+import { useModal } from '@/common/context/modal';
+import { useToggleTaskUserCompleted } from '@/hooks/use-tasks';
 import {
   useWorktreeStatus,
   useWorktreeBranches,
@@ -12,7 +14,6 @@ import { CreatePrDialog } from '../ui-create-pr-dialog';
 
 import { CommitModal } from './commit-modal';
 import { MergeConfirmDialog } from './merge-confirm-dialog';
-import { MergeSuccessDialog } from './merge-success-dialog';
 
 export function WorktreeActions({
   taskId,
@@ -42,7 +43,6 @@ export function WorktreeActions({
 }) {
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false);
   const [isMergeConfirmOpen, setIsMergeConfirmOpen] = useState(false);
-  const [isMergeSuccessOpen, setIsMergeSuccessOpen] = useState(false);
   // Priority: sourceBranch (where worktree was created from) > defaultBranch (project setting) > 'main'
   const [selectedBranch, setSelectedBranch] = useState<string>(
     sourceBranch ?? defaultBranch ?? 'main',
@@ -50,12 +50,14 @@ export function WorktreeActions({
   const [isPrDialogOpen, setIsPrDialogOpen] = useState(false);
   const hasRepoLink = !!repoProviderId && !!repoProjectId && !!repoId;
 
+  const modal = useModal();
   const { data: status, isLoading: isStatusLoading } =
     useWorktreeStatus(taskId);
   const { data: branches, isLoading: isBranchesLoading } =
     useWorktreeBranches(taskId);
   const commitMutation = useCommitWorktree();
   const mergeMutation = useMergeWorktree();
+  const toggleUserCompleted = useToggleTaskUserCompleted();
 
   const canCommit = status?.hasUncommittedChanges ?? false;
   const canMerge = !status?.hasUncommittedChanges && !isStatusLoading;
@@ -99,17 +101,15 @@ export function WorktreeActions({
     setIsMergeConfirmOpen(false);
 
     if (result.success) {
-      setIsMergeSuccessOpen(true);
+      // Automatically mark task as completed on successful merge
+      await toggleUserCompleted.mutateAsync(taskId);
+      onMergeComplete();
     } else {
-      // Error is handled by the mutation
-    }
-  };
-
-  const handleMergeSuccessClose = (markComplete: boolean) => {
-    setIsMergeSuccessOpen(false);
-    onMergeComplete();
-    if (markComplete) {
-      // Will be handled by parent
+      // Show error modal
+      modal.error({
+        title: 'Merge Failed',
+        content: result.error ?? 'An unknown error occurred while merging.',
+      });
     }
   };
 
@@ -194,16 +194,8 @@ export function WorktreeActions({
         onConfirm={handleMerge}
         branchName={branchName}
         targetBranch={selectedBranch}
-        isPending={mergeMutation.isPending}
-        error={mergeMutation.data?.error}
+        isPending={mergeMutation.isPending || toggleUserCompleted.isPending}
         defaultCommitMessage={taskName ?? undefined}
-      />
-
-      <MergeSuccessDialog
-        isOpen={isMergeSuccessOpen}
-        onClose={handleMergeSuccessClose}
-        targetBranch={selectedBranch}
-        taskId={taskId}
       />
 
       {hasRepoLink && (
