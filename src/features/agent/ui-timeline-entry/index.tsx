@@ -699,6 +699,10 @@ export function TimelineEntry({
           />,
         );
       } else if (isToolUseBlock(block)) {
+        // Skip Task tool_use blocks - they're rendered as SubagentEntry in message stream
+        if (block.name === 'Task') {
+          continue;
+        }
         const result = toolResultsMap?.get(block.id);
         const parentMessage = parentMessageMap?.get(block.id);
         entries.push(

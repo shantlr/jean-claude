@@ -13,6 +13,7 @@ import type {
 } from '../../../../shared/agent-types';
 import { QueuedPromptEntry } from '../ui-queued-prompt-entry';
 import { SkillEntry } from '../ui-skill-entry';
+import { SubagentEntry } from '../ui-subagent-entry';
 import { TimelineEntry, CompactingEntry } from '../ui-timeline-entry';
 
 import { mergeSkillMessages } from './message-merger';
@@ -169,6 +170,17 @@ export function MessageStream({
                 key={index}
                 isComplete={!!displayMessage.endMessage}
                 metadata={displayMessage.metadata}
+              />
+            );
+          }
+          if (displayMessage.kind === 'subagent') {
+            return (
+              <SubagentEntry
+                key={index}
+                launchBlock={displayMessage.launchBlock}
+                childMessages={displayMessage.childMessages}
+                isComplete={displayMessage.isComplete}
+                onFilePathClick={onFilePathClick}
               />
             );
           }

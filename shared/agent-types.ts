@@ -71,6 +71,7 @@ export interface AgentMessage {
   subtype?: string; // SDK provides various subtypes like 'init', 'hook_started', 'hook_completed', etc.
   status?: string; // For system/status messages (e.g., 'compacting')
   session_id?: string;
+  parent_tool_use_id?: string | null; // Links sub-agent messages to parent Task tool_use
   message?: AssistantMessage | UserMessage;
   result?: string;
   cost_usd?: number;
