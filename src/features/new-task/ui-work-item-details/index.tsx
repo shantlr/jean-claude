@@ -1,16 +1,8 @@
 import { Bug, BookOpen, CheckSquare, FileText } from 'lucide-react';
-import { useMemo } from 'react';
-import TurndownService from 'turndown';
 
 import { Kbd } from '@/common/ui/kbd';
-import { MarkdownContent } from '@/features/agent/ui-markdown-content';
+import { AzureHtmlContent } from '@/features/common/ui-azure-html-content';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
-
-// Turndown instance for HTML to Markdown conversion
-const turndown = new TurndownService({
-  headingStyle: 'atx',
-  codeBlockStyle: 'fenced',
-});
 
 // Get icon component for work item type
 function WorkItemTypeIcon({ type }: { type: string }) {
@@ -29,15 +21,11 @@ function WorkItemTypeIcon({ type }: { type: string }) {
 
 export function WorkItemDetails({
   workItem,
+  providerId,
 }: {
   workItem: AzureDevOpsWorkItem | null;
+  providerId?: string;
 }) {
-  // Convert HTML description to Markdown
-  const markdownDescription = useMemo(() => {
-    if (!workItem?.fields.description) return null;
-    return turndown.turndown(workItem.fields.description);
-  }, [workItem?.fields?.description]);
-
   // Empty state when no work item is selected
   if (!workItem) {
     return (
@@ -50,9 +38,7 @@ export function WorkItemDetails({
   }
 
   const { id, fields } = workItem;
-  const { title, workItemType, state, assignedTo, description } = fields;
-
-  console.log('Work item description:', description);
+  const { title, workItemType, state, assignedTo } = fields;
 
   return (
     <div className="flex h-full flex-col">
@@ -84,15 +70,17 @@ export function WorkItemDetails({
       </div>
 
       {/* Divider */}
-      {markdownDescription && (
+      {fields.description && (
         <div className="my-3 border-t border-neutral-700" />
       )}
 
-      {/* Description (scrollable) - converted to Markdown */}
-      {markdownDescription && (
-        <div className="min-h-0 flex-1 overflow-y-auto text-xs text-neutral-400">
-          <MarkdownContent content={markdownDescription} />
-        </div>
+      {/* Description (scrollable) */}
+      {fields.description && (
+        <AzureHtmlContent
+          html={fields.description}
+          providerId={providerId}
+          className="min-h-0 flex-1 overflow-y-auto text-xs text-neutral-400"
+        />
       )}
     </div>
   );

@@ -1015,7 +1015,10 @@ function SearchModeContent({
 
       {/* Work item details */}
       <div className="w-full overflow-y-auto rounded border border-neutral-700 p-2">
-        <WorkItemDetails workItem={highlightedWorkItem ?? null} />
+        <WorkItemDetails
+          workItem={highlightedWorkItem ?? null}
+          providerId={project?.workItemProviderId ?? undefined}
+        />
       </div>
     </div>
   );

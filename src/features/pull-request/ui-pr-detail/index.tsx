@@ -15,6 +15,7 @@ import {
 } from '@/features/common/ui-file-diff';
 import type { DiffFile } from '@/features/common/ui-file-diff';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
+import { useProject } from '@/hooks/use-projects';
 import {
   usePullRequest,
   usePullRequestCommits,
@@ -44,6 +45,7 @@ export function PrDetail({
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileTreeWidth, setFileTreeWidth] = useState(250);
 
+  const { data: project } = useProject(projectId);
   const { data: pr, isLoading: isPrLoading } = usePullRequest(projectId, prId);
   const { data: commits = [], isLoading: isCommitsLoading } =
     usePullRequestCommits(projectId, prId);
@@ -155,7 +157,12 @@ export function PrDetail({
 
       {/* Tab content */}
       <div className="min-h-0 flex-1 overflow-hidden">
-        {activeTab === 'overview' && <PrOverview pr={pr} />}
+        {activeTab === 'overview' && (
+          <PrOverview
+            pr={pr}
+            providerId={project?.repoProviderId ?? undefined}
+          />
+        )}
 
         {activeTab === 'files' && (
           <div

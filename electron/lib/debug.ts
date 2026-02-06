@@ -43,6 +43,7 @@ export const dbg = {
   worktree: createDebug(`${BASE}:worktree`),
   notification: createDebug(`${BASE}:notification`),
   azure: createDebug(`${BASE}:azure`),
+  azureImageProxy: createDebug(`${BASE}:azure:image-proxy`),
   usage: createDebug(`${BASE}:usage`),
   encryption: createDebug(`${BASE}:encryption`),
   runCommand: createDebug(`${BASE}:run-command`),

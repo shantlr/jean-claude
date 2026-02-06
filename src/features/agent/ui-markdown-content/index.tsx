@@ -150,6 +150,30 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
   );
 }
 
+// Custom URL transform that allows our azure-image-proxy:// protocol
+// By default, react-markdown only allows http, https, mailto, and tel protocols
+function customUrlTransform(url: string): string {
+  // Allow our custom protocol
+  if (url.startsWith('azure-image-proxy://')) {
+    return url;
+  }
+  // For other URLs, only allow safe protocols
+  const safeProtocols = ['http:', 'https:', 'mailto:', 'tel:'];
+  try {
+    const parsed = new URL(url);
+    if (safeProtocols.includes(parsed.protocol)) {
+      return url;
+    }
+  } catch {
+    // Relative URLs are fine
+    if (!url.includes(':')) {
+      return url;
+    }
+  }
+  console.log('[MarkdownContent] Blocking URL with unsafe protocol:', url);
+  return '';
+}
+
 export function MarkdownContent({
   content,
   onFilePathClick,
@@ -164,6 +188,7 @@ export function MarkdownContent({
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
+      urlTransform={customUrlTransform}
       components={{
         p: ({ children }) => (
           <p className="mb-3 whitespace-pre-line last:mb-0">
@@ -257,6 +282,21 @@ export function MarkdownContent({
           <td className="border border-neutral-700 px-3 py-2">{children}</td>
         ),
         hr: () => <hr className="my-4 border-neutral-700" />,
+        img: ({ src, alt, ...props }) => {
+          // Don't render if src is empty or undefined
+          if (!src) {
+            console.log('[MarkdownContent] Skipping img with empty src');
+            return null;
+          }
+          return (
+            <img
+              src={src}
+              alt={alt || ''}
+              className="my-2 max-w-full rounded"
+              {...props}
+            />
+          );
+        },
       }}
     >
       {content}

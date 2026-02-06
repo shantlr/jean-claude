@@ -135,7 +135,7 @@ interface ReposResponse {
   }>;
 }
 
-function createAuthHeader(token: string): string {
+export function createAuthHeader(token: string): string {
   return `Basic ${Buffer.from(`:${token}`).toString('base64')}`;
 }
 

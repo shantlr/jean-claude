@@ -1,13 +1,30 @@
 import { join } from 'path';
 
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, protocol, shell } from 'electron';
 import fixPath from 'fix-path';
 
 import { migrateDatabase } from './database';
 import { registerIpcHandlers } from './ipc/handlers';
 import { dbg } from './lib/debug';
 import { agentService } from './services/agent-service';
+import {
+  decodeProxyUrl,
+  fetchAuthenticatedImageStream,
+} from './services/azure-image-proxy-service';
 import { runCommandService } from './services/run-command-service';
+
+// Register custom protocol scheme before app is ready
+// This must be done synchronously before the app ready event
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'azure-image-proxy',
+    privileges: {
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+    },
+  },
+]);
 
 dbg.main('Starting Jean-Claude main process');
 dbg.main(
@@ -65,6 +82,27 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   dbg.main('App ready, initializing...');
+
+  // Register azure-image-proxy protocol handler
+  dbg.main('Registering azure-image-proxy protocol handler...');
+  protocol.handle('azure-image-proxy', async (request) => {
+    const decoded = decodeProxyUrl(request.url);
+    if (!decoded) {
+      dbg.main('Failed to decode proxy URL: %s', request.url);
+      return new Response('Invalid proxy URL', { status: 400 });
+    }
+
+    const { providerId, imageUrl } = decoded;
+    dbg.main(
+      'Proxying image request: providerId=%s, url=%s',
+      providerId,
+      imageUrl,
+    );
+
+    // Stream the response directly from Azure DevOps
+    return fetchAuthenticatedImageStream({ providerId, imageUrl });
+  });
+  dbg.main('azure-image-proxy protocol handler registered');
 
   dbg.main('Running database migrations...');
   await migrateDatabase();
