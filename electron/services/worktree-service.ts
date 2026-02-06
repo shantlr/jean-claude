@@ -242,29 +242,29 @@ async function getDiffBaseCommit(
   }
 
   try {
-    // Try with origin/ prefix first (most common case for tracking branches)
+    // Try local branch first (the worktree was created from the local branch)
     const { stdout: mergeBase } = await execAsync(
-      `git merge-base HEAD origin/${sourceBranch}`,
+      `git merge-base HEAD ${sourceBranch}`,
       {
         cwd: worktreePath,
         encoding: 'utf-8',
       },
     );
     const base = mergeBase.trim();
-    dbg.worktree('Using merge-base with origin/%s: %s', sourceBranch, base);
+    dbg.worktree('Using merge-base with %s: %s', sourceBranch, base);
     return base;
   } catch {
-    // Try without origin/ prefix (local branch)
+    // Try with origin/ prefix if local branch doesn't exist
     try {
       const { stdout: mergeBase } = await execAsync(
-        `git merge-base HEAD ${sourceBranch}`,
+        `git merge-base HEAD origin/${sourceBranch}`,
         {
           cwd: worktreePath,
           encoding: 'utf-8',
         },
       );
       const base = mergeBase.trim();
-      dbg.worktree('Using merge-base with %s: %s', sourceBranch, base);
+      dbg.worktree('Using merge-base with origin/%s: %s', sourceBranch, base);
       return base;
     } catch {
       // Fall back to startCommitHash if merge-base fails
