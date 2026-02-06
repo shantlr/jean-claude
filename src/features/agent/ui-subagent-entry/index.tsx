@@ -1,6 +1,8 @@
 import { Bot, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
+import { useModel, formatModelName } from '@/hooks/use-model';
+
 import type {
   AgentMessage,
   ToolUseBlock,
@@ -99,6 +101,9 @@ export function SubagentEntry({
   const description = launchBlock.input.description as string;
   const subagentType = launchBlock.input.subagent_type as string | undefined;
 
+  // Get the model used by the sub-agent from child messages
+  const subagentModel = useModel(childMessages);
+
   // Get last activity from child messages
   const lastActivity = useMemo(
     () => getLastActivitySummary(childMessages),
@@ -153,6 +158,14 @@ export function SubagentEntry({
             <span className="font-medium text-cyan-300">{description}</span>
             {subagentType && (
               <span className="ml-1 text-neutral-500">({subagentType})</span>
+            )}
+            {subagentModel && (
+              <span
+                className="ml-2 font-mono text-neutral-500"
+                title={subagentModel}
+              >
+                {formatModelName(subagentModel)}
+              </span>
             )}
           </span>
           {isExpanded ? (

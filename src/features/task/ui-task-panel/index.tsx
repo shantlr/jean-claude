@@ -30,6 +30,7 @@ import { TaskPrView } from '@/features/task/ui-task-pr-view';
 import { TaskSettingsPane } from '@/features/task/ui-task-settings-pane';
 import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
 import { useContextUsage } from '@/hooks/use-context-usage';
+import { useModel, formatModelName } from '@/hooks/use-model';
 import { useProject } from '@/hooks/use-projects';
 import { useEditorSetting } from '@/hooks/use-settings';
 import { useSkills } from '@/hooks/use-skills';
@@ -118,6 +119,7 @@ export function TaskPanel({
 
   const agentState = useAgentStream(taskId);
   const contextUsage = useContextUsage(agentState.messages);
+  const model = useModel(agentState.messages);
   const {
     stop,
     respondToPermission,
@@ -489,8 +491,18 @@ export function TaskPanel({
                 />
               )}
             </div>
-            {(task.sessionId || contextUsage.hasData) && (
+            {(task.sessionId || contextUsage.hasData || model) && (
               <div className="flex items-center gap-3 pl-6">
+                {/* Model display */}
+                {model && (
+                  <span
+                    className="font-mono text-xs text-neutral-500"
+                    title={model}
+                  >
+                    {formatModelName(model)}
+                  </span>
+                )}
+
                 {/* Context usage display */}
                 <ContextUsageDisplay contextUsage={contextUsage} />
 
