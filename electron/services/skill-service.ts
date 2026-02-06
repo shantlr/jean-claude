@@ -23,6 +23,15 @@ interface SkillFrontmatter {
  * Parse YAML frontmatter from a SKILL.md file content.
  * Frontmatter is delimited by --- at the start and end.
  */
+
+function isEnoent(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    'code' in error &&
+    (error as { code?: string }).code === 'ENOENT'
+  );
+}
+
 function parseFrontmatter(content: string): SkillFrontmatter {
   const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
   if (!frontmatterMatch) {
@@ -83,7 +92,11 @@ async function parseSkillFile(
       skillPath: skillDir,
     };
   } catch (error) {
-    dbg.skill('Failed to parse skill at %s: %O', skillDir, error);
+    if (isEnoent(error)) {
+      dbg.skill('No SKILL.md found at %s', skillFilePath);
+    } else {
+      dbg.skill('Failed to parse skill at %s: %O', skillDir, error);
+    }
     return null;
   }
 }
@@ -118,8 +131,15 @@ async function getUserSkills(): Promise<ParsedSkill[]> {
       }
     }
   } catch (error) {
-    // Directory doesn't exist or can't be read
-    dbg.skill('No user skills directory or error reading it: %O', error);
+    if (isEnoent(error)) {
+      dbg.skill('No user skills directory found at %s', userSkillsDir);
+    } else {
+      dbg.skill(
+        'Error reading user skills directory at %s: %O',
+        userSkillsDir,
+        error,
+      );
+    }
   }
 
   return skills;
@@ -154,8 +174,15 @@ async function getProjectSkills(projectPath: string): Promise<ParsedSkill[]> {
       }
     }
   } catch (error) {
-    // Directory doesn't exist or can't be read
-    dbg.skill('No project skills directory at %s: %O', projectPath, error);
+    if (isEnoent(error)) {
+      dbg.skill('No project skills directory found at %s', projectSkillsDir);
+    } else {
+      dbg.skill(
+        'Error reading project skills directory at %s: %O',
+        projectSkillsDir,
+        error,
+      );
+    }
   }
 
   return skills;
@@ -216,14 +243,29 @@ async function getPluginSkills(): Promise<ParsedSkill[]> {
                 skills.push(skill);
               }
             }
-          } catch {
-            // No skills directory in this plugin version
+          } catch (error) {
+            // No skills directory in this plugin version — expected for most plugins
+            if (!isEnoent(error)) {
+              dbg.skill(
+                'Error reading plugin skills directory at %s: %O',
+                skillsPath,
+                error,
+              );
+            }
           }
         }
       }
     }
   } catch (error) {
-    dbg.skill('No plugins cache directory or error reading it: %O', error);
+    if (isEnoent(error)) {
+      dbg.skill('No plugins cache directory found at %s', pluginsCacheDir);
+    } else {
+      dbg.skill(
+        'Error reading plugins cache directory at %s: %O',
+        pluginsCacheDir,
+        error,
+      );
+    }
   }
 
   return skills;
