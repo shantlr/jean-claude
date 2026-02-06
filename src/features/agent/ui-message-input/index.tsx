@@ -21,6 +21,8 @@ export function MessageInput({
   isRunning = false,
   isStopping = false,
   skills = [],
+  value: externalValue,
+  onValueChange,
 }: {
   onSend: (message: string) => void;
   onQueue?: (message: string) => void;
@@ -30,8 +32,19 @@ export function MessageInput({
   isRunning?: boolean;
   isStopping?: boolean;
   skills?: Skill[];
+  value?: string;
+  onValueChange?: (value: string) => void;
 }) {
-  const [value, setValue] = useState('');
+  const [internalValue, setInternalValue] = useState('');
+  const isControlled = externalValue !== undefined;
+  const value = isControlled ? externalValue : internalValue;
+  const setValue = useCallback(
+    (newValue: string) => {
+      if (!isControlled) setInternalValue(newValue);
+      onValueChange?.(newValue);
+    },
+    [isControlled, onValueChange],
+  );
   const textareaRef = useRef<PromptTextareaRef>(null);
   const lastEscapeRef = useRef<number>(0);
 
@@ -50,7 +63,7 @@ export function MessageInput({
     setValue('');
     // Reset textarea height
     textareaRef.current?.resetHeight();
-  }, [value, disabled, isRunning, onSend, onQueue]);
+  }, [value, disabled, isRunning, onSend, onQueue, setValue]);
 
   const handleEnterKey = useCallback(() => {
     handleSubmit();

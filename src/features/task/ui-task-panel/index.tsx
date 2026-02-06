@@ -55,6 +55,7 @@ import {
   usePrViewState,
 } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
+import { useTaskPrompt } from '@/stores/task-prompts';
 
 import {
   PRESET_EDITORS,
@@ -130,6 +131,12 @@ export function TaskPanel({
     isStopping,
   } = useAgentControls(taskId);
 
+  const {
+    text: promptDraft,
+    setDraft: setPromptDraft,
+    clearDraft: clearPromptDraft,
+  } = useTaskPrompt(taskId);
+
   const [copiedSessionId, setCopiedSessionId] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -202,9 +209,24 @@ export function TaskPanel({
       if (task?.userCompleted) {
         clearUserCompleted.mutate(taskId);
       }
+      clearPromptDraft();
       sendMessage(message);
     },
-    [task?.userCompleted, taskId, clearUserCompleted, sendMessage],
+    [
+      task?.userCompleted,
+      taskId,
+      clearUserCompleted,
+      clearPromptDraft,
+      sendMessage,
+    ],
+  );
+
+  const handleQueuePrompt = useCallback(
+    (message: string) => {
+      clearPromptDraft();
+      queuePrompt(message);
+    },
+    [clearPromptDraft, queuePrompt],
   );
 
   const handleOpenInEditor = () => {
@@ -669,13 +691,15 @@ export function TaskPanel({
               />
               <MessageInput
                 onSend={handleSendMessage}
-                onQueue={queuePrompt}
+                onQueue={handleQueuePrompt}
                 onStop={handleStop}
                 disabled={!canSendMessage}
                 placeholder="Send a follow-up message..."
                 isRunning={isRunning}
                 isStopping={isStopping}
                 skills={skills}
+                value={promptDraft}
+                onValueChange={setPromptDraft}
               />
             </div>
           )}
