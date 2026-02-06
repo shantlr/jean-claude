@@ -23,6 +23,7 @@ import * as m021 from './migrations/021_mcp_templates';
 import * as m022 from './migrations/022_task_source_branch';
 import * as m023 from './migrations/023_add_task_summaries';
 import * as m024 from './migrations/024_multi_work_items';
+import * as m025 from './migrations/025_task_model_preference';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -48,6 +49,7 @@ const migrations: Record<string, Migration> = {
   '022_task_source_branch': m022,
   '023_add_task_summaries': m023,
   '024_multi_work_items': m024,
+  '025_task_model_preference': m025,
 };
 
 export const migrationProvider: MigrationProvider = {

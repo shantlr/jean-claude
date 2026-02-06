@@ -13,6 +13,7 @@ import React, {
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { Kbd } from '@/common/ui/kbd';
+import { MODEL_PREFERENCES } from '@/features/agent/ui-model-selector';
 import { useProjects, useProjectBranches } from '@/hooks/use-projects';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
 import { useWorkItems } from '@/hooks/use-work-items';
@@ -260,6 +261,14 @@ export function NewTaskOverlay({
     updateDraft({ interactionMode: INTERACTION_MODES[nextIndex] });
   }, [draft?.interactionMode, updateDraft]);
 
+  // Toggle model preference (default → sonnet → opus → haiku → default)
+  const toggleModelPreference = useCallback(() => {
+    const current = draft?.modelPreference ?? 'default';
+    const currentIndex = MODEL_PREFERENCES.indexOf(current);
+    const nextIndex = (currentIndex + 1) % MODEL_PREFERENCES.length;
+    updateDraft({ modelPreference: MODEL_PREFERENCES[nextIndex] });
+  }, [draft?.modelPreference, updateDraft]);
+
   // Navigate work items with arrow keys
   // Uses DOM querySelector to match the visual order displayed in WorkItemList
   const navigateWorkItems = useCallback(
@@ -383,6 +392,7 @@ export function NewTaskOverlay({
         projectId: selectedProjectId,
         prompt: finalPrompt,
         interactionMode: draft.interactionMode,
+        modelPreference: draft.modelPreference,
         useWorktree: draft.createWorktree,
         sourceBranch: draft.sourceBranch,
         workItemIds,
@@ -505,6 +515,13 @@ export function NewTaskOverlay({
       shortcut: 'cmd+i',
       handler: () => {
         toggleInteractionMode();
+      },
+    },
+    {
+      label: 'Toggle Model',
+      shortcut: 'cmd+l',
+      handler: () => {
+        toggleModelPreference();
       },
     },
     {
@@ -723,6 +740,18 @@ export function NewTaskOverlay({
                 {draft?.interactionMode ?? 'ask'}
               </span>
               <Kbd shortcut="cmd+i" />
+            </button>
+
+            {/* Model selector */}
+            <button
+              onClick={toggleModelPreference}
+              disabled={createTaskMutation.isPending}
+              className="flex items-center gap-2 rounded px-2 py-1 text-sm text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
+            >
+              <span className="capitalize">
+                {draft?.modelPreference ?? 'default'}
+              </span>
+              <Kbd shortcut="cmd+l" />
             </button>
 
             <label className="flex items-center gap-2 text-sm">

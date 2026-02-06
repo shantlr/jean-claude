@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import type { InteractionMode } from '../../shared/types';
+import type { InteractionMode, ModelPreference } from '../../shared/types';
 
 export type InputMode = 'search' | 'prompt';
 export type SearchStep = 'select' | 'compose';
@@ -10,6 +10,7 @@ export type SearchStep = 'select' | 'compose';
 export interface NewTaskDraft {
   inputMode: InputMode;
   interactionMode: InteractionMode;
+  modelPreference: ModelPreference;
   // Search mode state
   workItemIds: string[]; // Changed from workItemId: string | null
   workItemsFilter: string;
@@ -37,6 +38,7 @@ interface NewTaskDraftState {
 const defaultDraft: NewTaskDraft = {
   inputMode: 'search',
   interactionMode: 'ask',
+  modelPreference: 'default',
   workItemIds: [],
   workItemsFilter: '',
   searchStep: 'select',

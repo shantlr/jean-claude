@@ -7,7 +7,12 @@ import {
 
 import { api } from '@/lib/api';
 
-import type { InteractionMode, NewTask, UpdateTask } from '../../shared/types';
+import type {
+  InteractionMode,
+  ModelPreference,
+  NewTask,
+  UpdateTask,
+} from '../../shared/types';
 
 export function useTasks() {
   return useQuery({
@@ -115,6 +120,23 @@ export function useSetTaskMode() {
   return useMutation({
     mutationFn: ({ id, mode }: { id: string; mode: InteractionMode }) =>
       api.tasks.setMode(id, mode),
+    onSuccess: (task) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.setQueryData(['task', task.id], task);
+    },
+  });
+}
+
+export function useSetTaskModelPreference() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      modelPreference,
+    }: {
+      id: string;
+      modelPreference: ModelPreference;
+    }) => api.tasks.setModelPreference(id, modelPreference),
     onSuccess: (task) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.setQueryData(['task', task.id], task);

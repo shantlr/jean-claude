@@ -1,4 +1,9 @@
-import { InteractionMode, Task, TaskStatus } from '../../../shared/types';
+import {
+  InteractionMode,
+  ModelPreference,
+  Task,
+  TaskStatus,
+} from '../../../shared/types';
 import { dbg } from '../../lib/debug';
 import { db } from '../index';
 import { NewTaskRow, TaskRow, UpdateTaskRow } from '../schema';
@@ -18,6 +23,7 @@ interface CreateTaskInput {
   readAt?: string | null;
   lastReadIndex?: number;
   interactionMode?: InteractionMode;
+  modelPreference?: ModelPreference;
   userCompleted?: boolean;
   sessionAllowedTools?: string[];
   workItemIds?: string[] | null;
@@ -41,6 +47,7 @@ interface UpdateTaskInput {
   readAt?: string | null;
   lastReadIndex?: number;
   interactionMode?: InteractionMode;
+  modelPreference?: ModelPreference;
   userCompleted?: boolean;
   sessionAllowedTools?: string[];
   workItemIds?: string[] | null;
@@ -58,12 +65,14 @@ function toTask<T extends TaskRow>(
   | 'userCompleted'
   | 'sessionAllowedTools'
   | 'interactionMode'
+  | 'modelPreference'
   | 'workItemIds'
   | 'workItemUrls'
 > & {
   userCompleted: boolean;
   sessionAllowedTools: string[];
   interactionMode: InteractionMode;
+  modelPreference: ModelPreference;
   workItemIds: string[] | null;
   workItemUrls: string[] | null;
 } {
@@ -71,6 +80,7 @@ function toTask<T extends TaskRow>(
     userCompleted,
     sessionAllowedTools,
     interactionMode,
+    modelPreference,
     workItemIds,
     workItemUrls,
     ...rest
@@ -82,6 +92,7 @@ function toTask<T extends TaskRow>(
       ? JSON.parse(sessionAllowedTools)
       : [],
     interactionMode: interactionMode as InteractionMode,
+    modelPreference: (modelPreference as ModelPreference) ?? 'default',
     workItemIds: workItemIds ? JSON.parse(workItemIds) : null,
     workItemUrls: workItemUrls ? JSON.parse(workItemUrls) : null,
   };
@@ -95,12 +106,14 @@ function toTaskOrUndefined<T extends TaskRow>(
       | 'userCompleted'
       | 'sessionAllowedTools'
       | 'interactionMode'
+      | 'modelPreference'
       | 'workItemIds'
       | 'workItemUrls'
     > & {
       userCompleted: boolean;
       sessionAllowedTools: string[];
       interactionMode: InteractionMode;
+      modelPreference: ModelPreference;
       workItemIds: string[] | null;
       workItemUrls: string[] | null;
     })

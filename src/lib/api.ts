@@ -52,6 +52,7 @@ import type {
   NewToken,
   UpdateToken,
   InteractionMode,
+  ModelPreference,
   AppSettings,
 } from '../../shared/types';
 import type { UsageResult } from '../../shared/usage-types';
@@ -278,6 +279,10 @@ export interface Api {
     markAsRead: (id: string) => Promise<Task>;
     updateLastReadIndex: (id: string, lastReadIndex: number) => Promise<Task>;
     setMode: (id: string, mode: InteractionMode) => Promise<Task>;
+    setModelPreference: (
+      id: string,
+      modelPreference: ModelPreference,
+    ) => Promise<Task>;
     toggleUserCompleted: (id: string) => Promise<Task>;
     clearUserCompleted: (id: string) => Promise<Task>;
     addSessionAllowedTool: (
@@ -629,6 +634,9 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         setMode: async () => {
+          throw new Error('API not available');
+        },
+        setModelPreference: async () => {
           throw new Error('API not available');
         },
         toggleUserCompleted: async () => {

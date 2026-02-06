@@ -27,6 +27,7 @@ import type {
 import {
   PRESET_EDITORS,
   type InteractionMode,
+  type ModelPreference,
   type EditorSetting,
   type AppSettings,
   type NewToken,
@@ -336,6 +337,14 @@ export function registerIpcHandlers() {
     async (_, taskId: string, mode: InteractionMode) => {
       await agentService.setMode(taskId, mode);
       return TaskRepository.findById(taskId);
+    },
+  );
+  ipcMain.handle(
+    'tasks:setModelPreference',
+    async (_, taskId: string, modelPreference: string) => {
+      return TaskRepository.update(taskId, {
+        modelPreference: modelPreference as ModelPreference,
+      });
     },
   );
   ipcMain.handle('tasks:toggleUserCompleted', (_, id: string) =>

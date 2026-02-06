@@ -39,6 +39,8 @@ export type TaskStatus =
   | 'interrupted';
 export type InteractionMode = 'ask' | 'auto' | 'plan';
 
+export type ModelPreference = 'default' | 'sonnet' | 'opus' | 'haiku';
+
 export interface Provider {
   id: string;
   type: ProviderType;
@@ -147,6 +149,7 @@ export interface Task {
   readAt: string | null;
   lastReadIndex: number;
   interactionMode: InteractionMode;
+  modelPreference: ModelPreference;
   userCompleted: boolean;
   sessionAllowedTools: string[];
   workItemIds: string[] | null;
@@ -171,6 +174,7 @@ export interface NewTask {
   readAt?: string | null;
   lastReadIndex?: number;
   interactionMode?: InteractionMode;
+  modelPreference?: ModelPreference;
   userCompleted?: boolean;
   sessionAllowedTools?: string[];
   workItemIds?: string[] | null;
@@ -194,6 +198,7 @@ export interface UpdateTask {
   readAt?: string | null;
   lastReadIndex?: number;
   interactionMode?: InteractionMode;
+  modelPreference?: ModelPreference;
   userCompleted?: boolean;
   sessionAllowedTools?: string[];
   workItemIds?: string[] | null;

@@ -335,6 +335,10 @@ class AgentService {
       settingSources: ['user', 'project', 'local'],
     };
 
+    if (task.modelPreference && task.modelPreference !== 'default') {
+      queryOptions.model = task.modelPreference;
+    }
+
     if (session.sessionId) {
       queryOptions.resume = session.sessionId;
     }

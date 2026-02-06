@@ -5,6 +5,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
+import { ModelSelector } from '@/features/agent/ui-model-selector';
 import { WorkItemsBrowser } from '@/features/agent/ui-work-items-browser';
 import { PromptTextarea } from '@/features/common/ui-prompt-textarea';
 import { useProject, useProjectBranches } from '@/hooks/use-projects';
@@ -36,6 +37,7 @@ function NewTask() {
     useWorktree,
     sourceBranch,
     interactionMode,
+    modelPreference,
     workItemIds,
     workItemUrls,
   } = draft;
@@ -55,6 +57,7 @@ function NewTask() {
       prompt,
       status: 'waiting',
       interactionMode,
+      modelPreference,
       useWorktree,
       workItemIds,
       workItemUrls,
@@ -232,6 +235,10 @@ function NewTask() {
             <ModeSelector
               value={interactionMode}
               onChange={(mode) => setDraft({ interactionMode: mode })}
+            />
+            <ModelSelector
+              value={modelPreference}
+              onChange={(model) => setDraft({ modelPreference: model })}
             />
             <button
               type="button"

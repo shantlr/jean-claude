@@ -94,6 +94,7 @@ export interface TaskTable {
   readAt: string | null;
   lastReadIndex: number;
   interactionMode: string;
+  modelPreference: string | null;
   userCompleted: number; // SQLite stores booleans as 0/1
   sessionAllowedTools: string | null; // JSON array of tool names
   sortOrder: number;

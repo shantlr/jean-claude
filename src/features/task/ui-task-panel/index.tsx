@@ -20,6 +20,7 @@ import { FilePreviewPane } from '@/features/agent/ui-file-preview-pane';
 import { MessageInput } from '@/features/agent/ui-message-input';
 import { MessageStream } from '@/features/agent/ui-message-stream';
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
+import { ModelSelector } from '@/features/agent/ui-model-selector';
 import { PermissionBar } from '@/features/agent/ui-permission-bar';
 import { PrBadge } from '@/features/agent/ui-pr-badge';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
@@ -39,6 +40,7 @@ import {
   useMarkTaskAsRead,
   useDeleteTask,
   useSetTaskMode,
+  useSetTaskModelPreference,
   useClearTaskUserCompleted,
   useAddSessionAllowedTool,
   useRemoveSessionAllowedTool,
@@ -60,6 +62,7 @@ import { useTaskPrompt } from '@/stores/task-prompts';
 import {
   PRESET_EDITORS,
   type InteractionMode,
+  type ModelPreference,
   type EditorSetting,
 } from '../../../../shared/types';
 
@@ -78,6 +81,7 @@ export function TaskPanel({
   const markAsRead = useMarkTaskAsRead();
   const deleteTask = useDeleteTask();
   const setTaskMode = useSetTaskMode();
+  const setTaskModelPreference = useSetTaskModelPreference();
   const clearUserCompleted = useClearTaskUserCompleted();
   const addSessionAllowedTool = useAddSessionAllowedTool();
   const removeSessionAllowedTool = useRemoveSessionAllowedTool();
@@ -201,6 +205,10 @@ export function TaskPanel({
 
   const handleModeChange = (mode: InteractionMode) => {
     setTaskMode.mutate({ id: taskId, mode });
+  };
+
+  const handleModelChange = (modelPreference: ModelPreference) => {
+    setTaskModelPreference.mutate({ id: taskId, modelPreference });
   };
 
   const handleSendMessage = useCallback(
@@ -687,6 +695,11 @@ export function TaskPanel({
               <ModeSelector
                 value={task.interactionMode ?? 'ask'}
                 onChange={handleModeChange}
+                disabled={isRunning}
+              />
+              <ModelSelector
+                value={task.modelPreference ?? 'default'}
+                onChange={handleModelChange}
                 disabled={isRunning}
               />
               <MessageInput

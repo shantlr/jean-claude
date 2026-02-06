@@ -44,6 +44,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('tasks:updateLastReadIndex', id, lastReadIndex),
     setMode: (id: string, mode: string) =>
       ipcRenderer.invoke('tasks:setMode', id, mode),
+    setModelPreference: (id: string, modelPreference: string) =>
+      ipcRenderer.invoke('tasks:setModelPreference', id, modelPreference),
     toggleUserCompleted: (id: string) =>
       ipcRenderer.invoke('tasks:toggleUserCompleted', id),
     clearUserCompleted: (id: string) =>
