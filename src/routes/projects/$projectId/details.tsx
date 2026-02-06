@@ -86,7 +86,7 @@ function ProjectDetails() {
     defaultBranch !== (project.defaultBranch ?? '');
 
   return (
-    <div className="h-full overflow-auto p-6">
+    <div className="h-full w-full overflow-auto p-6">
       <div className="mx-auto max-w-lg">
         <button
           type="button"
