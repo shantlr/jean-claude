@@ -40,3 +40,20 @@ button {
   animation: gradient-rotate 1.5s linear infinite;
   box-shadow: 0 0 4px 0px color-mix(in srgb, var(--color-blue-500) 35%, transparent);
 }
+
+@utility running-border-selected {
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(var(--color-neutral-700), var(--color-neutral-700)) padding-box,
+    conic-gradient(
+        from var(--gradient-angle),
+        var(--color-blue-500),
+        var(--color-purple-500),
+        var(--color-blue-400),
+        var(--color-blue-500)
+      )
+      border-box;
+  border: 1px solid transparent;
+  animation: gradient-rotate 1.5s linear infinite;
+  box-shadow: 0 0 6px 0px color-mix(in srgb, var(--color-blue-500) 50%, transparent);
+}

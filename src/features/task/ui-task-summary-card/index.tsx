@@ -86,11 +86,12 @@ export function TaskSummaryCard({
       className={clsx(
         'flex cursor-pointer flex-col gap-1 rounded-lg px-3 py-2 transition-colors',
         task.status === 'running'
-          ? 'running-border'
+          ? isSelected
+            ? 'running-border-selected'
+            : 'running-border'
           : isSelected
-            ? 'border border-blue-500'
+            ? 'border border-blue-500 bg-neutral-700'
             : 'border border-transparent hover:bg-neutral-800',
-        isSelected && 'bg-neutral-700',
       )}
     >
       {/* Top row: status, name, number badge */}
