@@ -1,13 +1,28 @@
 import { Link } from '@tanstack/react-router';
 import { Settings } from 'lucide-react';
-import type { CSSProperties } from 'react';
+import { useMemo, type CSSProperties } from 'react';
 
+import { useProjects } from '@/hooks/use-projects';
 import { api } from '@/lib/api';
+import { useProjectFilter } from '@/stores/navigation';
+import { useOverlaysStore } from '@/stores/overlays';
 
 import { UsageDisplay } from './usage-display';
 
 export function Header() {
   const isMac = api.platform === 'darwin';
+  const { projectFilter } = useProjectFilter();
+  const { data: projects = [] } = useProjects();
+  const openOverlay = useOverlaysStore((state) => state.open);
+
+  const selectedProjectLabel = useMemo(() => {
+    if (projectFilter === 'all') {
+      return 'All Projects';
+    }
+
+    const project = projects.find((entry) => entry.id === projectFilter);
+    return project?.name ?? 'Unknown Project';
+  }, [projectFilter, projects]);
 
   return (
     <header
@@ -17,7 +32,17 @@ export function Header() {
       {/* Traffic light padding on macOS */}
       {isMac && <div className="w-[70px]" />}
 
-      <div className="flex-1" />
+      <div className="flex min-w-0 flex-1 px-2">
+        <button
+          type="button"
+          onClick={() => openOverlay('project-switcher')}
+          className="max-w-[320px] cursor-pointer truncate rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-left text-xs text-neutral-300 transition-colors hover:border-neutral-700 hover:bg-neutral-800"
+          style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
+          title={selectedProjectLabel}
+        >
+          {selectedProjectLabel}
+        </button>
+      </div>
 
       {/* Usage display */}
       <div
