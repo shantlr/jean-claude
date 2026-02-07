@@ -1,9 +1,13 @@
 import { Link } from '@tanstack/react-router';
-import { Settings } from 'lucide-react';
+import { Loader2, Settings } from 'lucide-react';
 import { useMemo, type CSSProperties } from 'react';
 
 import { useProjects } from '@/hooks/use-projects';
 import { api } from '@/lib/api';
+import {
+  getRunningJobsCount,
+  useBackgroundJobsStore,
+} from '@/stores/background-jobs';
 import { useProjectFilter } from '@/stores/navigation';
 import { useOverlaysStore } from '@/stores/overlays';
 
@@ -14,6 +18,9 @@ export function Header() {
   const { projectFilter } = useProjectFilter();
   const { data: projects = [] } = useProjects();
   const openOverlay = useOverlaysStore((state) => state.open);
+  const jobs = useBackgroundJobsStore((state) => state.jobs);
+
+  const runningJobsCount = useMemo(() => getRunningJobsCount(jobs), [jobs]);
 
   const selectedProjectLabel = useMemo(() => {
     if (projectFilter === 'all') {
@@ -50,6 +57,30 @@ export function Header() {
         style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
       >
         <UsageDisplay />
+      </div>
+
+      {/* Background jobs */}
+      <div
+        className="pr-2"
+        style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
+      >
+        <button
+          type="button"
+          onClick={() => openOverlay('background-jobs')}
+          className="relative flex h-6 items-center gap-1 rounded px-2 text-xs text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white"
+        >
+          {runningJobsCount > 0 ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Loader2 className="h-3.5 w-3.5" />
+          )}
+          <span>Jobs</span>
+          {runningJobsCount > 0 && (
+            <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] leading-none text-white">
+              {runningJobsCount}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Settings button */}

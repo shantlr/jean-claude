@@ -9,6 +9,7 @@ import { useCallback, useEffect } from 'react';
 import { useCommands } from '@/common/hooks/use-commands';
 import { GlobalPromptFromBackModal } from '@/common/ui/global-prompt-from-back-modal';
 import { TaskMessageManager } from '@/features/agent/task-message-manager';
+import { BackgroundJobsOverlay } from '@/features/background-jobs/ui-background-jobs-overlay';
 import { CommandPaletteOverlay } from '@/features/command-palette/ui-command-palette-overlay';
 import { NewTaskOverlay } from '@/features/new-task/ui-new-task-overlay';
 import { ProjectOverlay } from '@/features/project/ui-project-overlay';
@@ -150,6 +151,26 @@ function ProjectOverlayContainer() {
   return <ProjectOverlay onClose={() => close('project-switcher')} />;
 }
 
+function BackgroundJobsContainer() {
+  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'background-jobs');
+  const toggle = useOverlaysStore((s) => s.toggle);
+  const close = useOverlaysStore((s) => s.close);
+
+  useCommands('background-jobs-trigger', [
+    {
+      shortcut: 'cmd+j',
+      label: 'Open Background Jobs',
+      section: 'General',
+      handler: () => {
+        toggle('background-jobs');
+      },
+    },
+  ]);
+
+  if (!isOpen) return null;
+  return <BackgroundJobsOverlay onClose={() => close('background-jobs')} />;
+}
+
 function RootLayout() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-neutral-900 text-white">
@@ -162,6 +183,7 @@ function RootLayout() {
       <NewTaskContainer />
       <CommandPaletteContainer />
       <ProjectOverlayContainer />
+      <BackgroundJobsContainer />
 
       <div className="flex h-full w-full flex-1 flex-col overflow-hidden">
         <Header />
