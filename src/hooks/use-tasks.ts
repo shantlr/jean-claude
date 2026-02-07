@@ -110,7 +110,13 @@ export function useUpdateTask() {
 export function useDeleteTask() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.tasks.delete(id),
+    mutationFn: ({
+      id,
+      deleteWorktree,
+    }: {
+      id: string;
+      deleteWorktree?: boolean;
+    }) => api.tasks.delete(id, { deleteWorktree }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
   });
 }

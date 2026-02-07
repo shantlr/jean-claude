@@ -38,7 +38,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('tasks:createWithWorktree', data),
     update: (id: string, data: unknown) =>
       ipcRenderer.invoke('tasks:update', id, data),
-    delete: (id: string) => ipcRenderer.invoke('tasks:delete', id),
+    delete: (id: string, options?: { deleteWorktree?: boolean }) =>
+      ipcRenderer.invoke('tasks:delete', id, options),
     markAsRead: (id: string) => ipcRenderer.invoke('tasks:markAsRead', id),
     updateLastReadIndex: (id: string, lastReadIndex: number) =>
       ipcRenderer.invoke('tasks:updateLastReadIndex', id, lastReadIndex),
