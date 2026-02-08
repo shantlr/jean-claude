@@ -2,12 +2,14 @@
 // Wraps the @anthropic-ai/claude-agent-sdk `query()` function
 // into the common AgentBackend interface.
 //
-// Architecture note: The SDK's `canUseTool` callback is invoked synchronously
-// within the async generator iteration. When the callback is pending (waiting
-// for user response), the SDK generator blocks — no new messages are yielded.
-// This means the backend's event stream naturally pauses during permission/question
-// requests. We use a "side channel" queue to inject permission-request and question
-// events into the stream between SDK messages.
+// Architecture note: The SDK's `canUseTool` callback is invoked during the
+// async generator iteration. When the callback is pending (waiting for user
+// response), the SDK generator blocks — no new messages are yielded.
+//
+// We use an AsyncEventChannel to merge SDK messages with permission/question
+// events. The channel allows `handleToolRequest` to push events that are
+// immediately available to the consumer (agent-service), even while the SDK
+// generator is blocked waiting for the canUseTool promise to resolve.
 
 import { PermissionResult, query } from '@anthropic-ai/claude-agent-sdk';
 import { nanoid } from 'nanoid';
@@ -39,6 +41,58 @@ const SDK_PERMISSION_MODES = {
   plan: 'plan',
 } as const;
 
+// --- Async event channel ---
+// Push-based async iterable: events pushed from any async context are
+// immediately available to the consumer via `for await`.
+
+class AsyncEventChannel<T> {
+  private queue: T[] = [];
+  private waiter: ((value: IteratorResult<T>) => void) | null = null;
+  private closed = false;
+
+  push(item: T) {
+    if (this.closed) return;
+    if (this.waiter) {
+      const resolve = this.waiter;
+      this.waiter = null;
+      resolve({ value: item, done: false });
+    } else {
+      this.queue.push(item);
+    }
+  }
+
+  close() {
+    this.closed = true;
+    if (this.waiter) {
+      const resolve = this.waiter;
+      this.waiter = null;
+      resolve({ value: undefined as unknown as T, done: true });
+    }
+  }
+
+  [Symbol.asyncIterator](): AsyncIterator<T> {
+    return {
+      next: () => {
+        if (this.queue.length > 0) {
+          return Promise.resolve({
+            value: this.queue.shift()!,
+            done: false as const,
+          });
+        }
+        if (this.closed) {
+          return Promise.resolve({
+            value: undefined as unknown as T,
+            done: true as const,
+          });
+        }
+        return new Promise<IteratorResult<T>>((resolve) => {
+          this.waiter = resolve;
+        });
+      },
+    };
+  }
+}
+
 interface PendingResolver {
   type: 'permission' | 'question';
   toolName: string;
@@ -52,9 +106,8 @@ interface ClaudeSession {
   queryInstance: ReturnType<typeof query> | null;
   // Callbacks for pending permission/question requests
   pendingResolvers: Map<string, PendingResolver>;
-  // Side-channel event queue: permission-request and question events
-  // that the async generator should yield between SDK messages.
-  sideChannelQueue: AgentEvent[];
+  // Push-based event channel for merging SDK messages with permission/question events
+  eventChannel: AsyncEventChannel<AgentEvent>;
   // Session-allowed tools (accumulated during this session)
   sessionAllowedTools: string[];
   // Working directory for permission checking
@@ -76,17 +129,19 @@ export class ClaudeCodeBackend implements AgentBackend {
       abortController,
       queryInstance: null,
       pendingResolvers: new Map(),
-      sideChannelQueue: [],
+      eventChannel: new AsyncEventChannel<AgentEvent>(),
       sessionAllowedTools: config.sessionAllowedTools ?? [],
       workingDir: config.cwd,
     };
     this.sessions.set(sessionKey, session);
 
-    const events = this.createEventStream(config, prompt, session, sessionKey);
+    // Start processing the SDK generator in the background.
+    // Events are pushed to the channel and consumed by agent-service.
+    this.runSdkGenerator(config, prompt, session, sessionKey);
 
     return {
       sessionId: sessionKey,
-      events,
+      events: session.eventChannel,
     };
   }
 
@@ -101,6 +156,9 @@ export class ClaudeCodeBackend implements AgentBackend {
       resolver.resolve({ behavior: 'deny', message: 'Session stopped' });
     }
     session.pendingResolvers.clear();
+
+    // Close the channel so the consumer (agent-service) finishes iterating
+    session.eventChannel.close();
 
     this.sessions.delete(sessionId);
   }
@@ -189,14 +247,19 @@ export class ClaudeCodeBackend implements AgentBackend {
     }
   }
 
-  // --- Private: event stream creation ---
+  // --- Private: SDK generator processing ---
 
-  private async *createEventStream(
+  /**
+   * Run the SDK generator in the background, pushing events to the channel.
+   * Permission/question events from handleToolRequest are also pushed to the
+   * same channel, so they're immediately available even when the SDK is blocked.
+   */
+  private async runSdkGenerator(
     config: AgentBackendConfig,
     prompt: string,
     session: ClaudeSession,
     sessionKey: string,
-  ): AsyncGenerator<AgentEvent> {
+  ): Promise<void> {
     const sdkPermissionMode =
       SDK_PERMISSION_MODES[config.interactionMode ?? 'ask'];
 
@@ -233,32 +296,28 @@ export class ClaudeCodeBackend implements AgentBackend {
           break;
         }
 
-        // Drain side-channel queue first (permission/question events)
-        // These were pushed while the SDK was processing the canUseTool callback
-        while (session.sideChannelQueue.length > 0) {
-          const event = session.sideChannelQueue.shift()!;
-          yield event;
-        }
-
         const message = rawMessage as AgentMessage;
 
         // Capture session ID from first message that has it
         if (!hasEmittedSessionId && message.session_id) {
           session.sessionId = message.session_id;
           hasEmittedSessionId = true;
-          yield { type: 'session-id', sessionId: message.session_id };
+          session.eventChannel.push({
+            type: 'session-id',
+            sessionId: message.session_id,
+          });
         }
 
         // Emit raw message event (agent-service persists raw + normalized)
-        yield {
+        session.eventChannel.push({
           type: 'message',
           message: normalizeClaudeMessage(message)!,
           _raw: message, // Attach raw for persistence
-        } as AgentEvent & { _raw: AgentMessage };
+        } as AgentEvent & { _raw: AgentMessage });
 
         // Handle result message — emit completion event
         if (message.type === 'result') {
-          yield {
+          session.eventChannel.push({
             type: 'complete',
             result: {
               text: message.result,
@@ -278,16 +337,11 @@ export class ClaudeCodeBackend implements AgentBackend {
                   }
                 : undefined,
             },
-          };
+          });
         }
       }
-
-      // Drain any remaining side-channel events
-      while (session.sideChannelQueue.length > 0) {
-        const event = session.sideChannelQueue.shift()!;
-        yield event;
-      }
     } finally {
+      session.eventChannel.close();
       this.sessions.delete(sessionKey);
     }
   }
@@ -321,9 +375,9 @@ export class ClaudeCodeBackend implements AgentBackend {
    * Handle a tool use request from the SDK's `canUseTool` callback.
    *
    * This runs inside the SDK's async iteration — the generator won't produce
-   * the next message until this promise resolves. We push a permission-request
-   * or question event into the side-channel queue so the agent-service can
-   * emit IPC events to the renderer and wait for user input.
+   * the next message until this promise resolves. We push permission/question
+   * events directly to the eventChannel so they're immediately available to
+   * the consumer (agent-service), even while the SDK generator is blocked.
    */
   private handleToolRequest(
     session: ClaudeSession,
@@ -355,7 +409,8 @@ export class ClaudeCodeBackend implements AgentBackend {
         resolve,
       });
 
-      // Push the appropriate event into the side-channel queue
+      // Push events directly to the channel — they're immediately available
+      // to the consumer even though the SDK generator is blocked here.
       if (isQuestion) {
         const questions = (input.questions as AgentQuestion[]).map(
           (q): NormalizedQuestion => ({
@@ -369,17 +424,16 @@ export class ClaudeCodeBackend implements AgentBackend {
           }),
         );
 
-        const event: AgentEvent = {
+        session.eventChannel.push({
           type: 'question',
           request: {
             requestId,
             questions,
           } satisfies NormalizedQuestionRequest,
-        };
-        session.sideChannelQueue.push(event);
+        });
       } else {
         const sessionAllowButton = this.getSessionAllowButton(toolName, input);
-        const event: AgentEvent = {
+        session.eventChannel.push({
           type: 'permission-request',
           request: {
             requestId,
@@ -387,13 +441,8 @@ export class ClaudeCodeBackend implements AgentBackend {
             input,
             sessionAllowButton,
           } satisfies NormalizedPermissionRequest,
-        };
-        session.sideChannelQueue.push(event);
+        });
       }
-
-      // Note: the SDK generator blocks during canUseTool, so the side-channel
-      // events will be drained when the next message is yielded after this
-      // promise resolves.
     });
   }
 }
