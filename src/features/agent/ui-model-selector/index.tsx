@@ -9,7 +9,7 @@ const DEFAULT_MODELS: BackendModelOption[] = [
   { value: 'default', label: 'Default', description: 'Use the default model' },
   { value: 'opus', label: 'Opus', description: 'Most capable model' },
   {
-    value: 'claude-opus-4.5',
+    value: 'claude-opus-4-5',
     label: 'Opus 4.5',
     description: '',
   },

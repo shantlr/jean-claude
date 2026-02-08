@@ -1,7 +1,7 @@
 import clsx from 'clsx';
-import { AlertCircle, Loader2, PackageOpen } from 'lucide-react';
+import { AlertCircle, Check, Copy, Loader2, PackageOpen } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
 
 import { formatNumber } from '@/lib/number';
@@ -527,13 +527,37 @@ function UserEntry({
     lineEnd?: number,
   ) => void;
 }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    },
+    [text],
+  );
+
   return (
-    <div className="relative bg-purple-500/5 pl-6">
+    <div className="group/user relative bg-purple-500/5 pl-6">
       {/* Dot - purple for user */}
       <div className="absolute top-2.5 -left-1 h-2 w-2 rounded-full bg-purple-500" />
       <div className="py-1.5 pr-3 text-xs text-neutral-300">
         <MarkdownContent content={text} onFilePathClick={onFilePathClick} />
       </div>
+      {/* Copy button - shown on hover */}
+      <button
+        onClick={handleCopy}
+        className="absolute top-1 right-1 rounded p-1 text-neutral-500 opacity-0 transition-opacity hover:bg-neutral-700 hover:text-neutral-300 group-hover/user:opacity-100"
+        title="Copy message"
+      >
+        {copied ? (
+          <Check className="h-3.5 w-3.5 text-green-500" />
+        ) : (
+          <Copy className="h-3.5 w-3.5" />
+        )}
+      </button>
     </div>
   );
 }
