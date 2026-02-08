@@ -5,6 +5,8 @@ interface UseHorizontalResizeOptions {
   initialWidth: number;
   minWidth: number;
   maxWidthFraction?: number; // Fraction of container width (e.g., 0.5 for 50%)
+  maxWidth?: number; // Absolute max width (takes precedence over maxWidthFraction if smaller)
+  direction?: 'left' | 'right'; // Which direction increases width ('right' = drag right to grow, 'left' = drag left to grow)
   onWidthChange: (width: number) => void;
 }
 
@@ -12,6 +14,8 @@ export function useHorizontalResize({
   initialWidth,
   minWidth,
   maxWidthFraction = 0.5,
+  maxWidth: maxWidthAbsolute,
+  direction = 'right',
   onWidthChange,
 }: UseHorizontalResizeOptions) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -24,15 +28,20 @@ export function useHorizontalResize({
 
       const startX = e.clientX;
       const startWidth = initialWidth;
+      const directionMultiplier = direction === 'right' ? 1 : -1;
 
       const handleMouseMove = (moveEvent: MouseEvent | ReactMouseEvent) => {
-        const delta = moveEvent.clientX - startX;
+        const delta = (moveEvent.clientX - startX) * directionMultiplier;
         const containerWidth =
           containerRef.current?.offsetWidth ?? window.innerWidth;
-        const maxWidth = containerWidth * maxWidthFraction;
+        const fractionMax = containerWidth * maxWidthFraction;
+        const effectiveMax =
+          maxWidthAbsolute !== undefined
+            ? Math.min(fractionMax, maxWidthAbsolute)
+            : fractionMax;
         const newWidth = Math.min(
           Math.max(startWidth + delta, minWidth),
-          maxWidth,
+          effectiveMax,
         );
         onWidthChange(newWidth);
       };
@@ -46,7 +55,7 @@ export function useHorizontalResize({
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     },
-    [initialWidth, minWidth, maxWidthFraction, onWidthChange],
+    [initialWidth, minWidth, maxWidthFraction, maxWidthAbsolute, direction, onWidthChange],
   );
 
   return {

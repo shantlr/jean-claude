@@ -52,6 +52,11 @@ const defaultTaskState: TaskState = {
 const DEFAULT_DIFF_FILE_TREE_WIDTH = 224; // w-56 equivalent
 const MIN_DIFF_FILE_TREE_WIDTH = 150;
 
+// Constants for debug messages pane width
+const DEFAULT_DEBUG_MESSAGES_PANE_WIDTH = 384; // w-96 equivalent
+const MIN_DEBUG_MESSAGES_PANE_WIDTH = 280;
+const MAX_DEBUG_MESSAGES_PANE_WIDTH = 900;
+
 // Constants for sidebar width
 const DEFAULT_SIDEBAR_WIDTH = 256; // w-64 equivalent
 const MIN_SIDEBAR_WIDTH = 200;
@@ -72,6 +77,9 @@ interface NavigationState {
   // App-level: sidebar width (global setting)
   sidebarWidth: number;
 
+  // App-level: debug messages pane width (global setting)
+  debugMessagesPaneWidth: number;
+
   // App-level: sidebar content tab ('tasks' or 'prs')
   sidebarTab: 'tasks' | 'prs';
 
@@ -85,6 +93,7 @@ interface NavigationState {
   setLastLocation: (location: LastLocation) => void;
   setDiffFileTreeWidth: (width: number) => void;
   setSidebarWidth: (width: number) => void;
+  setDebugMessagesPaneWidth: (width: number) => void;
   setSidebarTab: (tab: 'tasks' | 'prs') => void;
   setLastTaskForProject: (projectId: string, taskId: string) => void;
   setTaskRightPane: (taskId: string, pane: RightPane | null) => void;
@@ -101,6 +110,7 @@ const useStore = create<NavigationState>()(
       lastLocation: { type: 'none' } as LastLocation,
       diffFileTreeWidth: DEFAULT_DIFF_FILE_TREE_WIDTH,
       sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
+      debugMessagesPaneWidth: DEFAULT_DEBUG_MESSAGES_PANE_WIDTH,
       sidebarTab: 'tasks' as 'tasks' | 'prs',
       lastTaskByProject: {},
       taskState: {},
@@ -115,6 +125,14 @@ const useStore = create<NavigationState>()(
           sidebarWidth: Math.min(
             Math.max(MIN_SIDEBAR_WIDTH, width),
             MAX_SIDEBAR_WIDTH,
+          ),
+        }),
+
+      setDebugMessagesPaneWidth: (width) =>
+        set({
+          debugMessagesPaneWidth: Math.min(
+            Math.max(MIN_DEBUG_MESSAGES_PANE_WIDTH, width),
+            MAX_DEBUG_MESSAGES_PANE_WIDTH,
           ),
         }),
 
@@ -495,5 +513,17 @@ export function useSidebarWidth() {
     setWidth,
     minWidth: MIN_SIDEBAR_WIDTH,
     maxWidth: MAX_SIDEBAR_WIDTH,
+  };
+}
+
+// Hook for debug messages pane width
+export function useDebugMessagesPaneWidth() {
+  const width = useStore((state) => state.debugMessagesPaneWidth);
+  const setWidth = useStore((state) => state.setDebugMessagesPaneWidth);
+  return {
+    width,
+    setWidth,
+    minWidth: MIN_DEBUG_MESSAGES_PANE_WIDTH,
+    maxWidth: MAX_DEBUG_MESSAGES_PANE_WIDTH,
   };
 }

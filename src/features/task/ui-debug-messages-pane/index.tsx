@@ -2,7 +2,9 @@ import clsx from 'clsx';
 import { X, Loader2, ChevronRight, ChevronDown, RefreshCw } from 'lucide-react';
 import { useState, useCallback } from 'react';
 
+import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useRawMessages } from '@/hooks/use-raw-messages';
+import { useDebugMessagesPaneWidth } from '@/stores/navigation';
 
 // --- Collapsible JSON Tree ---
 
@@ -235,6 +237,22 @@ export function DebugMessagesPane({
   } = useRawMessages(taskId);
   const [searchFilter, setSearchFilter] = useState('');
 
+  const {
+    width,
+    setWidth,
+    minWidth,
+    maxWidth,
+  } = useDebugMessagesPaneWidth();
+
+  const { containerRef, isDragging, handleMouseDown } = useHorizontalResize({
+    initialWidth: width,
+    minWidth,
+    maxWidth,
+    maxWidthFraction: 0.6,
+    direction: 'left',
+    onWidthChange: setWidth,
+  });
+
   const handleRefresh = useCallback(() => {
     refetch();
   }, [refetch]);
@@ -246,7 +264,19 @@ export function DebugMessagesPane({
   });
 
   return (
-    <div className="flex h-full w-96 flex-col border-l border-neutral-700 bg-neutral-900">
+    <div
+      ref={containerRef}
+      style={{ width }}
+      className="relative flex h-full flex-col border-l border-neutral-700 bg-neutral-900"
+    >
+      {/* Resize handle */}
+      <div
+        onMouseDown={handleMouseDown}
+        className={clsx(
+          'absolute top-0 left-0 z-10 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500/50',
+          isDragging && 'bg-blue-500/50',
+        )}
+      />
       {/* Header */}
       <div className="flex shrink-0 items-center justify-between border-b border-neutral-700 px-4 py-3">
         <h3 className="text-sm font-medium text-neutral-200">
