@@ -3,7 +3,6 @@ import { ChevronDown, Settings } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
-import { ProjectFilterTabs } from '@/features/project/ui-project-filter-tabs';
 import { SidebarContentTabs } from '@/features/project/ui-sidebar-content-tabs';
 import { PrSidebarList } from '@/features/pull-request/ui-pr-sidebar-list';
 import { TaskSummaryCard } from '@/features/task/ui-task-summary-card';
@@ -26,19 +25,13 @@ export function TaskList() {
     hasNextPage,
     isFetchingNextPage,
   } = useAllCompletedTasks({ limit: COMPLETED_TASKS_PAGE_SIZE });
-  const { projectFilter, setProjectFilter } = useProjectFilter();
+  const { projectFilter } = useProjectFilter();
   const { sidebarTab } = useSidebarTab();
 
   // Flatten completed tasks from paginated data
   const completedTasks = useMemo(
     () => completedTasksData?.pages.flatMap((page) => page.tasks) ?? [],
     [completedTasksData],
-  );
-
-  // Sort projects for tab navigation
-  const sortedProjects = useMemo(
-    () => [...projects].sort((a, b) => a.sortOrder - b.sortOrder),
-    [projects],
   );
 
   // Filter tasks by selected project
@@ -56,12 +49,6 @@ export function TaskList() {
         ? completedTasks
         : completedTasks.filter((t) => t.projectId === projectFilter),
     [completedTasks, projectFilter],
-  );
-
-  // Tab options: 'all' + project IDs (sorted)
-  const tabOptions = useMemo<(string | 'all')[]>(
-    () => ['all', ...sortedProjects.map((p) => p.id)],
-    [sortedProjects],
   );
 
   // Navigation helpers
@@ -105,18 +92,6 @@ export function TaskList() {
       navigateToTask(newIndex);
     },
     [filteredActiveTasks, currentTaskId, navigateToTask],
-  );
-
-  const navigateTab = useCallback(
-    (direction: 'next' | 'prev') => {
-      const currentIndex = tabOptions.indexOf(projectFilter);
-      const newIndex =
-        direction === 'next'
-          ? (currentIndex + 1) % tabOptions.length
-          : (currentIndex - 1 + tabOptions.length) % tabOptions.length;
-      setProjectFilter(tabOptions[newIndex]);
-    },
-    [tabOptions, projectFilter, setProjectFilter],
   );
 
   const selectedTask = useMemo(() => {
@@ -245,22 +220,6 @@ export function TaskList() {
       },
       hideInCommandPalette: true,
     },
-    {
-      label: 'Next Tab',
-      shortcut: 'tab',
-      handler: () => {
-        navigateTab('next');
-      },
-      hideInCommandPalette: true,
-    },
-    {
-      label: 'Previous Tab',
-      shortcut: 'shift+tab',
-      handler: () => {
-        navigateTab('prev');
-      },
-      hideInCommandPalette: true,
-    },
     !!selectedProject && {
       label: 'Open Project Settings',
       handler: () => {
@@ -274,9 +233,6 @@ export function TaskList() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Project filter tabs */}
-      <ProjectFilterTabs projects={projects} />
-
       {/* Task/PR content tabs - only show when applicable */}
       {showContentTabs && <SidebarContentTabs />}
 

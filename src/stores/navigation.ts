@@ -153,11 +153,6 @@ const useStore = create<NavigationState>()(
               diffView: {
                 ...(state.taskState[taskId]?.diffView ?? defaultDiffViewState),
                 isOpen,
-                // Reset selected file when closing
-                selectedFilePath: isOpen
-                  ? (state.taskState[taskId]?.diffView?.selectedFilePath ??
-                    null)
-                  : null,
               },
             },
           },

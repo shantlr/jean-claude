@@ -772,6 +772,83 @@ export interface MergeWorktreeResult {
   error?: string;
 }
 
+export type WorktreeBranchCleanupBehavior = 'delete' | 'keep';
+
+export interface CleanupWroktreeParams {
+  worktreePath: string;
+  projectPath: string;
+  branchName?: string | null;
+  skipIfChanges?: boolean;
+  branchCleanup?: WorktreeBranchCleanupBehavior;
+  force?: boolean;
+}
+
+/**
+ * Removes a worktree and deletes its branch.
+ */
+export async function cleanupWroktree(
+  params: CleanupWroktreeParams,
+): Promise<void> {
+  const {
+    worktreePath,
+    projectPath,
+    branchName,
+    skipIfChanges = false,
+    branchCleanup = 'delete',
+    force = false,
+  } = params;
+
+  if (!(await pathExists(worktreePath))) {
+    return;
+  }
+
+  if (skipIfChanges) {
+    const { stdout } = await execAsync(
+      'git status --porcelain --untracked-files=all',
+      {
+        cwd: worktreePath,
+        encoding: 'utf-8',
+      },
+    );
+    if (stdout.trim().length > 0) {
+      return;
+    }
+  }
+
+  let worktreeBranch = branchName?.trim() || null;
+
+  if (!worktreeBranch) {
+    try {
+      const { stdout } = await execAsync('git rev-parse --abbrev-ref HEAD', {
+        cwd: worktreePath,
+        encoding: 'utf-8',
+      });
+      worktreeBranch = stdout.trim();
+    } catch (error) {
+      dbg.worktree(
+        'Failed to resolve worktree branch before delete: %O',
+        error,
+      );
+    }
+  }
+
+  const forceFlag = force ? ' --force' : '';
+  await execAsync(
+    `git worktree remove ${JSON.stringify(worktreePath)}${forceFlag}`,
+    {
+      cwd: projectPath,
+      encoding: 'utf-8',
+    },
+  );
+
+  if (branchCleanup === 'delete' && worktreeBranch) {
+    await execAsync(`git branch -D ${JSON.stringify(worktreeBranch)}`, {
+      cwd: projectPath,
+      encoding: 'utf-8',
+    });
+  }
+}
+
 /**
  * Merges a worktree branch into target branch and deletes the worktree.
  * Supports both regular merge and squash merge with custom commit message.
@@ -844,21 +921,11 @@ export async function mergeWorktree(
     }
     dbg.worktree('Merge successful');
 
-    // Remove the worktree
-    dbg.worktree('Removing worktree');
-    await execAsync(
-      `git worktree remove ${JSON.stringify(worktreePath)} --force`,
-      {
-        cwd: projectPath,
-        encoding: 'utf-8',
-      },
-    );
-
-    // Force delete the branch (use -D to handle edge cases where git thinks branch isn't fully merged)
-    dbg.worktree('Deleting branch %s', worktreeBranch);
-    await execAsync(`git branch -D ${JSON.stringify(worktreeBranch)}`, {
-      cwd: projectPath,
-      encoding: 'utf-8',
+    await cleanupWroktree({
+      worktreePath,
+      projectPath,
+      branchCleanup: 'delete',
+      force: true,
     });
 
     dbg.worktree('Merge complete, worktree cleaned up');

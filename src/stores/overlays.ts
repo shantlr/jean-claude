@@ -3,7 +3,12 @@
 
 import { create } from 'zustand';
 
-export type OverlayType = 'new-task' | 'command-palette' | 'keyboard-help';
+export type OverlayType =
+  | 'new-task'
+  | 'command-palette'
+  | 'project-switcher'
+  | 'keyboard-help'
+  | 'background-jobs';
 
 interface OverlaysState {
   // Current active overlay (null = none open)

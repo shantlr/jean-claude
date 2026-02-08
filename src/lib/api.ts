@@ -277,7 +277,10 @@ export interface Api {
       },
     ) => Promise<Task>;
     update: (id: string, data: UpdateTask) => Promise<Task>;
-    delete: (id: string) => Promise<void>;
+    delete: (
+      id: string,
+      options?: { deleteWorktree?: boolean },
+    ) => Promise<void>;
     markAsRead: (id: string) => Promise<Task>;
     updateLastReadIndex: (id: string, lastReadIndex: number) => Promise<Task>;
     setMode: (id: string, mode: InteractionMode) => Promise<Task>;

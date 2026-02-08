@@ -147,6 +147,7 @@ export function TaskPanel({
 
   const [copiedSessionId, setCopiedSessionId] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteWorktreeOnDelete, setDeleteWorktreeOnDelete] = useState(true);
 
   // Track this location for navigation restoration
   useEffect(() => {
@@ -202,9 +203,17 @@ export function TaskPanel({
     unloadTask(taskId);
     clearTaskNavHistoryState(taskId);
     // Delete from database
-    await deleteTask.mutateAsync(taskId);
+    await deleteTask.mutateAsync({
+      id: taskId,
+      deleteWorktree: task?.worktreePath ? deleteWorktreeOnDelete : false,
+    });
     // Navigate using the provided callback
     onNavigateAfterDelete();
+  };
+
+  const handleOpenDeleteConfirm = () => {
+    setDeleteWorktreeOnDelete(Boolean(task?.worktreePath));
+    setShowDeleteConfirm(true);
   };
 
   const handleModeChange = (mode: InteractionMode) => {
@@ -424,7 +433,7 @@ export function TaskPanel({
             {/* Delete button */}
             {!isRunning && (
               <button
-                onClick={() => setShowDeleteConfirm(true)}
+                onClick={handleOpenDeleteConfirm}
                 className="flex items-center gap-2 rounded-md px-3 py-1 text-sm font-medium text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-red-400"
                 title="Delete task"
               >
@@ -567,6 +576,24 @@ export function TaskPanel({
               Are you sure you want to delete this task? This action cannot be
               undone.
             </p>
+            {task.worktreePath && (
+              <label className="mb-3 flex items-start gap-2 text-sm text-neutral-300">
+                <input
+                  type="checkbox"
+                  checked={deleteWorktreeOnDelete}
+                  onChange={(event) =>
+                    setDeleteWorktreeOnDelete(event.target.checked)
+                  }
+                  className="mt-0.5"
+                />
+                <span>
+                  Delete associated worktree and branch
+                  <span className="block text-xs text-neutral-400">
+                    If unchecked, the worktree is kept unless it has no changes.
+                  </span>
+                </span>
+              </label>
+            )}
             <div className="flex gap-2">
               <button
                 type="button"

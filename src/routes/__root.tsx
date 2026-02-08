@@ -9,8 +9,10 @@ import { useCallback, useEffect } from 'react';
 import { useCommands } from '@/common/hooks/use-commands';
 import { GlobalPromptFromBackModal } from '@/common/ui/global-prompt-from-back-modal';
 import { TaskMessageManager } from '@/features/agent/task-message-manager';
+import { BackgroundJobsOverlay } from '@/features/background-jobs/ui-background-jobs-overlay';
 import { CommandPaletteOverlay } from '@/features/command-palette/ui-command-palette-overlay';
 import { NewTaskOverlay } from '@/features/new-task/ui-new-task-overlay';
+import { ProjectOverlay } from '@/features/project/ui-project-overlay';
 import { Header } from '@/layout/ui-header';
 import { MainSidebar } from '@/layout/ui-main-sidebar';
 import { resolveLastLocationRedirect } from '@/lib/navigation';
@@ -127,6 +129,48 @@ function NewTaskContainer() {
   );
 }
 
+function ProjectOverlayContainer() {
+  const isOpen = useOverlaysStore(
+    (s) => s.activeOverlay === 'project-switcher',
+  );
+  const toggle = useOverlaysStore((s) => s.toggle);
+  const close = useOverlaysStore((s) => s.close);
+
+  useCommands('project-overlay-trigger', [
+    {
+      shortcut: 'cmd+o',
+      label: 'Open Project Overlay',
+      section: 'Projects',
+      handler: () => {
+        toggle('project-switcher');
+      },
+    },
+  ]);
+
+  if (!isOpen) return null;
+  return <ProjectOverlay onClose={() => close('project-switcher')} />;
+}
+
+function BackgroundJobsContainer() {
+  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'background-jobs');
+  const toggle = useOverlaysStore((s) => s.toggle);
+  const close = useOverlaysStore((s) => s.close);
+
+  useCommands('background-jobs-trigger', [
+    {
+      shortcut: 'cmd+j',
+      label: 'Open Background Jobs',
+      section: 'General',
+      handler: () => {
+        toggle('background-jobs');
+      },
+    },
+  ]);
+
+  if (!isOpen) return null;
+  return <BackgroundJobsOverlay onClose={() => close('background-jobs')} />;
+}
+
 function RootLayout() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-neutral-900 text-white">
@@ -138,6 +182,8 @@ function RootLayout() {
       {/* Overlay containers */}
       <NewTaskContainer />
       <CommandPaletteContainer />
+      <ProjectOverlayContainer />
+      <BackgroundJobsContainer />
 
       <div className="flex h-full w-full flex-1 flex-col overflow-hidden">
         <Header />

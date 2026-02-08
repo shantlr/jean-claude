@@ -23,14 +23,20 @@ function getUsageRatio({
   const now = new Date();
   const timeRemainingMs = Math.max(0, resetsAt.getTime() - now.getTime());
   const timeElapsedMs = windowDurationMs - timeRemainingMs;
-  const timeElapsedRatio = timeElapsedMs / windowDurationMs;
+  const timeElapsedRatio = Math.min(
+    Math.max(timeElapsedMs / windowDurationMs, 0),
+    1,
+  );
 
-  // Expected usage based on elapsed time (as percentage)
-  const expectedUsage = timeElapsedRatio * 100;
+  // Compare actual usage percent to linear expected usage percent.
+  // Both are converted to [0,1] so 1.0 means exactly on pace.
+  const actualUsageRatio = utilization / 100;
 
-  // Ratio of actual usage to expected usage
-  // Avoid division by zero at the very start of the window
-  return utilization / Math.max(expectedUsage, 1);
+  if (timeElapsedRatio === 0) {
+    return actualUsageRatio === 0 ? 1 : Number.POSITIVE_INFINITY;
+  }
+
+  return actualUsageRatio / timeElapsedRatio;
 }
 
 /**
@@ -38,6 +44,8 @@ function getUsageRatio({
  * If usage is ahead of pace (using more than expected for elapsed time), it shows warning colors.
  */
 function getUsageLevel(usageRatio: number): UsageLevel {
+  if (!Number.isFinite(usageRatio)) return 'critical';
+
   // If ratio > 1, we're ahead of pace (using more than expected)
   if (usageRatio >= 1.5) return 'critical'; // 50%+ ahead of pace
   if (usageRatio >= 1.3) return 'high'; // 30%+ ahead of pace
@@ -140,7 +148,9 @@ export function UsageDisplay() {
   const level = getUsageLevel(usageRatio);
   const percentage = Math.min(fiveHour.utilization, 100);
   // Format ratio to max 2 digits (e.g., 1.2, 0.8)
-  const formattedRatio = usageRatio.toFixed(1);
+  const formattedRatio = Number.isFinite(usageRatio)
+    ? usageRatio.toFixed(1)
+    : '∞';
   const isCritical = level === 'critical';
 
   return (

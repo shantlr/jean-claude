@@ -1,4 +1,4 @@
-import { useRouter } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import Fuse from 'fuse.js';
 import { ChevronRight } from 'lucide-react';
@@ -24,6 +24,7 @@ import { useBackendsSetting } from '@/hooks/use-settings';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
 import { useWorkItems } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useNewTaskDraft, type InputMode } from '@/stores/new-task-draft';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { Project } from '@shared/types';
@@ -96,7 +97,6 @@ export function NewTaskOverlay({
   onClose: () => void;
   onDiscardDraft: () => void;
 }) {
-  const router = useRouter();
   const {
     selectedProjectId,
     draft,
@@ -107,6 +107,12 @@ export function NewTaskOverlay({
 
   const { data: projects = [] } = useProjects();
   const createTaskMutation = useCreateTaskWithWorktree();
+  const queryClient = useQueryClient();
+  const addRunningJob = useBackgroundJobsStore((state) => state.addRunningJob);
+  const markJobSucceeded = useBackgroundJobsStore(
+    (state) => state.markJobSucceeded,
+  );
+  const markJobFailed = useBackgroundJobsStore((state) => state.markJobFailed);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [highlightedWorkItemId, setHighlightedWorkItemId] = useState<
@@ -455,33 +461,62 @@ export function NewTaskOverlay({
         finalPrompt = draft.prompt;
       }
 
-      // Build task data
-      const task = await createTaskMutation.mutateAsync({
+      const jobId = addRunningJob({
+        type: 'task-creation',
+        title: `Creating task in ${selectedProject?.name ?? 'project'}`,
         projectId: selectedProjectId,
-        prompt: finalPrompt,
-        interactionMode: draft.interactionMode,
-        modelPreference: draft.modelPreference,
-        agentBackend: draft.agentBackend,
-        useWorktree: draft.createWorktree,
-        sourceBranch: draft.sourceBranch,
-        workItemIds,
-        workItemUrls,
-        updatedAt: new Date().toISOString(),
-        autoStart: true,
+        details: {
+          projectName: selectedProject?.name ?? null,
+          promptPreview: finalPrompt.slice(0, 120),
+          creationInput: {
+            projectId: selectedProjectId,
+            prompt: finalPrompt,
+            interactionMode: draft.interactionMode,
+            agentBackend: draft.agentBackend,
+            modelPreference: draft.modelPreference,
+            useWorktree: draft.createWorktree,
+            sourceBranch: draft.sourceBranch,
+            workItemIds,
+            workItemUrls,
+            updatedAt: new Date().toISOString(),
+            autoStart: true,
+          },
+        },
       });
 
-      // Clear draft on success
+      // Close quickly so user can keep working while creation runs
       clearDraft();
       onClose();
 
-      // Navigate to the new task
-      router.navigate({
-        to: '/projects/$projectId/tasks/$taskId',
-        params: {
-          projectId: task.projectId,
-          taskId: task.id,
-        },
-      });
+      void createTaskMutation
+        .mutateAsync({
+          projectId: selectedProjectId,
+          prompt: finalPrompt,
+          interactionMode: draft.interactionMode,
+          modelPreference: draft.modelPreference,
+          agentBackend: draft.agentBackend,
+          useWorktree: draft.createWorktree,
+          sourceBranch: draft.sourceBranch,
+          workItemIds,
+          workItemUrls,
+          updatedAt: new Date().toISOString(),
+          autoStart: true,
+        })
+        .then((task) => {
+          markJobSucceeded(jobId, {
+            taskId: task.id,
+            projectId: task.projectId,
+          });
+          queryClient.invalidateQueries({ queryKey: ['tasks'] });
+          queryClient.invalidateQueries({
+            queryKey: ['tasks', { projectId: task.projectId }],
+          });
+        })
+        .catch((error: unknown) => {
+          const message =
+            error instanceof Error ? error.message : 'Failed to create task';
+          markJobFailed(jobId, message);
+        });
     } catch (error) {
       console.error('Failed to create task:', error);
       // Keep overlay open on error (draft preserved)
@@ -494,10 +529,14 @@ export function NewTaskOverlay({
     searchStep,
     promptTemplate,
     selectedWorkItems,
+    selectedProject?.name,
+    addRunningJob,
     createTaskMutation,
     clearDraft,
+    queryClient,
+    markJobSucceeded,
+    markJobFailed,
     onClose,
-    router,
   ]);
 
   // Handle Cmd+Enter based on current state

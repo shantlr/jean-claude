@@ -107,6 +107,7 @@ import {
   getCurrentCommitHash,
   getWorktreeStatus,
   commitWorktreeChanges,
+  cleanupWroktree,
   mergeWorktree,
   pushBranch,
 } from '../services/worktree-service';
@@ -326,7 +327,33 @@ export function registerIpcHandlers() {
   ipcMain.handle('tasks:update', (_, id: string, data: UpdateTask) =>
     TaskRepository.update(id, data),
   );
-  ipcMain.handle('tasks:delete', (_, id: string) => TaskRepository.delete(id));
+  ipcMain.handle(
+    'tasks:delete',
+    async (
+      _,
+      id: string,
+      options?: {
+        deleteWorktree?: boolean;
+      },
+    ) => {
+      const task = await TaskRepository.findById(id);
+
+      if (task?.worktreePath) {
+        const project = await ProjectRepository.findById(task.projectId);
+        if (project) {
+          await cleanupWroktree({
+            worktreePath: task.worktreePath,
+            projectPath: project.path,
+            skipIfChanges: !options?.deleteWorktree,
+            branchCleanup: 'delete',
+            force: options?.deleteWorktree ?? false,
+          });
+        }
+      }
+
+      await TaskRepository.delete(id);
+    },
+  );
   ipcMain.handle('tasks:markAsRead', (_, id: string) =>
     TaskRepository.markAsRead(id),
   );

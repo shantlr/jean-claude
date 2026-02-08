@@ -38,8 +38,9 @@ export function TaskSummaryCard({
   const unreadCount = getUnreadCount(task);
   const taskState = useTaskMessagesStore((s) => s.tasks[task.id]);
   const { projectFilter } = useProjectFilter();
-  const needsAttention =
-    taskState?.pendingPermission || taskState?.pendingQuestion;
+  const hasPendingPermission = !!taskState?.pendingPermission;
+  const hasPendingQuestion = !!taskState?.pendingQuestion;
+  const needsAttention = hasPendingPermission || hasPendingQuestion;
 
   const displayNumber = index !== undefined ? index + 1 : undefined;
   const displayName = task.name ?? task.prompt.split('\n')[0].slice(0, 30);
@@ -84,13 +85,21 @@ export function TaskSummaryCard({
       }}
       className={clsx(
         'flex cursor-pointer flex-col gap-1 rounded-lg px-3 py-2 transition-colors',
-        task.status === 'running'
+        hasPendingPermission
           ? isSelected
-            ? 'running-border-selected'
-            : 'running-border'
-          : isSelected
-            ? 'border border-blue-500 bg-neutral-700'
-            : 'border border-transparent hover:bg-neutral-800',
+            ? 'permission-border-selected'
+            : 'permission-border'
+          : hasPendingQuestion
+            ? isSelected
+              ? 'question-border-selected'
+              : 'question-border'
+            : task.status === 'running'
+              ? isSelected
+                ? 'running-border-selected'
+                : 'running-border'
+              : isSelected
+                ? 'border border-blue-500 bg-neutral-700'
+                : 'border border-transparent hover:bg-neutral-800',
       )}
     >
       {/* Top row: status, name, number badge */}

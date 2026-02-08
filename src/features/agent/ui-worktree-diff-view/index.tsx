@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { FileX, FolderX, Loader2, RefreshCw } from 'lucide-react';
 import { useMemo, useCallback } from 'react';
@@ -13,12 +14,13 @@ import {
 } from '@/features/common/ui-file-diff';
 import type { DiffFile } from '@/features/common/ui-file-diff';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
-import { useTaskSummary, useGenerateSummary } from '@/hooks/use-task-summary';
+import { useTaskSummary } from '@/hooks/use-task-summary';
 import {
   useWorktreeDiff,
   useWorktreeFileContent,
 } from '@/hooks/use-worktree-diff';
-import type { FileAnnotation, WorktreeDiffFile } from '@/lib/api';
+import { api, type FileAnnotation, type WorktreeDiffFile } from '@/lib/api';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useDiffFileTreeWidth } from '@/stores/navigation';
 
 const HEADER_HEIGHT_CLS = `h-[40px] shrink-0`;
@@ -54,7 +56,20 @@ export function WorktreeDiffView({
 }) {
   const { data, isLoading, error, refresh } = useWorktreeDiff(taskId, true);
   const { data: summary, isLoading: isSummaryLoading } = useTaskSummary(taskId);
-  const generateSummary = useGenerateSummary();
+  const queryClient = useQueryClient();
+  const addRunningJob = useBackgroundJobsStore((state) => state.addRunningJob);
+  const markJobSucceeded = useBackgroundJobsStore(
+    (state) => state.markJobSucceeded,
+  );
+  const markJobFailed = useBackgroundJobsStore((state) => state.markJobFailed);
+  const isSummaryJobRunning = useBackgroundJobsStore((state) =>
+    state.jobs.some(
+      (job) =>
+        job.status === 'running' &&
+        job.type === 'summary-generation' &&
+        job.taskId === taskId,
+    ),
+  );
   const {
     width: fileTreeWidth,
     setWidth: setFileTreeWidth,
@@ -74,8 +89,45 @@ export function WorktreeDiffView({
 
   // Handle summary generation
   const handleGenerateSummary = useCallback(() => {
-    generateSummary.mutate(taskId);
-  }, [generateSummary, taskId]);
+    if (isSummaryJobRunning) {
+      return;
+    }
+
+    const jobId = addRunningJob({
+      type: 'summary-generation',
+      title: 'Generating git diff summary',
+      taskId,
+      details: {
+        taskName,
+      },
+    });
+
+    void api.tasks.summary
+      .generate(taskId)
+      .then((generatedSummary) => {
+        queryClient.setQueryData(
+          ['task-summary', generatedSummary.taskId],
+          generatedSummary,
+        );
+        queryClient.invalidateQueries({
+          queryKey: ['task-summary', generatedSummary.taskId],
+        });
+        markJobSucceeded(jobId, { taskId: generatedSummary.taskId });
+      })
+      .catch((error: unknown) => {
+        const message =
+          error instanceof Error ? error.message : 'Failed to generate summary';
+        markJobFailed(jobId, message);
+      });
+  }, [
+    isSummaryJobRunning,
+    addRunningJob,
+    taskId,
+    taskName,
+    queryClient,
+    markJobSucceeded,
+    markJobFailed,
+  ]);
 
   // Keyboard shortcut for generating summary (cmd+shift+s)
   useCommands('worktree-diff-view-summary', [
@@ -83,7 +135,7 @@ export function WorktreeDiffView({
       label: 'Generate Summary',
       shortcut: 'cmd+shift+s',
       handler: () => {
-        if (!summary && !generateSummary.isPending) {
+        if (!summary && !isSummaryJobRunning) {
           handleGenerateSummary();
         }
       },
@@ -222,7 +274,7 @@ export function WorktreeDiffView({
         {/* Summary panel at top */}
         <SummaryPanel
           summary={summary?.summary ?? null}
-          isLoading={generateSummary.isPending || isSummaryLoading}
+          isLoading={isSummaryJobRunning || isSummaryLoading}
           onGenerate={handleGenerateSummary}
         />
 
