@@ -3,7 +3,8 @@ import { X, Loader2, ChevronRight, ChevronDown, RefreshCw } from 'lucide-react';
 import { useState, useCallback } from 'react';
 
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
-import { useRawMessages } from '@/hooks/use-raw-messages';
+import { useMessagesWithRawData } from '@/hooks/use-messages-with-raw-data';
+import type { DebugMessageWithRawData } from '@/lib/api';
 import { useDebugMessagesPaneWidth } from '@/stores/navigation';
 
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
@@ -30,7 +31,6 @@ function JsonValue({
     return <span className="text-blue-400">{String(value)}</span>;
   }
   if (typeof value === 'string') {
-    // Truncate very long strings in the inline display
     const display = value.length > 120 ? value.slice(0, 120) + '...' : value;
     return (
       <span
@@ -162,21 +162,13 @@ function JsonObject({
   );
 }
 
-// --- Raw Message Card ---
+// --- Debug Message Card ---
 
-function RawMessageCard({
-  message,
-}: {
-  message: {
-    id: string;
-    messageIndex: number;
-    backendSessionId: string | null;
-    rawFormat: string;
-    rawData: unknown;
-    createdAt: string;
-  };
-}) {
+function DebugMessageCard({ message }: { message: DebugMessageWithRawData }) {
   const [expanded, setExpanded] = useState(false);
+
+  const hasRaw = message.rawData !== null;
+  const hasNormalized = message.normalizedData !== null;
 
   return (
     <div className="bg-neutral-850 rounded-md border border-neutral-700">
@@ -196,8 +188,31 @@ function RawMessageCard({
         <span className="font-mono text-xs font-medium text-neutral-300">
           #{message.messageIndex}
         </span>
-        <span className="rounded bg-neutral-700 px-1.5 py-0.5 text-[10px] font-medium text-neutral-400">
-          {message.rawFormat}
+        {message.rawFormat && (
+          <span className="rounded bg-neutral-700 px-1.5 py-0.5 text-[10px] font-medium text-neutral-400">
+            {message.rawFormat}
+          </span>
+        )}
+        {/* Presence indicators */}
+        <span
+          className={clsx(
+            'rounded px-1.5 py-0.5 text-[10px] font-medium',
+            hasRaw
+              ? 'bg-blue-900/30 text-blue-400'
+              : 'bg-neutral-800 text-neutral-600',
+          )}
+        >
+          raw
+        </span>
+        <span
+          className={clsx(
+            'rounded px-1.5 py-0.5 text-[10px] font-medium',
+            hasNormalized
+              ? 'bg-green-900/30 text-green-400'
+              : 'bg-neutral-800 text-neutral-600',
+          )}
+        >
+          normalized
         </span>
         {message.backendSessionId && (
           <span
@@ -208,14 +223,49 @@ function RawMessageCard({
           </span>
         )}
         <span className="ml-auto shrink-0 text-[10px] text-neutral-600">
-          {new Date(message.createdAt).toLocaleTimeString()}
+          {message.createdAt
+            ? new Date(message.createdAt).toLocaleTimeString()
+            : '\u00A0'}
         </span>
       </button>
 
-      {/* Card body — JSON tree */}
+      {/* Card body — Side-by-side JSON */}
       {expanded && (
-        <div className="max-h-96 overflow-auto p-3 font-mono text-xs leading-relaxed">
-          <JsonValue value={message.rawData} defaultExpanded />
+        <div className="flex min-h-0">
+          {/* Raw side */}
+          <div className="flex-1 border-r border-neutral-700">
+            <div className="border-b border-neutral-700/50 px-3 py-1.5">
+              <span className="text-[10px] font-semibold tracking-wider text-blue-400 uppercase">
+                Raw
+              </span>
+            </div>
+            <div className="max-h-[500px] overflow-auto p-3 font-mono text-xs leading-relaxed">
+              {hasRaw ? (
+                <JsonValue value={message.rawData} defaultExpanded />
+              ) : (
+                <span className="text-neutral-600 italic">
+                  No raw message (synthetic)
+                </span>
+              )}
+            </div>
+          </div>
+          {/* Normalized side */}
+          <div className="flex-1">
+            <div className="border-b border-neutral-700/50 px-3 py-1.5">
+              <span className="text-[10px] font-semibold tracking-wider text-green-400 uppercase">
+                Normalized
+              </span>
+            </div>
+            <div className="max-h-[500px] overflow-auto p-3 font-mono text-xs leading-relaxed">
+              {hasNormalized ? (
+                <JsonValue value={message.normalizedData} defaultExpanded />
+              ) : (
+                <span className="text-neutral-600 italic">
+                  No normalized message (filtered)
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -232,11 +282,12 @@ export function DebugMessagesPane({
   onClose: () => void;
 }) {
   const {
-    data: rawMessages,
+    data: debugMessages,
     isLoading,
     error,
     refetch,
-  } = useRawMessages(taskId);
+  } = useMessagesWithRawData(taskId);
+
   const [searchFilter, setSearchFilter] = useState('');
 
   const { width, setWidth, minWidth, maxWidth } = useDebugMessagesPaneWidth();
@@ -254,10 +305,14 @@ export function DebugMessagesPane({
     refetch();
   }, [refetch]);
 
-  const filteredMessages = rawMessages?.filter((msg) => {
+  const filteredMessages = debugMessages?.filter((msg) => {
     if (!searchFilter) return true;
-    const raw = JSON.stringify(msg.rawData).toLowerCase();
-    return raw.includes(searchFilter.toLowerCase());
+    const lower = searchFilter.toLowerCase();
+    const rawStr = msg.rawData ? JSON.stringify(msg.rawData).toLowerCase() : '';
+    const normStr = msg.normalizedData
+      ? JSON.stringify(msg.normalizedData).toLowerCase()
+      : '';
+    return rawStr.includes(lower) || normStr.includes(lower);
   });
 
   return (
@@ -281,10 +336,10 @@ export function DebugMessagesPane({
         )}
       >
         <h3 className="text-sm font-medium text-neutral-200">
-          Raw Messages
-          {rawMessages && (
+          Raw vs Normalized
+          {debugMessages && (
             <span className="ml-1.5 text-neutral-500">
-              ({rawMessages.length})
+              ({debugMessages.length})
             </span>
           )}
         </h3>
@@ -312,9 +367,21 @@ export function DebugMessagesPane({
           type="text"
           value={searchFilter}
           onChange={(e) => setSearchFilter(e.target.value)}
-          placeholder="Filter messages..."
+          placeholder="Filter across raw & normalized..."
           className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-xs text-neutral-200 placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
         />
+      </div>
+
+      {/* Legend */}
+      <div className="flex shrink-0 items-center gap-3 border-b border-neutral-700 px-4 py-1.5">
+        <span className="flex items-center gap-1.5 text-[10px] text-neutral-500">
+          <span className="inline-block h-2 w-2 rounded-full bg-blue-400" />
+          Raw (SDK)
+        </span>
+        <span className="flex items-center gap-1.5 text-[10px] text-neutral-500">
+          <span className="inline-block h-2 w-2 rounded-full bg-green-400" />
+          Normalized
+        </span>
       </div>
 
       {/* Content */}
@@ -327,20 +394,23 @@ export function DebugMessagesPane({
 
         {error && (
           <div className="rounded-md bg-red-900/20 p-3 text-xs text-red-400">
-            Failed to load raw messages: {error.message}
+            Failed to load messages: {error.message}
           </div>
         )}
 
-        {filteredMessages && filteredMessages.length === 0 && (
+        {!isLoading && filteredMessages && filteredMessages.length === 0 && (
           <p className="py-4 text-center text-xs text-neutral-600">
             {searchFilter
               ? 'No messages match the filter.'
-              : 'No raw messages found.'}
+              : 'No messages found.'}
           </p>
         )}
 
-        {filteredMessages?.map((msg) => (
-          <RawMessageCard key={msg.id} message={msg} />
+        {filteredMessages?.map((msg, index) => (
+          <DebugMessageCard
+            key={`${msg.messageIndex}-${index}`}
+            message={msg}
+          />
         ))}
       </div>
     </div>

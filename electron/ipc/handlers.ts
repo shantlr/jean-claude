@@ -1035,9 +1035,12 @@ export function registerIpcHandlers() {
     return agentService.getPendingRequest(taskId);
   });
 
-  ipcMain.handle(AGENT_CHANNELS.GET_RAW_MESSAGES, (_, taskId: string) => {
-    return agentService.getRawMessages(taskId);
-  });
+  ipcMain.handle(
+    AGENT_CHANNELS.GET_MESSAGES_WITH_RAW_DATA,
+    (_, taskId: string) => {
+      return agentService.getMessagesWithRawData(taskId);
+    },
+  );
 
   // Settings
   ipcMain.handle(

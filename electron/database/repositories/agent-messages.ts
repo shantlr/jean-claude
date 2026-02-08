@@ -161,6 +161,111 @@ export const AgentMessageRepository = {
       .execute();
   },
 
+  /**
+   * Find all messages with raw data for a task, joining agent_messages with raw_messages.
+   * Returns every raw message (even those with no normalized counterpart) alongside
+   * any normalized message linked via rawMessageId, plus synthetic normalized messages
+   * that have no raw counterpart. Used by the debug comparison view.
+   */
+  findWithRawDataByTaskId: async (
+    taskId: string,
+  ): Promise<
+    {
+      messageIndex: number;
+      rawData: string | null;
+      rawFormat: string | null;
+      backendSessionId: string | null;
+      normalizedData: string | null;
+      createdAt: string;
+    }[]
+  > => {
+    // Fetch all raw messages for the task
+    const rawRows = await db
+      .selectFrom('raw_messages')
+      .select([
+        'raw_messages.id as rawId',
+        'raw_messages.messageIndex',
+        'raw_messages.rawData',
+        'raw_messages.rawFormat',
+        'raw_messages.backendSessionId',
+        'raw_messages.createdAt',
+      ])
+      .where('raw_messages.taskId', '=', taskId)
+      .orderBy('raw_messages.messageIndex', 'asc')
+      .execute();
+
+    // Fetch all agent_messages (normalized) that link to raw messages
+    const normalizedRows = await db
+      .selectFrom('agent_messages')
+      .select([
+        'agent_messages.messageIndex',
+        'agent_messages.normalizedData',
+        'agent_messages.rawMessageId',
+      ])
+      .where('agent_messages.taskId', '=', taskId)
+      .orderBy('agent_messages.messageIndex', 'asc')
+      .execute();
+
+    // Index normalized messages by rawMessageId for O(1) lookups
+    const normalizedByRawId = new Map<string, string>();
+    const syntheticNormalized: {
+      messageIndex: number;
+      normalizedData: string | null;
+    }[] = [];
+
+    for (const row of normalizedRows) {
+      if (row.rawMessageId) {
+        if (row.normalizedData) {
+          normalizedByRawId.set(row.rawMessageId, row.normalizedData);
+        }
+      } else if (row.normalizedData) {
+        // Synthetic message (no raw counterpart)
+        syntheticNormalized.push({
+          messageIndex: row.messageIndex,
+          normalizedData: row.normalizedData,
+        });
+      }
+    }
+
+    // Build pairs: raw messages with their corresponding normalized data
+    const pairs: {
+      messageIndex: number;
+      rawData: string | null;
+      rawFormat: string | null;
+      backendSessionId: string | null;
+      normalizedData: string | null;
+      createdAt: string;
+    }[] = [];
+
+    for (const raw of rawRows) {
+      pairs.push({
+        messageIndex: raw.messageIndex,
+        rawData: raw.rawData,
+        rawFormat: raw.rawFormat,
+        backendSessionId: raw.backendSessionId,
+        normalizedData: normalizedByRawId.get(raw.rawId) ?? null,
+        createdAt: raw.createdAt,
+      });
+    }
+
+    // Add synthetic normalized messages that have no raw counterpart
+    for (const syn of syntheticNormalized) {
+      pairs.push({
+        messageIndex: syn.messageIndex,
+        rawData: null,
+        rawFormat: null,
+        backendSessionId: null,
+        normalizedData: syn.normalizedData,
+        createdAt: '', // No raw timestamp for synthetic messages
+      });
+    }
+
+    // Sort by messageIndex
+    pairs.sort((a, b) => a.messageIndex - b.messageIndex);
+
+    return pairs;
+  },
+
   getMessageCount: async (taskId: string): Promise<number> => {
     const result = await db
       .selectFrom('agent_messages')

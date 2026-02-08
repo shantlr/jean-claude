@@ -52,10 +52,10 @@ const defaultTaskState: TaskState = {
 const DEFAULT_DIFF_FILE_TREE_WIDTH = 224; // w-56 equivalent
 const MIN_DIFF_FILE_TREE_WIDTH = 150;
 
-// Constants for debug messages pane width
-const DEFAULT_DEBUG_MESSAGES_PANE_WIDTH = 384; // w-96 equivalent
-const MIN_DEBUG_MESSAGES_PANE_WIDTH = 280;
-const MAX_DEBUG_MESSAGES_PANE_WIDTH = 900;
+// Constants for debug messages pane width (side-by-side raw vs normalized)
+const DEFAULT_DEBUG_MESSAGES_PANE_WIDTH = 700;
+const MIN_DEBUG_MESSAGES_PANE_WIDTH = 500;
+const MAX_DEBUG_MESSAGES_PANE_WIDTH = 1400;
 
 // Constants for sidebar width
 const DEFAULT_SIDEBAR_WIDTH = 256; // w-64 equivalent

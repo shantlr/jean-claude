@@ -916,15 +916,16 @@ class AgentService {
     return AgentMessageRepository.getMessageCount(taskId);
   }
 
-  async getRawMessages(taskId: string) {
-    const rows = await RawMessageRepository.findByTaskId(taskId);
+  async getMessagesWithRawData(taskId: string) {
+    const rows = await AgentMessageRepository.findWithRawDataByTaskId(taskId);
     return rows.map((row) => ({
-      id: row.id,
-      taskId: row.taskId,
       messageIndex: row.messageIndex,
-      backendSessionId: row.backendSessionId,
+      rawData: row.rawData ? JSON.parse(row.rawData) : null,
       rawFormat: row.rawFormat,
-      rawData: JSON.parse(row.rawData),
+      backendSessionId: row.backendSessionId,
+      normalizedData: row.normalizedData
+        ? JSON.parse(row.normalizedData)
+        : null,
       createdAt: row.createdAt,
     }));
   }

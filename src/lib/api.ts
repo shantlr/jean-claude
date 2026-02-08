@@ -244,13 +244,12 @@ export interface CompletedTasksResult {
   total: number;
 }
 
-export interface RawMessage {
-  id: string;
-  taskId: string;
+export interface DebugMessageWithRawData {
   messageIndex: number;
+  rawData: unknown | null;
+  rawFormat: string | null;
   backendSessionId: string | null;
-  rawFormat: string;
-  rawData: unknown;
+  normalizedData: unknown | null;
   createdAt: string;
 }
 
@@ -499,7 +498,9 @@ export interface Api {
     ) => Promise<{ id: string; label: string }[]>;
     getMessages: (taskId: string) => Promise<NormalizedMessage[]>;
     getMessageCount: (taskId: string) => Promise<number>;
-    getRawMessages: (taskId: string) => Promise<RawMessage[]>;
+    getMessagesWithRawData: (
+      taskId: string,
+    ) => Promise<DebugMessageWithRawData[]>;
     getPendingRequest: (taskId: string) => Promise<
       | {
           type: 'permission';
@@ -819,7 +820,7 @@ export const api: Api = hasWindowApi
         getBackendModels: async () => [],
         getMessages: async () => [],
         getMessageCount: async () => 0,
-        getRawMessages: async () => [],
+        getMessagesWithRawData: async () => [],
         getPendingRequest: async () => null,
         onMessage: () => () => {},
         onStatus: () => () => {},
