@@ -6,6 +6,8 @@ import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useRawMessages } from '@/hooks/use-raw-messages';
 import { useDebugMessagesPaneWidth } from '@/stores/navigation';
 
+import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
+
 // --- Collapsible JSON Tree ---
 
 function JsonValue({
@@ -278,7 +280,12 @@ export function DebugMessagesPane({
         )}
       />
       {/* Header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-neutral-700 px-4 py-3">
+      <div
+        className={clsx(
+          'flex shrink-0 items-center justify-between border-b border-neutral-700 px-4 py-2',
+          TASK_PANEL_HEADER_HEIGHT_CLS,
+        )}
+      >
         <h3 className="text-sm font-medium text-neutral-200">
           Raw Messages
           {rawMessages && (

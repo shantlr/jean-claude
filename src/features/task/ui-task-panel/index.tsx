@@ -27,10 +27,8 @@ import { PrBadge } from '@/features/agent/ui-pr-badge';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
 import { RunButton } from '@/features/agent/ui-run-button';
 import { WorktreeDiffView } from '@/features/agent/ui-worktree-diff-view';
-import { DebugMessagesPane } from '@/features/task/ui-debug-messages-pane';
 import { StatusIndicator } from '@/features/task/ui-status-indicator';
 import { TaskPrView } from '@/features/task/ui-task-pr-view';
-import { TaskSettingsPane } from '@/features/task/ui-task-settings-pane';
 import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
 import { useBackendModels } from '@/hooks/use-backend-models';
 import { useContextUsage } from '@/hooks/use-context-usage';
@@ -68,7 +66,10 @@ import {
   type EditorSetting,
 } from '@shared/types';
 
+import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
+import { DebugMessagesPane } from './debug-messages-pane';
 import { PendingMessageInput } from './pending-message-input';
+import { TaskSettingsPane } from './task-settings-pane';
 
 export function TaskPanel({
   taskId,
@@ -396,7 +397,12 @@ export function TaskPanel({
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
-        <div className="flex flex-col border-b border-neutral-700 p-2">
+        <div
+          className={clsx(
+            'flex flex-col border-b border-neutral-700 p-2',
+            TASK_PANEL_HEADER_HEIGHT_CLS,
+          )}
+        >
           {/* Top row: Status, title, and action buttons */}
           <div className="flex items-center gap-3">
             <StatusIndicator

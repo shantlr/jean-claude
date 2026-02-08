@@ -17,6 +17,8 @@ import { useState } from 'react';
 import { useSkills } from '@/hooks/use-skills';
 import type { Skill } from '@shared/skill-types';
 
+import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
+
 function SkillItem({ skill }: { skill: Skill }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -181,7 +183,8 @@ export function TaskSettingsPane({
       {/* Header */}
       <div
         className={clsx(
-          'flex shrink-0 items-center justify-between border-b border-neutral-700 px-4 py-3',
+          'flex shrink-0 items-center justify-between border-b border-neutral-700 px-4 py-2',
+          TASK_PANEL_HEADER_HEIGHT_CLS,
         )}
       >
         <h3 className="text-sm font-medium text-neutral-200">Task Settings</h3>
