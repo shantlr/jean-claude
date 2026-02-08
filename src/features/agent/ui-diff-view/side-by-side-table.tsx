@@ -105,6 +105,7 @@ export function SideBySideDiffTable({
           <SideBySideRowComponent
             key={rowIndex}
             row={row}
+            rowIndex={rowIndex}
             oldTokens={oldTokens}
             newTokens={newTokens}
             leftMatches={matchesByRowAndSide.get(`${rowIndex}-left`) ?? []}
@@ -119,6 +120,7 @@ export function SideBySideDiffTable({
 
 function SideBySideRowComponent({
   row,
+  rowIndex,
   oldTokens,
   newTokens,
   leftMatches,
@@ -126,6 +128,7 @@ function SideBySideRowComponent({
   currentMatch,
 }: {
   row: SideBySideRow;
+  rowIndex: number;
   oldTokens: ThemedToken[][];
   newTokens: ThemedToken[][];
   leftMatches: SearchMatch[];
@@ -133,7 +136,7 @@ function SideBySideRowComponent({
   currentMatch: SearchMatch | null;
 }) {
   return (
-    <tr>
+    <tr data-line-index={rowIndex}>
       {/* Left side (old/deletions) */}
       <SideBySideCell
         line={row.left}

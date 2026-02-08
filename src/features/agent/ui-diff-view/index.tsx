@@ -4,11 +4,13 @@ import type { ReactNode } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
 
+import { ChangeNavigator } from './change-navigator';
 import { DiffMinimap, type ViewportInfo } from './diff-minimap';
 import { DiffSearchBar } from './diff-search-bar';
 import { computeDiff, type DiffLine } from './diff-utils';
 import { getLanguageFromPath } from './language-utils';
 import { SideBySideDiffTable } from './side-by-side-table';
+import { useChangeNavigator } from './use-change-navigator';
 import { useDiffSearch, type SearchMatch } from './use-diff-search';
 import {
   renderTokensWithHighlights,
@@ -138,6 +140,20 @@ export function DiffView({
     scrollContainerRef,
   });
 
+  const {
+    totalHunks,
+    currentHunkIndex,
+    goToNextHunk,
+    goToPreviousHunk,
+    isScrollable,
+  } = useChangeNavigator({
+    lines: state?.lines ?? [],
+    scrollContainerRef,
+    viewMode,
+    oldString,
+    newString,
+  });
+
   if (isLoading || !state) {
     return (
       <div className="flex items-center justify-center rounded bg-black/30 p-2">
@@ -185,7 +201,8 @@ export function DiffView({
         ref={scrollContainerRef}
         onScroll={handleScroll}
         className={clsx(
-          'h-full flex-1 overflow-auto bg-black/30 pt-2 pb-2 font-mono text-xs',
+          'h-full flex-1 overflow-auto bg-black/30 pb-2 font-mono text-xs',
+          isScrollable && totalHunks > 0 ? 'pt-12' : 'pt-2',
           {
             'no-scrollbar': !!withMinimap,
           },
@@ -215,6 +232,14 @@ export function DiffView({
         )}
       </div>
       {!!withMinimap && <DiffMinimap lines={state.lines} viewport={viewport} />}
+      {isScrollable && totalHunks > 0 && (
+        <ChangeNavigator
+          currentHunk={currentHunkIndex + 1}
+          totalHunks={totalHunks}
+          onNext={goToNextHunk}
+          onPrevious={goToPreviousHunk}
+        />
+      )}
     </div>
   );
 }
@@ -338,6 +363,7 @@ function InlineDiffTable({
           return (
             <DiffLineRow
               key={i}
+              lineIndex={i}
               line={line}
               oldTokens={oldTokens}
               newTokens={newTokens}
@@ -361,6 +387,7 @@ function InlineDiffTable({
 }
 
 function DiffLineRow({
+  lineIndex,
   line,
   oldTokens,
   newTokens,
@@ -376,6 +403,7 @@ function DiffLineRow({
   searchMatches,
   currentMatch,
 }: {
+  lineIndex: number;
   line: DiffLine;
   oldTokens: ThemedToken[][];
   newTokens: ThemedToken[][];
@@ -393,15 +421,15 @@ function DiffLineRow({
 }) {
   // Get tokens for this line based on type
   // For deletions, use old tokens; for additions, use new tokens; for context, prefer new
-  const lineIndex =
+  const tokenLineIndex =
     line.type === 'deletion'
       ? (line.oldLineNumber ?? 1) - 1
       : (line.newLineNumber ?? 1) - 1;
 
   const tokens =
     line.type === 'deletion'
-      ? oldTokens[lineIndex] || []
-      : newTokens[lineIndex] || [];
+      ? oldTokens[tokenLineIndex] || []
+      : newTokens[tokenLineIndex] || [];
 
   // Render content with search highlights
   const renderedContent =
@@ -425,6 +453,7 @@ function DiffLineRow({
   return (
     <>
       <tr
+        data-line-index={lineIndex}
         className={clsx({
           'bg-blue-500/30': isSelected,
           'bg-blue-500/10': !isSelected && isInCommentRange,
