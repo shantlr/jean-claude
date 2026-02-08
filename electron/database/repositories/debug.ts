@@ -5,13 +5,21 @@ import type { Database } from '../schema';
 
 type TableName = keyof Database;
 
-const ALLOWED_TABLES: TableName[] = [
-  'providers',
-  'projects',
-  'tasks',
-  'agent_messages',
-  'settings',
-];
+const ALL_TABLES: Record<TableName, true> = {
+  tokens: true,
+  providers: true,
+  projects: true,
+  tasks: true,
+  agent_messages: true,
+  raw_messages: true,
+  settings: true,
+  project_commands: true,
+  mcp_templates: true,
+  project_mcp_overrides: true,
+  task_summaries: true,
+};
+
+const ALLOWED_TABLES = Object.keys(ALL_TABLES) as TableName[];
 
 export interface QueryTableParams {
   table: string;
