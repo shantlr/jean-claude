@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 
 import { dbg } from '../lib/debug';
+import { isEnoent } from '../lib/fs';
 
 export interface ParsedSkill {
   name: string;
@@ -23,14 +24,6 @@ interface SkillFrontmatter {
  * Parse YAML frontmatter from a SKILL.md file content.
  * Frontmatter is delimited by --- at the start and end.
  */
-
-function isEnoent(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    'code' in error &&
-    (error as { code?: string }).code === 'ENOENT'
-  );
-}
 
 function parseFrontmatter(content: string): SkillFrontmatter {
   const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);

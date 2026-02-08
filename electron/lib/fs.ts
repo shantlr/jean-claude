@@ -11,3 +11,14 @@ export async function pathExists(p: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Checks if an error is an ENOENT (file/directory not found) error.
+ */
+export function isEnoent(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    'code' in error &&
+    (error as { code?: string }).code === 'ENOENT'
+  );
+}

@@ -191,6 +191,7 @@ export interface WorktreeStatus {
   hasUncommittedChanges: boolean;
   hasStagedChanges: boolean;
   hasUnstagedChanges: boolean;
+  worktreeDeleted?: boolean;
 }
 
 export interface MergeWorktreeResult {

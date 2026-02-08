@@ -8,7 +8,7 @@ import { nanoid } from 'nanoid';
 
 import { ProjectRepository } from '../database/repositories/projects';
 import { dbg } from '../lib/debug';
-import { pathExists } from '../lib/fs';
+import { isEnoent, pathExists } from '../lib/fs';
 
 import { installMcpForWorktree } from './mcp-template-service';
 import { buildWorktreeSettings } from './permission-settings-service';
@@ -436,7 +436,7 @@ export async function getWorktreeDiff(
   } catch (error) {
     dbg.worktree('Error getting diff: %O', error);
     // If we get ENOENT, the worktree was likely deleted between our check and the git command
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+    if (isEnoent(error)) {
       return { files: [], worktreeDeleted: true };
     }
     throw error;
@@ -681,6 +681,7 @@ export interface WorktreeStatus {
   hasUncommittedChanges: boolean;
   hasStagedChanges: boolean;
   hasUnstagedChanges: boolean;
+  worktreeDeleted?: boolean;
 }
 
 /**
@@ -716,6 +717,15 @@ export async function getWorktreeStatus(
       hasUnstagedChanges,
     };
   } catch (error) {
+    // If we get ENOENT, the worktree was likely deleted
+    if (isEnoent(error)) {
+      return {
+        hasUncommittedChanges: false,
+        hasStagedChanges: false,
+        hasUnstagedChanges: false,
+        worktreeDeleted: true,
+      };
+    }
     throw new Error(`Failed to get worktree status: ${error}`);
   }
 }
