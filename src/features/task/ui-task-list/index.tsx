@@ -8,7 +8,7 @@ import { PrSidebarList } from '@/features/pull-request/ui-pr-sidebar-list';
 import { TaskSummaryCard } from '@/features/task/ui-task-summary-card';
 import { useProjects } from '@/hooks/use-projects';
 import { useAllActiveTasks, useAllCompletedTasks } from '@/hooks/use-tasks';
-import { useProjectFilter, useSidebarTab } from '@/stores/navigation';
+import { useCurrentVisibleProject, useSidebarTab } from '@/stores/navigation';
 
 const COMPLETED_TASKS_PAGE_SIZE = 5;
 
@@ -25,7 +25,7 @@ export function TaskList() {
     hasNextPage,
     isFetchingNextPage,
   } = useAllCompletedTasks({ limit: COMPLETED_TASKS_PAGE_SIZE });
-  const { projectFilter } = useProjectFilter();
+  const { projectId } = useCurrentVisibleProject();
   const { sidebarTab } = useSidebarTab();
 
   // Flatten completed tasks from paginated data
@@ -37,18 +37,18 @@ export function TaskList() {
   // Filter tasks by selected project
   const filteredActiveTasks = useMemo(
     () =>
-      projectFilter === 'all'
+      projectId === 'all'
         ? activeTasks
-        : activeTasks.filter((t) => t.projectId === projectFilter),
-    [activeTasks, projectFilter],
+        : activeTasks.filter((t) => t.projectId === projectId),
+    [activeTasks, projectId],
   );
 
   const filteredCompletedTasks = useMemo(
     () =>
-      projectFilter === 'all'
+      projectId === 'all'
         ? completedTasks
-        : completedTasks.filter((t) => t.projectId === projectFilter),
-    [completedTasks, projectFilter],
+        : completedTasks.filter((t) => t.projectId === projectId),
+    [completedTasks, projectId],
   );
 
   // Navigation helpers
@@ -57,7 +57,7 @@ export function TaskList() {
       const task = filteredActiveTasks[index];
       if (task) {
         // If we're in "all" view, stay in all view
-        if (projectFilter === 'all') {
+        if (projectId === 'all') {
           navigate({
             to: '/all/$taskId',
             params: { taskId: task.id },
@@ -70,7 +70,7 @@ export function TaskList() {
         }
       }
     },
-    [filteredActiveTasks, navigate, projectFilter],
+    [filteredActiveTasks, navigate, projectId],
   );
 
   const navigateRelative = useCallback(
@@ -106,8 +106,8 @@ export function TaskList() {
   // 1. If a specific project filter is active, use that project
   // 2. If "all" filter is active and a task is selected, use that task's project
   const selectedProject = useMemo(() => {
-    if (projectFilter !== 'all') {
-      return projects.find((p) => p.id === projectFilter) ?? null;
+    if (projectId !== 'all') {
+      return projects.find((p) => p.id === projectId) ?? null;
     }
     // In "all" view, derive from selected task
     if (currentTaskId) {
@@ -116,19 +116,19 @@ export function TaskList() {
       }
     }
     return null;
-  }, [projectFilter, currentTaskId, projects, selectedTask]);
+  }, [projectId, currentTaskId, projects, selectedTask]);
 
   // Determine if we should show the Tasks/PRs tabs
   // Show only in "all" view OR when selected project has a repo
   const showContentTabs = useMemo(() => {
-    if (projectFilter === 'all') {
+    if (projectId === 'all') {
       // In "all" view, show tabs if any project has a repo
       return projects.some((p) => p.repoId);
     }
     // In specific project view, show tabs if that project has a repo
-    const project = projects.find((p) => p.id === projectFilter);
+    const project = projects.find((p) => p.id === projectId);
     return !!project?.repoId;
-  }, [projectFilter, projects]);
+  }, [projectId, projects]);
 
   // Keyboard bindings for task navigation
   useCommands('task-list-navigation', [

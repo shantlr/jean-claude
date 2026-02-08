@@ -1,3 +1,4 @@
+import { useNavigate, useParams, useRouterState } from '@tanstack/react-router';
 import { useCallback } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -68,9 +69,6 @@ interface NavigationState {
   // App-level: sidebar width (global setting)
   sidebarWidth: number;
 
-  // App-level: project filter for session list ('all' or specific projectId)
-  projectFilter: string | 'all';
-
   // App-level: sidebar content tab ('tasks' or 'prs')
   sidebarTab: 'tasks' | 'prs';
 
@@ -84,7 +82,6 @@ interface NavigationState {
   setLastLocation: (location: LastLocation) => void;
   setDiffFileTreeWidth: (width: number) => void;
   setSidebarWidth: (width: number) => void;
-  setProjectFilter: (filter: string | 'all') => void;
   setSidebarTab: (tab: 'tasks' | 'prs') => void;
   setLastTaskForProject: (projectId: string, taskId: string) => void;
   setTaskRightPane: (taskId: string, pane: RightPane | null) => void;
@@ -101,7 +98,6 @@ const useStore = create<NavigationState>()(
       lastLocation: { type: 'none' } as LastLocation,
       diffFileTreeWidth: DEFAULT_DIFF_FILE_TREE_WIDTH,
       sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
-      projectFilter: 'all' as string | 'all',
       sidebarTab: 'tasks' as 'tasks' | 'prs',
       lastTaskByProject: {},
       taskState: {},
@@ -118,8 +114,6 @@ const useStore = create<NavigationState>()(
             MAX_SIDEBAR_WIDTH,
           ),
         }),
-
-      setProjectFilter: (filter) => set({ projectFilter: filter }),
 
       setSidebarTab: (tab) => set({ sidebarTab: tab }),
 
@@ -249,11 +243,77 @@ export function useLastLocation() {
   return { lastLocation, setLastLocation };
 }
 
-// Hook for project filter
-export function useProjectFilter() {
-  const projectFilter = useStore((state) => state.projectFilter);
-  const setProjectFilter = useStore((state) => state.setProjectFilter);
-  return { projectFilter, setProjectFilter };
+// Hook for current route-visible project
+export function useCurrentVisibleProject() {
+  const navigate = useNavigate();
+  const params = useParams({ strict: false });
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+
+  const projectId = (() => {
+    const segments = pathname.split('/').filter(Boolean);
+    if (segments[0] !== 'projects') {
+      return 'all' as const;
+    }
+
+    const routeProjectId = segments[1];
+    if (!routeProjectId || routeProjectId === 'new') {
+      return 'all' as const;
+    }
+
+    return decodeURIComponent(routeProjectId);
+  })();
+
+  const moveToProject = useCallback(
+    (nextProjectId: string | 'all') => {
+      if (nextProjectId === projectId) {
+        return;
+      }
+
+      if (nextProjectId === 'all') {
+        const taskId = params.taskId;
+        if (typeof taskId === 'string') {
+          navigate({ to: '/all/$taskId', params: { taskId } });
+          return;
+        }
+
+        const projectId = params.projectId;
+        const prId = params.prId;
+        if (typeof projectId === 'string' && typeof prId === 'string') {
+          navigate({
+            to: '/all/prs/$projectId/$prId',
+            params: { projectId, prId },
+          });
+          return;
+        }
+
+        if (typeof projectId === 'string' && pathname.includes('/prs')) {
+          navigate({
+            to: '/all/prs/$projectId',
+            params: { projectId },
+          });
+        }
+
+        return;
+      }
+
+      navigate({
+        to: '/projects/$projectId',
+        params: { projectId: nextProjectId },
+      });
+    },
+    [
+      navigate,
+      params.prId,
+      params.projectId,
+      params.taskId,
+      pathname,
+      projectId,
+    ],
+  );
+
+  return { projectId, moveToProject };
 }
 
 // Hook for sidebar tab

@@ -8,7 +8,7 @@ import { Kbd } from '@/common/ui/kbd';
 import { StatusIndicator } from '@/features/task/ui-status-indicator';
 import type { TaskWithProject } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/time';
-import { useProjectFilter } from '@/stores/navigation';
+import { useCurrentVisibleProject } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 
 import type { TaskStatus } from '../../../../shared/types';
@@ -38,7 +38,7 @@ export function TaskSummaryCard({
   const router = useRouter();
   const unreadCount = getUnreadCount(task);
   const taskState = useTaskMessagesStore((s) => s.tasks[task.id]);
-  const { projectFilter } = useProjectFilter();
+  const { projectId } = useCurrentVisibleProject();
   const hasPendingPermission = !!taskState?.pendingPermission;
   const hasPendingQuestion = !!taskState?.pendingQuestion;
   const needsAttention = hasPendingPermission || hasPendingQuestion;
@@ -55,7 +55,7 @@ export function TaskSummaryCard({
 
   const handleNavigate = () => {
     // If we're in "all" view, stay in all view
-    if (projectFilter === 'all') {
+    if (projectId === 'all') {
       router.navigate({
         to: '/all/$taskId',
         params: { taskId: task.id },

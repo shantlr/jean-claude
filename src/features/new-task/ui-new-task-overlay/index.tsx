@@ -625,7 +625,7 @@ export function NewTaskOverlay({
     inputMode === 'search' &&
       searchStep === 'select' && {
         label: 'Open Highlighted Work Item in Browser',
-        shortcut: 'cmd+o',
+        shortcut: 'cmd+shift+o',
         handler: () => {
           openHighlightedWorkItem();
         },

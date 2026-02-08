@@ -70,6 +70,14 @@ function createWindow() {
     return { action: 'deny' };
   });
 
+  mainWindow.on('enter-full-screen', () => {
+    mainWindow.webContents.send('windowState:fullscreen-changed', true);
+  });
+
+  mainWindow.on('leave-full-screen', () => {
+    mainWindow.webContents.send('windowState:fullscreen-changed', false);
+  });
+
   if (process.env.ELECTRON_RENDERER_URL) {
     dbg.main('Loading dev URL: %s', process.env.ELECTRON_RENDERER_URL);
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);

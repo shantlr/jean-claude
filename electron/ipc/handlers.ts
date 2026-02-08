@@ -114,6 +114,11 @@ import {
 export function registerIpcHandlers() {
   dbg.ipc('Registering IPC handlers');
 
+  ipcMain.handle('windowState:getIsFullscreen', (event) => {
+    const currentWindow = BrowserWindow.fromWebContents(event.sender);
+    return currentWindow?.isFullScreen() ?? false;
+  });
+
   // Projects
   ipcMain.handle('projects:findAll', () => ProjectRepository.findAll());
   ipcMain.handle('projects:findById', (_, id: string) =>

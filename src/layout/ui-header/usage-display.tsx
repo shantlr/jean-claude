@@ -71,36 +71,6 @@ const LEVEL_BG_COLORS: Record<UsageLevel, string> = {
   critical: 'bg-red-500',
 };
 
-/**
- * Fun fire effect shown when rate limit usage is critical (ratio >= 1.5).
- * More fire emojis and faster animation as the ratio gets worse.
- */
-function FireIndicator({ ratio }: { ratio: number }) {
-  // Scale the intensity: 1.5 = mild, 2.0 = moderate, 2.5+ = inferno
-  const flames = ratio >= 2.5 ? '🔥🔥🔥' : ratio >= 2.0 ? '🔥🔥' : '🔥';
-  const label =
-    ratio >= 2.5
-      ? 'This is fine 🙃'
-      : ratio >= 2.0
-        ? 'Getting toasty...'
-        : 'Running hot!';
-  // Faster flicker at higher ratios
-  const duration = ratio >= 2.5 ? '0.3s' : ratio >= 2.0 ? '0.5s' : '0.8s';
-
-  return (
-    <span
-      className="inline-flex cursor-default items-center select-none"
-      title={label}
-      style={{
-        animation: `fire-flicker ${duration} ease-in-out infinite`,
-        transformOrigin: 'bottom center',
-      }}
-    >
-      <span className="text-xs">{flames}</span>
-    </span>
-  );
-}
-
 export function UsageDisplay() {
   const { data: result, isLoading, isError } = useClaudeUsage();
 
@@ -153,6 +123,7 @@ export function UsageDisplay() {
     ? usageRatio.toFixed(1)
     : '∞';
   const isCritical = level === 'critical';
+  const isMaxedOut = fiveHour.utilization >= 100;
 
   return (
     <div className="flex items-center gap-3">
@@ -161,13 +132,13 @@ export function UsageDisplay() {
         <div
           className={clsx(
             'relative h-1.5 w-20 overflow-hidden rounded-full bg-neutral-700',
-            isCritical && 'fire-bar',
+            isCritical && !isMaxedOut && 'fire-bar',
           )}
         >
           <div
             className={clsx(
               'absolute top-0 left-0 h-full rounded-full transition-all duration-300',
-              LEVEL_BG_COLORS[level],
+              isMaxedOut ? 'bg-red-500' : LEVEL_BG_COLORS[level],
             )}
             style={{ width: `${percentage}%` }}
           />
@@ -175,8 +146,6 @@ export function UsageDisplay() {
         <span className={clsx('text-xs font-medium', LEVEL_COLORS[level])}>
           {fiveHour.utilization.toFixed(0)}% ({formattedRatio})
         </span>
-        {/* Fire indicators at critical usage */}
-        {isCritical && <FireIndicator ratio={usageRatio} />}
       </div>
 
       {/* Reset time */}

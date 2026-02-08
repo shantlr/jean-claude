@@ -12,7 +12,7 @@ import {
 } from '@/hooks/use-pull-requests';
 import { useCurrentAzureUser } from '@/hooks/use-work-items';
 import type { AzureDevOpsPullRequest } from '@/lib/api';
-import { useProjectFilter, useSidebarTab } from '@/stores/navigation';
+import { useCurrentVisibleProject, useSidebarTab } from '@/stores/navigation';
 
 import { PrListItem } from '../ui-pr-list-item';
 
@@ -68,7 +68,7 @@ function SectionHeader({ title }: { title: string }) {
 export function PrSidebarList() {
   const params = useParams({ strict: false });
   const currentPrId = params.prId as string | undefined;
-  const { projectFilter } = useProjectFilter();
+  const { projectId } = useCurrentVisibleProject();
   const { sidebarTab } = useSidebarTab();
   const { data: projects = [] } = useProjects();
 
@@ -111,12 +111,12 @@ export function PrSidebarList() {
 
   // Get the selected project (when not in "all" view)
   const selectedProject = useMemo(() => {
-    if (projectFilter === 'all') return null;
-    return projects.find((p) => p.id === projectFilter) ?? null;
-  }, [projectFilter, projects]);
+    if (projectId === 'all') return null;
+    return projects.find((p) => p.id === projectId) ?? null;
+  }, [projectId, projects]);
 
   // Determine which data to use
-  const isAllView = projectFilter === 'all';
+  const isAllView = projectId === 'all';
 
   // Get API status for fetching
   const apiStatus = getApiStatus(tab);

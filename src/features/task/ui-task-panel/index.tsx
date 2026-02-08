@@ -325,7 +325,7 @@ export function TaskPanel({
     },
     {
       label: 'Open Project in Editor',
-      shortcut: 'cmd+o',
+      shortcut: 'cmd+shift+e',
       section: 'Task',
       handler: () => {
         handleOpenInEditor();
@@ -418,7 +418,7 @@ export function TaskPanel({
             <button
               onClick={handleOpenInEditor}
               className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-1 text-sm font-medium text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
-              title={`Open project in editor (${formatKeyForDisplay('cmd+o')})`}
+              title={`Open project in editor (${formatKeyForDisplay('cmd+shift+e')})`}
             >
               <ExternalLink className="h-4 w-4" />
               <span className="overflow-hidden text-ellipsis whitespace-nowrap">

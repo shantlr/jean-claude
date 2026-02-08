@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { Loader2, Settings } from 'lucide-react';
-import { useMemo, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 
 import { useProjects } from '@/hooks/use-projects';
 import { api } from '@/lib/api';
@@ -8,14 +8,15 @@ import {
   getRunningJobsCount,
   useBackgroundJobsStore,
 } from '@/stores/background-jobs';
-import { useProjectFilter } from '@/stores/navigation';
+import { useCurrentVisibleProject } from '@/stores/navigation';
 import { useOverlaysStore } from '@/stores/overlays';
 
 import { UsageDisplay } from './usage-display';
 
 export function Header() {
   const isMac = api.platform === 'darwin';
-  const { projectFilter } = useProjectFilter();
+  const [isWindowFullscreen, setIsWindowFullscreen] = useState(false);
+  const { projectId } = useCurrentVisibleProject();
   const { data: projects = [] } = useProjects();
   const openOverlay = useOverlaysStore((state) => state.open);
   const jobs = useBackgroundJobsStore((state) => state.jobs);
@@ -23,13 +24,39 @@ export function Header() {
   const runningJobsCount = useMemo(() => getRunningJobsCount(jobs), [jobs]);
 
   const selectedProjectLabel = useMemo(() => {
-    if (projectFilter === 'all') {
+    if (projectId === 'all') {
       return 'All Projects';
     }
 
-    const project = projects.find((entry) => entry.id === projectFilter);
+    const project = projects.find((entry) => entry.id === projectId);
     return project?.name ?? 'Unknown Project';
-  }, [projectFilter, projects]);
+  }, [projectId, projects]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const syncFullscreenState = async () => {
+      const isFullscreen = await api.windowState.getIsFullscreen();
+      if (!isCancelled) {
+        setIsWindowFullscreen(isFullscreen);
+      }
+    };
+
+    syncFullscreenState().catch(() => {
+      if (!isCancelled) {
+        setIsWindowFullscreen(false);
+      }
+    });
+
+    const unsubscribe = api.windowState.onFullscreenChange((isFullscreen) => {
+      setIsWindowFullscreen(isFullscreen);
+    });
+
+    return () => {
+      isCancelled = true;
+      unsubscribe();
+    };
+  }, []);
 
   return (
     <header
@@ -37,7 +64,7 @@ export function Header() {
       style={{ WebkitAppRegion: 'drag' } as CSSProperties}
     >
       {/* Traffic light padding on macOS */}
-      {isMac && <div className="w-[70px]" />}
+      {isMac && !isWindowFullscreen && <div className="w-[70px]" />}
 
       <div className="flex min-w-0 flex-1 px-2">
         <button

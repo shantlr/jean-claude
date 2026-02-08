@@ -47,7 +47,7 @@ export function WorkItemDetails({
         <WorkItemTypeIcon type={workItemType} />
         <span className="text-sm font-medium text-neutral-400">#{id}</span>
         <span className="ml-auto flex items-center gap-1 text-xs text-neutral-500">
-          <Kbd shortcut="cmd+o" /> open
+          <Kbd shortcut="cmd+shift+o" /> open
         </span>
       </div>
 

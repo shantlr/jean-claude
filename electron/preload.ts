@@ -8,6 +8,16 @@ import type {
 
 contextBridge.exposeInMainWorld('api', {
   platform: process.platform,
+  windowState: {
+    getIsFullscreen: () => ipcRenderer.invoke('windowState:getIsFullscreen'),
+    onFullscreenChange: (callback: (isFullscreen: boolean) => void) => {
+      const handler = (_: unknown, isFullscreen: boolean) =>
+        callback(isFullscreen);
+      ipcRenderer.on('windowState:fullscreen-changed', handler);
+      return () =>
+        ipcRenderer.removeListener('windowState:fullscreen-changed', handler);
+    },
+  },
   projects: {
     findAll: () => ipcRenderer.invoke('projects:findAll'),
     findById: (id: string) => ipcRenderer.invoke('projects:findById', id),

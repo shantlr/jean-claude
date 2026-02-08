@@ -27,7 +27,9 @@ button {
 @utility running-border {
   position: relative;
   isolation: isolate;
-  background: linear-gradient(var(--color-neutral-800), var(--color-neutral-800)) padding-box,
+  background:
+    linear-gradient(var(--color-neutral-800), var(--color-neutral-800))
+      padding-box,
     conic-gradient(
         from var(--gradient-angle),
         var(--color-blue-500),
@@ -38,7 +40,8 @@ button {
       border-box;
   border: 1px solid transparent;
   animation: gradient-rotate 1.5s linear infinite;
-  box-shadow: 0 0 6px 0px color-mix(in srgb, var(--color-blue-500) 35%, transparent);
+  box-shadow: 0 0 6px 0px
+    color-mix(in srgb, var(--color-blue-500) 35%, transparent);
 }
 
 /* Fire flicker animation for critical rate limit usage */
@@ -69,11 +72,13 @@ button {
 @keyframes fire-glow {
   0%,
   100% {
-    box-shadow: 0 0 4px 0 var(--color-red-500),
+    box-shadow:
+      0 0 4px 0 var(--color-red-500),
       0 0 8px 0 color-mix(in srgb, var(--color-orange-500) 40%, transparent);
   }
   50% {
-    box-shadow: 0 0 6px 1px var(--color-red-500),
+    box-shadow:
+      0 0 6px 1px var(--color-red-500),
       0 0 12px 2px color-mix(in srgb, var(--color-orange-500) 60%, transparent);
   }
 }
@@ -82,10 +87,113 @@ button {
   animation: fire-glow 0.8s ease-in-out infinite;
 }
 
+@keyframes cat-bongo-bob {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-0.4px) scale(1.02);
+  }
+}
+
+@utility cat-bongo-badge {
+  display: inline-flex;
+  color: color-mix(
+    in srgb,
+    var(--color-amber-300) 70%,
+    var(--color-neutral-200)
+  );
+}
+
+@utility cat-bongo-svg-typing {
+  transform-origin: 50% 85%;
+  animation: cat-bongo-bob 0.45s ease-in-out infinite;
+}
+
+@utility cat-bongo-svg-idle {
+  transform-origin: 50% 85%;
+}
+
+@keyframes cat-bongo-paw-left {
+  0% {
+    transform: translateX(0) translateY(0);
+  }
+  35% {
+    transform: translateX(-0.5px) translateY(-1px);
+  }
+  70% {
+    transform: translateX(0.2px) translateY(0.2px);
+  }
+}
+
+@keyframes cat-bongo-paw-right {
+  0% {
+    transform: translateX(0.2px) translateY(0.1px);
+  }
+  35% {
+    transform: translateX(0) translateY(0);
+  }
+  70% {
+    transform: translateX(0.5px) translateY(-1px);
+  }
+}
+
+.cat-bongo-paw-left {
+  transform-origin: center;
+  animation: cat-bongo-paw-left 0.45s ease-in-out infinite;
+}
+
+.cat-bongo-paw-right {
+  transform-origin: center;
+  animation: cat-bongo-paw-right 0.45s ease-in-out infinite;
+}
+
+@keyframes cat-bongo-tap {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(1px);
+  }
+  45% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+}
+
+@utility cat-bongo-tap {
+  display: inline-block;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  animation: cat-bongo-tap 0.45s ease-in-out infinite;
+}
+
+@keyframes cat-sleep-z-drift {
+  0% {
+    opacity: 0;
+    transform: translateY(2px) translateX(0) scale(0.9);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px) translateX(2px) scale(1.08);
+  }
+}
+
+@utility cat-sleep-z {
+  display: inline-block;
+  line-height: 1;
+  animation: cat-sleep-z-drift 1.5s ease-out infinite;
+}
+
 @utility running-border-selected {
   position: relative;
   isolation: isolate;
-  background: linear-gradient(var(--color-neutral-700), var(--color-neutral-700)) padding-box,
+  background:
+    linear-gradient(var(--color-neutral-700), var(--color-neutral-700))
+      padding-box,
     conic-gradient(
         from var(--gradient-angle),
         var(--color-blue-500),
@@ -96,14 +204,17 @@ button {
       border-box;
   border: 1px solid transparent;
   animation: gradient-rotate 1.5s linear infinite;
-  box-shadow: 0 0 6px 0px color-mix(in srgb, var(--color-blue-500) 50%, transparent);
+  box-shadow: 0 0 6px 0px
+    color-mix(in srgb, var(--color-blue-500) 50%, transparent);
 }
 
 /* Animated gradient border for permission requests (yellow/orange) */
 @utility permission-border {
   position: relative;
   isolation: isolate;
-  background: linear-gradient(var(--color-neutral-800), var(--color-neutral-800)) padding-box,
+  background:
+    linear-gradient(var(--color-neutral-800), var(--color-neutral-800))
+      padding-box,
     conic-gradient(
         from var(--gradient-angle),
         var(--color-yellow-500),
@@ -114,13 +225,16 @@ button {
       border-box;
   border: 1px solid transparent;
   animation: gradient-rotate 2s linear infinite;
-  box-shadow: 0 0 6px 0px color-mix(in srgb, var(--color-yellow-500) 35%, transparent);
+  box-shadow: 0 0 6px 0px
+    color-mix(in srgb, var(--color-yellow-500) 35%, transparent);
 }
 
 @utility permission-border-selected {
   position: relative;
   isolation: isolate;
-  background: linear-gradient(var(--color-neutral-700), var(--color-neutral-700)) padding-box,
+  background:
+    linear-gradient(var(--color-neutral-700), var(--color-neutral-700))
+      padding-box,
     conic-gradient(
         from var(--gradient-angle),
         var(--color-yellow-500),
@@ -131,14 +245,17 @@ button {
       border-box;
   border: 1px solid transparent;
   animation: gradient-rotate 2s linear infinite;
-  box-shadow: 0 0 6px 0px color-mix(in srgb, var(--color-yellow-500) 50%, transparent);
+  box-shadow: 0 0 6px 0px
+    color-mix(in srgb, var(--color-yellow-500) 50%, transparent);
 }
 
 /* Animated gradient border for question requests (teal/blue) */
 @utility question-border {
   position: relative;
   isolation: isolate;
-  background: linear-gradient(var(--color-neutral-800), var(--color-neutral-800)) padding-box,
+  background:
+    linear-gradient(var(--color-neutral-800), var(--color-neutral-800))
+      padding-box,
     conic-gradient(
         from var(--gradient-angle),
         var(--color-teal-500),
@@ -149,13 +266,16 @@ button {
       border-box;
   border: 1px solid transparent;
   animation: gradient-rotate 2s linear infinite;
-  box-shadow: 0 0 6px 0px color-mix(in srgb, var(--color-teal-500) 35%, transparent);
+  box-shadow: 0 0 6px 0px
+    color-mix(in srgb, var(--color-teal-500) 35%, transparent);
 }
 
 @utility question-border-selected {
   position: relative;
   isolation: isolate;
-  background: linear-gradient(var(--color-neutral-700), var(--color-neutral-700)) padding-box,
+  background:
+    linear-gradient(var(--color-neutral-700), var(--color-neutral-700))
+      padding-box,
     conic-gradient(
         from var(--gradient-angle),
         var(--color-teal-500),
@@ -166,5 +286,6 @@ button {
       border-box;
   border: 1px solid transparent;
   animation: gradient-rotate 2s linear infinite;
-  box-shadow: 0 0 6px 0px color-mix(in srgb, var(--color-teal-500) 50%, transparent);
+  box-shadow: 0 0 6px 0px
+    color-mix(in srgb, var(--color-teal-500) 50%, transparent);
 }

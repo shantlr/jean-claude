@@ -245,6 +245,12 @@ export type UnsubscribeFn = () => void;
 
 export interface Api {
   platform: typeof process.platform;
+  windowState: {
+    getIsFullscreen: () => Promise<boolean>;
+    onFullscreenChange: (
+      callback: AgentEventCallback<boolean>,
+    ) => UnsubscribeFn;
+  };
   projects: {
     findAll: () => Promise<Project[]>;
     findById: (id: string) => Promise<Project | undefined>;
@@ -598,6 +604,10 @@ export const api: Api = hasWindowApi
   ? window.api
   : ({
       platform: 'darwin',
+      windowState: {
+        getIsFullscreen: async () => false,
+        onFullscreenChange: () => () => {},
+      },
       projects: {
         findAll: async () => [],
         findById: async () => undefined,
