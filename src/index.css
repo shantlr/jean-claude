@@ -188,6 +188,23 @@ button {
   animation: cat-sleep-z-drift 1.5s ease-out infinite;
 }
 
+/* Pulse glow on Jobs button when a task is sent to background */
+@keyframes jobs-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+.jobs-pulse {
+  animation: jobs-pulse 0.6s ease-out;
+}
+
 @utility running-border-selected {
   position: relative;
   isolation: isolate;

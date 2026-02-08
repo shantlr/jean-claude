@@ -106,6 +106,7 @@ export function Header() {
       >
         <button
           type="button"
+          data-animation-target="jobs-button"
           onClick={() => openOverlay('background-jobs')}
           className="relative flex h-6 items-center gap-1 rounded px-2 text-xs text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white"
         >

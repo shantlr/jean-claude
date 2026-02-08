@@ -12,6 +12,7 @@ import React, {
 } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
+import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { Kbd } from '@/common/ui/kbd';
 import {
   getModelLabel,
@@ -115,9 +116,15 @@ export function NewTaskOverlay({
   const markJobFailed = useBackgroundJobsStore((state) => state.markJobFailed);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [highlightedWorkItemId, setHighlightedWorkItemId] = useState<
     string | null
   >(null);
+
+  const { triggerAnimation } = useShrinkToTarget({
+    panelRef,
+    targetSelector: '[data-animation-target="jobs-button"]',
+  });
 
   // Prompt template state (not persisted - derived from selections)
   const [promptTemplate, setPromptTemplate] = useState<string>('');
@@ -484,9 +491,13 @@ export function NewTaskOverlay({
         },
       });
 
-      // Close quickly so user can keep working while creation runs
+      // Animate the overlay shrinking toward the Jobs button, then reset
+      // the draft so the overlay shows a fresh state for chaining
+      void triggerAnimation();
       clearDraft();
-      onClose();
+
+      // Refocus the input for the next task
+      setTimeout(() => inputRef.current?.focus(), 50);
 
       void createTaskMutation
         .mutateAsync({
@@ -536,7 +547,7 @@ export function NewTaskOverlay({
     queryClient,
     markJobSucceeded,
     markJobFailed,
-    onClose,
+    triggerAnimation,
   ]);
 
   // Handle Cmd+Enter based on current state
@@ -751,6 +762,7 @@ export function NewTaskOverlay({
       onClick={handleOverlayClick}
     >
       <div
+        ref={panelRef}
         className="flex max-h-[80svh] w-[90svw] max-w-[1280px] flex-col overflow-hidden rounded-lg border border-neutral-700 bg-neutral-800 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5),0_0_100px_-20px_rgba(0,0,0,0.6)]"
         onClick={handleModalClick}
       >
@@ -916,98 +928,50 @@ export function NewTaskOverlay({
           </div>
 
           <div className="flex items-center gap-3 text-xs whitespace-nowrap text-neutral-500">
-            {createTaskMutation.isPending ? (
-              <span className="flex items-center gap-2 text-neutral-300">
-                <svg
-                  className="h-4 w-4 animate-spin"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                Creating task...
+            {showSearchInput && (
+              <span className="flex items-center gap-1">
+                <Kbd shortcut="tab" /> project
               </span>
-            ) : createTaskMutation.isError ? (
-              <span className="flex items-center gap-2 text-red-400">
-                <svg
-                  className="h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-                  />
-                </svg>
-                {createTaskMutation.error instanceof Error
-                  ? createTaskMutation.error.message
-                  : 'Failed to create task'}
+            )}
+            {canToggleMode && showSearchInput && (
+              <span className="flex items-center gap-1">
+                <Kbd shortcut="cmd+m" />{' '}
+                {inputMode === 'search' ? 'prompt' : 'search'}
               </span>
-            ) : (
+            )}
+            {inputMode === 'search' && searchStep === 'select' && (
               <>
-                {showSearchInput && (
-                  <span className="flex items-center gap-1">
-                    <Kbd shortcut="tab" /> project
-                  </span>
-                )}
-                {canToggleMode && showSearchInput && (
-                  <span className="flex items-center gap-1">
-                    <Kbd shortcut="cmd+m" />{' '}
-                    {inputMode === 'search' ? 'prompt' : 'search'}
-                  </span>
-                )}
-                {inputMode === 'search' && searchStep === 'select' && (
-                  <>
-                    <span className="flex items-center gap-1">
-                      <Kbd shortcut="up" /> <Kbd shortcut="down" /> navigate
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Kbd shortcut="enter" /> select
-                    </span>
-                    {canAdvanceToCompose && (
-                      <span className="flex items-center gap-1">
-                        <Kbd shortcut="cmd+enter" /> next
-                      </span>
-                    )}
-                  </>
-                )}
-                {inputMode === 'search' && searchStep === 'compose' && (
-                  <>
-                    <span className="flex items-center gap-1">
-                      <Kbd shortcut="escape" /> back
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Kbd shortcut="cmd+enter" /> start
-                    </span>
-                  </>
-                )}
-                {inputMode === 'prompt' && (
-                  <span className="flex items-center gap-1">
-                    <Kbd shortcut="cmd+enter" /> start
-                  </span>
-                )}
                 <span className="flex items-center gap-1">
-                  <Kbd shortcut="cmd+shift+escape" /> discard
+                  <Kbd shortcut="up" /> <Kbd shortcut="down" /> navigate
+                </span>
+                <span className="flex items-center gap-1">
+                  <Kbd shortcut="enter" /> select
+                </span>
+                {canAdvanceToCompose && (
+                  <span className="flex items-center gap-1">
+                    <Kbd shortcut="cmd+enter" /> next
+                  </span>
+                )}
+              </>
+            )}
+            {inputMode === 'search' && searchStep === 'compose' && (
+              <>
+                <span className="flex items-center gap-1">
+                  <Kbd shortcut="escape" /> back
+                </span>
+                <span className="flex items-center gap-1">
+                  <Kbd shortcut="cmd+enter" /> start
                 </span>
               </>
             )}
+            {inputMode === 'prompt' && (
+              <span className="flex items-center gap-1">
+                <Kbd shortcut="cmd+enter" /> start
+              </span>
+            )}
+            <span className="flex items-center gap-1">
+              <Kbd shortcut="cmd+shift+escape" /> discard
+            </span>
           </div>
         </div>
       </div>
