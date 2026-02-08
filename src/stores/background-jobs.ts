@@ -2,7 +2,7 @@ import { nanoid } from 'nanoid';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import type { InteractionMode, ModelPreference } from '../../shared/types';
+import { api } from '@/lib/api';
 
 export type BackgroundJobType = 'task-creation' | 'summary-generation';
 export type BackgroundJobStatus = 'running' | 'succeeded' | 'failed';
@@ -18,25 +18,13 @@ interface BackgroundJobBase {
   projectId: string | null;
 }
 
-type TaskCreationInput = {
-  projectId: string;
-  prompt: string;
-  interactionMode: InteractionMode;
-  modelPreference: ModelPreference;
-  useWorktree: boolean;
-  sourceBranch?: string | null;
-  workItemIds?: string[] | null;
-  workItemUrls?: string[] | null;
-  autoStart?: boolean;
-};
-
 export type BackgroundJob =
   | (BackgroundJobBase & {
       type: 'task-creation';
       details: {
         projectName: string | null;
         promptPreview: string | null;
-        creationInput: TaskCreationInput;
+        creationInput: Parameters<typeof api.tasks.createWithWorktree>[0];
       };
     })
   | (BackgroundJobBase & {
@@ -55,7 +43,7 @@ type NewBackgroundJobInput =
       details: {
         projectName: string | null;
         promptPreview: string | null;
-        creationInput: TaskCreationInput;
+        creationInput: Parameters<typeof api.tasks.createWithWorktree>[0];
       };
     }
   | {
