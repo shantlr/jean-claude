@@ -3,8 +3,7 @@ import { useState } from 'react';
 
 import { useValidateAzureDevOpsToken } from '@/hooks/use-azure-devops';
 import { useCreateToken } from '@/hooks/use-tokens';
-
-import type { ProviderType } from '../../../../shared/types';
+import type { ProviderType } from '@shared/types';
 
 type Step = 'form' | 'validating';
 

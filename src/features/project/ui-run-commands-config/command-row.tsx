@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import type {
   ProjectCommand,
   UpdateProjectCommand,
-} from '../../../../shared/run-command-types';
+} from '@shared/run-command-types';
 
 import { PortChipInput } from './port-chip-input';
 

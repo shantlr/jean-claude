@@ -10,8 +10,7 @@ import type { TaskWithProject } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/time';
 import { useCurrentVisibleProject } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
-
-import type { TaskStatus } from '../../../../shared/types';
+import type { TaskStatus } from '@shared/types';
 
 function getUnreadCount(task: {
   status: string;

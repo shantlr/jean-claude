@@ -1,14 +1,16 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, ListTodo } from 'lucide-react';
 import { nanoid } from 'nanoid';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 
+import { BackendSelector } from '@/features/agent/ui-backend-selector';
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
 import { ModelSelector } from '@/features/agent/ui-model-selector';
 import { WorkItemsBrowser } from '@/features/agent/ui-work-items-browser';
 import { PromptTextarea } from '@/features/common/ui-prompt-textarea';
 import { useProject, useProjectBranches } from '@/hooks/use-projects';
+import { useBackendsSetting } from '@/hooks/use-settings';
 import { useProjectSkills } from '@/hooks/use-skills';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
 import { useNewTaskFormStore } from '@/stores/new-task-form';
@@ -38,9 +40,21 @@ function NewTask() {
     sourceBranch,
     interactionMode,
     modelPreference,
+    agentBackend,
     workItemIds,
     workItemUrls,
   } = draft;
+
+  // Sync draft backend with project→global default on mount
+  const { data: backendsSetting } = useBackendsSetting();
+  useEffect(() => {
+    if (!backendsSetting || !project) return;
+    const resolved =
+      project.defaultAgentBackend ?? backendsSetting.defaultBackend;
+    if (backendsSetting.enabledBackends.includes(resolved)) {
+      setDraft({ agentBackend: resolved });
+    }
+  }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps -- intentionally sync only on project change
 
   // Determine the effective source branch (draft value or project default)
   const effectiveSourceBranch =
@@ -58,6 +72,7 @@ function NewTask() {
       status: 'waiting',
       interactionMode,
       modelPreference,
+      agentBackend,
       useWorktree,
       workItemIds,
       workItemUrls,
@@ -239,6 +254,10 @@ function NewTask() {
             <ModelSelector
               value={modelPreference}
               onChange={(model) => setDraft({ modelPreference: model })}
+            />
+            <BackendSelector
+              value={agentBackend}
+              onChange={(backend) => setDraft({ agentBackend: backend })}
             />
             <button
               type="button"

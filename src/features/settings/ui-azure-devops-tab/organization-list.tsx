@@ -1,6 +1,5 @@
 import { useProviders } from '@/hooks/use-providers';
-
-import type { Provider } from '../../../../shared/types';
+import type { Provider } from '@shared/types';
 
 import { OrganizationCard } from './organization-card';
 

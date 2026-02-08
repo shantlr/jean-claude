@@ -15,6 +15,7 @@ import { useEffect, useState, useCallback } from 'react';
 
 import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
 import { useCommands } from '@/common/hooks/use-commands';
+import { getModelsForBackend } from '@/features/agent/ui-backend-selector';
 import { ContextUsageDisplay } from '@/features/agent/ui-context-usage-display';
 import { FilePreviewPane } from '@/features/agent/ui-file-preview-pane';
 import { MessageInput } from '@/features/agent/ui-message-input';
@@ -30,6 +31,7 @@ import { StatusIndicator } from '@/features/task/ui-status-indicator';
 import { TaskPrView } from '@/features/task/ui-task-pr-view';
 import { TaskSettingsPane } from '@/features/task/ui-task-settings-pane';
 import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
+import { useBackendModels } from '@/hooks/use-backend-models';
 import { useContextUsage } from '@/hooks/use-context-usage';
 import { useModel, formatModelName } from '@/hooks/use-model';
 import { useProject } from '@/hooks/use-projects';
@@ -58,13 +60,12 @@ import {
 } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import { useTaskPrompt } from '@/stores/task-prompts';
-
 import {
   PRESET_EDITORS,
   type InteractionMode,
   type ModelPreference,
   type EditorSetting,
-} from '../../../../shared/types';
+} from '@shared/types';
 
 export function TaskPanel({
   taskId,
@@ -78,6 +79,9 @@ export function TaskPanel({
   const { data: project } = useProject(projectId ?? '');
   const { data: editorSetting } = useEditorSetting();
   const { data: skills } = useSkills(taskId);
+  const { data: dynamicModels } = useBackendModels(
+    task?.agentBackend ?? 'claude-code',
+  );
   const markAsRead = useMarkTaskAsRead();
   const deleteTask = useDeleteTask();
   const setTaskMode = useSetTaskMode();
@@ -728,6 +732,7 @@ export function TaskPanel({
                 value={task.modelPreference ?? 'default'}
                 onChange={handleModelChange}
                 disabled={isRunning}
+                models={getModelsForBackend(task.agentBackend, dynamicModels)}
               />
               <MessageInput
                 onSend={handleSendMessage}

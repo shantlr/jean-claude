@@ -11,7 +11,7 @@ import {
 } from 'react';
 import type { KeyboardEvent, ChangeEvent, TextareaHTMLAttributes } from 'react';
 
-import type { Skill } from '../../../../shared/skill-types';
+import type { Skill } from '@shared/skill-types';
 
 const COMMANDS = [
   { command: '/init', description: 'Initialize CLAUDE.md in project' },

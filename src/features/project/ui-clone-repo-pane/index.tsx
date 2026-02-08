@@ -12,8 +12,7 @@ import { useState } from 'react';
 
 import { useProviders, useProviderDetails } from '@/hooks/use-providers';
 import { api, ProviderProject, ProviderRepo } from '@/lib/api';
-
-import type { Provider } from '../../../../shared/types';
+import type { Provider } from '@shared/types';
 
 export interface CloneResult {
   path: string;

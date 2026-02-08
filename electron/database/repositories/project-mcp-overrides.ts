@@ -2,7 +2,8 @@
 import type {
   ProjectMcpOverride,
   NewProjectMcpOverride,
-} from '../../../shared/mcp-types';
+} from '@shared/mcp-types';
+
 import { db } from '../index';
 
 function parseRow(row: {

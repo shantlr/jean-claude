@@ -1,25 +1,24 @@
 import type {
-  ToolUseBlock,
-  ToolResultBlock,
-  ContentBlock,
-} from '../../../../shared/agent-types';
+  NormalizedToolUsePart,
+  NormalizedToolResultPart,
+} from '@shared/agent-backend-types';
 
-function getResultLineCount(content: string | ContentBlock[]): number {
-  const text =
-    typeof content === 'string'
-      ? content
-      : content
-          .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
-          .map((b) => b.text)
-          .join('\n');
+function getResultLineCount(content: string | unknown[]): number {
+  if (typeof content === 'string') {
+    return content.split('\n').length;
+  }
+  // NormalizedPart[] — extract text parts
+  const text = (content as Array<{ type: string; text?: string }>)
+    .filter((p) => p.type === 'text' && p.text)
+    .map((p) => p.text!)
+    .join('\n');
   return text.split('\n').length;
 }
 
-function getResultMatchCount(content: string | ContentBlock[]): number | null {
-  const text = typeof content === 'string' ? content : null;
-  if (!text) return null;
+function getResultMatchCount(content: string | unknown[]): number | null {
+  if (typeof content !== 'string') return null;
   // Count non-empty lines as matches for grep/glob results
-  return text.split('\n').filter((line) => line.trim()).length;
+  return content.split('\n').filter((line) => line.trim()).length;
 }
 
 function extractFilename(path: string): string {
@@ -27,14 +26,14 @@ function extractFilename(path: string): string {
 }
 
 export function getToolSummary(
-  block: ToolUseBlock,
-  result?: ToolResultBlock,
+  block: NormalizedToolUsePart,
+  result?: NormalizedToolResultPart,
 ): string {
-  const input = block.input;
+  const input = (block.input ?? {}) as Record<string, unknown>;
   const hasResult = !!result;
-  const isError = result?.is_error;
+  const isError = result?.isError;
 
-  switch (block.name) {
+  switch (block.toolName) {
     case 'Read': {
       const filePath = input.file_path as string;
       const filename = extractFilename(filePath);
@@ -152,9 +151,9 @@ export function getToolSummary(
     }
 
     default: {
-      if (isError) return `Used \`${block.name}\` (error)`;
-      if (hasResult) return `Used \`${block.name}\``;
-      return `Using \`${block.name}\`...`;
+      if (isError) return `Used \`${block.toolName}\` (error)`;
+      if (hasResult) return `Used \`${block.toolName}\``;
+      return `Using \`${block.toolName}\`...`;
     }
   }
 }

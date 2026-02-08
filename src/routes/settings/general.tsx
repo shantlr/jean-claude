@@ -1,19 +1,22 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Check, FolderOpen, Search, Trash2, Loader2 } from 'lucide-react';
+import { Check, FolderOpen, Search, Star, Trash2, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
+import { AVAILABLE_BACKENDS } from '@/features/agent/ui-backend-selector';
 import {
   useScanNonExistentProjects,
   useCleanupClaudeProjects,
 } from '@/hooks/use-claude-projects-cleanup';
 import {
+  useBackendsSetting,
   useEditorSetting,
+  useUpdateBackendsSetting,
   useUpdateEditorSetting,
   useAvailableEditors,
 } from '@/hooks/use-settings';
 import { api, type NonExistentClaudeProject } from '@/lib/api';
-
-import { PRESET_EDITORS, type EditorSetting } from '../../../shared/types';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import { PRESET_EDITORS, type EditorSetting } from '@shared/types';
 
 export const Route = createFileRoute('/settings/general')({
   component: GeneralSettingsPage,
@@ -156,8 +159,111 @@ function GeneralSettingsPage() {
       {/* Divider */}
       <div className="my-8 border-t border-neutral-800" />
 
+      {/* Agent Backends */}
+      <BackendsSettings />
+
+      {/* Divider */}
+      <div className="my-8 border-t border-neutral-800" />
+
       {/* Claude Projects Cleanup */}
       <ClaudeProjectsCleanup />
+    </div>
+  );
+}
+
+function BackendsSettings() {
+  const { data: backendsSetting } = useBackendsSetting();
+  const updateBackends = useUpdateBackendsSetting();
+
+  const enabledBackends = backendsSetting?.enabledBackends ?? ['claude-code'];
+  const defaultBackend = backendsSetting?.defaultBackend ?? 'claude-code';
+
+  const isEnabled = (id: AgentBackendType) => enabledBackends.includes(id);
+  const isDefault = (id: AgentBackendType) => defaultBackend === id;
+
+  const handleToggle = (id: AgentBackendType) => {
+    let next: AgentBackendType[];
+    if (isEnabled(id)) {
+      // Don't allow disabling the last backend
+      if (enabledBackends.length <= 1) return;
+      next = enabledBackends.filter((b) => b !== id);
+    } else {
+      next = [...enabledBackends, id];
+    }
+    // If we just disabled the default, pick the first enabled one
+    const nextDefault = next.includes(defaultBackend)
+      ? defaultBackend
+      : next[0];
+    updateBackends.mutate({
+      enabledBackends: next,
+      defaultBackend: nextDefault,
+    });
+  };
+
+  const handleSetDefault = (id: AgentBackendType) => {
+    if (!isEnabled(id)) return;
+    updateBackends.mutate({ enabledBackends, defaultBackend: id });
+  };
+
+  return (
+    <div>
+      <h2 className="text-lg font-semibold text-neutral-200">Agent Backends</h2>
+      <p className="mt-1 text-sm text-neutral-500">
+        Enable or disable agent backends. The default backend is used when
+        creating new tasks.
+      </p>
+
+      <div className="mt-4 space-y-2">
+        {AVAILABLE_BACKENDS.map((backend) => {
+          const enabled = isEnabled(backend.value);
+          const dflt = isDefault(backend.value);
+
+          return (
+            <div
+              key={backend.value}
+              className={`flex items-center justify-between rounded-lg border px-4 py-3 ${
+                enabled
+                  ? 'border-neutral-700 bg-neutral-800'
+                  : 'border-neutral-800 bg-neutral-900'
+              }`}
+            >
+              <label className="flex cursor-pointer items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={enabled}
+                  onChange={() => handleToggle(backend.value)}
+                  disabled={enabled && enabledBackends.length <= 1}
+                  className="h-4 w-4 rounded border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-neutral-800"
+                />
+                <div>
+                  <div
+                    className={`text-sm font-medium ${enabled ? 'text-neutral-200' : 'text-neutral-500'}`}
+                  >
+                    {backend.label}
+                  </div>
+                  <div className="text-xs text-neutral-500">
+                    {backend.description}
+                  </div>
+                </div>
+              </label>
+
+              {enabled && (
+                <button
+                  onClick={() => handleSetDefault(backend.value)}
+                  className={`flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                    dflt
+                      ? 'bg-blue-500/20 text-blue-400'
+                      : 'text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300'
+                  }`}
+                >
+                  <Star className={`h-3 w-3 ${dflt ? 'fill-blue-400' : ''}`} />
+                  {dflt ? 'Default' : 'Set as default'}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

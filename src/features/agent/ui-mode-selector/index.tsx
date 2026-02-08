@@ -1,7 +1,7 @@
 import { ChevronDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
-import type { InteractionMode } from '../../../../shared/types';
+import type { InteractionMode } from '@shared/types';
 
 const MODES: { value: InteractionMode; label: string; description: string }[] =
   [

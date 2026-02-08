@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
+import { AVAILABLE_BACKENDS } from '@/features/agent/ui-backend-selector';
 import { ProjectMcpSettings } from '@/features/project/ui-project-mcp-settings';
 import { RepoLink } from '@/features/project/ui-repo-link';
 import { RunCommandsConfig } from '@/features/project/ui-run-commands-config';
@@ -12,8 +13,10 @@ import {
   useUpdateProject,
   useDeleteProject,
 } from '@/hooks/use-projects';
+import { useBackendsSetting } from '@/hooks/use-settings';
 import { PROJECT_COLORS } from '@/lib/colors';
 import { useNavigationStore } from '@/stores/navigation';
+import type { AgentBackendType } from '@shared/agent-backend-types';
 
 export const Route = createFileRoute('/projects/$projectId/details')({
   component: ProjectDetails,
@@ -34,7 +37,19 @@ function ProjectDetails() {
   const [name, setName] = useState('');
   const [color, setColor] = useState('');
   const [defaultBranch, setDefaultBranch] = useState('');
+  const [defaultAgentBackend, setDefaultAgentBackend] =
+    useState<AgentBackendType | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Resolve enabled backends from global settings
+  const { data: backendsSetting } = useBackendsSetting();
+  const enabledBackends = useMemo(
+    () =>
+      AVAILABLE_BACKENDS.filter((b) =>
+        (backendsSetting?.enabledBackends ?? ['claude-code']).includes(b.value),
+      ),
+    [backendsSetting],
+  );
 
   // Sync local state when project loads or changes
   useEffect(() => {
@@ -42,6 +57,7 @@ function ProjectDetails() {
       setName(project.name);
       setColor(project.color);
       setDefaultBranch(project.defaultBranch ?? '');
+      setDefaultAgentBackend(project.defaultAgentBackend);
     }
   }, [project]);
 
@@ -70,7 +86,12 @@ function ProjectDetails() {
   async function handleSave() {
     await updateProject.mutateAsync({
       id: projectId,
-      data: { name, color, defaultBranch: defaultBranch || null },
+      data: {
+        name,
+        color,
+        defaultBranch: defaultBranch || null,
+        defaultAgentBackend,
+      },
     });
   }
 
@@ -83,7 +104,8 @@ function ProjectDetails() {
   const hasChanges =
     name !== project.name ||
     color !== project.color ||
-    defaultBranch !== (project.defaultBranch ?? '');
+    defaultBranch !== (project.defaultBranch ?? '') ||
+    defaultAgentBackend !== project.defaultAgentBackend;
 
   return (
     <div className="h-full w-full overflow-auto p-6">
@@ -190,6 +212,42 @@ function ProjectDetails() {
             </select>
             <p className="mt-1 text-xs text-neutral-500">
               The branch that worktrees will merge into
+            </p>
+          </div>
+
+          {/* Default Agent Backend */}
+          <div>
+            <label
+              htmlFor="defaultAgentBackend"
+              className="mb-1 block text-sm font-medium text-neutral-300"
+            >
+              Default agent backend
+            </label>
+            <select
+              id="defaultAgentBackend"
+              value={defaultAgentBackend ?? ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                setDefaultAgentBackend(
+                  val === '' ? null : (val as AgentBackendType),
+                );
+              }}
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white focus:border-neutral-500 focus:outline-none"
+            >
+              <option value="">
+                Use global default
+                {backendsSetting?.defaultBackend
+                  ? ` (${AVAILABLE_BACKENDS.find((b) => b.value === backendsSetting.defaultBackend)?.label ?? backendsSetting.defaultBackend})`
+                  : ''}
+              </option>
+              {enabledBackends.map((b) => (
+                <option key={b.value} value={b.value}>
+                  {b.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-neutral-500">
+              The agent backend used for new tasks in this project
             </p>
           </div>
 

@@ -1,34 +1,52 @@
 import { ChevronDown } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 
-import type { ModelPreference } from '../../../../shared/types';
+import type { ModelPreference } from '@shared/types';
 
-const MODELS: {
-  value: ModelPreference;
-  label: string;
-  description: string;
-}[] = [
+import type { BackendModelOption } from '../ui-backend-selector';
+
+const DEFAULT_MODELS: BackendModelOption[] = [
   { value: 'default', label: 'Default', description: 'Use the default model' },
   { value: 'opus', label: 'Opus', description: 'Most capable model' },
-  { value: 'sonnet', label: 'Sonnet', description: 'Balanced speed & quality' },
-  { value: 'haiku', label: 'Haiku', description: 'Fastest, lightweight tasks' },
+  {
+    value: 'claude-opus-4.5',
+    label: 'Opus 4.5',
+    description: '',
+  },
+  {
+    value: 'sonnet',
+    label: 'Sonnet',
+    description: 'Balanced speed & quality',
+  },
+  {
+    value: 'haiku',
+    label: 'Haiku',
+    description: 'Fastest, lightweight tasks',
+  },
 ];
 
-export const MODEL_PREFERENCES = MODELS.map((m) => m.value);
+export const MODEL_PREFERENCES = DEFAULT_MODELS.map((m) => m.value);
 
 export function ModelSelector({
   value,
   onChange,
   disabled,
+  models,
 }: {
   value: ModelPreference;
   onChange: (model: ModelPreference) => void;
   disabled?: boolean;
+  /** Override available models (e.g. based on backend). Falls back to default list. */
+  models?: BackendModelOption[];
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const selectedModel = MODELS.find((m) => m.value === value) ?? MODELS[0];
+  const effectiveModels = models ?? DEFAULT_MODELS;
+  const selectedModel = useMemo(
+    () => effectiveModels.find((m) => m.value === value) ?? effectiveModels[0],
+    [effectiveModels, value],
+  );
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -70,7 +88,7 @@ export function ModelSelector({
           aria-label="Models"
           className="absolute bottom-full left-0 mb-1 w-56 rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg"
         >
-          {MODELS.map((model) => (
+          {effectiveModels.map((model) => (
             <button
               key={model.value}
               type="button"

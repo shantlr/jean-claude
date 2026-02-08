@@ -4,8 +4,9 @@ import { useState } from 'react';
 import type {
   AgentPermissionEvent,
   PermissionResponse,
-} from '../../../../shared/agent-types';
-import type { InteractionMode } from '../../../../shared/types';
+} from '@shared/agent-types';
+import type { InteractionMode } from '@shared/types';
+
 import { MarkdownContent } from '../ui-markdown-content';
 
 /**

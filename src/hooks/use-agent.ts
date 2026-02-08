@@ -4,11 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTaskMessages } from '@/hooks/use-task-messages';
 import { api } from '@/lib/api';
 import { useTaskMessagesStore } from '@/stores/task-messages';
-
-import type {
-  PermissionResponse,
-  QuestionResponse,
-} from '../../shared/agent-types';
+import type { PermissionResponse, QuestionResponse } from '@shared/agent-types';
 
 export function useAgentStream(taskId: string) {
   const taskMessages = useTaskMessages(taskId);

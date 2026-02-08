@@ -1,6 +1,6 @@
 import { Generated, Insertable, Selectable, Updateable } from 'kysely';
 
-import type { ProviderType, ProjectType, TaskStatus } from '../../shared/types';
+import type { ProviderType, ProjectType, TaskStatus } from '@shared/types';
 
 // Re-export shared types for convenience
 export type {
@@ -19,7 +19,7 @@ export type {
   ProviderType,
   ProjectType,
   TaskStatus,
-} from '../../shared/types';
+} from '@shared/types';
 
 // Database table types with Kysely's Generated for auto-generated columns
 export interface Database {
@@ -28,6 +28,7 @@ export interface Database {
   projects: ProjectTable;
   tasks: TaskTable;
   agent_messages: AgentMessageTable;
+  raw_messages: RawMessageTable;
   settings: SettingsTable;
   project_commands: ProjectCommandTable;
   mcp_templates: McpTemplateTable;
@@ -76,6 +77,8 @@ export interface ProjectTable {
   workItemProviderId: string | null;
   workItemProjectId: string | null;
   workItemProjectName: string | null;
+  // Agent backend (null = use global default)
+  defaultAgentBackend: string | null;
   createdAt: Generated<string>;
   updatedAt: string;
 }
@@ -103,6 +106,7 @@ export interface TaskTable {
   workItemUrls: string | null; // JSON array: ["url1", "url2"]
   pullRequestId: string | null;
   pullRequestUrl: string | null;
+  agentBackend: string; // NOT NULL, no default — must be set explicitly
   createdAt: Generated<string>;
   updatedAt: string;
 }
@@ -112,7 +116,19 @@ export interface AgentMessageTable {
   taskId: string;
   messageIndex: number;
   messageType: string;
-  messageData: string; // JSON stringified AgentMessage
+  normalizedData: string | null; // JSON stringified NormalizedMessage
+  normalizedVersion: number; // Version of normalization logic used
+  rawMessageId: string | null; // FK to raw_messages
+  createdAt: Generated<string>;
+}
+
+export interface RawMessageTable {
+  id: Generated<string>;
+  taskId: string;
+  messageIndex: number;
+  backendSessionId: string | null; // SDK session ID for traceability
+  rawData: string; // Original SDK message JSON
+  rawFormat: string; // Which SDK produced the raw data ('claude-code' | 'opencode')
   createdAt: Generated<string>;
 }
 
@@ -135,6 +151,9 @@ export type UpdateTaskRow = Updateable<TaskTable>;
 
 export type AgentMessageRow = Selectable<AgentMessageTable>;
 export type NewAgentMessageRow = Insertable<AgentMessageTable>;
+
+export type RawMessageRow = Selectable<RawMessageTable>;
+export type NewRawMessageRow = Insertable<RawMessageTable>;
 
 export interface SettingsTable {
   key: string;

@@ -7,23 +7,22 @@ import { promisify } from 'util';
 
 import { BrowserWindow, ipcMain, dialog } from 'electron';
 
-const execAsync = promisify(exec);
-
+import type { AgentBackendType } from '@shared/agent-backend-types';
 import {
   AGENT_CHANNELS,
   PermissionResponse,
   QuestionResponse,
-} from '../../shared/agent-types';
-import type { GlobalPromptResponse } from '../../shared/global-prompt-types';
+} from '@shared/agent-types';
+import type { GlobalPromptResponse } from '@shared/global-prompt-types';
 import type {
   NewMcpServerTemplate,
   UpdateMcpServerTemplate,
   NewProjectMcpOverride,
-} from '../../shared/mcp-types';
+} from '@shared/mcp-types';
 import type {
   NewProjectCommand,
   UpdateProjectCommand,
-} from '../../shared/run-command-types';
+} from '@shared/run-command-types';
 import {
   PRESET_EDITORS,
   type InteractionMode,
@@ -32,7 +31,8 @@ import {
   type AppSettings,
   type NewToken,
   type UpdateToken,
-} from '../../shared/types';
+} from '@shared/types';
+
 import {
   ProjectRepository,
   TaskRepository,
@@ -77,6 +77,7 @@ import {
   updateWorkItemState,
   type CloneRepositoryParams,
 } from '../services/azure-devops-service';
+import * as backendModelsService from '../services/backend-models-service';
 import { handlePromptResponse } from '../services/global-prompt-service';
 import {
   MCP_PRESETS,
@@ -110,6 +111,8 @@ import {
   mergeWorktree,
   pushBranch,
 } from '../services/worktree-service';
+
+const execAsync = promisify(exec);
 
 export function registerIpcHandlers() {
   dbg.ipc('Registering IPC handlers');
@@ -1080,6 +1083,11 @@ export function registerIpcHandlers() {
 
   // Usage
   ipcMain.handle('agent:usage:get', () => agentUsageService.getUsage());
+
+  // Backend models
+  ipcMain.handle('agent:getBackendModels', (_, backend: string) =>
+    backendModelsService.getBackendModels(backend as AgentBackendType),
+  );
 
   // Debug
   ipcMain.handle('debug:getTableNames', () => DebugRepository.getTableNames());

@@ -2,7 +2,7 @@ import clsx from 'clsx';
 import { CheckCircle2 } from 'lucide-react';
 import { ComponentProps, MouseEvent } from 'react';
 
-import type { TaskStatus } from '../../../../shared/types';
+import type { TaskStatus } from '@shared/types';
 
 const STATUS_COLORS: Record<TaskStatus, string> = {
   running: 'bg-blue-500 animate-pulse',

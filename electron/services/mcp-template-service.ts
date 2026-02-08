@@ -11,7 +11,8 @@ import type {
   McpServerTemplate,
   McpVariableContext,
   UnifiedMcpServer,
-} from '../../shared/mcp-types';
+} from '@shared/mcp-types';
+
 import { McpTemplateRepository } from '../database/repositories/mcp-templates';
 import { ProjectMcpOverrideRepository } from '../database/repositories/project-mcp-overrides';
 import { dbg } from '../lib/debug';

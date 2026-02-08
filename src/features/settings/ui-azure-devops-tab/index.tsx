@@ -1,7 +1,7 @@
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
-import { Provider } from '../../../../shared/types';
+import { Provider } from '@shared/types';
 
 import { AddOrganizationPane } from './add-organization-pane';
 import { OrganizationDetailsPane } from './organization-details-pane';

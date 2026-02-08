@@ -7,6 +7,11 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 
 export default defineConfig({
   main: {
+    resolve: {
+      alias: {
+        '@shared': resolve('shared'),
+      },
+    },
     plugins: [externalizeDepsPlugin()],
     build: {
       rollupOptions: {
@@ -17,6 +22,11 @@ export default defineConfig({
     },
   },
   preload: {
+    resolve: {
+      alias: {
+        '@shared': resolve('shared'),
+      },
+    },
     plugins: [externalizeDepsPlugin()],
     build: {
       rollupOptions: {
@@ -38,6 +48,7 @@ export default defineConfig({
     resolve: {
       alias: {
         '@': resolve('src'),
+        '@shared': resolve('shared'),
       },
     },
     plugins: [

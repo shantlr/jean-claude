@@ -1,6 +1,8 @@
 // Shared types used by both renderer and main process
 // These are plain TypeScript types without database-specific dependencies
 
+import type { AgentBackendType } from './agent-backend-types';
+
 export type ProviderType = 'azure-devops' | 'github' | 'gitlab';
 
 // Token metadata - sensitive token value never exposed to renderer
@@ -39,7 +41,9 @@ export type TaskStatus =
   | 'interrupted';
 export type InteractionMode = 'ask' | 'auto' | 'plan';
 
-export type ModelPreference = 'default' | 'sonnet' | 'opus' | 'haiku';
+// 'default' means use the backend's default model.
+// Other values are backend-specific model identifiers (e.g. 'sonnet', 'openai/gpt-5.1-codex').
+export type ModelPreference = 'default' | (string & {});
 
 export interface Provider {
   id: string;
@@ -88,6 +92,7 @@ export interface Project {
   workItemProviderId: string | null;
   workItemProjectId: string | null;
   workItemProjectName: string | null;
+  defaultAgentBackend: AgentBackendType | null; // null = use global default
   createdAt: string;
   updatedAt: string;
 }
@@ -110,6 +115,7 @@ export interface NewProject {
   workItemProviderId?: string | null;
   workItemProjectId?: string | null;
   workItemProjectName?: string | null;
+  defaultAgentBackend?: AgentBackendType | null;
   createdAt?: string;
   updatedAt: string;
 }
@@ -132,6 +138,7 @@ export interface UpdateProject {
   workItemProviderId?: string | null;
   workItemProjectId?: string | null;
   workItemProjectName?: string | null;
+  defaultAgentBackend?: AgentBackendType | null;
   updatedAt?: string;
 }
 
@@ -156,6 +163,7 @@ export interface Task {
   workItemUrls: string[] | null;
   pullRequestId: string | null;
   pullRequestUrl: string | null;
+  agentBackend: AgentBackendType;
   createdAt: string;
   updatedAt: string;
 }
@@ -181,6 +189,7 @@ export interface NewTask {
   workItemUrls?: string[] | null;
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
+  agentBackend?: AgentBackendType;
   createdAt?: string;
   updatedAt: string;
 }
@@ -205,6 +214,7 @@ export interface UpdateTask {
   workItemUrls?: string[] | null;
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
+  agentBackend?: AgentBackendType;
   updatedAt?: string;
 }
 
@@ -244,6 +254,12 @@ export type EditorSetting =
   | { type: 'command'; command: string }
   | { type: 'app'; path: string; name: string };
 
+// Backend settings
+export interface BackendsSetting {
+  enabledBackends: AgentBackendType[];
+  defaultBackend: AgentBackendType;
+}
+
 // Settings validation
 export interface SettingDefinition<T> {
   defaultValue: T;
@@ -260,10 +276,36 @@ function isEditorSetting(v: unknown): v is EditorSetting {
   return false;
 }
 
+const VALID_BACKENDS: AgentBackendType[] = ['claude-code', 'opencode'];
+
+function isBackendsSetting(v: unknown): v is BackendsSetting {
+  if (!v || typeof v !== 'object') return false;
+  const obj = v as Record<string, unknown>;
+  if (!Array.isArray(obj.enabledBackends)) return false;
+  if (
+    !obj.enabledBackends.every((b: unknown) =>
+      VALID_BACKENDS.includes(b as AgentBackendType),
+    )
+  )
+    return false;
+  if (obj.enabledBackends.length === 0) return false;
+  if (typeof obj.defaultBackend !== 'string') return false;
+  if (!VALID_BACKENDS.includes(obj.defaultBackend as AgentBackendType))
+    return false;
+  return true;
+}
+
 export const SETTINGS_DEFINITIONS = {
   editor: {
     defaultValue: { type: 'preset', id: 'vscode' } as EditorSetting,
     validate: isEditorSetting,
+  },
+  backends: {
+    defaultValue: {
+      enabledBackends: ['claude-code'],
+      defaultBackend: 'claude-code',
+    } as BackendsSetting,
+    validate: isBackendsSetting,
   },
 } satisfies Record<string, SettingDefinition<unknown>>;
 

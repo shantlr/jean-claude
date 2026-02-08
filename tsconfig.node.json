@@ -10,7 +10,11 @@
     "declarationMap": true,
     "composite": true,
     "outDir": "./out",
-    "rootDir": "."
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["shared/*"]
+    }
   },
   "include": ["electron/**/*", "electron.vite.config.ts", "shared/**/*"]
 }

@@ -1,12 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 
 import { api } from '@/lib/api';
-
-import type {
-  RunStatus,
-  PortsInUseErrorData,
-} from '../../shared/run-command-types';
-import { isPortsInUseError } from '../../shared/run-command-types';
+import type { RunStatus, PortsInUseErrorData } from '@shared/run-command-types';
+import { isPortsInUseError } from '@shared/run-command-types';
 
 export function useRunCommands(projectId: string, workingDir: string) {
   const [status, setStatus] = useState<RunStatus | null>(null);

@@ -7,10 +7,11 @@ import {
 } from 'react';
 
 import type {
-  AgentMessage as AgentMessageType,
-  ToolResultBlock,
-  QueuedPrompt,
-} from '../../../../shared/agent-types';
+  NormalizedMessage,
+  NormalizedToolResultPart,
+} from '@shared/agent-backend-types';
+import type { QueuedPrompt } from '@shared/agent-types';
+
 import { QueuedPromptEntry } from '../ui-queued-prompt-entry';
 import { SkillEntry } from '../ui-skill-entry';
 import { SubagentEntry } from '../ui-subagent-entry';
@@ -18,20 +19,17 @@ import { TimelineEntry, CompactingEntry } from '../ui-timeline-entry';
 
 import { mergeSkillMessages } from './message-merger';
 
-// Build a map of tool_use_id -> ToolResultBlock from all user messages
+// Build a map of toolId -> NormalizedToolResultPart from all user messages
 function buildToolResultsMap(
-  messages: AgentMessageType[],
-): Map<string, ToolResultBlock> {
-  const resultsMap = new Map<string, ToolResultBlock>();
+  messages: NormalizedMessage[],
+): Map<string, NormalizedToolResultPart> {
+  const resultsMap = new Map<string, NormalizedToolResultPart>();
 
   for (const message of messages) {
-    if (message.type === 'user' && message.message) {
-      const content = message.message.content;
-      if (Array.isArray(content)) {
-        for (const block of content) {
-          if (block.type === 'tool_result') {
-            resultsMap.set(block.tool_use_id, block);
-          }
+    if (message.role === 'user') {
+      for (const part of message.parts) {
+        if (part.type === 'tool-result') {
+          resultsMap.set(part.toolId, part);
         }
       }
     }
@@ -40,21 +38,18 @@ function buildToolResultsMap(
   return resultsMap;
 }
 
-// Build a map of tool_use_id -> parent AgentMessage for user messages
-// This gives ToolEntry access to the parent message's tool_use_result field
+// Build a map of toolId -> parent NormalizedMessage for user messages
+// This gives ToolEntry access to the parent message's structuredResult
 function buildParentMessageMap(
-  messages: AgentMessageType[],
-): Map<string, AgentMessageType> {
-  const parentMap = new Map<string, AgentMessageType>();
+  messages: NormalizedMessage[],
+): Map<string, NormalizedMessage> {
+  const parentMap = new Map<string, NormalizedMessage>();
 
   for (const message of messages) {
-    if (message.type === 'user' && message.message) {
-      const content = message.message.content;
-      if (Array.isArray(content)) {
-        for (const block of content) {
-          if (block.type === 'tool_result') {
-            parentMap.set(block.tool_use_id, message);
-          }
+    if (message.role === 'user') {
+      for (const part of message.parts) {
+        if (part.type === 'tool-result') {
+          parentMap.set(part.toolId, message);
         }
       }
     }
@@ -73,7 +68,7 @@ export function MessageStream({
   onFilePathClick,
   onCancelQueuedPrompt,
 }: {
-  messages: AgentMessageType[];
+  messages: NormalizedMessage[];
   isRunning?: boolean;
   queuedPrompts?: QueuedPrompt[];
   onFilePathClick?: (
@@ -93,7 +88,7 @@ export function MessageStream({
     [messages],
   );
 
-  // Build parent message map for tool_use_id -> parent AgentMessage
+  // Build parent message map for toolId -> parent NormalizedMessage
   const parentMessageMap = useMemo(
     () => buildParentMessageMap(messages),
     [messages],
@@ -132,10 +127,6 @@ export function MessageStream({
       bottomRef.current?.scrollIntoView({ behavior: 'instant' });
     }
   }, [displayMessages.length, queuedPrompts.length]);
-
-  console.log({
-    messages,
-  });
 
   if (messages.length === 0) {
     return (

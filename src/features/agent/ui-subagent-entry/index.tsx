@@ -1,33 +1,31 @@
 import { Bot, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
-import { useModel, formatModelName } from '@/hooks/use-model';
-
+import { formatModelName } from '@/hooks/use-model';
 import type {
-  AgentMessage,
-  ToolUseBlock,
-  ToolResultBlock,
-} from '../../../../shared/agent-types';
+  NormalizedMessage,
+  NormalizedToolUsePart,
+  NormalizedToolResultPart,
+} from '@shared/agent-backend-types';
+
 import { TimelineEntry } from '../ui-timeline-entry';
 
 import { getLastActivitySummary } from './last-activity';
 
 /**
- * Build a map of tool_use_id -> ToolResultBlock from child messages
+ * Build a map of toolId -> NormalizedToolResultPart from child messages
  */
 function buildToolResultsMap(
-  messages: AgentMessage[],
-): Map<string, ToolResultBlock> {
-  const resultsMap = new Map<string, ToolResultBlock>();
+  messages: NormalizedMessage[],
+): Map<string, NormalizedToolResultPart> {
+  const resultsMap = new Map<string, NormalizedToolResultPart>();
 
   for (const message of messages) {
-    if (message.type === 'user' && message.message) {
-      const content = message.message.content;
-      if (Array.isArray(content)) {
-        for (const block of content) {
-          if (block.type === 'tool_result') {
-            resultsMap.set(block.tool_use_id, block);
-          }
+    if (message.role === 'user') {
+      const parts = message.parts;
+      for (const part of parts) {
+        if (part.type === 'tool-result') {
+          resultsMap.set(part.toolId, part);
         }
       }
     }
@@ -37,21 +35,19 @@ function buildToolResultsMap(
 }
 
 /**
- * Build a map of tool_use_id -> parent AgentMessage for user messages
+ * Build a map of toolId -> parent NormalizedMessage for user messages
  */
 function buildParentMessageMap(
-  messages: AgentMessage[],
-): Map<string, AgentMessage> {
-  const parentMap = new Map<string, AgentMessage>();
+  messages: NormalizedMessage[],
+): Map<string, NormalizedMessage> {
+  const parentMap = new Map<string, NormalizedMessage>();
 
   for (const message of messages) {
-    if (message.type === 'user' && message.message) {
-      const content = message.message.content;
-      if (Array.isArray(content)) {
-        for (const block of content) {
-          if (block.type === 'tool_result') {
-            parentMap.set(block.tool_use_id, message);
-          }
+    if (message.role === 'user') {
+      const parts = message.parts;
+      for (const part of parts) {
+        if (part.type === 'tool-result') {
+          parentMap.set(part.toolId, message);
         }
       }
     }
@@ -64,11 +60,13 @@ function buildParentMessageMap(
  * Filter messages for display in the nested timeline.
  * Excludes the initial user message (which is just the Task prompt).
  */
-function filterDisplayMessages(messages: AgentMessage[]): AgentMessage[] {
+function filterDisplayMessages(
+  messages: NormalizedMessage[],
+): NormalizedMessage[] {
   // Skip the first user message (the Task prompt) as it's redundant with the header
   let skippedFirstUser = false;
   return messages.filter((message) => {
-    if (!skippedFirstUser && message.type === 'user') {
+    if (!skippedFirstUser && message.role === 'user') {
       skippedFirstUser = true;
       return false;
     }
@@ -87,8 +85,8 @@ export function SubagentEntry({
   isComplete,
   onFilePathClick,
 }: {
-  launchBlock: ToolUseBlock;
-  childMessages: AgentMessage[];
+  launchBlock: NormalizedToolUsePart;
+  childMessages: NormalizedMessage[];
   isComplete: boolean;
   onFilePathClick?: (
     filePath: string,
@@ -98,11 +96,20 @@ export function SubagentEntry({
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const description = launchBlock.input.description as string;
-  const subagentType = launchBlock.input.subagent_type as string | undefined;
+  const input = (launchBlock.input ?? {}) as Record<string, unknown>;
+  const description = input.description as string;
+  const subagentType = input.subagent_type as string | undefined;
 
   // Get the model used by the sub-agent from child messages
-  const subagentModel = useModel(childMessages);
+  const subagentModel = useMemo(() => {
+    for (let i = childMessages.length - 1; i >= 0; i--) {
+      const m = childMessages[i];
+      if (m.role === 'assistant' && m.model) {
+        return m.model;
+      }
+    }
+    return undefined;
+  }, [childMessages]);
 
   // Get last activity from child messages
   const lastActivity = useMemo(

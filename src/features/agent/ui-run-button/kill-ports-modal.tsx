@@ -1,8 +1,7 @@
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
 import { Modal } from '@/common/ui/modal';
-
-import type { PortsInUseErrorData } from '../../../../shared/run-command-types';
+import type { PortsInUseErrorData } from '@shared/run-command-types';
 
 export function KillPortsModal({
   error,

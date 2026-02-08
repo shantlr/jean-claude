@@ -1,6 +1,6 @@
 import { Trash2, Server } from 'lucide-react';
 
-import type { McpServerTemplate } from '../../../../shared/mcp-types';
+import type { McpServerTemplate } from '@shared/mcp-types';
 
 export function McpTemplateList({
   templates,

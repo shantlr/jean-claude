@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import type { AgentMessage } from '../../shared/agent-types';
+import type { NormalizedMessage } from '@shared/agent-backend-types';
 
 /**
  * Format a model name for display.
@@ -17,15 +17,13 @@ export function formatModelName(model: string): string {
 }
 
 /**
- * Extract the model name from a single assistant message.
+ * Extract the model name from a single normalized message.
  */
-export function getModelFromMessage(message: AgentMessage): string | undefined {
-  if (
-    message.type === 'assistant' &&
-    message.message?.role === 'assistant' &&
-    message.message.model
-  ) {
-    return message.message.model;
+export function getModelFromMessage(
+  message: NormalizedMessage,
+): string | undefined {
+  if (message.role === 'assistant' && message.model) {
+    return message.model;
   }
   return undefined;
 }
@@ -34,7 +32,7 @@ export function getModelFromMessage(message: AgentMessage): string | undefined {
  * Extract the model name used in a set of messages.
  * Returns the most recent model name found in assistant messages.
  */
-export function useModel(messages: AgentMessage[]): string | undefined {
+export function useModel(messages: NormalizedMessage[]): string | undefined {
   return useMemo(() => {
     // Find the most recent assistant message with a model field
     for (let i = messages.length - 1; i >= 0; i--) {

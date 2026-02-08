@@ -2,7 +2,8 @@ import type {
   ProjectCommand,
   NewProjectCommand,
   UpdateProjectCommand,
-} from '../../../shared/run-command-types';
+} from '@shared/run-command-types';
+
 import { db } from '../index';
 
 function parseRow(row: {

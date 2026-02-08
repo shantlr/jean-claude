@@ -8,11 +8,7 @@ import {
   useUpdateMcpTemplate,
 } from '@/hooks/use-mcp-templates';
 import { api } from '@/lib/api';
-
-import type {
-  McpServerTemplate,
-  McpPreset,
-} from '../../../../shared/mcp-types';
+import type { McpServerTemplate, McpPreset } from '@shared/mcp-types';
 
 // Variable descriptions for tooltips
 const VARIABLE_DESCRIPTIONS: Record<string, string> = {
