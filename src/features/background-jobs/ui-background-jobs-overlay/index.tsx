@@ -107,6 +107,26 @@ export function BackgroundJobsOverlay({ onClose }: { onClose: () => void }) {
                       markJobFailed(targetJob.id, message);
                     }
                   }}
+                  onRetryTaskDeletion={async (targetJob) => {
+                    if (targetJob.type !== 'task-deletion') return;
+                    if (!targetJob.taskId) return;
+                    markJobRunning(targetJob.id);
+
+                    try {
+                      await api.tasks.delete(targetJob.taskId, {
+                        deleteWorktree: targetJob.details.deleteWorktree,
+                      });
+
+                      markJobSucceeded(targetJob.id);
+                      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+                    } catch (error) {
+                      const message =
+                        error instanceof Error
+                          ? error.message
+                          : 'Failed to delete task';
+                      markJobFailed(targetJob.id, message);
+                    }
+                  }}
                   onOpenTask={(targetJob) => {
                     if (!targetJob.projectId || !targetJob.taskId) return;
                     navigate({
@@ -131,10 +151,12 @@ export function BackgroundJobsOverlay({ onClose }: { onClose: () => void }) {
 function JobRow({
   job,
   onRetryTaskCreation,
+  onRetryTaskDeletion,
   onOpenTask,
 }: {
   job: BackgroundJob;
   onRetryTaskCreation: (job: BackgroundJob) => Promise<void>;
+  onRetryTaskDeletion: (job: BackgroundJob) => Promise<void>;
   onOpenTask: (job: BackgroundJob) => void;
 }) {
   const icon =
@@ -172,6 +194,17 @@ function JobRow({
                 type="button"
                 onClick={() => {
                   void onRetryTaskCreation(job);
+                }}
+                className="rounded border border-neutral-600 px-2 py-1 text-xs text-neutral-200 transition-colors hover:border-neutral-500 hover:bg-neutral-700"
+              >
+                Retry
+              </button>
+            )}
+            {job.type === 'task-deletion' && job.status === 'failed' && (
+              <button
+                type="button"
+                onClick={() => {
+                  void onRetryTaskDeletion(job);
                 }}
                 className="rounded border border-neutral-600 px-2 py-1 text-xs text-neutral-200 transition-colors hover:border-neutral-500 hover:bg-neutral-700"
               >
@@ -225,6 +258,21 @@ function JobDetails({ job }: { job: BackgroundJob }) {
             <p>Task: {typedJob.details.taskName}</p>
           )}
           <p>Scope: git diff</p>
+        </div>
+      );
+    },
+    'task-deletion': (typedJob) => {
+      if (typedJob.type !== 'task-deletion') return null;
+
+      return (
+        <div className="mt-1 space-y-0.5 text-xs text-neutral-400">
+          {typedJob.details.taskName && (
+            <p>Task: {typedJob.details.taskName}</p>
+          )}
+          {typedJob.details.projectName && (
+            <p>Project: {typedJob.details.projectName}</p>
+          )}
+          {typedJob.details.deleteWorktree && <p>Worktree will be deleted</p>}
         </div>
       );
     },

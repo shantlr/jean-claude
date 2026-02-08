@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 
 import { TaskPanel } from '@/features/task/ui-task-panel';
 
@@ -7,18 +7,7 @@ export const Route = createFileRoute('/projects/$projectId/tasks/$taskId')({
 });
 
 function ProjectTaskPanel() {
-  const { projectId, taskId } = Route.useParams();
-  const navigate = useNavigate();
+  const { taskId } = Route.useParams();
 
-  const handleNavigateAfterDelete = () => {
-    // Navigate back to project
-    navigate({ to: '/projects/$projectId', params: { projectId } });
-  };
-
-  return (
-    <TaskPanel
-      taskId={taskId}
-      onNavigateAfterDelete={handleNavigateAfterDelete}
-    />
-  );
+  return <TaskPanel taskId={taskId} />;
 }

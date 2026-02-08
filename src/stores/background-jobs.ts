@@ -4,7 +4,10 @@ import { persist } from 'zustand/middleware';
 
 import { api } from '@/lib/api';
 
-export type BackgroundJobType = 'task-creation' | 'summary-generation';
+export type BackgroundJobType =
+  | 'task-creation'
+  | 'summary-generation'
+  | 'task-deletion';
 export type BackgroundJobStatus = 'running' | 'succeeded' | 'failed';
 
 interface BackgroundJobBase {
@@ -32,6 +35,14 @@ export type BackgroundJob =
       details: {
         taskName: string | null;
       };
+    })
+  | (BackgroundJobBase & {
+      type: 'task-deletion';
+      details: {
+        taskName: string | null;
+        projectName: string | null;
+        deleteWorktree: boolean;
+      };
     });
 
 type NewBackgroundJobInput =
@@ -53,6 +64,17 @@ type NewBackgroundJobInput =
       projectId?: string | null;
       details: {
         taskName: string | null;
+      };
+    }
+  | {
+      type: 'task-deletion';
+      title: string;
+      taskId?: string | null;
+      projectId?: string | null;
+      details: {
+        taskName: string | null;
+        projectName: string | null;
+        deleteWorktree: boolean;
       };
     };
 
@@ -82,32 +104,18 @@ export const useBackgroundJobsStore = create<BackgroundJobsState>()(
       }) => {
         const id = nanoid();
         const createdAt = new Date().toISOString();
-        const runningJob: BackgroundJob =
-          type === 'task-creation'
-            ? {
-                id,
-                type,
-                title,
-                status: 'running',
-                createdAt,
-                completedAt: null,
-                errorMessage: null,
-                taskId,
-                projectId,
-                details,
-              }
-            : {
-                id,
-                type,
-                title,
-                status: 'running',
-                createdAt,
-                completedAt: null,
-                errorMessage: null,
-                taskId,
-                projectId,
-                details,
-              };
+        const runningJob = {
+          id,
+          type,
+          title,
+          status: 'running' as const,
+          createdAt,
+          completedAt: null,
+          errorMessage: null,
+          taskId,
+          projectId,
+          details,
+        } as BackgroundJob;
 
         set((state) => ({
           jobs: [runningJob, ...state.jobs],

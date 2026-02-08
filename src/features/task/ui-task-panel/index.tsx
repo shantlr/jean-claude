@@ -1,3 +1,4 @@
+import { useNavigate } from '@tanstack/react-router';
 import clsx from 'clsx';
 import {
   Loader2,
@@ -11,10 +12,11 @@ import {
   GitCompare,
   GitPullRequest,
 } from 'lucide-react';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 
 import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
 import { useCommands } from '@/common/hooks/use-commands';
+import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { getModelsForBackend } from '@/features/agent/ui-backend-selector';
 import { ContextUsageDisplay } from '@/features/agent/ui-context-usage-display';
 import { FilePreviewPane } from '@/features/agent/ui-file-preview-pane';
@@ -51,6 +53,7 @@ import {
 } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
 import { getBranchFromWorktreePath } from '@/lib/worktree';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import {
   useNavigationStore,
   useTaskState,
@@ -68,16 +71,12 @@ import {
 
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
 import { DebugMessagesPane } from './debug-messages-pane';
+import { DeleteTaskDialog } from './delete-task-dialog';
 import { PendingMessageInput } from './pending-message-input';
 import { TaskSettingsPane } from './task-settings-pane';
 
-export function TaskPanel({
-  taskId,
-  onNavigateAfterDelete,
-}: {
-  taskId: string;
-  onNavigateAfterDelete: () => void;
-}) {
+export function TaskPanel({ taskId }: { taskId: string }) {
+  const navigate = useNavigate();
   const { data: task } = useTask(taskId);
   const projectId = task?.projectId;
   const { data: project } = useProject(projectId ?? '');
@@ -96,6 +95,11 @@ export function TaskPanel({
   const allowForProject = useAllowForProject();
   const allowForProjectWorktrees = useAllowForProjectWorktrees();
   const unloadTask = useTaskMessagesStore((state) => state.unloadTask);
+  const addRunningJob = useBackgroundJobsStore((state) => state.addRunningJob);
+  const markJobSucceeded = useBackgroundJobsStore(
+    (state) => state.markJobSucceeded,
+  );
+  const markJobFailed = useBackgroundJobsStore((state) => state.markJobFailed);
 
   // Navigation tracking
   const setLastLocation = useNavigationStore((s) => s.setLastLocation);
@@ -151,8 +155,14 @@ export function TaskPanel({
   } = useTaskPrompt(taskId);
 
   const [copiedSessionId, setCopiedSessionId] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteWorktreeOnDelete, setDeleteWorktreeOnDelete] = useState(true);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  // Ref for the task panel container (used by shrink-to-target animation)
+  const taskPanelRef = useRef<HTMLDivElement>(null);
+  const { triggerAnimation } = useShrinkToTarget({
+    panelRef: taskPanelRef,
+    targetSelector: '[data-animation-target="jobs-button"]',
+  });
 
   // Track this location for navigation restoration
   useEffect(() => {
@@ -203,23 +213,61 @@ export function TaskPanel({
     await stop();
   };
 
-  const handleDelete = async () => {
-    // Clean up the task from stores
-    unloadTask(taskId);
-    clearTaskNavHistoryState(taskId);
-    // Delete from database
-    await deleteTask.mutateAsync({
-      id: taskId,
-      deleteWorktree: task?.worktreePath ? deleteWorktreeOnDelete : false,
-    });
-    // Navigate using the provided callback
-    onNavigateAfterDelete();
-  };
+  const handleDeleteConfirm = useCallback(
+    ({ deleteWorktree }: { deleteWorktree: boolean }) => {
+      if (!task || !project) return;
 
-  const handleOpenDeleteConfirm = () => {
-    setDeleteWorktreeOnDelete(Boolean(task?.worktreePath));
-    setShowDeleteConfirm(true);
-  };
+      const jobId = addRunningJob({
+        type: 'task-deletion',
+        title: `Deleting "${task.name ?? task.prompt.slice(0, 40)}"`,
+        taskId,
+        projectId: task.projectId,
+        details: {
+          taskName: task.name ?? task.prompt.slice(0, 40),
+          projectName: project.name,
+          deleteWorktree,
+        },
+      });
+
+      // Close modal
+      setIsDeleteDialogOpen(false);
+
+      // Trigger shrink-to-target animation (fire-and-forget)
+      void triggerAnimation();
+
+      // Clean up stores immediately
+      unloadTask(taskId);
+      clearTaskNavHistoryState(taskId);
+
+      // Navigate away
+      navigate({ to: '/' });
+
+      // Run deletion in background
+      void deleteTask
+        .mutateAsync({ id: taskId, deleteWorktree })
+        .then(() => {
+          markJobSucceeded(jobId);
+        })
+        .catch((error: unknown) => {
+          const message =
+            error instanceof Error ? error.message : 'Failed to delete task';
+          markJobFailed(jobId, message);
+        });
+    },
+    [
+      task,
+      project,
+      taskId,
+      addRunningJob,
+      triggerAnimation,
+      unloadTask,
+      clearTaskNavHistoryState,
+      navigate,
+      deleteTask,
+      markJobSucceeded,
+      markJobFailed,
+    ],
+  );
 
   const handleModeChange = (mode: InteractionMode) => {
     setTaskMode.mutate({ id: taskId, mode });
@@ -375,6 +423,14 @@ export function TaskPanel({
         handleCopySessionId();
       },
     },
+    task?.status !== 'running' &&
+      agentState.status !== 'running' && {
+        label: 'Delete Task',
+        section: 'Task',
+        handler: () => {
+          setIsDeleteDialogOpen(true);
+        },
+      },
   ]);
 
   if (!task || !project) {
@@ -393,7 +449,7 @@ export function TaskPanel({
   const canSendMessage = !isRunning && hasMessages && task.sessionId;
 
   return (
-    <div className="flex h-full w-full overflow-hidden">
+    <div ref={taskPanelRef} className="flex h-full w-full overflow-hidden">
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
@@ -443,7 +499,7 @@ export function TaskPanel({
             {/* Delete button */}
             {!isRunning && (
               <button
-                onClick={handleOpenDeleteConfirm}
+                onClick={() => setIsDeleteDialogOpen(true)}
                 className="flex items-center gap-2 rounded-md px-3 py-1 text-sm font-medium text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-red-400"
                 title="Delete task"
               >
@@ -579,51 +635,6 @@ export function TaskPanel({
             )}
           </div>
         </div>
-
-        {/* Delete confirmation dialog */}
-        {showDeleteConfirm && (
-          <div className="border-b border-red-900 bg-red-950/50 px-6 py-4">
-            <p className="mb-3 text-sm text-neutral-300">
-              Are you sure you want to delete this task? This action cannot be
-              undone.
-            </p>
-            {task.worktreePath && (
-              <label className="mb-3 flex items-start gap-2 text-sm text-neutral-300">
-                <input
-                  type="checkbox"
-                  checked={deleteWorktreeOnDelete}
-                  onChange={(event) =>
-                    setDeleteWorktreeOnDelete(event.target.checked)
-                  }
-                  className="mt-0.5"
-                />
-                <span>
-                  Delete associated worktree and branch
-                  <span className="block text-xs text-neutral-400">
-                    If unchecked, the worktree is kept unless it has no changes.
-                  </span>
-                </span>
-              </label>
-            )}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={deleteTask.isPending}
-                className="cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
-              >
-                {deleteTask.isPending ? 'Deleting...' : 'Delete Task'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                className="cursor-pointer rounded-lg bg-neutral-700 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-600"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Main content area: PR view OR Diff view OR Message stream */}
         <div className="min-h-0 flex-1">
@@ -789,6 +800,16 @@ export function TaskPanel({
       {rightPane?.type === 'debugMessages' && (
         <DebugMessagesPane taskId={taskId} onClose={closeRightPane} />
       )}
+
+      {/* Delete confirmation modal */}
+      <DeleteTaskDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        taskName={task.name ?? task.prompt.split('\n')[0]}
+        hasWorktree={!!task.worktreePath}
+        isPending={false}
+      />
     </div>
   );
 }
