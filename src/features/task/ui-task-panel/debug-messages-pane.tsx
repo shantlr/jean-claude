@@ -94,7 +94,7 @@ function JsonArray({
         {items.map((item, index) => (
           <div key={index} className="py-0.5">
             <span className="mr-1 text-neutral-600">{index}:</span>
-            <JsonValue value={item} />
+            <JsonValue value={item} defaultExpanded={defaultExpanded} />
             {index < items.length - 1 && (
               <span className="text-neutral-600">,</span>
             )}
@@ -150,7 +150,7 @@ function JsonObject({
           <div key={key} className="py-0.5">
             <span className="text-purple-300">&quot;{key}&quot;</span>
             <span className="text-neutral-500">: </span>
-            <JsonValue value={obj[key]} />
+            <JsonValue value={obj[key]} defaultExpanded={defaultExpanded} />
             {index < keys.length - 1 && (
               <span className="text-neutral-600">,</span>
             )}
@@ -239,18 +239,13 @@ export function DebugMessagesPane({
   } = useRawMessages(taskId);
   const [searchFilter, setSearchFilter] = useState('');
 
-  const {
-    width,
-    setWidth,
-    minWidth,
-    maxWidth,
-  } = useDebugMessagesPaneWidth();
+  const { width, setWidth, minWidth, maxWidth } = useDebugMessagesPaneWidth();
 
-  const { containerRef, isDragging, handleMouseDown } = useHorizontalResize({
+  const { isDragging, handleMouseDown } = useHorizontalResize({
     initialWidth: width,
     minWidth,
     maxWidth,
-    maxWidthFraction: 0.6,
+    maxWidthFraction: 0.7,
     direction: 'left',
     onWidthChange: setWidth,
   });
@@ -267,7 +262,6 @@ export function DebugMessagesPane({
 
   return (
     <div
-      ref={containerRef}
       style={{ width }}
       className="relative flex h-full flex-col border-l border-neutral-700 bg-neutral-900"
     >

@@ -32,8 +32,9 @@ export function useHorizontalResize({
 
       const handleMouseMove = (moveEvent: MouseEvent | ReactMouseEvent) => {
         const delta = (moveEvent.clientX - startX) * directionMultiplier;
-        const containerWidth =
-          containerRef.current?.offsetWidth ?? window.innerWidth;
+        const containerWidth = containerRef.current
+          ? containerRef.current.offsetWidth
+          : window.innerWidth;
         const fractionMax = containerWidth * maxWidthFraction;
         const effectiveMax =
           maxWidthAbsolute !== undefined
@@ -55,7 +56,14 @@ export function useHorizontalResize({
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     },
-    [initialWidth, minWidth, maxWidthFraction, maxWidthAbsolute, direction, onWidthChange],
+    [
+      initialWidth,
+      minWidth,
+      maxWidthFraction,
+      maxWidthAbsolute,
+      direction,
+      onWidthChange,
+    ],
   );
 
   return {
