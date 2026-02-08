@@ -1326,7 +1326,7 @@ export async function addPullRequestFileComment(params: {
       comments: [{ content: params.content, commentType: 1 }],
       status: 'active',
       threadContext: {
-        filePath: params.filePath,
+        filePath: params.filePath.startsWith('/') ? params.filePath : `/${params.filePath}`,
         rightFileStart: { line: params.line, offset: 1 },
         rightFileEnd: { line: endLine, offset: 1 },
       },
