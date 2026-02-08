@@ -1,6 +1,14 @@
 import clsx from 'clsx';
-import { AlertCircle, Check, Copy, Loader2, PackageOpen } from 'lucide-react';
-import type { ReactNode } from 'react';
+import {
+  AlertCircle,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Loader2,
+  PackageOpen,
+} from 'lucide-react';
+import type { MouseEvent, ReactNode } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
 
@@ -516,6 +524,8 @@ function TextEntry({
 }
 
 // User message entry - shows full content, clickable for file paths
+const USER_MESSAGE_MAX_CHARS = 300;
+
 function UserEntry({
   text,
   onFilePathClick,
@@ -528,9 +538,16 @@ function UserEntry({
   ) => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const wasTruncated = text.length > USER_MESSAGE_MAX_CHARS;
+  const displayText =
+    expanded || !wasTruncated
+      ? text
+      : text.slice(0, USER_MESSAGE_MAX_CHARS).trimEnd();
 
   const handleCopy = useCallback(
-    async (e: React.MouseEvent) => {
+    async (e: MouseEvent) => {
       e.stopPropagation();
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -544,12 +561,36 @@ function UserEntry({
       {/* Dot - purple for user */}
       <div className="absolute top-2.5 -left-1 h-2 w-2 rounded-full bg-purple-500" />
       <div className="py-1.5 pr-3 text-xs text-neutral-300">
-        <MarkdownContent content={text} onFilePathClick={onFilePathClick} />
+        <MarkdownContent
+          content={displayText}
+          onFilePathClick={onFilePathClick}
+        />
+        {wasTruncated && !expanded && (
+          <span className="text-neutral-500">…</span>
+        )}
       </div>
+      {wasTruncated && (
+        <button
+          onClick={() => setExpanded((prev) => !prev)}
+          className="flex items-center gap-0.5 pb-1.5 text-[10px] text-neutral-500 hover:text-neutral-300"
+        >
+          {expanded ? (
+            <>
+              <ChevronDown className="h-3 w-3" />
+              Show less
+            </>
+          ) : (
+            <>
+              <ChevronRight className="h-3 w-3" />
+              Show more
+            </>
+          )}
+        </button>
+      )}
       {/* Copy button - shown on hover */}
       <button
         onClick={handleCopy}
-        className="absolute top-1 right-1 rounded p-1 text-neutral-500 opacity-0 transition-opacity hover:bg-neutral-700 hover:text-neutral-300 group-hover/user:opacity-100"
+        className="absolute top-1 right-1 rounded p-1 text-neutral-500 opacity-0 transition-opacity group-hover/user:opacity-100 hover:bg-neutral-700 hover:text-neutral-300"
         title="Copy message"
       >
         {copied ? (
