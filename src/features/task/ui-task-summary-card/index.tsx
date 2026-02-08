@@ -1,6 +1,6 @@
 import { useRouter } from '@tanstack/react-router';
 import clsx from 'clsx';
-import { AlertCircle, GitPullRequest } from 'lucide-react';
+import { AlertCircle, GitPullRequest, MessageSquare } from 'lucide-react';
 
 import { NumberKey } from '@/common/context/keyboard-bindings/types';
 import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
@@ -133,6 +133,14 @@ export function TaskSummaryCard({
           {formatRelativeTime(task.createdAt)}
         </span>
       </div>
+
+      {/* Pending message row */}
+      {task.pendingMessage && (
+        <div className="flex items-center gap-1 text-xs text-amber-400">
+          <MessageSquare className="h-3 w-3 shrink-0" />
+          <span className="truncate">{task.pendingMessage}</span>
+        </div>
+      )}
     </div>
   );
 }

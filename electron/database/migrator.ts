@@ -25,6 +25,7 @@ import * as m023 from './migrations/023_add_task_summaries';
 import * as m024 from './migrations/024_multi_work_items';
 import * as m025 from './migrations/025_task_model_preference';
 import * as m026 from './migrations/026_agent_backend_abstraction';
+import * as m027 from './migrations/027_task_pending_message';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -52,6 +53,7 @@ const migrations: Record<string, Migration> = {
   '024_multi_work_items': m024,
   '025_task_model_preference': m025,
   '026_agent_backend_abstraction': m026,
+  '027_task_pending_message': m027,
 };
 
 export const migrationProvider: MigrationProvider = {

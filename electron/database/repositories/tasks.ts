@@ -32,6 +32,7 @@ interface CreateTaskInput {
   workItemUrls?: string[] | null;
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
+  pendingMessage?: string | null;
   agentBackend?: AgentBackendType;
   createdAt?: string;
   updatedAt: string;
@@ -57,6 +58,7 @@ interface UpdateTaskInput {
   workItemUrls?: string[] | null;
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
+  pendingMessage?: string | null;
   agentBackend?: AgentBackendType;
   updatedAt?: string;
 }

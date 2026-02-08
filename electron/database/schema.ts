@@ -106,6 +106,7 @@ export interface TaskTable {
   workItemUrls: string | null; // JSON array: ["url1", "url2"]
   pullRequestId: string | null;
   pullRequestUrl: string | null;
+  pendingMessage: string | null;
   agentBackend: string; // NOT NULL, no default — must be set explicitly
   createdAt: Generated<string>;
   updatedAt: string;

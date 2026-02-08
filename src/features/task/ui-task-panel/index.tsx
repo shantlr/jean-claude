@@ -68,6 +68,8 @@ import {
   type EditorSetting,
 } from '@shared/types';
 
+import { PendingMessageInput } from './pending-message-input';
+
 export function TaskPanel({
   taskId,
   onNavigateAfterDelete,
@@ -535,6 +537,7 @@ export function TaskPanel({
                   pullRequestUrl={task.pullRequestUrl}
                 />
               )}
+              <PendingMessageInput taskId={taskId} />
             </div>
             {(task.sessionId || contextUsage.hasData || model) && (
               <div className="flex items-center gap-3 pl-6">

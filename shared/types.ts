@@ -163,6 +163,7 @@ export interface Task {
   workItemUrls: string[] | null;
   pullRequestId: string | null;
   pullRequestUrl: string | null;
+  pendingMessage: string | null;
   agentBackend: AgentBackendType;
   createdAt: string;
   updatedAt: string;
@@ -189,6 +190,7 @@ export interface NewTask {
   workItemUrls?: string[] | null;
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
+  pendingMessage?: string | null;
   agentBackend?: AgentBackendType;
   createdAt?: string;
   updatedAt: string;
@@ -214,6 +216,7 @@ export interface UpdateTask {
   workItemUrls?: string[] | null;
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
+  pendingMessage?: string | null;
   agentBackend?: AgentBackendType;
   updatedAt?: string;
 }

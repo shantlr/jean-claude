@@ -233,6 +233,7 @@ export interface TaskWithProject {
   workItemUrl: string | null;
   pullRequestId: string | null;
   pullRequestUrl: string | null;
+  pendingMessage: string | null;
   createdAt: string;
   updatedAt: string;
   messageCount?: number;
