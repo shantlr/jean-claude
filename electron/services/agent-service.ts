@@ -421,12 +421,23 @@ class AgentService {
     switch (event.type) {
       case 'session-id': {
         session.sdkSessionId = event.sessionId;
-        await TaskRepository.update(taskId, { sessionId: event.sessionId });
-        dbg.agentSession(
-          'Captured session ID for task %s: %s',
-          taskId,
-          event.sessionId,
-        );
+        // Only persist the first session ID — once set it is immutable.
+        const existing = await TaskRepository.findById(taskId);
+        if (!existing?.sessionId) {
+          await TaskRepository.update(taskId, { sessionId: event.sessionId });
+          dbg.agentSession(
+            'Captured session ID for task %s: %s',
+            taskId,
+            event.sessionId,
+          );
+        } else {
+          dbg.agentSession(
+            'Session ID already set for task %s (%s), ignoring new value: %s',
+            taskId,
+            existing.sessionId,
+            event.sessionId,
+          );
+        }
         break;
       }
 
