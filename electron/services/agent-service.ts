@@ -561,6 +561,17 @@ class AgentService {
 
       case 'error': {
         dbg.agent('Backend error for task %s: %s', taskId, event.error);
+
+        // Emit a synthetic error message so the user sees the error in the timeline
+        await this.persistAndEmitSyntheticMessage(taskId, session, {
+          id: nanoid(),
+          role: 'result',
+          parts: [{ type: 'text', text: event.error }],
+          timestamp: new Date().toISOString(),
+          isError: true,
+          result: event.error,
+        });
+
         await TaskRepository.update(taskId, { status: 'errored' });
         this.emitStatus(taskId, 'errored', event.error);
         break;
@@ -609,6 +620,18 @@ class AgentService {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
+      dbg.agent('Task %s start failed: %s', taskId, errorMessage);
+
+      // Emit a synthetic error message so the user sees the error in the timeline
+      await this.persistAndEmitSyntheticMessage(taskId, session, {
+        id: nanoid(),
+        role: 'result',
+        parts: [{ type: 'text', text: errorMessage }],
+        timestamp: new Date().toISOString(),
+        isError: true,
+        result: errorMessage,
+      });
+
       await TaskRepository.update(taskId, { status: 'errored' });
       this.emitStatus(taskId, 'errored', errorMessage);
     } finally {
@@ -732,6 +755,18 @@ class AgentService {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
+      dbg.agent('Task %s sendMessage failed: %s', taskId, errorMessage);
+
+      // Emit a synthetic error message so the user sees the error in the timeline
+      await this.persistAndEmitSyntheticMessage(taskId, session, {
+        id: nanoid(),
+        role: 'result',
+        parts: [{ type: 'text', text: errorMessage }],
+        timestamp: new Date().toISOString(),
+        isError: true,
+        result: errorMessage,
+      });
+
       await TaskRepository.update(taskId, { status: 'errored' });
       this.emitStatus(taskId, 'errored', errorMessage);
     } finally {

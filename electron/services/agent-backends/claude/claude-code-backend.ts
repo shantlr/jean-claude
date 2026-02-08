@@ -340,6 +340,21 @@ export class ClaudeCodeBackend implements AgentBackend {
           });
         }
       }
+    } catch (error) {
+      // SDK threw an unexpected error — push it as an error event so
+      // agent-service can surface it to the user instead of silently
+      // dropping it (runSdkGenerator is called fire-and-forget).
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown SDK error';
+      dbg.agent(
+        'SDK generator error for session %s: %s',
+        sessionKey,
+        errorMessage,
+      );
+      session.eventChannel.push({
+        type: 'error',
+        error: errorMessage,
+      });
     } finally {
       session.eventChannel.close();
       this.sessions.delete(sessionKey);
