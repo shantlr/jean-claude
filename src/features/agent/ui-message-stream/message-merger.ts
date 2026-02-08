@@ -1,120 +1,145 @@
 import type {
-  AgentMessage,
-  CompactMetadata,
-  ToolUseBlock,
-} from '../../../../shared/agent-types';
-import { isSkillToolUseResult } from '../../../../shared/agent-types';
+  NormalizedMessage,
+  NormalizedCompactPart,
+  NormalizedToolUsePart,
+} from '@shared/agent-backend-types';
+import { isStructuredSkillResult } from '@shared/agent-backend-types';
 
 /**
  * Represents a message ready for display in the timeline.
  * Can be either a regular message, a merged skill message, a compacting message, or a sub-agent group.
  */
 export type DisplayMessage =
-  | { kind: 'regular'; message: AgentMessage }
+  | { kind: 'regular'; message: NormalizedMessage }
   | {
       kind: 'skill';
-      launchMessage: AgentMessage;
-      promptMessage: AgentMessage;
+      launchMessage: NormalizedMessage;
+      promptMessage: NormalizedMessage;
       skillName: string;
     }
   | {
       kind: 'compacting';
-      startMessage: AgentMessage;
-      endMessage?: AgentMessage;
-      metadata?: CompactMetadata;
+      startMessage: NormalizedMessage;
+      endMessage?: NormalizedMessage;
+      metadata?: NormalizedCompactPart;
     }
   | {
       kind: 'subagent';
       toolUseId: string;
-      launchBlock: ToolUseBlock;
-      launchMessage: AgentMessage;
-      childMessages: AgentMessage[];
+      launchBlock: NormalizedToolUsePart;
+      launchMessage: NormalizedMessage;
+      childMessages: NormalizedMessage[];
       isComplete: boolean;
     };
 
 /**
  * Check if a message is a skill launch message.
- * Skill launch messages have a tool_use_result with commandName.
+ * Skill launch messages are user messages with a tool-result part that has a skill structuredResult.
  */
-function isSkillLaunchMessage(message: AgentMessage): boolean {
-  return (
-    message.type === 'user' &&
-    !!message.tool_use_result &&
-    isSkillToolUseResult(message.tool_use_result) &&
-    typeof message.tool_use_result.commandName === 'string'
+function isSkillLaunchMessage(message: NormalizedMessage): boolean {
+  if (message.role !== 'user') return false;
+  return message.parts.some(
+    (p) =>
+      p.type === 'tool-result' &&
+      p.structuredResult &&
+      isStructuredSkillResult(p.structuredResult),
   );
+}
+
+/**
+ * Get the skill command name from a skill launch message.
+ */
+function getSkillName(message: NormalizedMessage): string {
+  for (const part of message.parts) {
+    if (
+      part.type === 'tool-result' &&
+      part.structuredResult &&
+      isStructuredSkillResult(part.structuredResult)
+    ) {
+      return part.structuredResult.commandName;
+    }
+  }
+  return '';
 }
 
 /**
  * Check if a message is a synthetic skill prompt message.
  * These are SDK-generated messages containing skill documentation.
  */
-function isSyntheticMessage(message: AgentMessage): boolean {
-  return message.type === 'user' && message.isSynthetic === true;
+function isSyntheticMessage(message: NormalizedMessage): boolean {
+  return message.role === 'user' && message.isSynthetic === true;
 }
 
 /**
  * Check if a message is a compacting start message.
- * {type: "system", subtype: "status", status: "compacting", ...}
+ * A system message with a system-status part where status === 'compacting'.
  */
-function isCompactingStartMessage(message: AgentMessage): boolean {
-  return (
-    message.type === 'system' &&
-    message.subtype === 'status' &&
-    message.status === 'compacting'
+function isCompactingStartMessage(message: NormalizedMessage): boolean {
+  if (message.role !== 'system') return false;
+  return message.parts.some(
+    (p) =>
+      p.type === 'system-status' &&
+      p.subtype === 'status' &&
+      p.status === 'compacting',
   );
 }
 
 /**
  * Check if a message is a compact boundary (end) message.
- * {type: "system", subtype: "compact_boundary", compact_metadata: {...}, ...}
+ * A system message with a compact part.
  */
-function isCompactBoundaryMessage(message: AgentMessage): boolean {
-  return message.type === 'system' && message.subtype === 'compact_boundary';
+function isCompactBoundaryMessage(message: NormalizedMessage): boolean {
+  if (message.role !== 'system') return false;
+  return message.parts.some((p) => p.type === 'compact');
 }
 
 /**
- * Extract Task tool_use blocks from an assistant message.
+ * Get the compact metadata from a compact boundary message.
  */
-function extractTaskToolUseBlocks(
-  message: AgentMessage,
-): { block: ToolUseBlock; message: AgentMessage }[] {
-  if (
-    message.type !== 'assistant' ||
-    !message.message ||
-    message.message.role !== 'assistant'
-  ) {
-    return [];
+function getCompactMetadata(
+  message: NormalizedMessage,
+): NormalizedCompactPart | undefined {
+  for (const part of message.parts) {
+    if (part.type === 'compact') return part;
   }
+  return undefined;
+}
 
-  return message.message.content
+/**
+ * Extract Task tool-use parts from an assistant message.
+ */
+function extractTaskToolUseParts(
+  message: NormalizedMessage,
+): { part: NormalizedToolUsePart; message: NormalizedMessage }[] {
+  if (message.role !== 'assistant') return [];
+
+  return message.parts
     .filter(
-      (block): block is ToolUseBlock =>
-        block.type === 'tool_use' && block.name === 'Task',
+      (p): p is NormalizedToolUsePart =>
+        p.type === 'tool-use' && p.toolName === 'Task',
     )
-    .map((block) => ({ block, message }));
+    .map((part) => ({ part, message }));
 }
 
 /**
- * Check if a message belongs to a sub-agent (has parent_tool_use_id).
+ * Check if a message belongs to a sub-agent (has parentToolUseId).
  */
-function isSubagentMessage(message: AgentMessage): boolean {
-  return !!message.parent_tool_use_id;
+function isSubagentMessage(message: NormalizedMessage): boolean {
+  return !!message.parentToolUseId;
 }
 
 /**
- * Find the tool_result for a given tool_use_id in the messages.
+ * Find the tool-result for a given tool_use_id in the messages.
  */
-function findToolResult(messages: AgentMessage[], toolUseId: string): boolean {
+function findToolResult(
+  messages: NormalizedMessage[],
+  toolUseId: string,
+): boolean {
   for (const message of messages) {
-    if (message.type === 'user' && message.message) {
-      const content = message.message.content;
-      if (Array.isArray(content)) {
-        for (const block of content) {
-          if (block.type === 'tool_result' && block.tool_use_id === toolUseId) {
-            return true;
-          }
-        }
+    if (message.role !== 'user') continue;
+    for (const part of message.parts) {
+      if (part.type === 'tool-result' && part.toolId === toolUseId) {
+        return true;
       }
     }
   }
@@ -127,50 +152,63 @@ function findToolResult(messages: AgentMessage[], toolUseId: string): boolean {
  * Also group sub-agent messages under their parent Task tool_use.
  *
  * Detection logic for skills:
- * 1. Current message has tool_use_result.commandName (skill launch)
+ * 1. Current message has a tool-result part with skill structuredResult
  * 2. Next message has isSynthetic: true (synthetic skill prompt)
  * 3. Both conditions must be true to merge
  *
  * Detection logic for compacting:
- * 1. Current message is {type: "system", subtype: "status", status: "compacting"}
- * 2. Look ahead for {type: "system", subtype: "compact_boundary"} with same session_id
+ * 1. Current message is system with system-status part (status: 'compacting')
+ * 2. Look ahead for system message with compact part
  * 3. If found, merge into single compacting entry with metadata
  * 4. If not found, show as in-progress compacting
  *
  * Detection logic for sub-agents:
- * 1. Find assistant messages with Task tool_use blocks
- * 2. Collect all messages with matching parent_tool_use_id
+ * 1. Find assistant messages with Task tool-use parts
+ * 2. Collect all messages with matching parentToolUseId
  * 3. Group them into a single subagent entry
  */
-export function mergeSkillMessages(messages: AgentMessage[]): DisplayMessage[] {
+export function mergeSkillMessages(
+  messages: NormalizedMessage[],
+): DisplayMessage[] {
   const result: DisplayMessage[] = [];
   const processedIndices = new Set<number>();
 
-  // First pass: collect all Task tool_use blocks and their indices
+  // First pass: collect all Task tool-use parts and their indices
   const taskToolUses = new Map<
     string,
-    { block: ToolUseBlock; launchMessage: AgentMessage; messageIndex: number }
+    {
+      part: NormalizedToolUsePart;
+      launchMessage: NormalizedMessage;
+      messageIndex: number;
+    }
   >();
   for (let i = 0; i < messages.length; i++) {
-    const taskBlocks = extractTaskToolUseBlocks(messages[i]);
-    for (const { block, message } of taskBlocks) {
-      taskToolUses.set(block.id, {
-        block,
+    const taskParts = extractTaskToolUseParts(messages[i]);
+    for (const { part, message } of taskParts) {
+      taskToolUses.set(part.toolId, {
+        part,
         launchMessage: message,
         messageIndex: i,
       });
     }
   }
 
-  // Second pass: collect child messages for each Task tool_use
+  // Second pass: collect child messages for each Task tool_use.
+  // Only consider a message a sub-agent child if its parentToolUseId matches
+  // a known Task tool-use ID. OpenCode sets parentToolUseId on assistant responses
+  // to link back to the user message — these are NOT sub-agent children.
   const childMessagesByToolUseId = new Map<
     string,
-    { message: AgentMessage; index: number }[]
+    { message: NormalizedMessage; index: number }[]
   >();
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i];
-    if (isSubagentMessage(message) && message.parent_tool_use_id) {
-      const parentId = message.parent_tool_use_id;
+    if (
+      isSubagentMessage(message) &&
+      message.parentToolUseId &&
+      taskToolUses.has(message.parentToolUseId)
+    ) {
+      const parentId = message.parentToolUseId;
       if (!childMessagesByToolUseId.has(parentId)) {
         childMessagesByToolUseId.set(parentId, []);
       }
@@ -202,11 +240,7 @@ export function mergeSkillMessages(messages: AgentMessage[]): DisplayMessage[] {
         kind: 'skill',
         launchMessage: current,
         promptMessage: next,
-        skillName:
-          current.tool_use_result &&
-          isSkillToolUseResult(current.tool_use_result)
-            ? current.tool_use_result.commandName
-            : '',
+        skillName: getSkillName(current),
       });
       processedIndices.add(i);
       processedIndices.add(i + 1);
@@ -219,11 +253,7 @@ export function mergeSkillMessages(messages: AgentMessage[]): DisplayMessage[] {
       let endMessageIndex: number | undefined;
       for (let j = i + 1; j < messages.length; j++) {
         if (processedIndices.has(j)) continue;
-        const candidate = messages[j];
-        if (
-          isCompactBoundaryMessage(candidate) &&
-          candidate.session_id === current.session_id
-        ) {
+        if (isCompactBoundaryMessage(messages[j])) {
           endMessageIndex = j;
           break;
         }
@@ -235,7 +265,7 @@ export function mergeSkillMessages(messages: AgentMessage[]): DisplayMessage[] {
           kind: 'compacting',
           startMessage: current,
           endMessage,
-          metadata: endMessage.compact_metadata,
+          metadata: getCompactMetadata(endMessage),
         });
         processedIndices.add(i);
         processedIndices.add(endMessageIndex);
@@ -256,40 +286,34 @@ export function mergeSkillMessages(messages: AgentMessage[]): DisplayMessage[] {
       continue;
     }
 
-    // Check if this message contains Task tool_use blocks
-    const taskBlocks = extractTaskToolUseBlocks(current);
-    if (taskBlocks.length > 0) {
+    // Check if this message contains Task tool-use parts
+    const taskParts = extractTaskToolUseParts(current);
+    if (taskParts.length > 0) {
       // For messages with Task tool_use, we need to handle them specially
-      // The message itself might have text blocks and multiple tool_use blocks
+      // The message itself might have text parts and multiple tool_use parts
       // We'll render non-Task content as regular, and each Task as a subagent entry
 
-      // First, check if there are non-Task content blocks
-      const hasNonTaskContent =
-        current.message?.role === 'assistant' &&
-        current.message.content.some(
-          (block) =>
-            (block.type === 'text' && block.text.trim()) ||
-            (block.type === 'tool_use' && block.name !== 'Task'),
-        );
+      // First, check if there are non-Task content parts
+      const hasNonTaskContent = current.parts.some(
+        (p) =>
+          (p.type === 'text' && p.text.trim()) ||
+          (p.type === 'tool-use' && p.toolName !== 'Task'),
+      );
 
       if (hasNonTaskContent) {
-        // Render the regular message (non-Task parts will be shown)
-        // But we need a modified version that excludes Task tool_use blocks
-        // For simplicity, we render the whole message - the timeline entry
-        // will show text and non-Task tools, and we add subagent entries after
         result.push({ kind: 'regular', message: current });
       }
 
       // Add subagent entries for each Task tool_use
-      for (const { block } of taskBlocks) {
-        const children = childMessagesByToolUseId.get(block.id) || [];
+      for (const { part } of taskParts) {
+        const children = childMessagesByToolUseId.get(part.toolId) || [];
         const childMessages = children.map((c) => c.message);
-        const isComplete = findToolResult(messages, block.id);
+        const isComplete = findToolResult(messages, part.toolId);
 
         result.push({
           kind: 'subagent',
-          toolUseId: block.id,
-          launchBlock: block,
+          toolUseId: part.toolId,
+          launchBlock: part,
           launchMessage: current,
           childMessages,
           isComplete,

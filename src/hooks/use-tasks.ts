@@ -6,13 +6,12 @@ import {
 } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
-
 import type {
   InteractionMode,
   ModelPreference,
   NewTask,
   UpdateTask,
-} from '../../shared/types';
+} from '@shared/types';
 
 export function useTasks() {
   return useQuery({

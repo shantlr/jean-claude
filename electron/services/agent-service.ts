@@ -1,74 +1,67 @@
-import { PermissionResult, query } from '@anthropic-ai/claude-agent-sdk';
+// Agent Service — backend-agnostic orchestration layer.
+// Manages agent sessions using the AgentBackend interface.
+// Handles session lifecycle, message persistence, IPC forwarding,
+// prompt queueing, notifications, and session allow tools.
+
 import { BrowserWindow } from 'electron';
 import { nanoid } from 'nanoid';
 
+import type {
+  AgentBackend,
+  AgentBackendType,
+  AgentEvent,
+  NormalizedMessage,
+  NormalizedPermissionRequest,
+  NormalizedQuestion,
+  NormalizedQuestionRequest,
+} from '@shared/agent-backend-types';
 import {
   AGENT_CHANNELS,
-  AgentMessage,
-  PermissionResponse,
-  QuestionResponse,
-  AgentQuestion,
-  SessionAllowButton,
-  QueuedPrompt,
-  AgentPermissionEvent,
-  AgentQuestionEvent,
-} from '../../shared/agent-types';
-import type { InteractionMode } from '../../shared/types';
+  type AgentQuestion,
+  type PermissionResponse,
+  type QuestionResponse,
+  type QueuedPrompt,
+  type AgentPermissionEvent,
+  type AgentQuestionEvent,
+  type SessionAllowButton,
+} from '@shared/agent-types';
+import type { InteractionMode } from '@shared/types';
+
 import {
   TaskRepository,
   ProjectRepository,
   AgentMessageRepository,
+  RawMessageRepository,
 } from '../database/repositories';
 import { dbg } from '../lib/debug';
 import { pathExists } from '../lib/fs';
 
+import { AGENT_BACKEND_CLASSES } from './agent-backends';
+import { generateTaskName } from './name-generation-service';
 import { notificationService } from './notification-service';
-import {
-  buildPermissionString,
-  isToolAllowedByPermissions,
-} from './permission-settings-service';
 
-const SDK_PERMISSION_MODES = {
-  ask: 'default',
-  auto: 'bypassPermissions',
-  plan: 'plan',
-} as const;
-
-const TASK_NAME_SCHEMA = {
-  type: 'object',
-  properties: {
-    name: { type: 'string' },
-  },
-  required: ['name'],
-} as const;
-
-interface PendingPermissionRequest {
-  requestId: string;
-  type: 'permission';
-  toolName: string;
-  input: Record<string, unknown>;
-  resolve: (response: PermissionResult) => void;
-}
-
-interface PendingQuestionRequest {
-  requestId: string;
-  type: 'question';
-  toolName: string;
-  input: Record<string, unknown>;
-  resolve: (response: QuestionResponse) => void;
-}
-
-type PendingRequest = PendingPermissionRequest | PendingQuestionRequest;
+// --- Active session tracking ---
 
 interface ActiveSession {
   taskId: string;
-  sessionId: string | null;
-  abortController: AbortController;
-  pendingRequests: PendingRequest[];
-  messageGenerator: AsyncGenerator<unknown> | null;
+  backendSessionId: string | null; // The session ID from the backend
+  sdkSessionId: string | null; // The persistent session ID for resumption
+  backendType: AgentBackendType;
+  backend: AgentBackend;
   messageIndex: number;
-  queryInstance: ReturnType<typeof query> | null;
   queuedPrompts: QueuedPrompt[];
+  abortController: AbortController;
+  // Track pending requests for getPendingRequest()
+  pendingRequests: Array<{
+    requestId: string;
+    type: 'permission' | 'question';
+    permissionRequest?: NormalizedPermissionRequest;
+    questionRequest?: NormalizedQuestionRequest;
+  }>;
+  // Track normalized message ids that have been persisted.
+  // Maps normalizedMessage.id → raw_messages row id (or null for synthetic).
+  // When a streaming update re-emits the same message id, we UPDATE instead of INSERT.
+  persistedMessageIds: Map<string, string | null>;
 }
 
 class AgentService {
@@ -99,80 +92,121 @@ class AgentService {
     this.emit(AGENT_CHANNELS.STATUS, { taskId, status, error });
   }
 
-  private async emitMessage(taskId: string, message: AgentMessage) {
-    // Persist to database
-    const session = this.sessions.get(taskId);
-    if (session) {
-      try {
+  /**
+   * Persist a raw SDK message to the raw_messages table.
+   * Returns the created row ID so it can be linked from agent_messages.
+   */
+  private async persistRawMessage(
+    taskId: string,
+    session: ActiveSession,
+    raw: unknown,
+  ): Promise<string> {
+    const row = await RawMessageRepository.create({
+      taskId,
+      messageIndex: session.messageIndex,
+      backendSessionId: session.backendSessionId,
+      rawData: raw,
+      rawFormat: session.backendType,
+    });
+    return row.id;
+  }
+
+  /**
+   * Persist and emit a normalized message linked to a raw message.
+   * The raw message must be persisted first (via persistRawMessage).
+   *
+   * Handles streaming updates: if a message with the same normalized `id`
+   * was already persisted in this session, UPDATE the existing rows instead
+   * of inserting new ones (prevents duplicate rows from streaming deltas).
+   */
+  private async persistAndEmitMessage(
+    taskId: string,
+    session: ActiveSession,
+    normalized: NormalizedMessage,
+    rawMessageId: string | null,
+  ) {
+    try {
+      const alreadyPersisted = session.persistedMessageIds.has(normalized.id);
+
+      if (alreadyPersisted) {
+        // Streaming update — update the existing row in-place
+        // (normalizedData and rawMessageId are both updated to the latest values)
         dbg.agentMessage(
-          'Persisting message %d for task %s, type: %s',
+          'Updating existing message %s for task %s (streaming update)',
+          normalized.id,
+          taskId,
+        );
+        await AgentMessageRepository.updateNormalizedData({
+          taskId,
+          normalizedId: normalized.id,
+          normalized,
+          rawMessageId,
+        });
+      } else {
+        // First time seeing this message id — insert new row
+        dbg.agentMessage(
+          'Persisting message %d for task %s, role: %s',
           session.messageIndex,
           taskId,
-          message.type,
+          normalized.role,
         );
-        await AgentMessageRepository.create(
+        await AgentMessageRepository.create({
           taskId,
-          session.messageIndex,
-          message,
-        );
+          messageIndex: session.messageIndex,
+          normalized,
+          rawMessageId,
+        });
         session.messageIndex++;
-      } catch (error) {
-        dbg.agent('Failed to persist message: %O', error);
       }
-    } else {
-      dbg.agent('No session found for task %s, message not persisted', taskId);
+
+      // Track this message id (with latest raw row id)
+      session.persistedMessageIds.set(normalized.id, rawMessageId);
+    } catch (error) {
+      dbg.agent('Failed to persist message: %O', error);
     }
 
     dbg.agentMessage(
-      'Emitting message for task %s, type: %s',
+      'Emitting message for task %s, role: %s',
       taskId,
-      message.type,
+      normalized.role,
     );
-    this.emit(AGENT_CHANNELS.MESSAGE, { taskId, message });
+    this.emit(AGENT_CHANNELS.MESSAGE, { taskId, message: normalized });
   }
 
-  private getSessionAllowButton(
-    toolName: string,
-    input: Record<string, unknown>,
-  ): SessionAllowButton | undefined {
-    if (toolName === 'ExitPlanMode') {
-      return {
-        label: 'Allow and Auto-Edit',
-        toolsToAllow: ['Edit', 'Write'],
-        setModeOnAllow: 'ask',
-      };
-    }
-
-    const permission = buildPermissionString(toolName, input);
-    if (!permission) return undefined;
-
-    return {
-      label: `Allow ${toolName} for Session`,
-      toolsToAllow: [permission],
-    };
+  /**
+   * Persist and emit a synthetic normalized message (not from a backend).
+   * Used for user message echo and interruption messages generated by agent-service.
+   * These have no raw SDK backing, so rawMessageId is null.
+   */
+  private async persistAndEmitSyntheticMessage(
+    taskId: string,
+    session: ActiveSession,
+    normalized: NormalizedMessage,
+  ) {
+    await this.persistAndEmitMessage(taskId, session, normalized, null);
   }
 
   private async emitPermissionRequest(
     taskId: string,
-    requestId: string,
-    toolName: string,
-    input: Record<string, unknown>,
+    request: NormalizedPermissionRequest,
   ) {
-    const sessionAllowButton = this.getSessionAllowButton(toolName, input);
-    this.emit(AGENT_CHANNELS.PERMISSION, {
+    const event: AgentPermissionEvent = {
       taskId,
-      requestId,
-      toolName,
-      input,
-      sessionAllowButton,
-    });
+      requestId: request.requestId,
+      toolName: request.toolName,
+      input: request.input as Record<string, unknown>,
+      sessionAllowButton: request.sessionAllowButton as
+        | SessionAllowButton
+        | undefined,
+    };
+    this.emit(AGENT_CHANNELS.PERMISSION, event);
 
     // Send desktop notification if window not focused
     if (this.mainWindow && !this.mainWindow.isFocused()) {
       const task = await TaskRepository.findById(taskId);
       notificationService.notify(
         'Permission Required',
-        `Task "${task?.name || 'Unknown'}" needs approval for ${toolName}`,
+        `Task "${task?.name || 'Unknown'}" needs approval for ${request.toolName}`,
         () => {
           this.mainWindow?.focus();
         },
@@ -182,10 +216,27 @@ class AgentService {
 
   private async emitQuestionRequest(
     taskId: string,
-    requestId: string,
-    questions: AgentQuestion[],
+    request: NormalizedQuestionRequest,
   ) {
-    this.emit(AGENT_CHANNELS.QUESTION, { taskId, requestId, questions });
+    // Convert NormalizedQuestion[] to AgentQuestion[] for backward compat
+    const questions: AgentQuestion[] = request.questions.map(
+      (q: NormalizedQuestion) => ({
+        question: q.question,
+        header: q.header,
+        options: q.options.map((o) => ({
+          label: o.label,
+          description: o.description,
+        })),
+        multiSelect: q.multiSelect,
+      }),
+    );
+
+    const event: AgentQuestionEvent = {
+      taskId,
+      requestId: request.requestId,
+      questions,
+    };
+    this.emit(AGENT_CHANNELS.QUESTION, event);
 
     // Send desktop notification if window not focused
     if (this.mainWindow && !this.mainWindow.isFocused()) {
@@ -208,77 +259,68 @@ class AgentService {
     this.emit(AGENT_CHANNELS.QUEUE_UPDATE, { taskId, queuedPrompts });
   }
 
-  private async generateTaskName(
+  private async generateAndPersistTaskName(
     taskId: string,
     prompt: string,
   ): Promise<void> {
     try {
-      const generator = query({
-        prompt: `Generate a short task name (max 40 characters) that summarizes this task. Output only the name, nothing else.\n\nTask: ${prompt}`,
-        options: {
-          allowedTools: [],
-          permissionMode: 'bypassPermissions',
-          model: 'haiku',
-          outputFormat: {
-            type: 'json_schema',
-            schema: TASK_NAME_SCHEMA,
-          },
-        },
-      });
-
-      for await (const message of generator) {
-        const msg = message as {
-          type: string;
-          structured_output?: { name: string };
-        };
-        if (msg.type === 'result' && msg.structured_output?.name) {
-          const name = msg.structured_output.name.slice(0, 40);
-          await TaskRepository.update(taskId, { name });
-          this.emitTaskNameUpdated(taskId, name);
-          dbg.agent('Generated task name for %s: %s', taskId, name);
-          break;
-        }
+      const name = await generateTaskName(prompt);
+      if (name) {
+        await TaskRepository.update(taskId, { name });
+        this.emitTaskNameUpdated(taskId, name);
+        dbg.agent('Generated task name for %s: %s', taskId, name);
       }
     } catch (error) {
       dbg.agent('Failed to generate task name for %s: %O', taskId, error);
-      // Non-fatal - task keeps its original name
     }
   }
 
-  /**
-   * Create a new session for a task.
-   */
+  // --- Session management ---
+
   private async createSession(taskId: string): Promise<ActiveSession> {
     const existingMessageCount =
       await AgentMessageRepository.getMessageCount(taskId);
     const task = await TaskRepository.findById(taskId);
 
+    const backendType: AgentBackendType = task!.agentBackend;
+    const BackendClass = AGENT_BACKEND_CLASSES[backendType];
+    if (!BackendClass) {
+      throw new Error(`Unknown agent backend: "${backendType}"`);
+    }
+    const backend = new BackendClass();
+
     const session: ActiveSession = {
       taskId,
-      sessionId: task?.sessionId ?? null,
+      backendSessionId: null,
+      sdkSessionId: task?.sessionId ?? null,
+      backendType,
+      backend,
+      messageIndex: existingMessageCount,
+      queuedPrompts: [],
       abortController: new AbortController(),
       pendingRequests: [],
-      messageGenerator: null,
-      messageIndex: existingMessageCount,
-      queryInstance: null,
-      queuedPrompts: [],
+      persistedMessageIds: new Map(),
     };
 
     this.sessions.set(taskId, session);
     dbg.agentSession(
-      'Created session for task %s (resuming: %s, messageIndex: %d)',
+      'Created session for task %s (backend: %s, resuming: %s, messageIndex: %d)',
       taskId,
-      session.sessionId ? 'yes' : 'no',
+      backendType,
+      session.sdkSessionId ? 'yes' : 'no',
       existingMessageCount,
     );
     return session;
   }
 
+  // --- Main event loop ---
+
   /**
-   * Run a query with the given prompt.
-   * Handles message streaming, session ID capture, result handling, and queued prompts.
+   * Run the agent backend for a task, processing events from the backend's
+   * event stream. Handles message persistence, permission/question forwarding,
+   * result handling, and queued prompts.
    */
-  private async runQuery(
+  private async runBackend(
     taskId: string,
     prompt: string,
     session: ActiveSession,
@@ -302,16 +344,14 @@ class AgentService {
       );
     }
 
-    const sdkPermissionMode =
-      SDK_PERMISSION_MODES[(task.interactionMode ?? 'ask') as InteractionMode];
     const workingDir = task.worktreePath ?? project.path;
 
     dbg.agentSession(
-      'runQuery for task %s: mode=%s, cwd=%s, resuming=%s',
+      'runBackend for task %s: backend=%s, cwd=%s, resuming=%s',
       taskId,
-      sdkPermissionMode,
+      session.backendType,
       workingDir,
-      session.sessionId ? 'yes' : 'no',
+      session.sdkSessionId ? 'yes' : 'no',
     );
 
     if (task.status !== 'running') {
@@ -322,93 +362,186 @@ class AgentService {
     // Create new abort controller for this query iteration
     session.abortController = new AbortController();
 
-    const queryOptions: NonNullable<Parameters<typeof query>[0]['options']> = {
-      cwd: workingDir,
-      allowedTools: [],
-      canUseTool: async (
-        toolName: string,
-        input: Record<string, unknown>,
-      ): Promise<PermissionResult> => {
-        return this.handleToolRequest(taskId, toolName, input);
-      },
-      permissionMode: sdkPermissionMode,
-      settingSources: ['user', 'project', 'local'],
-    };
-
-    if (task.modelPreference && task.modelPreference !== 'default') {
-      queryOptions.model = task.modelPreference;
-    }
-
-    if (session.sessionId) {
-      queryOptions.resume = session.sessionId;
-    }
-
     if (options?.generateNameOnInit && task.name === null) {
       // NOTE: fire-and-forget
-      void this.generateTaskName(taskId, options.initialPrompt ?? prompt).catch(
-        (err) => {
-          dbg.agent('Error generating task name: %O', err);
-        },
-      );
+      void this.generateAndPersistTaskName(
+        taskId,
+        options.initialPrompt ?? prompt,
+      ).catch((err) => {
+        dbg.agent('Error generating task name: %O', err);
+      });
     }
 
-    // Emit user message before starting query
-    await this.emitMessage(taskId, {
-      type: 'user',
-      message: {
-        role: 'user',
-        content: prompt,
-      },
+    // Emit user message before starting the backend
+    await this.persistAndEmitSyntheticMessage(taskId, session, {
+      id: nanoid(),
+      role: 'user',
+      parts: [{ type: 'text', text: prompt }],
+      timestamp: new Date().toISOString(),
     });
 
-    dbg.agentSession('Starting SDK query for task %s', taskId);
-    const generator = query({ prompt, options: queryOptions });
-    session.queryInstance = generator;
-    session.messageGenerator = generator;
-    let hasUpdatedSessionId = false;
+    // Start the backend
+    dbg.agentSession('Starting backend for task %s', taskId);
+    const agentSession = await session.backend.start(
+      {
+        type: session.backendType,
+        cwd: workingDir,
+        interactionMode: (task.interactionMode ?? 'ask') as InteractionMode,
+        model:
+          task.modelPreference && task.modelPreference !== 'default'
+            ? task.modelPreference
+            : undefined,
+        sessionId: session.sdkSessionId ?? undefined,
+        sessionAllowedTools: task.sessionAllowedTools ?? [],
+      },
+      prompt,
+    );
 
-    for await (const rawMessage of generator) {
+    session.backendSessionId = agentSession.sessionId;
+
+    // Process the event stream
+    for await (const event of agentSession.events) {
       if (session.abortController.signal.aborted) {
-        dbg.agentSession('Task %s aborted, breaking message loop', taskId);
+        dbg.agentSession('Task %s aborted, breaking event loop', taskId);
         break;
       }
 
-      const message = rawMessage as AgentMessage;
+      await this.processEvent(taskId, session, event);
+    }
+  }
 
-      if (!hasUpdatedSessionId && !session.sessionId && message.session_id) {
-        session.sessionId = message.session_id;
-        await TaskRepository.update(taskId, { sessionId: message.session_id });
-        hasUpdatedSessionId = true;
+  /**
+   * Process a single event from the backend event stream.
+   */
+  private async processEvent(
+    taskId: string,
+    session: ActiveSession,
+    event: AgentEvent,
+  ): Promise<void> {
+    switch (event.type) {
+      case 'session-id': {
+        session.sdkSessionId = event.sessionId;
+        await TaskRepository.update(taskId, { sessionId: event.sessionId });
         dbg.agentSession(
           'Captured session ID for task %s: %s',
           taskId,
-          message.session_id,
+          event.sessionId,
         );
+        break;
       }
 
-      await this.emitMessage(taskId, message);
+      case 'message': {
+        // Extract raw SDK data if the backend attached it
+        const raw =
+          (event as AgentEvent & { _raw?: unknown })._raw ?? event.message;
 
-      // Handle result message
-      if (message.type === 'result') {
+        // Check if this is a streaming update for a message we've already persisted
+        const normalizedId = event.message?.id;
+        const isStreamingUpdate =
+          normalizedId !== undefined &&
+          session.persistedMessageIds.has(normalizedId);
+
+        let rawMessageId: string | null;
+
+        if (isStreamingUpdate) {
+          // Update the existing raw message row in-place
+          const existingRawId =
+            session.persistedMessageIds.get(normalizedId) ?? null;
+          if (existingRawId) {
+            await RawMessageRepository.updateRawData(existingRawId, raw);
+          }
+          rawMessageId = existingRawId;
+        } else {
+          // First time seeing this message — insert a new raw row
+          rawMessageId = await this.persistRawMessage(taskId, session, raw);
+        }
+
+        // Persist + emit the normalized message, linked to the raw row
+        if (event.message) {
+          await this.persistAndEmitMessage(
+            taskId,
+            session,
+            event.message,
+            rawMessageId,
+          );
+        } else if (!isStreamingUpdate) {
+          // Raw-only message (normalization skipped). Still bump the index
+          // so raw_messages.messageIndex stays consistent.
+          session.messageIndex++;
+        }
+        break;
+      }
+
+      case 'permission-request': {
+        const request = event.request;
+        // Track the pending request
+        session.pendingRequests.push({
+          requestId: request.requestId,
+          type: 'permission',
+          permissionRequest: request,
+        });
+
+        await TaskRepository.update(taskId, { status: 'waiting' });
+        this.emitStatus(taskId, 'waiting');
+        await this.emitPermissionRequest(taskId, request);
+        break;
+      }
+
+      case 'question': {
+        const request = event.request;
+        // Track the pending request
+        session.pendingRequests.push({
+          requestId: request.requestId,
+          type: 'question',
+          questionRequest: request,
+        });
+
+        await TaskRepository.update(taskId, { status: 'waiting' });
+        this.emitStatus(taskId, 'waiting');
+        await this.emitQuestionRequest(taskId, request);
+        break;
+      }
+
+      case 'complete': {
+        const result = event.result;
         dbg.agentSession(
-          'Task %s received result (is_error: %s, queued: %d)',
+          'Task %s received result (isError: %s, queued: %d)',
           taskId,
-          message.is_error,
+          result.isError,
           session.queuedPrompts.length,
         );
 
+        // Sync session-allowed tools back to the task
+        if (
+          session.backend.getSessionAllowedTools &&
+          session.backendSessionId
+        ) {
+          const tools = session.backend.getSessionAllowedTools(
+            session.backendSessionId,
+          );
+          if (tools.length > 0) {
+            const currentTask = await TaskRepository.findById(taskId);
+            const existingTools = currentTask?.sessionAllowedTools ?? [];
+            const merged = [...new Set([...existingTools, ...tools])];
+            if (merged.length !== existingTools.length) {
+              await TaskRepository.update(taskId, {
+                sessionAllowedTools: merged,
+              });
+            }
+          }
+        }
+
         // Check for queued prompts
         const nextPrompt = session.queuedPrompts.shift();
-        if (nextPrompt && !message.is_error) {
+        if (nextPrompt && !result.isError) {
           dbg.agentSession('Task %s processing next queued prompt', taskId);
           this.emitPromptQueueUpdate(taskId, session.queuedPrompts);
           // Recursively process next queued prompt
-          // Don't clean up session, recursion will handles it
-          return await this.runQuery(taskId, nextPrompt.content, session);
+          return await this.runBackend(taskId, nextPrompt.content, session);
         }
 
         // No more queued prompts - finalize
-        const status = message.is_error ? 'errored' : 'completed';
+        const status = result.isError ? 'errored' : 'completed';
         await TaskRepository.update(taskId, { status });
         this.emitStatus(taskId, status);
 
@@ -423,9 +556,30 @@ class AgentService {
             },
           );
         }
+        break;
       }
+
+      case 'error': {
+        dbg.agent('Backend error for task %s: %s', taskId, event.error);
+        await TaskRepository.update(taskId, { status: 'errored' });
+        this.emitStatus(taskId, 'errored', event.error);
+        break;
+      }
+
+      case 'mode-change': {
+        await TaskRepository.update(taskId, { interactionMode: event.mode });
+        break;
+      }
+
+      default:
+        // Other event types (session-updated, tool-state-update, etc.)
+        // are logged but not actively handled yet
+        dbg.agent('Unhandled event type for task %s: %s', taskId, event.type);
+        break;
     }
   }
+
+  // --- Public API ---
 
   async start(taskId: string): Promise<void> {
     // Check if already running
@@ -448,7 +602,7 @@ class AgentService {
 
     try {
       dbg.agentSession('Starting agent for task %s', taskId);
-      await this.runQuery(taskId, task.prompt, session, {
+      await this.runBackend(taskId, task.prompt, session, {
         generateNameOnInit: true,
         initialPrompt: task.prompt,
       });
@@ -460,100 +614,6 @@ class AgentService {
     } finally {
       this.sessions.delete(taskId);
     }
-  }
-
-  private async handleToolRequest(
-    taskId: string,
-    toolName: string,
-    input: Record<string, unknown>,
-  ): Promise<PermissionResult> {
-    dbg.agentPermission('Tool request for task %s: %s', taskId, toolName);
-    const session = this.sessions.get(taskId);
-    if (!session) {
-      dbg.agentPermission('No session found for task %s', taskId);
-      return { behavior: 'deny', message: 'Session not found' };
-    }
-
-    // Check if tool is in session-allowed list
-    const task = await TaskRepository.findById(taskId);
-    const allowedTools = task?.sessionAllowedTools ?? [];
-
-    // Determine working directory: worktree path if present, otherwise project path
-    let workingDir: string | undefined;
-    if (task?.worktreePath) {
-      workingDir = task.worktreePath;
-    } else if (task?.projectId) {
-      const project = await ProjectRepository.findById(task.projectId);
-      workingDir = project?.path;
-    }
-
-    if (
-      isToolAllowedByPermissions(toolName, input, allowedTools, { workingDir })
-    ) {
-      dbg.agentPermission(
-        'Tool %s is session-allowed for task %s',
-        toolName,
-        taskId,
-      );
-      return { behavior: 'allow', updatedInput: input };
-    }
-
-    const requestId = nanoid();
-
-    // Handle AskUserQuestion specially
-    if (toolName === 'AskUserQuestion') {
-      const questions = input.questions as AgentQuestion[];
-      await this.emitQuestionRequest(taskId, requestId, questions);
-      await TaskRepository.update(taskId, { status: 'waiting' });
-      this.emitStatus(taskId, 'waiting');
-
-      // Wait for response
-      const response = await new Promise<PermissionResponse | QuestionResponse>(
-        (resolve) => {
-          session.pendingRequests.push({
-            requestId,
-            type: 'question',
-            toolName,
-            input,
-            resolve,
-          });
-        },
-      );
-
-      await TaskRepository.update(taskId, { status: 'running' });
-      this.emitStatus(taskId, 'running');
-
-      // Return formatted response for AskUserQuestion
-      const questionResponse = response as QuestionResponse;
-      return {
-        behavior: 'allow',
-        updatedInput: {
-          questions: input.questions,
-          answers: questionResponse.answers,
-        },
-      };
-    }
-
-    // Regular permission request
-    await this.emitPermissionRequest(taskId, requestId, toolName, input);
-    await TaskRepository.update(taskId, { status: 'waiting' });
-    this.emitStatus(taskId, 'waiting');
-
-    // Wait for response
-    const response = await new Promise<PermissionResult>((resolve) => {
-      session.pendingRequests.push({
-        requestId,
-        type: 'permission',
-        toolName,
-        input,
-        resolve,
-      });
-    });
-
-    await TaskRepository.update(taskId, { status: 'running' });
-    this.emitStatus(taskId, 'running');
-
-    return response;
   }
 
   async stop(taskId: string): Promise<void> {
@@ -570,11 +630,19 @@ class AgentService {
 
     session.abortController.abort();
 
+    // Stop the backend
+    if (session.backendSessionId) {
+      await session.backend.stop(session.backendSessionId);
+    }
+
     // Emit a custom interruption message
-    await this.emitMessage(taskId, {
-      type: 'result',
+    await this.persistAndEmitSyntheticMessage(taskId, session, {
+      id: nanoid(),
+      role: 'result',
+      parts: [{ type: 'text', text: 'Task interrupted by user' }],
+      timestamp: new Date().toISOString(),
+      isError: true,
       result: 'Task interrupted by user',
-      is_error: true,
     });
 
     await TaskRepository.update(taskId, { status: 'interrupted' });
@@ -598,6 +666,7 @@ class AgentService {
       throw new Error(`No active session for task ${taskId}`);
     }
 
+    // Find and remove the pending request
     const requestIndex = session.pendingRequests.findIndex(
       (r) => r.requestId === requestId,
     );
@@ -607,35 +676,43 @@ class AgentService {
 
     const [request] = session.pendingRequests.splice(requestIndex, 1);
     dbg.agentPermission(
-      'Resolved %s request for tool %s (remaining pending: %d)',
+      'Resolved %s request (remaining pending: %d)',
       request.type,
-      request.toolName,
       session.pendingRequests.length,
     );
 
-    // Resolve with the appropriate response type based on request type
+    // Forward to the backend
     if (request.type === 'permission') {
-      request.resolve(response as PermissionResult);
+      const permResponse = response as PermissionResponse;
+      await session.backend.respondToPermission(
+        session.backendSessionId!,
+        requestId,
+        {
+          behavior: permResponse.behavior,
+          updatedInput: permResponse.updatedInput,
+          message: permResponse.message,
+        },
+      );
     } else {
-      request.resolve(response as QuestionResponse);
+      const questionResponse = response as QuestionResponse;
+      await session.backend.respondToQuestion(
+        session.backendSessionId!,
+        requestId,
+        questionResponse.answers,
+      );
     }
+
+    // Resume running status
+    await TaskRepository.update(taskId, { status: 'running' });
+    this.emitStatus(taskId, 'running');
 
     // If there are more pending requests, emit the next one
     if (session.pendingRequests.length > 0) {
       const next = session.pendingRequests[0];
-      if (next.type === 'question') {
-        await this.emitQuestionRequest(
-          taskId,
-          next.requestId,
-          next.input.questions as AgentQuestion[],
-        );
-      } else {
-        await this.emitPermissionRequest(
-          taskId,
-          next.requestId,
-          next.toolName,
-          next.input,
-        );
+      if (next.type === 'question' && next.questionRequest) {
+        await this.emitQuestionRequest(taskId, next.questionRequest);
+      } else if (next.type === 'permission' && next.permissionRequest) {
+        await this.emitPermissionRequest(taskId, next.permissionRequest);
       }
     }
   }
@@ -651,7 +728,7 @@ class AgentService {
 
     try {
       dbg.agentSession('Sending follow-up message for task %s', taskId);
-      await this.runQuery(taskId, message, session);
+      await this.runBackend(taskId, message, session);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
@@ -732,40 +809,51 @@ class AgentService {
     }
 
     const request = session.pendingRequests[0];
-    if (request.type === 'question') {
+    if (request.type === 'question' && request.questionRequest) {
       return {
         type: 'question',
         data: {
           taskId,
           requestId: request.requestId,
-          questions: request.input.questions as AgentQuestion[],
+          questions: request.questionRequest.questions.map(
+            (q: NormalizedQuestion) => ({
+              question: q.question,
+              header: q.header,
+              options: q.options.map((o) => ({
+                label: o.label,
+                description: o.description,
+              })),
+              multiSelect: q.multiSelect,
+            }),
+          ),
         },
       };
     }
 
-    // Permission request
-    const sessionAllowButton = this.getSessionAllowButton(
-      request.toolName,
-      request.input,
-    );
-    return {
-      type: 'permission',
-      data: {
-        taskId,
-        requestId: request.requestId,
-        toolName: request.toolName,
-        input: request.input,
-        sessionAllowButton,
-      },
-    };
+    if (request.type === 'permission' && request.permissionRequest) {
+      return {
+        type: 'permission',
+        data: {
+          taskId,
+          requestId: request.requestId,
+          toolName: request.permissionRequest.toolName,
+          input: request.permissionRequest.input as Record<string, unknown>,
+          sessionAllowButton: request.permissionRequest.sessionAllowButton as
+            | SessionAllowButton
+            | undefined,
+        },
+      };
+    }
+
+    return null;
   }
 
   async setMode(taskId: string, mode: InteractionMode): Promise<void> {
     dbg.agentSession('Setting mode for task %s to %s', taskId, mode);
     const session = this.sessions.get(taskId);
-    if (session?.queryInstance) {
-      await session.queryInstance.setPermissionMode(SDK_PERMISSION_MODES[mode]);
-      dbg.agentSession('Updated SDK permission mode for active session');
+    if (session?.backendSessionId) {
+      await session.backend.setMode(session.backendSessionId, mode);
+      dbg.agentSession('Updated backend permission mode for active session');
     }
     await TaskRepository.update(taskId, { interactionMode: mode });
   }
@@ -774,14 +862,8 @@ class AgentService {
     return this.sessions.has(taskId);
   }
 
-  async getMessages(taskId: string): Promise<AgentMessage[]> {
-    const messages = await AgentMessageRepository.findByTaskId(taskId);
-    dbg.agentMessage(
-      'getMessages for task %s: found %d messages',
-      taskId,
-      messages.length,
-    );
-    return messages;
+  async getMessages(taskId: string): Promise<NormalizedMessage[]> {
+    return AgentMessageRepository.findByTaskId(taskId);
   }
 
   async getMessageCount(taskId: string): Promise<number> {

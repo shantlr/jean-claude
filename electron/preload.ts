@@ -1,10 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import { AGENT_CHANNELS } from '../shared/agent-types';
+import { AGENT_CHANNELS } from '@shared/agent-types';
 import type {
   GlobalPrompt,
   GlobalPromptResponse,
-} from '../shared/global-prompt-types';
+} from '@shared/global-prompt-types';
 
 contextBridge.exposeInMainWorld('api', {
   platform: process.platform,
@@ -253,6 +253,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke(AGENT_CHANNELS.QUEUE_PROMPT, taskId, prompt),
     cancelQueuedPrompt: (taskId: string, promptId: string) =>
       ipcRenderer.invoke(AGENT_CHANNELS.CANCEL_QUEUED_PROMPT, taskId, promptId),
+    getBackendModels: (backend: string) =>
+      ipcRenderer.invoke('agent:getBackendModels', backend),
     getMessages: (taskId: string) =>
       ipcRenderer.invoke(AGENT_CHANNELS.GET_MESSAGES, taskId),
     getMessageCount: (taskId: string) =>

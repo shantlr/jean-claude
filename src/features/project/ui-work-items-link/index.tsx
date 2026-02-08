@@ -3,8 +3,7 @@ import { useMemo, useState } from 'react';
 
 import { useUpdateProject } from '@/hooks/use-projects';
 import { useProviders, useProviderDetails } from '@/hooks/use-providers';
-
-import type { Project } from '../../../../shared/types';
+import type { Project } from '@shared/types';
 
 export function WorkItemsLink({ project }: { project: Project }) {
   const { data: providers } = useProviders();

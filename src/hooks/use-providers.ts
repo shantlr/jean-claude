@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api, ProviderDetails } from '@/lib/api';
-
-import { NewProvider, UpdateProvider } from '../../shared/types';
+import { NewProvider, UpdateProvider } from '@shared/types';
 
 export function useProviders() {
   return useQuery({

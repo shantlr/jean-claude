@@ -1,25 +1,19 @@
 import { Wand2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
-import type { AgentMessage, TextBlock } from '../../../../shared/agent-types';
+import type { NormalizedMessage } from '@shared/agent-backend-types';
+
 import { MarkdownContent } from '../ui-markdown-content';
 
 /**
  * Extract text content from a skill prompt message.
  */
-function getPromptText(message: AgentMessage): string {
-  if (!message.message || message.message.role !== 'user') {
-    return '';
-  }
+function getPromptText(message: NormalizedMessage): string {
+  if (message.role !== 'user') return '';
 
-  const content = message.message.content;
-  if (typeof content === 'string') {
-    return content;
-  }
-
-  return content
-    .filter((block): block is TextBlock => block.type === 'text')
-    .map((block) => block.text)
+  return message.parts
+    .filter((p) => p.type === 'text')
+    .map((p) => (p as { type: 'text'; text: string }).text)
     .join('\n');
 }
 
@@ -33,7 +27,7 @@ export function SkillEntry({
   onFilePathClick,
 }: {
   skillName: string;
-  promptMessage: AgentMessage;
+  promptMessage: NormalizedMessage;
   onFilePathClick?: (
     filePath: string,
     lineStart?: number,

@@ -13,14 +13,21 @@ import React, {
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { Kbd } from '@/common/ui/kbd';
-import { MODEL_PREFERENCES } from '@/features/agent/ui-model-selector';
+import {
+  getModelLabel,
+  getModelPreferencesForBackend,
+  useBackendSelector,
+} from '@/features/agent/ui-backend-selector';
+import { useBackendModels } from '@/hooks/use-backend-models';
 import { useProjects, useProjectBranches } from '@/hooks/use-projects';
+import { useBackendsSetting } from '@/hooks/use-settings';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
 import { useWorkItems } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
 import { useNewTaskDraft, type InputMode } from '@/stores/new-task-draft';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import type { Project } from '@shared/types';
 
-import type { Project } from '../../../../shared/types';
 import {
   PromptComposer,
   generateInitialTemplate,
@@ -261,13 +268,74 @@ export function NewTaskOverlay({
     updateDraft({ interactionMode: INTERACTION_MODES[nextIndex] });
   }, [draft?.interactionMode, updateDraft]);
 
-  // Toggle model preference (default → sonnet → opus → haiku → default)
+  // Toggle model preference, constrained to models valid for the current backend
+  const currentBackend = draft?.agentBackend ?? 'claude-code';
+  const { data: dynamicModels } = useBackendModels(currentBackend);
+  const backendModels = useMemo(
+    () => getModelPreferencesForBackend(currentBackend, dynamicModels),
+    [currentBackend, dynamicModels],
+  );
+
+  // Resolve the display label for the current model preference
+  const modelDisplayLabel = getModelLabel(
+    draft?.modelPreference ?? 'default',
+    currentBackend,
+    dynamicModels,
+  );
+
   const toggleModelPreference = useCallback(() => {
     const current = draft?.modelPreference ?? 'default';
-    const currentIndex = MODEL_PREFERENCES.indexOf(current);
-    const nextIndex = (currentIndex + 1) % MODEL_PREFERENCES.length;
-    updateDraft({ modelPreference: MODEL_PREFERENCES[nextIndex] });
-  }, [draft?.modelPreference, updateDraft]);
+    const currentIndex = backendModels.indexOf(current);
+    const nextIndex =
+      currentIndex === -1 ? 0 : (currentIndex + 1) % backendModels.length;
+    updateDraft({ modelPreference: backendModels[nextIndex] });
+  }, [draft?.modelPreference, backendModels, updateDraft]);
+
+  // Enabled backends from settings
+  const { data: backendsSetting } = useBackendsSetting();
+
+  // Handle backend change — always reset model to default since model lists differ per backend
+  const handleBackendChange = useCallback(
+    (backend: AgentBackendType) => {
+      updateDraft({ agentBackend: backend, modelPreference: 'default' });
+    },
+    [updateDraft],
+  );
+
+  // Backend selector hook — owns enabled list, label, and toggle cycling
+  const backendInfo = useBackendSelector({
+    value: currentBackend,
+    onChange: handleBackendChange,
+  });
+
+  // Sync draft backend with project→global default when project changes
+  useEffect(() => {
+    if (!backendsSetting) return;
+    const resolved =
+      selectedProject?.defaultAgentBackend ?? backendsSetting.defaultBackend;
+    if (backendsSetting.enabledBackends.includes(resolved)) {
+      updateDraft({ agentBackend: resolved, modelPreference: 'default' });
+    }
+  }, [selectedProjectId]); // eslint-disable-line react-hooks/exhaustive-deps -- intentionally sync only on project change
+
+  // Sync draft backend with settings: reset to default if not in enabled list
+  useEffect(() => {
+    if (!backendsSetting) return;
+    const draftBackend = draft?.agentBackend ?? 'claude-code';
+    if (!backendsSetting.enabledBackends.includes(draftBackend)) {
+      const resolved =
+        selectedProject?.defaultAgentBackend ?? backendsSetting.defaultBackend;
+      updateDraft({
+        agentBackend: resolved,
+        modelPreference: 'default',
+      });
+    }
+  }, [
+    backendsSetting,
+    draft?.agentBackend,
+    selectedProject?.defaultAgentBackend,
+    updateDraft,
+  ]);
 
   // Navigate work items with arrow keys
   // Uses DOM querySelector to match the visual order displayed in WorkItemList
@@ -393,6 +461,7 @@ export function NewTaskOverlay({
         prompt: finalPrompt,
         interactionMode: draft.interactionMode,
         modelPreference: draft.modelPreference,
+        agentBackend: draft.agentBackend,
         useWorktree: draft.createWorktree,
         sourceBranch: draft.sourceBranch,
         workItemIds,
@@ -522,6 +591,13 @@ export function NewTaskOverlay({
       shortcut: 'cmd+l',
       handler: () => {
         toggleModelPreference();
+      },
+    },
+    {
+      label: 'Toggle Agent Backend',
+      shortcut: 'cmd+j',
+      handler: () => {
+        backendInfo.toggle();
       },
     },
     {
@@ -748,11 +824,21 @@ export function NewTaskOverlay({
               disabled={createTaskMutation.isPending}
               className="flex items-center gap-2 rounded px-2 py-1 text-sm text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
             >
-              <span className="capitalize">
-                {draft?.modelPreference ?? 'default'}
-              </span>
+              <span>{modelDisplayLabel}</span>
               <Kbd shortcut="cmd+l" />
             </button>
+
+            {/* Agent backend toggle — only show when multiple backends enabled */}
+            {backendInfo.visible && (
+              <button
+                onClick={backendInfo.toggle}
+                disabled={createTaskMutation.isPending}
+                className="flex items-center gap-2 rounded px-2 py-1 text-sm text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
+              >
+                <span>{backendInfo.label}</span>
+                <Kbd shortcut="cmd+j" />
+              </button>
+            )}
 
             <label className="flex items-center gap-2 text-sm">
               <input

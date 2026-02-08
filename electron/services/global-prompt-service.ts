@@ -5,7 +5,7 @@ import { BrowserWindow } from 'electron';
 import type {
   GlobalPrompt,
   GlobalPromptResponse,
-} from '../../shared/global-prompt-types';
+} from '@shared/global-prompt-types';
 
 const pendingPrompts = new Map<string, (accepted: boolean) => void>();
 

@@ -1,6 +1,6 @@
 import { X } from 'lucide-react';
 
-import type { QueuedPrompt } from '../../../../shared/agent-types';
+import type { QueuedPrompt } from '@shared/agent-types';
 
 export function QueuedPromptEntry({
   prompt,

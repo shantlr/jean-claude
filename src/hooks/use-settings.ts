@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
-
-import type { AppSettings, EditorSetting } from '../../shared/types';
+import type {
+  AppSettings,
+  BackendsSetting,
+  EditorSetting,
+} from '@shared/types';
 
 export function useSetting<K extends keyof AppSettings>(key: K) {
   return useQuery({
@@ -42,5 +45,20 @@ export function useAvailableEditors() {
     queryKey: ['availableEditors'],
     queryFn: api.shell.getAvailableEditors,
     staleTime: 60 * 1000, // Cache for 1 minute
+  });
+}
+
+// Convenience hooks for backends setting
+export function useBackendsSetting() {
+  return useSetting('backends');
+}
+
+export function useUpdateBackendsSetting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: BackendsSetting) => api.settings.set('backends', value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings', 'backends'] });
+    },
   });
 }

@@ -3,6 +3,7 @@ export { TaskRepository } from './tasks';
 export { ProviderRepository } from './providers';
 export { TokenRepository } from './tokens';
 export { AgentMessageRepository } from './agent-messages';
+export { RawMessageRepository } from './raw-messages';
 export { SettingsRepository } from './settings';
 export { DebugRepository } from './debug';
 export { TaskSummaryRepository } from './task-summaries';

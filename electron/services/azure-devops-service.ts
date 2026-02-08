@@ -10,7 +10,8 @@ import type {
   AzureDevOpsCommentThread,
   AzureDevOpsComment,
   ReviewerVoteStatus,
-} from '../../shared/azure-devops-types';
+} from '@shared/azure-devops-types';
+
 import { ProviderRepository } from '../database/repositories/providers';
 import { TokenRepository } from '../database/repositories/tokens';
 

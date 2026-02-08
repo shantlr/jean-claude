@@ -3,7 +3,8 @@ import type {
   McpServerTemplate,
   NewMcpServerTemplate,
   UpdateMcpServerTemplate,
-} from '../../../shared/mcp-types';
+} from '@shared/mcp-types';
+
 import { db } from '../index';
 
 function parseRow(row: {

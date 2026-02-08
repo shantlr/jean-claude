@@ -1,9 +1,11 @@
+import type { AgentBackendType } from '@shared/agent-backend-types';
 import {
   InteractionMode,
   ModelPreference,
   Task,
   TaskStatus,
-} from '../../../shared/types';
+} from '@shared/types';
+
 import { dbg } from '../../lib/debug';
 import { db } from '../index';
 import { NewTaskRow, TaskRow, UpdateTaskRow } from '../schema';
@@ -30,6 +32,7 @@ interface CreateTaskInput {
   workItemUrls?: string[] | null;
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
+  agentBackend?: AgentBackendType;
   createdAt?: string;
   updatedAt: string;
 }
@@ -54,6 +57,7 @@ interface UpdateTaskInput {
   workItemUrls?: string[] | null;
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
+  agentBackend?: AgentBackendType;
   updatedAt?: string;
 }
 
@@ -68,6 +72,7 @@ function toTask<T extends TaskRow>(
   | 'modelPreference'
   | 'workItemIds'
   | 'workItemUrls'
+  | 'agentBackend'
 > & {
   userCompleted: boolean;
   sessionAllowedTools: string[];
@@ -75,6 +80,7 @@ function toTask<T extends TaskRow>(
   modelPreference: ModelPreference;
   workItemIds: string[] | null;
   workItemUrls: string[] | null;
+  agentBackend: AgentBackendType;
 } {
   const {
     userCompleted,
@@ -83,6 +89,7 @@ function toTask<T extends TaskRow>(
     modelPreference,
     workItemIds,
     workItemUrls,
+    agentBackend,
     ...rest
   } = row;
   return {
@@ -95,6 +102,7 @@ function toTask<T extends TaskRow>(
     modelPreference: (modelPreference as ModelPreference) ?? 'default',
     workItemIds: workItemIds ? JSON.parse(workItemIds) : null,
     workItemUrls: workItemUrls ? JSON.parse(workItemUrls) : null,
+    agentBackend: agentBackend as AgentBackendType,
   };
 }
 
@@ -109,6 +117,7 @@ function toTaskOrUndefined<T extends TaskRow>(
       | 'modelPreference'
       | 'workItemIds'
       | 'workItemUrls'
+      | 'agentBackend'
     > & {
       userCompleted: boolean;
       sessionAllowedTools: string[];
@@ -116,6 +125,7 @@ function toTaskOrUndefined<T extends TaskRow>(
       modelPreference: ModelPreference;
       workItemIds: string[] | null;
       workItemUrls: string[] | null;
+      agentBackend: AgentBackendType;
     })
   | undefined {
   return row ? toTask(row) : undefined;
@@ -132,6 +142,8 @@ function toDbValues(data: CreateTaskInput): NewTaskRow {
   } = data;
   return {
     ...rest,
+    // agentBackend is NOT NULL without a default — ensure it's always set
+    agentBackend: data.agentBackend ?? 'claude-code',
     ...(userCompleted !== undefined && {
       userCompleted: userCompleted ? 1 : 0,
     }),

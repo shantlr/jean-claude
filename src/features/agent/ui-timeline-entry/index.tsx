@@ -6,22 +6,22 @@ import { codeToTokens, type ThemedToken } from 'shiki';
 
 import { formatNumber } from '@/lib/number';
 import { formatDuration } from '@/lib/time';
-
 import type {
-  AgentMessage,
-  CompactMetadata,
-  ContentBlock,
-  TextBlock,
+  NormalizedMessage,
+  NormalizedPart,
+  NormalizedToolUsePart,
+  NormalizedToolResultPart,
+  NormalizedCompactPart,
   TodoItem,
-  ToolUseBlock,
-  ToolResultBlock,
-  HiddenSystemSubtype,
-} from '../../../../shared/agent-types';
+} from '@shared/agent-backend-types';
 import {
-  HIDDEN_SYSTEM_SUBTYPES,
-  isTodoToolUseResult,
-  isWriteToolUseResult,
-} from '../../../../shared/agent-types';
+  isNormalizedTextPart,
+  isNormalizedToolUsePart,
+  isNormalizedUnknownPart,
+  isStructuredTodoResult,
+  isStructuredWriteResult,
+} from '@shared/agent-backend-types';
+
 import { DiffView } from '../ui-diff-view';
 import { getLanguageFromPath } from '../ui-diff-view/language-utils';
 import { MarkdownContent } from '../ui-markdown-content';
@@ -29,19 +29,23 @@ import { TodoListEntry } from '../ui-todo-list-entry';
 
 import { getToolSummary } from './tool-summary';
 
-function isTextBlock(block: ContentBlock): block is TextBlock {
-  return block.type === 'text';
-}
+// System message subtypes that should be hidden in the timeline
+const HIDDEN_SYSTEM_SUBTYPES = [
+  'init',
+  'hook_started',
+  'hook_completed',
+  'hook_response',
+  'status',
+  'compact_boundary',
+] as const;
 
-function isToolUseBlock(block: ContentBlock): block is ToolUseBlock {
-  return block.type === 'tool_use';
-}
+type HiddenSystemSubtype = (typeof HIDDEN_SYSTEM_SUBTYPES)[number];
 
-function formatResultContent(content: string | ContentBlock[]): string {
+function formatResultContent(content: string | NormalizedPart[]): string {
   if (typeof content === 'string') return content;
   return content
-    .map((block) =>
-      block.type === 'text' ? block.text : JSON.stringify(block, null, 2),
+    .map((part) =>
+      part.type === 'text' ? part.text : JSON.stringify(part, null, 2),
     )
     .join('\n');
 }
@@ -314,25 +318,30 @@ function ToolEntry({
   result,
   parentMessage,
 }: {
-  block: ToolUseBlock;
-  result?: ToolResultBlock;
-  parentMessage?: AgentMessage;
+  block: NormalizedToolUsePart;
+  result?: NormalizedToolResultPart;
+  parentMessage?: NormalizedMessage;
 }) {
   const summary = getToolSummary(block, result);
   const hasResult = !!result;
-  const isError = result?.is_error;
+  const isError = result?.isError;
   const isPending = !hasResult;
-  const codeStyle = getCodeStyleForTool(block.name);
+  const codeStyle = getCodeStyleForTool(block.toolName);
+  const input = (block.input ?? {}) as Record<string, unknown>;
 
   // Check if this is an Edit tool with diff content
-  const isEditTool = block.name === 'Edit' && isEditToolInput(block.input);
-  const isWriteTool = block.name === 'Write';
+  const isEditTool = block.toolName === 'Edit' && isEditToolInput(input);
+  const isWriteTool = block.toolName === 'Write';
 
-  // Check if we have structured Write/Edit result data
+  // Check if we have structured Write/Edit result data from the parent message's tool-result part
+  const resultPart = parentMessage?.parts.find(
+    (p): p is NormalizedToolResultPart =>
+      p.type === 'tool-result' && p.toolId === block.toolId,
+  );
   const writeToolResult =
-    parentMessage?.tool_use_result &&
-    isWriteToolUseResult(parentMessage.tool_use_result)
-      ? parentMessage.tool_use_result
+    resultPart?.structuredResult &&
+    isStructuredWriteResult(resultPart.structuredResult)
+      ? resultPart.structuredResult
       : null;
 
   // Auto-expand Edit and Write tools
@@ -340,7 +349,7 @@ function ToolEntry({
 
   // Extract edit input for DiffView (type-safe after guard)
   const editInput = isEditTool
-    ? (block.input as {
+    ? (input as {
         file_path: string;
         old_string: string;
         new_string: string;
@@ -349,36 +358,40 @@ function ToolEntry({
 
   // Extract file_path for Read tool syntax highlighting
   const readFilePath =
-    block.name === 'Read' &&
-    'file_path' in block.input &&
-    typeof block.input.file_path === 'string'
-      ? block.input.file_path
+    block.toolName === 'Read' &&
+    'file_path' in input &&
+    typeof input.file_path === 'string'
+      ? input.file_path
       : undefined;
 
   // For Write/Edit tools with structured result, use DiffView instead of showing raw input
   const hasDiffView = isEditTool || (isWriteTool && writeToolResult);
-  const formattedInput = hasDiffView ? '' : formatToolInput(block.input);
+  const formattedInput = hasDiffView ? '' : formatToolInput(input);
   const formattedResult = result ? formatResultContent(result.content) : '';
   const [expandContent, setExpandContent] = useState(false);
 
   // Custom rendering for TodoWrite
-  if (block.name === 'TodoWrite') {
-    // Case 1: Result available with tool_use_result containing todo data
+  if (block.toolName === 'TodoWrite') {
+    // Case 1: Result available with structuredResult containing todo data
+    const todoResultPart = parentMessage?.parts.find(
+      (p): p is NormalizedToolResultPart =>
+        p.type === 'tool-result' && p.toolId === block.toolId,
+    );
     if (
-      parentMessage?.tool_use_result &&
-      isTodoToolUseResult(parentMessage.tool_use_result)
+      todoResultPart?.structuredResult &&
+      isStructuredTodoResult(todoResultPart.structuredResult)
     ) {
       return (
         <TodoListEntry
-          oldTodos={parentMessage.tool_use_result.oldTodos}
-          newTodos={parentMessage.tool_use_result.newTodos}
+          oldTodos={todoResultPart.structuredResult.oldTodos}
+          newTodos={todoResultPart.structuredResult.newTodos}
         />
       );
     }
 
     // Case 2: Pending (no result yet) — show from input
-    if (!result && Array.isArray(block.input.todos)) {
-      const todos = block.input.todos as TodoItem[];
+    if (!result && Array.isArray(input.todos)) {
+      const todos = input.todos as TodoItem[];
       return <TodoListEntry oldTodos={[]} newTodos={todos} isPending />;
     }
   }
@@ -530,20 +543,20 @@ function ResultEntry({
   message,
   onFilePathClick,
 }: {
-  message: AgentMessage;
+  message: NormalizedMessage;
   onFilePathClick?: (
     filePath: string,
     lineStart?: number,
     lineEnd?: number,
   ) => void;
 }) {
-  const cost = message.total_cost_usd?.toFixed(2) || '0.00';
+  const cost = message.totalCost?.costUsd?.toFixed(2) || '0.00';
   const tokens = formatNumber(
-    (message?.usage?.cache_creation_input_tokens ?? 0) +
-      (message?.usage?.input_tokens ?? 0) +
-      (message?.usage?.output_tokens ?? 0),
+    (message?.usage?.cacheCreationTokens ?? 0) +
+      (message?.usage?.inputTokens ?? 0) +
+      (message?.usage?.outputTokens ?? 0),
   );
-  const summary = `--- ${tokens} tokens, ${formatDuration(message.duration_ms ?? 0)}, $${cost}`;
+  const summary = `--- ${tokens} tokens, ${formatDuration(message.durationMs ?? 0)}, $${cost}`;
 
   const expandedContent = message.result ? (
     <div className="text-xs text-neutral-300">
@@ -564,19 +577,52 @@ function ResultEntry({
 }
 
 // System message entry
-function SystemEntry({ message }: { message: AgentMessage }) {
+function SystemEntry({ message }: { message: NormalizedMessage }) {
   // For system init messages, show a simple summary
-  const summary =
-    message.subtype === 'init' ? 'Session started' : 'System message';
+  const hasInitPart = message.parts.some(
+    (p) => p.type === 'system-status' && p.subtype === 'init',
+  );
+  const summary = hasInitPart ? 'Session started' : 'System message';
 
   return <DotEntry type="system" summary={summary} />;
 }
 
-// Helper to check if a system message subtype should be hidden
-function isHiddenSystemSubtype(
-  subtype: string | undefined,
-): subtype is HiddenSystemSubtype {
-  return HIDDEN_SYSTEM_SUBTYPES.includes(subtype as HiddenSystemSubtype);
+function UnknownEntry({
+  originalType,
+  data,
+}: {
+  originalType: string;
+  data: unknown;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="my-1 rounded border border-yellow-800/40 bg-yellow-950/20 px-3 py-2 text-xs">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex cursor-pointer items-center gap-2 text-yellow-500/80"
+      >
+        <span className="font-mono">⚠ Unknown: {originalType}</span>
+        <span className="text-yellow-600/60">{expanded ? '▼' : '▶'}</span>
+      </button>
+      {expanded && (
+        <pre className="mt-2 max-h-[300px] overflow-auto font-mono break-all whitespace-pre-wrap text-yellow-500/60">
+          {JSON.stringify(data, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+// Helper to check if a message has a system-status part with a hidden subtype
+function hasHiddenSystemSubtype(message: NormalizedMessage): boolean {
+  return message.parts.some(
+    (p) =>
+      (p.type === 'system-status' &&
+        HIDDEN_SYSTEM_SUBTYPES.includes(p.subtype as HiddenSystemSubtype)) ||
+      p.type === 'compact',
+  );
 }
 
 // Format token count with thousands separator
@@ -590,10 +636,10 @@ export function CompactingEntry({
   metadata,
 }: {
   isComplete: boolean;
-  metadata?: CompactMetadata;
+  metadata?: NormalizedCompactPart;
 }) {
   const summary = isComplete
-    ? `Context compacted (${formatTokenCount(metadata?.pre_tokens ?? 0)} tokens${metadata?.trigger === 'auto' ? ', auto' : ''})`
+    ? `Context compacted (${formatTokenCount(metadata?.preTokens ?? 0)} tokens${metadata?.trigger === 'auto' ? ', auto' : ''})`
     : 'Compacting context...';
 
   return (
@@ -629,9 +675,9 @@ export function TimelineEntry({
   parentMessageMap,
   onFilePathClick,
 }: {
-  message: AgentMessage;
-  toolResultsMap?: Map<string, ToolResultBlock>;
-  parentMessageMap?: Map<string, AgentMessage>;
+  message: NormalizedMessage;
+  toolResultsMap?: Map<string, NormalizedToolResultPart>;
+  parentMessageMap?: Map<string, NormalizedMessage>;
   onFilePathClick?: (
     filePath: string,
     lineStart?: number,
@@ -639,78 +685,78 @@ export function TimelineEntry({
   ) => void;
 }) {
   // Skip system messages with hidden subtypes (init, hook_started, hook_completed, etc.)
-  if (message.type === 'system' && isHiddenSystemSubtype(message.subtype)) {
+  // or compact parts
+  if (message.role === 'system' && hasHiddenSystemSubtype(message)) {
     return null;
   }
 
   // Other system messages (show them for visibility)
-  if (message.type === 'system') {
+  if (message.role === 'system') {
     return <SystemEntry message={message} />;
   }
 
   // Result message
-  if (message.type === 'result') {
+  if (message.role === 'result') {
     return <ResultEntry message={message} onFilePathClick={onFilePathClick} />;
   }
 
   // User message
-  if (message.type === 'user' && message.message) {
-    const content = message.message.content;
+  if (message.role === 'user') {
+    const parts = message.parts;
 
     // Skip if only tool results
-    if (Array.isArray(content)) {
-      const hasNonToolResultContent = content.some(
-        (block) => block.type !== 'tool_result',
-      );
-      if (!hasNonToolResultContent) return null;
-    }
+    const hasNonToolResultContent = parts.some(
+      (part) => part.type !== 'tool-result',
+    );
+    if (!hasNonToolResultContent) return null;
 
-    const textContent =
-      typeof content === 'string'
-        ? content
-        : content
-            .filter(isTextBlock)
-            .map((b) => b.text)
-            .join('\n');
+    const textContent = parts
+      .filter(isNormalizedTextPart)
+      .map((p) => p.text)
+      .join('\n');
 
     if (!textContent.trim()) return null;
 
     return <UserEntry text={textContent} onFilePathClick={onFilePathClick} />;
   }
 
-  // Assistant message - render each content block as separate entry
-  if (
-    message.type === 'assistant' &&
-    message.message &&
-    message.message.role === 'assistant'
-  ) {
-    const contentBlocks = message.message.content;
+  // Assistant message - render each part as separate entry
+  if (message.role === 'assistant') {
+    const parts = message.parts;
     const entries: ReactNode[] = [];
 
-    for (let i = 0; i < contentBlocks.length; i++) {
-      const block = contentBlocks[i];
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
 
-      if (isTextBlock(block) && block.text.trim()) {
+      if (isNormalizedTextPart(part) && part.text.trim()) {
         entries.push(
           <TextEntry
             key={i}
-            text={block.text}
+            text={part.text}
             onFilePathClick={onFilePathClick}
           />,
         );
-      } else if (isToolUseBlock(block)) {
-        // Skip Task tool_use blocks - they're rendered as SubagentEntry in message stream
-        if (block.name === 'Task') {
+      } else if (isNormalizedToolUsePart(part)) {
+        // Skip Task tool_use parts - they're rendered as SubagentEntry in message stream
+        if (part.toolName === 'Task') {
           continue;
         }
-        const result = toolResultsMap?.get(block.id);
-        const parentMessage = parentMessageMap?.get(block.id);
+        const result = toolResultsMap?.get(part.toolId);
+        const parentMessage = parentMessageMap?.get(part.toolId);
         entries.push(
           <ToolEntry
             key={i}
-            block={block}
+            block={part}
             result={result}
             parentMessage={parentMessage}
+          />,
+        );
+      } else if (isNormalizedUnknownPart(part)) {
+        entries.push(
+          <UnknownEntry
+            key={i}
+            originalType={part.originalType}
+            data={part.data}
           />,
         );
       }

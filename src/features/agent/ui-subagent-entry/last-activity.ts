@@ -1,17 +1,8 @@
 import type {
-  AgentMessage,
-  ToolUseBlock,
-  TextBlock,
-  ContentBlock,
-} from '../../../../shared/agent-types';
-
-function isToolUseBlock(block: ContentBlock): block is ToolUseBlock {
-  return block.type === 'tool_use';
-}
-
-function isTextBlock(block: ContentBlock): block is TextBlock {
-  return block.type === 'text';
-}
+  NormalizedMessage,
+  NormalizedToolUsePart,
+  NormalizedPart,
+} from '@shared/agent-backend-types';
 
 function extractFilename(path: string): string {
   return path.split('/').pop() || path;
@@ -20,10 +11,10 @@ function extractFilename(path: string): string {
 /**
  * Generate a short summary for a tool use.
  */
-function getToolActivitySummary(block: ToolUseBlock): string {
-  const input = block.input;
+function getToolActivitySummary(block: NormalizedToolUsePart): string {
+  const input = (block.input ?? {}) as Record<string, unknown>;
 
-  switch (block.name) {
+  switch (block.toolName) {
     case 'Read': {
       const filePath = input.file_path as string;
       return `Reading \`${extractFilename(filePath)}\``;
@@ -71,12 +62,12 @@ function getToolActivitySummary(block: ToolUseBlock): string {
     }
     default: {
       // Handle MCP tools (prefixed with mcp__)
-      if (block.name.startsWith('mcp__')) {
-        const parts = block.name.split('__');
+      if (block.toolName.startsWith('mcp__')) {
+        const parts = block.toolName.split('__');
         const toolName = parts[parts.length - 1];
         return `Using \`${toolName}\``;
       }
-      return `Using \`${block.name}\``;
+      return `Using \`${block.toolName}\``;
     }
   }
 }
@@ -86,32 +77,28 @@ function getToolActivitySummary(block: ToolUseBlock): string {
  * Looks for the most recent tool use or text content.
  */
 export function getLastActivitySummary(
-  messages: AgentMessage[],
+  messages: NormalizedMessage[],
 ): string | null {
   // Iterate from the end to find the most recent activity
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = messages[i];
 
     // Check assistant messages for tool use or thinking
-    if (
-      message.type === 'assistant' &&
-      message.message &&
-      message.message.role === 'assistant'
-    ) {
-      const content = message.message.content;
+    if (message.role === 'assistant') {
+      const parts = message.parts;
 
       // Find the last tool use in this message
-      for (let j = content.length - 1; j >= 0; j--) {
-        const block = content[j];
-        if (isToolUseBlock(block)) {
-          return getToolActivitySummary(block);
+      for (let j = parts.length - 1; j >= 0; j--) {
+        const part = parts[j];
+        if (part.type === 'tool-use') {
+          return getToolActivitySummary(part);
         }
       }
 
       // If no tool use, check for text (thinking)
-      const lastText = content
-        .filter(isTextBlock)
-        .map((b) => b.text.trim())
+      const lastText = parts
+        .filter((p: NormalizedPart) => p.type === 'text')
+        .map((p) => (p as { type: 'text'; text: string }).text.trim())
         .filter(Boolean)
         .pop();
 
@@ -123,8 +110,8 @@ export function getLastActivitySummary(
     }
 
     // Check result messages
-    if (message.type === 'result') {
-      if (message.is_error) {
+    if (message.role === 'result') {
+      if (message.isError) {
         return 'Completed with error';
       }
       return 'Completed';

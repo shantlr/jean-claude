@@ -5,7 +5,7 @@ import type {
   ClaudeUsageResponse,
   UsageResult,
   UsageDisplayData,
-} from '../../shared/usage-types';
+} from '@shared/usage-types';
 
 const execAsync = promisify(exec);
 

@@ -2,8 +2,7 @@ import clsx from 'clsx';
 import { Clock, AlertCircle, Loader2 } from 'lucide-react';
 
 import { useClaudeUsage } from '@/hooks/use-usage';
-
-import type { UsageLevel } from '../../../shared/usage-types';
+import type { UsageLevel } from '@shared/usage-types';
 
 /**
  * Calculates the usage ratio (actual usage / expected usage based on elapsed time).

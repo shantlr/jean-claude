@@ -8,10 +8,10 @@ import {
 import { useState } from 'react';
 
 import type {
-  ToolUseBlock,
-  ToolResultBlock,
-  ContentBlock,
-} from '../../../../shared/agent-types';
+  NormalizedToolUsePart,
+  NormalizedToolResultPart,
+  NormalizedPart,
+} from '@shared/agent-backend-types';
 
 // Format tool input for display
 function formatInput(input: Record<string, unknown>): string {
@@ -45,17 +45,17 @@ function formatInput(input: Record<string, unknown>): string {
   return JSON.stringify(input, null, 2);
 }
 
-function formatResultContent(content: string | ContentBlock[]): string {
+function formatResultContent(content: string | NormalizedPart[]): string {
   if (typeof content === 'string') {
     return content;
   }
 
   return content
-    .map((block) => {
-      if (block.type === 'text') {
-        return block.text;
+    .map((part) => {
+      if (part.type === 'text') {
+        return (part as { type: 'text'; text: string }).text;
       }
-      return JSON.stringify(block, null, 2);
+      return JSON.stringify(part, null, 2);
     })
     .join('\n');
 }
@@ -79,16 +79,18 @@ export function ToolUseCard({
   block,
   result,
 }: {
-  block: ToolUseBlock;
-  result?: ToolResultBlock;
+  block: NormalizedToolUsePart;
+  result?: NormalizedToolResultPart;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const colorClass =
-    TOOL_COLORS[block.name] || 'bg-neutral-800 border-neutral-600';
-  const formattedInput = formatInput(block.input);
+    TOOL_COLORS[block.toolName] || 'bg-neutral-800 border-neutral-600';
+  const formattedInput = formatInput(
+    (block.input ?? {}) as Record<string, unknown>,
+  );
 
   const hasResult = !!result;
-  const isError = result?.is_error;
+  const isError = result?.isError;
   const formattedResult = result ? formatResultContent(result.content) : '';
   const resultPreview = formattedResult.split('\n')[0].slice(0, 80);
 
@@ -104,7 +106,9 @@ export function ToolUseCard({
         ) : (
           <ChevronRight className="h-4 w-4 shrink-0 text-neutral-400" />
         )}
-        <span className="font-mono text-xs text-neutral-400">{block.name}</span>
+        <span className="font-mono text-xs text-neutral-400">
+          {block.toolName}
+        </span>
 
         {/* Status indicator */}
         {hasResult ? (

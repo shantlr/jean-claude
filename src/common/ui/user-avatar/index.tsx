@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import { Check, X } from 'lucide-react';
 
-import type { ReviewerVoteStatus } from '../../../../shared/azure-devops-types';
+import type { ReviewerVoteStatus } from '@shared/azure-devops-types';
 
 // Re-export the type for convenience
 export type { ReviewerVoteStatus };

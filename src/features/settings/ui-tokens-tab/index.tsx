@@ -1,7 +1,7 @@
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
-import type { Token } from '../../../../shared/types';
+import type { Token } from '@shared/types';
 
 import { AddTokenPane } from './add-token-pane';
 import { EditTokenPane } from './edit-token-pane';

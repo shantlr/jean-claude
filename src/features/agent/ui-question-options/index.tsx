@@ -5,7 +5,7 @@ import type {
   AgentQuestionEvent,
   QuestionResponse,
   AgentQuestion,
-} from '../../../../shared/agent-types';
+} from '@shared/agent-types';
 
 function QuestionInput({
   question,

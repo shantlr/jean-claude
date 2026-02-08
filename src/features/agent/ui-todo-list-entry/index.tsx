@@ -1,6 +1,6 @@
 import { Check, Circle, Loader2 } from 'lucide-react';
 
-import type { TodoItem } from '../../../../shared/agent-types';
+import type { TodoItem } from '@shared/agent-types';
 
 /**
  * Determine which items changed status between old and new todo lists.

@@ -7,8 +7,7 @@ import {
   useUpdateProjectCommand,
   useDeleteProjectCommand,
 } from '@/hooks/use-project-commands';
-
-import type { UpdateProjectCommand } from '../../../../shared/run-command-types';
+import type { UpdateProjectCommand } from '@shared/run-command-types';
 
 import { CommandRow } from './command-row';
 

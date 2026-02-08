@@ -1,10 +1,6 @@
 // electron/database/repositories/tokens.ts
-import type {
-  Token,
-  NewToken,
-  UpdateToken,
-  ProviderType,
-} from '../../../shared/types';
+import type { Token, NewToken, UpdateToken, ProviderType } from '@shared/types';
+
 import { encryptionService } from '../../services/encryption-service';
 import { db } from '../index';
 import type { TokenRow } from '../schema';

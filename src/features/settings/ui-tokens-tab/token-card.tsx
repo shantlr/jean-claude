@@ -1,6 +1,6 @@
 import { AlertCircle, CheckCircle, Clock, Key } from 'lucide-react';
 
-import type { Token } from '../../../../shared/types';
+import type { Token } from '@shared/types';
 
 const PROVIDER_LABELS: Record<string, string> = {
   'azure-devops': 'Azure DevOps',

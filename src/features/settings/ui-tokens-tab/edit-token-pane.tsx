@@ -4,8 +4,7 @@ import { useState } from 'react';
 import { useModal } from '@/common/context/modal';
 import { useGetAzureDevOpsTokenExpiration } from '@/hooks/use-azure-devops';
 import { useDeleteToken, useUpdateToken } from '@/hooks/use-tokens';
-
-import type { Token } from '../../../../shared/types';
+import type { Token } from '@shared/types';
 
 export function EditTokenPane({
   token,

@@ -2,8 +2,7 @@ import { AlertTriangle, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { api } from '@/lib/api';
-
-import type { GlobalPrompt } from '../../../../shared/global-prompt-types';
+import type { GlobalPrompt } from '@shared/global-prompt-types';
 
 export function GlobalPromptFromBackModal() {
   const [promptQueue, setPromptQueue] = useState<GlobalPrompt[]>([]);

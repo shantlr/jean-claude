@@ -1,4 +1,4 @@
-import { Provider } from '../../../../shared/types';
+import { Provider } from '@shared/types';
 
 export function OrganizationCard({
   provider,

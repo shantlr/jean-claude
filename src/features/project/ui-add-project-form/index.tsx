@@ -3,8 +3,7 @@ import { useState, type FormEvent } from 'react';
 
 import { useProviders, useProviderDetails } from '@/hooks/use-providers';
 import { PROJECT_COLORS } from '@/lib/colors';
-
-import type { Provider } from '../../../../shared/types';
+import type { Provider } from '@shared/types';
 
 export interface ProjectFormData {
   name: string;

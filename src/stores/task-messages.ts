@@ -1,15 +1,15 @@
 import { create } from 'zustand';
 
+import type { NormalizedMessage } from '@shared/agent-backend-types';
 import type {
-  AgentMessage,
   AgentPermissionEvent,
   AgentQuestionEvent,
   QueuedPrompt,
-} from '../../shared/agent-types';
-import type { TaskStatus } from '../../shared/types';
+} from '@shared/agent-types';
+import type { TaskStatus } from '@shared/types';
 
 export interface TaskState {
-  messages: AgentMessage[];
+  messages: NormalizedMessage[];
   status: TaskStatus;
   error: string | null;
   pendingPermission: AgentPermissionEvent | null;
@@ -25,10 +25,10 @@ interface TaskMessagesStore {
   // Actions
   loadTask: (
     taskId: string,
-    messages: AgentMessage[],
+    messages: NormalizedMessage[],
     status: TaskStatus,
   ) => void;
-  appendMessage: (taskId: string, message: AgentMessage) => void;
+  appendMessage: (taskId: string, message: NormalizedMessage) => void;
   setStatus: (
     taskId: string,
     status: TaskStatus,
@@ -105,12 +105,26 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
     set((state) => {
       const task = state.tasks[taskId];
       if (!task) return state;
+
+      // Upsert: if a message with the same id already exists, replace it (streaming update).
+      // Otherwise append as a new message.
+      const existingIndex = task.messages.findIndex((m) => m.id === message.id);
+
+      let updatedMessages: NormalizedMessage[];
+      if (existingIndex !== -1) {
+        // Replace in-place (streaming update for same message id)
+        updatedMessages = [...task.messages];
+        updatedMessages[existingIndex] = message;
+      } else {
+        updatedMessages = [...task.messages, message];
+      }
+
       return {
         tasks: {
           ...state.tasks,
           [taskId]: {
             ...task,
-            messages: [...task.messages, message],
+            messages: updatedMessages,
           },
         },
       };

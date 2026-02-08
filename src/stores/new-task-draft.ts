@@ -2,7 +2,8 @@ import { useCallback } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import type { InteractionMode, ModelPreference } from '../../shared/types';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import type { InteractionMode, ModelPreference } from '@shared/types';
 
 export type InputMode = 'search' | 'prompt';
 export type SearchStep = 'select' | 'compose';
@@ -11,6 +12,7 @@ export interface NewTaskDraft {
   inputMode: InputMode;
   interactionMode: InteractionMode;
   modelPreference: ModelPreference;
+  agentBackend: AgentBackendType;
   // Search mode state
   workItemIds: string[]; // Changed from workItemId: string | null
   workItemsFilter: string;
@@ -39,6 +41,7 @@ const defaultDraft: NewTaskDraft = {
   inputMode: 'search',
   interactionMode: 'ask',
   modelPreference: 'default',
+  agentBackend: 'claude-code',
   workItemIds: [],
   workItemsFilter: '',
   searchStep: 'select',

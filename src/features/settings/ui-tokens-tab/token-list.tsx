@@ -1,6 +1,5 @@
 import { useTokens } from '@/hooks/use-tokens';
-
-import type { Token } from '../../../../shared/types';
+import type { Token } from '@shared/types';
 
 import { TokenCard } from './token-card';
 

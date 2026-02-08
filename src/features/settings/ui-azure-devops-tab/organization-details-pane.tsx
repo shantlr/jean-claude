@@ -17,8 +17,7 @@ import { useCreateProject } from '@/hooks/use-projects';
 import { useDeleteProvider, useProviderDetails } from '@/hooks/use-providers';
 import { api, type ProviderProject, type ProviderRepo } from '@/lib/api';
 import { getRandomColor } from '@/lib/colors';
-
-import type { Provider } from '../../../../shared/types';
+import type { Provider } from '@shared/types';
 
 interface CloneConfig {
   parentPath: string;

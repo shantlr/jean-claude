@@ -12,7 +12,8 @@ import type {
   PortsInUseErrorData,
   PackageScriptsResult,
   WorkspacePackage,
-} from '../../shared/run-command-types';
+} from '@shared/run-command-types';
+
 import { ProjectCommandRepository } from '../database/repositories/project-commands';
 import { dbg } from '../lib/debug';
 

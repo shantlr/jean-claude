@@ -7,8 +7,7 @@ import {
   PromptTextarea,
   PromptTextareaRef,
 } from '@/features/common/ui-prompt-textarea';
-
-import type { Skill } from '../../../../shared/skill-types';
+import type { Skill } from '@shared/skill-types';
 
 const DOUBLE_ESCAPE_THRESHOLD = 300; // ms
 

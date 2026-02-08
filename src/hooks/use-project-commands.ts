@@ -1,11 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
-
 import type {
   NewProjectCommand,
   UpdateProjectCommand,
-} from '../../shared/run-command-types';
+} from '@shared/run-command-types';
 
 export function useProjectCommands(projectId: string) {
   return useQuery({

@@ -14,8 +14,7 @@ import {
 import { useState } from 'react';
 
 import { useSkills } from '@/hooks/use-skills';
-
-import type { Skill } from '../../../../shared/skill-types';
+import type { Skill } from '@shared/skill-types';
 
 function SkillItem({ skill }: { skill: Skill }) {
   const [isExpanded, setIsExpanded] = useState(false);

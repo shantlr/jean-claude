@@ -3,8 +3,7 @@ import { useEffect } from 'react';
 
 import { api } from '@/lib/api';
 import { useTaskMessagesStore } from '@/stores/task-messages';
-
-import { isWriteToolUseResult } from '../../../../shared/agent-types';
+import { isStructuredWriteResult } from '@shared/agent-backend-types';
 
 export function TaskMessageManager() {
   const queryClient = useQueryClient();
@@ -23,7 +22,7 @@ export function TaskMessageManager() {
     const unsubMessage = api.agent.onMessage(({ taskId, message }) => {
       const loaded = isLoaded(taskId);
       console.log(
-        `[TaskMessageManager] Received message for task ${taskId}, type: ${message.type}, isLoaded: ${loaded}, subscriptionId: ${subscriptionId}`,
+        `[TaskMessageManager] Received message for task ${taskId}, role: ${message.role}, isLoaded: ${loaded}, subscriptionId: ${subscriptionId}`,
       );
       if (loaded) {
         appendMessage(taskId, message);
@@ -34,10 +33,13 @@ export function TaskMessageManager() {
       }
 
       // Invalidate worktree diff when a file is edited/written
-      if (
-        message.tool_use_result &&
-        isWriteToolUseResult(message.tool_use_result)
-      ) {
+      const hasWriteResult = message.parts.some(
+        (p) =>
+          p.type === 'tool-result' &&
+          p.structuredResult &&
+          isStructuredWriteResult(p.structuredResult),
+      );
+      if (hasWriteResult) {
         queryClient.invalidateQueries({
           queryKey: ['worktree-diff', taskId],
         });

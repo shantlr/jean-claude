@@ -1,6 +1,8 @@
 import type {
-  AgentMessage,
-  AgentMessageEvent,
+  NormalizedMessage,
+  NormalizedMessageEvent,
+} from '@shared/agent-backend-types';
+import type {
   AgentStatusEvent,
   AgentPermissionEvent,
   AgentQuestionEvent,
@@ -8,18 +10,18 @@ import type {
   AgentQueueUpdateEvent,
   PermissionResponse,
   QuestionResponse,
-} from '../../shared/agent-types';
+} from '@shared/agent-types';
 import type {
   AzureDevOpsPullRequest,
   AzureDevOpsPullRequestDetails,
   AzureDevOpsCommit,
   AzureDevOpsFileChange,
   AzureDevOpsCommentThread,
-} from '../../shared/azure-devops-types';
+} from '@shared/azure-devops-types';
 import type {
   GlobalPrompt,
   GlobalPromptResponse,
-} from '../../shared/global-prompt-types';
+} from '@shared/global-prompt-types';
 import type {
   McpServerTemplate,
   McpPreset,
@@ -28,7 +30,7 @@ import type {
   ProjectMcpOverride,
   NewProjectMcpOverride,
   UnifiedMcpServer,
-} from '../../shared/mcp-types';
+} from '@shared/mcp-types';
 import type {
   ProjectCommand,
   NewProjectCommand,
@@ -36,8 +38,8 @@ import type {
   RunStatus,
   PortsInUseErrorData,
   PackageScriptsResult,
-} from '../../shared/run-command-types';
-import type { Skill } from '../../shared/skill-types';
+} from '@shared/run-command-types';
+import type { Skill } from '@shared/skill-types';
 import type {
   Project,
   NewProject,
@@ -54,8 +56,8 @@ import type {
   InteractionMode,
   ModelPreference,
   AppSettings,
-} from '../../shared/types';
-import type { UsageResult } from '../../shared/usage-types';
+} from '@shared/types';
+import type { UsageResult } from '@shared/usage-types';
 
 export type {
   AzureDevOpsPullRequest,
@@ -471,7 +473,10 @@ export interface Api {
       prompt: string,
     ) => Promise<{ promptId: string }>;
     cancelQueuedPrompt: (taskId: string, promptId: string) => Promise<void>;
-    getMessages: (taskId: string) => Promise<AgentMessage[]>;
+    getBackendModels: (
+      backend: string,
+    ) => Promise<{ id: string; label: string }[]>;
+    getMessages: (taskId: string) => Promise<NormalizedMessage[]>;
     getMessageCount: (taskId: string) => Promise<number>;
     getPendingRequest: (taskId: string) => Promise<
       | {
@@ -485,7 +490,7 @@ export interface Api {
       | null
     >;
     onMessage: (
-      callback: AgentEventCallback<AgentMessageEvent>,
+      callback: AgentEventCallback<NormalizedMessageEvent>,
     ) => UnsubscribeFn;
     onStatus: (callback: AgentEventCallback<AgentStatusEvent>) => UnsubscribeFn;
     onPermission: (
@@ -785,6 +790,7 @@ export const api: Api = hasWindowApi
         cancelQueuedPrompt: async () => {
           throw new Error('API not available');
         },
+        getBackendModels: async () => [],
         getMessages: async () => [],
         getMessageCount: async () => 0,
         getPendingRequest: async () => null,

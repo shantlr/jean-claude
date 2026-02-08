@@ -2,7 +2,8 @@ import { useCallback } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import type { InteractionMode, ModelPreference } from '../../shared/types';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import type { InteractionMode, ModelPreference } from '@shared/types';
 
 interface NewTaskFormDraft {
   name: string;
@@ -11,6 +12,7 @@ interface NewTaskFormDraft {
   sourceBranch: string | null; // null means use project's default branch
   interactionMode: InteractionMode;
   modelPreference: ModelPreference;
+  agentBackend: AgentBackendType;
   workItemIds: string[] | null;
   workItemUrls: string[] | null;
 }
@@ -28,6 +30,7 @@ const defaultDraft: NewTaskFormDraft = {
   sourceBranch: null,
   interactionMode: 'ask',
   modelPreference: 'default',
+  agentBackend: 'claude-code',
   workItemIds: null,
   workItemUrls: null,
 };

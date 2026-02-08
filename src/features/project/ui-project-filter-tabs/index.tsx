@@ -5,8 +5,7 @@ import { useEffect, useMemo } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { useProjectFilter } from '@/stores/navigation';
-
-import type { Project } from '../../../../shared/types';
+import type { Project } from '@shared/types';
 
 export function ProjectFilterTabs({ projects }: { projects: Project[] }) {
   const { projectFilter, setProjectFilter } = useProjectFilter();
