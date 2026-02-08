@@ -10,6 +10,7 @@ import {
   GitCommitHorizontal,
   Copy,
   Check,
+  Bug,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -155,6 +156,7 @@ export function TaskSettingsPane({
   taskId,
   onRemoveTool,
   onClose,
+  onOpenDebugMessages,
 }: {
   sessionAllowedTools: string[];
   sourceBranch: string | null;
@@ -162,6 +164,7 @@ export function TaskSettingsPane({
   taskId: string;
   onRemoveTool: (toolName: string) => void;
   onClose: () => void;
+  onOpenDebugMessages: () => void;
 }) {
   const [copiedCommit, setCopiedCommit] = useState(false);
 
@@ -274,6 +277,20 @@ export function TaskSettingsPane({
             Available Skills
           </h4>
           <SkillsList taskId={taskId} />
+        </section>
+
+        {/* Debug Section */}
+        <section>
+          <h4 className="mb-3 text-xs font-medium tracking-wide text-neutral-500 uppercase">
+            Debug
+          </h4>
+          <button
+            onClick={onOpenDebugMessages}
+            className="flex w-full cursor-pointer items-center gap-2 rounded-md bg-neutral-800 px-3 py-2.5 text-sm text-neutral-300 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
+          >
+            <Bug className="h-4 w-4 shrink-0 text-yellow-500" />
+            Raw Messages
+          </button>
         </section>
       </div>
     </div>

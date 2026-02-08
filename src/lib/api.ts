@@ -242,6 +242,16 @@ export interface CompletedTasksResult {
   total: number;
 }
 
+export interface RawMessage {
+  id: string;
+  taskId: string;
+  messageIndex: number;
+  backendSessionId: string | null;
+  rawFormat: string;
+  rawData: unknown;
+  createdAt: string;
+}
+
 export type AgentEventCallback<T> = (event: T) => void;
 export type UnsubscribeFn = () => void;
 
@@ -487,6 +497,7 @@ export interface Api {
     ) => Promise<{ id: string; label: string }[]>;
     getMessages: (taskId: string) => Promise<NormalizedMessage[]>;
     getMessageCount: (taskId: string) => Promise<number>;
+    getRawMessages: (taskId: string) => Promise<RawMessage[]>;
     getPendingRequest: (taskId: string) => Promise<
       | {
           type: 'permission';
@@ -806,6 +817,7 @@ export const api: Api = hasWindowApi
         getBackendModels: async () => [],
         getMessages: async () => [],
         getMessageCount: async () => 0,
+        getRawMessages: async () => [],
         getPendingRequest: async () => null,
         onMessage: () => () => {},
         onStatus: () => () => {},

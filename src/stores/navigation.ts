@@ -13,6 +13,9 @@ export type RightPane =
     }
   | {
       type: 'settings';
+    }
+  | {
+      type: 'debugMessages';
     };
 
 interface DiffViewState {
@@ -376,6 +379,11 @@ export function useTaskState(taskId: string) {
     [taskId, setTaskRightPaneAction],
   );
 
+  const openDebugMessages = useCallback(
+    () => setTaskRightPaneAction(taskId, { type: 'debugMessages' }),
+    [taskId, setTaskRightPaneAction],
+  );
+
   const closeRightPane = useCallback(
     () => setTaskRightPaneAction(taskId, null),
     [taskId, setTaskRightPaneAction],
@@ -394,6 +402,7 @@ export function useTaskState(taskId: string) {
     setRightPane,
     openFilePreview,
     openSettings,
+    openDebugMessages,
     closeRightPane,
     toggleRightPane,
   };

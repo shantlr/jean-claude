@@ -27,6 +27,7 @@ import { PrBadge } from '@/features/agent/ui-pr-badge';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
 import { RunButton } from '@/features/agent/ui-run-button';
 import { WorktreeDiffView } from '@/features/agent/ui-worktree-diff-view';
+import { DebugMessagesPane } from '@/features/task/ui-debug-messages-pane';
 import { StatusIndicator } from '@/features/task/ui-status-indicator';
 import { TaskPrView } from '@/features/task/ui-task-pr-view';
 import { TaskSettingsPane } from '@/features/task/ui-task-settings-pane';
@@ -107,6 +108,7 @@ export function TaskPanel({
     rightPane,
     openFilePreview,
     openSettings,
+    openDebugMessages,
     closeRightPane,
     toggleRightPane,
   } = useTaskState(taskId);
@@ -770,7 +772,13 @@ export function TaskPanel({
           taskId={taskId}
           onRemoveTool={handleRemoveSessionAllowedTool}
           onClose={closeRightPane}
+          onOpenDebugMessages={openDebugMessages}
         />
+      )}
+
+      {/* Debug messages pane */}
+      {rightPane?.type === 'debugMessages' && (
+        <DebugMessagesPane taskId={taskId} onClose={closeRightPane} />
       )}
     </div>
   );

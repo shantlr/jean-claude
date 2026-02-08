@@ -265,4 +265,5 @@ export const AGENT_CHANNELS = {
   QUEUE_PROMPT: 'agent:queuePrompt',
   CANCEL_QUEUED_PROMPT: 'agent:cancelQueuedPrompt',
   GET_PENDING_REQUEST: 'agent:getPendingRequest',
+  GET_RAW_MESSAGES: 'agent:getRawMessages',
 } as const;

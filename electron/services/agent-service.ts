@@ -870,6 +870,19 @@ class AgentService {
     return AgentMessageRepository.getMessageCount(taskId);
   }
 
+  async getRawMessages(taskId: string) {
+    const rows = await RawMessageRepository.findByTaskId(taskId);
+    return rows.map((row) => ({
+      id: row.id,
+      taskId: row.taskId,
+      messageIndex: row.messageIndex,
+      backendSessionId: row.backendSessionId,
+      rawFormat: row.rawFormat,
+      rawData: JSON.parse(row.rawData),
+      createdAt: row.createdAt,
+    }));
+  }
+
   /**
    * Recover tasks that were left in 'running' or 'waiting' state from a previous app session.
    * These tasks were interrupted by app shutdown/crash and should be marked as 'interrupted'.
