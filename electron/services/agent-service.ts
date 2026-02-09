@@ -39,6 +39,7 @@ import { pathExists } from '../lib/fs';
 import { AGENT_BACKEND_CLASSES } from './agent-backends';
 import { generateTaskName } from './name-generation-service';
 import { notificationService } from './notification-service';
+import { getEffectivePermissions } from './permission-settings-service';
 
 // --- Active session tracking ---
 
@@ -380,6 +381,16 @@ class AgentService {
       timestamp: new Date().toISOString(),
     });
 
+    // Load settings file permissions and merge with task's sessionAllowedTools.
+    // This ensures permissions set via "Allow for Project" / "Allow for Worktrees"
+    // are available for auto-allow logic (e.g., Bash commands auto-allowed when
+    // Read/Write is permitted via settings files).
+    const settingsPermissions = await getEffectivePermissions(workingDir);
+    const taskAllowedTools = task.sessionAllowedTools ?? [];
+    const mergedAllowedTools = [
+      ...new Set([...taskAllowedTools, ...settingsPermissions]),
+    ];
+
     // Start the backend
     dbg.agentSession('Starting backend for task %s', taskId);
     const agentSession = await session.backend.start(
@@ -392,7 +403,7 @@ class AgentService {
             ? task.modelPreference
             : undefined,
         sessionId: session.sdkSessionId ?? undefined,
-        sessionAllowedTools: task.sessionAllowedTools ?? [],
+        sessionAllowedTools: mergedAllowedTools,
       },
       prompt,
     );

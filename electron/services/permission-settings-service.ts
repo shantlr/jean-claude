@@ -110,25 +110,16 @@ function isPathWithinDirectory(
 }
 
 /**
- * Checks if a Bash command is a "mkdir -p" with all paths within the allowed directory.
- * Returns true only if the command is exactly "mkdir -p <paths>" where all paths are subpaths
- * of the allowed directory.
+ * Parse a command arguments string into individual arguments,
+ * handling single and double quoted strings.
  */
-function isMkdirInAllowedPath(command: string, allowedDir: string): boolean {
-  // Match "mkdir -p" followed by one or more paths
-  // We need to be strict: only "mkdir -p", no other flags
-  const mkdirMatch = command.match(/^mkdir\s+-p\s+(.+)$/);
-  if (!mkdirMatch) return false;
-
-  const pathsPart = mkdirMatch[1];
-
-  // Parse the paths, handling quoted strings
-  const paths: string[] = [];
+function parseCommandArgs(argString: string): string[] {
+  const args: string[] = [];
   let current = '';
   let inQuote: string | null = null;
 
-  for (let i = 0; i < pathsPart.length; i++) {
-    const char = pathsPart[i];
+  for (let i = 0; i < argString.length; i++) {
+    const char = argString[i];
 
     if (inQuote) {
       if (char === inQuote) {
@@ -140,7 +131,7 @@ function isMkdirInAllowedPath(command: string, allowedDir: string): boolean {
       inQuote = char;
     } else if (char === ' ' || char === '\t') {
       if (current) {
-        paths.push(current);
+        args.push(current);
         current = '';
       }
     } else {
@@ -148,15 +139,108 @@ function isMkdirInAllowedPath(command: string, allowedDir: string): boolean {
     }
   }
   if (current) {
-    paths.push(current);
+    args.push(current);
   }
 
+  return args;
+}
+
+/**
+ * Separate parsed args into flags (starting with -) and positional arguments.
+ * Returns null if any flag is malformed (not matching the expected pattern).
+ */
+function separateFlagsAndPaths(
+  args: string[],
+  flagPattern: RegExp = /^-[a-zA-Z]+$/,
+): { paths: string[] } | null {
+  const paths: string[] = [];
+  for (const arg of args) {
+    if (arg.startsWith('-')) {
+      if (!flagPattern.test(arg)) return null;
+      continue;
+    }
+    paths.push(arg);
+  }
+  return { paths };
+}
+
+/**
+ * Checks if all paths are absolute and within the allowed directory.
+ */
+function allPathsWithinDirectory(paths: string[], allowedDir: string): boolean {
+  return paths.every(
+    (p) => path.isAbsolute(p) && isPathWithinDirectory(p, allowedDir),
+  );
+}
+
+/**
+ * Checks if a Bash command is a "mkdir -p" with all paths within the allowed directory.
+ * Returns true only if the command is exactly "mkdir -p <paths>" where all paths are subpaths
+ * of the allowed directory.
+ */
+function isMkdirInAllowedPath(command: string, allowedDir: string): boolean {
+  // Match "mkdir -p" followed by one or more paths
+  // We need to be strict: only "mkdir -p", no other flags
+  const mkdirMatch = command.match(/^mkdir\s+-p\s+(.+)$/);
+  if (!mkdirMatch) return false;
+
+  const paths = parseCommandArgs(mkdirMatch[1]);
+
   // All paths must be absolute and within the allowed directory
+  return paths.length > 0 && allPathsWithinDirectory(paths, allowedDir);
+}
+
+/**
+ * Checks if a Bash command is "cat" with all file paths within the allowed directory.
+ * Handles optional flags (e.g., -n, -b, -E, -s, -v, -e, -t, -A).
+ */
+function isCatInAllowedPath(command: string, allowedDir: string): boolean {
+  if (!command.match(/^cat\s/)) return false;
+
+  const args = parseCommandArgs(command.slice(3).trim());
+  const result = separateFlagsAndPaths(args);
+  if (!result) return false;
+
   return (
-    paths.length > 0 &&
-    paths.every(
-      (p) => path.isAbsolute(p) && isPathWithinDirectory(p, allowedDir),
-    )
+    result.paths.length > 0 && allPathsWithinDirectory(result.paths, allowedDir)
+  );
+}
+
+/**
+ * Checks if a Bash command is "ls" with all paths within the allowed directory.
+ * All ls flags are read-only so we only validate path arguments.
+ * Bare "ls" or "ls -la" (no path) is also safe when working within the allowed dir.
+ */
+function isLsInAllowedPath(command: string, allowedDir: string): boolean {
+  const trimmed = command.trim();
+  if (trimmed === 'ls') return true;
+  if (!trimmed.match(/^ls\s/)) return false;
+
+  const args = parseCommandArgs(trimmed.slice(2).trim());
+  const result = separateFlagsAndPaths(args, /^-[a-zA-Z0-9]+$/);
+  if (!result) return false;
+
+  // ls with no path args is safe (operates in cwd which is workingDir)
+  if (result.paths.length === 0) return true;
+
+  return allPathsWithinDirectory(result.paths, allowedDir);
+}
+
+/**
+ * Checks if a Bash command is "mv" where all source and destination paths
+ * are within the allowed directory. Handles optional flags like -f, -n, -v, -i.
+ */
+function isMvInAllowedPath(command: string, allowedDir: string): boolean {
+  if (!command.match(/^mv\s/)) return false;
+
+  const args = parseCommandArgs(command.slice(2).trim());
+  const result = separateFlagsAndPaths(args);
+  if (!result) return false;
+
+  // mv requires at least 2 paths (source(s) + destination)
+  return (
+    result.paths.length >= 2 &&
+    allPathsWithinDirectory(result.paths, allowedDir)
   );
 }
 
@@ -165,8 +249,10 @@ function isMkdirInAllowedPath(command: string, allowedDir: string): boolean {
  * For Bash: requires exact match like "Bash(npm test)". Bare "Bash" never matches.
  * For others: requires tool name match like "Edit".
  *
- * When workingDir is provided and Write permission is granted, also auto-allows
- * "mkdir -p <paths>" commands where all paths are within workingDir.
+ * When workingDir is provided and high-level permissions are granted, also auto-allows
+ * certain Bash commands within workingDir:
+ * - Write: "mkdir -p", "mv" (all paths within workingDir)
+ * - Read: "cat", "ls" (all paths within workingDir)
  */
 export function isToolAllowedByPermissions(
   toolName: string,
@@ -183,13 +269,18 @@ export function isToolAllowedByPermissions(
     // Check exact permission match first
     if (permissions.includes(permStr)) return true;
 
-    // If Write is allowed and workingDir is provided, auto-allow mkdir -p within workingDir
-    if (
-      options?.workingDir &&
-      permissions.includes('Write') &&
-      isMkdirInAllowedPath(command, options.workingDir)
-    ) {
-      return true;
+    if (options?.workingDir) {
+      // Write-level auto-allows
+      if (permissions.includes('Write')) {
+        if (isMkdirInAllowedPath(command, options.workingDir)) return true;
+        if (isMvInAllowedPath(command, options.workingDir)) return true;
+      }
+
+      // Read-level auto-allows
+      if (permissions.includes('Read')) {
+        if (isCatInAllowedPath(command, options.workingDir)) return true;
+        if (isLsInAllowedPath(command, options.workingDir)) return true;
+      }
     }
 
     return false;
@@ -255,4 +346,20 @@ export async function buildWorktreeSettings(
   if (Object.keys(merged).length > 0) {
     await writeSettingsFile(getSettingsLocalPath(destPath), merged);
   }
+}
+
+/**
+ * Read the effective permissions.allow array for a given working directory.
+ * For worktree paths, reads the worktree's own settings.local.json
+ * (which already contains merged permissions from buildWorktreeSettings).
+ * For project paths, reads the project's settings.local.json.
+ *
+ * Returns deduplicated allow list (excluding bare "Bash").
+ */
+export async function getEffectivePermissions(
+  workingDir: string,
+): Promise<string[]> {
+  const settings = await readSettingsFile(getSettingsLocalPath(workingDir));
+  const allow = settings.permissions?.allow ?? [];
+  return allow.filter((p) => !isBareBash(p));
 }
