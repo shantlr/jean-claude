@@ -8,7 +8,7 @@ import {
   Copy,
   Check,
 } from 'lucide-react';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useMessagesWithRawData } from '@/hooks/use-messages-with-raw-data';
@@ -20,59 +20,53 @@ import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
 // --- Copy to Clipboard ---
 
 function useCopyToClipboard() {
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const [copied, setCopied] = useState(false);
+  const copy = useCallback((value: unknown) => {
+    navigator.clipboard.writeText(JSON.stringify(value, null, 2));
+    setCopied(true);
+  }, []);
 
-  const copy = useCallback(
-    (key: string, value: unknown) => {
-      navigator.clipboard.writeText(JSON.stringify(value, null, 2));
-      setCopiedKey(key);
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => setCopiedKey(null), 1500);
-    },
-    [],
-  );
+  useEffect(() => {
+    if (copied) {
+      const handle = setTimeout(() => {
+        setCopied(false);
+      }, 1500);
+      return () => {
+        clearTimeout(handle);
+      };
+    }
+  }, [copied]);
 
-  return { copiedKey, copy };
+  return { copied, copy };
 }
 
 function CopyJsonButton({
   value,
-  copyKey,
-  copiedKey,
-  onCopy,
   label,
   className,
 }: {
-  value: unknown;
-  copyKey: string;
-  copiedKey: string | null;
-  onCopy: (key: string, value: unknown) => void;
+  value: unknown | (() => unknown);
   label?: string;
   className?: string;
 }) {
-  const isCopied = copiedKey === copyKey;
+  const { copy, copied } = useCopyToClipboard();
 
   return (
     <button
       onClick={(e) => {
         e.stopPropagation();
-        onCopy(copyKey, value);
+        copy(typeof value === 'function' ? value() : value);
       }}
       className={clsx(
         'inline-flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors',
-        isCopied
+        copied
           ? 'bg-green-900/30 text-green-400'
           : 'bg-neutral-700/50 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200',
         className,
       )}
       title={label ?? 'Copy JSON'}
     >
-      {isCopied ? (
-        <Check className="h-3 w-3" />
-      ) : (
-        <Copy className="h-3 w-3" />
-      )}
+      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
       {label && <span>{label}</span>}
     </button>
   );
@@ -233,22 +227,14 @@ function JsonObject({
 
 // --- Debug Message Card ---
 
-function DebugMessageCard({
-  message,
-  copiedKey,
-  onCopy,
-}: {
-  message: DebugMessageWithRawData;
-  copiedKey: string | null;
-  onCopy: (key: string, value: unknown) => void;
-}) {
+function DebugMessageCard({ message }: { message: DebugMessageWithRawData }) {
   const [expanded, setExpanded] = useState(false);
 
   const hasRaw = message.rawData !== null;
   const hasNormalized = message.normalizedData !== null;
 
   return (
-    <div className="bg-neutral-850 rounded-md border border-neutral-700">
+    <div className="bg-neutral-850 flex w-full flex-col overflow-hidden rounded-md border border-neutral-700">
       {/* Card header */}
       <button
         onClick={() => setExpanded(!expanded)}
@@ -308,21 +294,14 @@ function DebugMessageCard({
 
       {/* Card body — Side-by-side JSON */}
       {expanded && (
-        <div className="flex min-h-0">
+        <div className="flex min-h-0 w-full">
           {/* Raw side */}
-          <div className="flex-1 border-r border-neutral-700">
+          <div className="flex w-full flex-col overflow-hidden border-r border-neutral-700">
             <div className="flex items-center justify-between border-b border-neutral-700/50 px-3 py-1.5">
               <span className="text-[10px] font-semibold tracking-wider text-blue-400 uppercase">
                 Raw
               </span>
-              {hasRaw && (
-                <CopyJsonButton
-                  value={message.rawData}
-                  copyKey={`raw-${message.messageIndex}`}
-                  copiedKey={copiedKey}
-                  onCopy={onCopy}
-                />
-              )}
+              {hasRaw && <CopyJsonButton value={message.rawData} />}
             </div>
             <div className="max-h-[500px] overflow-auto p-3 font-mono text-xs leading-relaxed">
               {hasRaw ? (
@@ -335,18 +314,13 @@ function DebugMessageCard({
             </div>
           </div>
           {/* Normalized side */}
-          <div className="flex-1">
-            <div className="flex items-center justify-between border-b border-neutral-700/50 px-3 py-1.5">
+          <div className="flex w-full flex-col overflow-hidden">
+            <div className="flex w-full items-center justify-between border-b border-neutral-700/50 px-3 py-1.5">
               <span className="text-[10px] font-semibold tracking-wider text-green-400 uppercase">
                 Normalized
               </span>
               {hasNormalized && (
-                <CopyJsonButton
-                  value={message.normalizedData}
-                  copyKey={`norm-${message.messageIndex}`}
-                  copiedKey={copiedKey}
-                  onCopy={onCopy}
-                />
+                <CopyJsonButton value={message.normalizedData} />
               )}
             </div>
             <div className="max-h-[500px] overflow-auto p-3 font-mono text-xs leading-relaxed">
@@ -382,7 +356,6 @@ export function DebugMessagesPane({
   } = useMessagesWithRawData(taskId);
 
   const [searchFilter, setSearchFilter] = useState('');
-  const { copiedKey, copy } = useCopyToClipboard();
 
   const { width, setWidth, minWidth, maxWidth } = useDebugMessagesPaneWidth();
 
@@ -479,19 +452,13 @@ export function DebugMessagesPane({
         {debugMessages && debugMessages.length > 0 && (
           <div className="ml-auto flex items-center gap-1.5">
             <CopyJsonButton
-              value={debugMessages.map((m) => m.rawData).filter(Boolean)}
-              copyKey="all-raw"
-              copiedKey={copiedKey}
-              onCopy={copy}
+              value={() => debugMessages.map((m) => m.rawData).filter(Boolean)}
               label="Copy All Raw"
             />
             <CopyJsonButton
-              value={debugMessages
-                .map((m) => m.normalizedData)
-                .filter(Boolean)}
-              copyKey="all-normalized"
-              copiedKey={copiedKey}
-              onCopy={copy}
+              value={() =>
+                debugMessages.map((m) => m.normalizedData).filter(Boolean)
+              }
               label="Copy All Normalized"
             />
           </div>
@@ -524,8 +491,6 @@ export function DebugMessagesPane({
           <DebugMessageCard
             key={`${msg.messageIndex}-${index}`}
             message={msg}
-            copiedKey={copiedKey}
-            onCopy={copy}
           />
         ))}
       </div>

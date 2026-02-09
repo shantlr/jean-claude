@@ -343,7 +343,7 @@ export async function queryWorkItems(params: {
 
   // POST WIQL query - use projectName in URL path (Azure DevOps requires name, not GUID)
   const wiqlResponse = await fetch(
-    `https://dev.azure.com/${orgName}/${encodeURIComponent(params.projectName)}/_apis/wit/wiql?api-version=7.0&$top=400`,
+    `https://dev.azure.com/${orgName}/${encodeURIComponent(params.projectName)}/_apis/wit/wiql?api-version=7.0&$top=200`,
     {
       method: 'POST',
       headers: {

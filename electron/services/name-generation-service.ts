@@ -21,7 +21,12 @@ const TASK_NAME_SCHEMA = {
 export async function generateTaskName(prompt: string): Promise<string | null> {
   try {
     const generator = query({
-      prompt: `Generate a short task name (max 40 characters) that summarizes this task. Output only the name, nothing else.\n\nTask: ${prompt}`,
+      prompt: `Generate a short task name (max 40 characters) that summarizes this task.
+Output only the name, nothing else.
+Focus on what the user is asking for, not provided data or examples.
+the generated task name should be very consive and very expressive.
+
+Task: ${prompt}`,
       options: {
         allowedTools: [],
         permissionMode: 'bypassPermissions',

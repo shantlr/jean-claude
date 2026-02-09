@@ -136,6 +136,10 @@ export function MessageStream({
     );
   }
 
+  console.log({
+    messages,
+  });
+
   return (
     <div
       ref={scrollContainerRef}
