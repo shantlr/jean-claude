@@ -942,6 +942,15 @@ class AgentService {
   }
 
   /**
+   * Re-process normalization for all raw messages of a task.
+   * Deletes existing normalized messages and re-creates them from raw data.
+   * Returns the count of newly created normalized messages.
+   */
+  async reprocessNormalization(taskId: string): Promise<number> {
+    return AgentMessageRepository.reprocessNormalization(taskId);
+  }
+
+  /**
    * Recover tasks that were left in 'running' or 'waiting' state from a previous app session.
    * These tasks were interrupted by app shutdown/crash and should be marked as 'interrupted'.
    * Should be called on app startup before the main window is shown.

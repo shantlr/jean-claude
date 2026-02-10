@@ -501,6 +501,7 @@ export interface Api {
     getMessagesWithRawData: (
       taskId: string,
     ) => Promise<DebugMessageWithRawData[]>;
+    reprocessNormalization: (taskId: string) => Promise<number>;
     getPendingRequest: (taskId: string) => Promise<
       | {
           type: 'permission';
@@ -821,6 +822,7 @@ export const api: Api = hasWindowApi
         getMessages: async () => [],
         getMessageCount: async () => 0,
         getMessagesWithRawData: async () => [],
+        reprocessNormalization: async () => 0,
         getPendingRequest: async () => null,
         onMessage: () => () => {},
         onStatus: () => () => {},

@@ -1042,6 +1042,14 @@ export function registerIpcHandlers() {
     },
   );
 
+  ipcMain.handle(
+    AGENT_CHANNELS.REPROCESS_NORMALIZATION,
+    (_, taskId: string) => {
+      dbg.ipc('agent:reprocessNormalization %s', taskId);
+      return agentService.reprocessNormalization(taskId);
+    },
+  );
+
   // Settings
   ipcMain.handle(
     'settings:get',

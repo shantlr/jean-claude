@@ -1,8 +1,14 @@
-import type { NormalizedMessage } from '@shared/agent-backend-types';
+import type { AssistantMessage, Part, UserMessage } from '@opencode-ai/sdk';
+
+import type {
+  AgentBackendType,
+  NormalizedMessage,
+} from '@shared/agent-backend-types';
 import { CURRENT_NORMALIZATION_VERSION } from '@shared/agent-backend-types';
 import type { AgentMessage } from '@shared/agent-types';
 
 import { normalizeClaudeMessage } from '../../services/agent-backends/claude/normalize-claude-message';
+import { normalizeOpencodeMessage } from '../../services/agent-backends/opencode/normalize-opencode-message';
 import { db } from '../index';
 
 export const AgentMessageRepository = {
@@ -71,9 +77,17 @@ export const AgentMessageRepository = {
         const rawRow = rawMap.get(rawMessageId);
         let normalized: NormalizedMessage | undefined;
 
-        if (rawRow?.rawData && rawRow.rawFormat === 'claude-code') {
-          const rawMsg = JSON.parse(rawRow.rawData) as AgentMessage;
-          normalized = normalizeClaudeMessage(rawMsg) ?? undefined;
+        if (rawRow?.rawData) {
+          if (rawRow.rawFormat === 'claude-code') {
+            const rawMsg = JSON.parse(rawRow.rawData) as AgentMessage;
+            normalized = normalizeClaudeMessage(rawMsg) ?? undefined;
+          } else if (rawRow.rawFormat === 'opencode') {
+            const rawObj = JSON.parse(rawRow.rawData) as {
+              info: UserMessage | AssistantMessage;
+              parts: Part[];
+            };
+            normalized = normalizeOpencodeMessage(rawObj.info, rawObj.parts);
+          }
         }
 
         if (normalized) {
@@ -274,5 +288,125 @@ export const AgentMessageRepository = {
       .executeTakeFirst();
 
     return result?.count ?? 0;
+  },
+
+  /**
+   * Re-normalize all messages for a task from raw data.
+   *
+   * Algorithm:
+   * 1. Fetch all raw_messages for the task (ordered by messageIndex)
+   * 2. Fetch existing synthetic agent_messages (no rawMessageId) to preserve them
+   * 3. Re-run normalization for each raw message using the appropriate backend normalizer
+   * 4. Merge re-normalized messages with synthetic messages, sorted by original messageIndex
+   * 5. Delete all existing agent_messages for the task
+   * 6. Re-insert all messages with fresh sequential messageIndex values
+   *
+   * Returns the count of newly created normalized messages.
+   */
+  reprocessNormalization: async (taskId: string): Promise<number> => {
+    // 1. Fetch all raw messages ordered by messageIndex
+    const rawRows = await db
+      .selectFrom('raw_messages')
+      .select([
+        'raw_messages.id',
+        'raw_messages.messageIndex',
+        'raw_messages.rawData',
+        'raw_messages.rawFormat',
+      ])
+      .where('raw_messages.taskId', '=', taskId)
+      .orderBy('raw_messages.messageIndex', 'asc')
+      .execute();
+
+    // 2. Fetch existing synthetic messages (no raw counterpart) to preserve them
+    const syntheticRows = await db
+      .selectFrom('agent_messages')
+      .select([
+        'agent_messages.messageIndex',
+        'agent_messages.messageType',
+        'agent_messages.normalizedData',
+        'agent_messages.normalizedVersion',
+      ])
+      .where('agent_messages.taskId', '=', taskId)
+      .where('agent_messages.rawMessageId', 'is', null)
+      .orderBy('agent_messages.messageIndex', 'asc')
+      .execute();
+
+    // 3. Re-normalize each raw message
+    type Entry = {
+      originalMessageIndex: number;
+      rawMessageId: string | null;
+      messageType: string;
+      normalizedData: string;
+      normalizedVersion: number;
+    };
+
+    const entries: Entry[] = [];
+
+    for (const raw of rawRows) {
+      if (!raw.rawData) continue;
+
+      const format = raw.rawFormat as AgentBackendType;
+      let normalized: NormalizedMessage | null = null;
+
+      if (format === 'claude-code') {
+        const rawMsg = JSON.parse(raw.rawData) as AgentMessage;
+        normalized = normalizeClaudeMessage(rawMsg);
+      } else if (format === 'opencode') {
+        const rawObj = JSON.parse(raw.rawData) as {
+          info: UserMessage | AssistantMessage;
+          parts: Part[];
+        };
+        normalized = normalizeOpencodeMessage(rawObj.info, rawObj.parts);
+      }
+
+      if (normalized) {
+        entries.push({
+          originalMessageIndex: raw.messageIndex,
+          rawMessageId: raw.id,
+          messageType: normalized.role,
+          normalizedData: JSON.stringify(normalized),
+          normalizedVersion: CURRENT_NORMALIZATION_VERSION,
+        });
+      }
+    }
+
+    // 4. Merge synthetic messages back in, preserving their original position
+    for (const syn of syntheticRows) {
+      if (!syn.normalizedData) continue;
+      entries.push({
+        originalMessageIndex: syn.messageIndex,
+        rawMessageId: null,
+        messageType: syn.messageType,
+        normalizedData: syn.normalizedData,
+        normalizedVersion: syn.normalizedVersion,
+      });
+    }
+
+    // Sort by original messageIndex so synthetic messages stay in their original position
+    entries.sort((a, b) => a.originalMessageIndex - b.originalMessageIndex);
+
+    // 5. Delete all existing agent_messages for the task
+    await db
+      .deleteFrom('agent_messages')
+      .where('taskId', '=', taskId)
+      .execute();
+
+    // 6. Re-insert with fresh sequential messageIndex
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      await db
+        .insertInto('agent_messages')
+        .values({
+          taskId,
+          messageIndex: i,
+          messageType: entry.messageType,
+          normalizedData: entry.normalizedData,
+          normalizedVersion: entry.normalizedVersion,
+          rawMessageId: entry.rawMessageId,
+        })
+        .execute();
+    }
+
+    return entries.length;
   },
 };

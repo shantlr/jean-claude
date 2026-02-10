@@ -1,3 +1,4 @@
+import { useMutation } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
   X,
@@ -5,6 +6,7 @@ import {
   ChevronRight,
   ChevronDown,
   RefreshCw,
+  RotateCcw,
   Copy,
   Check,
 } from 'lucide-react';
@@ -12,8 +14,10 @@ import { useState, useCallback, useEffect } from 'react';
 
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useMessagesWithRawData } from '@/hooks/use-messages-with-raw-data';
+import { api } from '@/lib/api';
 import type { DebugMessageWithRawData } from '@/lib/api';
 import { useDebugMessagesPaneWidth } from '@/stores/navigation';
+import { useTaskMessagesStore } from '@/stores/task-messages';
 
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
 
@@ -356,6 +360,17 @@ export function DebugMessagesPane({
   } = useMessagesWithRawData(taskId);
 
   const [searchFilter, setSearchFilter] = useState('');
+  const unloadTask = useTaskMessagesStore((s) => s.unloadTask);
+
+  const reprocessMutation = useMutation({
+    mutationFn: () => api.agent.reprocessNormalization(taskId),
+    onSuccess: () => {
+      // Invalidate the main message stream (Zustand store) so it re-fetches
+      unloadTask(taskId);
+      // Refresh the debug pane's own data
+      refetch();
+    },
+  });
 
   const { width, setWidth, minWidth, maxWidth } = useDebugMessagesPaneWidth();
 
@@ -412,6 +427,24 @@ export function DebugMessagesPane({
         </h3>
         <div className="flex items-center gap-1">
           <button
+            onClick={() => reprocessMutation.mutate()}
+            disabled={reprocessMutation.isPending}
+            className={clsx(
+              'cursor-pointer rounded p-1.5 transition-colors',
+              reprocessMutation.isPending
+                ? 'text-amber-400'
+                : 'text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200',
+            )}
+            title="Reprocess normalization from raw data"
+          >
+            <RotateCcw
+              className={clsx(
+                'h-3.5 w-3.5',
+                reprocessMutation.isPending && 'animate-spin',
+              )}
+            />
+          </button>
+          <button
             onClick={handleRefresh}
             className="cursor-pointer rounded p-1.5 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
             title="Refresh"
@@ -449,6 +482,16 @@ export function DebugMessagesPane({
           <span className="inline-block h-2 w-2 rounded-full bg-green-400" />
           Normalized
         </span>
+        {reprocessMutation.isSuccess && (
+          <span className="text-[10px] text-green-400">
+            ✓ Reprocessed {reprocessMutation.data} messages
+          </span>
+        )}
+        {reprocessMutation.isError && (
+          <span className="text-[10px] text-red-400">
+            Reprocess failed: {(reprocessMutation.error as Error).message}
+          </span>
+        )}
         {debugMessages && debugMessages.length > 0 && (
           <div className="ml-auto flex items-center gap-1.5">
             <CopyJsonButton

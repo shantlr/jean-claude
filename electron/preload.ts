@@ -274,6 +274,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke(AGENT_CHANNELS.GET_PENDING_REQUEST, taskId),
     getMessagesWithRawData: (taskId: string) =>
       ipcRenderer.invoke(AGENT_CHANNELS.GET_MESSAGES_WITH_RAW_DATA, taskId),
+    reprocessNormalization: (taskId: string) =>
+      ipcRenderer.invoke(AGENT_CHANNELS.REPROCESS_NORMALIZATION, taskId),
     onMessage: (callback: (event: unknown) => void) => {
       const handler = (_: unknown, event: unknown) => callback(event);
       ipcRenderer.on(AGENT_CHANNELS.MESSAGE, handler);
