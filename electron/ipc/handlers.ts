@@ -1118,6 +1118,11 @@ export function registerIpcHandlers() {
   });
 
   ipcMain.handle('shell:openInEditor', async (_, dirPath: string) => {
+    if (!(await pathExists(dirPath))) {
+      throw new Error(
+        `Path does not exist: ${dirPath}. The worktree may have been deleted.`,
+      );
+    }
     const setting = await SettingsRepository.get('editor');
     openInEditor(dirPath, setting);
   });

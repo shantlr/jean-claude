@@ -15,6 +15,7 @@ import {
 import { useEffect, useState, useCallback, useRef } from 'react';
 
 import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
+import { useModal } from '@/common/context/modal';
 import { useCommands } from '@/common/hooks/use-commands';
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { getModelsForBackend } from '@/features/agent/ui-backend-selector';
@@ -77,6 +78,7 @@ import { TaskSettingsPane } from './task-settings-pane';
 
 export function TaskPanel({ taskId }: { taskId: string }) {
   const navigate = useNavigate();
+  const modal = useModal();
   const { data: task } = useTask(taskId);
   const projectId = task?.projectId;
   const { data: project } = useProject(projectId ?? '');
@@ -309,6 +311,18 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     }
   };
 
+  const handleOpenWorktreeInEditor = useCallback(async () => {
+    if (!task?.worktreePath) return;
+    try {
+      await api.shell.openInEditor(task.worktreePath);
+    } catch {
+      modal.error({
+        title: 'Worktree Not Found',
+        content: `The worktree path no longer exists:\n${task.worktreePath}\n\nThe worktree may have been deleted or moved.`,
+      });
+    }
+  }, [task?.worktreePath, modal]);
+
   const handleAllowToolsForSession = useCallback(
     (toolName: string, input: Record<string, unknown>) => {
       addSessionAllowedTool.mutate({ id: taskId, toolName, input });
@@ -393,9 +407,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       shortcut: 'cmd+w',
       section: 'Task',
       handler: () => {
-        if (task?.worktreePath) {
-          api.shell.openInEditor(task.worktreePath);
-        }
+        handleOpenWorktreeInEditor();
       },
     },
     !!task?.pullRequestUrl && {
@@ -527,7 +539,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               {task.worktreePath && (
                 <>
                   <button
-                    onClick={() => api.shell.openInEditor(task.worktreePath!)}
+                    onClick={handleOpenWorktreeInEditor}
                     className="flex max-w-48 min-w-0 items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-300"
                     title={`Open in ${editorSetting ? getEditorLabel(editorSetting) : 'editor'}`}
                   >
