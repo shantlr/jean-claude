@@ -78,7 +78,10 @@ import {
   type CloneRepositoryParams,
 } from '../services/azure-devops-service';
 import * as backendModelsService from '../services/backend-models-service';
-import { handlePromptResponse } from '../services/global-prompt-service';
+import {
+  handlePromptResponse,
+  sendGlobalPromptToWindow,
+} from '../services/global-prompt-service';
 import {
   MCP_PRESETS,
   getEnabledTemplatesForProject,
@@ -108,6 +111,7 @@ import {
   getWorktreeStatus,
   commitWorktreeChanges,
   cleanupWroktree,
+  cleanupMissingWorktree,
   mergeWorktree,
   pushBranch,
 } from '../services/worktree-service';
@@ -382,9 +386,49 @@ export function registerIpcHandlers() {
       });
     },
   );
-  ipcMain.handle('tasks:toggleUserCompleted', (_, id: string) =>
-    TaskRepository.toggleUserCompleted(id),
-  );
+  ipcMain.handle('tasks:toggleUserCompleted', async (_, id: string) => {
+    // Fetch task before toggling to know the current state
+    const taskBefore = await TaskRepository.findById(id);
+
+    // Perform the toggle
+    const updatedTask = await TaskRepository.toggleUserCompleted(id);
+
+    // Only check for missing worktree when completing (not uncompleting)
+    const isCompleting = taskBefore && !taskBefore.userCompleted;
+    if (isCompleting && taskBefore.worktreePath && taskBefore.branchName) {
+      const worktreeExists = await pathExists(taskBefore.worktreePath);
+      if (!worktreeExists) {
+        const project = await ProjectRepository.findById(taskBefore.projectId);
+        if (project) {
+          const accepted = await sendGlobalPromptToWindow({
+            title: 'Worktree Directory Missing',
+            message:
+              'The worktree directory for this task no longer exists on disk. Would you like to clean up the orphaned git branch and worktree references?',
+            details: `Path: ${taskBefore.worktreePath}\nBranch: ${taskBefore.branchName}`,
+            acceptLabel: 'Clean Up',
+            rejectLabel: 'Skip',
+          });
+
+          if (accepted) {
+            await cleanupMissingWorktree({
+              projectPath: project.path,
+              branchName: taskBefore.branchName,
+            });
+
+            // Clear worktree fields on the task
+            return TaskRepository.update(id, {
+              worktreePath: null,
+              branchName: null,
+              startCommitHash: null,
+              sourceBranch: null,
+            });
+          }
+        }
+      }
+    }
+
+    return updatedTask;
+  });
   ipcMain.handle('tasks:clearUserCompleted', (_, id: string) =>
     TaskRepository.clearUserCompleted(id),
   );

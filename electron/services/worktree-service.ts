@@ -860,6 +860,45 @@ export async function cleanupWroktree(
 }
 
 /**
+ * Cleans up a worktree whose directory has already been deleted from disk.
+ * Runs `git worktree prune` to remove stale worktree references,
+ * then deletes the branch if requested.
+ */
+export async function cleanupMissingWorktree(params: {
+  projectPath: string;
+  branchName: string;
+}): Promise<void> {
+  const { projectPath, branchName } = params;
+
+  // Prune stale worktree entries (removes references to deleted directories)
+  try {
+    await execAsync('git worktree prune', {
+      cwd: projectPath,
+      encoding: 'utf-8',
+    });
+    dbg.worktree('Pruned stale worktree references in %s', projectPath);
+  } catch (error) {
+    dbg.worktree('Failed to prune worktrees in %s: %O', projectPath, error);
+  }
+
+  // Delete the orphaned branch
+  try {
+    await execAsync(`git branch -D ${JSON.stringify(branchName)}`, {
+      cwd: projectPath,
+      encoding: 'utf-8',
+    });
+    dbg.worktree('Deleted branch %s in %s', branchName, projectPath);
+  } catch (error) {
+    dbg.worktree(
+      'Failed to delete branch %s in %s: %O',
+      branchName,
+      projectPath,
+      error,
+    );
+  }
+}
+
+/**
  * Merges a worktree branch into target branch and deletes the worktree.
  * Supports both regular merge and squash merge with custom commit message.
  */
