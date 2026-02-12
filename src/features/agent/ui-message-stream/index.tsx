@@ -1,4 +1,5 @@
 import {
+  memo,
   useEffect,
   useRef,
   useMemo,
@@ -61,7 +62,7 @@ function buildParentMessageMap(
 // Threshold in pixels - if user is within this distance from bottom, auto-scroll
 const SCROLL_THRESHOLD = 10;
 
-export function MessageStream({
+export const MessageStream = memo(function MessageStream({
   messages,
   isRunning,
   queuedPrompts = [],
@@ -136,10 +137,6 @@ export function MessageStream({
     );
   }
 
-  console.log({
-    messages,
-  });
-
   return (
     <div
       ref={scrollContainerRef}
@@ -207,4 +204,4 @@ export function MessageStream({
       </div>
     </div>
   );
-}
+});

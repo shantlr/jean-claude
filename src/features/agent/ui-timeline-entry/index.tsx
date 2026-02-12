@@ -9,7 +9,7 @@ import {
   PackageOpen,
 } from 'lucide-react';
 import type { MouseEvent, ReactNode } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
 
 import { formatNumber } from '@/lib/number';
@@ -734,7 +734,7 @@ export function CompactingEntry({
   );
 }
 
-export function TimelineEntry({
+export const TimelineEntry = memo(function TimelineEntry({
   message,
   toolResultsMap,
   parentMessageMap,
@@ -831,4 +831,4 @@ export function TimelineEntry({
   }
 
   return null;
-}
+});

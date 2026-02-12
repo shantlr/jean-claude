@@ -12,7 +12,7 @@ import {
   GitCompare,
   GitPullRequest,
 } from 'lucide-react';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, memo } from 'react';
 
 import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
 import { useModal } from '@/common/context/modal';
@@ -83,15 +83,9 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const projectId = task?.projectId;
   const { data: project } = useProject(projectId ?? '');
   const { data: editorSetting } = useEditorSetting();
-  const { data: skills } = useSkills(taskId);
-  const { data: dynamicModels } = useBackendModels(
-    task?.agentBackend ?? 'claude-code',
-  );
   const markAsRead = useMarkTaskAsRead();
   const deleteTask = useDeleteTask();
   const setTaskMode = useSetTaskMode();
-  const setTaskModelPreference = useSetTaskModelPreference();
-  const clearUserCompleted = useClearTaskUserCompleted();
   const addSessionAllowedTool = useAddSessionAllowedTool();
   const removeSessionAllowedTool = useRemoveSessionAllowedTool();
   const allowForProject = useAllowForProject();
@@ -149,12 +143,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     cancelQueuedPrompt,
     isStopping,
   } = useAgentControls(taskId);
-
-  const {
-    text: promptDraft,
-    setDraft: setPromptDraft,
-    clearDraft: clearPromptDraft,
-  } = useTaskPrompt(taskId);
 
   const [copiedSessionId, setCopiedSessionId] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -269,40 +257,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       markJobSucceeded,
       markJobFailed,
     ],
-  );
-
-  const handleModeChange = (mode: InteractionMode) => {
-    setTaskMode.mutate({ id: taskId, mode });
-  };
-
-  const handleModelChange = (modelPreference: ModelPreference) => {
-    setTaskModelPreference.mutate({ id: taskId, modelPreference });
-  };
-
-  const handleSendMessage = useCallback(
-    (message: string) => {
-      // Clear userCompleted when sending a follow-up message
-      if (task?.userCompleted) {
-        clearUserCompleted.mutate(taskId);
-      }
-      clearPromptDraft();
-      sendMessage(message);
-    },
-    [
-      task?.userCompleted,
-      taskId,
-      clearUserCompleted,
-      clearPromptDraft,
-      sendMessage,
-    ],
-  );
-
-  const handleQueuePrompt = useCallback(
-    (message: string) => {
-      clearPromptDraft();
-      queuePrompt(message);
-    },
-    [clearPromptDraft, queuePrompt],
   );
 
   const handleOpenInEditor = () => {
@@ -458,7 +412,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const isWaiting =
     agentState.status === 'waiting' || task.status === 'waiting';
   const hasMessages = agentState.messages.length > 0;
-  const canSendMessage = !isRunning && hasMessages && task.sessionId;
+  const canSendMessage = !isRunning && hasMessages && !!task.sessionId;
 
   return (
     <div ref={taskPanelRef} className="flex h-full w-full overflow-hidden">
@@ -756,31 +710,15 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         {(canSendMessage || isWaiting || hasMessages) &&
           !agentState.pendingPermission &&
           !agentState.pendingQuestion && (
-            <div className="flex items-end gap-2 border-t border-neutral-700 bg-neutral-800 px-4 py-3">
-              <ModeSelector
-                value={task.interactionMode ?? 'ask'}
-                onChange={handleModeChange}
-                disabled={isRunning}
-              />
-              <ModelSelector
-                value={task.modelPreference ?? 'default'}
-                onChange={handleModelChange}
-                disabled={isRunning}
-                models={getModelsForBackend(task.agentBackend, dynamicModels)}
-              />
-              <MessageInput
-                onSend={handleSendMessage}
-                onQueue={handleQueuePrompt}
-                onStop={handleStop}
-                disabled={!canSendMessage}
-                placeholder="Send a follow-up message..."
-                isRunning={isRunning}
-                isStopping={isStopping}
-                skills={skills}
-                value={promptDraft}
-                onValueChange={setPromptDraft}
-              />
-            </div>
+            <TaskInputFooter
+              taskId={taskId}
+              isRunning={isRunning}
+              isStopping={isStopping}
+              canSendMessage={!!canSendMessage}
+              onSend={sendMessage}
+              onQueue={queuePrompt}
+              onStop={handleStop}
+            />
           )}
       </div>
 
@@ -825,3 +763,105 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     </div>
   );
 }
+
+/**
+ * Extracted input footer that owns the prompt draft state.
+ * This isolates the rapidly-changing prompt text from the rest of TaskPanel,
+ * preventing full tree re-renders on every keystroke.
+ */
+const TaskInputFooter = memo(function TaskInputFooter({
+  taskId,
+  isRunning,
+  isStopping,
+  canSendMessage,
+  onSend,
+  onQueue,
+  onStop,
+}: {
+  taskId: string;
+  isRunning: boolean;
+  isStopping: boolean;
+  canSendMessage: boolean;
+  onSend: (message: string) => void;
+  onQueue: (message: string) => void;
+  onStop: () => Promise<void>;
+}) {
+  const { data: task } = useTask(taskId);
+  const { data: skills } = useSkills(taskId);
+  const { data: dynamicModels } = useBackendModels(
+    task?.agentBackend ?? 'claude-code',
+  );
+  const setTaskMode = useSetTaskMode();
+  const setTaskModelPreference = useSetTaskModelPreference();
+  const clearUserCompleted = useClearTaskUserCompleted();
+
+  const {
+    text: promptDraft,
+    setDraft: setPromptDraft,
+    clearDraft: clearPromptDraft,
+  } = useTaskPrompt(taskId);
+
+  const handleModeChange = useCallback(
+    (mode: InteractionMode) => {
+      setTaskMode.mutate({ id: taskId, mode });
+    },
+    [taskId, setTaskMode],
+  );
+
+  const handleModelChange = useCallback(
+    (modelPreference: ModelPreference) => {
+      setTaskModelPreference.mutate({ id: taskId, modelPreference });
+    },
+    [taskId, setTaskModelPreference],
+  );
+
+  const handleSendMessage = useCallback(
+    (message: string) => {
+      if (task?.userCompleted) {
+        clearUserCompleted.mutate(taskId);
+      }
+      clearPromptDraft();
+      onSend(message);
+    },
+    [task?.userCompleted, taskId, clearUserCompleted, clearPromptDraft, onSend],
+  );
+
+  const handleQueuePrompt = useCallback(
+    (message: string) => {
+      clearPromptDraft();
+      onQueue(message);
+    },
+    [clearPromptDraft, onQueue],
+  );
+
+  return (
+    <div className="flex items-end gap-2 border-t border-neutral-700 bg-neutral-800 px-4 py-3">
+      <ModeSelector
+        value={task?.interactionMode ?? 'ask'}
+        onChange={handleModeChange}
+        disabled={isRunning}
+      />
+      <ModelSelector
+        value={task?.modelPreference ?? 'default'}
+        onChange={handleModelChange}
+        disabled={isRunning}
+        models={getModelsForBackend(
+          task?.agentBackend ?? 'claude-code',
+          dynamicModels,
+        )}
+      />
+      <MessageInput
+        onSend={handleSendMessage}
+        onQueue={handleQueuePrompt}
+        onStop={onStop}
+        disabled={!canSendMessage}
+        placeholder="Send a follow-up message..."
+        isRunning={isRunning}
+        isStopping={isStopping}
+        skills={skills}
+        value={promptDraft}
+        onValueChange={setPromptDraft}
+      />
+    </div>
+  );
+});
