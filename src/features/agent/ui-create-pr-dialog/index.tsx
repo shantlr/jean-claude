@@ -1,11 +1,7 @@
 import { ExternalLink, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
-import {
-  useCreatePullRequest,
-  usePushBranch,
-} from '@/hooks/use-create-pull-request';
-import { useUpdateTask } from '@/hooks/use-tasks';
+import { useCreatePullRequest } from '@/hooks/use-create-pull-request';
 
 export function CreatePrDialog({
   isOpen,
@@ -16,10 +12,6 @@ export function CreatePrDialog({
   branchName,
   targetBranch,
   workItemId,
-  // Project repo link fields
-  repoProviderId,
-  repoProjectId,
-  repoId,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -29,9 +21,6 @@ export function CreatePrDialog({
   branchName: string;
   targetBranch: string;
   workItemId: string | null;
-  repoProviderId: string;
-  repoProjectId: string;
-  repoId: string;
 }) {
   const [title, setTitle] = useState(
     taskName ?? taskPrompt.split('\n')[0].slice(0, 100),
@@ -42,39 +31,21 @@ export function CreatePrDialog({
   const [isDraft, setIsDraft] = useState(true);
   const [prUrl, setPrUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deleteWorktreeAfter, setDeleteWorktreeAfter] = useState(true);
 
-  const pushBranch = usePushBranch();
-  const createPr = useCreatePullRequest();
-  const updateTask = useUpdateTask();
+  const createPullRequest = useCreatePullRequest();
 
-  const isPending =
-    pushBranch.isPending || createPr.isPending || updateTask.isPending;
+  const isPending = createPullRequest.isPending;
 
   async function handleCreate() {
     setError(null);
     try {
-      // Step 1: Push branch
-      await pushBranch.mutateAsync(taskId);
-
-      // Step 2: Create PR
-      const result = await createPr.mutateAsync({
-        providerId: repoProviderId,
-        projectId: repoProjectId,
-        repoId,
-        sourceBranch: branchName,
-        targetBranch,
+      const result = await createPullRequest.mutateAsync({
+        taskId,
         title,
         description,
         isDraft,
-      });
-
-      // Step 3: Save PR info to task
-      await updateTask.mutateAsync({
-        id: taskId,
-        data: {
-          pullRequestId: String(result.id),
-          pullRequestUrl: result.url,
-        },
+        deleteWorktree: deleteWorktreeAfter,
       });
 
       setPrUrl(result.url);
@@ -179,6 +150,23 @@ export function CreatePrDialog({
               className="cursor-pointer text-sm text-neutral-300"
             >
               Create as draft
+            </label>
+          </div>
+
+          {/* Delete worktree after creating */}
+          <div className="flex items-center gap-2">
+            <input
+              id="deleteWorktree"
+              type="checkbox"
+              checked={deleteWorktreeAfter}
+              onChange={(e) => setDeleteWorktreeAfter(e.target.checked)}
+              className="h-4 w-4 cursor-pointer rounded border-neutral-600 bg-neutral-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-neutral-900"
+            />
+            <label
+              htmlFor="deleteWorktree"
+              className="cursor-pointer text-sm text-neutral-300"
+            >
+              Delete worktree after creating
             </label>
           </div>
 

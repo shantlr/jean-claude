@@ -115,12 +115,21 @@ contextBridge.exposeInMainWorld('api', {
         ipcRenderer.invoke('tasks:worktree:getBranches', taskId),
       pushBranch: (taskId: string) =>
         ipcRenderer.invoke('tasks:worktree:pushBranch', taskId),
+      delete: (taskId: string, options?: { keepBranch?: boolean }) =>
+        ipcRenderer.invoke('tasks:worktree:delete', taskId, options),
     },
     summary: {
       get: (taskId: string) => ipcRenderer.invoke('tasks:summary:get', taskId),
       generate: (taskId: string) =>
         ipcRenderer.invoke('tasks:summary:generate', taskId),
     },
+    createPullRequest: (params: {
+      taskId: string;
+      title: string;
+      description: string;
+      isDraft: boolean;
+      deleteWorktree?: boolean;
+    }) => ipcRenderer.invoke('tasks:createPullRequest', params),
   },
   providers: {
     findAll: () => ipcRenderer.invoke('providers:findAll'),

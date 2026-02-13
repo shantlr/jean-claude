@@ -120,6 +120,23 @@ export function useDeleteTask() {
   });
 }
 
+export function useDeleteWorktree() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      taskId,
+      keepBranch,
+    }: {
+      taskId: string;
+      keepBranch?: boolean;
+    }) => api.tasks.worktree.delete(taskId, { keepBranch }),
+    onSuccess: (_, { taskId }) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+}
+
 export function useSetTaskMode() {
   const queryClient = useQueryClient();
   return useMutation({

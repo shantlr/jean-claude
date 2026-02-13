@@ -3,12 +3,11 @@ import { useState } from 'react';
 
 import {
   useCreatePullRequest,
-  usePushBranch,
   useAddPrFileComments,
 } from '@/hooks/use-create-pull-request';
 import { useProject } from '@/hooks/use-projects';
 import { useGenerateSummary, useTaskSummary } from '@/hooks/use-task-summary';
-import { useTask, useUpdateTask } from '@/hooks/use-tasks';
+import { useTask } from '@/hooks/use-tasks';
 import type { FileAnnotation } from '@/lib/api';
 
 export function PrCreationForm({
@@ -45,16 +44,10 @@ export function PrCreationForm({
 
   const { data: existingSummary } = useTaskSummary(taskId);
   const generateSummary = useGenerateSummary();
-  const pushBranch = usePushBranch();
   const createPr = useCreatePullRequest();
   const addComments = useAddPrFileComments();
-  const updateTask = useUpdateTask();
 
-  const isPending =
-    pushBranch.isPending ||
-    createPr.isPending ||
-    addComments.isPending ||
-    updateTask.isPending;
+  const isPending = createPr.isPending || addComments.isPending;
 
   // Helper to populate form from a summary
   function fillFormFromSummary(summary: {
@@ -106,22 +99,15 @@ export function PrCreationForm({
   async function handleCreate() {
     setError(null);
     try {
-      // Step 1: Push branch
-      await pushBranch.mutateAsync(taskId);
-
-      // Step 2: Create PR
+      // Step 1: Create PR (pushes branch + creates PR + saves to task)
       const result = await createPr.mutateAsync({
-        providerId: repoProviderId,
-        projectId: repoProjectId,
-        repoId,
-        sourceBranch: branchName,
-        targetBranch,
+        taskId,
         title,
         description,
         isDraft,
       });
 
-      // Step 3: Post comments for checked annotations
+      // Step 2: Post comments for checked annotations
       const checkedAnnotations = annotationStates
         .filter((a) => a.checked)
         .map((a) => ({
@@ -139,15 +125,6 @@ export function PrCreationForm({
           comments: checkedAnnotations,
         });
       }
-
-      // Step 4: Save PR info to task
-      await updateTask.mutateAsync({
-        id: taskId,
-        data: {
-          pullRequestId: String(result.id),
-          pullRequestUrl: result.url,
-        },
-      });
 
       onSuccess();
     } catch (err) {

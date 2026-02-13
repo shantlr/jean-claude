@@ -208,9 +208,6 @@ export function WorktreeActions({
           branchName={branchName}
           targetBranch={selectedBranch}
           workItemId={workItemId}
-          repoProviderId={repoProviderId!}
-          repoProjectId={repoProjectId!}
-          repoId={repoId!}
         />
       )}
     </div>

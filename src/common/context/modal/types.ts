@@ -22,16 +22,28 @@ export interface ErrorModalOptions {
   onClose?: () => void | Promise<void>;
 }
 
-export type ModalType = 'info' | 'confirm' | 'error';
+export interface OpenModalOptions {
+  title?: ReactNode;
+  content: ReactNode | ((onClose: () => void) => ReactNode);
+}
+
+export type ModalType = 'info' | 'confirm' | 'error' | 'open';
+
+export type QueuedModalOptions =
+  | InfoModalOptions
+  | ConfirmModalOptions
+  | ErrorModalOptions
+  | OpenModalOptions;
 
 export interface QueuedModal {
   id: string;
   type: ModalType;
-  options: InfoModalOptions | ConfirmModalOptions | ErrorModalOptions;
+  options: QueuedModalOptions;
 }
 
 export interface ModalContextValue {
   info: (options: InfoModalOptions) => void;
   confirm: (options: ConfirmModalOptions) => void;
   error: (options: ErrorModalOptions) => void;
+  open: (options: OpenModalOptions) => void;
 }

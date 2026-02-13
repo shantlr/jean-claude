@@ -2,26 +2,18 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
 
-export function usePushBranch() {
-  return useMutation({
-    mutationFn: (taskId: string) => api.tasks.worktree.pushBranch(taskId),
-  });
-}
-
 export function useCreatePullRequest() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (params: {
-      providerId: string;
-      projectId: string;
-      repoId: string;
-      sourceBranch: string;
-      targetBranch: string;
+      taskId: string;
       title: string;
       description: string;
       isDraft: boolean;
-    }) => api.azureDevOps.createPullRequest(params),
-    onSuccess: () => {
+      deleteWorktree?: boolean;
+    }) => api.tasks.createPullRequest(params),
+    onSuccess: (_, params) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', params.taskId] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });

@@ -16,6 +16,7 @@ import type {
   ErrorModalOptions,
   InfoModalOptions,
   ModalContextValue,
+  OpenModalOptions,
   QueuedModal,
 } from './types';
 
@@ -59,9 +60,16 @@ export function ModalProvider({ children }: { children: ReactNode }) {
     [addToQueue],
   );
 
+  const open = useCallback(
+    (options: OpenModalOptions): void => {
+      addToQueue('open', options);
+    },
+    [addToQueue],
+  );
+
   const value = useMemo(
-    () => ({ info, confirm, error }),
-    [info, confirm, error],
+    () => ({ info, confirm, error, open }),
+    [info, confirm, error, open],
   );
 
   return (
@@ -197,6 +205,16 @@ function ModalRenderer({
     );
   }
 
+  if (type === 'open') {
+    const { title, content } = options as OpenModalOptions;
+
+    return (
+      <Modal isOpen onClose={onClose} title={title}>
+        {typeof content === 'function' ? content(onClose) : content}
+      </Modal>
+    );
+  }
+
   if (type === 'error') {
     const {
       title,
@@ -251,4 +269,5 @@ export type {
   ConfirmModalOptions,
   ErrorModalOptions,
   InfoModalOptions,
+  OpenModalOptions,
 } from './types';

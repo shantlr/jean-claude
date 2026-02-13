@@ -867,6 +867,96 @@ export function registerIpcHandlers() {
     });
   });
 
+  ipcMain.handle(
+    'tasks:worktree:delete',
+    async (_, taskId: string, options?: { keepBranch?: boolean }) => {
+      const task = await TaskRepository.findById(taskId);
+      if (!task?.worktreePath) return;
+
+      const project = await ProjectRepository.findById(task.projectId);
+      if (!project) return;
+
+      await cleanupWroktree({
+        worktreePath: task.worktreePath,
+        projectPath: project.path,
+        branchCleanup: options?.keepBranch ? 'keep' : 'delete',
+        force: true,
+      });
+
+      await TaskRepository.update(taskId, { worktreePath: null });
+    },
+  );
+
+  ipcMain.handle(
+    'tasks:createPullRequest',
+    async (
+      _,
+      params: {
+        taskId: string;
+        title: string;
+        description: string;
+        isDraft: boolean;
+        deleteWorktree?: boolean;
+      },
+    ) => {
+      const task = await TaskRepository.findById(params.taskId);
+      if (!task?.worktreePath || !task?.branchName) {
+        throw new Error(
+          `Task ${params.taskId} does not have a worktree with a branch`,
+        );
+      }
+
+      const project = await ProjectRepository.findById(task.projectId);
+      if (
+        !project?.repoProviderId ||
+        !project?.repoProjectId ||
+        !project?.repoId
+      ) {
+        throw new Error(
+          `Project ${task.projectId} is not linked to a repository`,
+        );
+      }
+
+      // Step 1: Push branch to remote
+      await pushBranch({
+        worktreePath: task.worktreePath,
+        branchName: task.branchName,
+      });
+
+      // Step 2: Create PR via Azure DevOps
+      const targetBranch = task.sourceBranch ?? project.defaultBranch ?? 'main';
+      const pr = await createPullRequest({
+        providerId: project.repoProviderId,
+        projectId: project.repoProjectId,
+        repoId: project.repoId,
+        sourceBranch: task.branchName,
+        targetBranch,
+        title: params.title,
+        description: params.description,
+        isDraft: params.isDraft,
+      });
+
+      // Step 3: Save PR info to task
+      await TaskRepository.update(params.taskId, {
+        pullRequestId: String(pr.id),
+        pullRequestUrl: pr.url,
+      });
+
+      // Step 4: Optionally delete worktree (keep branch)
+      if (params.deleteWorktree) {
+        await cleanupWroktree({
+          worktreePath: task.worktreePath,
+          projectPath: project.path,
+          branchCleanup: 'keep',
+          force: true,
+        });
+        await TaskRepository.update(params.taskId, { worktreePath: null });
+      }
+
+      return { id: pr.id, url: pr.url };
+    },
+  );
+
   // Dialog
   ipcMain.handle('dialog:openDirectory', async (event) => {
     dbg.ipc('dialog:openDirectory called');

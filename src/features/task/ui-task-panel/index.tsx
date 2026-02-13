@@ -29,6 +29,8 @@ import { PermissionBar } from '@/features/agent/ui-permission-bar';
 import { PrBadge } from '@/features/agent/ui-pr-badge';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
 import { RunButton } from '@/features/agent/ui-run-button';
+import { WorktreeBranchMenu } from '@/features/agent/ui-worktree-branch-menu';
+import { DeleteWorktreeContent } from '@/features/agent/ui-worktree-branch-menu/delete-worktree-dialog';
 import { WorktreeDiffView } from '@/features/agent/ui-worktree-diff-view';
 import { StatusIndicator } from '@/features/task/ui-status-indicator';
 import { TaskPrView } from '@/features/task/ui-task-pr-view';
@@ -51,6 +53,7 @@ import {
   useAllowForProject,
   useAllowForProjectWorktrees,
   useToggleTaskUserCompleted,
+  useDeleteWorktree,
 } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
 import { getBranchFromWorktreePath } from '@/lib/worktree';
@@ -146,6 +149,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
 
   const [copiedSessionId, setCopiedSessionId] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const deleteWorktree = useDeleteWorktree();
 
   // Ref for the task panel container (used by shrink-to-target animation)
   const taskPanelRef = useRef<HTMLDivElement>(null);
@@ -276,6 +280,30 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       });
     }
   }, [task?.worktreePath, modal]);
+
+  const handleOpenDeleteWorktreeModal = useCallback(() => {
+    const branchName =
+      task?.branchName ?? getBranchFromWorktreePath(task?.worktreePath ?? '');
+
+    modal.open({
+      title: 'Delete Worktree',
+      content: (onClose) => (
+        <DeleteWorktreeContent
+          onClose={onClose}
+          onConfirm={async () => {
+            await deleteWorktree.mutateAsync({ taskId, keepBranch: true });
+            onClose();
+            if (isDiffViewOpen) {
+              toggleDiffView();
+            }
+          }}
+          branchName={branchName}
+          taskId={taskId}
+          isPending={deleteWorktree.isPending}
+        />
+      ),
+    });
+  }, [task, taskId, deleteWorktree, isDiffViewOpen, toggleDiffView, modal]);
 
   const handleAllowToolsForSession = useCallback(
     (toolName: string, input: Record<string, unknown>) => {
@@ -492,17 +520,14 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             <div className="flex items-center gap-2">
               {task.worktreePath && (
                 <>
-                  <button
-                    onClick={handleOpenWorktreeInEditor}
-                    className="flex max-w-48 min-w-0 items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-300"
-                    title={`Open in ${editorSetting ? getEditorLabel(editorSetting) : 'editor'}`}
-                  >
-                    <GitBranch className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">
-                      {task.branchName ??
-                        getBranchFromWorktreePath(task.worktreePath)}
-                    </span>
-                  </button>
+                  <WorktreeBranchMenu
+                    branchName={
+                      task.branchName ??
+                      getBranchFromWorktreePath(task.worktreePath)
+                    }
+                    onOpenInEditor={handleOpenWorktreeInEditor}
+                    onDeleteWorktree={handleOpenDeleteWorktreeModal}
+                  />
                   <button
                     onClick={toggleDiffView}
                     className={clsx(
@@ -517,6 +542,12 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                     Diff
                   </button>
                 </>
+              )}
+              {!task.worktreePath && task.branchName && (
+                <span className="flex max-w-48 min-w-0 items-center gap-1.5 text-sm text-neutral-500">
+                  <GitBranch className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{task.branchName}</span>
+                </span>
               )}
               {/* PR button - visible when repo is linked */}
               {project.repoProviderId && task.worktreePath && (

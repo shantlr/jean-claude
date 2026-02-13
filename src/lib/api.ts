@@ -351,11 +351,22 @@ export interface Api {
       ) => Promise<MergeWorktreeResult>;
       getBranches: (taskId: string) => Promise<string[]>;
       pushBranch: (taskId: string) => Promise<void>;
+      delete: (
+        taskId: string,
+        options?: { keepBranch?: boolean },
+      ) => Promise<void>;
     };
     summary: {
       get: (taskId: string) => Promise<TaskSummary | undefined>;
       generate: (taskId: string) => Promise<TaskSummary>;
     };
+    createPullRequest: (params: {
+      taskId: string;
+      title: string;
+      description: string;
+      isDraft: boolean;
+      deleteWorktree?: boolean;
+    }) => Promise<{ id: number; url: string }>;
   };
   providers: {
     findAll: () => Promise<Provider[]>;
@@ -712,6 +723,7 @@ export const api: Api = hasWindowApi
             }) as MergeWorktreeResult,
           getBranches: async () => [],
           pushBranch: async () => {},
+          delete: async () => {},
         },
         summary: {
           get: async () => undefined,
@@ -719,6 +731,7 @@ export const api: Api = hasWindowApi
             throw new Error('API not available');
           },
         },
+        createPullRequest: async () => ({ id: 0, url: '' }),
       },
       providers: {
         findAll: async () => [],
