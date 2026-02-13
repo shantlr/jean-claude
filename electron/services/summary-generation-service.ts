@@ -135,9 +135,10 @@ ${taskPrompt ? `## Original Task\n${taskPrompt}\n\n` : ''}## Changed Files
 ${diffContent}
 
 ## Instructions
-1. **What I Did**: Write 2-3 sentences summarizing what was accomplished. Focus on the functional changes, not implementation details.
+You should be very consise, don't be too verbose in your explanations.
 
-2. **Key Decisions**: List the important architectural or design decisions as markdown bullet points. Explain WHY certain approaches were chosen, trade-offs considered, etc.
+1. **After**: Write 2-3 sentences summarizing what was accomplished. Focus on the functional changes, not implementation details.
+List the important architectural or design decisions as markdown bullet points. Explain WHY certain approaches were chosen, trade-offs considered, etc.
 
 3. **Annotations**: Only annotate files where the reasoning is NOT obvious from the code itself. Skip straightforward changes like:
   - Simple bug fixes with obvious causes
