@@ -1269,14 +1269,62 @@ export async function addPullRequestComment(params: {
   };
 }
 
-export async function updateWorkItemState(params: {
+export async function getWorkItem(params: {
   providerId: string;
   workItemId: number;
-  state: string;
+}): Promise<{ assignedTo?: string }> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const url = `https://dev.azure.com/${orgName}/_apis/wit/workitems/${params.workItemId}?fields=System.AssignedTo&api-version=7.0`;
+
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader },
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to fetch work item ${params.workItemId}: ${error}`);
+  }
+
+  const data: {
+    fields: {
+      'System.AssignedTo'?: { displayName: string; uniqueName: string };
+    };
+  } = await response.json();
+
+  return {
+    assignedTo: data.fields['System.AssignedTo']?.uniqueName,
+  };
+}
+
+export async function activateWorkItem(params: {
+  providerId: string;
+  workItemId: number;
 }): Promise<void> {
   const { authHeader, orgName } = await getProviderAuth(params.providerId);
 
-  // Use JSON Patch to update the work item state
+  // Check if work item is currently unassigned
+  const workItem = await getWorkItem(params);
+
+  // Build patch operations
+  const patchOps: Array<{ op: string; path: string; value: string }> = [
+    {
+      op: 'add',
+      path: '/fields/System.State',
+      value: 'Active',
+    },
+  ];
+
+  // Only assign if currently unassigned
+  if (!workItem.assignedTo) {
+    const currentUser = await getCurrentUser(params.providerId);
+    patchOps.push({
+      op: 'add',
+      path: '/fields/System.AssignedTo',
+      value: currentUser.emailAddress,
+    });
+  }
+
   const url = `https://dev.azure.com/${orgName}/_apis/wit/workitems/${params.workItemId}?api-version=7.0`;
 
   const response = await fetch(url, {
@@ -1285,18 +1333,14 @@ export async function updateWorkItemState(params: {
       Authorization: authHeader,
       'Content-Type': 'application/json-patch+json',
     },
-    body: JSON.stringify([
-      {
-        op: 'add',
-        path: '/fields/System.State',
-        value: params.state,
-      },
-    ]),
+    body: JSON.stringify(patchOps),
   });
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`Failed to update work item state: ${error}`);
+    throw new Error(
+      `Failed to activate work item ${params.workItemId}: ${error}`,
+    );
   }
 }
 
