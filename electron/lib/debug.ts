@@ -49,6 +49,7 @@ export const dbg = {
   runCommand: createDebug(`${BASE}:run-command`),
   skill: createDebug(`${BASE}:skill`),
   mcp: createDebug(`${BASE}:mcp`),
+  completion: createDebug(`${BASE}:completion`),
 };
 
 // Re-export for custom namespace creation

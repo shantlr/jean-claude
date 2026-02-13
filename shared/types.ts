@@ -263,6 +263,14 @@ export interface BackendsSetting {
   defaultBackend: AgentBackendType;
 }
 
+// Completion settings (Mistral FIM autocomplete)
+export interface CompletionSetting {
+  enabled: boolean;
+  apiKey: string; // Stored encrypted
+  model: string;
+  serverUrl: string; // Mistral server URL override (default: codestral.mistral.ai)
+}
+
 // Settings validation
 export interface SettingDefinition<T> {
   defaultValue: T;
@@ -280,6 +288,16 @@ function isEditorSetting(v: unknown): v is EditorSetting {
 }
 
 const VALID_BACKENDS: AgentBackendType[] = ['claude-code', 'opencode'];
+
+function isCompletionSetting(v: unknown): v is CompletionSetting {
+  if (!v || typeof v !== 'object') return false;
+  const obj = v as Record<string, unknown>;
+  if (typeof obj.enabled !== 'boolean') return false;
+  if (typeof obj.apiKey !== 'string') return false;
+  if (typeof obj.model !== 'string') return false;
+  if (typeof obj.serverUrl !== 'string') return false;
+  return true;
+}
 
 function isBackendsSetting(v: unknown): v is BackendsSetting {
   if (!v || typeof v !== 'object') return false;
@@ -309,6 +327,15 @@ export const SETTINGS_DEFINITIONS = {
       defaultBackend: 'claude-code',
     } as BackendsSetting,
     validate: isBackendsSetting,
+  },
+  completion: {
+    defaultValue: {
+      enabled: false,
+      apiKey: '',
+      model: 'codestral-latest',
+      serverUrl: '',
+    } as CompletionSetting,
+    validate: isCompletionSetting,
   },
 } satisfies Record<string, SettingDefinition<unknown>>;
 

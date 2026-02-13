@@ -7,6 +7,7 @@ import {
   PromptTextarea,
   PromptTextareaRef,
 } from '@/features/common/ui-prompt-textarea';
+import { useCompletionSetting } from '@/hooks/use-settings';
 import type { Skill } from '@shared/skill-types';
 
 const DOUBLE_ESCAPE_THRESHOLD = 300; // ms
@@ -34,6 +35,7 @@ export function MessageInput({
   value?: string;
   onValueChange?: (value: string) => void;
 }) {
+  const { data: completionSetting } = useCompletionSetting();
   const [internalValue, setInternalValue] = useState('');
   const isControlled = externalValue !== undefined;
   const value = isControlled ? externalValue : internalValue;
@@ -99,6 +101,7 @@ export function MessageInput({
         skills={skills}
         onEnterKey={handleEnterKey}
         onKeyDown={handleKeyDown}
+        enableCompletion={completionSetting?.enabled ?? false}
         placeholder={
           isRunning
             ? 'Type to queue a follow-up... (Esc twice to stop)'

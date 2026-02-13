@@ -62,3 +62,8 @@ export function useUpdateBackendsSetting() {
     },
   });
 }
+
+// Convenience hooks for completion setting
+export function useCompletionSetting() {
+  return useSetting('completion');
+}

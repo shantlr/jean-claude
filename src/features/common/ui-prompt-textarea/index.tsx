@@ -1,16 +1,23 @@
 import clsx from 'clsx';
-import { Wand2 } from 'lucide-react';
+import { Loader2, Wand2 } from 'lucide-react';
 import {
   useState,
   useRef,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   forwardRef,
   useImperativeHandle,
 } from 'react';
-import type { KeyboardEvent, ChangeEvent, TextareaHTMLAttributes } from 'react';
+import type {
+  KeyboardEvent,
+  ChangeEvent,
+  SyntheticEvent,
+  TextareaHTMLAttributes,
+} from 'react';
 
+import { useInlineCompletion } from '@/hooks/use-inline-completion';
 import type { Skill } from '@shared/skill-types';
 
 const COMMANDS = [
@@ -40,6 +47,8 @@ export interface PromptTextareaProps extends Omit<
   onEnterKey?: () => boolean | void;
   /** Whether to show commands in the dropdown (default: true) */
   showCommands?: boolean;
+  /** Enable inline ghost text completion */
+  enableCompletion?: boolean;
 }
 
 export const PromptTextarea = forwardRef<
@@ -53,6 +62,7 @@ export const PromptTextarea = forwardRef<
     maxHeight = 200,
     onEnterKey,
     showCommands = true,
+    enableCompletion = false,
     className,
     onKeyDown: externalOnKeyDown,
     ...textareaProps
@@ -64,9 +74,11 @@ export const PromptTextarea = forwardRef<
   const [dropdownPosition, setDropdownPosition] = useState<'top' | 'bottom'>(
     'top',
   );
+  const [cursorPosition, setCursorPosition] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const ghostRef = useRef<HTMLDivElement>(null);
 
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
@@ -81,6 +93,18 @@ export const PromptTextarea = forwardRef<
   // Check if we should show the dropdown
   const showDropdown = value.startsWith('/') && !dropdownDismissed;
   const searchText = value.slice(1).toLowerCase();
+
+  // Inline completion hook — paused when slash dropdown is open
+  const {
+    completion,
+    isLoading: isCompletionLoading,
+    accept,
+    dismiss,
+  } = useInlineCompletion({
+    text: value,
+    cursorPosition,
+    enabled: enableCompletion && !showDropdown,
+  });
 
   // Determine dropdown position based on available space
   useEffect(() => {
@@ -186,6 +210,38 @@ export const PromptTextarea = forwardRef<
   );
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Handle completion keyboard shortcuts
+    if (completion) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const completionText = accept();
+        if (completionText) {
+          const before = value.slice(0, cursorPosition);
+          const after = value.slice(cursorPosition);
+          const newValue = before + completionText + after;
+          onChange(newValue);
+          // Move cursor to end of inserted completion
+          const newCursorPos = cursorPosition + completionText.length;
+          setCursorPosition(newCursorPos);
+          // Set cursor position in textarea after React re-renders
+          requestAnimationFrame(() => {
+            if (textareaRef.current) {
+              textareaRef.current.selectionStart = newCursorPos;
+              textareaRef.current.selectionEnd = newCursorPos;
+            }
+          });
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        dismiss();
+        return;
+      }
+      // Any other key: dismiss current completion (debounce will re-trigger)
+      dismiss();
+    }
+
     // Handle dropdown navigation
     if (showDropdown && filteredItems.length > 0) {
       if (e.key === 'ArrowDown') {
@@ -225,19 +281,32 @@ export const PromptTextarea = forwardRef<
     externalOnKeyDown?.(e);
   };
 
-  const handleInput = () => {
+  const adjustHeight = useCallback(() => {
     const textarea = textareaRef.current;
-    if (textarea) {
-      // Reset height to auto to get the correct scrollHeight
-      textarea.style.height = 'auto';
-      // Set height to scrollHeight, capped at max height
-      textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
-    }
-  };
+    if (!textarea) return;
+    // Reset height to auto to get the correct scrollHeight
+    textarea.style.height = 'auto';
+    // Use the greater of textarea content height and ghost overlay height
+    // so multiline completions expand the textarea
+    const ghostHeight = ghostRef.current?.scrollHeight ?? 0;
+    const neededHeight = Math.max(textarea.scrollHeight, ghostHeight);
+    textarea.style.height = `${Math.min(neededHeight, maxHeight)}px`;
+  }, [maxHeight]);
+
+  // Re-adjust height when completion appears/disappears (multiline ghost text)
+  // useLayoutEffect avoids a visual flash where the textarea is too short before expanding
+  useLayoutEffect(() => {
+    adjustHeight();
+  }, [completion, adjustHeight]);
 
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value);
-    handleInput();
+    setCursorPosition(e.target.selectionStart);
+    adjustHeight();
+  };
+
+  const handleSelect = (e: SyntheticEvent<HTMLTextAreaElement>) => {
+    setCursorPosition(e.currentTarget.selectionStart);
   };
 
   // Separate commands and skills for grouped display
@@ -346,14 +415,32 @@ export const PromptTextarea = forwardRef<
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
+        onSelect={handleSelect}
         rows={1}
         autoComplete="off"
         className={clsx(
-          'min-h-[40px] w-full resize-none rounded-lg border border-neutral-600 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+          'min-h-[40px] w-full resize-none rounded-lg border border-neutral-600 bg-neutral-900 px-3 py-2 text-sm leading-[20px] text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
           className,
         )}
         {...textareaProps}
       />
+      {/* Ghost text overlay — matches textarea border+padding so text aligns */}
+      {completion && (
+        <div
+          ref={ghostRef}
+          className="pointer-events-none absolute inset-0 overflow-hidden border border-transparent px-3 py-2 text-sm leading-[20px] break-words whitespace-pre-wrap"
+          style={{ maxHeight: `${maxHeight}px` }}
+        >
+          <span className="invisible">{value.slice(0, cursorPosition)}</span>
+          <span className="text-neutral-500">{completion}</span>
+        </div>
+      )}
+      {/* Completion loading indicator */}
+      {isCompletionLoading && !completion && (
+        <div className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-500" />
+        </div>
+      )}
     </div>
   );
 });

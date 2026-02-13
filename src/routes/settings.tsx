@@ -19,6 +19,7 @@ function SettingsLayout() {
     { to: '/settings/mcp-servers', label: 'MCP Servers' },
     { to: '/settings/tokens', label: 'Tokens' },
     { to: '/settings/azure-devops', label: 'Azure DevOps' },
+    { to: '/settings/autocomplete', label: 'Autocomplete' },
     { to: '/settings/debug', label: 'Debug' },
   ] as const;
 

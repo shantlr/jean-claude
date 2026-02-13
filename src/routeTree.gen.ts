@@ -17,6 +17,7 @@ import { Route as SettingsMcpServersRouteImport } from './routes/settings/mcp-se
 import { Route as SettingsGeneralRouteImport } from './routes/settings/general'
 import { Route as SettingsDebugRouteImport } from './routes/settings/debug'
 import { Route as SettingsAzureDevopsRouteImport } from './routes/settings/azure-devops'
+import { Route as SettingsAutocompleteRouteImport } from './routes/settings/autocomplete'
 import { Route as ProjectsNewRouteImport } from './routes/projects/new'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projectId'
 import { Route as AllTaskIdRouteImport } from './routes/all/$taskId'
@@ -67,6 +68,11 @@ const SettingsDebugRoute = SettingsDebugRouteImport.update({
 const SettingsAzureDevopsRoute = SettingsAzureDevopsRouteImport.update({
   id: '/azure-devops',
   path: '/azure-devops',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsAutocompleteRoute = SettingsAutocompleteRouteImport.update({
+  id: '/autocomplete',
+  path: '/autocomplete',
   getParentRoute: () => SettingsRoute,
 } as any)
 const ProjectsNewRoute = ProjectsNewRouteImport.update({
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/all/$taskId': typeof AllTaskIdRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/projects/new': typeof ProjectsNewRoute
+  '/settings/autocomplete': typeof SettingsAutocompleteRoute
   '/settings/azure-devops': typeof SettingsAzureDevopsRoute
   '/settings/debug': typeof SettingsDebugRoute
   '/settings/general': typeof SettingsGeneralRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/all/$taskId': typeof AllTaskIdRoute
   '/projects/new': typeof ProjectsNewRoute
+  '/settings/autocomplete': typeof SettingsAutocompleteRoute
   '/settings/azure-devops': typeof SettingsAzureDevopsRoute
   '/settings/debug': typeof SettingsDebugRoute
   '/settings/general': typeof SettingsGeneralRoute
@@ -177,6 +185,7 @@ export interface FileRoutesById {
   '/all/$taskId': typeof AllTaskIdRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/projects/new': typeof ProjectsNewRoute
+  '/settings/autocomplete': typeof SettingsAutocompleteRoute
   '/settings/azure-devops': typeof SettingsAzureDevopsRoute
   '/settings/debug': typeof SettingsDebugRoute
   '/settings/general': typeof SettingsGeneralRoute
@@ -200,6 +209,7 @@ export interface FileRouteTypes {
     | '/all/$taskId'
     | '/projects/$projectId'
     | '/projects/new'
+    | '/settings/autocomplete'
     | '/settings/azure-devops'
     | '/settings/debug'
     | '/settings/general'
@@ -219,6 +229,7 @@ export interface FileRouteTypes {
     | '/'
     | '/all/$taskId'
     | '/projects/new'
+    | '/settings/autocomplete'
     | '/settings/azure-devops'
     | '/settings/debug'
     | '/settings/general'
@@ -240,6 +251,7 @@ export interface FileRouteTypes {
     | '/all/$taskId'
     | '/projects/$projectId'
     | '/projects/new'
+    | '/settings/autocomplete'
     | '/settings/azure-devops'
     | '/settings/debug'
     | '/settings/general'
@@ -324,6 +336,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsAzureDevopsRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/autocomplete': {
+      id: '/settings/autocomplete'
+      path: '/autocomplete'
+      fullPath: '/settings/autocomplete'
+      preLoaderRoute: typeof SettingsAutocompleteRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/projects/new': {
       id: '/projects/new'
       path: '/projects/new'
@@ -405,6 +424,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface SettingsRouteChildren {
+  SettingsAutocompleteRoute: typeof SettingsAutocompleteRoute
   SettingsAzureDevopsRoute: typeof SettingsAzureDevopsRoute
   SettingsDebugRoute: typeof SettingsDebugRoute
   SettingsGeneralRoute: typeof SettingsGeneralRoute
@@ -414,6 +434,7 @@ interface SettingsRouteChildren {
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsAutocompleteRoute: SettingsAutocompleteRoute,
   SettingsAzureDevopsRoute: SettingsAzureDevopsRoute,
   SettingsDebugRoute: SettingsDebugRoute,
   SettingsGeneralRoute: SettingsGeneralRoute,

@@ -620,6 +620,19 @@ export interface Api {
       contentHash: string;
     }) => Promise<ClaudeProjectsCleanupResult>;
   };
+  completion: {
+    complete: (params: {
+      prompt: string;
+      suffix?: string;
+    }) => Promise<string | null>;
+    test: () => Promise<{ success: boolean; error?: string }>;
+    saveSettings: (params: {
+      enabled: boolean;
+      apiKey: string;
+      model: string;
+      serverUrl: string;
+    }) => Promise<void>;
+  };
 }
 
 declare global {
@@ -920,5 +933,10 @@ export const api: Api = hasWindowApi
           removedCount: 0,
           error: 'API not available',
         }),
+      },
+      completion: {
+        complete: async () => null,
+        test: async () => ({ success: false, error: 'API not available' }),
+        saveSettings: async () => {},
       },
     } as Api);

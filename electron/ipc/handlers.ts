@@ -79,6 +79,11 @@ import {
 } from '../services/azure-devops-service';
 import * as backendModelsService from '../services/backend-models-service';
 import {
+  complete as completeText,
+  testCompletion,
+  resetClient as resetCompletionClient,
+} from '../services/completion-service';
+import {
   handlePromptResponse,
   sendGlobalPromptToWindow,
 } from '../services/global-prompt-service';
@@ -1667,6 +1672,66 @@ export function registerIpcHandlers() {
 
       dbg.ipc('claudeProjects:cleanup removed %d projects', removedCount);
       return { success: true, removedCount };
+    },
+  );
+
+  // Completion
+  ipcMain.handle(
+    'completion:complete',
+    (_, params: { prompt: string; suffix?: string }) => {
+      dbg.ipc('completion:complete (prompt length: %d)', params.prompt.length);
+      return completeText(params);
+    },
+  );
+  // Validates the current completion settings by making a real FIM request.
+  // Called after saving settings to verify the API key and model work.
+  // Returns { success, error? } with user-friendly messages for common HTTP errors (401, 403, 429).
+  ipcMain.handle('completion:test', async () => {
+    dbg.ipc('completion:test');
+    const result = await testCompletion();
+    dbg.ipc('completion:test result: %o', result);
+    return result;
+  });
+  ipcMain.handle(
+    'completion:saveSettings',
+    async (
+      _,
+      params: {
+        enabled: boolean;
+        apiKey: string;
+        model: string;
+        serverUrl: string;
+      },
+    ) => {
+      dbg.ipc(
+        'completion:saveSettings enabled=%s model=%s serverUrl=%s hasNewApiKey=%s',
+        params.enabled,
+        params.model,
+        params.serverUrl || '(default)',
+        !!params.apiKey,
+      );
+
+      let encryptedApiKey: string;
+      if (params.apiKey) {
+        // New key provided — encrypt it
+        const { encryptionService } =
+          await import('../services/encryption-service');
+        encryptedApiKey = encryptionService.encrypt(params.apiKey);
+      } else {
+        // No new key — preserve existing
+        const existing = await SettingsRepository.get('completion');
+        encryptedApiKey = existing.apiKey;
+      }
+
+      await SettingsRepository.set('completion', {
+        enabled: params.enabled,
+        apiKey: encryptedApiKey,
+        model: params.model,
+        serverUrl: params.serverUrl,
+      });
+
+      // Invalidate cached SDK client so next request uses new settings
+      resetCompletionClient();
     },
   );
 }

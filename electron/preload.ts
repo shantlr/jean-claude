@@ -431,5 +431,16 @@ contextBridge.exposeInMainWorld('api', {
     cleanup: (params: { paths: string[]; contentHash: string }) =>
       ipcRenderer.invoke('claudeProjects:cleanup', params),
   },
+  completion: {
+    complete: (params: { prompt: string; suffix?: string }) =>
+      ipcRenderer.invoke('completion:complete', params),
+    test: () => ipcRenderer.invoke('completion:test'),
+    saveSettings: (params: {
+      enabled: boolean;
+      apiKey: string;
+      model: string;
+      serverUrl: string;
+    }) => ipcRenderer.invoke('completion:saveSettings', params),
+  },
 });
 console.log('Preload script loaded');
