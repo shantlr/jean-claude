@@ -615,13 +615,30 @@ export function registerIpcHandlers() {
       if (!project) {
         throw new Error(`Project ${task.projectId} not found`);
       }
-      return mergeWorktree({
+      const result = await mergeWorktree({
         worktreePath: task.worktreePath,
         projectPath: project.path,
         targetBranch: params.targetBranch,
         squash: params.squash,
         commitMessage: params.commitMessage,
       });
+
+      // On successful merge, clear worktree fields and mark the task as
+      // completed atomically.  Doing this here (rather than from the
+      // renderer) avoids a race where toggleUserCompleted sees stale
+      // worktree fields, detects the directory as missing, and
+      // incorrectly prompts the user for orphan cleanup.
+      if (result.success) {
+        await TaskRepository.update(taskId, {
+          worktreePath: null,
+          branchName: null,
+          startCommitHash: null,
+          sourceBranch: null,
+        });
+        await TaskRepository.toggleUserCompleted(taskId);
+      }
+
+      return result;
     },
   );
 

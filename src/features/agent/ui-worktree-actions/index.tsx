@@ -2,7 +2,6 @@ import { GitCommit, GitMerge, GitPullRequest, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 import { useModal } from '@/common/context/modal';
-import { useToggleTaskUserCompleted } from '@/hooks/use-tasks';
 import {
   useWorktreeStatus,
   useWorktreeBranches,
@@ -57,7 +56,6 @@ export function WorktreeActions({
     useWorktreeBranches(taskId);
   const commitMutation = useCommitWorktree();
   const mergeMutation = useMergeWorktree();
-  const toggleUserCompleted = useToggleTaskUserCompleted();
 
   const canCommit = status?.hasUncommittedChanges ?? false;
   const canMerge = !status?.hasUncommittedChanges && !isStatusLoading;
@@ -101,8 +99,7 @@ export function WorktreeActions({
     setIsMergeConfirmOpen(false);
 
     if (result.success) {
-      // Automatically mark task as completed on successful merge
-      await toggleUserCompleted.mutateAsync(taskId);
+      // Task is already marked as completed by the merge handler
       onMergeComplete();
     } else {
       // Show error modal
@@ -194,7 +191,7 @@ export function WorktreeActions({
         onConfirm={handleMerge}
         branchName={branchName}
         targetBranch={selectedBranch}
-        isPending={mergeMutation.isPending || toggleUserCompleted.isPending}
+        isPending={mergeMutation.isPending}
         defaultCommitMessage={taskName ?? undefined}
       />
 
