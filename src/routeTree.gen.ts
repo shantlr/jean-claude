@@ -9,20 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SettingsIndexRouteImport } from './routes/settings/index'
-import { Route as SettingsTokensRouteImport } from './routes/settings/tokens'
-import { Route as SettingsMcpServersRouteImport } from './routes/settings/mcp-servers'
-import { Route as SettingsGeneralRouteImport } from './routes/settings/general'
-import { Route as SettingsDebugRouteImport } from './routes/settings/debug'
-import { Route as SettingsAzureDevopsRouteImport } from './routes/settings/azure-devops'
-import { Route as SettingsAutocompleteRouteImport } from './routes/settings/autocomplete'
 import { Route as ProjectsNewRouteImport } from './routes/projects/new'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projectId'
 import { Route as AllTaskIdRouteImport } from './routes/all/$taskId'
 import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$projectId/index'
-import { Route as ProjectsProjectIdDetailsRouteImport } from './routes/projects/$projectId/details'
 import { Route as ProjectsProjectIdPrsIndexRouteImport } from './routes/projects/$projectId/prs/index'
 import { Route as AllPrsProjectIdIndexRouteImport } from './routes/all/prs/$projectId/index'
 import { Route as ProjectsProjectIdTasksNewRouteImport } from './routes/projects/$projectId/tasks/new'
@@ -30,50 +21,10 @@ import { Route as ProjectsProjectIdTasksTaskIdRouteImport } from './routes/proje
 import { Route as ProjectsProjectIdPrsPrIdRouteImport } from './routes/projects/$projectId/prs/$prId'
 import { Route as AllPrsProjectIdPrIdRouteImport } from './routes/all/prs/$projectId/$prId'
 
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsIndexRoute = SettingsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsTokensRoute = SettingsTokensRouteImport.update({
-  id: '/tokens',
-  path: '/tokens',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsMcpServersRoute = SettingsMcpServersRouteImport.update({
-  id: '/mcp-servers',
-  path: '/mcp-servers',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsGeneralRoute = SettingsGeneralRouteImport.update({
-  id: '/general',
-  path: '/general',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsDebugRoute = SettingsDebugRouteImport.update({
-  id: '/debug',
-  path: '/debug',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsAzureDevopsRoute = SettingsAzureDevopsRouteImport.update({
-  id: '/azure-devops',
-  path: '/azure-devops',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsAutocompleteRoute = SettingsAutocompleteRouteImport.update({
-  id: '/autocomplete',
-  path: '/autocomplete',
-  getParentRoute: () => SettingsRoute,
 } as any)
 const ProjectsNewRoute = ProjectsNewRouteImport.update({
   id: '/projects/new',
@@ -95,12 +46,6 @@ const ProjectsProjectIdIndexRoute = ProjectsProjectIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ProjectsProjectIdRoute,
 } as any)
-const ProjectsProjectIdDetailsRoute =
-  ProjectsProjectIdDetailsRouteImport.update({
-    id: '/details',
-    path: '/details',
-    getParentRoute: () => ProjectsProjectIdRoute,
-  } as any)
 const ProjectsProjectIdPrsIndexRoute =
   ProjectsProjectIdPrsIndexRouteImport.update({
     id: '/prs/',
@@ -138,18 +83,9 @@ const AllPrsProjectIdPrIdRoute = AllPrsProjectIdPrIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/settings': typeof SettingsRouteWithChildren
   '/all/$taskId': typeof AllTaskIdRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/projects/new': typeof ProjectsNewRoute
-  '/settings/autocomplete': typeof SettingsAutocompleteRoute
-  '/settings/azure-devops': typeof SettingsAzureDevopsRoute
-  '/settings/debug': typeof SettingsDebugRoute
-  '/settings/general': typeof SettingsGeneralRoute
-  '/settings/mcp-servers': typeof SettingsMcpServersRoute
-  '/settings/tokens': typeof SettingsTokensRoute
-  '/settings/': typeof SettingsIndexRoute
-  '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
   '/all/prs/$projectId/$prId': typeof AllPrsProjectIdPrIdRoute
   '/projects/$projectId/prs/$prId': typeof ProjectsProjectIdPrsPrIdRoute
@@ -162,14 +98,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/all/$taskId': typeof AllTaskIdRoute
   '/projects/new': typeof ProjectsNewRoute
-  '/settings/autocomplete': typeof SettingsAutocompleteRoute
-  '/settings/azure-devops': typeof SettingsAzureDevopsRoute
-  '/settings/debug': typeof SettingsDebugRoute
-  '/settings/general': typeof SettingsGeneralRoute
-  '/settings/mcp-servers': typeof SettingsMcpServersRoute
-  '/settings/tokens': typeof SettingsTokensRoute
-  '/settings': typeof SettingsIndexRoute
-  '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute
   '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
   '/all/prs/$projectId/$prId': typeof AllPrsProjectIdPrIdRoute
   '/projects/$projectId/prs/$prId': typeof ProjectsProjectIdPrsPrIdRoute
@@ -181,18 +109,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/settings': typeof SettingsRouteWithChildren
   '/all/$taskId': typeof AllTaskIdRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/projects/new': typeof ProjectsNewRoute
-  '/settings/autocomplete': typeof SettingsAutocompleteRoute
-  '/settings/azure-devops': typeof SettingsAzureDevopsRoute
-  '/settings/debug': typeof SettingsDebugRoute
-  '/settings/general': typeof SettingsGeneralRoute
-  '/settings/mcp-servers': typeof SettingsMcpServersRoute
-  '/settings/tokens': typeof SettingsTokensRoute
-  '/settings/': typeof SettingsIndexRoute
-  '/projects/$projectId/details': typeof ProjectsProjectIdDetailsRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
   '/all/prs/$projectId/$prId': typeof AllPrsProjectIdPrIdRoute
   '/projects/$projectId/prs/$prId': typeof ProjectsProjectIdPrsPrIdRoute
@@ -205,18 +124,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/settings'
     | '/all/$taskId'
     | '/projects/$projectId'
     | '/projects/new'
-    | '/settings/autocomplete'
-    | '/settings/azure-devops'
-    | '/settings/debug'
-    | '/settings/general'
-    | '/settings/mcp-servers'
-    | '/settings/tokens'
-    | '/settings/'
-    | '/projects/$projectId/details'
     | '/projects/$projectId/'
     | '/all/prs/$projectId/$prId'
     | '/projects/$projectId/prs/$prId'
@@ -229,14 +139,6 @@ export interface FileRouteTypes {
     | '/'
     | '/all/$taskId'
     | '/projects/new'
-    | '/settings/autocomplete'
-    | '/settings/azure-devops'
-    | '/settings/debug'
-    | '/settings/general'
-    | '/settings/mcp-servers'
-    | '/settings/tokens'
-    | '/settings'
-    | '/projects/$projectId/details'
     | '/projects/$projectId'
     | '/all/prs/$projectId/$prId'
     | '/projects/$projectId/prs/$prId'
@@ -247,18 +149,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/settings'
     | '/all/$taskId'
     | '/projects/$projectId'
     | '/projects/new'
-    | '/settings/autocomplete'
-    | '/settings/azure-devops'
-    | '/settings/debug'
-    | '/settings/general'
-    | '/settings/mcp-servers'
-    | '/settings/tokens'
-    | '/settings/'
-    | '/projects/$projectId/details'
     | '/projects/$projectId/'
     | '/all/prs/$projectId/$prId'
     | '/projects/$projectId/prs/$prId'
@@ -270,7 +163,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  SettingsRoute: typeof SettingsRouteWithChildren
   AllTaskIdRoute: typeof AllTaskIdRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRouteWithChildren
   ProjectsNewRoute: typeof ProjectsNewRoute
@@ -280,68 +172,12 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/settings/': {
-      id: '/settings/'
-      path: '/'
-      fullPath: '/settings/'
-      preLoaderRoute: typeof SettingsIndexRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/tokens': {
-      id: '/settings/tokens'
-      path: '/tokens'
-      fullPath: '/settings/tokens'
-      preLoaderRoute: typeof SettingsTokensRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/mcp-servers': {
-      id: '/settings/mcp-servers'
-      path: '/mcp-servers'
-      fullPath: '/settings/mcp-servers'
-      preLoaderRoute: typeof SettingsMcpServersRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/general': {
-      id: '/settings/general'
-      path: '/general'
-      fullPath: '/settings/general'
-      preLoaderRoute: typeof SettingsGeneralRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/debug': {
-      id: '/settings/debug'
-      path: '/debug'
-      fullPath: '/settings/debug'
-      preLoaderRoute: typeof SettingsDebugRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/azure-devops': {
-      id: '/settings/azure-devops'
-      path: '/azure-devops'
-      fullPath: '/settings/azure-devops'
-      preLoaderRoute: typeof SettingsAzureDevopsRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/autocomplete': {
-      id: '/settings/autocomplete'
-      path: '/autocomplete'
-      fullPath: '/settings/autocomplete'
-      preLoaderRoute: typeof SettingsAutocompleteRouteImport
-      parentRoute: typeof SettingsRoute
     }
     '/projects/new': {
       id: '/projects/new'
@@ -369,13 +205,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/projects/$projectId/'
       preLoaderRoute: typeof ProjectsProjectIdIndexRouteImport
-      parentRoute: typeof ProjectsProjectIdRoute
-    }
-    '/projects/$projectId/details': {
-      id: '/projects/$projectId/details'
-      path: '/details'
-      fullPath: '/projects/$projectId/details'
-      preLoaderRoute: typeof ProjectsProjectIdDetailsRouteImport
       parentRoute: typeof ProjectsProjectIdRoute
     }
     '/projects/$projectId/prs/': {
@@ -423,32 +252,7 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface SettingsRouteChildren {
-  SettingsAutocompleteRoute: typeof SettingsAutocompleteRoute
-  SettingsAzureDevopsRoute: typeof SettingsAzureDevopsRoute
-  SettingsDebugRoute: typeof SettingsDebugRoute
-  SettingsGeneralRoute: typeof SettingsGeneralRoute
-  SettingsMcpServersRoute: typeof SettingsMcpServersRoute
-  SettingsTokensRoute: typeof SettingsTokensRoute
-  SettingsIndexRoute: typeof SettingsIndexRoute
-}
-
-const SettingsRouteChildren: SettingsRouteChildren = {
-  SettingsAutocompleteRoute: SettingsAutocompleteRoute,
-  SettingsAzureDevopsRoute: SettingsAzureDevopsRoute,
-  SettingsDebugRoute: SettingsDebugRoute,
-  SettingsGeneralRoute: SettingsGeneralRoute,
-  SettingsMcpServersRoute: SettingsMcpServersRoute,
-  SettingsTokensRoute: SettingsTokensRoute,
-  SettingsIndexRoute: SettingsIndexRoute,
-}
-
-const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
-  SettingsRouteChildren,
-)
-
 interface ProjectsProjectIdRouteChildren {
-  ProjectsProjectIdDetailsRoute: typeof ProjectsProjectIdDetailsRoute
   ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
   ProjectsProjectIdPrsPrIdRoute: typeof ProjectsProjectIdPrsPrIdRoute
   ProjectsProjectIdTasksTaskIdRoute: typeof ProjectsProjectIdTasksTaskIdRoute
@@ -457,7 +261,6 @@ interface ProjectsProjectIdRouteChildren {
 }
 
 const ProjectsProjectIdRouteChildren: ProjectsProjectIdRouteChildren = {
-  ProjectsProjectIdDetailsRoute: ProjectsProjectIdDetailsRoute,
   ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,
   ProjectsProjectIdPrsPrIdRoute: ProjectsProjectIdPrsPrIdRoute,
   ProjectsProjectIdTasksTaskIdRoute: ProjectsProjectIdTasksTaskIdRoute,
@@ -470,7 +273,6 @@ const ProjectsProjectIdRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  SettingsRoute: SettingsRouteWithChildren,
   AllTaskIdRoute: AllTaskIdRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRouteWithChildren,
   ProjectsNewRoute: ProjectsNewRoute,

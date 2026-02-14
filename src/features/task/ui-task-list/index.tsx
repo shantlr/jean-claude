@@ -1,5 +1,5 @@
-import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { ChevronDown, Settings } from 'lucide-react';
+import { useNavigate, useParams } from '@tanstack/react-router';
+import { ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
@@ -9,6 +9,7 @@ import { TaskSummaryCard } from '@/features/task/ui-task-summary-card';
 import { useProjects } from '@/hooks/use-projects';
 import { useAllActiveTasks, useAllCompletedTasks } from '@/hooks/use-tasks';
 import { useCurrentVisibleProject, useSidebarTab } from '@/stores/navigation';
+import { useOverlaysStore } from '@/stores/overlays';
 
 const COMPLETED_TASKS_PAGE_SIZE = 5;
 
@@ -27,6 +28,7 @@ export function TaskList() {
   } = useAllCompletedTasks({ limit: COMPLETED_TASKS_PAGE_SIZE });
   const { projectId } = useCurrentVisibleProject();
   const { sidebarTab } = useSidebarTab();
+  const toggleSettings = useOverlaysStore((s) => s.toggle);
 
   // Flatten completed tasks from paginated data
   const completedTasks = useMemo(
@@ -223,10 +225,7 @@ export function TaskList() {
     !!selectedProject && {
       label: 'Open Project Settings',
       handler: () => {
-        navigate({
-          to: '/projects/$projectId/details',
-          params: { projectId: selectedProject.id },
-        });
+        toggleSettings('settings');
       },
     },
   ]);
@@ -300,22 +299,17 @@ export function TaskList() {
             )}
           </div>
 
-          {/* Project actions (when a project is selected) */}
-          {selectedProject && (
-            <>
-              <div className="mx-2 border-t border-neutral-800" />
-              <div className="flex items-center gap-1 p-2">
-                <Link
-                  to="/projects/$projectId/details"
-                  params={{ projectId: selectedProject.id }}
-                  className="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white"
-                >
-                  <Settings size={14} />
-                  <span>Project Settings</span>
-                </Link>
-              </div>
-            </>
-          )}
+          {/* Settings button */}
+          <div className="mx-2 border-t border-neutral-800" />
+          <div className="flex items-center gap-1 p-2">
+            <button
+              onClick={() => toggleSettings('settings')}
+              className="flex grow items-center gap-2 rounded px-2 py-1.5 text-sm text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white"
+            >
+              <SlidersHorizontal size={14} />
+              <span>Settings</span>
+            </button>
+          </div>
         </>
       )}
     </div>

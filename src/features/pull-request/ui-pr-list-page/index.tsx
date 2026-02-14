@@ -5,6 +5,7 @@ import { useState } from 'react';
 
 import { useProject } from '@/hooks/use-projects';
 import { usePullRequests } from '@/hooks/use-pull-requests';
+import { useOverlaysStore } from '@/stores/overlays';
 
 import { PrListItem } from '../ui-pr-list-item';
 
@@ -20,6 +21,7 @@ export function PrListPage({
   const params = useParams({ strict: false });
   const currentPrId = params.prId as string | undefined;
 
+  const openOverlay = useOverlaysStore((s) => s.open);
   const [status, setStatus] = useState<PrStatus>('active');
   const { data: project } = useProject(projectId);
   const { data: prs = [], isLoading } = usePullRequests(projectId, status);
@@ -40,13 +42,12 @@ export function PrListPage({
           <br />
           Link a repository in project settings to view pull requests.
         </p>
-        <Link
-          to="/projects/$projectId/details"
-          params={{ projectId }}
+        <button
+          onClick={() => openOverlay('settings')}
           className="text-blue-400 hover:text-blue-300"
         >
           Go to Project Settings
-        </Link>
+        </button>
       </div>
     );
   }

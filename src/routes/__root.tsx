@@ -13,6 +13,7 @@ import { BackgroundJobsOverlay } from '@/features/background-jobs/ui-background-
 import { CommandPaletteOverlay } from '@/features/command-palette/ui-command-palette-overlay';
 import { NewTaskOverlay } from '@/features/new-task/ui-new-task-overlay';
 import { ProjectOverlay } from '@/features/project/ui-project-overlay';
+import { SettingsOverlay } from '@/features/settings/ui-settings-overlay';
 import { Header } from '@/layout/ui-header';
 import { MainSidebar } from '@/layout/ui-main-sidebar';
 import { resolveLastLocationRedirect } from '@/lib/navigation';
@@ -86,20 +87,19 @@ function CommandPaletteContainer() {
   return <CommandPaletteOverlay onClose={() => close('command-palette')} />;
 }
 
-const GlobalCommands = () => {
-  const navigate = useNavigate();
-
+function GlobalCommands() {
+  const toggle = useOverlaysStore((s) => s.toggle);
   useCommands('global-commands', [
     {
       label: 'Settings',
       shortcut: 'cmd+,',
       handler: () => {
-        navigate({ to: '/settings' });
+        toggle('settings');
       },
     },
   ]);
   return null;
-};
+}
 
 function NewTaskContainer() {
   const isOpen = useOverlaysStore((s) => s.activeOverlay === 'new-task');
@@ -171,6 +171,14 @@ function BackgroundJobsContainer() {
   return <BackgroundJobsOverlay onClose={() => close('background-jobs')} />;
 }
 
+function SettingsContainer() {
+  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'settings');
+  const close = useOverlaysStore((s) => s.close);
+
+  if (!isOpen) return null;
+  return <SettingsOverlay onClose={() => close('settings')} />;
+}
+
 function RootLayout() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-neutral-900 text-white">
@@ -184,6 +192,7 @@ function RootLayout() {
       <CommandPaletteContainer />
       <ProjectOverlayContainer />
       <BackgroundJobsContainer />
+      <SettingsContainer />
 
       <div className="flex h-full w-full flex-1 flex-col overflow-hidden">
         <Header />

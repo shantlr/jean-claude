@@ -8,7 +8,8 @@ export type OverlayType =
   | 'command-palette'
   | 'project-switcher'
   | 'keyboard-help'
-  | 'background-jobs';
+  | 'background-jobs'
+  | 'settings';
 
 interface OverlaysState {
   // Current active overlay (null = none open)

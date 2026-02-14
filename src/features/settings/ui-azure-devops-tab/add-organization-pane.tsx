@@ -1,4 +1,3 @@
-import { Link } from '@tanstack/react-router';
 import { Loader2, X } from 'lucide-react';
 import { useState } from 'react';
 
@@ -114,12 +113,9 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
               <p className="text-sm text-neutral-400">
                 No Azure DevOps tokens found
               </p>
-              <Link
-                to="/settings/tokens"
-                className="mt-2 inline-block text-sm text-blue-400 hover:text-blue-300"
-              >
-                Add a token first →
-              </Link>
+              <p className="mt-2 text-sm text-neutral-500">
+                Add a token in the Tokens tab first
+              </p>
             </div>
           ) : (
             <div className="flex flex-col gap-2">

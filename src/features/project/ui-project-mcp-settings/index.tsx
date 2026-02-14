@@ -97,7 +97,7 @@ export function ProjectMcpSettings({ projectId }: { projectId: string }) {
   if (isLoading || !project) {
     return (
       <div>
-        <h2 className="mb-4 text-lg font-semibold">MCP Servers</h2>
+        <h2 className="mb-4 text-lg font-semibold text-white">MCP Servers</h2>
         <p className="text-sm text-neutral-500">Loading...</p>
       </div>
     );
@@ -106,7 +106,7 @@ export function ProjectMcpSettings({ projectId }: { projectId: string }) {
   if (!servers || servers.length === 0) {
     return (
       <div>
-        <h2 className="mb-4 text-lg font-semibold">MCP Servers</h2>
+        <h2 className="mb-4 text-lg font-semibold text-white">MCP Servers</h2>
         <div className="rounded-lg border border-dashed border-neutral-700 p-4">
           <div className="flex items-center gap-2 text-neutral-500">
             <Server className="h-4 w-4" />
@@ -122,7 +122,7 @@ export function ProjectMcpSettings({ projectId }: { projectId: string }) {
 
   return (
     <div>
-      <h2 className="mb-4 text-lg font-semibold">MCP Servers</h2>
+      <h2 className="mb-4 text-lg font-semibold text-white">MCP Servers</h2>
 
       <div className="space-y-3">
         {servers.map((server) => {

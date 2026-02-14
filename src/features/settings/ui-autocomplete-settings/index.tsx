@@ -1,16 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { createFileRoute } from '@tanstack/react-router';
 import { ExternalLink, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { useCompletionSetting } from '@/hooks/use-settings';
 import { api } from '@/lib/api';
 
-export const Route = createFileRoute('/settings/autocomplete')({
-  component: AutocompleteSettingsPage,
-});
-
-function AutocompleteSettingsPage() {
+export function AutocompleteSettings() {
   const { data: setting, isLoading } = useCompletionSetting();
   const queryClient = useQueryClient();
 

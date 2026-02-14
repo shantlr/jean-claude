@@ -46,7 +46,7 @@ export function RunCommandsConfig({
 
   return (
     <div>
-      <h2 className="mb-4 text-lg font-semibold">Run Commands</h2>
+      <h2 className="mb-4 text-lg font-semibold text-white">Run Commands</h2>
       <p className="mb-4 text-sm text-neutral-400">
         Configure commands to run from the task page. Each command can have
         ports that will be checked before starting.

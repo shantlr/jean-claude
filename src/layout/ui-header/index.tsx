@@ -1,5 +1,4 @@
-import { Link } from '@tanstack/react-router';
-import { Loader2, Settings } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 
 import { useProjects } from '@/hooks/use-projects';
@@ -65,19 +64,6 @@ export function Header() {
     >
       {/* Traffic light padding on macOS */}
       {isMac && !isWindowFullscreen && <div className="w-[70px]" />}
-
-      {/* Settings button */}
-      <div
-        className="pl-2"
-        style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
-      >
-        <Link
-          to="/settings"
-          className="flex h-6 w-6 items-center justify-center rounded text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white"
-        >
-          <Settings size={16} />
-        </Link>
-      </div>
 
       <div className="flex min-w-0 flex-1 px-2">
         <button

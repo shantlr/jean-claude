@@ -1,4 +1,3 @@
-import { createFileRoute } from '@tanstack/react-router';
 import { Check, FolderOpen, Search, Star, Trash2, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -18,11 +17,7 @@ import { api, type NonExistentClaudeProject } from '@/lib/api';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import { PRESET_EDITORS, type EditorSetting } from '@shared/types';
 
-export const Route = createFileRoute('/settings/general')({
-  component: GeneralSettingsPage,
-});
-
-function GeneralSettingsPage() {
+export function GeneralSettings() {
   const { data: editorSetting, isLoading } = useEditorSetting();
   const { data: availableEditors } = useAvailableEditors();
   const updateEditor = useUpdateEditorSetting();
