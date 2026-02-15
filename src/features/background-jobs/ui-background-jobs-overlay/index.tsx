@@ -6,6 +6,7 @@ import { useMemo, type ReactNode } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { api } from '@/lib/api';
+import { formatRelativeTime } from '@/lib/time';
 import {
   useBackgroundJobsStore,
   getRunningJobsCount,
@@ -182,7 +183,11 @@ function JobRow({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm text-neutral-100">{job.title}</p>
           <p className="mt-0.5 text-xs text-neutral-400">
-            {job.status === 'running' ? 'Running' : job.status}
+            {job.status === 'running'
+              ? `Started ${formatRelativeTime(job.createdAt)}`
+              : job.status === 'succeeded'
+                ? `Completed ${formatRelativeTime(job.completedAt!)}`
+                : `Failed ${formatRelativeTime(job.completedAt!)}`}
           </p>
           <JobDetails job={job} />
           {job.errorMessage && (
