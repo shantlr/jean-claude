@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react';
 import { useCommands } from '@/common/hooks/use-commands';
 import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
+import { useCheckMergeConflicts } from '@/hooks/use-worktree-diff';
 
 export function MergeConfirmDialog({
   isOpen,
   onClose,
   onConfirm,
+  taskId,
   branchName,
   targetBranch,
   isPending,
@@ -20,24 +22,76 @@ export function MergeConfirmDialog({
     squash: boolean;
     commitMessage?: string;
   }) => Promise<void>;
+  taskId: string;
   branchName: string;
   targetBranch: string;
   isPending: boolean;
   defaultCommitMessage?: string;
 }) {
-  const [squash, setSquash] = useState(false);
+  const [squash, setSquash] = useState(true);
   const [commitMessage, setCommitMessage] = useState('');
+  const [hasConflicts, setHasConflicts] = useState(false);
+  const [checkError, setCheckError] = useState<string | null>(null);
+  const checkMergeConflictsMutation = useCheckMergeConflicts();
+  const { mutateAsync: checkMergeConflicts, isPending: isCheckingConflicts } =
+    checkMergeConflictsMutation;
 
   // Reset state when dialog opens/closes
   useEffect(() => {
     if (isOpen) {
-      setSquash(false);
+      setSquash(true);
       setCommitMessage(defaultCommitMessage ?? '');
+      setHasConflicts(false);
+      setCheckError(null);
     }
   }, [isOpen, defaultCommitMessage]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let isCanceled = false;
+
+    const runCheck = async () => {
+      try {
+        const result = await checkMergeConflicts({
+          taskId,
+          targetBranch,
+        });
+
+        if (isCanceled) return;
+
+        if (result.error) {
+          setCheckError(result.error);
+          setHasConflicts(false);
+          return;
+        }
+
+        setCheckError(null);
+        setHasConflicts(result.hasConflicts);
+      } catch (error) {
+        if (isCanceled) return;
+        setCheckError(
+          error instanceof Error ? error.message : 'Failed to check conflicts',
+        );
+      }
+    };
+
+    void runCheck();
+
+    return () => {
+      isCanceled = true;
+    };
+  }, [isOpen, taskId, targetBranch, checkMergeConflicts]);
+
+  const canConfirm =
+    !isPending &&
+    !isCheckingConflicts &&
+    !hasConflicts &&
+    !checkError &&
+    (!squash || !!commitMessage.trim());
+
   const handleConfirm = () => {
-    if (isPending || (squash && !commitMessage.trim())) return;
+    if (!canConfirm) return;
     onConfirm({
       squash,
       commitMessage: squash ? commitMessage : undefined,
@@ -70,6 +124,26 @@ export function MergeConfirmDialog({
         <span className="font-mono text-blue-400">{branchName}</span> into{' '}
         <span className="font-mono text-green-400">{targetBranch}</span>?
       </p>
+
+      {isCheckingConflicts && (
+        <div className="mb-4 flex items-center gap-2 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-300">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Checking for merge conflicts...
+        </div>
+      )}
+
+      {hasConflicts && (
+        <div className="mb-4 rounded-md border border-red-700 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+          Merge conflicts were detected with this target branch. Resolve them
+          before merging.
+        </div>
+      )}
+
+      {checkError && (
+        <div className="mb-4 rounded-md border border-amber-700 bg-amber-950/40 px-3 py-2 text-sm text-amber-200">
+          Unable to check merge conflicts: {checkError}
+        </div>
+      )}
 
       {/* Squash option */}
       <label className="mb-4 flex cursor-pointer items-center gap-2">
@@ -123,7 +197,7 @@ export function MergeConfirmDialog({
         <button
           type="button"
           onClick={handleConfirm}
-          disabled={isPending || (squash && !commitMessage.trim())}
+          disabled={!canConfirm}
           className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isPending && <Loader2 className="h-4 w-4 animate-spin" />}

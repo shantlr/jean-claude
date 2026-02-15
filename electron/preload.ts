@@ -103,6 +103,12 @@ contextBridge.exposeInMainWorld('api', {
         taskId: string,
         params: { message: string; stageAll: boolean },
       ) => ipcRenderer.invoke('tasks:worktree:commit', taskId, params),
+      checkMergeConflicts: (taskId: string, params: { targetBranch: string }) =>
+        ipcRenderer.invoke(
+          'tasks:worktree:checkMergeConflicts',
+          taskId,
+          params,
+        ),
       merge: (
         taskId: string,
         params: {

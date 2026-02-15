@@ -106,6 +106,7 @@ import { runCommandService } from '../services/run-command-service';
 import { getAllSkills } from '../services/skill-service';
 import { generateSummary } from '../services/summary-generation-service';
 import {
+  checkMergeConflicts,
   createWorktree,
   getWorktreeDiff,
   getWorktreeFileContent,
@@ -597,6 +598,20 @@ export function registerIpcHandlers() {
       return commitWorktreeChanges({
         worktreePath: task.worktreePath,
         ...params,
+      });
+    },
+  );
+
+  ipcMain.handle(
+    'tasks:worktree:checkMergeConflicts',
+    async (_, taskId: string, params: { targetBranch: string }) => {
+      const task = await TaskRepository.findById(taskId);
+      if (!task?.worktreePath) {
+        throw new Error(`Task ${taskId} does not have a worktree`);
+      }
+      return checkMergeConflicts({
+        worktreePath: task.worktreePath,
+        targetBranch: params.targetBranch,
       });
     },
   );

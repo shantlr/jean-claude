@@ -338,6 +338,10 @@ export interface Api {
         taskId: string,
         params: { message: string; stageAll: boolean },
       ) => Promise<void>;
+      checkMergeConflicts: (
+        taskId: string,
+        params: { targetBranch: string },
+      ) => Promise<{ hasConflicts: boolean; error?: string }>;
       merge: (
         taskId: string,
         params: {
@@ -715,6 +719,7 @@ export const api: Api = hasWindowApi
             hasUnstagedChanges: false,
           }),
           commit: async () => {},
+          checkMergeConflicts: async () => ({ hasConflicts: false }),
           merge: async () =>
             ({
               success: false,

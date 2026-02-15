@@ -782,6 +782,43 @@ export interface MergeWorktreeResult {
   error?: string;
 }
 
+export interface CheckMergeConflictsParams {
+  worktreePath: string;
+  targetBranch: string;
+}
+
+export interface CheckMergeConflictsResult {
+  hasConflicts: boolean;
+  error?: string;
+}
+
+function isMergeConflictError(errorMessage: string): boolean {
+  return (
+    errorMessage.includes('CONFLICT') ||
+    errorMessage.includes('Automatic merge failed')
+  );
+}
+
+async function abortMergeIfInProgress(worktreePath: string): Promise<void> {
+  try {
+    await execAsync('git rev-parse -q --verify MERGE_HEAD', {
+      cwd: worktreePath,
+      encoding: 'utf-8',
+    });
+  } catch {
+    return;
+  }
+
+  try {
+    await execAsync('git merge --abort', {
+      cwd: worktreePath,
+      encoding: 'utf-8',
+    });
+  } catch (error) {
+    dbg.worktree('Failed to abort temporary merge check: %O', error);
+  }
+}
+
 export type WorktreeBranchCleanupBehavior = 'delete' | 'keep';
 
 export interface CleanupWroktreeParams {
@@ -984,10 +1021,7 @@ export async function mergeWorktree(
     dbg.worktree('Merge failed: %s', errorMessage);
 
     // Check if it's a merge conflict
-    if (
-      errorMessage.includes('CONFLICT') ||
-      errorMessage.includes('Automatic merge failed')
-    ) {
+    if (isMergeConflictError(errorMessage)) {
       return {
         success: false,
         error:
@@ -996,6 +1030,43 @@ export async function mergeWorktree(
     }
 
     return { success: false, error: errorMessage };
+  }
+}
+
+export async function checkMergeConflicts(
+  params: CheckMergeConflictsParams,
+): Promise<CheckMergeConflictsResult> {
+  const { worktreePath, targetBranch } = params;
+
+  if (!(await pathExists(worktreePath))) {
+    return {
+      hasConflicts: false,
+      error: 'Worktree no longer exists',
+    };
+  }
+
+  try {
+    await execAsync(
+      `git merge --no-commit --no-ff ${JSON.stringify(targetBranch)}`,
+      {
+        cwd: worktreePath,
+        encoding: 'utf-8',
+      },
+    );
+
+    return { hasConflicts: false };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (isMergeConflictError(errorMessage)) {
+      return { hasConflicts: true };
+    }
+
+    return {
+      hasConflicts: false,
+      error: `Failed to check merge conflicts: ${errorMessage}`,
+    };
+  } finally {
+    await abortMergeIfInProgress(worktreePath);
   }
 }
 

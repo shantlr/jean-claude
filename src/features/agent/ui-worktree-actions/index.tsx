@@ -189,6 +189,7 @@ export function WorktreeActions({
         isOpen={isMergeConfirmOpen}
         onClose={() => setIsMergeConfirmOpen(false)}
         onConfirm={handleMerge}
+        taskId={taskId}
         branchName={branchName}
         targetBranch={selectedBranch}
         isPending={mergeMutation.isPending}

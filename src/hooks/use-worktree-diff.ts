@@ -148,3 +148,12 @@ export function useMergeWorktree() {
     },
   });
 }
+
+export function useCheckMergeConflicts() {
+  return useMutation({
+    mutationFn: (params: { taskId: string; targetBranch: string }) =>
+      api.tasks.worktree.checkMergeConflicts(params.taskId, {
+        targetBranch: params.targetBranch,
+      }),
+  });
+}
