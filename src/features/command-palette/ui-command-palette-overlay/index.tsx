@@ -51,6 +51,22 @@ export function CommandPaletteOverlay({ onClose }: { onClose: () => void }) {
     inputRef.current?.focus();
   }, []);
 
+  useEffect(() => {
+    const selectedItem = listRef.current?.querySelector<HTMLButtonElement>(
+      'button[data-selected="true"]',
+    );
+
+    if (!selectedItem) {
+      return;
+    }
+
+    selectedItem.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest',
+      behavior: 'auto',
+    });
+  }, [selectedIndex, filteredCmds.length]);
+
   useCommands('command-palette-overlay', [
     {
       label: 'Close Command Palette',
