@@ -231,8 +231,6 @@ export function NewTaskOverlay({
   // Check if we can start a task
   const canStartTask = useMemo(() => {
     if (!draft) return false;
-    // Prevent double-submission
-    if (createTaskMutation.isPending) return false;
 
     // In search mode compose step, need the expanded prompt
     if (inputMode === 'search' && searchStep === 'compose') {
@@ -253,7 +251,6 @@ export function NewTaskOverlay({
     promptTemplate,
     selectedWorkItems,
     selectedProjectId,
-    createTaskMutation.isPending,
   ]);
 
   // Navigate project tabs
@@ -776,8 +773,7 @@ export function NewTaskOverlay({
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
                 placeholder={getPlaceholder(inputMode)}
-                disabled={createTaskMutation.isPending}
-                className="placeholder:text-muted-foreground field-sizing-content max-h-[40svh] min-h-[60px] flex-1 resize-none bg-transparent text-sm outline-none disabled:opacity-50"
+                className="placeholder:text-muted-foreground field-sizing-content max-h-[40svh] min-h-[60px] flex-1 resize-none bg-transparent text-sm outline-none"
               />
             </div>
           </div>
@@ -789,9 +785,8 @@ export function NewTaskOverlay({
             {/* All tab */}
             <button
               onClick={() => setSelectedProjectId(null)}
-              disabled={createTaskMutation.isPending}
               className={clsx(
-                'shrink-0 rounded px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50',
+                'shrink-0 rounded px-2 py-1 text-xs font-medium transition-colors',
                 selectedProjectId === null
                   ? 'bg-neutral-700 text-white'
                   : 'text-neutral-400 hover:bg-neutral-800 hover:text-white',
@@ -808,9 +803,8 @@ export function NewTaskOverlay({
               <button
                 key={project.id}
                 onClick={() => setSelectedProjectId(project.id)}
-                disabled={createTaskMutation.isPending}
                 className={clsx(
-                  'flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50',
+                  'flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-colors',
                   selectedProjectId === project.id
                     ? 'bg-neutral-700 text-white'
                     : 'text-neutral-400 hover:bg-neutral-800 hover:text-white',
@@ -860,8 +854,7 @@ export function NewTaskOverlay({
             {/* Interaction mode selector */}
             <button
               onClick={toggleInteractionMode}
-              disabled={createTaskMutation.isPending}
-              className="flex items-center gap-2 rounded px-2 py-1 text-sm text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
+              className="flex items-center gap-2 rounded px-2 py-1 text-sm text-neutral-300 hover:bg-neutral-700"
             >
               <span className="capitalize">
                 {draft?.interactionMode ?? 'ask'}
@@ -872,8 +865,7 @@ export function NewTaskOverlay({
             {/* Model selector */}
             <button
               onClick={toggleModelPreference}
-              disabled={createTaskMutation.isPending}
-              className="flex items-center gap-2 rounded px-2 py-1 text-sm text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
+              className="flex items-center gap-2 rounded px-2 py-1 text-sm text-neutral-300 hover:bg-neutral-700"
             >
               <span>{modelDisplayLabel}</span>
               <Kbd shortcut="cmd+l" />
@@ -883,8 +875,7 @@ export function NewTaskOverlay({
             {backendInfo.visible && (
               <button
                 onClick={backendInfo.toggle}
-                disabled={createTaskMutation.isPending}
-                className="flex items-center gap-2 rounded px-2 py-1 text-sm text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
+                className="flex items-center gap-2 rounded px-2 py-1 text-sm text-neutral-300 hover:bg-neutral-700"
               >
                 <span>{backendInfo.label}</span>
                 <Kbd shortcut="cmd+j" />
@@ -896,8 +887,7 @@ export function NewTaskOverlay({
                 type="checkbox"
                 checked={draft?.createWorktree ?? false}
                 onChange={toggleWorktree}
-                disabled={createTaskMutation.isPending}
-                className="h-4 w-4 rounded border-neutral-600 bg-neutral-700 disabled:opacity-50"
+                className="h-4 w-4 rounded border-neutral-600 bg-neutral-700"
               />
               <span className="text-neutral-300">Worktree</span>
               <Kbd shortcut="cmd+b" />
@@ -914,8 +904,7 @@ export function NewTaskOverlay({
                     onChange={(e) =>
                       updateDraft({ sourceBranch: e.target.value })
                     }
-                    disabled={createTaskMutation.isPending}
-                    className="max-w-[25%] min-w-[180px] rounded border border-neutral-600 bg-neutral-700 px-2 py-1 text-sm text-neutral-300 outline-none focus:border-neutral-500 disabled:opacity-50"
+                    className="max-w-[25%] min-w-[180px] rounded border border-neutral-600 bg-neutral-700 px-2 py-1 text-sm text-neutral-300 outline-none focus:border-neutral-500"
                   >
                     {branches.map((branch) => (
                       <option key={branch} value={branch}>
