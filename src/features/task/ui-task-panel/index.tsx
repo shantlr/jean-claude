@@ -377,6 +377,20 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       },
     },
     {
+      label:
+        rightPane?.type === 'debugMessages'
+          ? 'Close Raw Message Pane'
+          : 'Open Raw Message Pane',
+      section: 'Task',
+      handler: () => {
+        if (rightPane?.type === 'debugMessages') {
+          closeRightPane();
+          return;
+        }
+        openDebugMessages();
+      },
+    },
+    {
       label: 'Open Project in Editor',
       shortcut: 'cmd+shift+e',
       section: 'Task',
