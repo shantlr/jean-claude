@@ -548,7 +548,9 @@ function mapOpenCodeTool(
     case 'read_file':
       return {
         name: 'read',
-        input: { filePath: str(input.file_path ?? input.path) },
+        input: {
+          filePath: str(input.filePath ?? input.file_path ?? input.path),
+        },
       };
 
     case 'write':
@@ -556,7 +558,7 @@ function mapOpenCodeTool(
       return {
         name: 'write',
         input: {
-          filePath: str(input.file_path ?? input.path),
+          filePath: str(input.filePath ?? input.file_path ?? input.path),
           value: str(input.content),
         },
       };
@@ -566,9 +568,13 @@ function mapOpenCodeTool(
       return {
         name: 'edit',
         input: {
-          filePath: str(input.file_path ?? input.path),
-          oldString: str(input.old_string ?? input.old),
-          newString: str(input.new_string ?? input.new),
+          filePath: str(input.filePath ?? input.file_path ?? input.path),
+          oldString: str(
+            input.oldString ?? input.old_string ?? input.old,
+          ),
+          newString: str(
+            input.newString ?? input.new_string ?? input.new,
+          ),
         },
       };
 
@@ -613,6 +619,19 @@ function mapOpenCodeTool(
         skillName: str(input.name ?? input.skill ?? ''),
         input: {},
       } as Omit<NormalizedToolUse, 'type' | 'toolId' | 'parentToolId'>;
+
+    case 'apply_patch': {
+      const patchText = str(input.patchText ?? input.patch);
+      const parsed = parsePatchText(patchText);
+      return {
+        name: 'edit',
+        input: {
+          filePath: parsed.filePath,
+          oldString: parsed.oldString,
+          newString: parsed.newString,
+        },
+      };
+    }
 
     case 'todowrite':
     case 'todo_write':
@@ -694,6 +713,77 @@ function mapToolError(name: string, state: ToolStateError): unknown {
 
 function str(value: unknown): string {
   return value == null ? '' : String(value);
+}
+
+/**
+ * Parse an apply_patch patchText into filePath, oldString, and newString.
+ *
+ * The patch format looks like:
+ *   *** Begin Patch
+ *   *** Update File: /path/to/file.ts
+ *   @@
+ *      context line (leading space)
+ *   -  removed line
+ *   +  added line
+ *      context line
+ *   *** End Patch
+ *
+ * Lines prefixed with `-` are removed (old), `+` are added (new),
+ * and lines with a leading space are context (present in both).
+ */
+function parsePatchText(patchText: string): {
+  filePath: string;
+  oldString: string;
+  newString: string;
+} {
+  const fileMatch = patchText.match(
+    /\*\*\*\s+(?:Update|Add|Delete)\s+File:\s+(.+)/,
+  );
+  const filePath = fileMatch?.[1]?.trim() ?? '';
+
+  const lines = patchText.split('\n');
+  const oldLines: string[] = [];
+  const newLines: string[] = [];
+  let inHunk = false;
+
+  for (const line of lines) {
+    // Start of a hunk
+    if (line.startsWith('@@')) {
+      inHunk = true;
+      continue;
+    }
+    // End markers — stop parsing
+    if (
+      line.startsWith('*** End Patch') ||
+      line.startsWith('*** Update File:') ||
+      line.startsWith('*** Add File:') ||
+      line.startsWith('*** Delete File:')
+    ) {
+      // If we hit another file header, stop at the first file
+      if (inHunk) break;
+      continue;
+    }
+    if (!inHunk) continue;
+
+    if (line.startsWith('-')) {
+      // Removed line — only in old
+      oldLines.push(line.slice(1));
+    } else if (line.startsWith('+')) {
+      // Added line — only in new
+      newLines.push(line.slice(1));
+    } else {
+      // Context line (leading space) — in both old and new
+      const content = line.startsWith(' ') ? line.slice(1) : line;
+      oldLines.push(content);
+      newLines.push(content);
+    }
+  }
+
+  return {
+    filePath,
+    oldString: oldLines.join('\n'),
+    newString: newLines.join('\n'),
+  };
 }
 
 type TodoStatus = 'pending' | 'in_progress' | 'completed';
