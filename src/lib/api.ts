@@ -1,16 +1,9 @@
 import type {
-  NormalizedMessage,
-  NormalizedMessageEvent,
-} from '@shared/agent-backend-types';
-import type {
-  AgentStatusEvent,
-  AgentPermissionEvent,
-  AgentQuestionEvent,
-  AgentNameUpdatedEvent,
-  AgentQueueUpdateEvent,
+  AgentQuestion,
   PermissionResponse,
   QuestionResponse,
 } from '@shared/agent-types';
+import type { AgentUIEvent } from '@shared/agent-ui-events';
 import type {
   AzureDevOpsPullRequest,
   AzureDevOpsPullRequestDetails,
@@ -31,6 +24,10 @@ import type {
   NewProjectMcpOverride,
   UnifiedMcpServer,
 } from '@shared/mcp-types';
+import type {
+  NormalizedEntry,
+  NormalizedPermissionRequest,
+} from '@shared/normalized-message-v2';
 import type {
   ProjectCommand,
   NewProjectCommand,
@@ -507,7 +504,7 @@ export interface Api {
     getBackendModels: (
       backend: string,
     ) => Promise<{ id: string; label: string }[]>;
-    getMessages: (taskId: string) => Promise<NormalizedMessage[]>;
+    getMessages: (taskId: string) => Promise<NormalizedEntry[]>;
     getMessageCount: (taskId: string) => Promise<number>;
     getMessagesWithRawData: (
       taskId: string,
@@ -516,30 +513,19 @@ export interface Api {
     getPendingRequest: (taskId: string) => Promise<
       | {
           type: 'permission';
-          data: AgentPermissionEvent;
+          data: NormalizedPermissionRequest & { taskId: string };
         }
       | {
           type: 'question';
-          data: AgentQuestionEvent;
+          data: {
+            taskId: string;
+            requestId: string;
+            questions: AgentQuestion[];
+          };
         }
       | null
     >;
-    onMessage: (
-      callback: AgentEventCallback<NormalizedMessageEvent>,
-    ) => UnsubscribeFn;
-    onStatus: (callback: AgentEventCallback<AgentStatusEvent>) => UnsubscribeFn;
-    onPermission: (
-      callback: AgentEventCallback<AgentPermissionEvent>,
-    ) => UnsubscribeFn;
-    onQuestion: (
-      callback: AgentEventCallback<AgentQuestionEvent>,
-    ) => UnsubscribeFn;
-    onNameUpdated: (
-      callback: AgentEventCallback<AgentNameUpdatedEvent>,
-    ) => UnsubscribeFn;
-    onQueueUpdate: (
-      callback: AgentEventCallback<AgentQueueUpdateEvent>,
-    ) => UnsubscribeFn;
+    onEvent: (callback: AgentEventCallback<AgentUIEvent>) => UnsubscribeFn;
   };
   debug: {
     getTableNames: () => Promise<string[]>;
@@ -850,12 +836,7 @@ export const api: Api = hasWindowApi
         getMessagesWithRawData: async () => [],
         reprocessNormalization: async () => 0,
         getPendingRequest: async () => null,
-        onMessage: () => () => {},
-        onStatus: () => () => {},
-        onPermission: () => () => {},
-        onQuestion: () => () => {},
-        onNameUpdated: () => () => {},
-        onQueueUpdate: () => () => {},
+        onEvent: () => () => {},
       },
       debug: {
         getTableNames: async () => [],

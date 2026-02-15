@@ -1,10 +1,8 @@
 import { Shield, X, Check, ChevronDown, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 
-import type {
-  AgentPermissionEvent,
-  PermissionResponse,
-} from '@shared/agent-types';
+import type { PermissionResponse } from '@shared/agent-types';
+import type { NormalizedPermissionRequest } from '@shared/normalized-message-v2';
 import type { InteractionMode } from '@shared/types';
 
 import { MarkdownContent } from '../ui-markdown-content';
@@ -121,13 +119,17 @@ function ToolInputDisplay({
   }
 }
 
-function ExitPlanModeDisplay({ input }: { input: Record<string, unknown> }) {
+function ExitPlanModeDisplay({
+  input,
+}: {
+  input: {
+    plan?: string;
+    allowedPrompts?: Array<{ tool: string; prompt: string }>;
+  };
+}) {
   const [isPlanCollapsed, setIsPlanCollapsed] = useState(false);
 
-  const plan = input.plan as string | undefined;
-  const allowedPrompts = input.allowedPrompts as
-    | Array<{ tool: string; prompt: string }>
-    | undefined;
+  const { plan, allowedPrompts } = input;
 
   return (
     <div className="space-y-3">
@@ -182,7 +184,7 @@ export function PermissionBar({
   onSetMode,
   worktreePath,
 }: {
-  request: AgentPermissionEvent;
+  request: NormalizedPermissionRequest & { taskId: string };
   onRespond: (requestId: string, response: PermissionResponse) => void;
   onAllowForSession?: (
     toolName: string,
@@ -201,6 +203,7 @@ export function PermissionBar({
 }) {
   const [instruction, setInstruction] = useState('');
 
+  const input = request.input;
   const isExitPlanMode = request.toolName === 'ExitPlanMode';
   const sessionAllowButton = request.sessionAllowButton;
 
@@ -210,7 +213,7 @@ export function PermissionBar({
     }
     onRespond(request.requestId, {
       behavior: 'allow',
-      updatedInput: request.input,
+      updatedInput: input,
     });
   };
 
@@ -222,7 +225,7 @@ export function PermissionBar({
       onAllowForSession?.('Edit', {});
       onAllowForSession?.('Write', {});
     } else {
-      onAllowForSession?.(request.toolName, request.input);
+      onAllowForSession?.(request.toolName, input);
     }
   };
 
@@ -233,7 +236,7 @@ export function PermissionBar({
     allowForSession();
     onRespond(request.requestId, {
       behavior: 'allow',
-      updatedInput: request.input,
+      updatedInput: input,
     });
   };
 
@@ -246,11 +249,11 @@ export function PermissionBar({
       onAllowForProject?.('Edit', {});
       onAllowForProject?.('Write', {});
     } else {
-      onAllowForProject?.(request.toolName, request.input);
+      onAllowForProject?.(request.toolName, input);
     }
     onRespond(request.requestId, {
       behavior: 'allow',
-      updatedInput: request.input,
+      updatedInput: input,
     });
   };
 
@@ -263,11 +266,11 @@ export function PermissionBar({
       onAllowForProjectWorktrees?.('Edit', {});
       onAllowForProjectWorktrees?.('Write', {});
     } else {
-      onAllowForProjectWorktrees?.(request.toolName, request.input);
+      onAllowForProjectWorktrees?.(request.toolName, input);
     }
     onRespond(request.requestId, {
       behavior: 'allow',
-      updatedInput: request.input,
+      updatedInput: input,
     });
   };
 
@@ -292,11 +295,11 @@ export function PermissionBar({
             Permission Required: {request.toolName}
           </div>
           {isExitPlanMode ? (
-            <ExitPlanModeDisplay input={request.input} />
+            <ExitPlanModeDisplay input={input} />
           ) : (
             <ToolInputDisplay
               toolName={request.toolName}
-              input={request.input}
+              input={input}
               worktreePath={worktreePath}
             />
           )}

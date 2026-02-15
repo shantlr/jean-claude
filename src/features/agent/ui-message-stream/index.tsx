@@ -7,57 +7,14 @@ import {
   useCallback,
 } from 'react';
 
-import type {
-  NormalizedMessage,
-  NormalizedToolResultPart,
-} from '@shared/agent-backend-types';
 import type { QueuedPrompt } from '@shared/agent-types';
-
-import { QueuedPromptEntry } from '../ui-queued-prompt-entry';
-import { SkillEntry } from '../ui-skill-entry';
-import { SubagentEntry } from '../ui-subagent-entry';
-import { TimelineEntry, CompactingEntry } from '../ui-timeline-entry';
+import type { NormalizedEntry } from '@shared/normalized-message-v2';
 
 import { mergeSkillMessages } from './message-merger';
-
-// Build a map of toolId -> NormalizedToolResultPart from all user messages
-function buildToolResultsMap(
-  messages: NormalizedMessage[],
-): Map<string, NormalizedToolResultPart> {
-  const resultsMap = new Map<string, NormalizedToolResultPart>();
-
-  for (const message of messages) {
-    if (message.role === 'user') {
-      for (const part of message.parts) {
-        if (part.type === 'tool-result') {
-          resultsMap.set(part.toolId, part);
-        }
-      }
-    }
-  }
-
-  return resultsMap;
-}
-
-// Build a map of toolId -> parent NormalizedMessage for user messages
-// This gives ToolEntry access to the parent message's structuredResult
-function buildParentMessageMap(
-  messages: NormalizedMessage[],
-): Map<string, NormalizedMessage> {
-  const parentMap = new Map<string, NormalizedMessage>();
-
-  for (const message of messages) {
-    if (message.role === 'user') {
-      for (const part of message.parts) {
-        if (part.type === 'tool-result') {
-          parentMap.set(part.toolId, message);
-        }
-      }
-    }
-  }
-
-  return parentMap;
-}
+import { QueuedPromptEntry } from './ui-queued-prompt-entry';
+import { SkillEntry } from './ui-skill-entry';
+import { SubagentEntry } from './ui-subagent-entry';
+import { TimelineEntry, CompactingEntry } from './ui-timeline-entry';
 
 // Threshold in pixels - if user is within this distance from bottom, auto-scroll
 const SCROLL_THRESHOLD = 10;
@@ -69,7 +26,7 @@ export const MessageStream = memo(function MessageStream({
   onFilePathClick,
   onCancelQueuedPrompt,
 }: {
-  messages: NormalizedMessage[];
+  messages: NormalizedEntry[];
   isRunning?: boolean;
   queuedPrompts?: QueuedPrompt[];
   onFilePathClick?: (
@@ -82,18 +39,6 @@ export const MessageStream = memo(function MessageStream({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
-
-  // Build tool results map once when messages change
-  const toolResultsMap = useMemo(
-    () => buildToolResultsMap(messages),
-    [messages],
-  );
-
-  // Build parent message map for toolId -> parent NormalizedMessage
-  const parentMessageMap = useMemo(
-    () => buildParentMessageMap(messages),
-    [messages],
-  );
 
   // Merge skill messages for display
   const displayMessages = useMemo(
@@ -129,6 +74,10 @@ export const MessageStream = memo(function MessageStream({
     }
   }, [displayMessages.length, queuedPrompts.length]);
 
+  console.log({
+    messages,
+  });
+
   if (messages.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-neutral-500">
@@ -150,8 +99,8 @@ export const MessageStream = memo(function MessageStream({
             return (
               <SkillEntry
                 key={index}
-                skillName={displayMessage.skillName}
-                promptMessage={displayMessage.promptMessage}
+                skillToolUse={displayMessage.skillToolUse}
+                promptEntry={displayMessage.promptEntry}
                 onFilePathClick={onFilePathClick}
               />
             );
@@ -160,8 +109,7 @@ export const MessageStream = memo(function MessageStream({
             return (
               <CompactingEntry
                 key={index}
-                isComplete={!!displayMessage.endMessage}
-                metadata={displayMessage.metadata}
+                isComplete={!!displayMessage.endEntry}
               />
             );
           }
@@ -169,9 +117,8 @@ export const MessageStream = memo(function MessageStream({
             return (
               <SubagentEntry
                 key={index}
-                launchBlock={displayMessage.launchBlock}
-                childMessages={displayMessage.childMessages}
-                isComplete={displayMessage.isComplete}
+                toolUse={displayMessage.toolUse}
+                childEntries={displayMessage.childEntries}
                 onFilePathClick={onFilePathClick}
               />
             );
@@ -179,9 +126,7 @@ export const MessageStream = memo(function MessageStream({
           return (
             <TimelineEntry
               key={index}
-              message={displayMessage.message}
-              toolResultsMap={toolResultsMap}
-              parentMessageMap={parentMessageMap}
+              entry={displayMessage.entry}
               onFilePathClick={onFilePathClick}
             />
           );

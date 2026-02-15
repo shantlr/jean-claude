@@ -19,6 +19,7 @@ import type {
   AgentBackendConfig,
   AgentEvent,
   AgentSession,
+  AgentTaskContext,
   NormalizedPermissionResponse,
   NormalizedPermissionRequest,
   NormalizedQuestionRequest,
@@ -33,7 +34,8 @@ import {
   isToolAllowedByPermissions,
 } from '../../permission-settings-service';
 
-import { normalizeClaudeMessage } from './normalize-claude-message';
+import { normalizeClaudeMessageV2 } from './normalize-claude-message-v2';
+import type { NormalizationContext } from './normalize-claude-message-v2';
 
 const SDK_PERMISSION_MODES = {
   ask: 'default',
@@ -112,10 +114,19 @@ interface ClaudeSession {
   sessionAllowedTools: string[];
   // Working directory for permission checking
   workingDir?: string;
+  // V2 normalization context (tracks session-id state)
+  normalizationCtx: NormalizationContext;
+  // Next raw message index for persistence ordering
+  messageIndex: number;
 }
 
 export class ClaudeCodeBackend implements AgentBackend {
   private sessions = new Map<string, ClaudeSession>();
+  private taskContext: AgentTaskContext;
+
+  constructor(context: AgentTaskContext) {
+    this.taskContext = context;
+  }
 
   async start(
     config: AgentBackendConfig,
@@ -132,6 +143,11 @@ export class ClaudeCodeBackend implements AgentBackend {
       eventChannel: new AsyncEventChannel<AgentEvent>(),
       sessionAllowedTools: config.sessionAllowedTools ?? [],
       workingDir: config.cwd,
+      normalizationCtx: {
+        sessionIdEmitted: false,
+        pendingToolUses: new Map(),
+      },
+      messageIndex: this.taskContext.sessionStartIndex,
     };
     this.sessions.set(sessionKey, session);
 
@@ -295,8 +311,6 @@ export class ClaudeCodeBackend implements AgentBackend {
     const generator = query({ prompt, options: queryOptions });
     session.queryInstance = generator;
 
-    let hasEmittedSessionId = false;
-
     try {
       for await (const rawMessage of generator) {
         if (session.abortController.signal.aborted) {
@@ -305,46 +319,36 @@ export class ClaudeCodeBackend implements AgentBackend {
 
         const message = rawMessage as AgentMessage;
 
-        // Capture session ID from first message that has it
-        if (!hasEmittedSessionId && message.session_id) {
-          session.sessionId = message.session_id;
-          hasEmittedSessionId = true;
-          session.eventChannel.push({
-            type: 'session-id',
-            sessionId: message.session_id,
-          });
+        // 1. Persist raw message
+        const rawMessageId = await this.taskContext.persistRaw({
+          messageIndex: session.messageIndex++,
+          backendSessionId: session.sessionId,
+          rawData: message,
+        });
+
+        // 2. Normalize (stateful V2)
+        const events = normalizeClaudeMessageV2(
+          message,
+          session.normalizationCtx,
+        );
+
+        // 3. Update normalization context
+        for (const event of events) {
+          if (event.type === 'session-id') {
+            session.sessionId = event.sessionId;
+            session.normalizationCtx.sessionIdEmitted = true;
+          }
         }
 
-        // Emit raw message event (agent-service persists raw + normalized)
-        session.eventChannel.push({
-          type: 'message',
-          message: normalizeClaudeMessage(message)!,
-          _raw: message, // Attach raw for persistence
-        } as AgentEvent & { _raw: AgentMessage });
-
-        // Handle result message — emit completion event
-        if (message.type === 'result') {
-          session.eventChannel.push({
-            type: 'complete',
-            result: {
-              text: message.result,
-              isError: !!message.is_error,
-              cost:
-                message.total_cost_usd != null
-                  ? { costUsd: message.total_cost_usd }
-                  : undefined,
-              durationMs: message.duration_ms,
-              usage: message.usage
-                ? {
-                    inputTokens: message.usage.input_tokens ?? 0,
-                    outputTokens: message.usage.output_tokens ?? 0,
-                    cacheReadTokens: message.usage.cache_read_input_tokens,
-                    cacheCreationTokens:
-                      message.usage.cache_creation_input_tokens,
-                  }
-                : undefined,
-            },
-          });
+        // 4. Convert normalization events to AgentEvents and push
+        // Only 'entry' needs special handling (add rawMessageId);
+        // all other variants are structurally compatible.
+        for (const event of events) {
+          if (event.type === 'entry') {
+            session.eventChannel.push({ ...event, rawMessageId });
+          } else {
+            session.eventChannel.push(event as AgentEvent);
+          }
         }
       }
     } catch (error) {

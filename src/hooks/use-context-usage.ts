@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 
-import type { NormalizedMessage } from '@shared/agent-backend-types';
+import type { NormalizedEntry } from '@shared/normalized-message-v2';
+
+const DEFAULT_CONTEXT_WINDOW = 200_000;
 
 export interface ContextUsage {
   /** Current estimated context tokens */
@@ -14,53 +16,37 @@ export interface ContextUsage {
 }
 
 /**
- * Check if a normalized message contains a compact part (compact boundary).
- */
-function hasCompactPart(msg: NormalizedMessage): boolean {
-  return msg.parts.some((p) => p.type === 'compact');
-}
-
-/**
- * Calculate context usage from normalized agent messages.
+ * Calculate context usage from flat normalized entries.
  *
  * Strategy:
- * - Track cumulative input/output tokens from result messages
- * - Get context window size from modelUsage in result messages
- * - Reset token count after messages with compact parts
+ * - Track cumulative input/output tokens from result entries
+ * - Reset token count after the last compact boundary (system-status with status === null)
+ * - Use DEFAULT_CONTEXT_WINDOW since V2 doesn't carry contextWindow
  */
-export function useContextUsage(messages: NormalizedMessage[]): ContextUsage {
+export function useContextUsage(entries: NormalizedEntry[]): ContextUsage {
   return useMemo(() => {
     let contextTokens = 0;
-    let contextWindow = 0;
     let lastCompactIndex = -1;
 
-    // Find the last compact message
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (hasCompactPart(messages[i])) {
+    // Find the last compact entry (system-status with status === null)
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const entry = entries[i];
+      if (entry.type === 'system-status' && entry.status === null) {
         lastCompactIndex = i;
         break;
       }
     }
 
-    // Sum tokens from result messages after the last compaction
-    for (let i = lastCompactIndex + 1; i < messages.length; i++) {
-      const msg = messages[i];
-
-      if (msg.role === 'result' && msg.modelUsage) {
-        // Get context window and token counts from first model in modelUsage
-        const modelNames = Object.keys(msg.modelUsage);
-        if (modelNames.length > 0) {
-          const usage = msg.modelUsage[modelNames[0]];
-          if (usage.contextWindow && usage.contextWindow > 0) {
-            contextWindow = usage.contextWindow;
-          }
-          // Add this turn's tokens to the cumulative count
-          contextTokens += usage.inputTokens + usage.outputTokens;
-        }
+    // Sum tokens from result entries after the last compaction
+    for (let i = lastCompactIndex + 1; i < entries.length; i++) {
+      const entry = entries[i];
+      if (entry.type === 'result' && entry.usage) {
+        contextTokens += entry.usage.inputTokens + entry.usage.outputTokens;
       }
     }
 
-    const hasData = contextWindow > 0;
+    const contextWindow = DEFAULT_CONTEXT_WINDOW;
+    const hasData = contextTokens > 0;
     const percentage = hasData
       ? Math.min(100, (contextTokens / contextWindow) * 100)
       : 0;
@@ -71,5 +57,5 @@ export function useContextUsage(messages: NormalizedMessage[]): ContextUsage {
       percentage,
       hasData,
     };
-  }, [messages]);
+  }, [entries]);
 }

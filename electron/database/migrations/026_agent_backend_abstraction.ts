@@ -1,9 +1,9 @@
 import { Kysely, sql } from 'kysely';
 import { nanoid } from 'nanoid';
 
-import { CURRENT_NORMALIZATION_VERSION } from '@shared/agent-backend-types';
-
-import { normalizeClaudeMessage } from '../../services/agent-backends/claude/normalize-claude-message';
+// Hardcoded: this was the normalization version when migration 026 was written.
+// The V1 normalizer has been deleted; migration 028 re-normalizes everything with V2.
+const NORMALIZATION_VERSION_AT_026 = 1;
 
 export async function up(db: Kysely<unknown>): Promise<void> {
   await db.transaction().execute(async (trx) => {
@@ -56,7 +56,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     await trx.schema
       .alterTable('agent_messages')
       .addColumn('normalizedVersion', 'integer', (col) =>
-        col.defaultTo(CURRENT_NORMALIZATION_VERSION),
+        col.defaultTo(NORMALIZATION_VERSION_AT_026),
       )
       .execute();
 
@@ -96,23 +96,13 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         );
 
         // Normalize and update agent_messages
-        try {
-          const rawMessage = JSON.parse(row.messageData);
-          const normalized = normalizeClaudeMessage(rawMessage);
-
-          await sql`UPDATE agent_messages SET
-            normalizedData = ${normalized ? JSON.stringify(normalized) : null},
-            normalizedVersion = ${CURRENT_NORMALIZATION_VERSION},
-            rawMessageId = ${rawMessageId}
-          WHERE id = ${row.id}`.execute(trx);
-        } catch {
-          // If normalization fails, preserve raw link but leave normalized as null
-          await sql`UPDATE agent_messages SET
-            normalizedData = NULL,
-            normalizedVersion = 0,
-            rawMessageId = ${rawMessageId}
-          WHERE id = ${row.id}`.execute(trx);
-        }
+        // V1 normalizer has been deleted — skip normalization here.
+        // Migration 028 will re-normalize all messages with the V2 normalizer.
+        await sql`UPDATE agent_messages SET
+          normalizedData = NULL,
+          normalizedVersion = ${NORMALIZATION_VERSION_AT_026},
+          rawMessageId = ${rawMessageId}
+        WHERE id = ${row.id}`.execute(trx);
       }
 
       offset += batchSize;

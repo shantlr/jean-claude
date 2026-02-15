@@ -173,41 +173,10 @@ export interface QuestionResponse {
   answers: Record<string, string>;
 }
 
-// IPC event payloads
-export interface AgentMessageEvent {
-  taskId: string;
-  message: AgentMessage;
-}
-
-export interface AgentStatusEvent {
-  taskId: string;
-  status: 'running' | 'waiting' | 'completed' | 'errored';
-  error?: string;
-}
-
 export interface SessionAllowButton {
   label: string;
   toolsToAllow: string[];
   setModeOnAllow?: InteractionMode;
-}
-
-export interface AgentPermissionEvent {
-  taskId: string;
-  requestId: string;
-  toolName: string;
-  input: Record<string, unknown>;
-  sessionAllowButton?: SessionAllowButton;
-}
-
-export interface AgentQuestionEvent {
-  taskId: string;
-  requestId: string;
-  questions: AgentQuestion[];
-}
-
-export interface AgentNameUpdatedEvent {
-  taskId: string;
-  name: string;
 }
 
 // Queued prompt types
@@ -215,11 +184,6 @@ export interface QueuedPrompt {
   id: string;
   content: string;
   createdAt: number;
-}
-
-export interface AgentQueueUpdateEvent {
-  taskId: string;
-  queuedPrompts: QueuedPrompt[];
 }
 
 export function isSkillToolUseResult(
@@ -248,14 +212,9 @@ export function isWriteToolUseResult(
 
 // IPC channel names
 export const AGENT_CHANNELS = {
-  // Events (main -> renderer)
-  MESSAGE: 'agent:message',
-  STATUS: 'agent:status',
-  PERMISSION: 'agent:permission',
-  QUESTION: 'agent:question',
-  NAME_UPDATED: 'agent:nameUpdated',
-  QUEUE_UPDATE: 'agent:queueUpdate',
-  // Invoke (renderer -> main)
+  // Events (main -> renderer) — single unified channel
+  EVENT: 'agent:event',
+  // Invoke (renderer -> main) — unchanged
   START: 'agent:start',
   STOP: 'agent:stop',
   RESPOND: 'agent:respond',

@@ -116,10 +116,15 @@ export interface AgentMessageTable {
   id: Generated<string>;
   taskId: string;
   messageIndex: number;
-  messageType: string;
-  normalizedData: string | null; // JSON stringified NormalizedMessage
-  normalizedVersion: number; // Version of normalization logic used
-  rawMessageId: string | null; // FK to raw_messages
+  type: string;
+  toolId: string | null;
+  parentToolId: string | null;
+  data: string; // JSON stringified NormalizedEntry
+  model: string | null;
+  isSynthetic: number | null;
+  date: string;
+  normalizedVersion: number;
+  rawMessageId: string | null;
   createdAt: Generated<string>;
 }
 

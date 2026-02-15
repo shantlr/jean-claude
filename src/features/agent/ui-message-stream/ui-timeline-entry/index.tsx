@@ -9,56 +9,25 @@ import {
   PackageOpen,
 } from 'lucide-react';
 import type { MouseEvent, ReactNode } from 'react';
-import { memo, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
 
 import { formatNumber } from '@/lib/number';
 import { formatDuration } from '@/lib/time';
 import type {
-  NormalizedMessage,
-  NormalizedPart,
-  NormalizedToolUsePart,
-  NormalizedToolResultPart,
-  NormalizedCompactPart,
-  TodoItem,
-} from '@shared/agent-backend-types';
-import {
-  isNormalizedTextPart,
-  isNormalizedToolUsePart,
-  isNormalizedUnknownPart,
-  isStructuredTodoResult,
-  isStructuredWriteResult,
-} from '@shared/agent-backend-types';
+  NormalizedEntry,
+  NormalizedToolUse,
+  ToolUseByName,
+} from '@shared/normalized-message-v2';
 
-import { DiffView } from '../ui-diff-view';
-import { getLanguageFromPath } from '../ui-diff-view/language-utils';
-import { MarkdownContent } from '../ui-markdown-content';
+import { DiffView } from '../../ui-diff-view';
+import { getLanguageFromPath } from '../../ui-diff-view/language-utils';
+import { MarkdownContent } from '../../ui-markdown-content';
 import { TodoListEntry } from '../ui-todo-list-entry';
 
 import { getToolSummary } from './tool-summary';
 
-// System message subtypes that should be hidden in the timeline
-const HIDDEN_SYSTEM_SUBTYPES = [
-  'init',
-  'hook_started',
-  'hook_completed',
-  'hook_response',
-  'status',
-  'compact_boundary',
-] as const;
-
-type HiddenSystemSubtype = (typeof HIDDEN_SYSTEM_SUBTYPES)[number];
-
-function formatResultContent(content: string | NormalizedPart[]): string {
-  if (typeof content === 'string') return content;
-  return content
-    .map((part) =>
-      part.type === 'text' ? part.text : JSON.stringify(part, null, 2),
-    )
-    .join('\n');
-}
-
-// Parse line-numbered content (e.g., "     1→import..." format from Read tool)
+// Parse line-numbered content (e.g., "     1->import..." format from Read tool)
 // Optionally apply syntax highlighting if filePath is provided
 function LineNumberedContent({
   content,
@@ -70,7 +39,7 @@ function LineNumberedContent({
   const [tokens, setTokens] = useState<ThemedToken[][] | null>(null);
 
   // Check if content has line numbers (format: spaces + number + arrow)
-  const lineNumberPattern = /^(\s*\d+)→(.*)$/;
+  const lineNumberPattern = /^(\s*\d+)\u2192(.*)$/;
   const lines = content.split('\n');
   const hasLineNumbers = lines.length > 0 && lineNumberPattern.test(lines[0]);
 
@@ -155,21 +124,46 @@ function LineNumberedContent({
   );
 }
 
-function formatToolInput(input: Record<string, unknown>): string {
-  if ('command' in input && typeof input.command === 'string')
-    return input.command;
-  if ('file_path' in input && typeof input.file_path === 'string') {
-    if ('content' in input) return `${input.file_path}\n${input.content}`;
-    if ('old_string' in input && 'new_string' in input) {
-      return `${input.file_path}\n-${input.old_string}\n+${input.new_string}`;
+function formatToolInput(toolUse: NormalizedToolUse): string {
+  switch (toolUse.name) {
+    case 'bash':
+      return (toolUse as ToolUseByName<'bash'>).input.command;
+    case 'read':
+      return (toolUse as ToolUseByName<'read'>).input.filePath;
+    case 'write': {
+      const w = toolUse as ToolUseByName<'write'>;
+      return `${w.input.filePath}\n${w.input.value}`;
     }
-    return input.file_path;
+    case 'edit': {
+      const e = toolUse as ToolUseByName<'edit'>;
+      return `${e.input.filePath}\n-${e.input.oldString}\n+${e.input.newString}`;
+    }
+    case 'grep':
+      return (toolUse as ToolUseByName<'grep'>).input.pattern;
+    case 'glob':
+      return (toolUse as ToolUseByName<'glob'>).input.pattern;
+    case 'web-search':
+      return (toolUse as ToolUseByName<'web-search'>).input.query;
+    case 'web-fetch':
+      return (toolUse as ToolUseByName<'web-fetch'>).input.url;
+    case 'mcp':
+      return JSON.stringify((toolUse as ToolUseByName<'mcp'>).input, null, 2);
+    default: {
+      const input = toolUse.input;
+      if (input && typeof input === 'object') {
+        return JSON.stringify(input, null, 2);
+      }
+      return String(input ?? '');
+    }
   }
-  if ('pattern' in input && typeof input.pattern === 'string')
-    return input.pattern;
-  if ('query' in input && typeof input.query === 'string') return input.query;
-  if ('url' in input && typeof input.url === 'string') return input.url;
-  return JSON.stringify(input, null, 2);
+}
+
+function formatToolResult(toolUse: NormalizedToolUse): string {
+  const result = toolUse.result;
+  if (result === undefined || result === null) return '';
+  if (typeof result === 'string') return result;
+  if (typeof result === 'object') return JSON.stringify(result, null, 2);
+  return String(result);
 }
 
 type EntryType = 'user' | 'tool' | 'text' | 'result' | 'system';
@@ -289,138 +283,103 @@ function SummaryText({
   );
 }
 
-// Get code style based on tool name
+// Get code style based on V2 tool name (lowercase)
 function getCodeStyleForTool(toolName: string): CodeStyle {
   switch (toolName) {
-    case 'Read':
-    case 'Write':
-    case 'Edit':
+    case 'read':
+    case 'write':
+    case 'edit':
       return 'file';
-    case 'Bash':
+    case 'bash':
       return 'command';
-    case 'Glob':
-    case 'Grep':
+    case 'glob':
+    case 'grep':
       return 'pattern';
     default:
       return 'default';
   }
 }
 
-// Check if tool input is an Edit tool with old_string/new_string
-function isEditToolInput(
-  input: Record<string, unknown>,
-): input is { file_path: string; old_string: string; new_string: string } {
-  return (
-    'file_path' in input &&
-    'old_string' in input &&
-    'new_string' in input &&
-    typeof input.file_path === 'string' &&
-    typeof input.old_string === 'string' &&
-    typeof input.new_string === 'string'
-  );
-}
-
 // Tool entry with expandable input/output
-function ToolEntry({
-  block,
-  result,
-  parentMessage,
-}: {
-  block: NormalizedToolUsePart;
-  result?: NormalizedToolResultPart;
-  parentMessage?: NormalizedMessage;
-}) {
-  const summary = getToolSummary(block, result);
-  const hasResult = !!result;
-  const isError = result?.isError;
+function ToolEntry({ toolUse }: { toolUse: NormalizedToolUse }) {
+  const summary = getToolSummary(toolUse);
+  const hasResult = toolUse.result !== undefined;
+  const isError =
+    toolUse.name === 'bash'
+      ? (toolUse as ToolUseByName<'bash'>).result?.isError
+      : false;
   const isPending = !hasResult;
-  const codeStyle = getCodeStyleForTool(block.toolName);
-  const input = (block.input ?? {}) as Record<string, unknown>;
+  const codeStyle = getCodeStyleForTool(toolUse.name);
 
   // Check if this is an Edit tool with diff content
-  const isEditTool = block.toolName === 'Edit' && isEditToolInput(input);
-  const isWriteTool = block.toolName === 'Write';
-
-  // Check if we have structured Write/Edit result data from the parent message's tool-result part
-  const resultPart = parentMessage?.parts.find(
-    (p): p is NormalizedToolResultPart =>
-      p.type === 'tool-result' && p.toolId === block.toolId,
-  );
-  const writeToolResult =
-    resultPart?.structuredResult &&
-    isStructuredWriteResult(resultPart.structuredResult)
-      ? resultPart.structuredResult
-      : null;
+  const isEditTool = toolUse.name === 'edit';
+  const isWriteTool = toolUse.name === 'write';
 
   // Auto-expand Edit and Write tools
   const shouldAutoExpand = isEditTool || isWriteTool;
 
-  // Extract edit input for DiffView (type-safe after guard)
-  const editInput = isEditTool
-    ? (input as {
-        file_path: string;
-        old_string: string;
-        new_string: string;
-      })
-    : null;
-
   // Extract file_path for Read tool syntax highlighting
   const readFilePath =
-    block.toolName === 'Read' &&
-    'file_path' in input &&
-    typeof input.file_path === 'string'
-      ? input.file_path
+    toolUse.name === 'read'
+      ? (toolUse as ToolUseByName<'read'>).input.filePath
       : undefined;
 
-  // For Write/Edit tools with structured result, use DiffView instead of showing raw input
-  const hasDiffView = isEditTool || (isWriteTool && writeToolResult);
-  const formattedInput = hasDiffView ? '' : formatToolInput(input);
-  const formattedResult = result ? formatResultContent(result.content) : '';
+  // For Edit tools, use DiffView; for Write tools, just show file info (no diff in V2)
+  const hasDiffView = isEditTool;
+  const formattedInput = hasDiffView ? '' : formatToolInput(toolUse);
+  const formattedResult = formatToolResult(toolUse);
   const [expandContent, setExpandContent] = useState(false);
 
   // Custom rendering for TodoWrite
-  if (block.toolName === 'TodoWrite') {
-    // Case 1: Result available with structuredResult containing todo data
-    const todoResultPart = parentMessage?.parts.find(
-      (p): p is NormalizedToolResultPart =>
-        p.type === 'tool-result' && p.toolId === block.toolId,
-    );
-    if (
-      todoResultPart?.structuredResult &&
-      isStructuredTodoResult(todoResultPart.structuredResult)
-    ) {
+  if (toolUse.name === 'todo-write') {
+    const tw = toolUse as ToolUseByName<'todo-write'>;
+    // Case 1: Result available with todo data
+    if (tw.result) {
       return (
         <TodoListEntry
-          oldTodos={todoResultPart.structuredResult.oldTodos}
-          newTodos={todoResultPart.structuredResult.newTodos}
+          oldTodos={
+            tw.result.oldTodos?.map((t) => ({
+              content: t.content,
+              status: t.status,
+              activeForm: t.description ?? t.content,
+            })) ?? []
+          }
+          newTodos={
+            tw.result.newTodos?.map((t) => ({
+              content: t.content,
+              status: t.status,
+              activeForm: t.description ?? t.content,
+            })) ?? []
+          }
         />
       );
     }
 
-    // Case 2: Pending (no result yet) — show from input
-    if (!result && Array.isArray(input.todos)) {
-      const todos = input.todos as TodoItem[];
-      return <TodoListEntry oldTodos={[]} newTodos={todos} isPending />;
+    // Case 2: Pending (no result yet) - show from input
+    if (tw.input.todos) {
+      return (
+        <TodoListEntry
+          oldTodos={[]}
+          newTodos={tw.input.todos.map((t) => ({
+            content: t.content,
+            status: t.status,
+            activeForm: t.description ?? t.content,
+          }))}
+          isPending
+        />
+      );
     }
   }
 
   // Get diff view content based on tool type
   const getDiffViewContent = () => {
-    if (editInput) {
+    if (isEditTool) {
+      const e = toolUse as ToolUseByName<'edit'>;
       return (
         <DiffView
-          filePath={editInput.file_path}
-          oldString={editInput.old_string}
-          newString={editInput.new_string}
-        />
-      );
-    }
-    if (isWriteTool && writeToolResult) {
-      return (
-        <DiffView
-          filePath={writeToolResult.filePath}
-          oldString={writeToolResult.originalFile}
-          newString={writeToolResult.content}
+          filePath={e.input.filePath}
+          oldString={e.input.oldString}
+          newString={e.input.newString}
         />
       );
     }
@@ -566,7 +525,7 @@ function UserEntry({
           onFilePathClick={onFilePathClick}
         />
         {wasTruncated && !expanded && (
-          <span className="text-neutral-500">…</span>
+          <span className="text-neutral-500">&hellip;</span>
         )}
       </div>
       {wasTruncated && (
@@ -605,28 +564,26 @@ function UserEntry({
 
 // Result entry (session complete)
 function ResultEntry({
-  message,
+  entry,
   onFilePathClick,
 }: {
-  message: NormalizedMessage;
+  entry: Extract<NormalizedEntry, { type: 'result' }>;
   onFilePathClick?: (
     filePath: string,
     lineStart?: number,
     lineEnd?: number,
   ) => void;
 }) {
-  const cost = message.totalCost?.costUsd?.toFixed(2) || '0.00';
+  const cost = entry.cost?.toFixed(2) || '0.00';
   const tokens = formatNumber(
-    (message?.usage?.cacheCreationTokens ?? 0) +
-      (message?.usage?.inputTokens ?? 0) +
-      (message?.usage?.outputTokens ?? 0),
+    (entry.usage?.inputTokens ?? 0) + (entry.usage?.outputTokens ?? 0),
   );
-  const summary = `--- ${tokens} tokens, ${formatDuration(message.durationMs ?? 0)}, $${cost}`;
+  const summary = `--- ${tokens} tokens, ${formatDuration(entry.durationMs ?? 0)}, $${cost}`;
 
-  const expandedContent = message.result ? (
+  const expandedContent = entry.value ? (
     <div className="text-xs text-neutral-300">
       <MarkdownContent
-        content={message.result}
+        content={entry.value}
         onFilePathClick={onFilePathClick}
       />
     </div>
@@ -641,71 +598,9 @@ function ResultEntry({
   );
 }
 
-// System message entry
-function SystemEntry({ message }: { message: NormalizedMessage }) {
-  // For system init messages, show a simple summary
-  const hasInitPart = message.parts.some(
-    (p) => p.type === 'system-status' && p.subtype === 'init',
-  );
-  const summary = hasInitPart ? 'Session started' : 'System message';
-
-  return <DotEntry type="system" summary={summary} />;
-}
-
-function UnknownEntry({
-  originalType,
-  data,
-}: {
-  originalType: string;
-  data: unknown;
-}) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div className="my-1 rounded border border-yellow-800/40 bg-yellow-950/20 px-3 py-2 text-xs">
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="flex cursor-pointer items-center gap-2 text-yellow-500/80"
-      >
-        <span className="font-mono">⚠ Unknown: {originalType}</span>
-        <span className="text-yellow-600/60">{expanded ? '▼' : '▶'}</span>
-      </button>
-      {expanded && (
-        <pre className="mt-2 max-h-[300px] overflow-auto font-mono break-all whitespace-pre-wrap text-yellow-500/60">
-          {JSON.stringify(data, null, 2)}
-        </pre>
-      )}
-    </div>
-  );
-}
-
-// Helper to check if a message has a system-status part with a hidden subtype
-function hasHiddenSystemSubtype(message: NormalizedMessage): boolean {
-  return message.parts.some(
-    (p) =>
-      (p.type === 'system-status' &&
-        HIDDEN_SYSTEM_SUBTYPES.includes(p.subtype as HiddenSystemSubtype)) ||
-      p.type === 'compact',
-  );
-}
-
-// Format token count with thousands separator
-function formatTokenCount(tokens: number): string {
-  return tokens.toLocaleString();
-}
-
 // Compacting entry - shows context compaction status
-export function CompactingEntry({
-  isComplete,
-  metadata,
-}: {
-  isComplete: boolean;
-  metadata?: NormalizedCompactPart;
-}) {
-  const summary = isComplete
-    ? `Context compacted (${formatTokenCount(metadata?.preTokens ?? 0)} tokens${metadata?.trigger === 'auto' ? ', auto' : ''})`
-    : 'Compacting context...';
+export function CompactingEntry({ isComplete }: { isComplete: boolean }) {
+  const summary = isComplete ? 'Context compacted' : 'Compacting context...';
 
   return (
     <div className="relative pl-6">
@@ -734,101 +629,34 @@ export function CompactingEntry({
   );
 }
 
-export const TimelineEntry = memo(function TimelineEntry({
-  message,
-  toolResultsMap,
-  parentMessageMap,
+export function TimelineEntry({
+  entry,
   onFilePathClick,
 }: {
-  message: NormalizedMessage;
-  toolResultsMap?: Map<string, NormalizedToolResultPart>;
-  parentMessageMap?: Map<string, NormalizedMessage>;
+  entry: NormalizedEntry;
   onFilePathClick?: (
     filePath: string,
     lineStart?: number,
     lineEnd?: number,
   ) => void;
 }) {
-  // Skip system messages with hidden subtypes (init, hook_started, hook_completed, etc.)
-  // or compact parts
-  if (message.role === 'system' && hasHiddenSystemSubtype(message)) {
-    return null;
+  switch (entry.type) {
+    case 'user-prompt':
+      if (!entry.value.trim()) return null;
+      return <UserEntry text={entry.value} onFilePathClick={onFilePathClick} />;
+    case 'assistant-message':
+      if (!entry.value.trim()) return null;
+      return <TextEntry text={entry.value} onFilePathClick={onFilePathClick} />;
+    case 'tool-use':
+      // Sub-agent tool-use entries are rendered as SubagentEntry in message stream
+      if (entry.name === 'sub-agent') return null;
+      return <ToolEntry toolUse={entry} />;
+    case 'result':
+      return <ResultEntry entry={entry} onFilePathClick={onFilePathClick} />;
+    case 'system-status':
+      // Handled by CompactingEntry in merger
+      return null;
+    default:
+      return null;
   }
-
-  // Other system messages (show them for visibility)
-  if (message.role === 'system') {
-    return <SystemEntry message={message} />;
-  }
-
-  // Result message
-  if (message.role === 'result') {
-    return <ResultEntry message={message} onFilePathClick={onFilePathClick} />;
-  }
-
-  // User message
-  if (message.role === 'user') {
-    const parts = message.parts;
-
-    // Skip if only tool results
-    const hasNonToolResultContent = parts.some(
-      (part) => part.type !== 'tool-result',
-    );
-    if (!hasNonToolResultContent) return null;
-
-    const textContent = parts
-      .filter(isNormalizedTextPart)
-      .map((p) => p.text)
-      .join('\n');
-
-    if (!textContent.trim()) return null;
-
-    return <UserEntry text={textContent} onFilePathClick={onFilePathClick} />;
-  }
-
-  // Assistant message - render each part as separate entry
-  if (message.role === 'assistant') {
-    const parts = message.parts;
-    const entries: ReactNode[] = [];
-
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
-
-      if (isNormalizedTextPart(part) && part.text.trim()) {
-        entries.push(
-          <TextEntry
-            key={i}
-            text={part.text}
-            onFilePathClick={onFilePathClick}
-          />,
-        );
-      } else if (isNormalizedToolUsePart(part)) {
-        // Skip Task tool_use parts - they're rendered as SubagentEntry in message stream
-        if (part.toolName === 'Task') {
-          continue;
-        }
-        const result = toolResultsMap?.get(part.toolId);
-        const parentMessage = parentMessageMap?.get(part.toolId);
-        entries.push(
-          <ToolEntry
-            key={i}
-            block={part}
-            result={result}
-            parentMessage={parentMessage}
-          />,
-        );
-      } else if (isNormalizedUnknownPart(part)) {
-        entries.push(
-          <UnknownEntry
-            key={i}
-            originalType={part.originalType}
-            data={part.data}
-          />,
-        );
-      }
-    }
-
-    return <>{entries}</>;
-  }
-
-  return null;
-});
+}

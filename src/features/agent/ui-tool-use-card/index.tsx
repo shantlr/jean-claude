@@ -8,90 +8,82 @@ import {
 import { useState } from 'react';
 
 import type {
-  NormalizedToolUsePart,
-  NormalizedToolResultPart,
-  NormalizedPart,
-} from '@shared/agent-backend-types';
+  NormalizedToolUse,
+  ToolUseByName,
+} from '@shared/normalized-message-v2';
 
 // Format tool input for display
-function formatInput(input: Record<string, unknown>): string {
-  // Special handling for common tools
-  if ('command' in input && typeof input.command === 'string') {
-    return input.command;
-  }
-  if ('file_path' in input && typeof input.file_path === 'string') {
-    if ('content' in input) {
-      return `${input.file_path}\n${input.content}`;
+function formatInput(toolUse: NormalizedToolUse): string {
+  switch (toolUse.name) {
+    case 'bash':
+      return (toolUse as ToolUseByName<'bash'>).input.command;
+    case 'read':
+      return (toolUse as ToolUseByName<'read'>).input.filePath;
+    case 'write': {
+      const t = toolUse as ToolUseByName<'write'>;
+      return `${t.input.filePath}\n${t.input.value}`;
     }
-    if ('old_string' in input && 'new_string' in input) {
-      return `${input.file_path}\n-${input.old_string}\n+${input.new_string}`;
+    case 'edit': {
+      const t = toolUse as ToolUseByName<'edit'>;
+      return `${t.input.filePath}\n-${t.input.oldString}\n+${t.input.newString}`;
     }
-    return input.file_path;
+    case 'grep':
+      return (toolUse as ToolUseByName<'grep'>).input.pattern;
+    case 'glob':
+      return (toolUse as ToolUseByName<'glob'>).input.pattern;
+    case 'web-search':
+      return (toolUse as ToolUseByName<'web-search'>).input.query;
+    case 'web-fetch':
+      return (toolUse as ToolUseByName<'web-fetch'>).input.url;
+    case 'skill':
+      return (toolUse as ToolUseByName<'skill'>).skillName;
+    case 'mcp':
+      return JSON.stringify((toolUse as ToolUseByName<'mcp'>).input, null, 2);
+    default: {
+      const input = toolUse.input;
+      if (input && typeof input === 'object') {
+        return JSON.stringify(input, null, 2);
+      }
+      return String(input ?? '');
+    }
   }
-  if ('pattern' in input && typeof input.pattern === 'string') {
-    return input.pattern;
-  }
-  if ('query' in input && typeof input.query === 'string') {
-    return input.query;
-  }
-  if ('url' in input && typeof input.url === 'string') {
-    return input.url;
-  }
-  if ('skill' in input && typeof input.skill === 'string') {
-    const args = input.args ? `\n${input.args}` : '';
-    return `${input.skill}${args}`;
-  }
-
-  return JSON.stringify(input, null, 2);
 }
 
-function formatResultContent(content: string | NormalizedPart[]): string {
-  if (typeof content === 'string') {
-    return content;
-  }
-
-  return content
-    .map((part) => {
-      if (part.type === 'text') {
-        return (part as { type: 'text'; text: string }).text;
-      }
-      return JSON.stringify(part, null, 2);
-    })
-    .join('\n');
+function formatResult(toolUse: NormalizedToolUse): string {
+  const result = toolUse.result;
+  if (result === undefined || result === null) return '';
+  if (typeof result === 'string') return result;
+  if (typeof result === 'object') return JSON.stringify(result, null, 2);
+  return String(result);
 }
 
 const TOOL_COLORS: Record<string, string> = {
-  Read: 'bg-blue-900/50 border-blue-700',
-  Write: 'bg-green-900/50 border-green-700',
-  Edit: 'bg-yellow-900/50 border-yellow-700',
-  Bash: 'bg-purple-900/50 border-purple-700',
-  Glob: 'bg-cyan-900/50 border-cyan-700',
-  Grep: 'bg-cyan-900/50 border-cyan-700',
-  WebSearch: 'bg-orange-900/50 border-orange-700',
-  WebFetch: 'bg-orange-900/50 border-orange-700',
-  Task: 'bg-pink-900/50 border-pink-700',
-  TodoWrite: 'bg-indigo-900/50 border-indigo-700',
-  AskUserQuestion: 'bg-teal-900/50 border-teal-700',
-  Skill: 'bg-violet-900/50 border-violet-700',
+  read: 'bg-blue-900/50 border-blue-700',
+  write: 'bg-green-900/50 border-green-700',
+  edit: 'bg-yellow-900/50 border-yellow-700',
+  bash: 'bg-purple-900/50 border-purple-700',
+  glob: 'bg-cyan-900/50 border-cyan-700',
+  grep: 'bg-cyan-900/50 border-cyan-700',
+  'web-search': 'bg-orange-900/50 border-orange-700',
+  'web-fetch': 'bg-orange-900/50 border-orange-700',
+  'sub-agent': 'bg-pink-900/50 border-pink-700',
+  'todo-write': 'bg-indigo-900/50 border-indigo-700',
+  'ask-user-question': 'bg-teal-900/50 border-teal-700',
+  skill: 'bg-violet-900/50 border-violet-700',
 };
 
-export function ToolUseCard({
-  block,
-  result,
-}: {
-  block: NormalizedToolUsePart;
-  result?: NormalizedToolResultPart;
-}) {
+export function ToolUseCard({ toolUse }: { toolUse: NormalizedToolUse }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const colorClass =
-    TOOL_COLORS[block.toolName] || 'bg-neutral-800 border-neutral-600';
-  const formattedInput = formatInput(
-    (block.input ?? {}) as Record<string, unknown>,
-  );
+    TOOL_COLORS[toolUse.name] || 'bg-neutral-800 border-neutral-600';
+  const formattedInput = formatInput(toolUse);
 
-  const hasResult = !!result;
-  const isError = result?.isError;
-  const formattedResult = result ? formatResultContent(result.content) : '';
+  const hasResult = toolUse.result !== undefined;
+  const isError =
+    toolUse.name === 'bash'
+      ? (toolUse as ToolUseByName<'bash'>).result?.isError
+      : false;
+  const formattedResult = formatResult(toolUse);
   const resultPreview = formattedResult.split('\n')[0].slice(0, 80);
 
   return (
@@ -107,7 +99,7 @@ export function ToolUseCard({
           <ChevronRight className="h-4 w-4 shrink-0 text-neutral-400" />
         )}
         <span className="font-mono text-xs text-neutral-400">
-          {block.toolName}
+          {toolUse.name}
         </span>
 
         {/* Status indicator */}

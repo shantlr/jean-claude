@@ -23,21 +23,48 @@ fi
 
 TMP_DIR="$PROJECT_ROOT/db-tmp"
 TMP_DB="$TMP_DIR/jean-claude.db"
+TMP_DB_WAL="$TMP_DB-wal"
+TMP_DB_SHM="$TMP_DB-shm"
+
+copy_source_db() {
+  if [[ -f "$SOURCE_DB" ]]; then
+    echo "Copying database from: $SOURCE_DB"
+    echo "                   to: $TMP_DB"
+    cp "$SOURCE_DB" "$TMP_DB"
+    # Also copy the WAL and SHM files if they exist (SQLite journal files)
+    [[ -f "$SOURCE_DB-wal" ]] && cp "$SOURCE_DB-wal" "$TMP_DB_WAL"
+    [[ -f "$SOURCE_DB-shm" ]] && cp "$SOURCE_DB-shm" "$TMP_DB_SHM"
+    echo "Database copied successfully"
+  else
+    echo "Warning: Source database not found at $SOURCE_DB"
+    echo "Starting with empty database..."
+  fi
+}
 
 # Create tmp directory and copy the database
 mkdir -p "$TMP_DIR"
 
-if [[ -f "$SOURCE_DB" ]]; then
-  echo "Copying database from: $SOURCE_DB"
-  echo "                   to: $TMP_DB"
-  cp "$SOURCE_DB" "$TMP_DB"
-  # Also copy the WAL and SHM files if they exist (SQLite journal files)
-  [[ -f "$SOURCE_DB-wal" ]] && cp "$SOURCE_DB-wal" "$TMP_DB-wal"
-  [[ -f "$SOURCE_DB-shm" ]] && cp "$SOURCE_DB-shm" "$TMP_DB-shm"
-  echo "Database copied successfully"
+if [[ -f "$TMP_DB" ]]; then
+  echo "Existing temporary database found at: $TMP_DB"
+  while true; do
+    read -r -p "Use existing temporary database or override it? [use/override]: " choice
+    case "$choice" in
+      use|u)
+        echo "Keeping existing temporary database"
+        break
+        ;;
+      override|o)
+        rm -f "$TMP_DB" "$TMP_DB_WAL" "$TMP_DB_SHM"
+        copy_source_db
+        break
+        ;;
+      *)
+        echo "Please answer 'use' or 'override'."
+        ;;
+    esac
+  done
 else
-  echo "Warning: Source database not found at $SOURCE_DB"
-  echo "Starting with empty database..."
+  copy_source_db
 fi
 
 echo ""

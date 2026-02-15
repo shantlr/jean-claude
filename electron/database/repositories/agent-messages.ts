@@ -1,171 +1,154 @@
-import type { AssistantMessage, Part, UserMessage } from '@opencode-ai/sdk';
-
 import type {
-  AgentBackendType,
-  NormalizedMessage,
-} from '@shared/agent-backend-types';
-import { CURRENT_NORMALIZATION_VERSION } from '@shared/agent-backend-types';
-import type { AgentMessage } from '@shared/agent-types';
+  Event as OcEvent,
+  Part as OcPart,
+  Message as OcMessage,
+  AssistantMessage as OcAssistantMessage,
+} from '@opencode-ai/sdk';
 
-import { normalizeClaudeMessage } from '../../services/agent-backends/claude/normalize-claude-message';
-import { normalizeOpencodeMessage } from '../../services/agent-backends/opencode/normalize-opencode-message';
+import type { AgentMessage } from '@shared/agent-types';
+import type { NormalizedEntry } from '@shared/normalized-message-v2';
+import { CURRENT_NORMALIZATION_VERSION } from '@shared/normalized-message-v2';
+
+import type { NormalizationContext } from '../../services/agent-backends/claude/normalize-claude-message-v2';
+import { normalizeClaudeMessageV2 } from '../../services/agent-backends/claude/normalize-claude-message-v2';
+import {
+  normalizeOpenCodeV2,
+  type OpenCodeNormalizationContext,
+  type OpenCodeRawInput,
+} from '../../services/agent-backends/opencode/normalize-opencode-message-v2';
 import { db } from '../index';
 
 export const AgentMessageRepository = {
   /**
-   * Find all normalized messages for a task.
-   * Falls back to on-the-fly normalization via the linked raw_message if normalizedData is missing.
+   * Find all normalized entries for a task.
+   * Each row is one entry — no deduplication needed.
    */
-  findByTaskId: async (taskId: string): Promise<NormalizedMessage[]> => {
-    // Only select lightweight columns — avoid joining raw_messages eagerly
-    // since most rows already have normalizedData.
+  findByTaskId: async (taskId: string): Promise<NormalizedEntry[]> => {
     const rows = await db
       .selectFrom('agent_messages')
-      .select(['agent_messages.normalizedData', 'agent_messages.rawMessageId'])
+      .select(['agent_messages.data'])
       .where('agent_messages.taskId', '=', taskId)
       .orderBy('agent_messages.messageIndex', 'asc')
       .execute();
 
-    const messages: NormalizedMessage[] = [];
-    // Deduplicate by normalized message id: if multiple rows share the same
-    // message id (e.g. from streaming snapshots persisted before the upsert fix),
-    // keep only the last one (highest messageIndex = latest snapshot).
-    const seenIds = new Map<string, number>();
-
-    // Collect rawMessageIds for rows that need fallback normalization
-    const fallbackRows: { index: number; rawMessageId: string }[] = [];
-
-    for (const row of rows) {
-      if (row.normalizedData) {
-        const normalized = JSON.parse(row.normalizedData) as NormalizedMessage;
-        const prevIndex = seenIds.get(normalized.id);
-        if (prevIndex !== undefined) {
-          messages[prevIndex] = normalized;
-        } else {
-          seenIds.set(normalized.id, messages.length);
-          messages.push(normalized);
-        }
-      } else if (row.rawMessageId) {
-        // Mark for lazy fallback — we'll batch-fetch raw data only for these
-        fallbackRows.push({
-          index: messages.length,
-          rawMessageId: row.rawMessageId,
-        });
-        // Reserve a slot (may be replaced below)
-        messages.push(undefined as unknown as NormalizedMessage);
-      }
-    }
-
-    // Lazy fallback: fetch raw data only for the few rows that need it
-    if (fallbackRows.length > 0) {
-      const rawIds = fallbackRows.map((r) => r.rawMessageId);
-      const rawRows = await db
-        .selectFrom('raw_messages')
-        .select([
-          'raw_messages.id',
-          'raw_messages.rawData',
-          'raw_messages.rawFormat',
-        ])
-        .where('raw_messages.id', 'in', rawIds)
-        .execute();
-
-      const rawMap = new Map(rawRows.map((r) => [r.id, r]));
-
-      // Process in reverse so we can safely splice out unfilled slots
-      for (let i = fallbackRows.length - 1; i >= 0; i--) {
-        const { index, rawMessageId } = fallbackRows[i];
-        const rawRow = rawMap.get(rawMessageId);
-        let normalized: NormalizedMessage | undefined;
-
-        if (rawRow?.rawData) {
-          if (rawRow.rawFormat === 'claude-code') {
-            const rawMsg = JSON.parse(rawRow.rawData) as AgentMessage;
-            normalized = normalizeClaudeMessage(rawMsg) ?? undefined;
-          } else if (rawRow.rawFormat === 'opencode') {
-            const rawObj = JSON.parse(rawRow.rawData) as {
-              info: UserMessage | AssistantMessage;
-              parts: Part[];
-            };
-            normalized = normalizeOpencodeMessage(rawObj.info, rawObj.parts);
-          }
-        }
-
-        if (normalized) {
-          const prevIndex = seenIds.get(normalized.id);
-          if (prevIndex !== undefined) {
-            messages[prevIndex] = normalized;
-            messages.splice(index, 1);
-          } else {
-            seenIds.set(normalized.id, index);
-            messages[index] = normalized;
-          }
-        } else {
-          // Remove the reserved slot — no valid message
-          messages.splice(index, 1);
-        }
-      }
-    }
-
-    return messages;
+    return rows
+      .filter((row) => row.data)
+      .map((row) => JSON.parse(row.data) as NormalizedEntry);
   },
 
   /**
-   * Create a normalized task message, optionally linked to a raw message.
+   * Create a normalized entry row, optionally linked to a raw message.
    */
   create: async ({
     taskId,
     messageIndex,
-    normalized,
+    entry,
     rawMessageId,
   }: {
     taskId: string;
     messageIndex: number;
-    normalized: NormalizedMessage;
+    entry: NormalizedEntry;
     rawMessageId?: string | null;
   }) => {
     return db
       .insertInto('agent_messages')
       .values({
+        id: entry.id,
         taskId,
         messageIndex,
-        messageType: normalized.role,
-        normalizedData: JSON.stringify(normalized),
+        type: entry.type,
+        toolId: entry.type === 'tool-use' ? entry.toolId : null,
+        parentToolId: entry.parentToolId ?? null,
+        data: JSON.stringify(entry),
+        model: entry.model ?? null,
+        isSynthetic: entry.isSynthetic ? 1 : null,
+        date: entry.date,
         normalizedVersion: CURRENT_NORMALIZATION_VERSION,
         rawMessageId: rawMessageId ?? null,
       })
+      .onConflict((oc) =>
+        oc.column('id').doUpdateSet({
+          data: JSON.stringify(entry),
+          type: entry.type,
+          toolId: entry.type === 'tool-use' ? entry.toolId : null,
+          messageIndex,
+          rawMessageId: rawMessageId ?? null,
+        }),
+      )
       .returningAll()
       .executeTakeFirstOrThrow();
   },
 
   /**
-   * Update an existing agent_messages row by matching the normalized message id
-   * embedded in the normalizedData JSON. Used for streaming updates where the same
-   * logical message is emitted multiple times with progressively more content.
+   * Update an existing entry by its id (row PK = entry id).
+   * Used for streaming updates where the same logical entry is emitted multiple
+   * times with progressively more content.
    *
    * Returns the number of rows updated (0 or 1).
    */
-  updateNormalizedData: async ({
+  updateEntry: async ({
     taskId,
-    normalizedId,
-    normalized,
-    rawMessageId,
+    entry,
   }: {
     taskId: string;
-    normalizedId: string;
-    normalized: NormalizedMessage;
-    rawMessageId?: string | null;
+    entry: NormalizedEntry;
   }): Promise<number> => {
     const result = await db
       .updateTable('agent_messages')
       .set({
-        normalizedData: JSON.stringify(normalized),
-        rawMessageId: rawMessageId ?? undefined,
+        data: JSON.stringify(entry),
+        type: entry.type,
+        toolId: entry.type === 'tool-use' ? entry.toolId : null,
       })
+      .where('id', '=', entry.id)
       .where('taskId', '=', taskId)
-      .where('normalizedData', 'like', `%"id":"${normalizedId}"%`)
+      .executeTakeFirst();
+    return Number(result.numUpdatedRows);
+  },
+
+  /**
+   * Patch a tool-use entry's result by matching its toolId column.
+   * Used when the tool result arrives as a separate event.
+   *
+   * Returns the number of rows updated (0 or 1).
+   */
+  updateToolResult: async ({
+    taskId,
+    toolId,
+    result,
+    isError: _isError,
+    durationMs: _durationMs,
+  }: {
+    taskId: string;
+    toolId: string;
+    result?: string;
+    isError: boolean;
+    durationMs?: number;
+  }): Promise<number> => {
+    // Read current row, patch it, write back
+    const row = await db
+      .selectFrom('agent_messages')
+      .select(['data'])
+      .where('taskId', '=', taskId)
+      .where('toolId', '=', toolId)
       .executeTakeFirst();
 
-    return Number(result.numUpdatedRows);
+    if (!row?.data) return 0;
+
+    const entry = JSON.parse(row.data) as NormalizedEntry;
+    if (entry.type !== 'tool-use') return 0;
+
+    // Patch the result onto the tool-use entry
+    const patched = { ...entry, result } as NormalizedEntry;
+
+    const updateResult = await db
+      .updateTable('agent_messages')
+      .set({ data: JSON.stringify(patched) })
+      .where('taskId', '=', taskId)
+      .where('toolId', '=', toolId)
+      .executeTakeFirst();
+
+    return Number(updateResult.numUpdatedRows);
   },
 
   deleteByTaskId: async (taskId: string) => {
@@ -213,7 +196,7 @@ export const AgentMessageRepository = {
       .selectFrom('agent_messages')
       .select([
         'agent_messages.messageIndex',
-        'agent_messages.normalizedData',
+        'agent_messages.data',
         'agent_messages.rawMessageId',
       ])
       .where('agent_messages.taskId', '=', taskId)
@@ -229,14 +212,14 @@ export const AgentMessageRepository = {
 
     for (const row of normalizedRows) {
       if (row.rawMessageId) {
-        if (row.normalizedData) {
-          normalizedByRawId.set(row.rawMessageId, row.normalizedData);
+        if (row.data) {
+          normalizedByRawId.set(row.rawMessageId, row.data);
         }
-      } else if (row.normalizedData) {
+      } else if (row.data) {
         // Synthetic message (no raw counterpart)
         syntheticNormalized.push({
           messageIndex: row.messageIndex,
-          normalizedData: row.normalizedData,
+          normalizedData: row.data,
         });
       }
     }
@@ -293,116 +276,202 @@ export const AgentMessageRepository = {
   /**
    * Re-normalize all messages for a task from raw data.
    *
-   * Algorithm:
-   * 1. Fetch all raw_messages for the task (ordered by messageIndex)
-   * 2. Fetch existing synthetic agent_messages (no rawMessageId) to preserve them
-   * 3. Re-run normalization for each raw message using the appropriate backend normalizer
-   * 4. Merge re-normalized messages with synthetic messages, sorted by original messageIndex
-   * 5. Delete all existing agent_messages for the task
-   * 6. Re-insert all messages with fresh sequential messageIndex values
-   *
-   * Returns the count of newly created normalized messages.
+   * Reads all raw_messages, runs each through the normalizer to produce
+   * flat entries, patches tool-result events onto matching tool-use entries,
+   * preserves synthetic entries (rawMessageId = null), then deletes all
+   * existing agent_messages and re-inserts the rebuilt set.
    */
   reprocessNormalization: async (taskId: string): Promise<number> => {
-    // 1. Fetch all raw messages ordered by messageIndex
     const rawRows = await db
       .selectFrom('raw_messages')
-      .select([
-        'raw_messages.id',
-        'raw_messages.messageIndex',
-        'raw_messages.rawData',
-        'raw_messages.rawFormat',
-      ])
-      .where('raw_messages.taskId', '=', taskId)
-      .orderBy('raw_messages.messageIndex', 'asc')
+      .select(['id', 'messageIndex', 'rawData', 'rawFormat'])
+      .where('taskId', '=', taskId)
+      .orderBy('messageIndex', 'asc')
       .execute();
 
-    // 2. Fetch existing synthetic messages (no raw counterpart) to preserve them
+    // Preserve synthetic entries (no rawMessageId)
     const syntheticRows = await db
       .selectFrom('agent_messages')
-      .select([
-        'agent_messages.messageIndex',
-        'agent_messages.messageType',
-        'agent_messages.normalizedData',
-        'agent_messages.normalizedVersion',
-      ])
-      .where('agent_messages.taskId', '=', taskId)
-      .where('agent_messages.rawMessageId', 'is', null)
-      .orderBy('agent_messages.messageIndex', 'asc')
+      .selectAll()
+      .where('taskId', '=', taskId)
+      .where('rawMessageId', 'is', null)
+      .orderBy('messageIndex', 'asc')
       .execute();
 
-    // 3. Re-normalize each raw message
-    type Entry = {
-      originalMessageIndex: number;
+    const entries: Array<{
+      originalIndex: number;
       rawMessageId: string | null;
-      messageType: string;
-      normalizedData: string;
-      normalizedVersion: number;
-    };
+      entry: NormalizedEntry;
+    }> = [];
 
-    const entries: Entry[] = [];
+    // Map toolId -> entry index for tool-result patching
+    const toolIdToEntryIndex = new Map<string, number>();
 
-    for (const raw of rawRows) {
-      if (!raw.rawData) continue;
+    // Determine which format(s) are present
+    const formats = new Set(rawRows.map((r) => r.rawFormat));
 
-      const format = raw.rawFormat as AgentBackendType;
-      let normalized: NormalizedMessage | null = null;
+    if (formats.has('claude-code')) {
+      const claudeCtx: NormalizationContext = {
+        sessionIdEmitted: false,
+        pendingToolUses: new Map(),
+      };
 
-      if (format === 'claude-code') {
+      for (const raw of rawRows) {
+        if (!raw.rawData || raw.rawFormat !== 'claude-code') continue;
         const rawMsg = JSON.parse(raw.rawData) as AgentMessage;
-        normalized = normalizeClaudeMessage(rawMsg);
-      } else if (format === 'opencode') {
-        const rawObj = JSON.parse(raw.rawData) as {
-          info: UserMessage | AssistantMessage;
-          parts: Part[];
-        };
-        normalized = normalizeOpencodeMessage(rawObj.info, rawObj.parts);
-      }
+        const events = normalizeClaudeMessageV2(rawMsg, claudeCtx);
 
-      if (normalized) {
-        entries.push({
-          originalMessageIndex: raw.messageIndex,
-          rawMessageId: raw.id,
-          messageType: normalized.role,
-          normalizedData: JSON.stringify(normalized),
-          normalizedVersion: CURRENT_NORMALIZATION_VERSION,
-        });
+        for (const event of events) {
+          if (event.type === 'session-id') {
+            claudeCtx.sessionIdEmitted = true;
+          }
+          if (event.type === 'entry') {
+            const idx = entries.length;
+            entries.push({
+              originalIndex: raw.messageIndex,
+              rawMessageId: raw.id,
+              entry: event.entry,
+            });
+            if (event.entry.type === 'tool-use') {
+              toolIdToEntryIndex.set(event.entry.toolId, idx);
+            }
+          }
+          // entry-update: normalizer matched a tool result to its pending
+          // tool-use and produced a properly typed result via addResultToToolUse
+          if (event.type === 'entry-update') {
+            const idx = entries.findIndex((e) => e.entry.id === event.entry.id);
+            if (idx !== -1) {
+              entries[idx].entry = event.entry;
+            }
+          }
+          // Fallback: tool-result with string content (resumed sessions where
+          // the pending tool-use wasn't tracked in ctx)
+          if (event.type === 'tool-result') {
+            const idx = toolIdToEntryIndex.get(event.toolId);
+            if (idx !== undefined) {
+              const existing = entries[idx].entry;
+              if (existing.type === 'tool-use') {
+                entries[idx].entry = {
+                  ...existing,
+                  result: event.result,
+                } as NormalizedEntry;
+              }
+            }
+          }
+        }
       }
     }
 
-    // 4. Merge synthetic messages back in, preserving their original position
+    if (formats.has('opencode')) {
+      const ocCtx: OpenCodeNormalizationContext = {
+        emittedEntryIds: new Set(),
+        rawMessages: new Map(),
+        rawParts: new Map(),
+        sessionStartTime: 0,
+        totalCost: 0,
+      };
+
+      for (const raw of rawRows) {
+        if (!raw.rawData || raw.rawFormat !== 'opencode') continue;
+        const parsed = JSON.parse(raw.rawData);
+
+        // Determine if this is an SSE event or a prompt-result
+        let input: OpenCodeRawInput;
+        if (parsed.type && typeof parsed.type === 'string') {
+          // SSE event — replay context updates before normalizing
+          const event = parsed as OcEvent;
+          replayOpenCodeContextUpdate(event, ocCtx);
+          input = { kind: 'event', event };
+        } else if (parsed.info && parsed.parts) {
+          // Prompt result — update context then normalize
+          const info = parsed.info as OcMessage;
+          const parts = parsed.parts as OcPart[];
+          ocCtx.rawMessages.set(info.id, info);
+          ocCtx.rawParts.set(info.id, parts);
+          if (info.role === 'assistant') {
+            ocCtx.totalCost += (info as OcAssistantMessage).cost ?? 0;
+          }
+          input = {
+            kind: 'prompt-result',
+            info: info as OcAssistantMessage,
+            parts,
+          };
+        } else {
+          continue;
+        }
+
+        const events = normalizeOpenCodeV2(input, ocCtx);
+
+        for (const event of events) {
+          if (event.type === 'entry') {
+            ocCtx.emittedEntryIds.add(event.entry.id);
+            const idx = entries.length;
+            entries.push({
+              originalIndex: raw.messageIndex,
+              rawMessageId: raw.id,
+              entry: event.entry,
+            });
+            if (event.entry.type === 'tool-use') {
+              toolIdToEntryIndex.set(event.entry.toolId, idx);
+            }
+          }
+          if (event.type === 'entry-update') {
+            const idx = entries.findIndex((e) => e.entry.id === event.entry.id);
+            if (idx !== -1) {
+              entries[idx].entry = event.entry;
+            }
+          }
+          if (event.type === 'tool-result') {
+            const idx = toolIdToEntryIndex.get(event.toolId);
+            if (idx !== undefined) {
+              const existing = entries[idx].entry;
+              if (existing.type === 'tool-use') {
+                entries[idx].entry = {
+                  ...existing,
+                  result: event.result,
+                } as NormalizedEntry;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Add synthetic entries back
     for (const syn of syntheticRows) {
-      if (!syn.normalizedData) continue;
+      if (!syn.data) continue;
       entries.push({
-        originalMessageIndex: syn.messageIndex,
+        originalIndex: syn.messageIndex,
         rawMessageId: null,
-        messageType: syn.messageType,
-        normalizedData: syn.normalizedData,
-        normalizedVersion: syn.normalizedVersion,
+        entry: JSON.parse(syn.data) as NormalizedEntry,
       });
     }
 
-    // Sort by original messageIndex so synthetic messages stay in their original position
-    entries.sort((a, b) => a.originalMessageIndex - b.originalMessageIndex);
+    entries.sort((a, b) => a.originalIndex - b.originalIndex);
 
-    // 5. Delete all existing agent_messages for the task
+    // Delete and re-insert
     await db
       .deleteFrom('agent_messages')
       .where('taskId', '=', taskId)
       .execute();
 
-    // 6. Re-insert with fresh sequential messageIndex
     for (let i = 0; i < entries.length; i++) {
-      const entry = entries[i];
+      const { entry, rawMessageId } = entries[i];
       await db
         .insertInto('agent_messages')
         .values({
+          id: entry.id,
           taskId,
           messageIndex: i,
-          messageType: entry.messageType,
-          normalizedData: entry.normalizedData,
-          normalizedVersion: entry.normalizedVersion,
-          rawMessageId: entry.rawMessageId,
+          type: entry.type,
+          toolId: entry.type === 'tool-use' ? entry.toolId : null,
+          parentToolId: entry.parentToolId ?? null,
+          data: JSON.stringify(entry),
+          model: entry.model ?? null,
+          isSynthetic: entry.isSynthetic ? 1 : null,
+          date: entry.date,
+          normalizedVersion: CURRENT_NORMALIZATION_VERSION,
+          rawMessageId,
         })
         .execute();
     }
@@ -410,3 +479,62 @@ export const AgentMessageRepository = {
     return entries.length;
   },
 };
+
+/**
+ * Replay OpenCode context updates for an SSE event.
+ * Mirrors the pre-normalizer updates in opencode-backend.ts's mapEvent().
+ */
+function replayOpenCodeContextUpdate(
+  event: OcEvent,
+  ctx: OpenCodeNormalizationContext,
+): void {
+  switch (event.type) {
+    case 'message.updated': {
+      const props = event.properties as { info: OcMessage };
+      ctx.rawMessages.set(props.info.id, props.info);
+      if (props.info.role === 'assistant') {
+        ctx.totalCost += (props.info as OcAssistantMessage).cost ?? 0;
+      }
+      break;
+    }
+    case 'message.part.updated': {
+      const props = event.properties as { part: OcPart };
+      const part = props.part;
+      const existing = ctx.rawParts.get(part.messageID) ?? [];
+      const idx = existing.findIndex((p) => p.id === part.id);
+      if (idx >= 0) {
+        existing[idx] = part;
+      } else {
+        existing.push(part);
+      }
+      ctx.rawParts.set(part.messageID, existing);
+      break;
+    }
+    case 'message.removed': {
+      const props = event.properties as { messageID: string };
+      const prefix = `${props.messageID}:`;
+      for (const entryId of ctx.emittedEntryIds) {
+        if (entryId.startsWith(prefix)) {
+          ctx.emittedEntryIds.delete(entryId);
+        }
+      }
+      ctx.rawMessages.delete(props.messageID);
+      ctx.rawParts.delete(props.messageID);
+      break;
+    }
+    case 'message.part.removed': {
+      const props = event.properties as {
+        messageID: string;
+        partID: string;
+      };
+      const parts = ctx.rawParts.get(props.messageID);
+      if (parts) {
+        const idx = parts.findIndex((p) => p.id === props.partID);
+        if (idx >= 0) parts.splice(idx, 1);
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}

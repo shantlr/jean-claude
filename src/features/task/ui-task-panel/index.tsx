@@ -686,12 +686,12 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               onCancelQueuedPrompt={cancelQueuedPrompt}
             />
           ) : (
-            <div className="p-6">
+            <div className="h-full overflow-y-auto p-6">
               <div className="mb-2 text-sm font-medium text-neutral-400">
                 Prompt
               </div>
               <div className="rounded-lg border border-neutral-700 bg-neutral-800 p-4">
-                <pre className="font-sans text-sm whitespace-pre-wrap">
+                <pre className="overflow-x-hidden font-sans text-xs whitespace-pre-wrap">
                   {task.prompt}
                 </pre>
               </div>

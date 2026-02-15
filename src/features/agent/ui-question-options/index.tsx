@@ -1,11 +1,7 @@
 import { HelpCircle, Send } from 'lucide-react';
 import { useState } from 'react';
 
-import type {
-  AgentQuestionEvent,
-  QuestionResponse,
-  AgentQuestion,
-} from '@shared/agent-types';
+import type { QuestionResponse, AgentQuestion } from '@shared/agent-types';
 
 function QuestionInput({
   question,
@@ -114,7 +110,11 @@ export function QuestionOptions({
   request,
   onRespond,
 }: {
-  request: AgentQuestionEvent;
+  request: {
+    taskId: string;
+    requestId: string;
+    questions: AgentQuestion[];
+  };
   onRespond: (requestId: string, response: QuestionResponse) => void;
 }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});

@@ -16,7 +16,6 @@ import {
   type Part as OcPart,
   type Message as OcMessage,
   type AssistantMessage as OcAssistantMessage,
-  type UserMessage as OcUserMessage,
   type Permission as OcPermission,
 } from '@opencode-ai/sdk';
 
@@ -25,6 +24,7 @@ import type {
   AgentBackendConfig,
   AgentEvent,
   AgentSession,
+  AgentTaskContext,
   NormalizedPermissionResponse,
 } from '@shared/agent-backend-types';
 import type { InteractionMode } from '@shared/types';
@@ -32,9 +32,10 @@ import type { InteractionMode } from '@shared/types';
 import { dbg } from '../../../lib/debug';
 
 import {
-  normalizeOpencodeMessage,
-  synthesizeResultMessage,
-} from './normalize-opencode-message';
+  normalizeOpenCodeV2,
+  type OpenCodeNormalizationContext,
+  type OpenCodeRawInput,
+} from './normalize-opencode-message-v2';
 
 // --- Server lifecycle (singleton) ---
 
@@ -77,6 +78,8 @@ async function getOrCreateServer(): Promise<ServerHandle> {
   return (await serverInitPromise)!;
 }
 
+// --- Backend deps (injected by agent-service for raw persistence) ---
+
 // --- Session tracking ---
 
 interface OpenCodeSessionState {
@@ -86,7 +89,7 @@ interface OpenCodeSessionState {
   cwd: string;
   /** Abort controller for stopping the event stream */
   abortController: AbortController;
-  /** Accumulated messages for this session */
+  /** Accumulated messages for this session (raw data for normalization context) */
   messages: Map<string, { info: OcMessage; parts: OcPart[] }>;
   /** Pending permission requests waiting for user response */
   pendingPermissions: Map<
@@ -100,10 +103,19 @@ interface OpenCodeSessionState {
   startTime: number;
   /** Accumulated cost */
   totalCost: number;
+  /** V2 normalization context */
+  normalizationCtx: OpenCodeNormalizationContext;
+  /** Current message index for raw persistence ordering */
+  messageIndex: number;
 }
 
 export class OpenCodeBackend implements AgentBackend {
   private sessions = new Map<string, OpenCodeSessionState>();
+  private taskContext: AgentTaskContext;
+
+  constructor(context: AgentTaskContext) {
+    this.taskContext = context;
+  }
 
   async start(
     config: AgentBackendConfig,
@@ -115,7 +127,7 @@ export class OpenCodeBackend implements AgentBackend {
     let session: OcSession;
 
     if (config.sessionId) {
-      // Try to resume existing session
+      // Try to resume existing session — never fall back to creating a new one
       try {
         const existing = await client.session.get({
           path: { id: config.sessionId },
@@ -125,12 +137,21 @@ export class OpenCodeBackend implements AgentBackend {
           session = existing.data;
           dbg.agent('Resuming OpenCode session %s', session.id);
         } else {
-          // Session not found, create new
-          session = await this.createSession(client, config);
+          throw new Error(
+            `Failed to resume OpenCode session ${config.sessionId}: session not found`,
+          );
         }
-      } catch {
-        // Session not found, create new
-        session = await this.createSession(client, config);
+      } catch (error) {
+        // Re-throw if it's already our error, otherwise wrap it
+        if (
+          error instanceof Error &&
+          error.message.includes('Failed to resume')
+        ) {
+          throw error;
+        }
+        throw new Error(
+          `Failed to resume OpenCode session ${config.sessionId}: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     } else {
       session = await this.createSession(client, config);
@@ -144,6 +165,14 @@ export class OpenCodeBackend implements AgentBackend {
       pendingPermissions: new Map(),
       startTime: Date.now(),
       totalCost: 0,
+      normalizationCtx: {
+        emittedEntryIds: new Set(),
+        rawMessages: new Map(),
+        rawParts: new Map(),
+        sessionStartTime: Date.now(),
+        totalCost: 0,
+      },
+      messageIndex: this.taskContext.sessionStartIndex,
     };
 
     this.sessions.set(session.id, state);
@@ -333,27 +362,56 @@ export class OpenCodeBackend implements AgentBackend {
           ...(model ? { model } : {}),
         },
       })
-      .then((result) => {
+      .then(async (result) => {
         promptComplete = true;
 
-        // Emit the final assistant message from prompt response
+        // Emit the final assistant message from prompt response using V2 normalizer
         if (result.data) {
-          const normalized = normalizeOpencodeMessage(
-            result.data.info,
-            result.data.parts,
-          );
+          const ctx = state.normalizationCtx;
+
+          // Update context with prompt result data
+          ctx.rawMessages.set(result.data.info.id, result.data.info);
+          ctx.rawParts.set(result.data.info.id, result.data.parts);
 
           // Track cost
           if (result.data.info.role === 'assistant') {
-            state.totalCost +=
-              (result.data.info as OcAssistantMessage).cost ?? 0;
+            const cost = (result.data.info as OcAssistantMessage).cost ?? 0;
+            state.totalCost += cost;
+            ctx.totalCost = state.totalCost;
           }
 
-          return {
-            type: 'message' as const,
-            message: normalized,
-            _raw: { info: result.data.info, parts: result.data.parts },
+          // Persist raw prompt result
+          const rawMessageId = await this.persistRawForMessage(
+            state,
+            result.data,
+          );
+
+          // Normalize via V2 prompt-result path
+          const input: OpenCodeRawInput = {
+            kind: 'prompt-result',
+            info: result.data.info as OcAssistantMessage,
+            parts: result.data.parts,
           };
+          const normEvents = normalizeOpenCodeV2(input, ctx);
+
+          // Update emittedEntryIds
+          for (const ne of normEvents) {
+            if (ne.type === 'entry') {
+              ctx.emittedEntryIds.add(ne.entry.id);
+            }
+          }
+
+          // Return the first entry event as the prompt result
+          const entryEvent = normEvents.find(
+            (ne) => ne.type === 'entry' || ne.type === 'entry-update',
+          );
+          if (entryEvent && 'entry' in entryEvent) {
+            return {
+              type: 'entry' as const,
+              entry: entryEvent.entry,
+              rawMessageId,
+            };
+          }
         }
         return null;
       })
@@ -378,10 +436,15 @@ export class OpenCodeBackend implements AgentBackend {
         // Only process events for our session
         const sessionIdFromEvent = this.getSessionIdFromEvent(ocEvent);
         if (sessionIdFromEvent && sessionIdFromEvent !== sessionId) {
+          dbg.agent(
+            '[opencode] Skipping event for session %s',
+            sessionIdFromEvent,
+          );
           continue;
         }
 
-        const agentEvents = this.mapEvent(ocEvent, state);
+        const rawMessageId = await this.persistRawForMessage(state, ocEvent);
+        const agentEvents = this.mapEvent(ocEvent, state, rawMessageId);
         for (const agentEvent of agentEvents) {
           yield agentEvent;
         }
@@ -413,15 +476,15 @@ export class OpenCodeBackend implements AgentBackend {
       }
     } catch (error) {
       if (!state.abortController.signal.aborted) {
-        dbg.agent('OpenCode event stream error: %O', error);
+        dbg.agent('[opencode] event stream error: %O', error);
       }
     }
 
     // Wait for the prompt response to complete
     const promptResult = await promptPromise;
     if (promptResult) {
-      if (promptResult.type === 'message') {
-        yield promptResult as AgentEvent & { _raw: unknown };
+      if (promptResult.type === 'entry') {
+        yield promptResult as AgentEvent;
       } else if (promptResult.type === 'error') {
         yield promptResult;
       }
@@ -479,172 +542,150 @@ export class OpenCodeBackend implements AgentBackend {
 
   /**
    * Map an OpenCode SSE event to zero or more AgentEvents.
+   *
+   * Updates the normalization context (rawMessages, rawParts, cost) BEFORE
+   * calling the V2 normalizer, then converts NormalizationEvents → AgentEvents.
    */
-  private mapEvent(event: OcEvent, state: OpenCodeSessionState): AgentEvent[] {
-    const events: AgentEvent[] = [];
+  private mapEvent(
+    event: OcEvent,
+    state: OpenCodeSessionState,
+    rawMessageId: string | null,
+  ): AgentEvent[] {
+    const ctx = state.normalizationCtx;
+
+    // --- Pre-normalizer context updates ---
+    // The V2 normalizer reads from ctx but never mutates it,
+    // so we update rawMessages/rawParts here before calling it.
 
     switch (event.type) {
       case 'message.updated': {
         const props = event.properties as { info: OcMessage };
         const msg = props.info;
 
-        // Fetch existing parts for this message
-        const existing = state.messages.get(msg.id);
-        const parts = existing?.parts ?? [];
+        // Update raw context
+        ctx.rawMessages.set(msg.id, msg);
 
-        // Update the stored message
-        state.messages.set(msg.id, { info: msg, parts });
+        // Also update the legacy messages map (used for prompt-result later)
+        const existing = state.messages.get(msg.id);
+        state.messages.set(msg.id, {
+          info: msg,
+          parts: existing?.parts ?? [],
+        });
 
         // Track cost from assistant messages
         if (msg.role === 'assistant') {
           const assistantMsg = msg as OcAssistantMessage;
-          state.totalCost += assistantMsg.cost ?? 0;
+          const cost = assistantMsg.cost ?? 0;
+          state.totalCost += cost;
+          ctx.totalCost = state.totalCost;
         }
-
-        const normalized = normalizeOpencodeMessage(
-          msg as OcUserMessage | OcAssistantMessage,
-          parts,
-        );
-        events.push({
-          type: 'message',
-          message: normalized,
-          _raw: { info: msg, parts },
-        } as AgentEvent & { _raw: unknown });
         break;
       }
 
       case 'message.part.updated': {
-        const props = event.properties as { part: OcPart; delta?: string };
+        const props = event.properties as { part: OcPart };
         const part = props.part;
 
-        // Update the stored parts for this message
+        // Update rawParts in context
+        const existingParts = ctx.rawParts.get(part.messageID) ?? [];
+        const partIndex = existingParts.findIndex((p) => p.id === part.id);
+        if (partIndex >= 0) {
+          existingParts[partIndex] = part;
+        } else {
+          existingParts.push(part);
+        }
+        ctx.rawParts.set(part.messageID, existingParts);
+
+        // Also update the legacy messages map
         const msgEntry = state.messages.get(part.messageID);
         if (msgEntry) {
-          const partIndex = msgEntry.parts.findIndex((p) => p.id === part.id);
-          if (partIndex >= 0) {
-            msgEntry.parts[partIndex] = part;
+          const legacyIdx = msgEntry.parts.findIndex((p) => p.id === part.id);
+          if (legacyIdx >= 0) {
+            msgEntry.parts[legacyIdx] = part;
           } else {
             msgEntry.parts.push(part);
           }
-
-          // Re-emit the full message with updated parts
-          const normalized = normalizeOpencodeMessage(
-            msgEntry.info as OcUserMessage | OcAssistantMessage,
-            msgEntry.parts,
-          );
-          events.push({
-            type: 'message',
-            message: normalized,
-            _raw: { info: msgEntry.info, parts: msgEntry.parts },
-          } as AgentEvent & { _raw: unknown });
-        }
-
-        // Emit tool state updates for tool parts
-        if (part.type === 'tool') {
-          const toolPart = part as OcPart & {
-            callID: string;
-            tool: string;
-            state: { status: string };
-          };
-          events.push({
-            type: 'tool-state-update',
-            messageId: part.messageID,
-            toolId: toolPart.callID,
-            state: toolPart.state.status as
-              | 'pending'
-              | 'running'
-              | 'completed'
-              | 'error',
-          });
         }
         break;
       }
 
       case 'message.removed': {
-        const props = event.properties as {
-          sessionID: string;
-          messageID: string;
-        };
+        const props = event.properties as { messageID: string };
+        // Clean up emittedEntryIds for entries belonging to this message
+        // Entry IDs use the format `${messageId}:${partId}`
+        const prefix = `${props.messageID}:`;
+        for (const entryId of ctx.emittedEntryIds) {
+          if (entryId.startsWith(prefix)) {
+            ctx.emittedEntryIds.delete(entryId);
+          }
+        }
+        ctx.rawMessages.delete(props.messageID);
+        ctx.rawParts.delete(props.messageID);
         state.messages.delete(props.messageID);
-        events.push({ type: 'message-removed', messageId: props.messageID });
         break;
       }
 
-      case 'permission.updated': {
-        const permission = event.properties as OcPermission;
-        events.push({
-          type: 'permission-request',
-          request: {
-            requestId: permission.id,
-            toolName: permission.type,
-            input: permission.metadata,
-            description: permission.title,
-          },
-        });
-        break;
-      }
-
-      case 'session.updated': {
-        const props = event.properties as { info: OcSession };
-        events.push({
-          type: 'session-updated',
-          title: props.info.title,
-        });
-        break;
-      }
-
-      case 'session.compacted': {
-        // Emit a compaction message
-        const compactMsg = synthesizeResultMessage({
-          isError: false,
-          text: 'Context compacted',
-        });
-        compactMsg.parts = [
-          {
-            type: 'compact',
-            trigger: 'auto',
-            preTokens: 0,
-          },
-        ];
-        events.push({
-          type: 'message',
-          message: compactMsg,
-        });
-        break;
-      }
-
-      case 'session.status': {
+      case 'message.part.removed': {
         const props = event.properties as {
-          sessionID: string;
-          status: { type: string; attempt?: number; message?: string };
+          messageID: string;
+          partID: string;
         };
-        if (props.status.type === 'retry') {
-          events.push({
-            type: 'rate-limit',
-            retryAfterMs: undefined,
-          });
+        const parts = ctx.rawParts.get(props.messageID);
+        if (parts) {
+          const idx = parts.findIndex((p) => p.id === props.partID);
+          if (idx >= 0) parts.splice(idx, 1);
         }
         break;
       }
 
-      case 'session.error': {
-        const props = event.properties as {
-          sessionID?: string;
-          error?: { name: string; data: { message: string } };
-        };
-        events.push({
-          type: 'error',
-          error: props.error?.data?.message ?? 'Unknown error',
-        });
-        break;
-      }
-
       default:
-        // Other events (file.edited, todo.updated, vcs.branch.updated, etc.)
-        // are not directly mapped to AgentEvents.
         break;
     }
 
-    return events;
+    // --- Call V2 normalizer ---
+
+    const input: OpenCodeRawInput = { kind: 'event', event };
+    const normEvents = normalizeOpenCodeV2(input, ctx);
+
+    // --- Post-normalizer: update emittedEntryIds for future isUpdate checks ---
+
+    for (const ne of normEvents) {
+      if (ne.type === 'entry') {
+        ctx.emittedEntryIds.add(ne.entry.id);
+      }
+    }
+
+    // --- Convert NormalizationEvents → AgentEvents ---
+    // Only 'entry' needs special handling (add rawMessageId);
+    // all other variants are structurally compatible.
+    return normEvents.map((ne): AgentEvent => {
+      if (ne.type === 'entry') {
+        return {
+          ...ne,
+          rawMessageId,
+        };
+      }
+      return ne as AgentEvent;
+    });
+  }
+
+  /**
+   * Persist raw message data and return the rawMessageId.
+   */
+  private async persistRawForMessage(
+    state: OpenCodeSessionState,
+    rawData: unknown,
+  ): Promise<string | null> {
+    const messageIndex = state.messageIndex++;
+    try {
+      return await this.taskContext.persistRaw({
+        messageIndex,
+        backendSessionId: state.session.id,
+        rawData,
+      });
+    } catch (error) {
+      dbg.agent('Failed to persist raw message: %O', error);
+      return null;
+    }
   }
 }

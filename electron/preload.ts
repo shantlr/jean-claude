@@ -285,38 +285,10 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke(AGENT_CHANNELS.GET_MESSAGES_WITH_RAW_DATA, taskId),
     reprocessNormalization: (taskId: string) =>
       ipcRenderer.invoke(AGENT_CHANNELS.REPROCESS_NORMALIZATION, taskId),
-    onMessage: (callback: (event: unknown) => void) => {
+    onEvent: (callback: (event: unknown) => void) => {
       const handler = (_: unknown, event: unknown) => callback(event);
-      ipcRenderer.on(AGENT_CHANNELS.MESSAGE, handler);
-      return () => ipcRenderer.removeListener(AGENT_CHANNELS.MESSAGE, handler);
-    },
-    onStatus: (callback: (event: unknown) => void) => {
-      const handler = (_: unknown, event: unknown) => callback(event);
-      ipcRenderer.on(AGENT_CHANNELS.STATUS, handler);
-      return () => ipcRenderer.removeListener(AGENT_CHANNELS.STATUS, handler);
-    },
-    onPermission: (callback: (event: unknown) => void) => {
-      const handler = (_: unknown, event: unknown) => callback(event);
-      ipcRenderer.on(AGENT_CHANNELS.PERMISSION, handler);
-      return () =>
-        ipcRenderer.removeListener(AGENT_CHANNELS.PERMISSION, handler);
-    },
-    onQuestion: (callback: (event: unknown) => void) => {
-      const handler = (_: unknown, event: unknown) => callback(event);
-      ipcRenderer.on(AGENT_CHANNELS.QUESTION, handler);
-      return () => ipcRenderer.removeListener(AGENT_CHANNELS.QUESTION, handler);
-    },
-    onNameUpdated: (callback: (event: unknown) => void) => {
-      const handler = (_: unknown, event: unknown) => callback(event);
-      ipcRenderer.on(AGENT_CHANNELS.NAME_UPDATED, handler);
-      return () =>
-        ipcRenderer.removeListener(AGENT_CHANNELS.NAME_UPDATED, handler);
-    },
-    onQueueUpdate: (callback: (event: unknown) => void) => {
-      const handler = (_: unknown, event: unknown) => callback(event);
-      ipcRenderer.on(AGENT_CHANNELS.QUEUE_UPDATE, handler);
-      return () =>
-        ipcRenderer.removeListener(AGENT_CHANNELS.QUEUE_UPDATE, handler);
+      ipcRenderer.on(AGENT_CHANNELS.EVENT, handler);
+      return () => ipcRenderer.removeListener(AGENT_CHANNELS.EVENT, handler);
     },
   },
   debug: {

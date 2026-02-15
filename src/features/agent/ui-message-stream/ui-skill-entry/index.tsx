@@ -1,33 +1,25 @@
 import { Wand2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
-import type { NormalizedMessage } from '@shared/agent-backend-types';
+import type {
+  NormalizedEntry,
+  NormalizedToolUse,
+  ToolUseByName,
+} from '@shared/normalized-message-v2';
 
-import { MarkdownContent } from '../ui-markdown-content';
-
-/**
- * Extract text content from a skill prompt message.
- */
-function getPromptText(message: NormalizedMessage): string {
-  if (message.role !== 'user') return '';
-
-  return message.parts
-    .filter((p) => p.type === 'text')
-    .map((p) => (p as { type: 'text'; text: string }).text)
-    .join('\n');
-}
+import { MarkdownContent } from '../../ui-markdown-content';
 
 /**
  * Displays a merged skill launch + prompt as a single expandable entry.
  * Shows skill name with an expand button to reveal the full skill documentation.
  */
 export function SkillEntry({
-  skillName,
-  promptMessage,
+  skillToolUse,
+  promptEntry,
   onFilePathClick,
 }: {
-  skillName: string;
-  promptMessage: NormalizedMessage;
+  skillToolUse: NormalizedToolUse;
+  promptEntry?: NormalizedEntry;
   onFilePathClick?: (
     filePath: string,
     lineStart?: number,
@@ -35,7 +27,12 @@ export function SkillEntry({
   ) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const promptText = getPromptText(promptMessage);
+  const promptText =
+    promptEntry?.type === 'user-prompt' ? promptEntry.value : '';
+  const skillName =
+    skillToolUse.name === 'skill'
+      ? (skillToolUse as ToolUseByName<'skill'>).skillName
+      : 'unknown';
 
   return (
     <div className="relative bg-purple-500/5 pl-6">

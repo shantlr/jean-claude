@@ -3,70 +3,23 @@ import { useState, useMemo } from 'react';
 
 import { formatModelName } from '@/hooks/use-model';
 import type {
-  NormalizedMessage,
-  NormalizedToolUsePart,
-  NormalizedToolResultPart,
-} from '@shared/agent-backend-types';
+  NormalizedEntry,
+  NormalizedToolUse,
+  ToolUseByName,
+} from '@shared/normalized-message-v2';
 
 import { TimelineEntry } from '../ui-timeline-entry';
 
 import { getLastActivitySummary } from './last-activity';
 
 /**
- * Build a map of toolId -> NormalizedToolResultPart from child messages
+ * Filter entries for display in the nested timeline.
+ * Excludes the initial user prompt (which is just the Task prompt).
  */
-function buildToolResultsMap(
-  messages: NormalizedMessage[],
-): Map<string, NormalizedToolResultPart> {
-  const resultsMap = new Map<string, NormalizedToolResultPart>();
-
-  for (const message of messages) {
-    if (message.role === 'user') {
-      const parts = message.parts;
-      for (const part of parts) {
-        if (part.type === 'tool-result') {
-          resultsMap.set(part.toolId, part);
-        }
-      }
-    }
-  }
-
-  return resultsMap;
-}
-
-/**
- * Build a map of toolId -> parent NormalizedMessage for user messages
- */
-function buildParentMessageMap(
-  messages: NormalizedMessage[],
-): Map<string, NormalizedMessage> {
-  const parentMap = new Map<string, NormalizedMessage>();
-
-  for (const message of messages) {
-    if (message.role === 'user') {
-      const parts = message.parts;
-      for (const part of parts) {
-        if (part.type === 'tool-result') {
-          parentMap.set(part.toolId, message);
-        }
-      }
-    }
-  }
-
-  return parentMap;
-}
-
-/**
- * Filter messages for display in the nested timeline.
- * Excludes the initial user message (which is just the Task prompt).
- */
-function filterDisplayMessages(
-  messages: NormalizedMessage[],
-): NormalizedMessage[] {
-  // Skip the first user message (the Task prompt) as it's redundant with the header
+function filterDisplayEntries(entries: NormalizedEntry[]): NormalizedEntry[] {
   let skippedFirstUser = false;
-  return messages.filter((message) => {
-    if (!skippedFirstUser && message.role === 'user') {
+  return entries.filter((entry) => {
+    if (!skippedFirstUser && entry.type === 'user-prompt') {
       skippedFirstUser = true;
       return false;
     }
@@ -80,14 +33,12 @@ function filterDisplayMessages(
  * full nested message timeline when expanded.
  */
 export function SubagentEntry({
-  launchBlock,
-  childMessages,
-  isComplete,
+  toolUse,
+  childEntries,
   onFilePathClick,
 }: {
-  launchBlock: NormalizedToolUsePart;
-  childMessages: NormalizedMessage[];
-  isComplete: boolean;
+  toolUse: NormalizedToolUse;
+  childEntries: NormalizedEntry[];
   onFilePathClick?: (
     filePath: string,
     lineStart?: number,
@@ -96,42 +47,35 @@ export function SubagentEntry({
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const input = (launchBlock.input ?? {}) as Record<string, unknown>;
-  const description = input.description as string;
-  const subagentType = input.subagent_type as string | undefined;
+  const subAgent =
+    toolUse.name === 'sub-agent'
+      ? (toolUse as ToolUseByName<'sub-agent'>)
+      : undefined;
+  const description = subAgent?.input.description ?? '';
+  const subagentType = subAgent?.input.agentType;
+  const isComplete = !!toolUse.result;
 
-  // Get the model used by the sub-agent from child messages
+  // Get the model used by the sub-agent from child entries
   const subagentModel = useMemo(() => {
-    for (let i = childMessages.length - 1; i >= 0; i--) {
-      const m = childMessages[i];
-      if (m.role === 'assistant' && m.model) {
-        return m.model;
+    for (let i = childEntries.length - 1; i >= 0; i--) {
+      const e = childEntries[i];
+      if (e.model) {
+        return e.model;
       }
     }
     return undefined;
-  }, [childMessages]);
+  }, [childEntries]);
 
-  // Get last activity from child messages
+  // Get last activity from child entries
   const lastActivity = useMemo(
-    () => getLastActivitySummary(childMessages),
-    [childMessages],
+    () => getLastActivitySummary(childEntries),
+    [childEntries],
   );
 
-  // Build tool results map for nested timeline
-  const toolResultsMap = useMemo(
-    () => buildToolResultsMap(childMessages),
-    [childMessages],
-  );
-
-  const parentMessageMap = useMemo(
-    () => buildParentMessageMap(childMessages),
-    [childMessages],
-  );
-
-  // Filter messages for display
-  const displayMessages = useMemo(
-    () => filterDisplayMessages(childMessages),
-    [childMessages],
+  // Filter entries for display
+  const displayEntries = useMemo(
+    () => filterDisplayEntries(childEntries),
+    [childEntries],
   );
 
   const isPending = !isComplete;
@@ -189,22 +133,20 @@ export function SubagentEntry({
       </div>
 
       {/* Expanded nested timeline */}
-      {isExpanded && displayMessages.length > 0 && (
+      {isExpanded && displayEntries.length > 0 && (
         <div className="mb-2 ml-5 border-l border-neutral-700 pl-0">
-          {displayMessages.map((message, index) => (
+          {displayEntries.map((entry, index) => (
             <TimelineEntry
               key={index}
-              message={message}
-              toolResultsMap={toolResultsMap}
-              parentMessageMap={parentMessageMap}
+              entry={entry}
               onFilePathClick={onFilePathClick}
             />
           ))}
         </div>
       )}
 
-      {/* Empty state when expanded but no messages yet */}
-      {isExpanded && displayMessages.length === 0 && (
+      {/* Empty state when expanded but no entries yet */}
+      {isExpanded && displayEntries.length === 0 && (
         <div className="mb-2 ml-5 border-l border-neutral-700 pl-3 text-xs text-neutral-500">
           Waiting for sub-agent activity...
         </div>

@@ -1,19 +1,22 @@
 import { create } from 'zustand';
 
-import type { NormalizedMessage } from '@shared/agent-backend-types';
+import type { AgentQuestion, QueuedPrompt } from '@shared/agent-types';
 import type {
-  AgentPermissionEvent,
-  AgentQuestionEvent,
-  QueuedPrompt,
-} from '@shared/agent-types';
+  NormalizedEntry,
+  NormalizedPermissionRequest,
+} from '@shared/normalized-message-v2';
 import type { TaskStatus } from '@shared/types';
 
 export interface TaskState {
-  messages: NormalizedMessage[];
+  messages: NormalizedEntry[];
   status: TaskStatus;
   error: string | null;
-  pendingPermission: AgentPermissionEvent | null;
-  pendingQuestion: AgentQuestionEvent | null;
+  pendingPermission: (NormalizedPermissionRequest & { taskId: string }) | null;
+  pendingQuestion: {
+    taskId: string;
+    requestId: string;
+    questions: AgentQuestion[];
+  } | null;
   queuedPrompts: QueuedPrompt[];
   lastAccessedAt: number;
 }
@@ -25,10 +28,18 @@ interface TaskMessagesStore {
   // Actions
   loadTask: (
     taskId: string,
-    messages: NormalizedMessage[],
+    messages: NormalizedEntry[],
     status: TaskStatus,
   ) => void;
-  appendMessage: (taskId: string, message: NormalizedMessage) => void;
+  addEntry: (taskId: string, entry: NormalizedEntry) => void;
+  updateEntry: (taskId: string, entry: NormalizedEntry) => void;
+  updateToolResult: (
+    taskId: string,
+    toolId: string,
+    result: string | undefined,
+    isError: boolean,
+    durationMs?: number,
+  ) => void;
   setStatus: (
     taskId: string,
     status: TaskStatus,
@@ -36,9 +47,9 @@ interface TaskMessagesStore {
   ) => void;
   setPermission: (
     taskId: string,
-    permission: AgentPermissionEvent | null,
+    permission: TaskState['pendingPermission'],
   ) => void;
-  setQuestion: (taskId: string, question: AgentQuestionEvent | null) => void;
+  setQuestion: (taskId: string, question: TaskState['pendingQuestion']) => void;
   setQueuedPrompts: (taskId: string, queuedPrompts: QueuedPrompt[]) => void;
   touchTask: (taskId: string) => void;
   unloadTask: (taskId: string) => void;
@@ -101,31 +112,60 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
     });
   },
 
-  appendMessage: (taskId, message) => {
+  addEntry: (taskId, entry) => {
     set((state) => {
       const task = state.tasks[taskId];
       if (!task) return state;
-
-      // Upsert: if a message with the same id already exists, replace it (streaming update).
-      // Otherwise append as a new message.
-      const existingIndex = task.messages.findIndex((m) => m.id === message.id);
-
-      let updatedMessages: NormalizedMessage[];
-      if (existingIndex !== -1) {
-        // Replace in-place (streaming update for same message id)
-        updatedMessages = [...task.messages];
-        updatedMessages[existingIndex] = message;
-      } else {
-        updatedMessages = [...task.messages, message];
-      }
-
       return {
         tasks: {
           ...state.tasks,
           [taskId]: {
             ...task,
-            messages: updatedMessages,
+            messages: [...task.messages, entry],
           },
+        },
+      };
+    });
+  },
+
+  updateEntry: (taskId, entry) => {
+    set((state) => {
+      const task = state.tasks[taskId];
+      if (!task) return state;
+      const idx = task.messages.findIndex((m) => m.id === entry.id);
+      let updatedMessages: NormalizedEntry[];
+      if (idx !== -1) {
+        updatedMessages = [...task.messages];
+        updatedMessages[idx] = entry;
+      } else {
+        updatedMessages = [...task.messages, entry];
+      }
+      return {
+        tasks: {
+          ...state.tasks,
+          [taskId]: { ...task, messages: updatedMessages },
+        },
+      };
+    });
+  },
+
+  updateToolResult: (taskId, toolId, result, _isError, _durationMs) => {
+    set((state) => {
+      const task = state.tasks[taskId];
+      if (!task) return state;
+      const idx = task.messages.findIndex(
+        (m) => m.type === 'tool-use' && 'toolId' in m && m.toolId === toolId,
+      );
+      if (idx === -1) return state;
+      const entry = task.messages[idx] as NormalizedEntry;
+      if (entry.type !== 'tool-use') return state;
+      const patched = { ...entry, result } as NormalizedEntry;
+      const updatedMessages = [...task.messages];
+      updatedMessages[idx] = patched;
+      return {
+        tasks: {
+          ...state.tasks,
+          [taskId]: { ...task, messages: updatedMessages },
         },
       };
     });
