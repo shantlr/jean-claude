@@ -276,6 +276,18 @@ export class ClaudeCodeBackend implements AgentBackend {
     session: ClaudeSession,
     sessionKey: string,
   ): Promise<void> {
+    session.eventChannel.push({
+      type: 'entry',
+      rawMessageId: null,
+      entry: {
+        id: nanoid(),
+        date: new Date().toISOString(),
+        isSynthetic: true,
+        type: 'user-prompt',
+        value: prompt,
+      },
+    });
+
     const sdkPermissionMode =
       SDK_PERMISSION_MODES[config.interactionMode ?? 'ask'];
 

@@ -224,15 +224,6 @@ class AgentService {
       });
     }
 
-    // Emit user entry before starting the backend
-    await this.persistAndEmitSyntheticEntry(taskId, session, {
-      id: nanoid(),
-      date: new Date().toISOString(),
-      isSynthetic: true,
-      type: 'user-prompt',
-      value: prompt,
-    });
-
     // Load settings file permissions and merge with task's sessionAllowedTools.
     // This ensures permissions set via "Allow for Project" / "Allow for Worktrees"
     // are available for auto-allow logic (e.g., Bash commands auto-allowed when
