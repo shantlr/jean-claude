@@ -371,6 +371,56 @@ function ToolEntry({ toolUse }: { toolUse: NormalizedToolUse }) {
     }
   }
 
+  // Custom rendering for AskUserQuestion to show question-response pairs
+  if (toolUse.name === 'ask-user-question') {
+    const ask = toolUse as ToolUseByName<'ask-user-question'>;
+    const answersByQuestion = new Map(
+      (ask.result?.answers ?? []).map((answer) => [answer.question, answer.answer]),
+    );
+
+    return (
+      <DotEntry
+        type="tool"
+        isPending={isPending}
+        summary={summary}
+        expandedContent={
+          <div className="space-y-3 text-xs">
+            {ask.input.questions.map((question, index) => {
+              const response = answersByQuestion.get(question.question);
+              const responseText = Array.isArray(response)
+                ? response.join(', ')
+                : response;
+
+              return (
+                <div key={`${question.question}-${index}`} className="space-y-2">
+                  <div className="font-medium text-neutral-500">
+                    {ask.input.questions.length > 1
+                      ? `Question ${index + 1}`
+                      : 'Question'}
+                  </div>
+                  <div className="rounded bg-black/30 p-2 text-neutral-200 whitespace-pre-wrap">
+                    {question.question}
+                  </div>
+                  {ask.result && (
+                    <div>
+                      <div className="mb-1 font-medium text-neutral-500">
+                        Response
+                      </div>
+                      <div className="rounded bg-black/30 p-2 text-neutral-300 whitespace-pre-wrap">
+                        {responseText ?? 'No response'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        }
+        defaultExpanded
+      />
+    );
+  }
+
   // Get diff view content based on tool type
   const getDiffViewContent = () => {
     if (isEditTool) {
