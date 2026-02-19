@@ -1,64 +1,65 @@
 import { HelpCircle, Send } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
+import { useCommands } from '@/common/hooks/use-commands';
+import { Kbd } from '@/common/ui/kbd';
 import type { QuestionResponse, AgentQuestion } from '@shared/agent-types';
 
 function QuestionInput({
   question,
+  questionIndex,
   value,
-  onChange,
+  isOtherOpen,
+  isActive,
+  activeOptionIndex,
+  onActivate,
+  onSelectOption,
+  onOtherChange,
 }: {
   question: AgentQuestion;
+  questionIndex: number;
   value: string;
-  onChange: (value: string) => void;
+  isOtherOpen: boolean;
+  isActive: boolean;
+  activeOptionIndex: number;
+  onActivate: (params: { questionIndex: number; optionIndex: number }) => void;
+  onSelectOption: (params: { questionIndex: number; optionIndex: number }) => void;
+  onOtherChange: (params: { questionIndex: number; value: string }) => void;
 }) {
-  const [showOther, setShowOther] = useState(false);
-  const [otherText, setOtherText] = useState('');
-
-  const handleOptionClick = (label: string) => {
-    setShowOther(false);
-    onChange(label);
-  };
-
-  const handleOtherClick = () => {
-    setShowOther(true);
-    onChange(otherText);
-  };
-
-  const handleOtherChange = (text: string) => {
-    setOtherText(text);
-    onChange(text);
-  };
+  const selectedLabels = value
+    .split(', ')
+    .map((label) => label.trim())
+    .filter(Boolean);
+  const optionCount = question.options.length + (question.multiSelect ? 0 : 1);
 
   if (question.multiSelect) {
-    // For multi-select, we'd need to track multiple selections
-    // For simplicity, treating as single select with comma-separated values
-    const selectedLabels = value.split(', ').filter(Boolean);
-
-    const toggleOption = (label: string) => {
-      const newSelected = selectedLabels.includes(label)
-        ? selectedLabels.filter((l) => l !== label)
-        : [...selectedLabels, label];
-      onChange(newSelected.join(', '));
-    };
-
     return (
       <div className="space-y-2">
         <div className="flex flex-wrap gap-2">
-          {question.options.map((option) => (
-            <button
-              key={option.label}
-              onClick={() => toggleOption(option.label)}
-              className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
-                selectedLabels.includes(option.label)
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
-              }`}
-              title={option.description}
-            >
-              {option.label}
-            </button>
-          ))}
+          {question.options.map((option, index) => {
+            return (
+              <button
+                key={option.label}
+                onFocus={() => {
+                  onActivate({ questionIndex, optionIndex: index });
+                }}
+                onClick={() => {
+                  onActivate({ questionIndex, optionIndex: index });
+                  onSelectOption({ questionIndex, optionIndex: index });
+                }}
+                className={`rounded-full px-3 py-1.5 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none ${
+                  selectedLabels.includes(option.label)
+                    ? 'bg-blue-600 text-white'
+                    : isActive && activeOptionIndex === index
+                      ? 'bg-neutral-600 text-neutral-100'
+                      : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+                }`}
+                title={option.description}
+              >
+                {option.label}
+              </button>
+            );
+          })}
         </div>
       </div>
     );
@@ -67,14 +68,22 @@ function QuestionInput({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
-        {question.options.map((option) => (
+        {question.options.map((option, index) => (
           <button
             key={option.label}
-            onClick={() => handleOptionClick(option.label)}
-            className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
-              value === option.label && !showOther
+            onFocus={() => {
+              onActivate({ questionIndex, optionIndex: index });
+            }}
+            onClick={() => {
+              onActivate({ questionIndex, optionIndex: index });
+              onSelectOption({ questionIndex, optionIndex: index });
+            }}
+            className={`rounded-full px-3 py-1.5 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none ${
+              value === option.label && !isOtherOpen
                 ? 'bg-blue-600 text-white'
-                : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+                : isActive && activeOptionIndex === index
+                  ? 'bg-neutral-600 text-neutral-100'
+                  : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
             }`}
             title={option.description}
           >
@@ -82,20 +91,33 @@ function QuestionInput({
           </button>
         ))}
         <button
-          onClick={handleOtherClick}
-          className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
-            showOther
+          onFocus={() => {
+            onActivate({ questionIndex, optionIndex: optionCount - 1 });
+          }}
+          onClick={() => {
+            onActivate({ questionIndex, optionIndex: optionCount - 1 });
+            onSelectOption({ questionIndex, optionIndex: optionCount - 1 });
+          }}
+          className={`rounded-full px-3 py-1.5 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none ${
+            isOtherOpen
               ? 'bg-blue-600 text-white'
-              : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+              : isActive && activeOptionIndex === optionCount - 1
+                ? 'bg-neutral-600 text-neutral-100'
+                : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
           }`}
         >
           Other
         </button>
       </div>
-      {showOther && (
+      {isOtherOpen && (
         <textarea
-          value={otherText}
-          onChange={(e) => handleOtherChange(e.target.value)}
+          value={value}
+          onFocus={() => {
+            onActivate({ questionIndex, optionIndex: optionCount - 1 });
+          }}
+          onChange={(e) =>
+            onOtherChange({ questionIndex, value: e.currentTarget.value })
+          }
           placeholder="Enter your answer..."
           className="w-full resize-none rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-teal-500 focus:outline-none"
           rows={3}
@@ -118,14 +140,165 @@ export function QuestionOptions({
   onRespond: (requestId: string, response: QuestionResponse) => void;
 }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
+  const [activeOptionIndex, setActiveOptionIndex] = useState(0);
+  const [otherOpenByQuestion, setOtherOpenByQuestion] = useState<
+    Record<string, boolean>
+  >({});
 
-  const handleSubmit = () => {
-    onRespond(request.requestId, { answers });
-  };
+  useEffect(() => {
+    if (request.questions.length === 0) {
+      setActiveQuestionIndex(0);
+      setActiveOptionIndex(0);
+      return;
+    }
+
+    setActiveQuestionIndex((current) => {
+      if (current < request.questions.length) {
+        return current;
+      }
+      return 0;
+    });
+  }, [request.questions]);
+
+  const getOptionCount = useCallback((question: AgentQuestion) => {
+    return question.options.length + (question.multiSelect ? 0 : 1);
+  }, []);
+
+  useEffect(() => {
+    const question = request.questions[activeQuestionIndex];
+    if (!question) return;
+    const optionCount = getOptionCount(question);
+    setActiveOptionIndex((current) => {
+      if (optionCount === 0) return 0;
+      if (current < optionCount) return current;
+      return 0;
+    });
+  }, [activeQuestionIndex, getOptionCount, request.questions]);
+
+  const activateOption = useCallback(
+    ({ questionIndex, optionIndex }: { questionIndex: number; optionIndex: number }) => {
+      setActiveQuestionIndex(questionIndex);
+      setActiveOptionIndex(optionIndex);
+    },
+    [],
+  );
+
+  const selectOption = useCallback(
+    ({ questionIndex, optionIndex }: { questionIndex: number; optionIndex: number }) => {
+      const question = request.questions[questionIndex];
+      if (!question) return false;
+
+      if (question.multiSelect) {
+        const label = question.options[optionIndex]?.label;
+        if (!label) return false;
+        const current = answers[question.question] ?? '';
+        const selected = current
+          .split(', ')
+          .map((item) => item.trim())
+          .filter(Boolean);
+        const next = selected.includes(label)
+          ? selected.filter((item) => item !== label)
+          : [...selected, label];
+        setAnswers((prev) => ({ ...prev, [question.question]: next.join(', ') }));
+        return true;
+      }
+
+      const isOther = optionIndex === question.options.length;
+      setOtherOpenByQuestion((prev) => ({
+        ...prev,
+        [question.question]: isOther,
+      }));
+
+      if (isOther) {
+        const current = answers[question.question] ?? '';
+        const matchesOption = question.options.some(
+          (option) => option.label === current,
+        );
+        if (matchesOption) {
+          setAnswers((prev) => ({ ...prev, [question.question]: '' }));
+        }
+        return true;
+      }
+
+      const label = question.options[optionIndex]?.label;
+      if (!label) return false;
+      setAnswers((prev) => ({ ...prev, [question.question]: label }));
+      return true;
+    },
+    [answers, request.questions],
+  );
+
+  const updateOtherAnswer = useCallback(
+    ({ questionIndex, value }: { questionIndex: number; value: string }) => {
+      const question = request.questions[questionIndex];
+      if (!question) return;
+      setAnswers((prev) => ({ ...prev, [question.question]: value }));
+      setOtherOpenByQuestion((prev) => ({ ...prev, [question.question]: true }));
+    },
+    [request.questions],
+  );
+
+  const moveActiveOption = useCallback(
+    (offset: 1 | -1) => {
+      const question = request.questions[activeQuestionIndex];
+      if (!question) return false;
+      const optionCount = getOptionCount(question);
+      if (optionCount === 0) return false;
+
+      setActiveOptionIndex((current) => {
+        return (current + offset + optionCount) % optionCount;
+      });
+      return true;
+    },
+    [activeQuestionIndex, getOptionCount, request.questions],
+  );
+
+  const activateCurrentOption = useCallback(() => {
+    return selectOption({
+      questionIndex: activeQuestionIndex,
+      optionIndex: activeOptionIndex,
+    });
+  }, [activeOptionIndex, activeQuestionIndex, selectOption]);
 
   const allAnswered = request.questions.every((q) =>
     answers[q.question]?.trim(),
   );
+
+  const handleSubmit = useCallback(() => {
+    if (!allAnswered) return;
+    onRespond(request.requestId, { answers });
+  }, [allAnswered, onRespond, request.requestId, answers]);
+
+  useCommands('question-options', [
+    {
+      label: 'Select Previous Question Option',
+      shortcut: ['left', 'up'],
+      hideInCommandPalette: true,
+      ignoreIfInput: true,
+      handler: () => moveActiveOption(-1),
+    },
+    {
+      label: 'Select Next Question Option',
+      shortcut: ['right', 'down'],
+      hideInCommandPalette: true,
+      ignoreIfInput: true,
+      handler: () => moveActiveOption(1),
+    },
+    {
+      label: 'Activate Question Option',
+      shortcut: 'enter',
+      hideInCommandPalette: true,
+      ignoreIfInput: true,
+      handler: activateCurrentOption,
+    },
+    {
+      label: 'Submit Question Answers',
+      shortcut: 'cmd+enter',
+      hideInCommandPalette: true,
+      handler: handleSubmit,
+    },
+  ]);
 
   return (
     <div className="border-t border-teal-700/50 bg-teal-900/20 px-4 py-3">
@@ -141,14 +314,18 @@ export function QuestionOptions({
         </div>
       </div>
       <div className="space-y-4">
-        {request.questions.map((question) => (
+        {request.questions.map((question, index) => (
           <QuestionInput
-            key={question.question}
+            key={`${index}-${question.question}`}
             question={question}
+            questionIndex={index}
             value={answers[question.question] || ''}
-            onChange={(value) =>
-              setAnswers((prev) => ({ ...prev, [question.question]: value }))
-            }
+            isOtherOpen={otherOpenByQuestion[question.question] ?? false}
+            isActive={activeQuestionIndex === index}
+            activeOptionIndex={activeQuestionIndex === index ? activeOptionIndex : 0}
+            onActivate={activateOption}
+            onSelectOption={selectOption}
+            onOtherChange={updateOtherAnswer}
           />
         ))}
       </div>
@@ -160,6 +337,7 @@ export function QuestionOptions({
         >
           <Send className="h-4 w-4" />
           Submit
+          <Kbd shortcut="cmd+enter" />
         </button>
       </div>
     </div>

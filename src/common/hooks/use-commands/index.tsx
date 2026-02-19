@@ -8,6 +8,7 @@ type Command = {
   label: string;
   handler: () => void | boolean;
   shortcut?: BindingKey | BindingKey[];
+  ignoreIfInput?: boolean;
   hideInCommandPalette?: boolean;
   keywords?: string[];
   section?: string;
@@ -57,12 +58,19 @@ export const useCommands = (
     id,
     filtered.reduce(
       (acc, command) => {
+        const binding = command.ignoreIfInput
+          ? {
+              handler: () => command.handler(),
+              ignoreIfInput: true,
+            }
+          : () => command.handler();
+
         if (Array.isArray(command.shortcut)) {
           command.shortcut.forEach((key) => {
-            acc[key] = () => command.handler();
+            acc[key] = binding;
           });
         } else if (command.shortcut) {
-          acc[command.shortcut] = () => command.handler();
+          acc[command.shortcut] = binding;
         }
         return acc;
       },
