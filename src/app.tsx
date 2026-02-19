@@ -32,11 +32,11 @@ export default function App() {
       <DetectKeyboardLayout />
       <RootKeyboardBindings>
         <RootOverlay>
-          <ModalProvider>
-            <QueryClientProvider client={queryClient}>
+          <QueryClientProvider client={queryClient}>
+            <ModalProvider>
               <RouterProvider router={router} />
-            </QueryClientProvider>
-          </ModalProvider>
+            </ModalProvider>
+          </QueryClientProvider>
         </RootOverlay>
       </RootKeyboardBindings>
     </>
