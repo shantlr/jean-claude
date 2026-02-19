@@ -234,7 +234,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       clearTaskNavHistoryState(taskId);
 
       // Navigate away
-      navigate({ to: '/' });
+      navigate({ to: '/all/' });
 
       // Run deletion in background
       void deleteTask
