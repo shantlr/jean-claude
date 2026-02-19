@@ -18,6 +18,7 @@ import { Header } from '@/layout/ui-header';
 import { MainSidebar } from '@/layout/ui-main-sidebar';
 import { resolveLastLocationRedirect } from '@/lib/navigation';
 import { useNewTaskDraft } from '@/stores/new-task-draft';
+import { useCurrentVisibleProject } from '@/stores/navigation';
 import { useOverlaysStore } from '@/stores/overlays';
 
 export const Route = createRootRoute({
@@ -105,7 +106,13 @@ function NewTaskContainer() {
   const isOpen = useOverlaysStore((s) => s.activeOverlay === 'new-task');
   const toggle = useOverlaysStore((s) => s.toggle);
   const close = useOverlaysStore((s) => s.close);
-  const { discardDraft } = useNewTaskDraft();
+  const { discardDraft, setSelectedProjectId } = useNewTaskDraft();
+  const { projectId } = useCurrentVisibleProject();
+
+  useEffect(() => {
+    if (!isOpen || projectId === 'all') return;
+    setSelectedProjectId(projectId);
+  }, [isOpen, projectId, setSelectedProjectId]);
 
   const handleClose = useCallback(() => close('new-task'), [close]);
   const handleDiscardDraft = useCallback(() => {
