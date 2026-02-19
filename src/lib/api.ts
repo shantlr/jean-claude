@@ -168,6 +168,7 @@ export interface AzureDevOpsWorkItem {
     state: string;
     assignedTo?: string;
     description?: string;
+    reproSteps?: string;
   };
   parentId?: number;
 }

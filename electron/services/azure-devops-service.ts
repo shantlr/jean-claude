@@ -67,6 +67,7 @@ export interface AzureDevOpsWorkItem {
     state: string;
     assignedTo?: string;
     description?: string;
+    reproSteps?: string;
   };
   parentId?: number;
 }
@@ -95,6 +96,7 @@ interface WorkItemsBatchResponse {
       'System.State': string;
       'System.AssignedTo'?: { displayName: string };
       'System.Description'?: string;
+      'Microsoft.VSTS.TCM.ReproSteps'?: string;
     };
     relations?: WorkItemRelation[];
   }>;
@@ -405,6 +407,7 @@ export async function queryWorkItems(params: {
       state: wi.fields['System.State'],
       assignedTo: wi.fields['System.AssignedTo']?.displayName,
       description: wi.fields['System.Description'],
+      reproSteps: wi.fields['Microsoft.VSTS.TCM.ReproSteps'],
     },
     parentId: getParentId(wi.relations),
   }));

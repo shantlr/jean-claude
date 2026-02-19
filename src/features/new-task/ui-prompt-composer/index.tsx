@@ -24,17 +24,25 @@ export function generateInitialTemplate(workItemIds: string[]): string {
 // Expand a single work item placeholder to full content
 function expandWorkItem(workItem: AzureDevOpsWorkItem): string {
   const { id, fields } = workItem;
-  const { title, description } = fields;
+  const { title, description, reproSteps } = fields;
 
-  // Convert HTML description to markdown
-  const markdownDescription = description
-    ? turndown.turndown(description)
-    : null;
+  const markdownDescription = description ? turndown.turndown(description) : null;
+  const markdownReproSteps = reproSteps ? turndown.turndown(reproSteps) : null;
 
   let content = `## Work Item #${id} "${title}"`;
+
+  const bodySections: string[] = [];
   if (markdownDescription) {
-    content += `\n\n${markdownDescription}`;
+    bodySections.push(markdownDescription);
   }
+  if (markdownReproSteps) {
+    bodySections.push(`### Repro Steps\n\n${markdownReproSteps}`);
+  }
+
+  if (bodySections.length > 0) {
+    content += `\n\n${bodySections.join('\n\n')}`;
+  }
+
   content += '\n\n---';
 
   return content;
