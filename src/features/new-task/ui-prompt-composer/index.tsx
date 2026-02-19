@@ -26,7 +26,9 @@ function expandWorkItem(workItem: AzureDevOpsWorkItem): string {
   const { id, fields } = workItem;
   const { title, description, reproSteps } = fields;
 
-  const markdownDescription = description ? turndown.turndown(description) : null;
+  const markdownDescription = description
+    ? turndown.turndown(description)
+    : null;
   const markdownReproSteps = reproSteps ? turndown.turndown(reproSteps) : null;
 
   let content = `## Work Item #${id} "${title}"`;

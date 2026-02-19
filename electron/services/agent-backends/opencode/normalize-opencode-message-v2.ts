@@ -569,12 +569,8 @@ function mapOpenCodeTool(
         name: 'edit',
         input: {
           filePath: str(input.filePath ?? input.file_path ?? input.path),
-          oldString: str(
-            input.oldString ?? input.old_string ?? input.old,
-          ),
-          newString: str(
-            input.newString ?? input.new_string ?? input.new,
-          ),
+          oldString: str(input.oldString ?? input.old_string ?? input.old),
+          newString: str(input.newString ?? input.new_string ?? input.new),
         },
       };
 

@@ -493,6 +493,18 @@ export function NewTaskOverlay({
       void triggerAnimation();
       clearDraft();
 
+      // Re-initialize sourceBranch to the project default.
+      // clearDraft() deletes the draft key, resetting to defaultDraft
+      // (sourceBranch: null). The useEffect that syncs sourceBranch won't
+      // re-fire because its deps (selectedProjectId, defaultBranch) haven't
+      // changed. Without this, the <select> shows value="" which doesn't
+      // match any option, so the browser renders the first branch visually
+      // (which could be the newly created worktree branch).
+      const defaultBranch = selectedProject?.defaultBranch ?? null;
+      if (defaultBranch) {
+        updateDraft({ sourceBranch: defaultBranch });
+      }
+
       // Refocus the input for the next task
       setTimeout(() => inputRef.current?.focus(), 50);
 
@@ -538,9 +550,11 @@ export function NewTaskOverlay({
     promptTemplate,
     selectedWorkItems,
     selectedProject?.name,
+    selectedProject?.defaultBranch,
     addRunningJob,
     createTaskMutation,
     clearDraft,
+    updateDraft,
     queryClient,
     markJobSucceeded,
     markJobFailed,
