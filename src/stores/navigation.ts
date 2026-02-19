@@ -19,33 +19,25 @@ export type RightPane =
     };
 
 interface DiffViewState {
-  isOpen: boolean;
   selectedFilePath: string | null;
 }
 
-interface PrViewState {
-  isOpen: boolean;
-}
+type TaskViewMode = 'diff' | 'pr' | undefined;
 
 interface TaskState {
   rightPane: RightPane | null;
+  activeView: TaskViewMode;
   diffView: DiffViewState;
-  prView: PrViewState;
 }
 
 const defaultDiffViewState: DiffViewState = {
-  isOpen: false,
   selectedFilePath: null,
-};
-
-const defaultPrViewState: PrViewState = {
-  isOpen: false,
 };
 
 const defaultTaskState: TaskState = {
   rightPane: null,
+  activeView: undefined,
   diffView: defaultDiffViewState,
-  prView: defaultPrViewState,
 };
 
 // Constants for diff file tree width
@@ -97,9 +89,8 @@ interface NavigationState {
   setSidebarTab: (tab: 'tasks' | 'prs') => void;
   setLastTaskForProject: (projectId: string, taskId: string) => void;
   setTaskRightPane: (taskId: string, pane: RightPane | null) => void;
-  setDiffViewOpen: (taskId: string, isOpen: boolean) => void;
+  setTaskViewMode: (taskId: string, mode: TaskViewMode) => void;
   setDiffViewSelectedFile: (taskId: string, filePath: string | null) => void;
-  setPrViewOpen: (taskId: string, isOpen: boolean) => void;
   clearProjectNavHistoryState: (projectId: string) => void;
   clearTaskNavHistoryState: (taskId: string) => void;
 }
@@ -158,17 +149,14 @@ const useStore = create<NavigationState>()(
           },
         })),
 
-      setDiffViewOpen: (taskId, isOpen) =>
+      setTaskViewMode: (taskId, mode) =>
         set((state) => ({
           taskState: {
             ...state.taskState,
             [taskId]: {
               ...defaultTaskState,
               ...state.taskState[taskId],
-              diffView: {
-                ...(state.taskState[taskId]?.diffView ?? defaultDiffViewState),
-                isOpen,
-              },
+              activeView: mode,
             },
           },
         })),
@@ -183,21 +171,6 @@ const useStore = create<NavigationState>()(
               diffView: {
                 ...(state.taskState[taskId]?.diffView ?? defaultDiffViewState),
                 selectedFilePath: filePath,
-              },
-            },
-          },
-        })),
-
-      setPrViewOpen: (taskId, isOpen) =>
-        set((state) => ({
-          taskState: {
-            ...state.taskState,
-            [taskId]: {
-              ...defaultTaskState,
-              ...state.taskState[taskId],
-              prView: {
-                ...(state.taskState[taskId]?.prView ?? defaultPrViewState),
-                isOpen,
               },
             },
           },
@@ -428,27 +401,31 @@ export function useTaskState(taskId: string) {
 
 // Hook for diff view state
 export function useDiffViewState(taskId: string) {
-  const diffView = useStore(
-    (state) => state.taskState[taskId]?.diffView ?? defaultDiffViewState,
+  const taskState = useStore(
+    (state) => state.taskState[taskId] ?? defaultTaskState,
   );
-  const setDiffViewOpenAction = useStore((state) => state.setDiffViewOpen);
+  const setTaskViewModeAction = useStore((state) => state.setTaskViewMode);
   const setDiffViewSelectedFileAction = useStore(
     (state) => state.setDiffViewSelectedFile,
   );
 
   const toggleDiffView = useCallback(
-    () => setDiffViewOpenAction(taskId, !diffView.isOpen),
-    [taskId, diffView.isOpen, setDiffViewOpenAction],
+    () =>
+      setTaskViewModeAction(
+        taskId,
+        taskState.activeView === 'diff' ? undefined : 'diff',
+      ),
+    [taskId, taskState.activeView, setTaskViewModeAction],
   );
 
   const openDiffView = useCallback(
-    () => setDiffViewOpenAction(taskId, true),
-    [taskId, setDiffViewOpenAction],
+    () => setTaskViewModeAction(taskId, 'diff'),
+    [taskId, setTaskViewModeAction],
   );
 
   const closeDiffView = useCallback(
-    () => setDiffViewOpenAction(taskId, false),
-    [taskId, setDiffViewOpenAction],
+    () => setTaskViewModeAction(taskId, undefined),
+    [taskId, setTaskViewModeAction],
   );
 
   const selectFile = useCallback(
@@ -458,8 +435,8 @@ export function useDiffViewState(taskId: string) {
   );
 
   return {
-    isOpen: diffView.isOpen,
-    selectedFilePath: diffView.selectedFilePath,
+    isOpen: taskState.activeView === 'diff',
+    selectedFilePath: taskState.diffView.selectedFilePath,
     toggleDiffView,
     openDiffView,
     closeDiffView,
@@ -469,28 +446,29 @@ export function useDiffViewState(taskId: string) {
 
 // Hook for PR view state
 export function usePrViewState(taskId: string) {
-  const prView = useStore(
-    (state) => state.taskState[taskId]?.prView ?? defaultPrViewState,
+  const activeView = useStore(
+    (state) => state.taskState[taskId]?.activeView ?? undefined,
   );
-  const setPrViewOpenAction = useStore((state) => state.setPrViewOpen);
+  const setTaskViewModeAction = useStore((state) => state.setTaskViewMode);
 
   const togglePrView = useCallback(
-    () => setPrViewOpenAction(taskId, !prView.isOpen),
-    [taskId, prView.isOpen, setPrViewOpenAction],
+    () =>
+      setTaskViewModeAction(taskId, activeView === 'pr' ? undefined : 'pr'),
+    [taskId, activeView, setTaskViewModeAction],
   );
 
   const openPrView = useCallback(
-    () => setPrViewOpenAction(taskId, true),
-    [taskId, setPrViewOpenAction],
+    () => setTaskViewModeAction(taskId, 'pr'),
+    [taskId, setTaskViewModeAction],
   );
 
   const closePrView = useCallback(
-    () => setPrViewOpenAction(taskId, false),
-    [taskId, setPrViewOpenAction],
+    () => setTaskViewModeAction(taskId, undefined),
+    [taskId, setTaskViewModeAction],
   );
 
   return {
-    isOpen: prView.isOpen,
+    isOpen: activeView === 'pr',
     togglePrView,
     openPrView,
     closePrView,
