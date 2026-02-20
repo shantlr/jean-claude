@@ -19,19 +19,21 @@ export function encodeProxyUrl(providerId: string, imageUrl: string): string {
 }
 
 /**
- * Pattern to match Azure DevOps attachment URLs in HTML content.
+ * Pattern to match Azure DevOps attachment URLs in HTML/Markdown content.
  * Matches URLs like:
  *   https://dev.azure.com/Org/ProjectGuid/_apis/wit/attachments/AttachmentGuid?fileName=image.png
  *   https://org.visualstudio.com/Project/_apis/wit/attachments/...
+ *   https://dev.azure.com/Org/ProjectGuid/_apis/git/repositories/RepoGuid/pullRequests/123/attachments/image.png
  */
 const AZURE_IMAGE_URL_PATTERN =
-  /https:\/\/(?:dev\.azure\.com|[^/\s"']+\.visualstudio\.com)\/[^"'\s<>]*\/_apis\/wit\/attachments\/[^"'\s<>]*/gi;
+  /https:\/\/(?:dev\.azure\.com|[^/\s"']+\.visualstudio\.com)\/[^"'\s<>]*\/_apis\/(?:wit\/attachments|git\/repositories\/[^"'\s<>]*\/pullRequests\/\d+\/attachments)\/[^"'\s<>]*/gi;
 
 /**
- * Rewrites Azure DevOps image URLs in HTML content to use the proxy protocol.
- * This allows images in work item descriptions to be fetched with PAT authentication.
+ * Rewrites Azure DevOps image URLs in HTML/Markdown content to use the proxy protocol.
+ * This allows images in work item descriptions and PR descriptions to be fetched
+ * with PAT authentication.
  *
- * @param html - The HTML content containing image URLs
+ * @param html - The HTML or Markdown content containing image URLs
  * @param providerId - The provider ID to use for authentication
  * @returns The HTML with rewritten image URLs
  */
