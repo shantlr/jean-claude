@@ -821,7 +821,7 @@ async function abortMergeIfInProgress(worktreePath: string): Promise<void> {
 
 export type WorktreeBranchCleanupBehavior = 'delete' | 'keep';
 
-export interface CleanupWroktreeParams {
+export interface CleanupWorktreeParams {
   worktreePath: string;
   projectPath: string;
   branchName?: string | null;
@@ -833,8 +833,8 @@ export interface CleanupWroktreeParams {
 /**
  * Removes a worktree and deletes its branch.
  */
-export async function cleanupWroktree(
-  params: CleanupWroktreeParams,
+export async function cleanupWorktree(
+  params: CleanupWorktreeParams,
 ): Promise<void> {
   const {
     worktreePath,
@@ -1007,7 +1007,7 @@ export async function mergeWorktree(
     }
     dbg.worktree('Merge successful');
 
-    await cleanupWroktree({
+    await cleanupWorktree({
       worktreePath,
       projectPath,
       branchCleanup: 'delete',

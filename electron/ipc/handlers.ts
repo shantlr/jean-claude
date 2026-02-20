@@ -116,7 +116,7 @@ import {
   getCurrentCommitHash,
   getWorktreeStatus,
   commitWorktreeChanges,
-  cleanupWroktree,
+  cleanupWorktree,
   cleanupMissingWorktree,
   mergeWorktree,
   pushBranch,
@@ -340,7 +340,7 @@ export function registerIpcHandlers() {
       if (task?.worktreePath) {
         const project = await ProjectRepository.findById(task.projectId);
         if (project) {
-          await cleanupWroktree({
+          await cleanupWorktree({
             worktreePath: task.worktreePath,
             projectPath: project.path,
             skipIfChanges: !options?.deleteWorktree,
@@ -913,7 +913,7 @@ export function registerIpcHandlers() {
       const project = await ProjectRepository.findById(task.projectId);
       if (!project) return;
 
-      await cleanupWroktree({
+      await cleanupWorktree({
         worktreePath: task.worktreePath,
         projectPath: project.path,
         branchCleanup: options?.keepBranch ? 'keep' : 'delete',
@@ -981,7 +981,7 @@ export function registerIpcHandlers() {
 
       // Step 4: Optionally delete worktree (keep branch)
       if (params.deleteWorktree) {
-        await cleanupWroktree({
+        await cleanupWorktree({
           worktreePath: task.worktreePath,
           projectPath: project.path,
           branchCleanup: 'keep',
