@@ -8,3 +8,5 @@ node_modules
 
 # Temporary database for dev:tmp script
 db-tmp/
+
+.DS_Store

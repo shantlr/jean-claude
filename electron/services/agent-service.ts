@@ -68,7 +68,9 @@ class AgentService {
   }
 
   private getLiveWindows(): BrowserWindow[] {
-    return BrowserWindow.getAllWindows().filter((window) => !window.isDestroyed());
+    return BrowserWindow.getAllWindows().filter(
+      (window) => !window.isDestroyed(),
+    );
   }
 
   private emitEvent(taskId: string, event: AgentUIEventPayload) {
