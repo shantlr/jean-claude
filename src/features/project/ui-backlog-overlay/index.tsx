@@ -87,7 +87,7 @@ export function BacklogOverlay({
     },
     {
       label: 'Open Todo Actions',
-      shortcut: 'enter',
+      shortcut: ['enter', 'cmd+enter'],
       handler: () => {
         // If editing, save the edit
         if (editingId) {
@@ -311,7 +311,8 @@ export function BacklogOverlay({
         <div ref={listRef} className="overflow-y-auto p-2">
           {todos.length === 0 ? (
             <div className="py-8 text-center text-sm text-neutral-500">
-              No backlog items yet. Type above and press Enter to add one.
+              No backlog items yet. Type above and press Enter or Cmd+Enter to
+              add one.
             </div>
           ) : (
             todos.map((todo, index) => (
