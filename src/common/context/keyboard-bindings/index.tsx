@@ -109,16 +109,23 @@ function useRootKeyboardBindings() {
  *    return true; // Indicate handled
  *   },
  * })
+ *
+ * // Conditionally enable bindings (re-registers at end of LIFO stack when enabled)
+ * useRegisterKeyboardBindings('my-component', { ... }, { enabled: isOpen })
  */
 export function useRegisterKeyboardBindings(
   id: string,
   bindings: Bindings,
+  options?: { enabled?: boolean },
 ): void {
   const root = useRootKeyboardBindings();
   const bindingsRef = useRef(bindings);
   bindingsRef.current = bindings;
 
+  const enabled = options?.enabled ?? true;
+
   useEffect(() => {
+    if (!enabled) return;
     return root.register(id, bindingsRef);
-  }, [id, root]);
+  }, [id, root, enabled]);
 }

@@ -53,6 +53,7 @@ import type {
   InteractionMode,
   ModelPreference,
   AppSettings,
+  ProjectTodo,
 } from '@shared/types';
 import type { UsageResult } from '@shared/usage-types';
 
@@ -624,6 +625,17 @@ export interface Api {
       serverUrl: string;
     }) => Promise<void>;
   };
+  projectTodos: {
+    list: (projectId: string) => Promise<ProjectTodo[]>;
+    count: (projectId: string) => Promise<{ count: number }>;
+    create: (data: {
+      projectId: string;
+      content: string;
+    }) => Promise<ProjectTodo>;
+    update: (id: string, data: { content: string }) => Promise<ProjectTodo>;
+    delete: (id: string) => Promise<void>;
+    reorder: (projectId: string, orderedIds: string[]) => Promise<void>;
+  };
 }
 
 declare global {
@@ -925,5 +937,17 @@ export const api: Api = hasWindowApi
         complete: async () => null,
         test: async () => ({ success: false, error: 'API not available' }),
         saveSettings: async () => {},
+      },
+      projectTodos: {
+        list: async () => [],
+        count: async () => ({ count: 0 }),
+        create: async () => {
+          throw new Error('API not available');
+        },
+        update: async () => {
+          throw new Error('API not available');
+        },
+        delete: async () => {},
+        reorder: async () => {},
       },
     } as Api);

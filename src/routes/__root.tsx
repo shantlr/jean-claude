@@ -12,11 +12,13 @@ import { TaskMessageManager } from '@/features/agent/task-message-manager';
 import { BackgroundJobsOverlay } from '@/features/background-jobs/ui-background-jobs-overlay';
 import { CommandPaletteOverlay } from '@/features/command-palette/ui-command-palette-overlay';
 import { NewTaskOverlay } from '@/features/new-task/ui-new-task-overlay';
+import { BacklogOverlay } from '@/features/project/ui-backlog-overlay';
 import { ProjectOverlay } from '@/features/project/ui-project-overlay';
 import { SettingsOverlay } from '@/features/settings/ui-settings-overlay';
 import { Header } from '@/layout/ui-header';
 import { MainSidebar } from '@/layout/ui-main-sidebar';
 import { resolveLastLocationRedirect } from '@/lib/navigation';
+import { useNavigationStore } from '@/stores/navigation';
 import { useNewTaskDraft } from '@/stores/new-task-draft';
 import { useCurrentVisibleProject } from '@/stores/navigation';
 import { useOverlaysStore } from '@/stores/overlays';
@@ -186,6 +188,36 @@ function SettingsContainer() {
   return <SettingsOverlay onClose={() => close('settings')} />;
 }
 
+function ProjectBacklogContainer() {
+  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'project-backlog');
+  const toggle = useOverlaysStore((s) => s.toggle);
+  const close = useOverlaysStore((s) => s.close);
+  const lastLocation = useNavigationStore((s) => s.lastLocation);
+  const projectId =
+    lastLocation.type === 'project' ? lastLocation.projectId : undefined;
+
+  useCommands('project-backlog-trigger', [
+    {
+      shortcut: 'cmd+b',
+      label: 'Open Project Backlog',
+      section: 'Projects',
+      handler: () => {
+        if (projectId) {
+          toggle('project-backlog');
+        }
+      },
+    },
+  ]);
+
+  if (!isOpen || !projectId) return null;
+  return (
+    <BacklogOverlay
+      projectId={projectId}
+      onClose={() => close('project-backlog')}
+    />
+  );
+}
+
 function RootLayout() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-neutral-900 text-white">
@@ -198,6 +230,7 @@ function RootLayout() {
       <NewTaskContainer />
       <CommandPaletteContainer />
       <ProjectOverlayContainer />
+      <ProjectBacklogContainer />
       <BackgroundJobsContainer />
       <SettingsContainer />
 

@@ -1,11 +1,12 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { ChevronDown, ClipboardList, SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { SidebarContentTabs } from '@/features/project/ui-sidebar-content-tabs';
 import { PrSidebarList } from '@/features/pull-request/ui-pr-sidebar-list';
 import { TaskSummaryCard } from '@/features/task/ui-task-summary-card';
+import { useProjectTodoCount } from '@/hooks/use-project-todos';
 import { useProjects } from '@/hooks/use-projects';
 import { useAllActiveTasks, useAllCompletedTasks } from '@/hooks/use-tasks';
 import { useCurrentVisibleProject, useSidebarTab } from '@/stores/navigation';
@@ -28,7 +29,10 @@ export function TaskList() {
   } = useAllCompletedTasks({ limit: COMPLETED_TASKS_PAGE_SIZE });
   const { projectId } = useCurrentVisibleProject();
   const { sidebarTab } = useSidebarTab();
-  const toggleSettings = useOverlaysStore((s) => s.toggle);
+  const toggleOverlay = useOverlaysStore((s) => s.toggle);
+  const { data: todoCount } = useProjectTodoCount(
+    projectId !== 'all' ? projectId : undefined,
+  );
 
   // Flatten completed tasks from paginated data
   const completedTasks = useMemo(
@@ -225,7 +229,7 @@ export function TaskList() {
     !!selectedProject && {
       label: 'Open Project Settings',
       handler: () => {
-        toggleSettings('settings');
+        toggleOverlay('settings');
       },
     },
   ]);
@@ -299,11 +303,25 @@ export function TaskList() {
             )}
           </div>
 
-          {/* Settings button */}
+          {/* Footer buttons */}
           <div className="mx-2 border-t border-neutral-800" />
           <div className="flex items-center gap-1 p-2">
+            {projectId !== 'all' && (
+              <button
+                onClick={() => toggleOverlay('project-backlog')}
+                className="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white"
+              >
+                <ClipboardList size={14} />
+                <span>Backlog</span>
+                {typeof todoCount === 'number' && todoCount > 0 && (
+                  <span className="rounded-full bg-neutral-700 px-1.5 py-0.5 text-xs leading-none text-neutral-300">
+                    {todoCount}
+                  </span>
+                )}
+              </button>
+            )}
             <button
-              onClick={() => toggleSettings('settings')}
+              onClick={() => toggleOverlay('settings')}
               className="flex grow items-center gap-2 rounded px-2 py-1.5 text-sm text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white"
             >
               <SlidersHorizontal size={14} />

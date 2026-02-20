@@ -41,6 +41,7 @@ import {
   SettingsRepository,
   DebugRepository,
   TaskSummaryRepository,
+  ProjectTodoRepository,
 } from '../database/repositories';
 import { McpTemplateRepository } from '../database/repositories/mcp-templates';
 import { ProjectCommandRepository } from '../database/repositories/project-commands';
@@ -1747,6 +1748,44 @@ export function registerIpcHandlers() {
 
       // Invalidate cached SDK client so next request uses new settings
       resetCompletionClient();
+    },
+  );
+
+  // Project Todos
+  ipcMain.handle('project-todos:list', (_, projectId: string) =>
+    ProjectTodoRepository.findByProjectId(projectId),
+  );
+
+  ipcMain.handle('project-todos:count', (_, projectId: string) =>
+    ProjectTodoRepository.countByProjectId(projectId),
+  );
+
+  ipcMain.handle(
+    'project-todos:create',
+    (_, data: { projectId: string; content: string }) => {
+      dbg.ipc('project-todos:create %o', data);
+      return ProjectTodoRepository.create(data);
+    },
+  );
+
+  ipcMain.handle(
+    'project-todos:update',
+    (_, id: string, data: { content: string }) => {
+      dbg.ipc('project-todos:update %s %o', id, data);
+      return ProjectTodoRepository.update(id, data);
+    },
+  );
+
+  ipcMain.handle('project-todos:delete', (_, id: string) => {
+    dbg.ipc('project-todos:delete %s', id);
+    return ProjectTodoRepository.delete(id);
+  });
+
+  ipcMain.handle(
+    'project-todos:reorder',
+    (_, projectId: string, orderedIds: string[]) => {
+      dbg.ipc('project-todos:reorder %s %o', projectId, orderedIds);
+      return ProjectTodoRepository.reorder(projectId, orderedIds);
     },
   );
 }

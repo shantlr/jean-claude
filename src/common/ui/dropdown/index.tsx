@@ -43,7 +43,9 @@ export function Dropdown({
   className?: string;
 }) {
   const id = useId();
+  const menuId = `dropdown-menu-${id}`;
   const [isOpen, setIsOpen] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
   const triggerRef = useRef<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [position, setPosition] = useState<{
@@ -52,8 +54,55 @@ export function Dropdown({
     actualSide: 'top' | 'bottom';
   } | null>(null);
 
-  const close = useCallback(() => setIsOpen(false), []);
-  const toggle = useCallback(() => setIsOpen((prev) => !prev), []);
+  const close = useCallback(() => {
+    setIsOpen(false);
+    setFocusedIndex(-1);
+    // Return focus to trigger on close
+    triggerRef.current?.focus();
+  }, []);
+
+  const toggle = useCallback(() => {
+    setIsOpen((prev) => {
+      if (prev) {
+        setFocusedIndex(-1);
+        // Return focus to trigger on close
+        triggerRef.current?.focus();
+      }
+      return !prev;
+    });
+  }, []);
+
+  // Get all menu items
+  const getMenuItems = useCallback(() => {
+    if (!contentRef.current) return [];
+    return Array.from(
+      contentRef.current.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitem"]',
+      ),
+    );
+  }, []);
+
+  // Focus the item at the given index
+  const focusItem = useCallback(
+    (index: number) => {
+      const items = getMenuItems();
+      if (index >= 0 && index < items.length) {
+        items[index].focus();
+        setFocusedIndex(index);
+      }
+    },
+    [getMenuItems],
+  );
+
+  // Auto-focus first item when dropdown opens
+  useEffect(() => {
+    if (!isOpen || !contentRef.current) return;
+    // Use a microtask to wait for the portal to render items
+    const timer = requestAnimationFrame(() => {
+      focusItem(0);
+    });
+    return () => cancelAnimationFrame(timer);
+  }, [isOpen, position, focusItem]);
 
   // Register with overlay context for click-outside detection
   useRegisterOverlay({
@@ -62,17 +111,50 @@ export function Dropdown({
     onClose: close,
   });
 
-  // Register escape to close
+  // Register keyboard bindings when open.
+  // Using { enabled: isOpen } so bindings re-register at the end of the LIFO
+  // stack when the dropdown opens, giving them priority over parent bindings.
   useRegisterKeyboardBindings(
     `dropdown-${id}`,
-    isOpen
-      ? {
-          escape: () => {
-            close();
-            return true;
-          },
+    {
+      escape: () => {
+        close();
+        return true;
+      },
+      down: () => {
+        const items = getMenuItems();
+        if (items.length === 0) return true;
+        const next = focusedIndex < items.length - 1 ? focusedIndex + 1 : 0;
+        focusItem(next);
+        return true;
+      },
+      up: () => {
+        const items = getMenuItems();
+        if (items.length === 0) return true;
+        const prev = focusedIndex > 0 ? focusedIndex - 1 : items.length - 1;
+        focusItem(prev);
+        return true;
+      },
+      enter: () => {
+        const items = getMenuItems();
+        if (focusedIndex >= 0 && focusedIndex < items.length) {
+          items[focusedIndex].click();
         }
-      : {},
+        return true;
+      },
+      space: () => {
+        const items = getMenuItems();
+        if (focusedIndex >= 0 && focusedIndex < items.length) {
+          items[focusedIndex].click();
+        }
+        return true;
+      },
+      tab: () => {
+        close();
+        return true;
+      },
+    },
+    { enabled: isOpen },
   );
 
   // Calculate position when opening
@@ -146,6 +228,9 @@ export function Dropdown({
           }
           toggle();
         },
+        'aria-haspopup': 'menu' as const,
+        'aria-expanded': isOpen,
+        'aria-controls': isOpen ? menuId : undefined,
       },
     );
   } else {
@@ -162,6 +247,9 @@ export function Dropdown({
         createPortal(
           <div
             ref={contentRef}
+            id={menuId}
+            role="menu"
+            aria-orientation="vertical"
             className={clsx(
               'fixed z-50 min-w-48 rounded-md border border-neutral-700 bg-neutral-800 py-1 shadow-lg',
               className,
@@ -200,9 +288,11 @@ export function DropdownItem({
 }) {
   return (
     <button
+      role="menuitem"
+      tabIndex={-1}
       onClick={onClick}
       className={clsx(
-        'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-neutral-700',
+        'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-neutral-700 focus:bg-neutral-700 focus:outline-none',
         variant === 'danger' ? 'text-red-400' : 'text-neutral-300',
       )}
     >

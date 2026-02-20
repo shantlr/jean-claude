@@ -221,6 +221,14 @@ export interface UpdateTask {
   updatedAt?: string;
 }
 
+export interface ProjectTodo {
+  id: string;
+  projectId: string;
+  content: string;
+  sortOrder: number;
+  createdAt: string;
+}
+
 // Editor settings
 export interface PresetEditor {
   id: string;

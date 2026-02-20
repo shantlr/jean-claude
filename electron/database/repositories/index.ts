@@ -7,3 +7,4 @@ export { RawMessageRepository } from './raw-messages';
 export { SettingsRepository } from './settings';
 export { DebugRepository } from './debug';
 export { TaskSummaryRepository } from './task-summaries';
+export { ProjectTodoRepository } from './project-todos';

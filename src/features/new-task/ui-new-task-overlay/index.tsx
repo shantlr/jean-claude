@@ -20,6 +20,7 @@ import {
   useBackendSelector,
 } from '@/features/agent/ui-backend-selector';
 import { useBackendModels } from '@/hooks/use-backend-models';
+import { useDeleteProjectTodo } from '@/hooks/use-project-todos';
 import { useProjects, useProjectBranches } from '@/hooks/use-projects';
 import { useBackendsSetting } from '@/hooks/use-settings';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
@@ -108,6 +109,7 @@ export function NewTaskOverlay({
 
   const { data: projects = [] } = useProjects();
   const createTaskMutation = useCreateTaskWithWorktree();
+  const deleteBacklogTodo = useDeleteProjectTodo();
   const queryClient = useQueryClient();
   const addRunningJob = useBackgroundJobsStore((state) => state.addRunningJob);
   const markJobSucceeded = useBackgroundJobsStore(
@@ -531,6 +533,15 @@ export function NewTaskOverlay({
           queryClient.invalidateQueries({
             queryKey: ['tasks', { projectId: task.projectId }],
           });
+
+          // Clean up backlog todo if this task was converted from one
+          const backlogTodoId = sessionStorage.getItem(
+            'backlog-convert-todo-id',
+          );
+          if (backlogTodoId) {
+            sessionStorage.removeItem('backlog-convert-todo-id');
+            deleteBacklogTodo.mutate(backlogTodoId);
+          }
         })
         .catch((error: unknown) => {
           const message =
@@ -553,6 +564,7 @@ export function NewTaskOverlay({
     selectedProject?.defaultBranch,
     addRunningJob,
     createTaskMutation,
+    deleteBacklogTodo,
     clearDraft,
     updateDraft,
     queryClient,

@@ -420,5 +420,17 @@ contextBridge.exposeInMainWorld('api', {
       serverUrl: string;
     }) => ipcRenderer.invoke('completion:saveSettings', params),
   },
+  projectTodos: {
+    list: (projectId: string) =>
+      ipcRenderer.invoke('project-todos:list', projectId),
+    count: (projectId: string) =>
+      ipcRenderer.invoke('project-todos:count', projectId),
+    create: (data: unknown) => ipcRenderer.invoke('project-todos:create', data),
+    update: (id: string, data: unknown) =>
+      ipcRenderer.invoke('project-todos:update', id, data),
+    delete: (id: string) => ipcRenderer.invoke('project-todos:delete', id),
+    reorder: (projectId: string, orderedIds: string[]) =>
+      ipcRenderer.invoke('project-todos:reorder', projectId, orderedIds),
+  },
 });
 console.log('Preload script loaded');

@@ -1,0 +1,422 @@
+import clsx from 'clsx';
+import {
+  ArrowRight,
+  GripVertical,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+} from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+
+import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import { useCommands } from '@/common/hooks/use-commands';
+import { Dropdown, DropdownItem } from '@/common/ui/dropdown';
+import {
+  useProjectTodos,
+  useCreateProjectTodo,
+  useUpdateProjectTodo,
+  useDeleteProjectTodo,
+  useReorderProjectTodos,
+} from '@/hooks/use-project-todos';
+import { useNewTaskDraftStore } from '@/stores/new-task-draft';
+import { useOverlaysStore } from '@/stores/overlays';
+import type { ProjectTodo } from '@shared/types';
+
+export function BacklogOverlay({
+  projectId,
+  onClose,
+}: {
+  projectId: string;
+  onClose: () => void;
+}) {
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const [inputValue, setInputValue] = useState('');
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const lastSelectedIndexRef = useRef(0);
+  const dragItemId = useRef<string | null>(null);
+
+  const { data: todos = [] } = useProjectTodos(projectId);
+  const createTodo = useCreateProjectTodo();
+  const updateTodo = useUpdateProjectTodo();
+  const deleteTodo = useDeleteProjectTodo();
+  const reorderTodos = useReorderProjectTodos();
+  const openOverlay = useOverlaysStore((s) => s.open);
+  const setDraft = useNewTaskDraftStore((s) => s.setDraft);
+  const setSelectedProjectId = useNewTaskDraftStore(
+    (s) => s.setSelectedProjectId,
+  );
+
+  // Focus input on mount
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  // Scroll selected item into view
+  useEffect(() => {
+    if (selectedIndex < 0) return;
+    const selectedItem = listRef.current?.querySelector<HTMLDivElement>(
+      '[data-selected="true"]',
+    );
+    selectedItem?.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest',
+      behavior: 'auto',
+    });
+  }, [selectedIndex]);
+
+  // Register keyboard shortcuts (Cmd+B is handled by the container's toggle)
+  // Shift+Enter produces 'shift+enter' which has no binding, so it falls
+  // through to the textarea's default behaviour (insert newline).
+  useCommands('backlog-overlay', [
+    {
+      label: 'Close Backlog',
+      shortcut: 'escape',
+      handler: () => {
+        if (editingId) {
+          cancelEdit();
+          return;
+        }
+        onClose();
+      },
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Open Todo Actions',
+      shortcut: 'enter',
+      handler: () => {
+        // If editing, save the edit
+        if (editingId) {
+          saveEdit();
+          return;
+        }
+        // If in input mode and has text, add it as a new todo
+        if (selectedIndex === -1 && inputValue.trim()) {
+          handleAdd();
+          return;
+        }
+        // If an item is selected, open its dropdown
+        if (selectedIndex >= 0 && selectedIndex < todos.length) {
+          const todo = todos[selectedIndex];
+          if (todo) {
+            triggerRefs.current.get(todo.id)?.click();
+          }
+        }
+      },
+      hideInCommandPalette: true,
+    },
+  ]);
+
+  // Navigation bindings: up/down skip when typing in an input (ignoreIfInput),
+  // cmd+up/cmd+down reorder the selected item, tab toggles focus.
+  useRegisterKeyboardBindings('backlog-overlay-navigation', {
+    up: {
+      handler: () => {
+        setSelectedIndex((i) => Math.max(0, i - 1));
+      },
+      ignoreIfInput: true,
+    },
+    down: {
+      handler: () => {
+        setSelectedIndex((i) => Math.min(todos.length - 1, i + 1));
+      },
+      ignoreIfInput: true,
+    },
+    'cmd+up': {
+      handler: () => {
+        if (selectedIndex <= 0 || todos.length < 2) return;
+        const ids = todos.map((t) => t.id);
+        const newIds = [...ids];
+        [newIds[selectedIndex - 1], newIds[selectedIndex]] = [
+          newIds[selectedIndex],
+          newIds[selectedIndex - 1],
+        ];
+        reorderTodos.mutate({ projectId, orderedIds: newIds });
+        setSelectedIndex(selectedIndex - 1);
+      },
+      ignoreIfInput: true,
+    },
+    'cmd+down': {
+      handler: () => {
+        if (selectedIndex < 0 || selectedIndex >= todos.length - 1) return;
+        const ids = todos.map((t) => t.id);
+        const newIds = [...ids];
+        [newIds[selectedIndex], newIds[selectedIndex + 1]] = [
+          newIds[selectedIndex + 1],
+          newIds[selectedIndex],
+        ];
+        reorderTodos.mutate({ projectId, orderedIds: newIds });
+        setSelectedIndex(selectedIndex + 1);
+      },
+      ignoreIfInput: true,
+    },
+    tab: () => {
+      if (todos.length === 0) return;
+      if (selectedIndex >= 0) {
+        // List → Input: remember position, focus textarea
+        lastSelectedIndexRef.current = selectedIndex;
+        setSelectedIndex(-1);
+        inputRef.current?.focus();
+      } else {
+        // Input → List: restore last position (or first item)
+        const idx = Math.min(lastSelectedIndexRef.current, todos.length - 1);
+        setSelectedIndex(idx >= 0 ? idx : 0);
+        inputRef.current?.blur();
+      }
+    },
+  });
+
+  // Add todo
+  const handleAdd = useCallback(() => {
+    const content = inputValue.trim();
+    if (!content) return;
+    createTodo.mutate({ projectId, content });
+    setInputValue('');
+    inputRef.current?.focus();
+  }, [inputValue, projectId, createTodo]);
+
+  // Start inline edit
+  const startEdit = useCallback((todo: ProjectTodo) => {
+    setEditingId(todo.id);
+    setEditValue(todo.content);
+  }, []);
+
+  // Save inline edit
+  const saveEdit = useCallback(() => {
+    if (!editingId) return;
+    const content = editValue.trim();
+    if (content) {
+      updateTodo.mutate({ id: editingId, content });
+    }
+    setEditingId(null);
+    setEditValue('');
+  }, [editingId, editValue, updateTodo]);
+
+  // Cancel inline edit
+  const cancelEdit = useCallback(() => {
+    setEditingId(null);
+    setEditValue('');
+  }, []);
+
+  // Delete todo
+  const handleDelete = useCallback(
+    (id: string) => {
+      deleteTodo.mutate(id);
+    },
+    [deleteTodo],
+  );
+
+  // Convert to task
+  const handleConvertToTask = useCallback(
+    (todo: ProjectTodo) => {
+      // Store the todo ID for cleanup after task creation
+      sessionStorage.setItem('backlog-convert-todo-id', todo.id);
+      // Pre-fill new task draft with todo content and select the project tab
+      setSelectedProjectId(projectId);
+      setDraft(projectId, {
+        prompt: todo.content,
+        inputMode: 'prompt',
+      });
+      // Close backlog first, then open new-task overlay
+      onClose();
+      openOverlay('new-task');
+    },
+    [projectId, setDraft, setSelectedProjectId, onClose, openOverlay],
+  );
+
+  // Drag-and-drop handlers
+  const handleDragStart = useCallback((todoId: string) => {
+    dragItemId.current = todoId;
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, todoId: string) => {
+    e.preventDefault();
+    if (dragItemId.current && dragItemId.current !== todoId) {
+      setDragOverId(todoId);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback(() => {
+    setDragOverId(null);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent, targetId: string) => {
+      e.preventDefault();
+      setDragOverId(null);
+      const sourceId = dragItemId.current;
+      dragItemId.current = null;
+
+      if (!sourceId || sourceId === targetId) return;
+
+      const currentIds = todos.map((t) => t.id);
+      const sourceIndex = currentIds.indexOf(sourceId);
+      const targetIndex = currentIds.indexOf(targetId);
+      if (sourceIndex === -1 || targetIndex === -1) return;
+
+      const newIds = [...currentIds];
+      newIds.splice(sourceIndex, 1);
+      newIds.splice(targetIndex, 0, sourceId);
+
+      reorderTodos.mutate({ projectId, orderedIds: newIds });
+    },
+    [todos, projectId, reorderTodos],
+  );
+
+  const handleDragEnd = useCallback(() => {
+    dragItemId.current = null;
+    setDragOverId(null);
+  }, []);
+
+  // Handle backdrop click
+  const handleOverlayClick = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  const handleModalClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
+      onClick={handleOverlayClick}
+    >
+      <div
+        className="flex max-h-[60svh] w-[90svw] max-w-[640px] flex-col overflow-hidden rounded-lg border border-neutral-700 bg-neutral-800 shadow-2xl"
+        onClick={handleModalClick}
+      >
+        {/* Quick-add input */}
+        <div className="flex items-center border-b border-neutral-700 px-4 py-3">
+          <textarea
+            ref={inputRef}
+            placeholder="Add a todo..."
+            autoFocus
+            rows={1}
+            value={inputValue}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
+            className="placeholder:text-muted-foreground max-h-32 flex-1 resize-none bg-transparent text-sm outline-none"
+          />
+        </div>
+
+        {/* Todo list */}
+        <div ref={listRef} className="overflow-y-auto p-2">
+          {todos.length === 0 ? (
+            <div className="py-8 text-center text-sm text-neutral-500">
+              No backlog items yet. Type above and press Enter to add one.
+            </div>
+          ) : (
+            todos.map((todo, index) => (
+              <div
+                key={todo.id}
+                data-selected={index === selectedIndex}
+                draggable={editingId !== todo.id}
+                onDragStart={() => handleDragStart(todo.id)}
+                onDragOver={(e) => handleDragOver(e, todo.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, todo.id)}
+                onDragEnd={handleDragEnd}
+                onClick={() => setSelectedIndex(index)}
+                className={clsx(
+                  'group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm',
+                  dragOverId === todo.id
+                    ? 'border-t-2 border-blue-500'
+                    : 'border-t-2 border-transparent',
+                  index === selectedIndex
+                    ? 'bg-neutral-700'
+                    : 'hover:bg-neutral-700/50',
+                )}
+              >
+                {/* Drag handle */}
+                <span className="cursor-grab text-neutral-600 opacity-0 group-hover:opacity-100">
+                  <GripVertical size={14} />
+                </span>
+
+                {/* Content or edit textarea */}
+                {editingId === todo.id ? (
+                  <textarea
+                    autoFocus
+                    rows={1}
+                    value={editValue}
+                    onChange={(e) => {
+                      setEditValue(e.target.value);
+                      e.target.style.height = 'auto';
+                      e.target.style.height = `${e.target.scrollHeight}px`;
+                    }}
+                    ref={(el) => {
+                      // Auto-resize on mount to fit existing content
+                      if (el) {
+                        el.style.height = 'auto';
+                        el.style.height = `${el.scrollHeight}px`;
+                      }
+                    }}
+                    onBlur={saveEdit}
+                    className="max-h-32 flex-1 resize-none bg-transparent text-sm text-neutral-200 outline-none"
+                  />
+                ) : (
+                  <span className="flex-1 truncate text-neutral-300">
+                    {todo.content}
+                  </span>
+                )}
+
+                {/* Context menu */}
+                {editingId !== todo.id && (
+                  <Dropdown
+                    trigger={
+                      <button
+                        ref={(node: HTMLButtonElement | null) => {
+                          if (node) {
+                            triggerRefs.current.set(todo.id, node);
+                          } else {
+                            triggerRefs.current.delete(todo.id);
+                          }
+                        }}
+                        className={clsx(
+                          'rounded p-0.5 hover:bg-neutral-600 hover:text-neutral-300',
+                          index === selectedIndex
+                            ? 'text-neutral-400 opacity-100'
+                            : 'text-neutral-500 opacity-0 group-hover:opacity-100',
+                        )}
+                      >
+                        <MoreHorizontal size={14} />
+                      </button>
+                    }
+                    align="right"
+                  >
+                    <DropdownItem
+                      onClick={() => startEdit(todo)}
+                      icon={<Pencil size={14} />}
+                    >
+                      Edit
+                    </DropdownItem>
+                    <DropdownItem
+                      onClick={() => handleConvertToTask(todo)}
+                      icon={<ArrowRight size={14} />}
+                    >
+                      Convert to task
+                    </DropdownItem>
+                    <DropdownItem
+                      onClick={() => handleDelete(todo.id)}
+                      icon={<Trash2 size={14} />}
+                      variant="danger"
+                    >
+                      Delete
+                    </DropdownItem>
+                  </Dropdown>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

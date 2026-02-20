@@ -27,6 +27,7 @@ import * as m025 from './migrations/025_task_model_preference';
 import * as m026 from './migrations/026_agent_backend_abstraction';
 import * as m027 from './migrations/027_task_pending_message';
 import * as m028 from './migrations/028_v2_normalization';
+import * as m029 from './migrations/029_project_todos';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -56,6 +57,7 @@ const migrations: Record<string, Migration> = {
   '026_agent_backend_abstraction': m026,
   '027_task_pending_message': m027,
   '028_v2_normalization': m028,
+  '029_project_todos': m029,
 };
 
 export const migrationProvider: MigrationProvider = {

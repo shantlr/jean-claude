@@ -9,7 +9,8 @@ export type OverlayType =
   | 'project-switcher'
   | 'keyboard-help'
   | 'background-jobs'
-  | 'settings';
+  | 'settings'
+  | 'project-backlog';
 
 interface OverlaysState {
   // Current active overlay (null = none open)

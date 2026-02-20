@@ -34,6 +34,7 @@ export interface Database {
   mcp_templates: McpTemplateTable;
   project_mcp_overrides: ProjectMcpOverrideTable;
   task_summaries: TaskSummaryTable;
+  project_todos: ProjectTodoTable;
 }
 
 export interface TokenTable {
@@ -219,3 +220,15 @@ export interface TaskSummaryTable {
 export type TaskSummaryRow = Selectable<TaskSummaryTable>;
 export type NewTaskSummaryRow = Insertable<TaskSummaryTable>;
 export type UpdateTaskSummaryRow = Updateable<TaskSummaryTable>;
+
+export interface ProjectTodoTable {
+  id: Generated<string>;
+  projectId: string;
+  content: string;
+  sortOrder: number;
+  createdAt: Generated<string>;
+}
+
+export type ProjectTodoRow = Selectable<ProjectTodoTable>;
+export type NewProjectTodoRow = Insertable<ProjectTodoTable>;
+export type UpdateProjectTodoRow = Updateable<ProjectTodoTable>;
