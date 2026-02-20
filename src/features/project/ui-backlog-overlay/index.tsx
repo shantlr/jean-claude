@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import {
   ArrowRight,
   GripVertical,
+  Loader2,
   MoreHorizontal,
   Pencil,
   Trash2,
@@ -18,9 +19,152 @@ import {
   useDeleteProjectTodo,
   useReorderProjectTodos,
 } from '@/hooks/use-project-todos';
+import { useBackgroundNewTaskJobForBacklogItem } from '@/stores/background-jobs';
 import { useNewTaskDraftStore } from '@/stores/new-task-draft';
 import { useOverlaysStore } from '@/stores/overlays';
 import type { ProjectTodo } from '@shared/types';
+
+function BacklogTodoRow({
+  todo,
+  isSelected,
+  isEditing,
+  editValue,
+  dragOverId,
+  triggerRefs,
+  onSelect,
+  onEditChange,
+  onEditBlur,
+  onStartEdit,
+  onConvertToTask,
+  onDelete,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
+}: {
+  todo: ProjectTodo;
+  isSelected: boolean;
+  isEditing: boolean;
+  editValue: string;
+  dragOverId: string | null;
+  triggerRefs: React.RefObject<Map<string, HTMLButtonElement>>;
+  onSelect: () => void;
+  onEditChange: (value: string) => void;
+  onEditBlur: () => void;
+  onStartEdit: () => void;
+  onConvertToTask: () => void;
+  onDelete: () => void;
+  onDragStart: () => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
+}) {
+  const isCreating = useBackgroundNewTaskJobForBacklogItem({
+    itemId: todo.id,
+  });
+
+  return (
+    <div
+      data-selected={isSelected}
+      draggable={!isEditing && !isCreating}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      onClick={onSelect}
+      className={clsx(
+        'group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm',
+        dragOverId === todo.id
+          ? 'border-t-2 border-blue-500'
+          : 'border-t-2 border-transparent',
+        isSelected ? 'bg-neutral-700' : 'hover:bg-neutral-700/50',
+        isCreating && 'opacity-60',
+      )}
+    >
+      {/* Drag handle or creating spinner */}
+      {isCreating ? (
+        <span className="text-blue-400">
+          <Loader2 size={14} className="animate-spin" />
+        </span>
+      ) : (
+        <span className="cursor-grab text-neutral-600 opacity-0 group-hover:opacity-100">
+          <GripVertical size={14} />
+        </span>
+      )}
+
+      {/* Content or edit textarea */}
+      {isEditing ? (
+        <textarea
+          autoFocus
+          rows={1}
+          value={editValue}
+          onChange={(e) => {
+            onEditChange(e.target.value);
+            e.target.style.height = 'auto';
+            e.target.style.height = `${e.target.scrollHeight}px`;
+          }}
+          ref={(el) => {
+            // Auto-resize on mount to fit existing content
+            if (el) {
+              el.style.height = 'auto';
+              el.style.height = `${el.scrollHeight}px`;
+            }
+          }}
+          onBlur={onEditBlur}
+          className="max-h-32 flex-1 resize-none bg-transparent text-sm text-neutral-200 outline-none"
+        />
+      ) : (
+        <span className="flex-1 truncate text-neutral-300">{todo.content}</span>
+      )}
+
+      {/* Context menu (hidden while creating) */}
+      {!isEditing && !isCreating && (
+        <Dropdown
+          trigger={
+            <button
+              ref={(node: HTMLButtonElement | null) => {
+                if (node) {
+                  triggerRefs.current.set(todo.id, node);
+                } else {
+                  triggerRefs.current.delete(todo.id);
+                }
+              }}
+              className={clsx(
+                'rounded p-0.5 hover:bg-neutral-600 hover:text-neutral-300',
+                isSelected
+                  ? 'text-neutral-400 opacity-100'
+                  : 'text-neutral-500 opacity-0 group-hover:opacity-100',
+              )}
+            >
+              <MoreHorizontal size={14} />
+            </button>
+          }
+          align="right"
+        >
+          <DropdownItem onClick={onStartEdit} icon={<Pencil size={14} />}>
+            Edit
+          </DropdownItem>
+          <DropdownItem
+            onClick={onConvertToTask}
+            icon={<ArrowRight size={14} />}
+          >
+            Convert to task
+          </DropdownItem>
+          <DropdownItem
+            onClick={onDelete}
+            icon={<Trash2 size={14} />}
+            variant="danger"
+          >
+            Delete
+          </DropdownItem>
+        </Dropdown>
+      )}
+    </div>
+  );
+}
 
 export function BacklogOverlay({
   projectId,
@@ -213,13 +357,13 @@ export function BacklogOverlay({
   // Convert to task
   const handleConvertToTask = useCallback(
     (todo: ProjectTodo) => {
-      // Store the todo ID for cleanup after task creation
-      sessionStorage.setItem('backlog-convert-todo-id', todo.id);
-      // Pre-fill new task draft with todo content and select the project tab
+      // Pre-fill new task draft with todo content, track the todo ID for
+      // cleanup after task creation, and select the project tab
       setSelectedProjectId(projectId);
       setDraft(projectId, {
         prompt: todo.content,
         inputMode: 'prompt',
+        backlogTodoId: todo.id,
       });
       // Close backlog first, then open new-task overlay
       onClose();
@@ -316,104 +460,26 @@ export function BacklogOverlay({
             </div>
           ) : (
             todos.map((todo, index) => (
-              <div
+              <BacklogTodoRow
                 key={todo.id}
-                data-selected={index === selectedIndex}
-                draggable={editingId !== todo.id}
+                todo={todo}
+                isSelected={index === selectedIndex}
+                isEditing={editingId === todo.id}
+                editValue={editValue}
+                dragOverId={dragOverId}
+                triggerRefs={triggerRefs}
+                onSelect={() => setSelectedIndex(index)}
+                onEditChange={setEditValue}
+                onEditBlur={saveEdit}
+                onStartEdit={() => startEdit(todo)}
+                onConvertToTask={() => handleConvertToTask(todo)}
+                onDelete={() => handleDelete(todo.id)}
                 onDragStart={() => handleDragStart(todo.id)}
                 onDragOver={(e) => handleDragOver(e, todo.id)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, todo.id)}
                 onDragEnd={handleDragEnd}
-                onClick={() => setSelectedIndex(index)}
-                className={clsx(
-                  'group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm',
-                  dragOverId === todo.id
-                    ? 'border-t-2 border-blue-500'
-                    : 'border-t-2 border-transparent',
-                  index === selectedIndex
-                    ? 'bg-neutral-700'
-                    : 'hover:bg-neutral-700/50',
-                )}
-              >
-                {/* Drag handle */}
-                <span className="cursor-grab text-neutral-600 opacity-0 group-hover:opacity-100">
-                  <GripVertical size={14} />
-                </span>
-
-                {/* Content or edit textarea */}
-                {editingId === todo.id ? (
-                  <textarea
-                    autoFocus
-                    rows={1}
-                    value={editValue}
-                    onChange={(e) => {
-                      setEditValue(e.target.value);
-                      e.target.style.height = 'auto';
-                      e.target.style.height = `${e.target.scrollHeight}px`;
-                    }}
-                    ref={(el) => {
-                      // Auto-resize on mount to fit existing content
-                      if (el) {
-                        el.style.height = 'auto';
-                        el.style.height = `${el.scrollHeight}px`;
-                      }
-                    }}
-                    onBlur={saveEdit}
-                    className="max-h-32 flex-1 resize-none bg-transparent text-sm text-neutral-200 outline-none"
-                  />
-                ) : (
-                  <span className="flex-1 truncate text-neutral-300">
-                    {todo.content}
-                  </span>
-                )}
-
-                {/* Context menu */}
-                {editingId !== todo.id && (
-                  <Dropdown
-                    trigger={
-                      <button
-                        ref={(node: HTMLButtonElement | null) => {
-                          if (node) {
-                            triggerRefs.current.set(todo.id, node);
-                          } else {
-                            triggerRefs.current.delete(todo.id);
-                          }
-                        }}
-                        className={clsx(
-                          'rounded p-0.5 hover:bg-neutral-600 hover:text-neutral-300',
-                          index === selectedIndex
-                            ? 'text-neutral-400 opacity-100'
-                            : 'text-neutral-500 opacity-0 group-hover:opacity-100',
-                        )}
-                      >
-                        <MoreHorizontal size={14} />
-                      </button>
-                    }
-                    align="right"
-                  >
-                    <DropdownItem
-                      onClick={() => startEdit(todo)}
-                      icon={<Pencil size={14} />}
-                    >
-                      Edit
-                    </DropdownItem>
-                    <DropdownItem
-                      onClick={() => handleConvertToTask(todo)}
-                      icon={<ArrowRight size={14} />}
-                    >
-                      Convert to task
-                    </DropdownItem>
-                    <DropdownItem
-                      onClick={() => handleDelete(todo.id)}
-                      icon={<Trash2 size={14} />}
-                      variant="danger"
-                    >
-                      Delete
-                    </DropdownItem>
-                  </Dropdown>
-                )}
-              </div>
+              />
             ))
           )}
         </div>

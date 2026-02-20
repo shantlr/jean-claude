@@ -467,6 +467,8 @@ export function NewTaskOverlay({
         finalPrompt = draft.prompt;
       }
 
+      const backlogTodoId = draft.backlogTodoId ?? null;
+
       const jobId = addRunningJob({
         type: 'task-creation',
         title: `Creating task in ${selectedProject?.name ?? 'project'}`,
@@ -474,6 +476,7 @@ export function NewTaskOverlay({
         details: {
           projectName: selectedProject?.name ?? null,
           promptPreview: finalPrompt.slice(0, 120),
+          backlogTodoId,
           creationInput: {
             projectId: selectedProjectId,
             prompt: finalPrompt,
@@ -535,11 +538,7 @@ export function NewTaskOverlay({
           });
 
           // Clean up backlog todo if this task was converted from one
-          const backlogTodoId = sessionStorage.getItem(
-            'backlog-convert-todo-id',
-          );
           if (backlogTodoId) {
-            sessionStorage.removeItem('backlog-convert-todo-id');
             deleteBacklogTodo.mutate(backlogTodoId);
           }
         })

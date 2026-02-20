@@ -22,6 +22,8 @@ export interface NewTaskDraft {
   // Shared state
   createWorktree: boolean;
   sourceBranch: string | null;
+  // Backlog conversion tracking
+  backlogTodoId: string | null;
 }
 
 interface NewTaskDraftState {
@@ -48,6 +50,7 @@ const defaultDraft: NewTaskDraft = {
   prompt: '',
   createWorktree: true,
   sourceBranch: null,
+  backlogTodoId: null,
 };
 
 const useStore = create<NewTaskDraftState>()(

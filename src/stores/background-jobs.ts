@@ -28,6 +28,7 @@ export type BackgroundJob =
         projectName: string | null;
         promptPreview: string | null;
         creationInput: Parameters<typeof api.tasks.createWithWorktree>[0];
+        backlogTodoId: string | null;
       };
     })
   | (BackgroundJobBase & {
@@ -55,6 +56,7 @@ type NewBackgroundJobInput =
         projectName: string | null;
         promptPreview: string | null;
         creationInput: Parameters<typeof api.tasks.createWithWorktree>[0];
+        backlogTodoId: string | null;
       };
     }
   | {
@@ -187,4 +189,20 @@ export const useBackgroundJobsStore = create<BackgroundJobsState>()(
 
 export function getRunningJobsCount(jobs: BackgroundJob[]) {
   return jobs.filter((job) => job.status === 'running').length;
+}
+
+/** Returns true when a running task-creation job is linked to the given backlog item. */
+export function useBackgroundNewTaskJobForBacklogItem({
+  itemId,
+}: {
+  itemId: string;
+}) {
+  return useBackgroundJobsStore((state) =>
+    state.jobs.some(
+      (job) =>
+        job.type === 'task-creation' &&
+        job.status === 'running' &&
+        job.details.backlogTodoId === itemId,
+    ),
+  );
 }
