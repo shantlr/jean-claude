@@ -388,3 +388,30 @@ We normalize this to the `edit` tool type, extracting the file path from the pat
 - Completed `metadata.files` array contains structured per-file data: `filePath`, `relativePath`, `type` (update/add/delete), `diff`, `before`/`after` content, `additions`/`deletions` counts
 - Completed `metadata.diff` contains the full unified diff output
 - We normalize to `edit` by extracting the file path from the `*** Update File:` line in the patch
+
+## session.error (APIError)
+
+When OpenCode emits `session.error` with an API provider error payload, keep only the actionable detail.
+
+```json
+{
+  "type": "session.error",
+  "properties": {
+    "sessionID": "ses_xxx",
+    "error": {
+      "name": "APIError",
+      "data": {
+        "message": "Bad Request: {\"detail\":\"The selected model is not supported for this account.\"}",
+        "statusCode": 400,
+        "responseBody": "{\"detail\":\"The selected model is not supported for this account.\"}"
+      }
+    }
+  }
+}
+```
+
+Normalized error message should be:
+
+```text
+The selected model is not supported for this account.
+```

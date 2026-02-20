@@ -350,6 +350,8 @@ export class OpenCodeBackend implements AgentBackend {
     // Track whether we've received the prompt response
     let promptComplete = false;
     let sessionIdle = false;
+    let emittedError = false;
+    let sessionErrored = false;
 
     // Send the initial prompt (fire and forget — events arrive via SSE)
     const model = this.parseModel(config.model);
@@ -445,7 +447,11 @@ export class OpenCodeBackend implements AgentBackend {
 
         const rawMessageId = await this.persistRawForMessage(state, ocEvent);
         const agentEvents = this.mapEvent(ocEvent, state, rawMessageId);
+
         for (const agentEvent of agentEvents) {
+          if (agentEvent.type === 'error') {
+            emittedError = true;
+          }
           yield agentEvent;
         }
 
@@ -463,13 +469,9 @@ export class OpenCodeBackend implements AgentBackend {
         if (ocEvent.type === 'session.error' && 'properties' in ocEvent) {
           const props = ocEvent.properties as {
             sessionID?: string;
-            error?: { name: string; data: { message: string } };
           };
           if (props.sessionID === sessionId || !props.sessionID) {
-            yield {
-              type: 'error',
-              error: props.error?.data?.message ?? 'Unknown OpenCode error',
-            };
+            sessionErrored = true;
             break;
           }
         }
@@ -485,7 +487,8 @@ export class OpenCodeBackend implements AgentBackend {
     if (promptResult) {
       if (promptResult.type === 'entry') {
         yield promptResult as AgentEvent;
-      } else if (promptResult.type === 'error') {
+      } else if (promptResult.type === 'error' && !emittedError) {
+        emittedError = true;
         yield promptResult;
       }
     }
@@ -493,7 +496,10 @@ export class OpenCodeBackend implements AgentBackend {
     // Emit completion
     const durationMs = Date.now() - state.startTime;
     const hasError =
-      !promptComplete || (!sessionIdle && state.abortController.signal.aborted);
+      emittedError ||
+      sessionErrored ||
+      !promptComplete ||
+      (!sessionIdle && state.abortController.signal.aborted);
 
     yield {
       type: 'complete',

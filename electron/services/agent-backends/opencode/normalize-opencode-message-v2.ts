@@ -154,13 +154,11 @@ function normalizeEvent(
     // --- Errors and retries ---
 
     case 'session.error': {
-      const props = event.properties as {
-        error?: { name: string; data: { message: string } };
-      };
+      const props = event.properties as { error?: unknown };
       return [
         {
           type: 'error',
-          error: props.error?.data?.message ?? 'Unknown error',
+          error: formatOpenCodeSessionError(props.error),
         },
       ];
     }
@@ -709,6 +707,71 @@ function mapToolError(name: string, state: ToolStateError): unknown {
 
 function str(value: unknown): string {
   return value == null ? '' : String(value);
+}
+
+function formatOpenCodeSessionError(error: unknown): string {
+  if (!error || typeof error !== 'object') {
+    return 'Unknown error';
+  }
+
+  const errorObj = error as {
+    message?: unknown;
+    data?: { message?: unknown; responseBody?: unknown };
+  };
+
+  const detailFromBody = extractDetailFromResponseBody(errorObj.data?.responseBody);
+  if (detailFromBody) {
+    return detailFromBody;
+  }
+
+  const messageFromData = strOrUndefined(errorObj.data?.message);
+  const detailFromDataMessage = messageFromData
+    ? extractDetailFromWrappedMessage(messageFromData)
+    : undefined;
+  if (detailFromDataMessage) {
+    return detailFromDataMessage;
+  }
+  if (messageFromData) {
+    return messageFromData;
+  }
+
+  const message = strOrUndefined(errorObj.message);
+  if (message) {
+    return message;
+  }
+
+  return 'Unknown error';
+}
+
+function extractDetailFromResponseBody(responseBody: unknown): string | undefined {
+  const body = strOrUndefined(responseBody);
+  if (!body) return undefined;
+
+  try {
+    const parsed = JSON.parse(body) as Record<string, unknown>;
+    return strOrUndefined(parsed.detail ?? parsed.message ?? parsed.error);
+  } catch {
+    return undefined;
+  }
+}
+
+function extractDetailFromWrappedMessage(message: string): string | undefined {
+  const firstBrace = message.indexOf('{');
+  if (firstBrace < 0) return undefined;
+
+  const maybeJson = message.slice(firstBrace).trim();
+  try {
+    const parsed = JSON.parse(maybeJson) as Record<string, unknown>;
+    return strOrUndefined(parsed.detail ?? parsed.message ?? parsed.error);
+  } catch {
+    return undefined;
+  }
+}
+
+function strOrUndefined(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 /**
