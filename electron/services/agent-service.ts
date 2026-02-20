@@ -67,9 +67,13 @@ class AgentService {
     this.mainWindow = window;
   }
 
+  private getLiveWindows(): BrowserWindow[] {
+    return BrowserWindow.getAllWindows().filter((window) => !window.isDestroyed());
+  }
+
   private emitEvent(taskId: string, event: AgentUIEventPayload) {
-    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      this.mainWindow.webContents.send(AGENT_CHANNELS.EVENT, {
+    for (const window of this.getLiveWindows()) {
+      window.webContents.send(AGENT_CHANNELS.EVENT, {
         taskId,
         ...event,
       });
