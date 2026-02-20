@@ -375,7 +375,10 @@ function ToolEntry({ toolUse }: { toolUse: NormalizedToolUse }) {
   if (toolUse.name === 'ask-user-question') {
     const ask = toolUse as ToolUseByName<'ask-user-question'>;
     const answersByQuestion = new Map(
-      (ask.result?.answers ?? []).map((answer) => [answer.question, answer.answer]),
+      (ask.result?.answers ?? []).map((answer) => [
+        answer.question,
+        answer.answer,
+      ]),
     );
 
     return (
@@ -392,13 +395,16 @@ function ToolEntry({ toolUse }: { toolUse: NormalizedToolUse }) {
                 : response;
 
               return (
-                <div key={`${question.question}-${index}`} className="space-y-2">
+                <div
+                  key={`${question.question}-${index}`}
+                  className="space-y-2"
+                >
                   <div className="font-medium text-neutral-500">
                     {ask.input.questions.length > 1
                       ? `Question ${index + 1}`
                       : 'Question'}
                   </div>
-                  <div className="rounded bg-black/30 p-2 text-neutral-200 whitespace-pre-wrap">
+                  <div className="rounded bg-black/30 p-2 whitespace-pre-wrap text-neutral-200">
                     {question.question}
                   </div>
                   {ask.result && (
@@ -406,7 +412,7 @@ function ToolEntry({ toolUse }: { toolUse: NormalizedToolUse }) {
                       <div className="mb-1 font-medium text-neutral-500">
                         Response
                       </div>
-                      <div className="rounded bg-black/30 p-2 text-neutral-300 whitespace-pre-wrap">
+                      <div className="rounded bg-black/30 p-2 whitespace-pre-wrap text-neutral-300">
                         {responseText ?? 'No response'}
                       </div>
                     </div>

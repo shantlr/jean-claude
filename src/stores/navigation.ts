@@ -452,8 +452,7 @@ export function usePrViewState(taskId: string) {
   const setTaskViewModeAction = useStore((state) => state.setTaskViewMode);
 
   const togglePrView = useCallback(
-    () =>
-      setTaskViewModeAction(taskId, activeView === 'pr' ? undefined : 'pr'),
+    () => setTaskViewModeAction(taskId, activeView === 'pr' ? undefined : 'pr'),
     [taskId, activeView, setTaskViewModeAction],
   );
 

@@ -19,7 +19,11 @@ function AllIndex() {
 
   if (activeTasks.length > 0) {
     return (
-      <Navigate to="/all/$taskId" params={{ taskId: activeTasks[0].id }} replace />
+      <Navigate
+        to="/all/$taskId"
+        params={{ taskId: activeTasks[0].id }}
+        replace
+      />
     );
   }
 

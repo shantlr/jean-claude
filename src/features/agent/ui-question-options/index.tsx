@@ -23,7 +23,10 @@ function QuestionInput({
   isActive: boolean;
   activeOptionIndex: number;
   onActivate: (params: { questionIndex: number; optionIndex: number }) => void;
-  onSelectOption: (params: { questionIndex: number; optionIndex: number }) => void;
+  onSelectOption: (params: {
+    questionIndex: number;
+    optionIndex: number;
+  }) => void;
   onOtherChange: (params: { questionIndex: number; value: string }) => void;
 }) {
   const selectedLabels = value
@@ -177,7 +180,13 @@ export function QuestionOptions({
   }, [activeQuestionIndex, getOptionCount, request.questions]);
 
   const activateOption = useCallback(
-    ({ questionIndex, optionIndex }: { questionIndex: number; optionIndex: number }) => {
+    ({
+      questionIndex,
+      optionIndex,
+    }: {
+      questionIndex: number;
+      optionIndex: number;
+    }) => {
       setActiveQuestionIndex(questionIndex);
       setActiveOptionIndex(optionIndex);
     },
@@ -185,7 +194,13 @@ export function QuestionOptions({
   );
 
   const selectOption = useCallback(
-    ({ questionIndex, optionIndex }: { questionIndex: number; optionIndex: number }) => {
+    ({
+      questionIndex,
+      optionIndex,
+    }: {
+      questionIndex: number;
+      optionIndex: number;
+    }) => {
       const question = request.questions[questionIndex];
       if (!question) return false;
 
@@ -200,7 +215,10 @@ export function QuestionOptions({
         const next = selected.includes(label)
           ? selected.filter((item) => item !== label)
           : [...selected, label];
-        setAnswers((prev) => ({ ...prev, [question.question]: next.join(', ') }));
+        setAnswers((prev) => ({
+          ...prev,
+          [question.question]: next.join(', '),
+        }));
         return true;
       }
 
@@ -234,7 +252,10 @@ export function QuestionOptions({
       const question = request.questions[questionIndex];
       if (!question) return;
       setAnswers((prev) => ({ ...prev, [question.question]: value }));
-      setOtherOpenByQuestion((prev) => ({ ...prev, [question.question]: true }));
+      setOtherOpenByQuestion((prev) => ({
+        ...prev,
+        [question.question]: true,
+      }));
     },
     [request.questions],
   );
@@ -322,7 +343,9 @@ export function QuestionOptions({
             value={answers[question.question] || ''}
             isOtherOpen={otherOpenByQuestion[question.question] ?? false}
             isActive={activeQuestionIndex === index}
-            activeOptionIndex={activeQuestionIndex === index ? activeOptionIndex : 0}
+            activeOptionIndex={
+              activeQuestionIndex === index ? activeOptionIndex : 0
+            }
             onActivate={activateOption}
             onSelectOption={selectOption}
             onOtherChange={updateOtherAnswer}

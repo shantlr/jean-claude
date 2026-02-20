@@ -373,13 +373,14 @@ class AgentService {
         // Send desktop notification if window not focused
         if (this.mainWindow && !this.mainWindow.isFocused()) {
           const task = await TaskRepository.findById(taskId);
-          notificationService.notify(
-            'Permission Required',
-            `Task "${task?.name || 'Unknown'}" needs approval for ${request.toolName}`,
-            () => {
+          notificationService.notify({
+            id: `${taskId}:permission`,
+            title: 'Permission Required',
+            body: `Task "${task?.name || 'Unknown'}" needs approval for ${request.toolName}`,
+            onClick: () => {
               this.mainWindow?.focus();
             },
-          );
+          });
         }
         break;
       }
@@ -416,13 +417,14 @@ class AgentService {
         // Send desktop notification if window not focused
         if (this.mainWindow && !this.mainWindow.isFocused()) {
           const task = await TaskRepository.findById(taskId);
-          notificationService.notify(
-            'Question from Agent',
-            `Task "${task?.name || 'Unknown'}" has a question`,
-            () => {
+          notificationService.notify({
+            id: `${taskId}:question`,
+            title: 'Question from Agent',
+            body: `Task "${task?.name || 'Unknown'}" has a question`,
+            onClick: () => {
               this.mainWindow?.focus();
             },
-          );
+          });
         }
         break;
       }
@@ -476,13 +478,14 @@ class AgentService {
         // Notify on completion
         if (this.mainWindow && !this.mainWindow.isFocused()) {
           const updatedTask = await TaskRepository.findById(taskId);
-          notificationService.notify(
-            status === 'completed' ? 'Task Completed' : 'Task Failed',
-            `Task "${updatedTask?.name || 'Unknown'}" ${status === 'completed' ? 'finished successfully' : 'encountered an error'}`,
-            () => {
+          notificationService.notify({
+            id: `${taskId}:complete`,
+            title: status === 'completed' ? 'Task Completed' : 'Task Failed',
+            body: `Task "${updatedTask?.name || 'Unknown'}" ${status === 'completed' ? 'finished successfully' : 'encountered an error'}`,
+            onClick: () => {
               this.mainWindow?.focus();
             },
-          );
+          });
         }
         break;
       }
@@ -668,6 +671,8 @@ class AgentService {
     // Resume running status
     await TaskRepository.update(taskId, { status: 'running' });
     this.emitEvent(taskId, { type: 'status', status: 'running' });
+
+    notificationService.close(`${taskId}:${request.type}`);
 
     // If there are more pending requests, emit the next one
     if (session.pendingRequests.length > 0) {

@@ -19,8 +19,8 @@ import { Header } from '@/layout/ui-header';
 import { MainSidebar } from '@/layout/ui-main-sidebar';
 import { resolveLastLocationRedirect } from '@/lib/navigation';
 import { useNavigationStore } from '@/stores/navigation';
-import { useNewTaskDraft } from '@/stores/new-task-draft';
 import { useCurrentVisibleProject } from '@/stores/navigation';
+import { useNewTaskDraft } from '@/stores/new-task-draft';
 import { useOverlaysStore } from '@/stores/overlays';
 
 export const Route = createRootRoute({
