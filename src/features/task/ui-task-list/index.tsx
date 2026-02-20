@@ -3,6 +3,7 @@ import { ChevronDown, ClipboardList, SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
+import { Kbd } from '@/common/ui/kbd';
 import { SidebarContentTabs } from '@/features/project/ui-sidebar-content-tabs';
 import { PrSidebarList } from '@/features/pull-request/ui-pr-sidebar-list';
 import { TaskSummaryCard } from '@/features/task/ui-task-summary-card';
@@ -318,6 +319,7 @@ export function TaskList() {
                     {todoCount}
                   </span>
                 )}
+                <Kbd shortcut="cmd+b" className="ml-auto" />
               </button>
             )}
             <button
@@ -326,6 +328,7 @@ export function TaskList() {
             >
               <SlidersHorizontal size={14} />
               <span>Settings</span>
+              <Kbd shortcut="cmd+," className="ml-auto" />
             </button>
           </div>
         </>
