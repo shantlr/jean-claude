@@ -93,10 +93,8 @@ export function Dropdown({
   const getMenuItems = useCallback(() => {
     if (!contentRef.current) return [];
     return Array.from(
-      contentRef.current.querySelectorAll<HTMLButtonElement>(
-        '[role="menuitem"]',
-      ),
-    );
+      contentRef.current.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+    ).filter((element) => element.hasAttribute('tabindex'));
   }, []);
 
   // Focus the item at the given index
@@ -298,20 +296,20 @@ export function DropdownDivider() {
 export function DropdownInfo({
   label,
   value,
-  onCopy,
+  onClick,
 }: {
   label: string;
   value: string;
-  onCopy?: () => void;
+  onClick?: () => void;
 }) {
   return (
     <div
-      role="menuitem"
-      tabIndex={onCopy ? -1 : undefined}
-      onClick={onCopy}
+      role={onClick ? 'menuitem' : undefined}
+      tabIndex={onClick ? -1 : undefined}
+      onClick={onClick}
       className={clsx(
         'flex w-full items-center justify-between gap-4 px-3 py-1.5 text-sm',
-        onCopy
+        onClick
           ? 'cursor-pointer transition-colors hover:bg-neutral-700 focus:bg-neutral-700 focus:outline-none'
           : 'cursor-default',
       )}

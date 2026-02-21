@@ -644,7 +644,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                     <DropdownInfo
                       label="Session"
                       value={`${task.sessionId.slice(0, 8)}...`}
-                      onCopy={handleCopySessionId}
+                      onClick={handleCopySessionId}
                     />
                   )}
                 </>

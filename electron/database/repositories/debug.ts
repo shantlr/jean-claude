@@ -45,12 +45,12 @@ export const DebugRepository = {
   },
 
   getDatabaseSize: async (): Promise<DatabaseSizeResult> => {
-    const pageSizeResult = await sql<{ page_size: number }>`PRAGMA page_size`.execute(
-      db,
-    );
-    const pageCountResult = await sql<{ page_count: number }>`PRAGMA page_count`.execute(
-      db,
-    );
+    const pageSizeResult = await sql<{
+      page_size: number;
+    }>`PRAGMA page_size`.execute(db);
+    const pageCountResult = await sql<{
+      page_count: number;
+    }>`PRAGMA page_count`.execute(db);
 
     const pageSize = Number(pageSizeResult.rows[0]?.page_size ?? 0);
     const pageCount = Number(pageCountResult.rows[0]?.page_count ?? 0);

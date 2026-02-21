@@ -32,7 +32,8 @@ function NewTask() {
   const hasWorkItemsLink =
     !!project?.workItemProviderId && !!project?.workItemProjectId;
 
-  const { draft, hasDraft, setDraft, clearDraft } = useNewTaskFormStore(projectId);
+  const { draft, hasDraft, setDraft, clearDraft } =
+    useNewTaskFormStore(projectId);
   const {
     name,
     prompt,
@@ -65,12 +66,7 @@ function NewTask() {
     if (!backendsSetting.enabledBackends.includes(resolved)) return;
 
     setDraft({ agentBackend: resolved });
-  }, [
-    backendsSetting,
-    hasDraft,
-    project,
-    setDraft,
-  ]);
+  }, [backendsSetting, hasDraft, project, setDraft]);
 
   // Determine the effective source branch (draft value or project default)
   const effectiveSourceBranch =
