@@ -189,7 +189,9 @@ export function NewTaskOverlay({
     providerId: selectedProject?.workItemProviderId ?? '',
     projectId: selectedProject?.workItemProjectId ?? '',
     projectName: selectedProject?.workItemProjectName ?? '',
-    filters: { excludeWorkItemTypes: ['Test Suite', 'Epic', 'Feature'] },
+    filters: {
+      excludeWorkItemTypes: ['Test Suite', 'Test Case', 'Epic', 'Feature'],
+    },
   });
 
   // Fetch branches for the selected project
@@ -974,7 +976,7 @@ function SearchModeContent({
     projectId: project?.workItemProjectId ?? '',
     projectName: project?.workItemProjectName ?? '',
     filters: {
-      excludeWorkItemTypes: ['Test Suite', 'Epic', 'Feature'],
+      excludeWorkItemTypes: ['Test Suite', 'Test Case', 'Epic', 'Feature'],
       iterationPath: resolvedIterationPath,
     },
   });
