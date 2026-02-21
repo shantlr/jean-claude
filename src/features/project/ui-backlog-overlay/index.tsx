@@ -222,8 +222,6 @@ export function BacklogOverlay({
       : null;
 
   // Register keyboard shortcuts (Cmd+B is handled by the container's toggle).
-  // Shift+Enter produces 'shift+enter' which has no binding, so it falls
-  // through to the textarea's default behaviour (insert newline).
   useCommands('backlog-overlay', [
     {
       label: 'Close Backlog',
@@ -253,6 +251,21 @@ export function BacklogOverlay({
         }
 
         return false;
+      },
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Edit Selected Item',
+      shortcut: 'shift+enter',
+      handler: () => {
+        if (editingId) {
+          return false;
+        }
+        if (!selectedTodo) {
+          return false;
+        }
+
+        startEdit(selectedTodo);
       },
       hideInCommandPalette: true,
     },
@@ -288,7 +301,15 @@ export function BacklogOverlay({
   useRegisterKeyboardBindings('backlog-overlay-navigation', {
     up: {
       handler: () => {
-        setSelectedIndex((i) => Math.max(0, i - 1));
+        if (selectedIndex <= 0) {
+          if (!inputValue.trim()) {
+            lastSelectedIndexRef.current = 0;
+            setSelectedIndex(-1);
+            inputRef.current?.focus();
+          }
+          return;
+        }
+        setSelectedIndex((i) => i - 1);
       },
       ignoreIfInput: true,
     },
@@ -487,6 +508,15 @@ export function BacklogOverlay({
             autoFocus
             rows={1}
             value={inputValue}
+            onKeyDown={(e) => {
+              if (e.key !== 'ArrowDown') return;
+              if (inputValue.trim()) return;
+              if (todos.length === 0) return;
+
+              e.preventDefault();
+              setSelectedIndex(0);
+              inputRef.current?.blur();
+            }}
             onFocus={() => {
               if (selectedIndex < 0) return;
               lastSelectedIndexRef.current = selectedIndex;
@@ -543,6 +573,9 @@ export function BacklogOverlay({
           </span>
           {selectedTodo && (
             <>
+              <span className="inline-flex items-center gap-1.5">
+                <Kbd shortcut="shift+enter" /> Edit Selected Item
+              </span>
               <span className="inline-flex items-center gap-1.5">
                 <Kbd shortcut="enter" /> Open Selected Item Actions
               </span>
