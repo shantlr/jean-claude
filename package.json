@@ -19,6 +19,7 @@
     "dev": "electron-vite dev",
     "dev:quiet": "DEBUG= electron-vite dev",
     "dev:tmp": "./scripts/dev-tmp.sh",
+    "dev:tmp:reuse": "./scripts/dev-tmp.sh --auto-reuse-db",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "preview:mac": "pnpm package && open dist/mac/Jean-Claude.app",

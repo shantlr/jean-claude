@@ -7,6 +7,32 @@
 
 set -e
 
+AUTO_REUSE_EXISTING_DB=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --auto-reuse-db|-r)
+      AUTO_REUSE_EXISTING_DB=true
+      shift
+      ;;
+    --help|-h)
+      cat <<EOF
+Usage: ./scripts/dev-tmp.sh [options]
+
+Options:
+  -r, --auto-reuse-db  Automatically reuse existing temporary DB if detected
+  -h, --help           Show this help message
+EOF
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1"
+      echo "Run ./scripts/dev-tmp.sh --help for usage."
+      exit 1
+      ;;
+  esac
+done
+
 # Get the script directory and project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -46,23 +72,27 @@ mkdir -p "$TMP_DIR"
 
 if [[ -f "$TMP_DB" ]]; then
   echo "Existing temporary database found at: $TMP_DB"
-  while true; do
-    read -r -p "Use existing temporary database or override it? [use/override]: " choice
-    case "$choice" in
-      use|u)
-        echo "Keeping existing temporary database"
-        break
-        ;;
-      override|o)
-        rm -f "$TMP_DB" "$TMP_DB_WAL" "$TMP_DB_SHM"
-        copy_source_db
-        break
-        ;;
-      *)
-        echo "Please answer 'use' or 'override'."
-        ;;
-    esac
-  done
+  if [[ "$AUTO_REUSE_EXISTING_DB" == true ]]; then
+    echo "Auto-reuse enabled: keeping existing temporary database"
+  else
+    while true; do
+      read -r -p "Use existing temporary database or override it? [use/override]: " choice
+      case "$choice" in
+        use|u)
+          echo "Keeping existing temporary database"
+          break
+          ;;
+        override|o)
+          rm -f "$TMP_DB" "$TMP_DB_WAL" "$TMP_DB_SHM"
+          copy_source_db
+          break
+          ;;
+        *)
+          echo "Please answer 'use' or 'override'."
+          ;;
+      esac
+    done
+  fi
 else
   copy_source_db
 fi
