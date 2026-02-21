@@ -121,7 +121,6 @@ export function UsageDisplay() {
   const formattedRatio = Number.isFinite(usageRatio)
     ? usageRatio.toFixed(1)
     : '∞';
-  const isCritical = level === 'critical';
   const isMaxedOut = fiveHour.utilization >= 100;
 
   return (
@@ -129,10 +128,7 @@ export function UsageDisplay() {
       {/* Progress bar visualization */}
       <div className="flex items-center gap-2">
         <div
-          className={clsx(
-            'relative h-1.5 w-20 overflow-hidden rounded-full bg-neutral-700',
-            isCritical && !isMaxedOut && 'fire-bar',
-          )}
+          className="relative h-1.5 w-20 overflow-hidden rounded-full bg-neutral-700"
         >
           <div
             className={clsx(
