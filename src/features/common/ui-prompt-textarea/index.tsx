@@ -43,8 +43,8 @@ export interface PromptTextareaProps extends Omit<
   onChange: (value: string) => void;
   skills?: Skill[];
   maxHeight?: number;
-  /** Custom handler for Enter key (without shift). Return true to prevent default submit behavior. */
-  onEnterKey?: () => boolean | void;
+  /** Custom handler for Enter key (without shift). Return true to prevent default behavior. */
+  onEnterKey?: (event: KeyboardEvent<HTMLTextAreaElement>) => boolean | void;
   /** Whether to show commands in the dropdown (default: true) */
   showCommands?: boolean;
   /** Enable inline ghost text completion */
@@ -270,7 +270,7 @@ export const PromptTextarea = forwardRef<
 
     // Handle Enter key for submit
     if (e.key === 'Enter' && !e.shiftKey) {
-      const handled = onEnterKey?.();
+      const handled = onEnterKey?.(e);
       if (handled) {
         e.preventDefault();
         return;

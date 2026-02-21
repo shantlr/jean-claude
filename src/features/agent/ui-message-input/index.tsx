@@ -3,6 +3,7 @@ import { Send, Square, Loader2, ListPlus } from 'lucide-react';
 import { useState, useRef, useCallback, KeyboardEvent } from 'react';
 
 import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
+import { Kbd } from '@/common/ui/kbd';
 import {
   PromptTextarea,
   PromptTextareaRef,
@@ -17,7 +18,7 @@ export function MessageInput({
   onQueue,
   onStop,
   disabled = false,
-  placeholder = 'Type a message... (Shift+Enter for new line)',
+  placeholder = 'Type a message... (Cmd+Enter to send)',
   isRunning = false,
   isStopping = false,
   skills = [],
@@ -66,7 +67,11 @@ export function MessageInput({
     textareaRef.current?.resetHeight();
   }, [value, disabled, isRunning, onSend, onQueue, setValue]);
 
-  const handleEnterKey = useCallback(() => {
+  const handleEnterKey = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!event.metaKey && !event.ctrlKey) {
+      return false;
+    }
+
     handleSubmit();
     return true; // Prevent default
   }, [handleSubmit]);
@@ -122,17 +127,28 @@ export function MessageInput({
         aria-label={isRunning ? 'Queue this message' : 'Send message'}
         title={
           isRunning
-            ? `Queue message (${formatKeyForDisplay('enter')})`
-            : `Send message (${formatKeyForDisplay('enter')})`
+            ? `Queue message (${formatKeyForDisplay('cmd+enter')})`
+            : `Send message (${formatKeyForDisplay('cmd+enter')})`
         }
       >
         {isRunning ? (
           <>
             <ListPlus className="h-4 w-4" aria-hidden />
             <span className="text-sm font-medium">Queue</span>
+            <Kbd
+              shortcut="cmd+enter"
+              className="border-white/25 bg-white/10 text-white/90"
+            />
           </>
         ) : (
-          <Send className="h-5 w-5" aria-hidden />
+          <>
+            <Send className="h-4 w-4" aria-hidden />
+            <span className="text-sm font-medium">Send</span>
+            <Kbd
+              shortcut="cmd+enter"
+              className="border-white/25 bg-white/10 text-white/90"
+            />
+          </>
         )}
       </button>
       {isRunning && onStop && (
