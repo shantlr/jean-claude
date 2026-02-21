@@ -31,9 +31,6 @@ export function TaskList() {
   const { projectId } = useCurrentVisibleProject();
   const { sidebarTab } = useSidebarTab();
   const toggleOverlay = useOverlaysStore((s) => s.toggle);
-  const { data: todoCount } = useProjectTodoCount(
-    projectId !== 'all' ? projectId : undefined,
-  );
 
   // Flatten completed tasks from paginated data
   const completedTasks = useMemo(
@@ -107,6 +104,18 @@ export function TaskList() {
       completedTasks.find((t) => t.id === currentTaskId)
     );
   }, [activeTasks, completedTasks, currentTaskId]);
+
+  const backlogProjectId =
+    projectId !== 'all' ? projectId : selectedTask?.projectId;
+  const { data: todoCount } = useProjectTodoCount(backlogProjectId);
+
+  const openBacklog = useCallback(() => {
+    if (!backlogProjectId) {
+      return;
+    }
+
+    toggleOverlay('project-backlog');
+  }, [backlogProjectId, toggleOverlay]);
 
   // Get selected project for settings button
   // Show project settings based on:
@@ -307,9 +316,9 @@ export function TaskList() {
           {/* Footer buttons */}
           <div className="mx-2 border-t border-neutral-800" />
           <div className="flex items-center gap-1 p-2">
-            {projectId !== 'all' && (
+            {backlogProjectId && (
               <button
-                onClick={() => toggleOverlay('project-backlog')}
+                onClick={openBacklog}
                 className="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white"
               >
                 <ClipboardList size={14} />
