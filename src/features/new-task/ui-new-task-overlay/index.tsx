@@ -69,6 +69,26 @@ function projectHasWorkItems(project: Project | null): boolean {
   );
 }
 
+function resolveDefaultBackend({
+  selectedProject,
+  backendsSetting,
+}: {
+  selectedProject: Project | null;
+  backendsSetting: {
+    enabledBackends: AgentBackendType[];
+    defaultBackend: AgentBackendType;
+  };
+}): AgentBackendType {
+  const projectOrGlobalDefault =
+    selectedProject?.defaultAgentBackend ?? backendsSetting.defaultBackend;
+
+  if (backendsSetting.enabledBackends.includes(projectOrGlobalDefault)) {
+    return projectOrGlobalDefault;
+  }
+
+  return backendsSetting.enabledBackends[0] ?? 'claude-code';
+}
+
 // Auto-detect input mode based on project selection
 function getAutoInputMode(
   selectedProjectId: string | null,
@@ -286,23 +306,33 @@ export function NewTaskOverlay({
     [updateDraft],
   );
 
-  // Sync draft backend with project→global default when project changes
+  // Sync draft backend with project→global default when project changes,
+  // and when defaults become available after async settings/project load.
   useEffect(() => {
     if (!backendsSetting) return;
-    const resolved =
-      selectedProject?.defaultAgentBackend ?? backendsSetting.defaultBackend;
-    if (backendsSetting.enabledBackends.includes(resolved)) {
-      updateDraft({ agentBackend: resolved, modelPreference: 'default' });
-    }
-  }, [selectedProjectId]); // eslint-disable-line react-hooks/exhaustive-deps -- intentionally sync only on project change
+
+    const resolved = resolveDefaultBackend({
+      selectedProject,
+      backendsSetting,
+    });
+
+    updateDraft({ agentBackend: resolved, modelPreference: 'default' });
+  }, [
+    selectedProjectId,
+    selectedProject?.defaultAgentBackend,
+    backendsSetting,
+    updateDraft,
+  ]);
 
   // Sync draft backend with settings: reset to default if not in enabled list
   useEffect(() => {
     if (!backendsSetting) return;
     const draftBackend = draft?.agentBackend ?? 'claude-code';
     if (!backendsSetting.enabledBackends.includes(draftBackend)) {
-      const resolved =
-        selectedProject?.defaultAgentBackend ?? backendsSetting.defaultBackend;
+      const resolved = resolveDefaultBackend({
+        selectedProject,
+        backendsSetting,
+      });
       updateDraft({
         agentBackend: resolved,
         modelPreference: 'default',
