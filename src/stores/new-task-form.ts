@@ -12,7 +12,7 @@ interface NewTaskFormDraft {
   sourceBranch: string | null; // null means use project's default branch
   interactionMode: InteractionMode;
   modelPreference: ModelPreference;
-  agentBackend: AgentBackendType;
+  agentBackend?: AgentBackendType;
   workItemIds: string[] | null;
   workItemUrls: string[] | null;
 }
@@ -30,7 +30,6 @@ const defaultDraft: NewTaskFormDraft = {
   sourceBranch: null,
   interactionMode: 'ask',
   modelPreference: 'default',
-  agentBackend: 'claude-code',
   workItemIds: null,
   workItemUrls: null,
 };
@@ -97,6 +96,7 @@ const useStore = create<NewTaskFormState>()(
 
 export function useNewTaskFormStore(projectId: string) {
   const draft = useStore((state) => state.drafts[projectId] ?? defaultDraft);
+  const hasDraft = useStore((state) => !!state.drafts[projectId]);
   const setDraftAction = useStore((state) => state.setDraft);
   const clearDraftAction = useStore((state) => state.clearDraft);
 
@@ -110,7 +110,7 @@ export function useNewTaskFormStore(projectId: string) {
     [projectId, clearDraftAction],
   );
 
-  return { draft, setDraft, clearDraft };
+  return { draft, hasDraft, setDraft, clearDraft };
 }
 
 export function useWorkItemsFiltersStore(projectId: string) {

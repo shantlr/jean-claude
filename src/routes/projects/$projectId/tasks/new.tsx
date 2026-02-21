@@ -32,7 +32,7 @@ function NewTask() {
   const hasWorkItemsLink =
     !!project?.workItemProviderId && !!project?.workItemProjectId;
 
-  const { draft, setDraft, clearDraft } = useNewTaskFormStore(projectId);
+  const { draft, hasDraft, setDraft, clearDraft } = useNewTaskFormStore(projectId);
   const {
     name,
     prompt,
@@ -47,14 +47,30 @@ function NewTask() {
 
   // Sync draft backend with project→global default on mount
   const { data: backendsSetting } = useBackendsSetting();
+  const resolvedDefaultBackend =
+    project?.defaultAgentBackend ?? backendsSetting?.defaultBackend;
+  const effectiveAgentBackend =
+    agentBackend ??
+    (resolvedDefaultBackend &&
+    backendsSetting?.enabledBackends.includes(resolvedDefaultBackend)
+      ? resolvedDefaultBackend
+      : backendsSetting?.enabledBackends[0]) ??
+    'claude-code';
+
   useEffect(() => {
-    if (!backendsSetting || !project) return;
+    if (!backendsSetting || !project || hasDraft) return;
+
     const resolved =
       project.defaultAgentBackend ?? backendsSetting.defaultBackend;
-    if (backendsSetting.enabledBackends.includes(resolved)) {
-      setDraft({ agentBackend: resolved });
-    }
-  }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps -- intentionally sync only on project change
+    if (!backendsSetting.enabledBackends.includes(resolved)) return;
+
+    setDraft({ agentBackend: resolved });
+  }, [
+    backendsSetting,
+    hasDraft,
+    project,
+    setDraft,
+  ]);
 
   // Determine the effective source branch (draft value or project default)
   const effectiveSourceBranch =
@@ -72,7 +88,7 @@ function NewTask() {
       status: 'waiting',
       interactionMode,
       modelPreference,
-      agentBackend,
+      agentBackend: effectiveAgentBackend,
       useWorktree,
       workItemIds,
       workItemUrls,
@@ -256,7 +272,7 @@ function NewTask() {
               onChange={(model) => setDraft({ modelPreference: model })}
             />
             <BackendSelector
-              value={agentBackend}
+              value={effectiveAgentBackend}
               onChange={(backend) => setDraft({ agentBackend: backend })}
             />
             <button
