@@ -98,6 +98,7 @@ import {
   substituteVariables,
 } from '../services/mcp-template-service';
 import { generateTaskName } from '../services/name-generation-service';
+import { notificationService } from '../services/notification-service';
 import {
   addAllowPermission,
   buildPermissionString,
@@ -132,6 +133,11 @@ export function registerIpcHandlers() {
   ipcMain.handle('windowState:getIsFullscreen', (event) => {
     const currentWindow = BrowserWindow.fromWebContents(event.sender);
     return currentWindow?.isFullScreen() ?? false;
+  });
+
+  // Task focus (fire-and-forget from renderer)
+  ipcMain.on('tasks:focused', (_, taskId: string) => {
+    notificationService.closeForTask(taskId);
   });
 
   // Projects

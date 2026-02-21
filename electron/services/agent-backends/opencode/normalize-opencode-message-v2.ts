@@ -719,7 +719,9 @@ function formatOpenCodeSessionError(error: unknown): string {
     data?: { message?: unknown; responseBody?: unknown };
   };
 
-  const detailFromBody = extractDetailFromResponseBody(errorObj.data?.responseBody);
+  const detailFromBody = extractDetailFromResponseBody(
+    errorObj.data?.responseBody,
+  );
   if (detailFromBody) {
     return detailFromBody;
   }
@@ -743,7 +745,9 @@ function formatOpenCodeSessionError(error: unknown): string {
   return 'Unknown error';
 }
 
-function extractDetailFromResponseBody(responseBody: unknown): string | undefined {
+function extractDetailFromResponseBody(
+  responseBody: unknown,
+): string | undefined {
   const body = strOrUndefined(responseBody);
   if (!body) return undefined;
 

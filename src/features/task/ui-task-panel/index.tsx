@@ -21,7 +21,6 @@ import { useCommands } from '@/common/hooks/use-commands';
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { getModelsForBackend } from '@/features/agent/ui-backend-selector';
 import { ContextUsageDisplay } from '@/features/agent/ui-context-usage-display';
-import { FileExplorerPane } from './file-explorer-pane';
 import { FilePreviewPane } from '@/features/agent/ui-file-preview-pane';
 import { MessageInput } from '@/features/agent/ui-message-input';
 import { MessageStream } from '@/features/agent/ui-message-stream';
@@ -78,6 +77,7 @@ import {
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
 import { DebugMessagesPane } from './debug-messages-pane';
 import { DeleteTaskDialog } from './delete-task-dialog';
+import { FileExplorerPane } from './file-explorer-pane';
 import { PendingMessageInput } from './pending-message-input';
 import { TaskSettingsPane } from './task-settings-pane';
 
@@ -169,6 +169,15 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       setLastTaskForProject(projectId, taskId);
     }
   }, [projectId, taskId, setLastLocation, setLastTaskForProject]);
+
+  // Notify backend this task is focused (dismisses completion notifications, etc.)
+  useEffect(() => {
+    api.tasks.focused(taskId);
+
+    const handleFocus = () => api.tasks.focused(taskId);
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [taskId]);
 
   const handleCopySessionId = useCallback(async () => {
     if (task?.sessionId) {

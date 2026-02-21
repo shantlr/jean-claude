@@ -38,6 +38,10 @@ class NotificationService {
       this.active.delete(id);
     }
   }
+
+  closeForTask(taskId: string): void {
+    this.close(`${taskId}:complete`);
+  }
 }
 
 export const notificationService = new NotificationService();

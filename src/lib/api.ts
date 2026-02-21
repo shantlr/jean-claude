@@ -276,6 +276,7 @@ export interface Api {
     getSkills: (projectId: string) => Promise<Skill[]>;
   };
   tasks: {
+    focused: (taskId: string) => void;
     findAll: () => Promise<Task[]>;
     findByProjectId: (projectId: string) => Promise<Task[]>;
     findAllActive: () => Promise<TaskWithProject[]>;
@@ -676,6 +677,7 @@ export const api: Api = hasWindowApi
         getSkills: async () => [],
       },
       tasks: {
+        focused: () => {},
         findAll: async () => [],
         findByProjectId: async () => [],
         findAllActive: async () => [],

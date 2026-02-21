@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('projects:getSkills', projectId),
   },
   tasks: {
+    focused: (taskId: string) => ipcRenderer.send('tasks:focused', taskId),
     findAll: () => ipcRenderer.invoke('tasks:findAll'),
     findByProjectId: (projectId: string) =>
       ipcRenderer.invoke('tasks:findByProjectId', projectId),
