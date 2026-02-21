@@ -10,8 +10,10 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import { useModal } from '@/common/context/modal';
 import { useCommands } from '@/common/hooks/use-commands';
 import { Dropdown, DropdownItem } from '@/common/ui/dropdown';
+import { Kbd } from '@/common/ui/kbd';
 import {
   useProjectTodos,
   useCreateProjectTodo,
@@ -189,6 +191,7 @@ export function BacklogOverlay({
   const updateTodo = useUpdateProjectTodo();
   const deleteTodo = useDeleteProjectTodo();
   const reorderTodos = useReorderProjectTodos();
+  const modal = useModal();
   const openOverlay = useOverlaysStore((s) => s.open);
   const setDraft = useNewTaskDraftStore((s) => s.setDraft);
   const setSelectedProjectId = useNewTaskDraftStore(
@@ -213,7 +216,12 @@ export function BacklogOverlay({
     });
   }, [selectedIndex]);
 
-  // Register keyboard shortcuts (Cmd+B is handled by the container's toggle)
+  const selectedTodo =
+    selectedIndex >= 0 && selectedIndex < todos.length
+      ? todos[selectedIndex]
+      : null;
+
+  // Register keyboard shortcuts (Cmd+B is handled by the container's toggle).
   // Shift+Enter produces 'shift+enter' which has no binding, so it falls
   // through to the textarea's default behaviour (insert newline).
   useCommands('backlog-overlay', [
@@ -231,25 +239,45 @@ export function BacklogOverlay({
     },
     {
       label: 'Open Todo Actions',
-      shortcut: ['enter', 'cmd+enter'],
+      shortcut: 'enter',
       handler: () => {
         // If editing, save the edit
         if (editingId) {
           saveEdit();
           return;
         }
-        // If in input mode and has text, add it as a new todo
-        if (selectedIndex === -1 && inputValue.trim()) {
+        // If an item is selected, open its dropdown
+        if (selectedTodo) {
+          triggerRefs.current.get(selectedTodo.id)?.click();
+          return;
+        }
+
+        return false;
+      },
+      hideInCommandPalette: true,
+    },
+    {
+      label: selectedTodo
+        ? 'Convert Selected Item to Task'
+        : 'Add Backlog Item',
+      shortcut: 'cmd+enter',
+      handler: () => {
+        if (editingId) {
+          saveEdit();
+          return;
+        }
+
+        if (selectedTodo) {
+          handleConvertToTask(selectedTodo);
+          return;
+        }
+
+        if (inputValue.trim()) {
           handleAdd();
           return;
         }
-        // If an item is selected, open its dropdown
-        if (selectedIndex >= 0 && selectedIndex < todos.length) {
-          const todo = todos[selectedIndex];
-          if (todo) {
-            triggerRefs.current.get(todo.id)?.click();
-          }
-        }
+
+        return false;
       },
       hideInCommandPalette: true,
     },
@@ -312,6 +340,15 @@ export function BacklogOverlay({
         inputRef.current?.blur();
       }
     },
+    'cmd+backspace': {
+      handler: () => {
+        if (!selectedTodo || editingId) {
+          return false;
+        }
+        handleDelete(selectedTodo);
+      },
+      ignoreIfInput: true,
+    },
   });
 
   // Add todo
@@ -348,10 +385,18 @@ export function BacklogOverlay({
 
   // Delete todo
   const handleDelete = useCallback(
-    (id: string) => {
-      deleteTodo.mutate(id);
+    (todo: ProjectTodo) => {
+      modal.confirm({
+        title: 'Delete backlog item?',
+        content: `This will permanently delete "${todo.content}" from your backlog.`,
+        confirmLabel: 'Delete',
+        variant: 'danger',
+        onConfirm: () => {
+          deleteTodo.mutate(todo.id);
+        },
+      });
     },
-    [deleteTodo],
+    [deleteTodo, modal],
   );
 
   // Convert to task
@@ -431,7 +476,7 @@ export function BacklogOverlay({
       onClick={handleOverlayClick}
     >
       <div
-        className="flex max-h-[60svh] w-[90svw] max-w-[640px] flex-col overflow-hidden rounded-lg border border-neutral-700 bg-neutral-800 shadow-2xl"
+        className="flex max-h-[60svh] w-[90svw] max-w-[720px] flex-col overflow-hidden rounded-lg border border-neutral-700 bg-neutral-800 shadow-2xl"
         onClick={handleModalClick}
       >
         {/* Quick-add input */}
@@ -442,6 +487,11 @@ export function BacklogOverlay({
             autoFocus
             rows={1}
             value={inputValue}
+            onFocus={() => {
+              if (selectedIndex < 0) return;
+              lastSelectedIndexRef.current = selectedIndex;
+              setSelectedIndex(-1);
+            }}
             onChange={(e) => {
               setInputValue(e.target.value);
               e.target.style.height = 'auto';
@@ -455,8 +505,7 @@ export function BacklogOverlay({
         <div ref={listRef} className="overflow-y-auto p-2">
           {todos.length === 0 ? (
             <div className="py-8 text-center text-sm text-neutral-500">
-              No backlog items yet. Type above and press Enter or Cmd+Enter to
-              add one.
+              No backlog items yet. Type above and press Cmd+Enter to add one.
             </div>
           ) : (
             todos.map((todo, index) => (
@@ -473,7 +522,7 @@ export function BacklogOverlay({
                 onEditBlur={saveEdit}
                 onStartEdit={() => startEdit(todo)}
                 onConvertToTask={() => handleConvertToTask(todo)}
-                onDelete={() => handleDelete(todo.id)}
+                onDelete={() => handleDelete(todo)}
                 onDragStart={() => handleDragStart(todo.id)}
                 onDragOver={(e) => handleDragOver(e, todo.id)}
                 onDragLeave={handleDragLeave}
@@ -481,6 +530,26 @@ export function BacklogOverlay({
                 onDragEnd={handleDragEnd}
               />
             ))
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 border-t border-neutral-700 px-4 py-2 text-xs text-neutral-400">
+          <span className="inline-flex items-center gap-1.5">
+            <Kbd shortcut="tab" /> Switch Input/List Focus
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Kbd shortcut="cmd+enter" />
+            {selectedTodo ? 'Convert Selected Item To Task' : 'Add Item'}
+          </span>
+          {selectedTodo && (
+            <>
+              <span className="inline-flex items-center gap-1.5">
+                <Kbd shortcut="enter" /> Open Selected Item Actions
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Kbd shortcut="cmd+backspace" /> Delete Selected Item
+              </span>
+            </>
           )}
         </div>
       </div>

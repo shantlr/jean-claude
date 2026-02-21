@@ -9,6 +9,8 @@ import {
   type ReactNode,
 } from 'react';
 
+import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
 
 import type {
@@ -117,6 +119,21 @@ function ModalRenderer({
 
   const isLoading = loadingAction !== null;
 
+  useRegisterKeyboardBindings(
+    `confirm-modal-${modal.id}`,
+    {
+      'cmd+enter': () => {
+        if (type !== 'confirm' || isLoading) {
+          return false;
+        }
+
+        const { onConfirm } = options as ConfirmModalOptions;
+        void handleAsync('confirm', onConfirm);
+      },
+    },
+    { enabled: type === 'confirm' },
+  );
+
   if (type === 'info') {
     const {
       title,
@@ -184,6 +201,7 @@ function ModalRenderer({
               <Loader2 className="h-4 w-4 animate-spin" />
             )}
             {cancelLabel}
+            <Kbd shortcut="escape" className="text-[9px]" />
           </button>
           <button
             onClick={handleConfirm}
@@ -199,6 +217,7 @@ function ModalRenderer({
               <Loader2 className="h-4 w-4 animate-spin" />
             )}
             {confirmLabel}
+            <Kbd shortcut="cmd+enter" className="text-[9px]" />
           </button>
         </div>
       </Modal>

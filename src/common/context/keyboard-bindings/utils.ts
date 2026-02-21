@@ -71,6 +71,7 @@ export function formatKeyForDisplay(key: BindingKey): string {
     .replace('enter', '↵')
     .replace('escape', 'Esc')
     .replace('tab', 'Tab')
+    .replace('backspace', '⌫')
     .replace('up', '↑')
     .replace('down', '↓')
     .replace('left', '←')
