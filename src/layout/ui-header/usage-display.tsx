@@ -127,9 +127,7 @@ export function UsageDisplay() {
     <div className="flex items-center gap-3">
       {/* Progress bar visualization */}
       <div className="flex items-center gap-2">
-        <div
-          className="relative h-1.5 w-20 overflow-hidden rounded-full bg-neutral-700"
-        >
+        <div className="relative h-1.5 w-20 overflow-hidden rounded-full bg-neutral-700">
           <div
             className={clsx(
               'absolute top-0 left-0 h-full rounded-full transition-all duration-300',

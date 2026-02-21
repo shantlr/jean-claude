@@ -12,13 +12,6 @@ function getContextLevel(percentage: number): ContextLevel {
   return 'low';
 }
 
-const LEVEL_COLORS: Record<ContextLevel, string> = {
-  low: 'text-blue-400',
-  medium: 'text-green-400',
-  high: 'text-yellow-400',
-  critical: 'text-orange-400',
-};
-
 const LEVEL_STROKE_COLORS: Record<ContextLevel, string> = {
   low: 'stroke-blue-500',
   medium: 'stroke-green-500',
@@ -89,14 +82,9 @@ export function ContextUsageDisplay({
   const tooltipText = `Context: ${formatNumber(contextUsage.contextTokens)} / ${formatNumber(contextUsage.contextWindow)} tokens`;
 
   return (
-    <div className="flex items-center gap-1.5" title={tooltipText}>
+    <div className="flex place-items-center gap-1.5" title={tooltipText}>
       {/* Pie loader */}
       <PieLoader percentage={contextUsage.percentage} level={level} />
-      {/* Percentage text */}
-      <span className={clsx('text-xs font-medium', LEVEL_COLORS[level])}>
-        {contextUsage.percentage.toFixed(0)}% (
-        {formatNumber(contextUsage.contextTokens)})
-      </span>
     </div>
   );
 }

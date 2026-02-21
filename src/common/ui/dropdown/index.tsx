@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { Check } from 'lucide-react';
 import React, {
   cloneElement,
   isValidElement,
@@ -14,8 +15,10 @@ import React, {
 import { createPortal } from 'react-dom';
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import type { BindingKey } from '@/common/context/keyboard-bindings/types';
 import { useRegisterOverlay } from '@/common/context/overlay';
 import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
+import { Kbd } from '@/common/ui/kbd';
 
 function setRef<T>(
   ref: ((node: T) => void) | { current: T } | null | undefined,
@@ -34,6 +37,7 @@ export function Dropdown({
   align = 'left',
   side = 'bottom',
   className,
+  dropdownRef,
 }: {
   trigger:
     | ReactElement
@@ -42,6 +46,9 @@ export function Dropdown({
   align?: 'left' | 'right';
   side?: 'bottom' | 'top';
   className?: string;
+  dropdownRef?:
+    | React.MutableRefObject<{ toggle: () => void } | null>
+    | ((handle: { toggle: () => void } | null) => void);
 }) {
   const id = useId();
   const menuId = `dropdown-menu-${id}`;
@@ -69,6 +76,18 @@ export function Dropdown({
       return !prev;
     });
   }, []);
+
+  // Expose toggle to parent via ref or callback
+  useEffect(() => {
+    if (dropdownRef) {
+      setRef(dropdownRef, { toggle });
+    }
+    return () => {
+      if (dropdownRef) {
+        setRef(dropdownRef, null);
+      }
+    };
+  }, [dropdownRef, toggle]);
 
   // Get all menu items
   const getMenuItems = useCallback(() => {
@@ -238,11 +257,15 @@ export function DropdownItem({
   onClick,
   icon,
   variant = 'default',
+  checked,
+  shortcut,
 }: {
   children: ReactNode;
   onClick: () => void;
   icon?: ReactNode;
   variant?: 'default' | 'danger';
+  checked?: boolean;
+  shortcut?: BindingKey;
 }) {
   return (
     <button
@@ -259,7 +282,44 @@ export function DropdownItem({
           {icon}
         </span>
       )}
-      {children}
+      <span className="flex-1">{children}</span>
+      {shortcut && <Kbd shortcut={shortcut} />}
+      {checked === true && (
+        <Check className="h-3.5 w-3.5 shrink-0 text-blue-400" />
+      )}
     </button>
+  );
+}
+
+export function DropdownDivider() {
+  return <hr role="separator" className="my-1 border-t border-neutral-700" />;
+}
+
+export function DropdownInfo({
+  label,
+  value,
+  onCopy,
+}: {
+  label: string;
+  value: string;
+  onCopy?: () => void;
+}) {
+  return (
+    <div
+      role="menuitem"
+      tabIndex={onCopy ? -1 : undefined}
+      onClick={onCopy}
+      className={clsx(
+        'flex w-full items-center justify-between gap-4 px-3 py-1.5 text-sm',
+        onCopy
+          ? 'cursor-pointer transition-colors hover:bg-neutral-700 focus:bg-neutral-700 focus:outline-none'
+          : 'cursor-default',
+      )}
+    >
+      <span className="text-neutral-500">{label}</span>
+      <span className="truncate font-mono text-xs text-neutral-400">
+        {value}
+      </span>
+    </div>
   );
 }

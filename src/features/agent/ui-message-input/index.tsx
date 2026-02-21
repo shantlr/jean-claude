@@ -67,14 +67,17 @@ export function MessageInput({
     textareaRef.current?.resetHeight();
   }, [value, disabled, isRunning, onSend, onQueue, setValue]);
 
-  const handleEnterKey = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (!event.metaKey && !event.ctrlKey) {
-      return false;
-    }
+  const handleEnterKey = useCallback(
+    (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (!event.metaKey && !event.ctrlKey) {
+        return false;
+      }
 
-    handleSubmit();
-    return true; // Prevent default
-  }, [handleSubmit]);
+      handleSubmit();
+      return true; // Prevent default
+    },
+    [handleSubmit],
+  );
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     // Double-escape to stop agent

@@ -2,23 +2,27 @@ import { useNavigate } from '@tanstack/react-router';
 import clsx from 'clsx';
 import {
   Loader2,
-  Copy,
-  Check,
   Trash2,
   ExternalLink,
   RefreshCw,
   Settings,
   GitBranch,
   GitCompare,
-  GitPullRequest,
+  MoreHorizontal,
   FolderTree,
 } from 'lucide-react';
 import { useEffect, useState, useCallback, useRef, memo } from 'react';
 
-import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
 import { useModal } from '@/common/context/modal';
 import { useCommands } from '@/common/hooks/use-commands';
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownDivider,
+  DropdownInfo,
+} from '@/common/ui/dropdown';
+import { Kbd } from '@/common/ui/kbd';
 import { getModelsForBackend } from '@/features/agent/ui-backend-selector';
 import { ContextUsageDisplay } from '@/features/agent/ui-context-usage-display';
 import { FilePreviewPane } from '@/features/agent/ui-file-preview-pane';
@@ -30,14 +34,11 @@ import { PermissionBar } from '@/features/agent/ui-permission-bar';
 import { PrBadge } from '@/features/agent/ui-pr-badge';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
 import { RunButton } from '@/features/agent/ui-run-button';
-import { WorktreeBranchMenu } from '@/features/agent/ui-worktree-branch-menu';
-import { DeleteWorktreeContent } from '@/features/agent/ui-worktree-branch-menu/delete-worktree-dialog';
 import { WorktreeDiffView } from '@/features/agent/ui-worktree-diff-view';
-import { StatusIndicator } from '@/features/task/ui-status-indicator';
 import { TaskPrView } from '@/features/task/ui-task-pr-view';
 import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
 import { useBackendModels } from '@/hooks/use-backend-models';
-import { useContextUsage } from '@/hooks/use-context-usage';
+import { useContextUsage, type ContextUsage } from '@/hooks/use-context-usage';
 import { useModel, formatModelName } from '@/hooks/use-model';
 import { useProject } from '@/hooks/use-projects';
 import { useEditorSetting } from '@/hooks/use-settings';
@@ -54,7 +55,6 @@ import {
   useAllowForProject,
   useAllowForProjectWorktrees,
   useToggleTaskUserCompleted,
-  useDeleteWorktree,
 } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
 import { getBranchFromWorktreePath } from '@/lib/worktree';
@@ -78,7 +78,6 @@ import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
 import { DebugMessagesPane } from './debug-messages-pane';
 import { DeleteTaskDialog } from './delete-task-dialog';
 import { FileExplorerPane } from './file-explorer-pane';
-import { PendingMessageInput } from './pending-message-input';
 import { TaskSettingsPane } from './task-settings-pane';
 
 export function TaskPanel({ taskId }: { taskId: string }) {
@@ -132,11 +131,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   } = useDiffViewState(taskId);
 
   // PR view state
-  const {
-    isOpen: isPrViewOpen,
-    togglePrView,
-    closePrView,
-  } = usePrViewState(taskId);
+  const { isOpen: isPrViewOpen, closePrView } = usePrViewState(taskId);
 
   const agentState = useAgentStream(taskId);
   const contextUsage = useContextUsage(agentState.messages);
@@ -151,12 +146,11 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     isStopping,
   } = useAgentControls(taskId);
 
-  const [copiedSessionId, setCopiedSessionId] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const deleteWorktree = useDeleteWorktree();
 
   // Ref for the task panel container (used by shrink-to-target animation)
   const taskPanelRef = useRef<HTMLDivElement>(null);
+  const overflowMenuRef = useRef<{ toggle: () => void } | null>(null);
   const { triggerAnimation } = useShrinkToTarget({
     panelRef: taskPanelRef,
     targetSelector: '[data-animation-target="jobs-button"]',
@@ -182,8 +176,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const handleCopySessionId = useCallback(async () => {
     if (task?.sessionId) {
       await navigator.clipboard.writeText(task.sessionId);
-      setCopiedSessionId(true);
-      setTimeout(() => setCopiedSessionId(false), 2000);
     }
   }, [task?.sessionId]);
 
@@ -247,7 +239,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       clearTaskNavHistoryState(taskId);
 
       // Navigate away
-      navigate({ to: '/all/' });
+      navigate({ to: '/all' });
 
       // Run deletion in background
       void deleteTask
@@ -293,30 +285,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       });
     }
   }, [task?.worktreePath, modal]);
-
-  const handleOpenDeleteWorktreeModal = useCallback(() => {
-    const branchName =
-      task?.branchName ?? getBranchFromWorktreePath(task?.worktreePath ?? '');
-
-    modal.open({
-      title: 'Delete Worktree',
-      content: (onClose) => (
-        <DeleteWorktreeContent
-          onClose={onClose}
-          onConfirm={async () => {
-            await deleteWorktree.mutateAsync({ taskId, keepBranch: true });
-            onClose();
-            if (isDiffViewOpen) {
-              toggleDiffView();
-            }
-          }}
-          branchName={branchName}
-          taskId={taskId}
-          isPending={deleteWorktree.isPending}
-        />
-      ),
-    });
-  }, [task, taskId, deleteWorktree, isDiffViewOpen, toggleDiffView, modal]);
 
   const handleAllowToolsForSession = useCallback(
     (toolName: string, input: Record<string, unknown>) => {
@@ -374,6 +342,14 @@ export function TaskPanel({ taskId }: { taskId: string }) {
 
   const toggleUserCompleted = useToggleTaskUserCompleted();
   useCommands('task-panel', [
+    {
+      label: 'Task Menu',
+      shortcut: 'cmd+m',
+      section: 'Task',
+      handler: () => {
+        overflowMenuRef.current?.toggle();
+      },
+    },
     {
       label:
         rightPane?.type === 'fileExplorer'
@@ -491,76 +467,87 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         {/* Header */}
         <div
           className={clsx(
-            'flex flex-col border-b border-neutral-700 p-2',
+            'flex items-center gap-3 border-b border-neutral-700 px-3',
             TASK_PANEL_HEADER_HEIGHT_CLS,
           )}
         >
-          {/* Top row: Status, title, and action buttons */}
-          <div className="flex items-center gap-3">
-            <StatusIndicator
-              status={
-                agentState.status !== 'waiting'
-                  ? agentState.status
-                  : task.status
-              }
-              className="h-3 w-3"
-            />
-            <h1
-              className={clsx(
-                'grow truncate overflow-hidden font-semibold text-ellipsis whitespace-nowrap',
-                !task.worktreePath ? 'text-lg' : 'text-sm',
-              )}
-            >
-              {task.name ?? task.prompt.split('\n')[0]}
-            </h1>
+          {/* Left: Task title */}
+          <h1 className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-200">
+            {task.name ?? task.prompt.split('\n')[0]}
+          </h1>
 
-            {/* Run button */}
+          {/* Center: Branch, PR badge, Work items */}
+          <div className="flex shrink items-center gap-2">
+            {/* Branch chip */}
+            {(task.worktreePath || task.branchName) && (
+              <span className="flex max-w-48 min-w-0 items-center gap-1 rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-400">
+                <GitBranch className="h-3 w-3 shrink-0" />
+                <span className="truncate">
+                  {task.branchName ??
+                    getBranchFromWorktreePath(task.worktreePath!)}
+                </span>
+              </span>
+            )}
+
+            {/* PR badge */}
+            {task.pullRequestId && task.pullRequestUrl && (
+              <PrBadge
+                pullRequestId={task.pullRequestId}
+                pullRequestUrl={task.pullRequestUrl}
+              />
+            )}
+
+            {/* Work item badges */}
+            {task.workItemIds &&
+              task.workItemIds.length > 0 &&
+              task.workItemIds.map((workItemId, index) => {
+                const workItemUrl = task.workItemUrls?.[index];
+                return (
+                  <button
+                    key={workItemId}
+                    onClick={() => {
+                      if (workItemUrl) {
+                        window.open(workItemUrl, '_blank');
+                      }
+                    }}
+                    disabled={!workItemUrl}
+                    className="flex items-center rounded px-1.5 py-0.5 text-xs font-medium text-blue-400 transition-colors hover:bg-neutral-700 hover:text-blue-300 disabled:cursor-default disabled:text-neutral-500 disabled:hover:bg-transparent"
+                    title={
+                      workItemUrl
+                        ? `Open work item #${workItemId} in browser`
+                        : `Work item #${workItemId}`
+                    }
+                  >
+                    #{workItemId}
+                  </button>
+                );
+              })}
+          </div>
+
+          {/* Right: Run + Overflow menu */}
+          <div className="flex shrink-0 items-center gap-2">
             <RunButton
               projectId={project.id}
               workingDir={task.worktreePath ?? project.path}
             />
 
-            {/* Open in editor button */}
-            <button
-              onClick={handleOpenInEditor}
-              className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-1 text-sm font-medium text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
-              title={`Open project in editor (${formatKeyForDisplay('cmd+shift+e')})`}
+            {/* Overflow menu */}
+            <Dropdown
+              trigger={
+                <button
+                  className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
+                  title="Task menu (\u2318M)"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                  <Kbd shortcut="cmd+m" />
+                </button>
+              }
+              align="right"
+              dropdownRef={overflowMenuRef}
             >
-              <ExternalLink className="h-4 w-4" />
-              <span className="overflow-hidden text-ellipsis whitespace-nowrap">
-                {editorSetting ? getEditorLabel(editorSetting) : 'Editor'}
-              </span>
-            </button>
-
-            {/* Delete button */}
-            {!isRunning && (
-              <button
-                onClick={() => setIsDeleteDialogOpen(true)}
-                className="flex items-center gap-2 rounded-md px-3 py-1 text-sm font-medium text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-red-400"
-                title="Delete task"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            )}
-
-            {/* Settings button */}
-            <button
-              onClick={handleToggleSettingsPane}
-              className={clsx(
-                'flex items-center rounded-md px-2 py-1.5 text-sm font-medium transition-colors',
-                rightPane?.type === 'settings'
-                  ? 'bg-neutral-700 text-neutral-200'
-                  : 'text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200',
-              )}
-              title="Task settings"
-            >
-              <Settings className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="flex justify-between">
-            <div className="flex items-center gap-2">
-              <button
+              {/* Group 1: View toggles */}
+              <DropdownItem
+                icon={<FolderTree />}
                 onClick={() => {
                   if (rightPane?.type === 'fileExplorer') {
                     closeRightPane();
@@ -568,129 +555,79 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                     openFileExplorer();
                   }
                 }}
-                className={clsx(
-                  'flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors',
-                  rightPane?.type === 'fileExplorer'
-                    ? 'bg-blue-500/20 text-blue-400'
-                    : 'text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300',
-                )}
-                title={`Toggle file explorer (${formatKeyForDisplay('cmd+e')})`}
+                checked={rightPane?.type === 'fileExplorer'}
+                shortcut="cmd+e"
               >
-                <FolderTree className="h-3.5 w-3.5" />
                 Files
-              </button>
+              </DropdownItem>
               {task.worktreePath && (
+                <DropdownItem
+                  icon={<GitCompare />}
+                  onClick={toggleDiffView}
+                  checked={isDiffViewOpen}
+                  shortcut="cmd+d"
+                >
+                  Diff
+                </DropdownItem>
+              )}
+
+              <DropdownDivider />
+
+              {/* Group 2: Actions */}
+              <DropdownItem
+                icon={<ExternalLink />}
+                onClick={handleOpenInEditor}
+                shortcut="cmd+shift+e"
+              >
+                Open in{' '}
+                {editorSetting ? getEditorLabel(editorSetting) : 'Editor'}
+              </DropdownItem>
+              {task.worktreePath && (
+                <DropdownItem
+                  icon={<ExternalLink />}
+                  onClick={handleOpenWorktreeInEditor}
+                  shortcut="cmd+w"
+                >
+                  Open Worktree in Editor
+                </DropdownItem>
+              )}
+              <DropdownItem
+                icon={<Settings />}
+                onClick={handleToggleSettingsPane}
+                checked={rightPane?.type === 'settings'}
+              >
+                Task Settings
+              </DropdownItem>
+              {!isRunning && (
+                <DropdownItem
+                  icon={<Trash2 />}
+                  variant="danger"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                >
+                  Delete Task
+                </DropdownItem>
+              )}
+
+              {/* Group 3: Info (only when session data exists) */}
+              {(task.sessionId || model) && (
                 <>
-                  <WorktreeBranchMenu
-                    branchName={
-                      task.branchName ??
-                      getBranchFromWorktreePath(task.worktreePath)
-                    }
-                    onOpenInEditor={handleOpenWorktreeInEditor}
-                    onDeleteWorktree={handleOpenDeleteWorktreeModal}
-                  />
-                  <button
-                    onClick={toggleDiffView}
-                    className={clsx(
-                      'flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium transition-colors',
-                      isDiffViewOpen
-                        ? 'bg-purple-500/20 text-purple-400'
-                        : 'text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300',
-                    )}
-                    title={`Toggle diff view (${formatKeyForDisplay('cmd+d')})`}
-                  >
-                    <GitCompare className="h-3.5 w-3.5" />
-                    Diff
-                  </button>
+                  <DropdownDivider />
+                  {model && (
+                    <DropdownInfo
+                      label="Model"
+                      value={formatModelName(model)}
+                    />
+                  )}
+                  {task.sessionId && (
+                    <DropdownInfo
+                      label="Session"
+                      value={`${task.sessionId.slice(0, 8)}...`}
+                      onCopy={handleCopySessionId}
+                    />
+                  )}
                 </>
               )}
-              {!task.worktreePath && task.branchName && (
-                <span className="flex max-w-48 min-w-0 items-center gap-1.5 text-sm text-neutral-500">
-                  <GitBranch className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{task.branchName}</span>
-                </span>
-              )}
-              {/* PR button - visible when repo is linked */}
-              {project.repoProviderId && task.worktreePath && (
-                <button
-                  onClick={togglePrView}
-                  className={clsx(
-                    'flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium transition-colors',
-                    isPrViewOpen
-                      ? 'bg-blue-500/20 text-blue-400'
-                      : 'text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300',
-                  )}
-                  title="View or link pull request"
-                >
-                  <GitPullRequest className="h-3.5 w-3.5" />
-                  PR
-                </button>
-              )}
-              {/* Work item badges */}
-              {task.workItemIds &&
-                task.workItemIds.length > 0 &&
-                task.workItemIds.map((workItemId, index) => {
-                  const workItemUrl = task.workItemUrls?.[index];
-                  return (
-                    <button
-                      key={workItemId}
-                      onClick={() => {
-                        if (workItemUrl) {
-                          window.open(workItemUrl, '_blank');
-                        }
-                      }}
-                      disabled={!workItemUrl}
-                      className="flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium text-blue-400 transition-colors hover:bg-neutral-700 hover:text-blue-300 disabled:cursor-default disabled:text-neutral-500 disabled:hover:bg-transparent"
-                      title={
-                        workItemUrl
-                          ? `Open work item #${workItemId} in browser`
-                          : `Work item #${workItemId}`
-                      }
-                    >
-                      #{workItemId}
-                    </button>
-                  );
-                })}
-              {task.pullRequestId && task.pullRequestUrl && (
-                <PrBadge
-                  pullRequestId={task.pullRequestId}
-                  pullRequestUrl={task.pullRequestUrl}
-                />
-              )}
-              <PendingMessageInput taskId={taskId} />
-            </div>
-            {(task.sessionId || contextUsage.hasData || model) && (
-              <div className="flex items-center gap-3 pl-6">
-                {/* Model display */}
-                {model && (
-                  <span
-                    className="font-mono text-xs text-neutral-500"
-                    title={model}
-                  >
-                    {formatModelName(model)}
-                  </span>
-                )}
-
-                {/* Context usage display */}
-                <ContextUsageDisplay contextUsage={contextUsage} />
-
-                {/* Session ID */}
-                {task.sessionId && (
-                  <button
-                    onClick={handleCopySessionId}
-                    className="flex items-center gap-1 rounded px-2 py-0.5 font-mono text-xs text-neutral-500 transition-colors hover:bg-neutral-700 hover:text-neutral-300"
-                    title="Click to copy session ID"
-                  >
-                    {copiedSessionId ? (
-                      <Check className="h-3 w-3 text-green-500" />
-                    ) : (
-                      <Copy className="h-3 w-3" />
-                    )}
-                    {task.sessionId.slice(0, 8)}...
-                  </button>
-                )}
-              </div>
-            )}
+            </Dropdown>
           </div>
         </div>
 
@@ -811,6 +748,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               onSend={sendMessage}
               onQueue={queuePrompt}
               onStop={handleStop}
+              contextUsage={contextUsage}
             />
           )}
       </div>
@@ -881,6 +819,7 @@ const TaskInputFooter = memo(function TaskInputFooter({
   onSend,
   onQueue,
   onStop,
+  contextUsage,
 }: {
   taskId: string;
   isRunning: boolean;
@@ -889,6 +828,7 @@ const TaskInputFooter = memo(function TaskInputFooter({
   onSend: (message: string) => void;
   onQueue: (message: string) => void;
   onStop: () => Promise<void>;
+  contextUsage: ContextUsage;
 }) {
   const { data: task } = useTask(taskId);
   const { data: skills } = useSkills(taskId);
@@ -939,7 +879,8 @@ const TaskInputFooter = memo(function TaskInputFooter({
   );
 
   return (
-    <div className="flex items-end gap-2 border-t border-neutral-700 bg-neutral-800 px-4 py-3">
+    <div className="flex items-center gap-2 border-t border-neutral-700 bg-neutral-800 px-4 py-3">
+      <ContextUsageDisplay contextUsage={contextUsage} />
       <ModeSelector
         value={task?.interactionMode ?? 'ask'}
         onChange={handleModeChange}
