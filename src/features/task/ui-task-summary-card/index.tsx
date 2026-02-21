@@ -130,7 +130,7 @@ export function TaskSummaryCard({
       <div className="flex items-center gap-2 text-xs text-neutral-400">
         <span className="truncate">{projectName}</span>
         <span className="ml-auto shrink-0">
-          {formatRelativeTime(task.createdAt)}
+          {formatRelativeTime(task.updatedAt)}
         </span>
       </div>
 
