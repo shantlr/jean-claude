@@ -15,6 +15,7 @@ const STATUS_WORKFLOW_ORDER: Record<string, number> = {
   Active: 2,
   'In Progress': 2.5,
   'In Design': 2.5,
+  'Non-Compliant': 2.9,
   Resolved: 3,
   Deployed: 3.5,
   Closed: 4,
