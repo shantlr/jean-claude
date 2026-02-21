@@ -906,6 +906,7 @@ const TaskInputFooter = memo(function TaskInputFooter({
       <ModeSelector
         value={task?.interactionMode ?? 'ask'}
         onChange={handleModeChange}
+        backend={task?.agentBackend ?? 'claude-code'}
         disabled={isRunning}
       />
       <ModelSelector

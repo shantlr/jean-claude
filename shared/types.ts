@@ -41,6 +41,91 @@ export type TaskStatus =
   | 'interrupted';
 export type InteractionMode = 'ask' | 'auto' | 'plan';
 
+export interface BackendInteractionModeOption {
+  value: InteractionMode;
+  label: string;
+  description: string;
+}
+
+const CLAUDE_CODE_INTERACTION_MODE_OPTIONS = [
+  {
+    value: 'ask',
+    label: 'Ask',
+    description: 'All tools require approval',
+  },
+  {
+    value: 'auto',
+    label: 'Auto',
+    description: 'All tools auto-approved',
+  },
+  {
+    value: 'plan',
+    label: 'Plan',
+    description: 'Planning only, no execution',
+  },
+] as const satisfies readonly BackendInteractionModeOption[];
+
+const OPENCODE_INTERACTION_MODE_OPTIONS = [
+  {
+    value: 'auto',
+    label: 'Build',
+    description: 'Default coding agent with full tools',
+  },
+  {
+    value: 'plan',
+    label: 'Plan',
+    description: 'Planning agent with restricted edits/bash',
+  },
+] as const satisfies readonly BackendInteractionModeOption[];
+
+export const BACKEND_INTERACTION_MODE_OPTIONS: Record<
+  AgentBackendType,
+  readonly BackendInteractionModeOption[]
+> = {
+  'claude-code': CLAUDE_CODE_INTERACTION_MODE_OPTIONS,
+  opencode: OPENCODE_INTERACTION_MODE_OPTIONS,
+};
+
+export function getInteractionModeOptions({
+  backend,
+}: {
+  backend: AgentBackendType;
+}): readonly BackendInteractionModeOption[] {
+  return BACKEND_INTERACTION_MODE_OPTIONS[backend];
+}
+
+export function isInteractionModeSupportedByBackend({
+  backend,
+  mode,
+}: {
+  backend: AgentBackendType;
+  mode: InteractionMode;
+}): boolean {
+  return getInteractionModeOptions({ backend }).some((option) => option.value === mode);
+}
+
+export function getDefaultInteractionModeForBackend({
+  backend,
+}: {
+  backend: AgentBackendType;
+}): InteractionMode {
+  return getInteractionModeOptions({ backend })[0]?.value ?? 'ask';
+}
+
+export function normalizeInteractionModeForBackend({
+  backend,
+  mode,
+}: {
+  backend: AgentBackendType;
+  mode: InteractionMode;
+}): InteractionMode {
+  if (isInteractionModeSupportedByBackend({ backend, mode })) {
+    return mode;
+  }
+
+  return getDefaultInteractionModeForBackend({ backend });
+}
+
 // 'default' means use the backend's default model.
 // Other values are backend-specific model identifiers (e.g. 'sonnet', 'openai/gpt-5.1-codex').
 export type ModelPreference = 'default' | (string & {});

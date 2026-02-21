@@ -31,7 +31,7 @@ import type { AzureDevOpsWorkItem } from '@/lib/api';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useNewTaskDraft, type InputMode } from '@/stores/new-task-draft';
 import type { AgentBackendType } from '@shared/agent-backend-types';
-import type { Project } from '@shared/types';
+import { normalizeInteractionModeForBackend, type Project } from '@shared/types';
 
 import {
   PromptComposer,
@@ -301,9 +301,17 @@ export function NewTaskOverlay({
   // Handle backend change — always reset model to default since model lists differ per backend
   const handleBackendChange = useCallback(
     (backend: AgentBackendType) => {
-      updateDraft({ agentBackend: backend, modelPreference: 'default' });
+      const normalizedMode = normalizeInteractionModeForBackend({
+        backend,
+        mode: draft?.interactionMode ?? 'ask',
+      });
+      updateDraft({
+        agentBackend: backend,
+        interactionMode: normalizedMode,
+        modelPreference: 'default',
+      });
     },
-    [updateDraft],
+    [draft?.interactionMode, updateDraft],
   );
 
   // Sync draft backend with project→global default when project changes,
@@ -316,7 +324,14 @@ export function NewTaskOverlay({
       backendsSetting,
     });
 
-    updateDraft({ agentBackend: resolved, modelPreference: 'default' });
+    updateDraft({
+      agentBackend: resolved,
+      interactionMode: normalizeInteractionModeForBackend({
+        backend: resolved,
+        mode: 'ask',
+      }),
+      modelPreference: 'default',
+    });
   }, [
     selectedProjectId,
     selectedProject?.defaultAgentBackend,
@@ -335,6 +350,10 @@ export function NewTaskOverlay({
       });
       updateDraft({
         agentBackend: resolved,
+        interactionMode: normalizeInteractionModeForBackend({
+          backend: resolved,
+          mode: 'ask',
+        }),
         modelPreference: 'default',
       });
     }
@@ -855,6 +874,7 @@ export function NewTaskOverlay({
             <ModeSelector
               value={draft?.interactionMode ?? 'ask'}
               onChange={(mode) => updateDraft({ interactionMode: mode })}
+              backend={currentBackend}
               shortcut="cmd+i"
               side="top"
             />

@@ -327,6 +327,10 @@ export class OpenCodeBackend implements AgentBackend {
     return undefined;
   }
 
+  private getPrimaryAgentName(mode: InteractionMode): 'build' | 'plan' {
+    return mode === 'plan' ? 'plan' : 'build';
+  }
+
   /**
    * Create the async event stream by subscribing to OpenCode's SSE events
    * and sending the initial prompt.
@@ -355,14 +359,17 @@ export class OpenCodeBackend implements AgentBackend {
 
     // Send the initial prompt (fire and forget — events arrive via SSE)
     const model = this.parseModel(config.model);
+    const promptBody = {
+      parts: [{ type: 'text', text: prompt }],
+      ...(model ? { model } : {}),
+      agent: this.getPrimaryAgentName(config.interactionMode),
+    };
+
     const promptPromise = client.session
       .prompt({
         path: { id: sessionId },
         query: { directory: state.cwd },
-        body: {
-          parts: [{ type: 'text', text: prompt }],
-          ...(model ? { model } : {}),
-        },
+        body: promptBody,
       })
       .then(async (result) => {
         promptComplete = true;

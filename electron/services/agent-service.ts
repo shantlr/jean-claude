@@ -24,6 +24,7 @@ import {
 import type { AgentUIEventPayload } from '@shared/agent-ui-events';
 import type { NormalizedEntry } from '@shared/normalized-message-v2';
 import type { InteractionMode } from '@shared/types';
+import { normalizeInteractionModeForBackend } from '@shared/types';
 
 import {
   TaskRepository,
@@ -246,7 +247,10 @@ class AgentService {
       {
         type: session.backendType,
         cwd: workingDir,
-        interactionMode: (task.interactionMode ?? 'ask') as InteractionMode,
+        interactionMode: normalizeInteractionModeForBackend({
+          backend: session.backendType,
+          mode: (task.interactionMode ?? 'ask') as InteractionMode,
+        }),
         model:
           task.modelPreference && task.modelPreference !== 'default'
             ? task.modelPreference
@@ -856,13 +860,23 @@ class AgentService {
   }
 
   async setMode(taskId: string, mode: InteractionMode): Promise<void> {
-    dbg.agentSession('Setting mode for task %s to %s', taskId, mode);
     const session = this.sessions.get(taskId);
+    const task = await TaskRepository.findById(taskId);
+    if (!task) return;
+
+    const backend = session?.backendType ?? task.agentBackend ?? 'claude-code';
+    const normalizedMode = normalizeInteractionModeForBackend({
+      backend,
+      mode,
+    });
+
+    dbg.agentSession('Setting mode for task %s to %s', taskId, normalizedMode);
+
     if (session?.backendSessionId) {
-      await session.backend.setMode(session.backendSessionId, mode);
+      await session.backend.setMode(session.backendSessionId, normalizedMode);
       dbg.agentSession('Updated backend permission mode for active session');
     }
-    await TaskRepository.update(taskId, { interactionMode: mode });
+    await TaskRepository.update(taskId, { interactionMode: normalizedMode });
   }
 
   isRunning(taskId: string): boolean {

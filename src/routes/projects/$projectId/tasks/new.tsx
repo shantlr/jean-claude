@@ -14,6 +14,8 @@ import { useBackendsSetting } from '@/hooks/use-settings';
 import { useProjectSkills } from '@/hooks/use-skills';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
 import { useNewTaskFormStore } from '@/stores/new-task-form';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import { normalizeInteractionModeForBackend } from '@shared/types';
 
 export const Route = createFileRoute('/projects/$projectId/tasks/new')({
   component: NewTask,
@@ -65,8 +67,24 @@ function NewTask() {
       project.defaultAgentBackend ?? backendsSetting.defaultBackend;
     if (!backendsSetting.enabledBackends.includes(resolved)) return;
 
-    setDraft({ agentBackend: resolved });
-  }, [backendsSetting, hasDraft, project, setDraft]);
+    setDraft({
+      agentBackend: resolved,
+      interactionMode: normalizeInteractionModeForBackend({
+        backend: resolved,
+        mode: interactionMode,
+      }),
+    });
+  }, [backendsSetting, hasDraft, interactionMode, project, setDraft]);
+
+  const handleBackendChange = (backend: AgentBackendType) => {
+    setDraft({
+      agentBackend: backend,
+      interactionMode: normalizeInteractionModeForBackend({
+        backend,
+        mode: interactionMode,
+      }),
+    });
+  };
 
   // Determine the effective source branch (draft value or project default)
   const effectiveSourceBranch =
@@ -262,6 +280,7 @@ function NewTask() {
             <ModeSelector
               value={interactionMode}
               onChange={(mode) => setDraft({ interactionMode: mode })}
+              backend={effectiveAgentBackend}
             />
             <ModelSelector
               value={modelPreference}
@@ -269,7 +288,7 @@ function NewTask() {
             />
             <BackendSelector
               value={effectiveAgentBackend}
-              onChange={(backend) => setDraft({ agentBackend: backend })}
+              onChange={handleBackendChange}
             />
             <button
               type="button"
