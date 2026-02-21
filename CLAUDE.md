@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Jean-Claude is an Electron desktop app for managing coding agents across multiple projects. It uses the Claude Code Agent SDK to spawn and manage agent sessions. The app follows a two-process architecture: Electron main process (Node.js) handles database and IPC, while the renderer process (React) handles the UI.
+Jean-Claude is an Electron desktop app for managing coding agents across multiple projects. It supports multiple agent backends (Claude Code Agent SDK and OpenCode SDK) to spawn and manage agent sessions. The app follows a two-process architecture: Electron main process (Node.js) handles database and IPC, while the renderer process (React) handles the UI.
 
 ## Commands
 
@@ -30,7 +30,7 @@ The renderer calls `window.api.*` methods which are defined in `preload.ts` and 
 ### State Management
 
 - **Server state**: TanStack React Query with hooks in `src/hooks/` (useProjects, useTasks, useProviders, useSettings, useAgent)
-- **UI state**: Zustand stores in `src/stores/` (navigation, new task draft, task message cache, overlays, ui)
+- **UI state**: Zustand stores in `src/stores/` (navigation, new task draft, task messages, overlays, ui, background jobs, toasts, task prompts)
 - **Routing**: TanStack Router with file-based routes in `src/routes/`
 
 #### Zustand Usage
@@ -167,27 +167,56 @@ Key points:
 
 ### Key Entities
 
-- **Projects**: Local directories or git-provider repos (has color for tile display, defaultBranch for worktree merges, optional repo/work item linking)
-- **Tasks**: Work units with agent sessions (status: running/waiting/completed/errored, interactionMode: ask/auto/plan, branchName for worktree tasks, sourceBranch for tracking origin, optional pullRequestId/pullRequestUrl)
+- **Projects**: Local directories or git-provider repos (has color for tile display, defaultBranch for worktree merges, defaultAgentBackend for backend selection, optional repo/work item linking)
+- **Tasks**: Work units with agent sessions (status: running/waiting/completed/errored/interrupted, interactionMode: ask/auto/plan, agentBackend: claude-code/opencode, modelPreference for per-task model selection, branchName for worktree tasks, sourceBranch for tracking origin, pendingMessage for ad-hoc notes, optional pullRequestId/pullRequestUrl)
 - **Providers**: Git provider credentials (Azure DevOps, GitHub, GitLab)
-- **Settings**: App configuration (key-value pairs, e.g., editor preference)
-- **Agent Messages**: Persisted messages from agent sessions (messageIndex for ordering)
+- **Settings**: App configuration (key-value pairs, e.g., editor preference, backends configuration, completion settings)
+- **Agent Messages**: Normalized message entries from agent sessions (one row per semantic entry with type, toolId, parentToolId, data, model)
+- **Raw Messages**: Original SDK responses stored separately for debugging (keyed by rawMessageId)
 - **Project Commands**: Run command configurations per project (command string, ports to monitor)
+- **Project Todos**: Per-project backlog items (content, sortOrder, convertible to tasks)
 - **MCP Templates**: Model Context Protocol server configurations with variable substitution
 - **Project MCP Overrides**: Per-project enable/disable of MCP templates
 - **Task Summaries**: AI-generated summaries with "What I Did", "Key Decisions", and file annotations
 
+### Agent Backend Abstraction
+
+The app supports multiple agent backends through a common interface (`shared/agent-backend-types.ts`):
+
+- **Backend Types**: `AgentBackendType` = `'claude-code' | 'opencode'`
+- **Interface**: `AgentBackend` with methods: `start()`, `stop()`, `respondToPermission()`, `respondToQuestion()`, `setMode()`, `dispose()`
+- **Configuration**: `AgentBackendConfig` with optional model selection and session resumption
+- **Implementations**: Located in `electron/services/agent-backends/`
+  - `claude/claude-code-backend.ts` — Wraps Claude Code Agent SDK
+  - `opencode/opencode-backend.ts` — Wraps OpenCode SDK (`@opencode-ai/sdk`) with SSE streaming
+- **Per-project default**: Projects can set `defaultAgentBackend` to override the global default
+- **Per-task selection**: Each task stores its `agentBackend` explicitly
+
+### Message Normalization V2
+
+Messages from different backends are normalized to a unified schema (`shared/normalized-message-v2.ts`):
+
+- **Flat schema**: One row per semantic entry (user-prompt, assistant-message, system-status, result, tool-use)
+- **Tool-use types**: Typed per tool — bash, read, glob, grep, mcp, ask-user-question, write, edit, todo-write, exit-plan-mode, skill, web-fetch, web-search, sub-agent
+- **Normalizers**: Each backend has its own normalizer converting SDK messages to `NormalizationEvent[]`
+  - `claude/normalize-claude-message-v2.ts`
+  - `opencode/normalize-opencode-message-v2.ts`
+- **Raw preservation**: Original SDK responses stored in `raw_messages` table for debugging/audit
+- **Token/cost tracking**: Each entry can carry token usage and cost information
+
 ### Agent Integration
 
-The agent service (`electron/services/agent-service.ts`) manages Claude Agent SDK sessions:
+The agent service (`electron/services/agent-service.ts`) manages agent backend sessions:
 
 - **Interaction Modes**: `ask` (prompt for permissions), `auto` (bypass permissions), `plan` (show plan first, default)
 - **Session Lifecycle**: Start → Stream messages → Handle permissions/questions → Complete/Error
-- **Persistence**: Messages stored in `agent_messages` table with JSON-serialized content
+- **Persistence**: Normalized messages stored in `agent_messages` table, raw messages in `raw_messages` table
 - **Resumption**: Sessions can be resumed via stored `sessionId`
-- **Notifications**: Desktop notifications for permission requests, questions, and completion
+- **Notifications**: Desktop notifications for permission requests, questions, and completion (auto-close supported)
 - **Message Queue**: Users can queue messages while the agent is busy; queued prompts execute sequentially
 - **Usage Tracking**: Claude Code OAuth usage stats displayed in header (5-hour and 7-day limits)
+- **Model Selection**: Per-task `modelPreference` allows choosing specific models (opus, sonnet, haiku, or backend-specific models)
+- **Backend Models**: Dynamic model discovery per backend via `backend-models-service.ts` (OpenCode discovers via CLI with 5-min cache, Claude Code uses static list)
 
 Agent events flow via IPC channels: `agent:message`, `agent:status`, `agent:permission`, `agent:question`, `agent:queue-update`, `agent:name-updated`
 
@@ -198,27 +227,80 @@ Agent events flow via IPC channels: `agent:message`, `agent:status`, `agent:perm
 - Project-wide (persisted in `.claude/settings.local.json`)
 - Worktree-specific (persisted in `.claude/settings.local.worktrees.json`)
 
+### Background Jobs
+
+Long-running operations run as background jobs instead of blocking the UI (`src/stores/background-jobs.ts`):
+
+- **Job types**: `'task-creation' | 'summary-generation' | 'task-deletion' | 'merge'`
+- **States**: running → succeeded/failed (with timestamps and error messages)
+- **Persistence**: Zustand store with persist middleware
+- **Association**: Jobs link to taskId/projectId for context
+- **UI**: Background jobs overlay shows running/completed jobs
+- **Integration**: Task creation, merge, deletion, and summary generation all use background jobs
+
 ### Worktree Diff View
 
 Tasks created with worktrees can display a diff view showing all changes since the worktree was created:
 
 - **File tree**: Left panel shows changed files (added/modified/deleted), resizable
-- **Diff view**: Right panel shows side-by-side or unified diff
+- **Diff view**: Right panel shows side-by-side or unified diff with change navigation
 - **Services**: `worktree-service.ts` provides `getWorktreeDiff()` and `getWorktreeFileContent()`
 - **Hooks**: `useWorktreeDiff` and `useWorktreeFileContent` for React Query integration
 - **State**: Diff view open/closed state persisted in navigation store
+- **Navigation**: Change navigator for jumping between diff hunks
 
-The diff is calculated between the task's `startCommitHash` (captured at worktree creation) and the current working tree.
+The diff is calculated between the task's `startCommitHash` (captured at worktree creation) and the current working tree. Falls back to local branch comparison when available.
 
 ### Worktree Actions
 
 Worktree tasks have commit and merge capabilities:
 
-- **Commit**: Stage and commit changes with a custom message
-- **Merge**: Merge worktree branch into target branch (with squash option)
+- **Commit**: Stage and commit all changes (including unstaged) with a custom message
+- **Merge**: Merge worktree branch into target branch (with squash option, conflict detection)
+- **Conflict Detection**: Dry-run merge check via `checkMergeConflicts()` before attempting real merge
 - **Create PR**: Create Azure DevOps pull request from worktree branch (with work item linking)
+- **Push Branch**: Push worktree branch to remote
+- **Delete Worktree**: Clean up worktree on task completion or manual deletion
 - **Default branch**: Projects can specify a default merge target branch
 - **UI Components**: `ui-worktree-actions/` with commit modal, merge confirm/success dialogs, create PR dialog
+
+### File Explorer
+
+Tasks with worktrees can browse the worktree file system (`src/features/task/ui-task-panel/file-explorer-pane/`):
+
+- **Tree view**: Left panel with directory expansion/collapse
+- **File content**: Right panel showing selected file content
+- **Resizable**: Both panels independently resizable with persisted widths
+- **Hooks**: `useDirectoryListing` for filesystem queries
+
+### Project Todos (Backlog)
+
+Per-project todo lists for tracking planned work (`src/features/project/ui-backlog-overlay/`):
+
+- **CRUD**: Create, edit, delete, reorder items
+- **Drag-to-reorder**: Visual drag feedback with sort order persistence
+- **Convert to task**: One-click conversion from backlog item to agent task (runs as background job)
+- **Database**: `project_todos` table with content, sortOrder
+- **Hooks**: `useProjectTodos()`, `useCreateProjectTodo()`, `useUpdateProjectTodo()`, `useDeleteProjectTodo()`, `useReorderProjectTodos()`
+
+### Autocomplete (Code Completion)
+
+Inline code completion powered by Mistral Codestral FIM (`electron/services/completion-service.ts`):
+
+- **Engine**: Mistral Fill-in-the-Middle (FIM) completions via `@mistralai/mistralai` SDK
+- **Configuration**: Enable/disable, API key (encrypted), model (default: `codestral-latest`), server URL
+- **Settings UI**: `ui-autocomplete-settings/` with getting-started guide and connection test
+- **Integration**: `useInlineCompletion` hook in message input, Tab to accept
+- **API**: `complete({ prompt, suffix })` returns suggested completion or null
+
+### Pending Messages
+
+Ad-hoc notes attached to tasks (`tasks.pendingMessage` field):
+
+- **Storage**: Nullable text field on tasks table
+- **UI**: `pending-message-input.tsx` component with auto-save on blur/Enter
+- **Display**: Shown in task summary card when present
+- **Purpose**: Store next steps or notes without creating agent messages
 
 ### Skills System
 
@@ -243,7 +325,8 @@ The context usage display tracks token consumption during agent sessions:
 Projects linked to Azure DevOps repositories can create and view pull requests:
 
 - **PR Creation**: Create PR from worktree branch with title, description, draft mode, work item linking
-- **PR Viewing**: Full PR viewer at `/projects/:projectId/prs/:prId` with tabs for overview, files, commits, comments
+- **PR Viewing**: Full PR viewer with tabs for overview, files, commits, comments
+- **PR in Task Panel**: Inline PR view within task panel (`ui-task-pr-view/`)
 - **PR Badge**: Inline badge on tasks showing linked PR number with link to Azure DevOps
 - **Task Linking**: Tasks store `pullRequestId` and `pullRequestUrl` after PR creation
 - **Hooks**: `usePullRequests`, `usePullRequest`, `useCreatePullRequest`
@@ -254,8 +337,10 @@ Projects can link to Azure DevOps for enhanced workflows:
 
 - **Repository Linking**: Projects can link to a repo for PR creation (stores `repoProviderId`, `repoProjectId`, `repoId`, etc.)
 - **Work Items Linking**: Projects can link to a work items project for task/work item association
+- **Work Item Grouping**: Work items support parent-child grouping hierarchy
 - **Repository Cloning**: Clone repos via SSH with `ui-clone-repo-pane` (organization → project → repo selection)
-- **Work Items Browser**: Search and filter work items by state/type, create tasks from work items
+- **Work Items Browser**: Search and filter work items by state/type (Test Suite filtered out), create tasks from work items
+- **Image Proxy**: `azure-image-proxy-service.ts` proxies images from Azure DevOps through authenticated requests
 - **Service**: `azure-devops-service.ts` handles all Azure DevOps API calls
 
 ### Run Commands
@@ -264,6 +349,7 @@ Projects can define shell commands with port monitoring:
 
 - **Configuration**: Command string + ports to check/kill before starting
 - **Auto-detection**: Detects package manager (pnpm/yarn/npm/bun) and workspaces
+- **Package Scripts**: Discovers available scripts from package.json via `getPackageScripts()`
 - **Process Tracking**: Monitors running processes, status callbacks for UI updates
 - **Service**: `run-command-service.ts` handles execution, port management, workspace discovery
 
@@ -304,15 +390,30 @@ AI-generated summaries for completed tasks:
 - **Content**: "What I Did" and "Key Decisions" sections with markdown formatting
 - **Annotations**: File-level annotations with line numbers and explanations
 - **Storage**: Unique per `(taskId, commitHash)` pair in `task_summaries` table
-- **Generation**: On-demand via `useGenerateSummary()` mutation
-- **Display**: Summary panel in task sidebar with unread indicator
+- **Generation**: On-demand via `useGenerateSummary()` mutation (runs as background job)
+- **Display**: Summary panel in task sidebar with unread indicator, task summary card component
 
 ### Encryption Service
 
 Secure credential storage using Electron's `safeStorage` API:
 
 - **Service**: `encryption-service.ts` provides `encrypt()` and `decrypt()` functions
-- **Usage**: Secures token storage and sensitive credentials in the database
+- **Usage**: Secures token storage, API keys (e.g., Mistral autocomplete), and sensitive credentials in the database
+
+### Toast Notifications
+
+App-wide toast notification system (`src/stores/toasts.ts`):
+
+- **Store**: Zustand-based toast state management
+- **UI**: `src/common/ui/toast/` component for displaying notifications
+- **Types**: Success, error, and info notifications with auto-dismiss
+
+### Modal & Overlay Contexts
+
+Enhanced modal and overlay management (`src/common/context/`):
+
+- **Modal Context** (`modal/`): Centralized modal management with typed modal definitions
+- **Overlay Context** (`overlay/`): Tracks active overlays to prevent conflicts (e.g., dropdowns vs modals)
 
 ### Keyboard Bindings System
 
@@ -362,9 +463,12 @@ electron/              # Main process
   ipc/handlers.ts      # IPC route handlers
   database/            # SQLite layer (schema, migrations, repositories)
   services/            # Business logic
-    agent-service.ts   # Claude Agent SDK integration
+    agent-service.ts   # Agent session lifecycle management
     agent-usage-service.ts  # Claude Code OAuth usage stats
     azure-devops-service.ts # Azure DevOps API integration (repos, PRs, work items)
+    azure-image-proxy-service.ts # Proxy for Azure DevOps images
+    backend-models-service.ts    # Dynamic model discovery per agent backend
+    completion-service.ts        # Mistral FIM autocomplete service
     encryption-service.ts   # Secure credential storage via Electron safeStorage
     global-prompt-service.ts  # Main→renderer prompt dialogs
     mcp-template-service.ts # MCP server template management and presets
@@ -373,15 +477,27 @@ electron/              # Main process
     permission-settings-service.ts  # Worktree permission management
     run-command-service.ts  # Shell command execution with port monitoring
     skill-service.ts   # Claude Code skills discovery and loading
-    task-service.ts    # Task lifecycle management with Agent SDK query()
-    worktree-service.ts     # Git worktree creation, diff, commit, merge
+    summary-generation-service.ts  # AI-generated task summaries
+    task-service.ts    # Task lifecycle management
+    worktree-service.ts     # Git worktree creation, diff, commit, merge, conflict detection
+    agent-backends/    # Agent backend implementations
+      index.ts              # Backend type → implementation mapping
+      claude/
+        claude-code-backend.ts       # Claude Code Agent SDK backend
+        normalize-claude-message-v2.ts  # Claude message → normalized entries
+      opencode/
+        opencode-backend.ts          # OpenCode SDK backend
+        normalize-opencode-message-v2.ts  # OpenCode message → normalized entries
 
 shared/                # Types shared between main and renderer
   types.ts             # Domain types (Project, Task, Provider, InteractionMode)
   agent-types.ts       # Agent-specific types (AgentMessage, ContentBlock, TodoItem, etc.)
+  agent-backend-types.ts  # Backend abstraction (AgentBackend, AgentBackendType, AgentEvent)
+  agent-ui-events.ts   # Agent UI event types
   azure-devops-types.ts  # Azure DevOps API types (PRs, work items, repos)
   global-prompt-types.ts # Main→renderer prompt dialog types
   mcp-types.ts         # MCP template, preset, and variable types
+  normalized-message-v2.ts # Normalized message schema (entry types, tool-use types)
   run-command-types.ts # Run command configuration types
   skill-types.ts       # Skill discovery and metadata types
   usage-types.ts       # Claude usage API types
@@ -390,29 +506,37 @@ src/                   # Renderer (React)
   routes/              # TanStack Router file-based routes
   layout/              # App shell components (header, sidebars)
   features/            # Feature-based components
-    agent/             # Message stream, timeline, tool cards, mode selector, diff view, worktree actions, todo list, summary panel
+    agent/             # Message stream, timeline, tool cards, mode/model/backend selectors, diff view, worktree actions, file explorer, todo list, summary panel
+    background-jobs/   # Background jobs overlay
     command-palette/   # Command palette overlay (ui-command-palette-overlay)
-    common/            # Shared feature components (ui-file-diff)
-    new-task/          # New task overlay, work item list and details
-    project/           # Project tile, repo/work items linking, clone pane, run commands config, MCP settings
-    pull-request/      # PR viewing (detail, header, overview, diff, commits, comments)
-    task/              # Task list item, task settings pane, task summary card
-    settings/          # General settings, debug viewer, Azure DevOps management, MCP servers, tokens
+    common/            # Shared feature components (ui-file-diff, ui-azure-html-content, ui-prompt-textarea)
+    new-task/          # New task overlay, work item list and details, prompt composer
+    project/           # Project tile, repo/work items linking, clone pane, run commands config, MCP settings, backlog overlay
+    pull-request/      # PR viewing (detail, header, overview, diff, commits, comments, list)
+    task/              # Task list item, task panel (with file explorer, debug messages), task summary card, task PR view
+    settings/          # General settings, debug viewer, Azure DevOps management, MCP servers, tokens, autocomplete settings
   common/              # Shared infrastructure
     context/           # React contexts
       keyboard-bindings/   # Global keyboard binding system (RootKeyboardBindings, useRegisterKeyboardBindings)
       keyboard-layout/     # Keyboard layout detection (DetectKeyboardLayout, useKeyboardLayout)
+      modal/               # Centralized modal management
+      overlay/             # Active overlay tracking
     hooks/             # Shared hooks
       use-commands/    # Unified command + keyboard binding registration
-    ui/                # Atomic reusable UI components (kbd, status-indicator, etc.)
+      use-dropdown-position.ts  # Smart dropdown positioning
+    ui/                # Atomic reusable UI components (kbd, select, dropdown, modal, toast, user-avatar, etc.)
   hooks/               # React Query and custom hooks
   stores/              # Zustand stores for UI state
-    navigation.ts      # Last visited location, per-task pane state, diff view state
+    navigation.ts      # Last visited location, per-task pane state, diff view state, file explorer widths
     new-task-draft.ts  # Per-project task drafts with search/prompt modes
+    new-task-form.ts   # New task form state
     overlays.ts        # Global overlay state (new-task, command-palette)
+    background-jobs.ts # Background job queue (task creation, merge, deletion, summary generation)
     task-messages.ts   # Queued prompts by task
+    task-prompts.ts    # Task prompt management
+    toasts.ts          # Toast notification state
     ui.ts              # UI-wide state (sidebar collapsed)
-  lib/                 # Utilities (api.ts, colors.ts, time.ts, worktree.ts)
+  lib/                 # Utilities (api.ts, colors.ts, time.ts, worktree.ts, number.ts, navigation.ts, azure-image-proxy.ts)
 
 docs/plans/            # Design and implementation documents
 ```
@@ -422,18 +546,21 @@ docs/plans/            # Design and implementation documents
 | Route | Purpose |
 |-------|---------|
 | `/` | Redirects to last visited project/task (persisted in navigation store) |
-| `/all-tasks` | Cross-project view showing all active tasks |
-| `/settings` | Settings layout with tabbed navigation |
+| `/all` | Cross-project view showing all active tasks |
+| `/all/:taskId` | Task view from cross-project context |
+| `/all/prs/:projectId` | Pull requests list from cross-project context |
+| `/all/prs/:projectId/:prId` | PR detail from cross-project context |
+| `/settings` | Settings overlay with tabbed navigation |
 | `/settings/general` | Configure editor preferences |
 | `/settings/azure-devops` | Manage Azure DevOps organizations and PAT tokens |
 | `/settings/tokens` | Manage tokens for different providers |
 | `/settings/mcp-servers` | Manage MCP server templates and presets |
-| `/settings/debug` | Debug database viewer |
+| `/settings/debug` | Debug database viewer with DB size display |
 | `/projects/new` | Wizard to add project: local folder, clone repo, or link Azure DevOps repo |
 | `/projects/:projectId` | Project layout with sidebar listing tasks and PRs |
-| `/projects/:projectId/details` | Project settings (name, color, default merge branch, repo/work items linking) |
-| `/projects/:projectId/tasks/new` | Form to create a task with prompt, mode, worktree options, work item linking |
-| `/projects/:projectId/tasks/:taskId` | Main agent UI: message stream, file preview, diff view, permissions, input |
+| `/projects/:projectId/tasks/new` | Form to create a task with prompt, mode, backend, model, worktree options, work item linking |
+| `/projects/:projectId/tasks/:taskId` | Main agent UI: message stream, file preview, diff view, file explorer, debug panel, permissions, input |
+| `/projects/:projectId/prs` | Project pull requests list |
 | `/projects/:projectId/prs/:prId` | Pull request viewer with overview, files, commits, comments tabs |
 
 ## Development Notes
@@ -469,7 +596,7 @@ docs/plans/            # Design and implementation documents
 Components are organized by location:
 
 - `src/layout/` - App shell components (header, sidebars)
-- `src/features/<domain>/` - Feature components grouped by domain (agent, project, task, settings)
+- `src/features/<domain>/` - Feature components grouped by domain (agent, project, task, settings, background-jobs, pull-request)
 - `src/common/ui/` - Atomic reusable components
 - Route files - Route-specific components that aren't reused stay in the route file
 
