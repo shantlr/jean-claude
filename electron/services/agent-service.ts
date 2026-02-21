@@ -63,9 +63,14 @@ interface ActiveSession {
 class AgentService {
   private sessions: Map<string, ActiveSession> = new Map();
   private mainWindow: BrowserWindow | null = null;
+  private focusedTaskId: string | null = null;
 
   setMainWindow(window: BrowserWindow) {
     this.mainWindow = window;
+  }
+
+  setFocusedTask(taskId: string | null): void {
+    this.focusedTaskId = taskId;
   }
 
   private getLiveWindows(): BrowserWindow[] {
@@ -478,6 +483,15 @@ class AgentService {
         const status = result.isError ? 'errored' : 'completed';
         await TaskRepository.update(taskId, { status });
         this.emitEvent(taskId, { type: 'status', status });
+
+        // Mark as unread if completed and user isn't viewing this task
+        if (status === 'completed') {
+          const isFocused =
+            this.mainWindow?.isFocused() && this.focusedTaskId === taskId;
+          if (!isFocused) {
+            await TaskRepository.setHasUnread(taskId, true);
+          }
+        }
 
         // Notify on completion
         if (this.mainWindow && !this.mainWindow.isFocused()) {

@@ -22,8 +22,7 @@ interface CreateTaskInput {
   startCommitHash?: string | null;
   sourceBranch?: string | null;
   branchName?: string | null;
-  readAt?: string | null;
-  lastReadIndex?: number;
+  hasUnread?: boolean;
   interactionMode?: InteractionMode;
   modelPreference?: ModelPreference;
   userCompleted?: boolean;
@@ -48,8 +47,7 @@ interface UpdateTaskInput {
   startCommitHash?: string | null;
   sourceBranch?: string | null;
   branchName?: string | null;
-  readAt?: string | null;
-  lastReadIndex?: number;
+  hasUnread?: boolean;
   interactionMode?: InteractionMode;
   modelPreference?: ModelPreference;
   userCompleted?: boolean;
@@ -69,6 +67,7 @@ function toTask<T extends TaskRow>(
 ): Omit<
   T,
   | 'userCompleted'
+  | 'hasUnread'
   | 'sessionAllowedTools'
   | 'interactionMode'
   | 'modelPreference'
@@ -77,6 +76,7 @@ function toTask<T extends TaskRow>(
   | 'agentBackend'
 > & {
   userCompleted: boolean;
+  hasUnread: boolean;
   sessionAllowedTools: string[];
   interactionMode: InteractionMode;
   modelPreference: ModelPreference;
@@ -86,6 +86,7 @@ function toTask<T extends TaskRow>(
 } {
   const {
     userCompleted,
+    hasUnread,
     sessionAllowedTools,
     interactionMode,
     modelPreference,
@@ -97,6 +98,7 @@ function toTask<T extends TaskRow>(
   return {
     ...rest,
     userCompleted: Boolean(userCompleted),
+    hasUnread: Boolean(hasUnread),
     sessionAllowedTools: sessionAllowedTools
       ? JSON.parse(sessionAllowedTools)
       : [],
@@ -114,6 +116,7 @@ function toTaskOrUndefined<T extends TaskRow>(
   | (Omit<
       T,
       | 'userCompleted'
+      | 'hasUnread'
       | 'sessionAllowedTools'
       | 'interactionMode'
       | 'modelPreference'
@@ -122,6 +125,7 @@ function toTaskOrUndefined<T extends TaskRow>(
       | 'agentBackend'
     > & {
       userCompleted: boolean;
+      hasUnread: boolean;
       sessionAllowedTools: string[];
       interactionMode: InteractionMode;
       modelPreference: ModelPreference;
@@ -137,6 +141,7 @@ function toTaskOrUndefined<T extends TaskRow>(
 function toDbValues(data: CreateTaskInput): NewTaskRow {
   const {
     userCompleted,
+    hasUnread,
     sessionAllowedTools,
     workItemIds,
     workItemUrls,
@@ -149,6 +154,7 @@ function toDbValues(data: CreateTaskInput): NewTaskRow {
     ...(userCompleted !== undefined && {
       userCompleted: userCompleted ? 1 : 0,
     }),
+    ...(hasUnread !== undefined && { hasUnread: hasUnread ? 1 : 0 }),
     ...(sessionAllowedTools !== undefined && {
       sessionAllowedTools: JSON.stringify(sessionAllowedTools),
     }),
@@ -164,6 +170,7 @@ function toDbValues(data: CreateTaskInput): NewTaskRow {
 function toDbUpdateValues(data: UpdateTaskInput): Partial<UpdateTaskRow> {
   const {
     userCompleted,
+    hasUnread,
     sessionAllowedTools,
     workItemIds,
     workItemUrls,
@@ -174,6 +181,7 @@ function toDbUpdateValues(data: UpdateTaskInput): Partial<UpdateTaskRow> {
     ...(userCompleted !== undefined && {
       userCompleted: userCompleted ? 1 : 0,
     }),
+    ...(hasUnread !== undefined && { hasUnread: hasUnread ? 1 : 0 }),
     ...(sessionAllowedTools !== undefined && {
       sessionAllowedTools: JSON.stringify(sessionAllowedTools),
     }),
@@ -196,13 +204,6 @@ export const TaskRepository = {
     const rows = await db
       .selectFrom('tasks')
       .selectAll('tasks')
-      .select((eb) =>
-        eb
-          .selectFrom('agent_messages')
-          .whereRef('agent_messages.taskId', '=', 'tasks.id')
-          .select((eb2) => eb2.fn.countAll<number>().as('count'))
-          .as('messageCount'),
-      )
       .where('projectId', '=', projectId)
       .orderBy('userCompleted', 'asc') // Active tasks first (0), then completed (1)
       .orderBy('sortOrder', 'asc')
@@ -219,13 +220,6 @@ export const TaskRepository = {
         'projects.name as projectName',
         'projects.color as projectColor',
       ])
-      .select((eb) =>
-        eb
-          .selectFrom('agent_messages')
-          .whereRef('agent_messages.taskId', '=', 'tasks.id')
-          .select((eb2) => eb2.fn.countAll<number>().as('count'))
-          .as('messageCount'),
-      )
       .where('tasks.userCompleted', '=', 0)
       .orderBy('tasks.createdAt', 'desc')
       .execute();
@@ -247,13 +241,6 @@ export const TaskRepository = {
         'projects.name as projectName',
         'projects.color as projectColor',
       ])
-      .select((eb) =>
-        eb
-          .selectFrom('agent_messages')
-          .whereRef('agent_messages.taskId', '=', 'tasks.id')
-          .select((eb2) => eb2.fn.countAll<number>().as('count'))
-          .as('messageCount'),
-      )
       .where('tasks.userCompleted', '=', 1)
       .orderBy('tasks.updatedAt', 'desc')
       .limit(limit)
@@ -320,27 +307,15 @@ export const TaskRepository = {
     return db.deleteFrom('tasks').where('id', '=', id).execute();
   },
 
-  markAsRead: async (id: string) => {
-    const row = await db
+  setHasUnread: async (id: string, hasUnread: boolean) => {
+    await db
       .updateTable('tasks')
       .set({
-        readAt: new Date().toISOString(),
+        hasUnread: hasUnread ? 1 : 0,
         updatedAt: new Date().toISOString(),
       })
       .where('id', '=', id)
-      .returningAll()
-      .executeTakeFirstOrThrow();
-    return toTask(row);
-  },
-
-  updateLastReadIndex: async (id: string, lastReadIndex: number) => {
-    const row = await db
-      .updateTable('tasks')
-      .set({ lastReadIndex, updatedAt: new Date().toISOString() })
-      .where('id', '=', id)
-      .returningAll()
-      .executeTakeFirstOrThrow();
-    return toTask(row);
+      .execute();
   },
 
   toggleUserCompleted: async (id: string): Promise<Task> => {
@@ -426,13 +401,6 @@ export const TaskRepository = {
     const rows = await db
       .selectFrom('tasks')
       .selectAll('tasks')
-      .select((eb) =>
-        eb
-          .selectFrom('agent_messages')
-          .whereRef('agent_messages.taskId', '=', 'tasks.id')
-          .select((eb2) => eb2.fn.countAll<number>().as('count'))
-          .as('messageCount'),
-      )
       .where('projectId', '=', projectId)
       .orderBy('userCompleted', 'asc')
       .orderBy('sortOrder', 'asc')

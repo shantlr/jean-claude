@@ -263,3 +263,44 @@ button {
   box-shadow: 0 0 6px 0px
     color-mix(in srgb, var(--color-teal-500) 50%, transparent);
 }
+
+/* Animated gradient border for completed-but-unread tasks (green-to-gold) */
+@utility completed-unread-border {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(var(--color-neutral-800), var(--color-neutral-800))
+      padding-box,
+    conic-gradient(
+        from var(--gradient-angle),
+        var(--color-green-500),
+        var(--color-amber-400),
+        var(--color-green-300),
+        var(--color-green-500)
+      )
+      border-box;
+  border: 1px solid transparent;
+  animation: gradient-rotate 2s linear infinite;
+  box-shadow: 0 0 6px 0px
+    color-mix(in srgb, var(--color-green-500) 35%, transparent);
+}
+
+@utility completed-unread-border-selected {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(var(--color-neutral-700), var(--color-neutral-700))
+      padding-box,
+    conic-gradient(
+        from var(--gradient-angle),
+        var(--color-green-500),
+        var(--color-amber-400),
+        var(--color-green-300),
+        var(--color-green-500)
+      )
+      border-box;
+  border: 1px solid transparent;
+  animation: gradient-rotate 2s linear infinite;
+  box-shadow: 0 0 6px 0px
+    color-mix(in srgb, var(--color-green-500) 50%, transparent);
+}

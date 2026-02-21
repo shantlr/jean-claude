@@ -360,7 +360,7 @@ export class OpenCodeBackend implements AgentBackend {
     // Send the initial prompt (fire and forget — events arrive via SSE)
     const model = this.parseModel(config.model);
     const promptBody = {
-      parts: [{ type: 'text', text: prompt }],
+      parts: [{ type: 'text' as const, text: prompt }],
       ...(model ? { model } : {}),
       agent: this.getPrimaryAgentName(config.interactionMode),
     };

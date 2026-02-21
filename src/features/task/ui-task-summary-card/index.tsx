@@ -12,17 +12,6 @@ import { useCurrentVisibleProject } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { TaskStatus } from '@shared/types';
 
-function getUnreadCount(task: {
-  status: string;
-  messageCount?: number;
-  lastReadIndex: number;
-}): number {
-  if (task.status === 'running') return 0;
-  const messageCount = task.messageCount ?? 0;
-  if (messageCount === 0) return 0;
-  return Math.max(0, messageCount - 1 - task.lastReadIndex);
-}
-
 export function TaskSummaryCard({
   task,
   index,
@@ -35,7 +24,6 @@ export function TaskSummaryCard({
   isSelected?: boolean;
 }) {
   const router = useRouter();
-  const unreadCount = getUnreadCount(task);
   const taskState = useTaskMessagesStore((s) => s.tasks[task.id]);
   const { projectId } = useCurrentVisibleProject();
   const hasPendingPermission = !!taskState?.pendingPermission;
@@ -97,9 +85,13 @@ export function TaskSummaryCard({
               ? isSelected
                 ? 'running-border-selected'
                 : 'running-border'
-              : isSelected
-                ? 'border border-blue-500 bg-neutral-700'
-                : 'border border-transparent hover:bg-neutral-800',
+              : task.hasUnread && task.status === 'completed'
+                ? isSelected
+                  ? 'completed-unread-border-selected'
+                  : 'completed-unread-border'
+                : isSelected
+                  ? 'border border-blue-500 bg-neutral-700'
+                  : 'border border-transparent hover:bg-neutral-800',
       )}
     >
       {/* Top row: status, name, number badge */}
@@ -119,10 +111,6 @@ export function TaskSummaryCard({
         )}
         {needsAttention ? (
           <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
-        ) : unreadCount > 0 ? (
-          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-500 px-1.5 text-xs font-medium">
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </span>
         ) : null}
       </div>
 

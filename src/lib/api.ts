@@ -227,8 +227,7 @@ export interface TaskWithProject {
   worktreePath: string | null;
   startCommitHash: string | null;
   branchName: string | null;
-  readAt: string | null;
-  lastReadIndex: number;
+  hasUnread: boolean;
   interactionMode: string;
   userCompleted: boolean;
   sessionAllowedTools: string[];
@@ -239,7 +238,6 @@ export interface TaskWithProject {
   pendingMessage: string | null;
   createdAt: string;
   updatedAt: string;
-  messageCount?: number;
 }
 
 export interface CompletedTasksResult {
@@ -302,8 +300,6 @@ export interface Api {
       id: string,
       options?: { deleteWorktree?: boolean },
     ) => Promise<void>;
-    markAsRead: (id: string) => Promise<Task>;
-    updateLastReadIndex: (id: string, lastReadIndex: number) => Promise<Task>;
     setMode: (id: string, mode: InteractionMode) => Promise<Task>;
     setModelPreference: (
       id: string,
@@ -699,12 +695,6 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         delete: async () => {},
-        markAsRead: async () => {
-          throw new Error('API not available');
-        },
-        updateLastReadIndex: async () => {
-          throw new Error('API not available');
-        },
         setMode: async () => {
           throw new Error('API not available');
         },

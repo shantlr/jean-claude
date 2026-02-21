@@ -28,6 +28,7 @@ import * as m026 from './migrations/026_agent_backend_abstraction';
 import * as m027 from './migrations/027_task_pending_message';
 import * as m028 from './migrations/028_v2_normalization';
 import * as m029 from './migrations/029_project_todos';
+import * as m030 from './migrations/030_replace_lastreadindex_with_hasunread';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -58,6 +59,7 @@ const migrations: Record<string, Migration> = {
   '027_task_pending_message': m027,
   '028_v2_normalization': m028,
   '029_project_todos': m029,
+  '030_replace_lastreadindex_with_hasunread': m030,
 };
 
 export const migrationProvider: MigrationProvider = {

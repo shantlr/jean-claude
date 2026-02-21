@@ -138,6 +138,10 @@ export function registerIpcHandlers() {
   // Task focus (fire-and-forget from renderer)
   ipcMain.on('tasks:focused', (_, taskId: string) => {
     notificationService.closeForTask(taskId);
+    agentService.setFocusedTask(taskId);
+    TaskRepository.setHasUnread(taskId, false).catch((err) => {
+      dbg.ipc('Failed to clear hasUnread for task %s: %O', taskId, err);
+    });
   });
 
   // Projects
@@ -360,14 +364,6 @@ export function registerIpcHandlers() {
 
       await TaskRepository.delete(id);
     },
-  );
-  ipcMain.handle('tasks:markAsRead', (_, id: string) =>
-    TaskRepository.markAsRead(id),
-  );
-  ipcMain.handle(
-    'tasks:updateLastReadIndex',
-    (_, id: string, lastReadIndex: number) =>
-      TaskRepository.updateLastReadIndex(id, lastReadIndex),
   );
   ipcMain.handle(
     'tasks:setMode',

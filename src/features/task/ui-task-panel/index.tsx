@@ -48,7 +48,6 @@ import { useEditorSetting } from '@/hooks/use-settings';
 import { useSkills } from '@/hooks/use-skills';
 import {
   useTask,
-  useMarkTaskAsRead,
   useDeleteTask,
   useSetTaskMode,
   useSetTaskModelPreference,
@@ -90,7 +89,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const projectId = task?.projectId;
   const { data: project } = useProject(projectId ?? '');
   const { data: editorSetting } = useEditorSetting();
-  const markAsRead = useMarkTaskAsRead();
   const deleteTask = useDeleteTask();
   const setTaskMode = useSetTaskMode();
   const addSessionAllowedTool = useAddSessionAllowedTool();
@@ -181,28 +179,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       await navigator.clipboard.writeText(task.sessionId);
     }
   }, [task?.sessionId]);
-
-  // Mark task as read when viewing (except when running)
-  const markAsReadMutate = markAsRead.mutate;
-  const taskStatus = task?.status;
-  const lastReadIndex = task?.lastReadIndex ?? -1;
-  useEffect(() => {
-    if (
-      taskStatus !== 'running' &&
-      lastReadIndex < agentState.messages.length - 1
-    ) {
-      markAsReadMutate({
-        id: taskId,
-        lastReadIndex: agentState.messages.length - 1,
-      });
-    }
-  }, [
-    taskId,
-    taskStatus,
-    agentState.messages.length,
-    markAsReadMutate,
-    lastReadIndex,
-  ]);
 
   const handleFilePathClick = useCallback(
     (filePath: string, lineStart?: number, lineEnd?: number) => {
@@ -501,7 +477,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               >
                 <GitBranch className="h-3 w-3 shrink-0" />
                 <span className="truncate">
-                  {task.branchName ?? getBranchFromWorktreePath(task.worktreePath)}
+                  {task.branchName ??
+                    getBranchFromWorktreePath(task.worktreePath)}
                 </span>
               </button>
             ) : task.branchName ? (

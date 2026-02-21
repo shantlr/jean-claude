@@ -95,8 +95,7 @@ export interface TaskTable {
   startCommitHash: string | null;
   sourceBranch: string | null;
   branchName: string | null;
-  readAt: string | null;
-  lastReadIndex: number;
+  hasUnread: number; // SQLite boolean: 0 = read, 1 = unread
   interactionMode: string;
   modelPreference: string | null;
   userCompleted: number; // SQLite stores booleans as 0/1

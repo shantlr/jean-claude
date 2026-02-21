@@ -31,7 +31,10 @@ import type { AzureDevOpsWorkItem } from '@/lib/api';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useNewTaskDraft, type InputMode } from '@/stores/new-task-draft';
 import type { AgentBackendType } from '@shared/agent-backend-types';
-import { normalizeInteractionModeForBackend, type Project } from '@shared/types';
+import {
+  normalizeInteractionModeForBackend,
+  type Project,
+} from '@shared/types';
 
 import {
   PromptComposer,

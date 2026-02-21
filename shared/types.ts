@@ -101,7 +101,9 @@ export function isInteractionModeSupportedByBackend({
   backend: AgentBackendType;
   mode: InteractionMode;
 }): boolean {
-  return getInteractionModeOptions({ backend }).some((option) => option.value === mode);
+  return getInteractionModeOptions({ backend }).some(
+    (option) => option.value === mode,
+  );
 }
 
 export function getDefaultInteractionModeForBackend({
@@ -238,8 +240,7 @@ export interface Task {
   startCommitHash: string | null;
   sourceBranch: string | null;
   branchName: string | null;
-  readAt: string | null;
-  lastReadIndex: number;
+  hasUnread: boolean;
   interactionMode: InteractionMode;
   modelPreference: ModelPreference;
   userCompleted: boolean;
@@ -265,8 +266,7 @@ export interface NewTask {
   startCommitHash?: string | null;
   sourceBranch?: string | null;
   branchName?: string | null;
-  readAt?: string | null;
-  lastReadIndex?: number;
+  hasUnread?: boolean;
   interactionMode?: InteractionMode;
   modelPreference?: ModelPreference;
   userCompleted?: boolean;
@@ -291,8 +291,7 @@ export interface UpdateTask {
   startCommitHash?: string | null;
   sourceBranch?: string | null;
   branchName?: string | null;
-  readAt?: string | null;
-  lastReadIndex?: number;
+  hasUnread?: boolean;
   interactionMode?: InteractionMode;
   modelPreference?: ModelPreference;
   userCompleted?: boolean;

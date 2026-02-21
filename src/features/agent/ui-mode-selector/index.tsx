@@ -34,8 +34,11 @@ export const ModeSelector = forwardRef<
   },
   ref,
 ) {
-  const options = getInteractionModeOptions({ backend });
-  const normalizedValue = normalizeInteractionModeForBackend({ backend, mode: value });
+  const options = [...getInteractionModeOptions({ backend })];
+  const normalizedValue = normalizeInteractionModeForBackend({
+    backend,
+    mode: value,
+  });
 
   return (
     <Select
