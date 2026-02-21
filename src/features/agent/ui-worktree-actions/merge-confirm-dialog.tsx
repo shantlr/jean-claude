@@ -35,7 +35,7 @@ export function MergeConfirmDialog({
 }) {
   const [squash, setSquash] = useState(true);
   const [commitMessage, setCommitMessage] = useState('');
-  const [commitAllUnstaged, setCommitAllUnstaged] = useState(false);
+  const [commitAllUnstaged, setCommitAllUnstaged] = useState(hasUnstagedChanges);
   const commitMessageRef = useRef<HTMLTextAreaElement>(null);
   const [hasConflicts, setHasConflicts] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
@@ -48,11 +48,11 @@ export function MergeConfirmDialog({
     if (isOpen) {
       setSquash(true);
       setCommitMessage(defaultCommitMessage ?? '');
-      setCommitAllUnstaged(false);
+      setCommitAllUnstaged(hasUnstagedChanges);
       setHasConflicts(false);
       setCheckError(null);
     }
-  }, [isOpen, defaultCommitMessage]);
+  }, [isOpen, defaultCommitMessage, hasUnstagedChanges]);
 
   useEffect(() => {
     if (!isOpen) return;
