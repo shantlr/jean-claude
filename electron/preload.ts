@@ -174,8 +174,11 @@ contextBridge.exposeInMainWorld('api', {
         workItemTypes?: string[];
         excludeWorkItemTypes?: string[];
         searchText?: string;
+        iterationPath?: string;
       };
     }) => ipcRenderer.invoke('azureDevOps:queryWorkItems', params),
+    getIterations: (params: { providerId: string; projectName: string }) =>
+      ipcRenderer.invoke('azureDevOps:getIterations', params),
     createPullRequest: (params: {
       providerId: string;
       projectId: string;

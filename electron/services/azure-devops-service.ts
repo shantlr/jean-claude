@@ -72,6 +72,15 @@ export interface AzureDevOpsWorkItem {
   parentId?: number;
 }
 
+export interface AzureDevOpsIteration {
+  id: string;
+  name: string;
+  path: string;
+  startDate: string | null;
+  finishDate: string | null;
+  isCurrent: boolean;
+}
+
 interface WiqlResponse {
   workItems: Array<{ id: number; url: string }>;
 }
@@ -273,6 +282,7 @@ export async function queryWorkItems(params: {
     workItemTypes?: string[];
     excludeWorkItemTypes?: string[];
     searchText?: string;
+    iterationPath?: string;
   };
 }): Promise<AzureDevOpsWorkItem[]> {
   const provider = await ProviderRepository.findById(params.providerId);
@@ -339,6 +349,12 @@ export async function queryWorkItems(params: {
     } else {
       conditions.push(`[System.Title] Contains '${escapedSearch}'`);
     }
+  }
+
+  // Filter by iteration path
+  if (params.filters.iterationPath) {
+    const escapedPath = params.filters.iterationPath.replace(/'/g, "''");
+    conditions.push(`[System.IterationPath] = '${escapedPath}'`);
   }
 
   const wiqlQuery = `SELECT [System.Id] FROM WorkItems WHERE ${conditions.join(' AND ')} ORDER BY [System.ChangedDate] DESC`;
@@ -411,6 +427,59 @@ export async function queryWorkItems(params: {
     },
     parentId: getParentId(wi.relations),
   }));
+}
+
+export async function getIterations(params: {
+  providerId: string;
+  projectName: string;
+}): Promise<AzureDevOpsIteration[]> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const response = await fetch(
+    `https://dev.azure.com/${orgName}/${encodeURIComponent(params.projectName)}/_apis/work/teamsettings/iterations?api-version=7.0`,
+    {
+      headers: { Authorization: authHeader },
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to fetch iterations: ${error}`);
+  }
+
+  const data: {
+    count: number;
+    value: Array<{
+      id: string;
+      name: string;
+      path: string;
+      attributes: {
+        startDate?: string;
+        finishDate?: string;
+        timeFrame?: string;
+      };
+    }>;
+  } = await response.json();
+
+  const now = new Date();
+
+  return data.value.map((iter) => {
+    const startDate = iter.attributes.startDate ?? null;
+    const finishDate = iter.attributes.finishDate ?? null;
+    const isCurrent =
+      startDate && finishDate
+        ? now >= new Date(startDate) && now <= new Date(finishDate)
+        : false;
+
+    return {
+      id: iter.id,
+      name: iter.name,
+      path: iter.path,
+      startDate,
+      finishDate,
+      isCurrent,
+    };
+  });
 }
 
 export async function createPullRequest(params: {

@@ -174,6 +174,15 @@ export interface AzureDevOpsWorkItem {
   parentId?: number;
 }
 
+export interface AzureDevOpsIteration {
+  id: string;
+  name: string;
+  path: string;
+  startDate: string | null;
+  finishDate: string | null;
+  isCurrent: boolean;
+}
+
 export interface CloneRepositoryParams {
   orgName: string;
   projectName: string;
@@ -403,8 +412,13 @@ export interface Api {
         workItemTypes?: string[];
         excludeWorkItemTypes?: string[];
         searchText?: string;
+        iterationPath?: string;
       };
     }) => Promise<AzureDevOpsWorkItem[]>;
+    getIterations: (params: {
+      providerId: string;
+      projectName: string;
+    }) => Promise<AzureDevOpsIteration[]>;
     createPullRequest: (params: {
       providerId: string;
       projectId: string;
@@ -790,6 +804,7 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         queryWorkItems: async () => [],
+        getIterations: async () => [],
         createPullRequest: async () => {
           throw new Error('API not available');
         },

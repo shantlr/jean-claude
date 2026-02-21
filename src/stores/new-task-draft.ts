@@ -7,6 +7,7 @@ import type { InteractionMode, ModelPreference } from '@shared/types';
 
 export type InputMode = 'search' | 'prompt';
 export type SearchStep = 'select' | 'compose';
+export type WorkItemsViewMode = 'list' | 'board';
 
 export interface NewTaskDraft {
   inputMode: InputMode;
@@ -17,6 +18,7 @@ export interface NewTaskDraft {
   workItemIds: string[]; // Changed from workItemId: string | null
   workItemsFilter: string;
   searchStep: SearchStep; // NEW: which step in search mode
+  workItemsViewMode: WorkItemsViewMode;
   // Prompt mode state
   prompt: string;
   // Shared state
@@ -47,6 +49,7 @@ const defaultDraft: NewTaskDraft = {
   workItemIds: [],
   workItemsFilter: '',
   searchStep: 'select',
+  workItemsViewMode: 'board',
   prompt: '',
   createWorktree: true,
   sourceBranch: null,

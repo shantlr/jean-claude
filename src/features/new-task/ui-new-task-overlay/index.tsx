@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import Fuse from 'fuse.js';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, List, Columns3 } from 'lucide-react';
 import React, {
   startTransition,
   useCallback,
@@ -26,10 +26,15 @@ import { useDeleteProjectTodo } from '@/hooks/use-project-todos';
 import { useProjects, useProjectBranches } from '@/hooks/use-projects';
 import { useBackendsSetting } from '@/hooks/use-settings';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
-import { useWorkItems } from '@/hooks/use-work-items';
+import { useWorkItems, useIterations } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
-import { useNewTaskDraft, type InputMode } from '@/stores/new-task-draft';
+import {
+  useNewTaskDraft,
+  type InputMode,
+  type WorkItemsViewMode,
+} from '@/stores/new-task-draft';
+import { useUIStore } from '@/stores/ui';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import {
   normalizeInteractionModeForBackend,
@@ -41,11 +46,12 @@ import {
   generateInitialTemplate,
   expandTemplate,
 } from '../ui-prompt-composer';
+import { WorkItemBoard } from '../ui-work-item-board';
 import { WorkItemDetails } from '../ui-work-item-details';
 import { WorkItemList } from '../ui-work-item-list';
 
-// Status priority for sorting (lower = higher priority)
-const STATUS_PRIORITY: Record<string, number> = {
+// Status urgency for sorting work items in list view (lower = more urgent / actionable)
+const STATUS_URGENCY: Record<string, number> = {
   Active: 1,
   'In Progress': 2,
   'In Design': 2.1,
@@ -58,8 +64,8 @@ const STATUS_PRIORITY: Record<string, number> = {
   Removed: 7,
 };
 
-function getStatusPriority(status: string): number {
-  return STATUS_PRIORITY[status] ?? 3;
+function getStatusUrgency(status: string): number {
+  return STATUS_URGENCY[status] ?? 3;
 }
 
 // Check if project has work items linked
@@ -194,31 +200,6 @@ export function NewTaskOverlay({
     const defaultBranch = selectedProject?.defaultBranch ?? null;
     updateDraft({ sourceBranch: defaultBranch });
   }, [selectedProjectId, selectedProject?.defaultBranch, updateDraft]);
-
-  // Create Fuse instance for fuzzy search
-  const fuse = useMemo(
-    () =>
-      new Fuse(workItems, {
-        keys: ['fields.title', 'id'],
-        threshold: 0.4,
-        ignoreLocation: true,
-      }),
-    [workItems],
-  );
-
-  // Filter and sort work items based on current filter text
-  const filteredWorkItems = useMemo(() => {
-    const filter = draft?.workItemsFilter ?? '';
-    if (!filter.trim()) {
-      // Sort by status priority when not searching
-      return [...workItems].sort(
-        (a, b) =>
-          getStatusPriority(a.fields.state) - getStatusPriority(b.fields.state),
-      );
-    }
-    // Preserve fuzzy search relevance order when searching
-    return fuse.search(filter).map((r) => r.item);
-  }, [workItems, draft?.workItemsFilter, fuse]);
 
   // Get selected work items objects
   const selectedWorkItems = useMemo(() => {
@@ -367,50 +348,6 @@ export function NewTaskOverlay({
     updateDraft,
   ]);
 
-  // Navigate work items with arrow keys
-  // Uses DOM querySelector to match the visual order displayed in WorkItemList
-  const navigateWorkItems = useCallback(
-    (direction: 'up' | 'down' | 'first' | 'last') => {
-      // Find all work item elements in the DOM (in visual order)
-      const listEl = document.querySelector('[data-work-item-list]');
-      if (!listEl) return;
-
-      const items = Array.from(
-        listEl.querySelectorAll<HTMLElement>('[data-work-item-id]'),
-      );
-      if (items.length === 0) return;
-
-      // Find current highlight index
-      const currentIndex = highlightedWorkItemId
-        ? items.findIndex(
-            (el) => el.dataset.workItemId === highlightedWorkItemId,
-          )
-        : -1;
-
-      let newIndex: number;
-      if (direction === 'first') {
-        newIndex = 0;
-      } else if (direction === 'last') {
-        newIndex = items.length - 1;
-      } else if (currentIndex === -1) {
-        // No current highlight, start at first/last
-        newIndex = direction === 'down' ? 0 : items.length - 1;
-      } else {
-        // Move up/down with wrapping
-        newIndex =
-          direction === 'down'
-            ? (currentIndex + 1) % items.length
-            : (currentIndex - 1 + items.length) % items.length;
-      }
-
-      const newId = items[newIndex].dataset.workItemId;
-      if (newId) {
-        setHighlightedWorkItemId(newId);
-      }
-    },
-    [highlightedWorkItemId],
-  );
-
   // Toggle selection of highlighted work item
   const toggleHighlightedWorkItem = useCallback(() => {
     if (!highlightedWorkItemId) return;
@@ -424,13 +361,13 @@ export function NewTaskOverlay({
   // Open highlighted work item in browser
   const openHighlightedWorkItem = useCallback(() => {
     if (!highlightedWorkItemId) return;
-    const workItem = filteredWorkItems.find(
+    const workItem = workItems.find(
       (wi) => wi.id.toString() === highlightedWorkItemId,
     );
     if (workItem?.url) {
       window.open(workItem.url, '_blank');
     }
-  }, [filteredWorkItems, highlightedWorkItemId]);
+  }, [workItems, highlightedWorkItemId]);
 
   // Handle work item toggle from list click
   const handleWorkItemToggle = useCallback(
@@ -692,38 +629,6 @@ export function NewTaskOverlay({
     },
     inputMode === 'search' &&
       searchStep === 'select' && {
-        label: 'Navigate Work Items Up',
-        shortcut: 'up',
-        handler: () => {
-          navigateWorkItems('up');
-        },
-      },
-    inputMode === 'search' &&
-      searchStep === 'select' && {
-        label: 'Navigate Work Items Down',
-        shortcut: 'down',
-        handler: () => {
-          navigateWorkItems('down');
-        },
-      },
-    inputMode === 'search' &&
-      searchStep === 'select' && {
-        label: 'Navigate to First Work Item',
-        shortcut: 'cmd+up',
-        handler: () => {
-          navigateWorkItems('first');
-        },
-      },
-    inputMode === 'search' &&
-      searchStep === 'select' && {
-        label: 'Navigate to Last Work Item',
-        shortcut: 'cmd+down',
-        handler: () => {
-          navigateWorkItems('last');
-        },
-      },
-    inputMode === 'search' &&
-      searchStep === 'select' && {
         label: 'Toggle Work Item Selection',
         shortcut: 'enter',
         handler: () => {
@@ -851,6 +756,10 @@ export function NewTaskOverlay({
               filter={draft?.workItemsFilter ?? ''}
               selectedWorkItemIds={draft?.workItemIds ?? []}
               highlightedWorkItemId={highlightedWorkItemId}
+              viewMode={draft?.workItemsViewMode ?? 'list'}
+              onViewModeChange={(mode: WorkItemsViewMode) =>
+                updateDraft({ workItemsViewMode: mode })
+              }
               onWorkItemToggle={handleWorkItemToggle}
               onWorkItemHighlight={handleWorkItemHighlight}
               onAdvanceToCompose={advanceToCompose}
@@ -989,6 +898,8 @@ function SearchModeContent({
   filter,
   selectedWorkItemIds,
   highlightedWorkItemId,
+  viewMode,
+  onViewModeChange,
   onWorkItemToggle,
   onWorkItemHighlight,
   onAdvanceToCompose,
@@ -999,6 +910,8 @@ function SearchModeContent({
   filter: string;
   selectedWorkItemIds: string[];
   highlightedWorkItemId: string | null;
+  viewMode: WorkItemsViewMode;
+  onViewModeChange: (mode: WorkItemsViewMode) => void;
   onWorkItemToggle: (workItem: AzureDevOpsWorkItem) => void;
   onWorkItemHighlight: (workItem: AzureDevOpsWorkItem) => void;
   onAdvanceToCompose: () => void;
@@ -1006,12 +919,64 @@ function SearchModeContent({
 }) {
   const hasWorkItems = projectHasWorkItems(project);
 
+  // Fetch iterations for the selected project
+  const { data: iterations = [] } = useIterations({
+    providerId: project?.workItemProviderId ?? '',
+    projectName: project?.workItemProjectName ?? '',
+  });
+
+  // Find current iteration for default selection
+  const currentIteration = useMemo(
+    () => iterations.find((i) => i.isCurrent),
+    [iterations],
+  );
+
+  // Selected iteration: '__current__' (auto-resolve), '__all__' (no filter), or iteration ID
+  const [selectedIterationId, setSelectedIterationId] =
+    useState<string>('__current__');
+
+  // Reset iteration selection when project changes
+  useEffect(() => {
+    setSelectedIterationId('__current__');
+  }, [projectId]);
+
+  // Resolve selected iteration to an iteration path for WIQL filtering
+  const resolvedIterationPath = useMemo(() => {
+    if (selectedIterationId === '__all__') return undefined;
+    if (selectedIterationId === '__current__') {
+      return iterations.find((i) => i.isCurrent)?.path;
+    }
+    return iterations.find((i) => i.id === selectedIterationId)?.path;
+  }, [selectedIterationId, iterations]);
+
+  // Build iteration dropdown options
+  const iterationOptions = useMemo(() => {
+    const opts = [
+      {
+        value: '__current__',
+        label: currentIteration
+          ? `Current: ${currentIteration.name}`
+          : 'Current Iteration',
+      },
+      { value: '__all__', label: 'All Iterations' },
+    ];
+    // Add individual iterations (most recent first — reverse since API returns chronological)
+    for (const iter of [...iterations].reverse()) {
+      if (iter.isCurrent) continue; // already represented by __current__
+      opts.push({ value: iter.id, label: iter.name });
+    }
+    return opts;
+  }, [iterations, currentIteration]);
+
   // Fetch work items for the selected project
   const { data: workItems = [], isLoading } = useWorkItems({
     providerId: project?.workItemProviderId ?? '',
     projectId: project?.workItemProjectId ?? '',
     projectName: project?.workItemProjectName ?? '',
-    filters: { excludeWorkItemTypes: ['Test Suite', 'Epic', 'Feature'] },
+    filters: {
+      excludeWorkItemTypes: ['Test Suite', 'Epic', 'Feature'],
+      iterationPath: resolvedIterationPath,
+    },
   });
 
   // Create Fuse instance for fuzzy search
@@ -1031,7 +996,7 @@ function SearchModeContent({
       // Sort by status priority when not searching
       return [...workItems].sort(
         (a, b) =>
-          getStatusPriority(a.fields.state) - getStatusPriority(b.fields.state),
+          getStatusUrgency(a.fields.state) - getStatusUrgency(b.fields.state),
       );
     }
     // Preserve fuzzy search relevance order when searching
@@ -1069,6 +1034,36 @@ function SearchModeContent({
     });
   }, [filteredWorkItems, highlightedIndex, selectedWorkItemIds, workItems]);
 
+  // Resizable panel
+  const panelWidth = useUIStore((s) => s.workItemsPanelWidth);
+  const setPanelWidth = useUIStore((s) => s.setWorkItemsPanelWidth);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleDragStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startWidth = panelWidth;
+
+      const onMouseMove = (moveEvent: MouseEvent) => {
+        if (!containerRef.current) return;
+        const containerWidth = containerRef.current.offsetWidth;
+        const deltaX = moveEvent.clientX - startX;
+        const deltaPct = (deltaX / containerWidth) * 100;
+        setPanelWidth(startWidth + deltaPct);
+      };
+
+      const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      };
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    },
+    [panelWidth, setPanelWidth],
+  );
+
   // Show appropriate content based on context
   if (projectId === null) {
     // "All" selected - show placeholder for cross-project work items
@@ -1105,10 +1100,13 @@ function SearchModeContent({
 
   // Two-panel layout for work items
   return (
-    <div className="flex h-full w-full gap-2 overflow-hidden">
+    <div ref={containerRef} className="flex h-full w-full overflow-hidden">
       {/* Work items list */}
-      <div className="flex w-full flex-col overflow-hidden">
-        <div className="mb-2 flex items-center justify-between">
+      <div
+        className="flex shrink-0 flex-col overflow-hidden"
+        style={{ width: `${panelWidth}%` }}
+      >
+        <div className="mb-2 flex items-center justify-between gap-2">
           <span className="text-xs font-medium text-neutral-400 uppercase">
             Work Items ({filteredWorkItems.length})
             {selectedWorkItemIds.length > 0 && (
@@ -1117,31 +1115,93 @@ function SearchModeContent({
               </span>
             )}
           </span>
-          {canAdvance && (
-            <button
-              onClick={onAdvanceToCompose}
-              className="flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-500"
-            >
-              Next
-              <ChevronRight className="h-3 w-3" />
-              <Kbd shortcut="cmd+enter" className="ml-1" />
-            </button>
-          )}
+
+          <div className="flex items-center gap-2">
+            {/* Iteration dropdown */}
+            {iterations.length > 0 && (
+              <Select
+                value={selectedIterationId}
+                options={iterationOptions}
+                onChange={setSelectedIterationId}
+                label="Iteration"
+                side="bottom"
+              />
+            )}
+
+            {/* View mode toggle */}
+            <div className="flex rounded border border-neutral-600">
+              <button
+                type="button"
+                onClick={() => onViewModeChange('list')}
+                className={clsx(
+                  'flex items-center px-1.5 py-1',
+                  viewMode === 'list'
+                    ? 'bg-neutral-600 text-white'
+                    : 'text-neutral-400 hover:text-neutral-200',
+                )}
+                title="List view"
+              >
+                <List className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onViewModeChange('board')}
+                className={clsx(
+                  'flex items-center px-1.5 py-1',
+                  viewMode === 'board'
+                    ? 'bg-neutral-600 text-white'
+                    : 'text-neutral-400 hover:text-neutral-200',
+                )}
+                title="Board view"
+              >
+                <Columns3 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {/* Next button */}
+            {canAdvance && (
+              <button
+                onClick={onAdvanceToCompose}
+                className="flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-500"
+              >
+                Next
+                <ChevronRight className="h-3 w-3" />
+                <Kbd shortcut="cmd+enter" className="ml-1" />
+              </button>
+            )}
+          </div>
         </div>
         <div className="overflow-y-auto">
-          <WorkItemList
-            workItems={filteredWorkItems}
-            highlightedWorkItemId={highlightedWorkItemId}
-            selectedWorkItemIds={selectedWorkItemIds}
-            providerId={project?.workItemProviderId ?? undefined}
-            onToggleSelect={onWorkItemToggle}
-            onHighlight={onWorkItemHighlight}
-          />
+          {viewMode === 'list' ? (
+            <WorkItemList
+              workItems={filteredWorkItems}
+              highlightedWorkItemId={highlightedWorkItemId}
+              selectedWorkItemIds={selectedWorkItemIds}
+              providerId={project?.workItemProviderId ?? undefined}
+              onToggleSelect={onWorkItemToggle}
+              onHighlight={onWorkItemHighlight}
+            />
+          ) : (
+            <WorkItemBoard
+              workItems={filteredWorkItems}
+              highlightedWorkItemId={highlightedWorkItemId}
+              selectedWorkItemIds={selectedWorkItemIds}
+              providerId={project?.workItemProviderId ?? undefined}
+              onToggleSelect={onWorkItemToggle}
+              onHighlight={onWorkItemHighlight}
+            />
+          )}
         </div>
       </div>
 
+      {/* Drag handle */}
+      <div
+        className="w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-neutral-600 active:bg-neutral-500"
+        onMouseDown={handleDragStart}
+      />
+
       {/* Work item details */}
-      <div className="w-full overflow-y-auto rounded border border-neutral-700 p-2">
+      <div className="flex-1 overflow-y-auto rounded border border-neutral-700 p-2">
         <WorkItemDetails
           workItem={highlightedWorkItem ?? null}
           providerId={project?.workItemProviderId ?? undefined}

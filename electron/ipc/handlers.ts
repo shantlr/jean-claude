@@ -65,6 +65,7 @@ import {
   getTokenExpiration,
   getProviderDetails,
   queryWorkItems,
+  getIterations,
   createPullRequest,
   cloneRepository,
   listPullRequests,
@@ -769,9 +770,21 @@ export function registerIpcHandlers() {
           workItemTypes?: string[];
           excludeWorkItemTypes?: string[];
           searchText?: string;
+          iterationPath?: string;
         };
       },
     ) => queryWorkItems(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:getIterations',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectName: string;
+      },
+    ) => getIterations(params),
   );
 
   ipcMain.handle(

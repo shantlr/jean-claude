@@ -1,10 +1,12 @@
 import clsx from 'clsx';
-import { Bug, BookOpen, CheckSquare, FileText, Check } from 'lucide-react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
+import { useCommands } from '@/common/hooks/use-commands';
 import { UserAvatar } from '@/common/ui/user-avatar';
 import { useCurrentAzureUser } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
+
+import { WorkItemTypeIcon, SelectionCheckbox } from '../ui-work-item-shared';
 
 // Group work items so children appear right after their parents
 function groupWorkItemsByParent(
@@ -42,21 +44,6 @@ function groupWorkItemsByParent(
   return result;
 }
 
-// Get icon component for work item type
-function WorkItemTypeIcon({ type }: { type: string }) {
-  switch (type) {
-    case 'Bug':
-      return <Bug className="h-3.5 w-3.5 shrink-0 text-red-400" />;
-    case 'User Story':
-    case 'Feature':
-      return <BookOpen className="h-3.5 w-3.5 shrink-0 text-blue-400" />;
-    case 'Task':
-      return <CheckSquare className="h-3.5 w-3.5 shrink-0 text-green-400" />;
-    default:
-      return <FileText className="h-3.5 w-3.5 shrink-0 text-neutral-400" />;
-  }
-}
-
 // Status badge colors
 function getStatusColor(status: string): string {
   switch (status.toLowerCase()) {
@@ -75,22 +62,6 @@ function getStatusColor(status: string): string {
     default:
       return 'bg-neutral-500/20 text-neutral-400';
   }
-}
-
-// Checkbox component for multi-select
-function SelectionCheckbox({ checked }: { checked: boolean }) {
-  return (
-    <div
-      className={clsx(
-        'flex h-4 w-4 shrink-0 items-center justify-center rounded border',
-        checked
-          ? 'border-blue-500 bg-blue-500 text-white'
-          : 'border-neutral-500 bg-transparent',
-      )}
-    >
-      {checked ? <Check className="h-3 w-3" /> : null}
-    </div>
-  );
 }
 
 export function WorkItemList({
@@ -127,6 +98,75 @@ export function WorkItemList({
       (wi) => wi.id.toString() === highlightedWorkItemId,
     );
   }, [groupedItems, highlightedWorkItemId]);
+
+  // Flat list navigation: all directions move linearly
+  const navigate = useCallback(
+    (direction: 'up' | 'down' | 'left' | 'right' | 'first' | 'last') => {
+      if (groupedItems.length === 0) return;
+
+      const cur = highlightedIndex;
+      let next: number;
+
+      if (direction === 'first') {
+        next = 0;
+      } else if (direction === 'last') {
+        next = groupedItems.length - 1;
+      } else if (cur === -1) {
+        next =
+          direction === 'up' || direction === 'left'
+            ? groupedItems.length - 1
+            : 0;
+      } else if (direction === 'down' || direction === 'right') {
+        next = (cur + 1) % groupedItems.length;
+      } else {
+        next = (cur - 1 + groupedItems.length) % groupedItems.length;
+      }
+
+      const item = groupedItems[next];
+      if (item) onHighlight(item);
+    },
+    [groupedItems, highlightedIndex, onHighlight],
+  );
+
+  // Register keyboard bindings for list navigation
+  useCommands('work-item-list-nav', [
+    {
+      label: 'Navigate Up',
+      shortcut: 'up',
+      handler: () => navigate('up'),
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Navigate Down',
+      shortcut: 'down',
+      handler: () => navigate('down'),
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Navigate Left',
+      shortcut: 'left',
+      handler: () => navigate('left'),
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Navigate Right',
+      shortcut: 'right',
+      handler: () => navigate('right'),
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Navigate to First',
+      shortcut: 'cmd+up',
+      handler: () => navigate('first'),
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Navigate to Last',
+      shortcut: 'cmd+down',
+      handler: () => navigate('last'),
+      hideInCommandPalette: true,
+    },
+  ]);
 
   // Scroll highlighted item into view
   useEffect(() => {
