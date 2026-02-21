@@ -162,12 +162,11 @@ class RunCommandService {
     // Start all commands
     const tracked: TrackedProcess[] = [];
     for (const cmd of commands) {
-      const [executable, ...args] = cmd.command.split(' ');
-      dbg.runCommand('Spawning: %s %o', executable, args);
-      const childProcess = spawn(executable, args, {
+      dbg.runCommand('Spawning command: %s', cmd.command);
+      const childProcess = spawn(cmd.command, {
         cwd: workingDir,
         shell: true,
-        stdio: 'ignore',
+        stdio: 'inherit',
         detached: false,
       });
 
