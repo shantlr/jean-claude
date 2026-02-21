@@ -212,11 +212,14 @@ export function WorkItemBoard({
   }
 
   return (
-    <div className="flex gap-2 overflow-auto pb-2" data-work-item-list>
+    <div
+      className="flex h-full gap-2 overflow-x-auto overflow-y-hidden pb-2"
+      data-work-item-list
+    >
       {columns.map(({ state, items }) => (
         <div
           key={state}
-          className="flex w-56 shrink-0 flex-col rounded bg-neutral-800/50"
+          className="flex h-full w-56 shrink-0 flex-col overflow-hidden rounded bg-neutral-800/50"
         >
           {/* Column header */}
           <div
@@ -231,7 +234,7 @@ export function WorkItemBoard({
           </div>
 
           {/* Cards */}
-          <div className="flex flex-col gap-1 p-1.5">
+          <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-1.5">
             {items.map((workItem) => {
               const isHighlighted =
                 workItem.id.toString() === highlightedWorkItemId;

@@ -1171,7 +1171,7 @@ function SearchModeContent({
             )}
           </div>
         </div>
-        <div className="overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           {viewMode === 'list' ? (
             <WorkItemList
               workItems={filteredWorkItems}
