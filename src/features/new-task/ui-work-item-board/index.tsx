@@ -255,7 +255,7 @@ export function WorkItemBoard({
                       : 'border-neutral-700 hover:border-neutral-600',
                   )}
                 >
-                  {/* Top row: checkbox + type icon + id */}
+                  {/* Top row: checkbox + type icon + id + type */}
                   <div className="flex items-center gap-1.5">
                     <SelectionCheckbox checked={isSelected} size="sm" />
                     <WorkItemTypeIcon
@@ -264,6 +264,9 @@ export function WorkItemBoard({
                     />
                     <span className="text-[10px] text-neutral-500">
                       #{workItem.id}
+                    </span>
+                    <span className="max-w-[80px] truncate text-[10px] text-neutral-400">
+                      {workItem.fields.workItemType}
                     </span>
                     {/* Assignee (far right) */}
                     <div className="ml-auto">
