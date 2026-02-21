@@ -11,6 +11,7 @@ import {
   GitBranch,
   GitCompare,
   GitPullRequest,
+  FolderTree,
 } from 'lucide-react';
 import { useEffect, useState, useCallback, useRef, memo } from 'react';
 
@@ -20,6 +21,7 @@ import { useCommands } from '@/common/hooks/use-commands';
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { getModelsForBackend } from '@/features/agent/ui-backend-selector';
 import { ContextUsageDisplay } from '@/features/agent/ui-context-usage-display';
+import { FileExplorerPane } from './file-explorer-pane';
 import { FilePreviewPane } from '@/features/agent/ui-file-preview-pane';
 import { MessageInput } from '@/features/agent/ui-message-input';
 import { MessageStream } from '@/features/agent/ui-message-stream';
@@ -113,6 +115,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const {
     rightPane,
     openFilePreview,
+    openFileExplorer,
+    selectFileExplorerFile,
     openSettings,
     openDebugMessages,
     closeRightPane,
@@ -362,6 +366,21 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const toggleUserCompleted = useToggleTaskUserCompleted();
   useCommands('task-panel', [
     {
+      label:
+        rightPane?.type === 'fileExplorer'
+          ? 'Close File Explorer'
+          : 'Open File Explorer',
+      shortcut: 'cmd+e',
+      section: 'Task',
+      handler: () => {
+        if (rightPane?.type === 'fileExplorer') {
+          closeRightPane();
+        } else {
+          openFileExplorer();
+        }
+      },
+    },
+    {
       label: 'Toggle Diff View',
       shortcut: 'cmd+d',
       section: 'Task',
@@ -532,6 +551,25 @@ export function TaskPanel({ taskId }: { taskId: string }) {
 
           <div className="flex justify-between">
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  if (rightPane?.type === 'fileExplorer') {
+                    closeRightPane();
+                  } else {
+                    openFileExplorer();
+                  }
+                }}
+                className={clsx(
+                  'flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors',
+                  rightPane?.type === 'fileExplorer'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300',
+                )}
+                title={`Toggle file explorer (${formatKeyForDisplay('cmd+e')})`}
+              >
+                <FolderTree className="h-3.5 w-3.5" />
+                Files
+              </button>
               {task.worktreePath && (
                 <>
                   <WorktreeBranchMenu
@@ -795,6 +833,17 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       {/* Debug messages pane */}
       {rightPane?.type === 'debugMessages' && (
         <DebugMessagesPane taskId={taskId} onClose={closeRightPane} />
+      )}
+
+      {/* File explorer pane */}
+      {rightPane?.type === 'fileExplorer' && project && (
+        <FileExplorerPane
+          rootPath={task?.worktreePath ?? project.path}
+          projectRoot={task?.worktreePath ?? project.path}
+          selectedFilePath={rightPane.selectedFilePath}
+          onSelectFile={selectFileExplorerFile}
+          onClose={closeRightPane}
+        />
       )}
 
       {/* Delete confirmation modal */}

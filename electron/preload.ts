@@ -262,6 +262,8 @@ contextBridge.exposeInMainWorld('api', {
     readPackageJson: (dirPath: string) =>
       ipcRenderer.invoke('fs:readPackageJson', dirPath),
     readFile: (filePath: string) => ipcRenderer.invoke('fs:readFile', filePath),
+    listDirectory: (dirPath: string, projectRoot: string) =>
+      ipcRenderer.invoke('fs:listDirectory', dirPath, projectRoot),
   },
   shell: {
     openInEditor: (dirPath: string) =>

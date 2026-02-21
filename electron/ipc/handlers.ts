@@ -6,6 +6,7 @@ import * as path from 'path';
 import { promisify } from 'util';
 
 import { BrowserWindow, ipcMain, dialog } from 'electron';
+import ignore from 'ignore';
 
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import {
@@ -1126,6 +1127,69 @@ export function registerIpcHandlers() {
       return null;
     }
   });
+
+  // Cache for parsed .gitignore instances, keyed by project root
+  const gitignoreCache = new Map<string, ReturnType<typeof ignore>>();
+
+  async function getGitignore(
+    projectRoot: string,
+  ): Promise<ReturnType<typeof ignore>> {
+    const cached = gitignoreCache.get(projectRoot);
+    if (cached) return cached;
+
+    const ig = ignore();
+    ig.add('.git');
+    try {
+      const gitignorePath = path.join(projectRoot, '.gitignore');
+      const content = await fs.readFile(gitignorePath, 'utf-8');
+      ig.add(content);
+    } catch {
+      // No .gitignore — only .git is excluded
+    }
+    gitignoreCache.set(projectRoot, ig);
+    return ig;
+  }
+
+  ipcMain.handle(
+    'fs:listDirectory',
+    async (_, dirPath: string, projectRoot: string) => {
+      try {
+        const entries = await fs.readdir(dirPath, { withFileTypes: true });
+        const ig = await getGitignore(projectRoot);
+
+        const result: { name: string; path: string; isDirectory: boolean }[] =
+          [];
+
+        for (const entry of entries) {
+          const fullPath = path.join(dirPath, entry.name);
+          const relativePath = path.relative(projectRoot, fullPath);
+          // For directories, append '/' so ignore patterns like 'node_modules/' match
+          const relativeForIgnore = entry.isDirectory()
+            ? relativePath + '/'
+            : relativePath;
+          if (ig.ignores(relativeForIgnore)) continue;
+          // Skip symlinks to avoid infinite loops
+          if (entry.isSymbolicLink()) continue;
+
+          result.push({
+            name: entry.name,
+            path: fullPath,
+            isDirectory: entry.isDirectory(),
+          });
+        }
+
+        // Sort: directories first, then alphabetical within each group
+        result.sort((a, b) => {
+          if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
+          return a.name.localeCompare(b.name);
+        });
+
+        return result;
+      } catch {
+        return null;
+      }
+    },
+  );
 
   // Agent
   ipcMain.handle(AGENT_CHANNELS.START, (event, taskId: string) => {

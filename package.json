@@ -50,6 +50,7 @@
     "framer-motion": "^12.33.0",
     "fuse.js": "^7.1.0",
     "glob": "^13.0.0",
+    "ignore": "^7.0.5",
     "kysely": "^0.28.10",
     "lodash-es": "^4.17.23",
     "lucide-react": "^0.562.0",

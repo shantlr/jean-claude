@@ -481,6 +481,10 @@ export interface Api {
     readFile: (
       filePath: string,
     ) => Promise<{ content: string; language: string } | null>;
+    listDirectory: (
+      dirPath: string,
+      projectRoot: string,
+    ) => Promise<{ name: string; path: string; isDirectory: boolean }[] | null>;
   };
   settings: {
     get: <K extends keyof AppSettings>(key: K) => Promise<AppSettings[K]>;
@@ -816,6 +820,7 @@ export const api: Api = hasWindowApi
       fs: {
         readPackageJson: async () => null,
         readFile: async () => null,
+        listDirectory: async () => null,
       },
       settings: {
         get: async () => {

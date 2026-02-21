@@ -16,6 +16,10 @@ export type RightPane =
     }
   | {
       type: 'debugMessages';
+    }
+  | {
+      type: 'fileExplorer';
+      selectedFilePath: string | null;
     };
 
 interface DiffViewState {
@@ -49,6 +53,14 @@ const DEFAULT_DEBUG_MESSAGES_PANE_WIDTH = 700;
 const MIN_DEBUG_MESSAGES_PANE_WIDTH = 500;
 const MAX_DEBUG_MESSAGES_PANE_WIDTH = 1400;
 
+// Constants for file explorer tree width
+const DEFAULT_FILE_EXPLORER_TREE_WIDTH = 224;
+const MIN_FILE_EXPLORER_TREE_WIDTH = 150;
+
+// Constants for file explorer pane width
+const DEFAULT_FILE_EXPLORER_PANE_WIDTH = 300;
+const MIN_FILE_EXPLORER_PANE_WIDTH = 250;
+
 // Constants for sidebar width
 const DEFAULT_SIDEBAR_WIDTH = 256; // w-64 equivalent
 const MIN_SIDEBAR_WIDTH = 200;
@@ -72,6 +84,12 @@ interface NavigationState {
   // App-level: debug messages pane width (global setting)
   debugMessagesPaneWidth: number;
 
+  // App-level: file explorer tree width (global setting)
+  fileExplorerTreeWidth: number;
+
+  // App-level: file explorer pane width (global setting)
+  fileExplorerPaneWidth: number;
+
   // App-level: sidebar content tab ('tasks' or 'prs')
   sidebarTab: 'tasks' | 'prs';
 
@@ -86,6 +104,8 @@ interface NavigationState {
   setDiffFileTreeWidth: (width: number) => void;
   setSidebarWidth: (width: number) => void;
   setDebugMessagesPaneWidth: (width: number) => void;
+  setFileExplorerTreeWidth: (width: number) => void;
+  setFileExplorerPaneWidth: (width: number) => void;
   setSidebarTab: (tab: 'tasks' | 'prs') => void;
   setLastTaskForProject: (projectId: string, taskId: string) => void;
   setTaskRightPane: (taskId: string, pane: RightPane | null) => void;
@@ -102,6 +122,8 @@ const useStore = create<NavigationState>()(
       diffFileTreeWidth: DEFAULT_DIFF_FILE_TREE_WIDTH,
       sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
       debugMessagesPaneWidth: DEFAULT_DEBUG_MESSAGES_PANE_WIDTH,
+      fileExplorerTreeWidth: DEFAULT_FILE_EXPLORER_TREE_WIDTH,
+      fileExplorerPaneWidth: DEFAULT_FILE_EXPLORER_PANE_WIDTH,
       sidebarTab: 'tasks' as 'tasks' | 'prs',
       lastTaskByProject: {},
       taskState: {},
@@ -125,6 +147,16 @@ const useStore = create<NavigationState>()(
             Math.max(MIN_DEBUG_MESSAGES_PANE_WIDTH, width),
             MAX_DEBUG_MESSAGES_PANE_WIDTH,
           ),
+        }),
+
+      setFileExplorerTreeWidth: (width) =>
+        set({
+          fileExplorerTreeWidth: Math.max(MIN_FILE_EXPLORER_TREE_WIDTH, width),
+        }),
+
+      setFileExplorerPaneWidth: (width) =>
+        set({
+          fileExplorerPaneWidth: Math.max(MIN_FILE_EXPLORER_PANE_WIDTH, width),
         }),
 
       setSidebarTab: (tab) => set({ sidebarTab: tab }),
@@ -375,6 +407,25 @@ export function useTaskState(taskId: string) {
     [taskId, setTaskRightPaneAction],
   );
 
+  const openFileExplorer = useCallback(
+    () =>
+      setTaskRightPaneAction(taskId, {
+        type: 'fileExplorer',
+        selectedFilePath: null,
+      }),
+    [taskId, setTaskRightPaneAction],
+  );
+
+  const selectFileExplorerFile = useCallback(
+    (filePath: string | null) => {
+      setTaskRightPaneAction(taskId, {
+        type: 'fileExplorer',
+        selectedFilePath: filePath,
+      });
+    },
+    [taskId, setTaskRightPaneAction],
+  );
+
   const closeRightPane = useCallback(
     () => setTaskRightPaneAction(taskId, null),
     [taskId, setTaskRightPaneAction],
@@ -394,6 +445,8 @@ export function useTaskState(taskId: string) {
     openFilePreview,
     openSettings,
     openDebugMessages,
+    openFileExplorer,
+    selectFileExplorerFile,
     closeRightPane,
     toggleRightPane,
   };
@@ -503,4 +556,18 @@ export function useDebugMessagesPaneWidth() {
     minWidth: MIN_DEBUG_MESSAGES_PANE_WIDTH,
     maxWidth: MAX_DEBUG_MESSAGES_PANE_WIDTH,
   };
+}
+
+// Hook for file explorer tree width
+export function useFileExplorerTreeWidth() {
+  const width = useStore((state) => state.fileExplorerTreeWidth);
+  const setWidth = useStore((state) => state.setFileExplorerTreeWidth);
+  return { width, setWidth };
+}
+
+// Hook for file explorer pane width
+export function useFileExplorerPaneWidth() {
+  const width = useStore((state) => state.fileExplorerPaneWidth);
+  const setWidth = useStore((state) => state.setFileExplorerPaneWidth);
+  return { width, setWidth };
 }
