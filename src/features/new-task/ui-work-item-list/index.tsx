@@ -175,8 +175,10 @@ export function WorkItemList({
             type="button"
             role="option"
             aria-selected={isHighlighted || isSelected}
-            onClick={() => onToggleSelect(workItem)}
-            onMouseEnter={() => onHighlight(workItem)}
+            onClick={() => {
+              onHighlight(workItem);
+              onToggleSelect(workItem);
+            }}
             className={clsx(
               'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left',
               isHighlighted && 'bg-neutral-700/50',
