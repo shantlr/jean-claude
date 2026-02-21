@@ -116,6 +116,7 @@ contextBridge.exposeInMainWorld('api', {
           targetBranch: string;
           squash?: boolean;
           commitMessage?: string;
+          commitAllUnstaged?: boolean;
         },
       ) => ipcRenderer.invoke('tasks:worktree:merge', taskId, params),
       getBranches: (taskId: string) =>

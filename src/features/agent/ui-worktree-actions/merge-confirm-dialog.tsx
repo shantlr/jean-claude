@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { type RefObject, useEffect, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { Kbd } from '@/common/ui/kbd';
@@ -14,21 +14,29 @@ export function MergeConfirmDialog({
   branchName,
   targetBranch,
   isPending,
+  hasUnstagedChanges,
   defaultCommitMessage,
   contentRef,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (params: { squash: boolean; commitMessage?: string }) => void;
+  onConfirm: (params: {
+    squash: boolean;
+    commitMessage?: string;
+    commitAllUnstaged?: boolean;
+  }) => void;
   taskId: string;
   branchName: string;
   targetBranch: string;
   isPending: boolean;
+  hasUnstagedChanges: boolean;
   defaultCommitMessage?: string;
   contentRef?: RefObject<HTMLDivElement | null>;
 }) {
   const [squash, setSquash] = useState(true);
   const [commitMessage, setCommitMessage] = useState('');
+  const [commitAllUnstaged, setCommitAllUnstaged] = useState(false);
+  const commitMessageRef = useRef<HTMLTextAreaElement>(null);
   const [hasConflicts, setHasConflicts] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
   const checkMergeConflictsMutation = useCheckMergeConflicts();
@@ -40,6 +48,7 @@ export function MergeConfirmDialog({
     if (isOpen) {
       setSquash(true);
       setCommitMessage(defaultCommitMessage ?? '');
+      setCommitAllUnstaged(false);
       setHasConflicts(false);
       setCheckError(null);
     }
@@ -47,6 +56,12 @@ export function MergeConfirmDialog({
 
   useEffect(() => {
     if (!isOpen) return;
+
+    if (hasUnstagedChanges) {
+      setHasConflicts(false);
+      setCheckError(null);
+      return;
+    }
 
     let isCanceled = false;
 
@@ -80,20 +95,30 @@ export function MergeConfirmDialog({
     return () => {
       isCanceled = true;
     };
-  }, [isOpen, taskId, targetBranch, checkMergeConflicts]);
+  }, [isOpen, taskId, targetBranch, hasUnstagedChanges, checkMergeConflicts]);
+
+  useEffect(() => {
+    if (!isOpen || !squash) return;
+
+    requestAnimationFrame(() => {
+      commitMessageRef.current?.focus();
+    });
+  }, [isOpen, squash]);
 
   const canConfirm =
     !isPending &&
     !isCheckingConflicts &&
     !hasConflicts &&
     !checkError &&
-    (!squash || !!commitMessage.trim());
+    (!squash || !!commitMessage.trim()) &&
+    (!hasUnstagedChanges || commitAllUnstaged);
 
   const handleConfirm = () => {
     if (!canConfirm) return;
     onConfirm({
       squash,
       commitMessage: squash ? commitMessage : undefined,
+      commitAllUnstaged: hasUnstagedChanges ? commitAllUnstaged : undefined,
     });
   };
 
@@ -145,6 +170,20 @@ export function MergeConfirmDialog({
         </div>
       )}
 
+      {hasUnstagedChanges && (
+        <label className="mb-4 flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={commitAllUnstaged}
+            onChange={(e) => setCommitAllUnstaged(e.target.checked)}
+            className="h-4 w-4 rounded border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-neutral-800"
+          />
+          <span className="text-sm text-neutral-200">
+            Commit all unstaged files before merge
+          </span>
+        </label>
+      )}
+
       {/* Squash option */}
       <label className="mb-4 flex cursor-pointer items-center gap-2">
         <input
@@ -163,6 +202,7 @@ export function MergeConfirmDialog({
             Commit message
           </label>
           <textarea
+            ref={commitMessageRef}
             value={commitMessage}
             onChange={(e) => setCommitMessage(e.target.value)}
             placeholder="Enter commit message..."

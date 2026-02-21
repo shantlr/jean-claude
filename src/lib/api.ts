@@ -351,6 +351,7 @@ export interface Api {
           targetBranch: string;
           squash?: boolean;
           commitMessage?: string;
+          commitAllUnstaged?: boolean;
         },
       ) => Promise<MergeWorktreeResult>;
       getBranches: (taskId: string) => Promise<string[]>;

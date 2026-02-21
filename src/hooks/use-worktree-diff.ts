@@ -131,11 +131,13 @@ export function useMergeWorktree() {
       targetBranch: string;
       squash?: boolean;
       commitMessage?: string;
+      commitAllUnstaged?: boolean;
     }) =>
       api.tasks.worktree.merge(params.taskId, {
         targetBranch: params.targetBranch,
         squash: params.squash,
         commitMessage: params.commitMessage,
+        commitAllUnstaged: params.commitAllUnstaged,
       }),
     onSuccess: (_, { taskId }) => {
       // Invalidate all worktree-related queries for this task

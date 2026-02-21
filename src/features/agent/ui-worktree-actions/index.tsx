@@ -72,7 +72,8 @@ export function WorktreeActions({
   const addToast = useToastStore((s) => s.addToast);
 
   const canCommit = status?.hasUncommittedChanges ?? false;
-  const canMerge = !status?.hasUncommittedChanges && !isStatusLoading;
+  const canMerge = !status?.hasStagedChanges && !isStatusLoading;
+  const canCreatePr = !status?.hasUncommittedChanges && !isStatusLoading;
 
   // Set default branch when branches load
   // Priority: sourceBranch > defaultBranch > main > master > first branch
@@ -99,7 +100,11 @@ export function WorktreeActions({
     setIsCommitModalOpen(false);
   };
 
-  const handleMerge = (params: { squash: boolean; commitMessage?: string }) => {
+  const handleMerge = (params: {
+    squash: boolean;
+    commitMessage?: string;
+    commitAllUnstaged?: boolean;
+  }) => {
     // 1. Create background job
     const jobId = addRunningJob({
       type: 'merge',
@@ -126,6 +131,7 @@ export function WorktreeActions({
         targetBranch: selectedBranch,
         squash: params.squash,
         commitMessage: params.commitMessage,
+        commitAllUnstaged: params.commitAllUnstaged,
       })
       .then((result) => {
         if (result.success) {
@@ -184,9 +190,7 @@ export function WorktreeActions({
           onClick={() => setIsMergeConfirmOpen(true)}
           disabled={!canMerge || mergeMutation.isPending}
           className="flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-          title={
-            canMerge ? 'Merge worktree' : 'Commit or discard changes first'
-          }
+          title={canMerge ? 'Merge worktree' : 'Commit staged changes first'}
         >
           {mergeMutation.isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -202,9 +206,9 @@ export function WorktreeActions({
         <button
           type="button"
           onClick={() => setIsPrDialogOpen(true)}
-          disabled={!canMerge}
+          disabled={!canCreatePr}
           className="flex w-full items-center justify-center gap-2 rounded-md bg-green-700 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
-          title={canMerge ? 'Create pull request' : 'Commit changes first'}
+          title={canCreatePr ? 'Create pull request' : 'Commit changes first'}
         >
           <GitPullRequest className="h-4 w-4" />
           Create PR
@@ -228,6 +232,7 @@ export function WorktreeActions({
         branchName={branchName}
         targetBranch={selectedBranch}
         isPending={mergeMutation.isPending}
+        hasUnstagedChanges={status?.hasUnstagedChanges ?? false}
         defaultCommitMessage={taskName ?? undefined}
         contentRef={mergeDialogRef}
       />

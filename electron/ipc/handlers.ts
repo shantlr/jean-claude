@@ -633,11 +633,22 @@ export function registerIpcHandlers() {
         targetBranch: string;
         squash?: boolean;
         commitMessage?: string;
+        commitAllUnstaged?: boolean;
       },
     ) => {
       const task = await TaskRepository.findById(taskId);
       if (!task?.worktreePath) {
         throw new Error(`Task ${taskId} does not have a worktree`);
+      }
+      if (params.commitAllUnstaged) {
+        const status = await getWorktreeStatus(task.worktreePath);
+        if (status.hasUnstagedChanges) {
+          await commitWorktreeChanges({
+            worktreePath: task.worktreePath,
+            message: 'chore: commit unstaged changes before merge',
+            stageAll: true,
+          });
+        }
       }
       const project = await ProjectRepository.findById(task.projectId);
       if (!project) {
