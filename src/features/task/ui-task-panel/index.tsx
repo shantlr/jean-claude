@@ -352,8 +352,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     }
   }, [rightPane, closeRightPane, openSettings]);
 
-  const handleMergeComplete = useCallback(() => {
-    // Close the diff view after successful merge (worktree is deleted)
+  const handleMergeStarted = useCallback(() => {
+    // Close the diff view when merge is dispatched (worktree will be deleted)
     if (isDiffViewOpen) {
       toggleDiffView();
     }
@@ -658,6 +658,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           ) : isDiffViewOpen && task.worktreePath ? (
             <WorktreeDiffView
               taskId={taskId}
+              projectId={project.id}
               selectedFilePath={diffSelectedFile}
               onSelectFile={selectDiffFile}
               branchName={
@@ -671,7 +672,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               repoProviderId={project.repoProviderId}
               repoProjectId={project.repoProjectId}
               repoId={project.repoId}
-              onMergeComplete={handleMergeComplete}
+              onMergeStarted={handleMergeStarted}
             />
           ) : agentState.isLoading ? (
             <div className="flex h-full items-center justify-center">

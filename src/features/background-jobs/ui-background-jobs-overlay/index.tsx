@@ -281,6 +281,17 @@ function JobDetails({ job }: { job: BackgroundJob }) {
         </div>
       );
     },
+    merge: (typedJob) => {
+      if (typedJob.type !== 'merge') return null;
+
+      return (
+        <div className="mt-1 space-y-0.5 text-xs text-neutral-400">
+          <p>
+            {typedJob.details.branchName} → {typedJob.details.targetBranch}
+          </p>
+        </div>
+      );
+    },
   };
 
   return renderers[job.type](job);

@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { type RefObject, useEffect, useState } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { Kbd } from '@/common/ui/kbd';
@@ -15,18 +15,17 @@ export function MergeConfirmDialog({
   targetBranch,
   isPending,
   defaultCommitMessage,
+  contentRef,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (params: {
-    squash: boolean;
-    commitMessage?: string;
-  }) => Promise<void>;
+  onConfirm: (params: { squash: boolean; commitMessage?: string }) => void;
   taskId: string;
   branchName: string;
   targetBranch: string;
   isPending: boolean;
   defaultCommitMessage?: string;
+  contentRef?: RefObject<HTMLDivElement | null>;
 }) {
   const [squash, setSquash] = useState(true);
   const [commitMessage, setCommitMessage] = useState('');
@@ -118,6 +117,7 @@ export function MergeConfirmDialog({
       title="Merge Worktree"
       closeOnClickOutside={!isPending}
       closeOnEscape={!isPending}
+      contentRef={contentRef}
     >
       <p className="mb-4 text-neutral-200">
         Merge branch{' '}

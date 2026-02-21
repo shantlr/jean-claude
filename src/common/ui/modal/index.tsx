@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, type RefObject, useId } from 'react';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
 import { RemoveScroll } from 'react-remove-scroll';
@@ -12,6 +12,7 @@ export function Modal({
   title,
   closeOnClickOutside = true,
   closeOnEscape = true,
+  contentRef,
   children,
 }: {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export function Modal({
   title?: ReactNode;
   closeOnClickOutside?: boolean;
   closeOnEscape?: boolean;
+  contentRef?: RefObject<HTMLDivElement | null>;
   children: ReactNode;
 }) {
   const id = useId();
@@ -51,6 +53,7 @@ export function Modal({
           onClick={handleBackdropClick}
         >
           <div
+            ref={contentRef}
             className="w-full max-w-md rounded-lg bg-neutral-800 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >

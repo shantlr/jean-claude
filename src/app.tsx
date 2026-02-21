@@ -9,6 +9,7 @@ import { RootKeyboardBindings } from './common/context/keyboard-bindings';
 import { DetectKeyboardLayout } from './common/context/keyboard-layout';
 import { ModalProvider } from './common/context/modal';
 import { RootOverlay } from './common/context/overlay';
+import { Toaster } from './common/ui/toast';
 import { routeTree } from './routeTree.gen';
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ export default function App() {
           </QueryClientProvider>
         </RootOverlay>
       </RootKeyboardBindings>
+      <Toaster />
     </>
   );
 }

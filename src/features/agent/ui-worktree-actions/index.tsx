@@ -1,13 +1,15 @@
 import { GitCommit, GitMerge, GitPullRequest, Loader2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { useModal } from '@/common/context/modal';
+import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import {
   useWorktreeStatus,
   useWorktreeBranches,
   useCommitWorktree,
   useMergeWorktree,
 } from '@/hooks/use-worktree-diff';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
+import { useToastStore } from '@/stores/toasts';
 
 import { CreatePrDialog } from '../ui-create-pr-dialog';
 
@@ -16,6 +18,7 @@ import { MergeConfirmDialog } from './merge-confirm-dialog';
 
 export function WorktreeActions({
   taskId,
+  projectId,
   branchName,
   sourceBranch,
   defaultBranch,
@@ -25,9 +28,10 @@ export function WorktreeActions({
   repoProviderId,
   repoProjectId,
   repoId,
-  onMergeComplete,
+  onMergeStarted,
 }: {
   taskId: string;
+  projectId: string;
   branchName: string;
   sourceBranch: string | null;
   defaultBranch: string | null;
@@ -38,7 +42,7 @@ export function WorktreeActions({
   repoProviderId: string | null;
   repoProjectId: string | null;
   repoId: string | null;
-  onMergeComplete: () => void;
+  onMergeStarted: () => void;
 }) {
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false);
   const [isMergeConfirmOpen, setIsMergeConfirmOpen] = useState(false);
@@ -49,13 +53,23 @@ export function WorktreeActions({
   const [isPrDialogOpen, setIsPrDialogOpen] = useState(false);
   const hasRepoLink = !!repoProviderId && !!repoProjectId && !!repoId;
 
-  const modal = useModal();
   const { data: status, isLoading: isStatusLoading } =
     useWorktreeStatus(taskId);
   const { data: branches, isLoading: isBranchesLoading } =
     useWorktreeBranches(taskId);
   const commitMutation = useCommitWorktree();
   const mergeMutation = useMergeWorktree();
+
+  const mergeDialogRef = useRef<HTMLDivElement>(null);
+  const { triggerAnimation } = useShrinkToTarget({
+    panelRef: mergeDialogRef,
+    targetSelector: '[data-animation-target="jobs-button"]',
+  });
+
+  const addRunningJob = useBackgroundJobsStore((s) => s.addRunningJob);
+  const markJobSucceeded = useBackgroundJobsStore((s) => s.markJobSucceeded);
+  const markJobFailed = useBackgroundJobsStore((s) => s.markJobFailed);
+  const addToast = useToastStore((s) => s.addToast);
 
   const canCommit = status?.hasUncommittedChanges ?? false;
   const canMerge = !status?.hasUncommittedChanges && !isStatusLoading;
@@ -85,29 +99,50 @@ export function WorktreeActions({
     setIsCommitModalOpen(false);
   };
 
-  const handleMerge = async (params: {
-    squash: boolean;
-    commitMessage?: string;
-  }) => {
-    const result = await mergeMutation.mutateAsync({
+  const handleMerge = (params: { squash: boolean; commitMessage?: string }) => {
+    // 1. Create background job
+    const jobId = addRunningJob({
+      type: 'merge',
+      title: `Merging ${branchName} → ${selectedBranch}`,
       taskId,
-      targetBranch: selectedBranch,
-      squash: params.squash,
-      commitMessage: params.commitMessage,
+      projectId,
+      details: {
+        branchName,
+        targetBranch: selectedBranch,
+      },
     });
 
-    setIsMergeConfirmOpen(false);
+    // 2. Animate the modal shrinking to jobs button
+    void triggerAnimation();
 
-    if (result.success) {
-      // Task is already marked as completed by the merge handler
-      onMergeComplete();
-    } else {
-      // Show error modal
-      modal.error({
-        title: 'Merge Failed',
-        content: result.error ?? 'An unknown error occurred while merging.',
+    // 3. Close dialog and diff view immediately
+    setIsMergeConfirmOpen(false);
+    onMergeStarted();
+
+    // 4. Fire-and-forget merge
+    void mergeMutation
+      .mutateAsync({
+        taskId,
+        targetBranch: selectedBranch,
+        squash: params.squash,
+        commitMessage: params.commitMessage,
+      })
+      .then((result) => {
+        if (result.success) {
+          markJobSucceeded(jobId);
+        } else {
+          markJobFailed(jobId, result.error ?? 'Merge failed');
+          addToast({
+            type: 'error',
+            message: result.error ?? 'An error occurred while merging.',
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : 'Merge failed';
+        markJobFailed(jobId, message);
+        addToast({ type: 'error', message });
       });
-    }
   };
 
   return (
@@ -194,6 +229,7 @@ export function WorktreeActions({
         targetBranch={selectedBranch}
         isPending={mergeMutation.isPending}
         defaultCommitMessage={taskName ?? undefined}
+        contentRef={mergeDialogRef}
       />
 
       {hasRepoLink && (

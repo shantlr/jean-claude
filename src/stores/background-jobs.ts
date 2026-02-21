@@ -7,7 +7,8 @@ import { api } from '@/lib/api';
 export type BackgroundJobType =
   | 'task-creation'
   | 'summary-generation'
-  | 'task-deletion';
+  | 'task-deletion'
+  | 'merge';
 export type BackgroundJobStatus = 'running' | 'succeeded' | 'failed';
 
 interface BackgroundJobBase {
@@ -44,6 +45,13 @@ export type BackgroundJob =
         projectName: string | null;
         deleteWorktree: boolean;
       };
+    })
+  | (BackgroundJobBase & {
+      type: 'merge';
+      details: {
+        branchName: string;
+        targetBranch: string;
+      };
     });
 
 type NewBackgroundJobInput =
@@ -77,6 +85,16 @@ type NewBackgroundJobInput =
         taskName: string | null;
         projectName: string | null;
         deleteWorktree: boolean;
+      };
+    }
+  | {
+      type: 'merge';
+      title: string;
+      taskId?: string | null;
+      projectId?: string | null;
+      details: {
+        branchName: string;
+        targetBranch: string;
       };
     };
 
