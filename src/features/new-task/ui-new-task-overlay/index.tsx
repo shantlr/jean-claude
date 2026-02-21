@@ -14,11 +14,13 @@ import React, {
 import { useCommands } from '@/common/hooks/use-commands';
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { Kbd } from '@/common/ui/kbd';
+import { Select } from '@/common/ui/select';
 import {
-  getModelLabel,
-  getModelPreferencesForBackend,
-  useBackendSelector,
+  BackendSelector,
+  getModelsForBackend,
 } from '@/features/agent/ui-backend-selector';
+import { ModeSelector } from '@/features/agent/ui-mode-selector';
+import { ModelSelector } from '@/features/agent/ui-model-selector';
 import { useBackendModels } from '@/hooks/use-backend-models';
 import { useDeleteProjectTodo } from '@/hooks/use-project-todos';
 import { useProjects, useProjectBranches } from '@/hooks/use-projects';
@@ -56,8 +58,6 @@ const STATUS_PRIORITY: Record<string, number> = {
 function getStatusPriority(status: string): number {
   return STATUS_PRIORITY[status] ?? 3;
 }
-
-const INTERACTION_MODES = ['ask', 'auto', 'plan'] as const;
 
 // Check if project has work items linked
 function projectHasWorkItems(project: Project | null): boolean {
@@ -272,36 +272,8 @@ export function NewTaskOverlay({
     updateDraft({ createWorktree: !draft?.createWorktree });
   }, [draft?.createWorktree, updateDraft]);
 
-  // Toggle interaction mode (ask → auto → plan → ask)
-  const toggleInteractionMode = useCallback(() => {
-    const current = draft?.interactionMode ?? 'ask';
-    const currentIndex = INTERACTION_MODES.indexOf(current);
-    const nextIndex = (currentIndex + 1) % INTERACTION_MODES.length;
-    updateDraft({ interactionMode: INTERACTION_MODES[nextIndex] });
-  }, [draft?.interactionMode, updateDraft]);
-
-  // Toggle model preference, constrained to models valid for the current backend
   const currentBackend = draft?.agentBackend ?? 'claude-code';
   const { data: dynamicModels } = useBackendModels(currentBackend);
-  const backendModels = useMemo(
-    () => getModelPreferencesForBackend(currentBackend, dynamicModels),
-    [currentBackend, dynamicModels],
-  );
-
-  // Resolve the display label for the current model preference
-  const modelDisplayLabel = getModelLabel(
-    draft?.modelPreference ?? 'default',
-    currentBackend,
-    dynamicModels,
-  );
-
-  const toggleModelPreference = useCallback(() => {
-    const current = draft?.modelPreference ?? 'default';
-    const currentIndex = backendModels.indexOf(current);
-    const nextIndex =
-      currentIndex === -1 ? 0 : (currentIndex + 1) % backendModels.length;
-    updateDraft({ modelPreference: backendModels[nextIndex] });
-  }, [draft?.modelPreference, backendModels, updateDraft]);
 
   // Enabled backends from settings
   const { data: backendsSetting } = useBackendsSetting();
@@ -313,12 +285,6 @@ export function NewTaskOverlay({
     },
     [updateDraft],
   );
-
-  // Backend selector hook — owns enabled list, label, and toggle cycling
-  const backendInfo = useBackendSelector({
-    value: currentBackend,
-    onChange: handleBackendChange,
-  });
 
   // Sync draft backend with project→global default when project changes
   useEffect(() => {
@@ -652,27 +618,6 @@ export function NewTaskOverlay({
       },
     },
     {
-      label: 'Toggle Interaction Mode',
-      shortcut: 'cmd+i',
-      handler: () => {
-        toggleInteractionMode();
-      },
-    },
-    {
-      label: 'Toggle Model',
-      shortcut: 'cmd+l',
-      handler: () => {
-        toggleModelPreference();
-      },
-    },
-    {
-      label: 'Toggle Agent Backend',
-      shortcut: 'cmd+j',
-      handler: () => {
-        backendInfo.toggle();
-      },
-    },
-    {
       label: 'Next / Start Task',
       shortcut: 'cmd+enter',
       handler: () => {
@@ -877,35 +822,29 @@ export function NewTaskOverlay({
         <div className="flex min-h-[50px] shrink-0 items-center justify-between overflow-hidden px-4 py-2">
           <div className="flex items-center gap-4">
             {/* Interaction mode selector */}
-            <button
-              onClick={toggleInteractionMode}
-              className="flex items-center gap-2 rounded px-2 py-1 text-sm text-neutral-300 hover:bg-neutral-700"
-            >
-              <span className="capitalize">
-                {draft?.interactionMode ?? 'ask'}
-              </span>
-              <Kbd shortcut="cmd+i" />
-            </button>
+            <ModeSelector
+              value={draft?.interactionMode ?? 'ask'}
+              onChange={(mode) => updateDraft({ interactionMode: mode })}
+              shortcut="cmd+i"
+              side="top"
+            />
 
             {/* Model selector */}
-            <button
-              onClick={toggleModelPreference}
-              className="flex items-center gap-2 rounded px-2 py-1 text-sm text-neutral-300 hover:bg-neutral-700"
-            >
-              <span>{modelDisplayLabel}</span>
-              <Kbd shortcut="cmd+l" />
-            </button>
+            <ModelSelector
+              value={draft?.modelPreference ?? 'default'}
+              onChange={(model) => updateDraft({ modelPreference: model })}
+              models={getModelsForBackend(currentBackend, dynamicModels)}
+              shortcut="cmd+l"
+              side="top"
+            />
 
-            {/* Agent backend toggle — only show when multiple backends enabled */}
-            {backendInfo.visible && (
-              <button
-                onClick={backendInfo.toggle}
-                className="flex items-center gap-2 rounded px-2 py-1 text-sm text-neutral-300 hover:bg-neutral-700"
-              >
-                <span>{backendInfo.label}</span>
-                <Kbd shortcut="cmd+j" />
-              </button>
-            )}
+            {/* Agent backend selector — only show when multiple backends enabled */}
+            <BackendSelector
+              value={currentBackend}
+              onChange={handleBackendChange}
+              shortcut="cmd+j"
+              side="top"
+            />
 
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -924,19 +863,16 @@ export function NewTaskOverlay({
               branches.length > 0 && (
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-neutral-400">from</span>
-                  <select
+                  <Select
                     value={draft?.sourceBranch ?? ''}
-                    onChange={(e) =>
-                      updateDraft({ sourceBranch: e.target.value })
-                    }
-                    className="max-w-[25%] min-w-[180px] rounded border border-neutral-600 bg-neutral-700 px-2 py-1 text-sm text-neutral-300 outline-none focus:border-neutral-500"
-                  >
-                    {branches.map((branch) => (
-                      <option key={branch} value={branch}>
-                        {branch}
-                      </option>
-                    ))}
-                  </select>
+                    options={branches.map((branch) => ({
+                      value: branch,
+                      label: branch,
+                    }))}
+                    onChange={(branch) => updateDraft({ sourceBranch: branch })}
+                    label="Source branch"
+                    side="top"
+                  />
                 </div>
               )}
           </div>

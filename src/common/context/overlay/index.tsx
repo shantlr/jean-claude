@@ -96,6 +96,7 @@ export function useRegisterOverlay({
   id,
   refs,
   onClose,
+  enabled = true,
 }: {
   // Unique identifier for this overlay
   id: string;
@@ -103,6 +104,8 @@ export function useRegisterOverlay({
   refs: RefObject<HTMLElement | null>[];
   // Called when a click outside is detected
   onClose: () => void;
+  // When false, the handler is unregistered. Re-registers at end of LIFO stack when enabled.
+  enabled?: boolean;
 }): void {
   const root = useRootOverlay();
   const refsRef = useRef(refs);
@@ -111,6 +114,8 @@ export function useRegisterOverlay({
   onCloseRef.current = onClose;
 
   useEffect(() => {
+    if (!enabled) return;
+
     // Create stable wrappers that delegate to current values
     const refsProxy = refsRef.current.map(
       (_, index) =>
@@ -122,5 +127,5 @@ export function useRegisterOverlay({
     );
 
     return root.register(id, refsProxy, () => onCloseRef.current());
-  }, [id, root]);
+  }, [id, root, enabled]);
 }

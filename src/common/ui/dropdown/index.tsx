@@ -15,6 +15,7 @@ import { createPortal } from 'react-dom';
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
 import { useRegisterOverlay } from '@/common/context/overlay';
+import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
 
 function setRef<T>(
   ref: ((node: T) => void) | { current: T } | null | undefined,
@@ -48,11 +49,8 @@ export function Dropdown({
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const triggerRef = useRef<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
-  const [position, setPosition] = useState<{
-    top: number;
-    left: number;
-    actualSide: 'top' | 'bottom';
-  } | null>(null);
+
+  const position = useDropdownPosition({ isOpen, triggerRef, side, align });
 
   const close = useCallback(() => {
     setIsOpen(false);
@@ -109,6 +107,7 @@ export function Dropdown({
     id: `dropdown-${id}`,
     refs: [triggerRef, contentRef],
     onClose: close,
+    enabled: isOpen,
   });
 
   // Register keyboard bindings when open.
@@ -156,48 +155,6 @@ export function Dropdown({
     },
     { enabled: isOpen },
   );
-
-  // Calculate position when opening
-  useEffect(() => {
-    if (!isOpen || !triggerRef.current) return;
-
-    const updatePosition = () => {
-      const rect = triggerRef.current!.getBoundingClientRect();
-      const dropdownMaxHeight = 320;
-      const gap = 4;
-
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top;
-
-      const actualSide =
-        side === 'bottom'
-          ? spaceBelow >= dropdownMaxHeight || spaceBelow >= spaceAbove
-            ? 'bottom'
-            : 'top'
-          : spaceAbove >= dropdownMaxHeight || spaceAbove >= spaceBelow
-            ? 'top'
-            : 'bottom';
-
-      const top = actualSide === 'bottom' ? rect.bottom + gap : rect.top - gap;
-
-      const left = align === 'right' ? rect.right : rect.left;
-
-      setPosition({ top, left, actualSide });
-    };
-
-    updatePosition();
-
-    window.addEventListener('scroll', updatePosition, {
-      passive: true,
-      capture: true,
-    });
-    window.addEventListener('resize', updatePosition, { passive: true });
-
-    return () => {
-      window.removeEventListener('scroll', updatePosition, true);
-      window.removeEventListener('resize', updatePosition);
-    };
-  }, [isOpen, side, align]);
 
   // Build trigger element
   let triggerElement: ReactElement;
@@ -251,7 +208,7 @@ export function Dropdown({
             role="menu"
             aria-orientation="vertical"
             className={clsx(
-              'fixed z-50 min-w-48 rounded-md border border-neutral-700 bg-neutral-800 py-1 shadow-lg',
+              'fixed z-50 min-w-48 overflow-y-auto rounded-md border border-neutral-700 bg-neutral-800 py-1 shadow-lg',
               className,
             )}
             style={{
@@ -265,6 +222,7 @@ export function Dropdown({
                 align === 'right'
                   ? window.innerWidth - position.left
                   : undefined,
+              maxHeight: position.maxHeight,
             }}
           >
             {children}

@@ -1,10 +1,13 @@
-import { ChevronDown } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useMemo } from 'react';
 
+import type { BindingKey } from '@/common/context/keyboard-bindings/types';
+import { Select, type SelectRef } from '@/common/ui/select';
 import type { BackendModel } from '@/hooks/use-backend-models';
 import { useBackendsSetting } from '@/hooks/use-settings';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { ModelPreference } from '@shared/types';
+
+export type { SelectRef } from '@/common/ui/select';
 
 // --- Per-backend model definitions ---
 
@@ -182,85 +185,46 @@ export function useBackendSelector({
   };
 }
 
-export function BackendSelector({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: AgentBackendType;
-  onChange: (backend: AgentBackendType) => void;
-  disabled?: boolean;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const { visible, visibleBackends, label } = useBackendSelector({
+export const BackendSelector = forwardRef<
+  SelectRef,
+  {
+    value: AgentBackendType;
+    onChange: (backend: AgentBackendType) => void;
+    disabled?: boolean;
+    shortcut?: BindingKey | BindingKey[];
+    shortcutBehavior?: 'cycle' | 'open';
+    side?: 'top' | 'bottom';
+    className?: string;
+  }
+>(function BackendSelector(
+  { value, onChange, disabled, shortcut, shortcutBehavior, side, className },
+  ref,
+) {
+  const { visible, visibleBackends } = useBackendSelector({
     value,
     onChange,
   });
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleSelect = (backend: AgentBackendType) => {
-    onChange(backend);
-    setIsOpen(false);
-  };
-
-  // Don't render the selector if only one backend is enabled
   if (!visible) return null;
 
-  return (
-    <div ref={containerRef} className="relative">
-      <button
-        type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        disabled={disabled}
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
-        aria-label={`Backend: ${label}`}
-        className="flex min-h-[40px] items-center gap-1 rounded-md border border-neutral-600 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-300 hover:border-neutral-500 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <span>{label}</span>
-        <ChevronDown className="h-3 w-3" aria-hidden />
-      </button>
+  const options = visibleBackends.map((b) => ({
+    value: b.value,
+    label: b.label,
+    description: b.description,
+  }));
 
-      {isOpen && (
-        <div
-          role="listbox"
-          aria-label="Agent backends"
-          className="absolute bottom-full left-0 mb-1 w-60 rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg"
-        >
-          {visibleBackends.map((backend) => (
-            <button
-              key={backend.value}
-              type="button"
-              role="option"
-              aria-selected={backend.value === value}
-              onClick={() => handleSelect(backend.value)}
-              className={`w-full px-3 py-2 text-left hover:bg-neutral-700 ${backend.value === value ? 'bg-neutral-700' : ''}`}
-            >
-              <div className="text-sm font-medium text-neutral-200">
-                {backend.label}
-              </div>
-              <div className="text-xs text-neutral-400">
-                {backend.description}
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+  return (
+    <Select
+      ref={ref}
+      value={value}
+      options={options}
+      onChange={onChange as (v: string) => void}
+      disabled={disabled}
+      label="Agent backend"
+      shortcut={shortcut}
+      shortcutBehavior={shortcutBehavior}
+      side={side}
+      className={className}
+    />
   );
-}
+});
