@@ -23,7 +23,10 @@ import {
   DropdownInfo,
 } from '@/common/ui/dropdown';
 import { Kbd } from '@/common/ui/kbd';
-import { getModelsForBackend } from '@/features/agent/ui-backend-selector';
+import {
+  AVAILABLE_BACKENDS,
+  getModelsForBackend,
+} from '@/features/agent/ui-backend-selector';
 import { ContextUsageDisplay } from '@/features/agent/ui-context-usage-display';
 import { FilePreviewPane } from '@/features/agent/ui-file-preview-pane';
 import { MessageInput } from '@/features/agent/ui-message-input';
@@ -459,6 +462,9 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     agentState.status === 'waiting' || task.status === 'waiting';
   const hasMessages = agentState.messages.length > 0;
   const canSendMessage = !isRunning && hasMessages && !!task.sessionId;
+  const backendLabel =
+    AVAILABLE_BACKENDS.find((backend) => backend.value === task.agentBackend)
+      ?.label ?? 'Claude Code';
 
   return (
     <div ref={taskPanelRef} className="flex h-full w-full overflow-hidden">
@@ -478,16 +484,32 @@ export function TaskPanel({ taskId }: { taskId: string }) {
 
           {/* Center: Branch, PR badge, Work items */}
           <div className="flex shrink items-center gap-2">
+            {/* Backend chip */}
+            <span className="flex max-w-40 min-w-0 items-center rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-400">
+              <span className="truncate">{backendLabel}</span>
+            </span>
+
             {/* Branch chip */}
-            {(task.worktreePath || task.branchName) && (
-              <span className="flex max-w-48 min-w-0 items-center gap-1 rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-400">
+            {task.worktreePath ? (
+              <button
+                type="button"
+                onClick={() => {
+                  void handleOpenWorktreeInEditor();
+                }}
+                className="flex max-w-48 min-w-0 items-center gap-1 rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-300"
+                title="Open worktree in editor"
+              >
                 <GitBranch className="h-3 w-3 shrink-0" />
                 <span className="truncate">
-                  {task.branchName ??
-                    getBranchFromWorktreePath(task.worktreePath!)}
+                  {task.branchName ?? getBranchFromWorktreePath(task.worktreePath)}
                 </span>
+              </button>
+            ) : task.branchName ? (
+              <span className="flex max-w-48 min-w-0 items-center gap-1 rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-400">
+                <GitBranch className="h-3 w-3 shrink-0" />
+                <span className="truncate">{task.branchName}</span>
               </span>
-            )}
+            ) : null}
 
             {/* PR badge */}
             {task.pullRequestId && task.pullRequestUrl && (
