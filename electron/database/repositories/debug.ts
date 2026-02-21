@@ -35,9 +35,29 @@ export interface QueryTableResult {
   total: number;
 }
 
+export interface DatabaseSizeResult {
+  bytes: number;
+}
+
 export const DebugRepository = {
   getTableNames: (): string[] => {
     return [...ALLOWED_TABLES];
+  },
+
+  getDatabaseSize: async (): Promise<DatabaseSizeResult> => {
+    const pageSizeResult = await sql<{ page_size: number }>`PRAGMA page_size`.execute(
+      db,
+    );
+    const pageCountResult = await sql<{ page_count: number }>`PRAGMA page_count`.execute(
+      db,
+    );
+
+    const pageSize = Number(pageSizeResult.rows[0]?.page_size ?? 0);
+    const pageCount = Number(pageCountResult.rows[0]?.page_count ?? 0);
+
+    return {
+      bytes: pageSize * pageCount,
+    };
   },
 
   queryTable: async (params: QueryTableParams): Promise<QueryTableResult> => {

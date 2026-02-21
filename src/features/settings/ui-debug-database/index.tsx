@@ -1,12 +1,17 @@
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
-import { useDebugTableNames, useDebugTableQuery } from '@/hooks/use-debug';
+import {
+  useDebugDatabaseSize,
+  useDebugTableNames,
+  useDebugTableQuery,
+} from '@/hooks/use-debug';
 
 const PAGE_SIZE = 20;
 
 export function DebugDatabase() {
   const { data: tableNames = [] } = useDebugTableNames();
+  const { data: databaseSize } = useDebugDatabaseSize();
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
@@ -50,6 +55,11 @@ export function DebugDatabase() {
         <p className="mt-1 text-sm text-neutral-500">
           Browse database tables and rows for debugging
         </p>
+        {databaseSize && (
+          <p className="mt-2 text-sm text-neutral-400">
+            Current DB size: {formatBytes(databaseSize.bytes)}
+          </p>
+        )}
       </div>
 
       {/* Table selector */}
@@ -177,4 +187,21 @@ function formatCellValue(value: unknown): string {
     return JSON.stringify(value);
   }
   return String(value);
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let value = bytes / 1024;
+  let unitIndex = 0;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${value.toFixed(2)} ${units[unitIndex]}`;
 }

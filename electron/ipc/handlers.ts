@@ -1348,6 +1348,9 @@ export function registerIpcHandlers() {
 
   // Debug
   ipcMain.handle('debug:getTableNames', () => DebugRepository.getTableNames());
+  ipcMain.handle('debug:getDatabaseSize', () =>
+    DebugRepository.getDatabaseSize(),
+  );
   ipcMain.handle(
     'debug:queryTable',
     (

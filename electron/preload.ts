@@ -303,6 +303,7 @@ contextBridge.exposeInMainWorld('api', {
   },
   debug: {
     getTableNames: () => ipcRenderer.invoke('debug:getTableNames'),
+    getDatabaseSize: () => ipcRenderer.invoke('debug:getDatabaseSize'),
     queryTable: (params: {
       table: string;
       search?: string;

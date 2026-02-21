@@ -9,6 +9,13 @@ export function useDebugTableNames() {
   });
 }
 
+export function useDebugDatabaseSize() {
+  return useQuery({
+    queryKey: ['debug', 'databaseSize'],
+    queryFn: () => api.debug.getDatabaseSize(),
+  });
+}
+
 export function useDebugTableQuery(params: QueryTableParams | null) {
   return useQuery<QueryTableResult>({
     queryKey: ['debug', 'table', params?.table, params?.search, params?.offset],
