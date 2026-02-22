@@ -32,7 +32,7 @@ interface NewTaskDraftState {
   // Currently selected project tab (null = "all")
   selectedProjectId: string | null;
   // Per-project drafts keyed by projectId or 'all'
-  drafts: Record<string, NewTaskDraft>;
+  drafts: Record<string, Partial<NewTaskDraft>>;
 
   // Actions
   setSelectedProjectId: (projectId: string | null) => void;
@@ -40,21 +40,6 @@ interface NewTaskDraftState {
   clearDraft: (key: string) => void;
   clearAllDrafts: () => void;
 }
-
-const defaultDraft: NewTaskDraft = {
-  inputMode: 'search',
-  interactionMode: 'ask',
-  modelPreference: 'default',
-  agentBackend: 'claude-code',
-  workItemIds: [],
-  workItemsFilter: '',
-  searchStep: 'select',
-  workItemsViewMode: 'board',
-  prompt: '',
-  createWorktree: true,
-  sourceBranch: null,
-  backlogTodoId: null,
-};
 
 const useStore = create<NewTaskDraftState>()(
   persist(
@@ -70,7 +55,6 @@ const useStore = create<NewTaskDraftState>()(
           drafts: {
             ...state.drafts,
             [key]: {
-              ...defaultDraft,
               ...state.drafts[key],
               ...update,
             },
@@ -96,7 +80,7 @@ export const useNewTaskDraftStore = useStore;
 export function useNewTaskDraft() {
   const selectedProjectId = useStore((state) => state.selectedProjectId);
   const key = selectedProjectId ?? 'all';
-  const draft = useStore((state) => state.drafts[key] ?? defaultDraft);
+  const draft = useStore((state) => state.drafts[key]);
   const setSelectedProjectIdAction = useStore(
     (state) => state.setSelectedProjectId,
   );

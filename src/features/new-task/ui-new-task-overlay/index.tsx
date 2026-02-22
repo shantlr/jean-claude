@@ -197,12 +197,6 @@ export function NewTaskOverlay({
   // Fetch branches for the selected project
   const { data: branches = [] } = useProjectBranches(selectedProjectId);
 
-  // Sync source branch with project default branch when project changes
-  useEffect(() => {
-    const defaultBranch = selectedProject?.defaultBranch ?? null;
-    updateDraft({ sourceBranch: defaultBranch });
-  }, [selectedProjectId, selectedProject?.defaultBranch, updateDraft]);
-
   // Get selected work items objects
   const selectedWorkItems = useMemo(() => {
     const ids = draft?.workItemIds ?? [];
@@ -274,22 +268,81 @@ export function NewTaskOverlay({
   );
 
   // Toggle worktree checkbox
+  const currentCreateWorktree = draft?.createWorktree ?? true;
   const toggleWorktree = useCallback(() => {
-    updateDraft({ createWorktree: !draft?.createWorktree });
-  }, [draft?.createWorktree, updateDraft]);
-
-  const currentBackend = draft?.agentBackend ?? 'claude-code';
-  const { data: dynamicModels } = useBackendModels(currentBackend);
+    updateDraft({ createWorktree: !currentCreateWorktree });
+  }, [currentCreateWorktree, updateDraft]);
 
   // Enabled backends from settings
   const { data: backendsSetting } = useBackendsSetting();
+
+  const defaultBackend = useMemo(() => {
+    if (!backendsSetting) {
+      return selectedProject?.defaultAgentBackend ?? 'claude-code';
+    }
+
+    return resolveDefaultBackend({
+      selectedProject,
+      backendsSetting,
+    });
+  }, [selectedProject, backendsSetting]);
+
+  const currentBackend = useMemo(() => {
+    const draftBackend = draft?.agentBackend;
+
+    if (!draftBackend) {
+      return defaultBackend;
+    }
+
+    if (!backendsSetting) {
+      return draftBackend;
+    }
+
+    return backendsSetting.enabledBackends.includes(draftBackend)
+      ? draftBackend
+      : defaultBackend;
+  }, [draft?.agentBackend, defaultBackend, backendsSetting]);
+
+  const { data: dynamicModels } = useBackendModels(currentBackend);
+
+  const availableModelPreferences = useMemo(
+    () =>
+      getModelsForBackend(currentBackend, dynamicModels).map((model) => model.value),
+    [currentBackend, dynamicModels],
+  );
+
+  const currentInteractionMode = normalizeInteractionModeForBackend({
+    backend: currentBackend,
+    mode: draft?.interactionMode ?? 'ask',
+  });
+  const currentModelPreference = useMemo(() => {
+    const draftModelPreference = draft?.modelPreference ?? 'default';
+
+    return availableModelPreferences.includes(draftModelPreference)
+      ? draftModelPreference
+      : 'default';
+  }, [draft?.modelPreference, availableModelPreferences]);
+
+  const currentSourceBranch = useMemo(() => {
+    const draftSourceBranch = draft?.sourceBranch;
+    if (draftSourceBranch && branches.includes(draftSourceBranch)) {
+      return draftSourceBranch;
+    }
+
+    const projectDefaultBranch = selectedProject?.defaultBranch;
+    if (projectDefaultBranch && branches.includes(projectDefaultBranch)) {
+      return projectDefaultBranch;
+    }
+
+    return branches[0] ?? null;
+  }, [draft?.sourceBranch, selectedProject?.defaultBranch, branches]);
 
   // Handle backend change — always reset model to default since model lists differ per backend
   const handleBackendChange = useCallback(
     (backend: AgentBackendType) => {
       const normalizedMode = normalizeInteractionModeForBackend({
         backend,
-        mode: draft?.interactionMode ?? 'ask',
+        mode: currentInteractionMode,
       });
       updateDraft({
         agentBackend: backend,
@@ -297,58 +350,8 @@ export function NewTaskOverlay({
         modelPreference: 'default',
       });
     },
-    [draft?.interactionMode, updateDraft],
+    [currentInteractionMode, updateDraft],
   );
-
-  // Sync draft backend with project→global default when project changes,
-  // and when defaults become available after async settings/project load.
-  useEffect(() => {
-    if (!backendsSetting) return;
-
-    const resolved = resolveDefaultBackend({
-      selectedProject,
-      backendsSetting,
-    });
-
-    updateDraft({
-      agentBackend: resolved,
-      interactionMode: normalizeInteractionModeForBackend({
-        backend: resolved,
-        mode: 'ask',
-      }),
-      modelPreference: 'default',
-    });
-  }, [
-    selectedProjectId,
-    selectedProject?.defaultAgentBackend,
-    backendsSetting,
-    updateDraft,
-  ]);
-
-  // Sync draft backend with settings: reset to default if not in enabled list
-  useEffect(() => {
-    if (!backendsSetting) return;
-    const draftBackend = draft?.agentBackend ?? 'claude-code';
-    if (!backendsSetting.enabledBackends.includes(draftBackend)) {
-      const resolved = resolveDefaultBackend({
-        selectedProject,
-        backendsSetting,
-      });
-      updateDraft({
-        agentBackend: resolved,
-        interactionMode: normalizeInteractionModeForBackend({
-          backend: resolved,
-          mode: 'ask',
-        }),
-        modelPreference: 'default',
-      });
-    }
-  }, [
-    backendsSetting,
-    draft?.agentBackend,
-    selectedProject?.defaultAgentBackend,
-    updateDraft,
-  ]);
 
   // Toggle selection of highlighted work item
   const toggleHighlightedWorkItem = useCallback(() => {
@@ -437,11 +440,11 @@ export function NewTaskOverlay({
           creationInput: {
             projectId: selectedProjectId,
             prompt: finalPrompt,
-            interactionMode: draft.interactionMode,
-            agentBackend: draft.agentBackend,
-            modelPreference: draft.modelPreference,
-            useWorktree: draft.createWorktree,
-            sourceBranch: draft.sourceBranch,
+            interactionMode: currentInteractionMode,
+            agentBackend: currentBackend,
+            modelPreference: currentModelPreference,
+            useWorktree: currentCreateWorktree,
+            sourceBranch: currentCreateWorktree ? currentSourceBranch : null,
             workItemIds,
             workItemUrls,
             updatedAt: new Date().toISOString(),
@@ -455,18 +458,6 @@ export function NewTaskOverlay({
       void triggerAnimation();
       clearDraft();
 
-      // Re-initialize sourceBranch to the project default.
-      // clearDraft() deletes the draft key, resetting to defaultDraft
-      // (sourceBranch: null). The useEffect that syncs sourceBranch won't
-      // re-fire because its deps (selectedProjectId, defaultBranch) haven't
-      // changed. Without this, the <select> shows value="" which doesn't
-      // match any option, so the browser renders the first branch visually
-      // (which could be the newly created worktree branch).
-      const defaultBranch = selectedProject?.defaultBranch ?? null;
-      if (defaultBranch) {
-        updateDraft({ sourceBranch: defaultBranch });
-      }
-
       // Refocus the input for the next task
       setTimeout(() => inputRef.current?.focus(), 50);
 
@@ -474,11 +465,11 @@ export function NewTaskOverlay({
         .mutateAsync({
           projectId: selectedProjectId,
           prompt: finalPrompt,
-          interactionMode: draft.interactionMode,
-          modelPreference: draft.modelPreference,
-          agentBackend: draft.agentBackend,
-          useWorktree: draft.createWorktree,
-          sourceBranch: draft.sourceBranch,
+          interactionMode: currentInteractionMode,
+          modelPreference: currentModelPreference,
+          agentBackend: currentBackend,
+          useWorktree: currentCreateWorktree,
+          sourceBranch: currentCreateWorktree ? currentSourceBranch : null,
           workItemIds,
           workItemUrls,
           updatedAt: new Date().toISOString(),
@@ -517,12 +508,15 @@ export function NewTaskOverlay({
     promptTemplate,
     selectedWorkItems,
     selectedProject?.name,
-    selectedProject?.defaultBranch,
+    currentBackend,
+    currentInteractionMode,
+    currentModelPreference,
+    currentCreateWorktree,
+    currentSourceBranch,
     addRunningJob,
     createTaskMutation,
     deleteBacklogTodo,
     clearDraft,
-    updateDraft,
     queryClient,
     markJobSucceeded,
     markJobFailed,
@@ -758,7 +752,7 @@ export function NewTaskOverlay({
               filter={draft?.workItemsFilter ?? ''}
               selectedWorkItemIds={draft?.workItemIds ?? []}
               highlightedWorkItemId={highlightedWorkItemId}
-              viewMode={draft?.workItemsViewMode ?? 'list'}
+              viewMode={draft?.workItemsViewMode ?? 'board'}
               onViewModeChange={(mode: WorkItemsViewMode) =>
                 updateDraft({ workItemsViewMode: mode })
               }
@@ -786,7 +780,7 @@ export function NewTaskOverlay({
           <div className="flex items-center gap-4">
             {/* Interaction mode selector */}
             <ModeSelector
-              value={draft?.interactionMode ?? 'ask'}
+              value={currentInteractionMode}
               onChange={(mode) => updateDraft({ interactionMode: mode })}
               backend={currentBackend}
               shortcut="cmd+i"
@@ -795,7 +789,7 @@ export function NewTaskOverlay({
 
             {/* Model selector */}
             <ModelSelector
-              value={draft?.modelPreference ?? 'default'}
+              value={currentModelPreference}
               onChange={(model) => updateDraft({ modelPreference: model })}
               models={getModelsForBackend(currentBackend, dynamicModels)}
               shortcut="cmd+l"
@@ -813,7 +807,7 @@ export function NewTaskOverlay({
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
-                checked={draft?.createWorktree ?? false}
+                checked={currentCreateWorktree}
                 onChange={toggleWorktree}
                 className="h-4 w-4 rounded border-neutral-600 bg-neutral-700"
               />
@@ -822,13 +816,13 @@ export function NewTaskOverlay({
             </label>
 
             {/* Source branch selector - only show when project is selected */}
-            {!!draft?.createWorktree &&
+            {currentCreateWorktree &&
               selectedProjectId &&
               branches.length > 0 && (
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-neutral-400">from</span>
                   <Select
-                    value={draft?.sourceBranch ?? ''}
+                    value={currentSourceBranch ?? ''}
                     options={branches.map((branch) => ({
                       value: branch,
                       label: branch,
