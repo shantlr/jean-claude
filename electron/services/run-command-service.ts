@@ -352,7 +352,8 @@ class RunCommandService {
       cwd: workingDir,
       shell: true,
       stdio: ['ignore', 'pipe', 'pipe'],
-      detached: false,
+      // Create a new process group so we can kill the shell AND its children
+      detached: true,
     });
 
     const trackedProcess: TrackedProcess = {
@@ -446,25 +447,29 @@ class RunCommandService {
 
     if (tracked.process.pid && tracked.status === 'running') {
       let exited = false;
+      const pgid = -tracked.process.pid; // Negative PID targets the process group
       try {
         dbg.runCommand(
-          'Sending SIGTERM to PID %d (%s)',
+          'Sending SIGTERM to process group %d (%s)',
           tracked.process.pid,
           tracked.command,
         );
-        process.kill(tracked.process.pid, 'SIGTERM');
+        process.kill(pgid, 'SIGTERM');
         exited = await this.waitForExit({ tracked, timeoutMs: 1500 });
 
         if (!exited) {
           dbg.runCommand(
-            'SIGTERM timeout for PID %d, sending SIGKILL',
+            'SIGTERM timeout for process group %d, sending SIGKILL',
             tracked.process.pid,
           );
-          process.kill(tracked.process.pid, 'SIGKILL');
+          process.kill(pgid, 'SIGKILL');
           exited = await this.waitForExit({ tracked, timeoutMs: 1500 });
         }
       } catch {
-        dbg.runCommand('Process %d may already be dead', tracked.process.pid);
+        dbg.runCommand(
+          'Process group %d may already be dead',
+          tracked.process.pid,
+        );
         exited = true;
       }
 
@@ -505,6 +510,25 @@ class RunCommandService {
       await this.stopCommandsForTask(taskId);
     }
     dbg.runCommand('All commands stopped');
+  }
+
+  /**
+   * Synchronous last-resort cleanup: sends SIGTERM to every tracked process group.
+   * Registered on `process.on('exit')` so it fires even on unexpected shutdown
+   * (SIGINT, SIGTERM, uncaught exception). Cannot help with SIGKILL (kill -9).
+   */
+  killAllProcessGroupsSync(): void {
+    for (const taskProcesses of this.runningProcesses.values()) {
+      for (const tracked of taskProcesses.values()) {
+        if (tracked.process.pid && tracked.status === 'running') {
+          try {
+            process.kill(-tracked.process.pid, 'SIGTERM');
+          } catch {
+            // Process group may already be dead
+          }
+        }
+      }
+    }
   }
 
   async stopCommandsForTask(taskId: string): Promise<void> {

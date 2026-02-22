@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { FileText, Play, Square } from 'lucide-react';
+import { FileText, Loader2, Play, Square } from 'lucide-react';
 
 import { Dropdown, DropdownItem, DropdownDivider } from '@/common/ui/dropdown';
 import { useProjectCommands } from '@/hooks/use-project-commands';
@@ -75,7 +75,7 @@ export function RunButton({
           trigger={
             <button
               className={clsx(
-                'flex items-center gap-2 rounded-md px-3 py-1 text-sm font-medium transition-colors',
+                'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors',
                 runningCount > 0
                   ? 'bg-red-600 text-white hover:bg-red-700'
                   : 'bg-green-600 text-white hover:bg-green-700',
@@ -83,11 +83,13 @@ export function RunButton({
               aria-label="Run command"
             >
               {runningCount > 0 ? (
-                <Square className="h-4 w-4" aria-hidden />
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                  <Square className="h-4 w-4" aria-hidden />
+                </>
               ) : (
                 <Play className="h-4 w-4" aria-hidden />
               )}
-              Run
             </button>
           }
         >

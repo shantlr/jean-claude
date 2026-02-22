@@ -1,6 +1,13 @@
 import clsx from 'clsx';
 import { X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useProjectCommands } from '@/hooks/use-project-commands';
@@ -65,6 +72,26 @@ export function CommandLogsPane({
       : (tabs[0]?.id ?? null);
   const activeLog = activeCommandId ? runCommandLogs[activeCommandId] : null;
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // Consider "at bottom" if within 32px of the bottom
+    isAtBottomRef.current =
+      el.scrollHeight - el.scrollTop - el.clientHeight < 32;
+  }, []);
+
+  // Auto-scroll to bottom when new log lines arrive (if user was at bottom)
+  const lineCount = activeLog?.lines.length ?? 0;
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el && isAtBottomRef.current) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [lineCount, activeCommandId]);
+
   const { width, setWidth, minWidth, maxWidth } = useCommandLogsPaneWidth();
   const { isDragging, handleMouseDown } = useHorizontalResize({
     initialWidth: width,
@@ -125,7 +152,11 @@ export function CommandLogsPane({
             ))}
           </div>
 
-          <div className="flex-1 overflow-auto px-3 py-2 font-mono text-xs leading-relaxed">
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-auto px-3 py-2 font-mono text-xs leading-relaxed"
+          >
             {activeLog?.lines.map((entry, index) => (
               <div
                 key={`${entry.timestamp}-${index}`}

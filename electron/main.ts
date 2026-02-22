@@ -142,6 +142,12 @@ app.on('before-quit', async () => {
   dbg.main('All commands stopped');
 });
 
+// Synchronous last-resort cleanup: kill all process groups when the Node.js
+// process exits (covers SIGINT, SIGTERM, uncaught exceptions — not kill -9).
+process.on('exit', () => {
+  runCommandService.killAllProcessGroupsSync();
+});
+
 app.on('window-all-closed', () => {
   dbg.main('All windows closed');
   if (process.platform !== 'darwin') {
