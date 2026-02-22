@@ -1,6 +1,8 @@
 import clsx from 'clsx';
 import { Loader2 } from 'lucide-react';
+import type { ComponentType, SVGProps } from 'react';
 
+import { IconClaude, IconCodex } from '@/common/ui/icons';
 import { Tooltip } from '@/common/ui/tooltip';
 import { useBackendUsage } from '@/hooks/use-usage';
 import type {
@@ -60,6 +62,13 @@ const LEVEL_TEXT_COLORS: Record<UsageLevel, string> = {
   medium: 'text-yellow-400',
   high: 'text-orange-400',
   critical: 'text-red-400',
+};
+
+const PROVIDER_ICONS: Partial<
+  Record<UsageProviderType, ComponentType<SVGProps<SVGSVGElement>>>
+> = {
+  'claude-code': IconClaude,
+  codex: IconCodex,
 };
 
 function getProviderMeta(providerType: UsageProviderType) {
@@ -132,6 +141,7 @@ function ProviderUsageChip({
   result: UsageResult;
 }) {
   const meta = getProviderMeta(providerType);
+  const Icon = PROVIDER_ICONS[providerType];
 
   if (!result.data?.fiveHour) {
     if (result.error?.type === 'no_token') return null;
@@ -146,7 +156,11 @@ function ProviderUsageChip({
         side="bottom"
       >
         <div className="flex items-center gap-1.5 rounded px-1.5 py-0.5 text-neutral-500">
-          <div className="h-1.5 w-1.5 rounded-full bg-neutral-600" />
+          {Icon ? (
+            <Icon className="h-3.5 w-3.5 shrink-0" />
+          ) : (
+            <div className="h-1.5 w-1.5 rounded-full bg-neutral-600" />
+          )}
           <span className="text-xs">{meta.shortLabel}</span>
         </div>
       </Tooltip>
@@ -170,11 +184,21 @@ function ProviderUsageChip({
       side="bottom"
     >
       <div className="flex items-center gap-1.5 rounded px-1.5 py-0.5">
-        <div
-          className={clsx('h-1.5 w-1.5 rounded-full', LEVEL_DOT_COLORS[level])}
-        />
+        {Icon ? (
+          <Icon
+            className={clsx('h-3.5 w-3.5 shrink-0', LEVEL_TEXT_COLORS[level])}
+          />
+        ) : (
+          <div
+            className={clsx(
+              'h-1.5 w-1.5 rounded-full',
+              LEVEL_DOT_COLORS[level],
+            )}
+          />
+        )}
         <span className={clsx('text-xs font-medium', LEVEL_TEXT_COLORS[level])}>
-          {meta.shortLabel} {percentage.toFixed(0)}%
+          {Icon ? '' : `${meta.shortLabel} `}
+          {percentage.toFixed(0)}%
         </span>
       </div>
     </Tooltip>

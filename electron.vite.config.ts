@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
+import svgr from 'vite-plugin-svgr';
 
 export default defineConfig({
   main: {
@@ -56,6 +57,7 @@ export default defineConfig({
         routesDirectory: 'src/routes',
         generatedRouteTree: 'src/routeTree.gen.ts',
       }) as any,
+      svgr(),
       react({
         babel: {
           plugins: [['babel-plugin-react-compiler', {}]],

@@ -605,6 +605,7 @@ Components are organized by location:
 - Files and folders: kebab-case
 - Components outside `src/common/ui/`: prefix with `ui-` (e.g., `ui-message-stream`)
 - Components inside `src/common/ui/`: no prefix (e.g., `status-indicator`)
+- SVG icon components should be named with `Icon` prefix (e.g., `IconClaude`, `IconCodex`)
 - Hooks: prefix with `use-` (e.g., `use-projects.ts`)
 - Utility modules: prefix with `utils-` (e.g., `utils-search-highlight.tsx`)
 
@@ -623,6 +624,8 @@ No barrel files (index.ts re-exports). Import directly from component folders:
 ```ts
 import { MessageStream } from '@/features/agent/ui-message-stream';
 ```
+
+Exception: `src/common/ui/icons/index.ts` is allowed as an icon asset re-export entrypoint.
 
 ### Electron IPC
 
