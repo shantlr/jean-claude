@@ -314,7 +314,8 @@ contextBridge.exposeInMainWorld('api', {
     }) => ipcRenderer.invoke('debug:queryTable', params),
   },
   usage: {
-    get: () => ipcRenderer.invoke('agent:usage:get'),
+    getAll: (backends: string[]) =>
+      ipcRenderer.invoke('agent:usage:getAll', backends),
   },
   projectCommands: {
     findByProjectId: (projectId: string) =>

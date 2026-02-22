@@ -32,6 +32,7 @@ import {
   type NewToken,
   type UpdateToken,
 } from '@shared/types';
+import type { UsageProviderType } from '@shared/usage-types';
 
 import {
   ProjectRepository,
@@ -1336,7 +1337,9 @@ export function registerIpcHandlers() {
   });
 
   // Usage
-  ipcMain.handle('agent:usage:get', () => agentUsageService.getUsage());
+  ipcMain.handle('agent:usage:getAll', (_, providers: string[]) =>
+    agentUsageService.getUsage(providers as UsageProviderType[]),
+  );
 
   // Backend models
   ipcMain.handle('agent:getBackendModels', (_, backend: string) =>

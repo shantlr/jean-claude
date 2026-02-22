@@ -2,14 +2,20 @@ import { useQuery } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
 
-export function useClaudeUsage() {
+import { useUsageDisplaySetting } from './use-settings';
+
+export function useBackendUsage() {
+  const { data: usageSettings } = useUsageDisplaySetting();
+  const enabledProviders = usageSettings?.enabledProviders ?? [];
+
   return useQuery({
-    queryKey: ['claude-usage'],
-    queryFn: api.usage.get,
-    refetchInterval: 60 * 1000, // Poll every 60 seconds
-    refetchIntervalInBackground: false, // Don't poll when window is not focused
-    staleTime: 30 * 1000, // Consider data stale after 30 seconds
-    retry: 2, // Retry failed requests twice
-    refetchOnWindowFocus: true, // Refresh when window regains focus
+    queryKey: ['backend-usage', enabledProviders],
+    queryFn: () => api.usage.getAll(enabledProviders),
+    enabled: enabledProviders.length > 0,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+    staleTime: 30_000,
+    retry: 2,
+    refetchOnWindowFocus: true,
   });
 }

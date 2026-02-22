@@ -2,6 +2,7 @@
 // These are plain TypeScript types without database-specific dependencies
 
 import type { AgentBackendType } from './agent-backend-types';
+import type { UsageProviderType } from './usage-types';
 
 export type ProviderType = 'azure-devops' | 'github' | 'gitlab';
 
@@ -363,6 +364,10 @@ export interface CompletionSetting {
   serverUrl: string; // Mistral server URL override (default: codestral.mistral.ai)
 }
 
+export interface UsageDisplaySetting {
+  enabledProviders: UsageProviderType[];
+}
+
 // Settings validation
 export interface SettingDefinition<T> {
   defaultValue: T;
@@ -408,6 +413,21 @@ function isBackendsSetting(v: unknown): v is BackendsSetting {
   return true;
 }
 
+const VALID_USAGE_PROVIDERS: UsageProviderType[] = ['claude-code', 'codex'];
+
+function isUsageDisplaySetting(v: unknown): v is UsageDisplaySetting {
+  if (!v || typeof v !== 'object') return false;
+  const obj = v as Record<string, unknown>;
+  if (!Array.isArray(obj.enabledProviders)) return false;
+  if (
+    !obj.enabledProviders.every((b: unknown) =>
+      VALID_USAGE_PROVIDERS.includes(b as UsageProviderType),
+    )
+  )
+    return false;
+  return true;
+}
+
 export const SETTINGS_DEFINITIONS = {
   editor: {
     defaultValue: { type: 'preset', id: 'vscode' } as EditorSetting,
@@ -428,6 +448,12 @@ export const SETTINGS_DEFINITIONS = {
       serverUrl: '',
     } as CompletionSetting,
     validate: isCompletionSetting,
+  },
+  usageDisplay: {
+    defaultValue: {
+      enabledProviders: [],
+    } as UsageDisplaySetting,
+    validate: isUsageDisplaySetting,
   },
 } satisfies Record<string, SettingDefinition<unknown>>;
 

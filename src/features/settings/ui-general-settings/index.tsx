@@ -12,10 +12,13 @@ import {
   useUpdateBackendsSetting,
   useUpdateEditorSetting,
   useAvailableEditors,
+  useUsageDisplaySetting,
+  useUpdateUsageDisplaySetting,
 } from '@/hooks/use-settings';
 import { api, type NonExistentClaudeProject } from '@/lib/api';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import { PRESET_EDITORS, type EditorSetting } from '@shared/types';
+import { USAGE_PROVIDERS, type UsageProviderType } from '@shared/usage-types';
 
 export function GeneralSettings() {
   const { data: editorSetting, isLoading } = useEditorSetting();
@@ -160,6 +163,12 @@ export function GeneralSettings() {
       {/* Divider */}
       <div className="my-8 border-t border-neutral-800" />
 
+      {/* Usage Display */}
+      <UsageDisplaySettings />
+
+      {/* Divider */}
+      <div className="my-8 border-t border-neutral-800" />
+
       {/* Claude Projects Cleanup */}
       <ClaudeProjectsCleanup />
     </div>
@@ -179,13 +188,11 @@ function BackendsSettings() {
   const handleToggle = (id: AgentBackendType) => {
     let next: AgentBackendType[];
     if (isEnabled(id)) {
-      // Don't allow disabling the last backend
       if (enabledBackends.length <= 1) return;
       next = enabledBackends.filter((b) => b !== id);
     } else {
       next = [...enabledBackends, id];
     }
-    // If we just disabled the default, pick the first enabled one
     const nextDefault = next.includes(defaultBackend)
       ? defaultBackend
       : next[0];
@@ -256,6 +263,64 @@ function BackendsSettings() {
                 </button>
               )}
             </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function UsageDisplaySettings() {
+  const { data: usageDisplaySetting } = useUsageDisplaySetting();
+  const updateUsageDisplay = useUpdateUsageDisplaySetting();
+  const enabledProviders = usageDisplaySetting?.enabledProviders ?? [];
+
+  const isEnabled = (id: UsageProviderType) => enabledProviders.includes(id);
+
+  const handleToggle = (id: UsageProviderType) => {
+    const next = isEnabled(id)
+      ? enabledProviders.filter((p) => p !== id)
+      : [...enabledProviders, id];
+    updateUsageDisplay.mutate({ enabledProviders: next });
+  };
+
+  return (
+    <div>
+      <h2 className="text-lg font-semibold text-neutral-200">Usage Display</h2>
+      <p className="mt-1 text-sm text-neutral-500">
+        Show rate limit usage in the header for these providers.
+      </p>
+
+      <div className="mt-4 space-y-2">
+        {USAGE_PROVIDERS.map((provider) => {
+          const enabled = isEnabled(provider.value);
+
+          return (
+            <label
+              key={provider.value}
+              className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 ${
+                enabled
+                  ? 'border-neutral-700 bg-neutral-800'
+                  : 'border-neutral-800 bg-neutral-900'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={enabled}
+                onChange={() => handleToggle(provider.value)}
+                className="h-4 w-4 rounded border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-neutral-800"
+              />
+              <div>
+                <div
+                  className={`text-sm font-medium ${enabled ? 'text-neutral-200' : 'text-neutral-500'}`}
+                >
+                  {provider.label}
+                </div>
+                <div className="text-xs text-neutral-500">
+                  {provider.description}
+                </div>
+              </div>
+            </label>
           );
         })}
       </div>

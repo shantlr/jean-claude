@@ -55,7 +55,7 @@ import type {
   AppSettings,
   ProjectTodo,
 } from '@shared/types';
-import type { UsageResult } from '@shared/usage-types';
+import type { UsageProviderMap } from '@shared/usage-types';
 
 export type {
   AzureDevOpsPullRequest,
@@ -560,7 +560,7 @@ export interface Api {
     queryTable: (params: QueryTableParams) => Promise<QueryTableResult>;
   };
   usage: {
-    get: () => Promise<UsageResult>;
+    getAll: (providers: string[]) => Promise<UsageProviderMap>;
   };
   projectCommands: {
     findByProjectId: (projectId: string) => Promise<ProjectCommand[]>;
@@ -895,10 +895,7 @@ export const api: Api = hasWindowApi
         queryTable: async () => ({ columns: [], rows: [], total: 0 }),
       },
       usage: {
-        get: async () => ({
-          data: null,
-          error: { type: 'api_error', message: 'API not available' },
-        }),
+        getAll: async () => ({}),
       },
       projectCommands: {
         findByProjectId: async () => [],

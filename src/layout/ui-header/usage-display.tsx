@@ -1,16 +1,16 @@
 import clsx from 'clsx';
-import { Clock, AlertCircle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
-import { useClaudeUsage } from '@/hooks/use-usage';
-import type { UsageLevel } from '@shared/usage-types';
+import { Tooltip } from '@/common/ui/tooltip';
+import { useBackendUsage } from '@/hooks/use-usage';
+import type {
+  UsageDisplayData,
+  UsageLevel,
+  UsageProviderType,
+  UsageResult,
+} from '@shared/usage-types';
+import { USAGE_PROVIDERS } from '@shared/usage-types';
 
-/**
- * Calculates the usage ratio (actual usage / expected usage based on elapsed time).
- *
- * @param utilization - Current usage percentage (0-100)
- * @param resetsAt - When the usage window resets
- * @param windowDurationMs - Total duration of the usage window in milliseconds
- */
 function getUsageRatio({
   utilization,
   resetsAt,
@@ -28,8 +28,6 @@ function getUsageRatio({
     1,
   );
 
-  // Compare actual usage percent to linear expected usage percent.
-  // Both are converted to [0,1] so 1.0 means exactly on pace.
   const actualUsageRatio = utilization / 100;
 
   if (timeElapsedRatio === 0) {
@@ -39,22 +37,24 @@ function getUsageRatio({
   return actualUsageRatio / timeElapsedRatio;
 }
 
-/**
- * Determines usage level based on the ratio of utilization to elapsed time.
- * If usage is ahead of pace (using more than expected for elapsed time), it shows warning colors.
- */
 function getUsageLevel(usageRatio: number): UsageLevel {
   if (!Number.isFinite(usageRatio)) return 'critical';
-
-  // If ratio > 1, we're ahead of pace (using more than expected)
-  if (usageRatio >= 1.5) return 'critical'; // 50%+ ahead of pace
-  if (usageRatio >= 1.3) return 'high'; // 30%+ ahead of pace
-  if (usageRatio >= 1.0) return 'medium'; // At or slightly ahead of pace
-  if (usageRatio >= 0.8) return 'low'; // Slightly below pace
-  return 'excellent'; // Well below pace
+  if (usageRatio >= 1.5) return 'critical';
+  if (usageRatio >= 1.3) return 'high';
+  if (usageRatio >= 1.0) return 'medium';
+  if (usageRatio >= 0.8) return 'low';
+  return 'excellent';
 }
 
-const LEVEL_COLORS: Record<UsageLevel, string> = {
+const LEVEL_DOT_COLORS: Record<UsageLevel, string> = {
+  excellent: 'bg-blue-400',
+  low: 'bg-green-400',
+  medium: 'bg-yellow-400',
+  high: 'bg-orange-400',
+  critical: 'bg-red-400',
+};
+
+const LEVEL_TEXT_COLORS: Record<UsageLevel, string> = {
   excellent: 'text-blue-400',
   low: 'text-green-400',
   medium: 'text-yellow-400',
@@ -62,54 +62,98 @@ const LEVEL_COLORS: Record<UsageLevel, string> = {
   critical: 'text-red-400',
 };
 
-const LEVEL_BG_COLORS: Record<UsageLevel, string> = {
-  excellent: 'bg-blue-500',
-  low: 'bg-green-500',
-  medium: 'bg-yellow-500',
-  high: 'bg-orange-500',
-  critical: 'bg-red-500',
-};
-
-export function UsageDisplay() {
-  const { data: result, isLoading, isError } = useClaudeUsage();
-
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center gap-2 text-neutral-500">
-        <Loader2 className="h-3 w-3 animate-spin" />
-        <span className="text-xs">Loading...</span>
-      </div>
-    );
-  }
-
-  // Error state or no token
-  if (isError || !result?.data) {
-    const errorType = result?.error?.type;
-
-    // If no token, show nothing (user may not have Claude Code)
-    if (errorType === 'no_token') {
-      return null;
+function getProviderMeta(providerType: UsageProviderType) {
+  return (
+    USAGE_PROVIDERS.find((p) => p.value === providerType) ?? {
+      label: providerType,
+      shortLabel: providerType,
     }
+  );
+}
+
+function TooltipContent({
+  providerType,
+  data,
+}: {
+  providerType: UsageProviderType;
+  data: UsageDisplayData;
+}) {
+  const meta = getProviderMeta(providerType);
+
+  return (
+    <div className="space-y-1.5">
+      <div className="font-medium text-neutral-200">{meta.label}</div>
+      {data.fiveHour && (
+        <div>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-neutral-400">5-hour</span>
+            <span className="font-medium">
+              {data.fiveHour.utilization.toFixed(0)}%
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-4 text-neutral-500">
+            <span>
+              Ratio:{' '}
+              {(() => {
+                const r = getUsageRatio({
+                  utilization: data.fiveHour!.utilization,
+                  resetsAt: data.fiveHour!.resetsAt,
+                  windowDurationMs: data.fiveHour!.windowDurationMs,
+                });
+                return Number.isFinite(r) ? r.toFixed(1) : '∞';
+              })()}
+            </span>
+            <span>Resets {data.fiveHour.timeUntilReset}</span>
+          </div>
+        </div>
+      )}
+      {data.sevenDay && (
+        <div>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-neutral-400">7-day</span>
+            <span className="font-medium">
+              {data.sevenDay.utilization.toFixed(0)}%
+            </span>
+          </div>
+          <div className="text-neutral-500">
+            Resets {data.sevenDay.timeUntilReset}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProviderUsageChip({
+  providerType,
+  result,
+}: {
+  providerType: UsageProviderType;
+  result: UsageResult;
+}) {
+  const meta = getProviderMeta(providerType);
+
+  if (!result.data?.fiveHour) {
+    if (result.error?.type === 'no_token') return null;
 
     return (
-      <div
-        className="flex items-center gap-1.5 text-neutral-500"
-        title={result?.error?.message}
+      <Tooltip
+        content={
+          <span className="text-neutral-400">
+            {result.error?.message ?? 'No usage data'}
+          </span>
+        }
+        side="bottom"
       >
-        <AlertCircle className="h-3 w-3" />
-        <span className="text-xs">Usage unavailable</span>
-      </div>
+        <div className="flex items-center gap-1.5 rounded px-1.5 py-0.5 text-neutral-500">
+          <div className="h-1.5 w-1.5 rounded-full bg-neutral-600" />
+          <span className="text-xs">{meta.shortLabel}</span>
+        </div>
+      </Tooltip>
     );
   }
 
   const { fiveHour } = result.data;
-
-  // No five hour data available
-  if (!fiveHour) {
-    return null;
-  }
-
   const usageRatio = getUsageRatio({
     utilization: fiveHour.utilization,
     resetsAt: fiveHour.resetsAt,
@@ -117,35 +161,55 @@ export function UsageDisplay() {
   });
   const level = getUsageLevel(usageRatio);
   const percentage = Math.min(fiveHour.utilization, 100);
-  // Format ratio to max 2 digits (e.g., 1.2, 0.8)
-  const formattedRatio = Number.isFinite(usageRatio)
-    ? usageRatio.toFixed(1)
-    : '∞';
-  const isMaxedOut = fiveHour.utilization >= 100;
 
   return (
-    <div className="flex items-center gap-3">
-      {/* Progress bar visualization */}
-      <div className="flex items-center gap-2">
-        <div className="relative h-1.5 w-20 overflow-hidden rounded-full bg-neutral-700">
-          <div
-            className={clsx(
-              'absolute top-0 left-0 h-full rounded-full transition-all duration-300',
-              isMaxedOut ? 'bg-red-500' : LEVEL_BG_COLORS[level],
-            )}
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
-        <span className={clsx('text-xs font-medium', LEVEL_COLORS[level])}>
-          {fiveHour.utilization.toFixed(0)}% ({formattedRatio})
+    <Tooltip
+      content={
+        <TooltipContent providerType={providerType} data={result.data} />
+      }
+      side="bottom"
+    >
+      <div className="flex items-center gap-1.5 rounded px-1.5 py-0.5">
+        <div
+          className={clsx('h-1.5 w-1.5 rounded-full', LEVEL_DOT_COLORS[level])}
+        />
+        <span className={clsx('text-xs font-medium', LEVEL_TEXT_COLORS[level])}>
+          {meta.shortLabel} {percentage.toFixed(0)}%
         </span>
       </div>
+    </Tooltip>
+  );
+}
 
-      {/* Reset time */}
-      <div className="flex items-center gap-1 text-neutral-400">
-        <Clock className="h-3 w-3" />
-        <span className="text-xs">{fiveHour.timeUntilReset}</span>
+export function UsageDisplay() {
+  const { data: usageMap, isLoading } = useBackendUsage();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-neutral-500">
+        <Loader2 className="h-3 w-3 animate-spin" />
       </div>
+    );
+  }
+
+  if (!usageMap || Object.keys(usageMap).length === 0) {
+    return null;
+  }
+
+  const entries = Object.entries(usageMap) as [
+    UsageProviderType,
+    UsageResult,
+  ][];
+
+  return (
+    <div className="flex items-center gap-1">
+      {entries.map(([providerType, result]) => (
+        <ProviderUsageChip
+          key={providerType}
+          providerType={providerType}
+          result={result}
+        />
+      ))}
     </div>
   );
 }

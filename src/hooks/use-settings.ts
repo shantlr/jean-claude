@@ -5,6 +5,7 @@ import type {
   AppSettings,
   BackendsSetting,
   EditorSetting,
+  UsageDisplaySetting,
 } from '@shared/types';
 
 export function useSetting<K extends keyof AppSettings>(key: K) {
@@ -66,4 +67,22 @@ export function useUpdateBackendsSetting() {
 // Convenience hooks for completion setting
 export function useCompletionSetting() {
   return useSetting('completion');
+}
+
+// Convenience hooks for usage display setting
+export function useUsageDisplaySetting() {
+  return useSetting('usageDisplay');
+}
+
+export function useUpdateUsageDisplaySetting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: UsageDisplaySetting) =>
+      api.settings.set('usageDisplay', value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings', 'usageDisplay'],
+      });
+    },
+  });
 }

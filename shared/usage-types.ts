@@ -38,3 +38,30 @@ export interface UsageResult {
   data: UsageDisplayData | null;
   error: UsageError | null;
 }
+
+// Usage provider types — independent from AgentBackendType.
+// Codex (OpenAI) is a usage provider but not an agent backend in this app.
+export type UsageProviderType = 'claude-code' | 'codex';
+
+export const USAGE_PROVIDERS: {
+  value: UsageProviderType;
+  label: string;
+  shortLabel: string;
+  description: string;
+}[] = [
+  {
+    value: 'claude-code',
+    label: 'Claude Code',
+    shortLabel: 'CC',
+    description: 'Anthropic Claude Code OAuth usage',
+  },
+  {
+    value: 'codex',
+    label: 'Codex',
+    shortLabel: 'CX',
+    description: 'OpenAI Codex rate limits',
+  },
+];
+
+// Per-provider usage results
+export type UsageProviderMap = Partial<Record<UsageProviderType, UsageResult>>;
