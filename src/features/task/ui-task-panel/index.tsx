@@ -76,6 +76,7 @@ import {
   type EditorSetting,
 } from '@shared/types';
 
+import { CommandLogsPane } from './command-logs-pane';
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
 import { DebugMessagesPane } from './debug-messages-pane';
 import { DeleteTaskDialog } from './delete-task-dialog';
@@ -96,6 +97,9 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const allowForProject = useAllowForProject();
   const allowForProjectWorktrees = useAllowForProjectWorktrees();
   const unloadTask = useTaskMessagesStore((state) => state.unloadTask);
+  const clearAllRunCommandLogs = useTaskMessagesStore(
+    (state) => state.clearAllRunCommandLogs,
+  );
   const addRunningJob = useBackgroundJobsStore((state) => state.addRunningJob);
   const markJobSucceeded = useBackgroundJobsStore(
     (state) => state.markJobSucceeded,
@@ -116,6 +120,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     rightPane,
     openFilePreview,
     openFileExplorer,
+    openCommandLogs,
+    selectCommandLogsTab,
     selectFileExplorerFile,
     openSettings,
     openDebugMessages,
@@ -173,6 +179,12 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
   }, [taskId]);
+
+  useEffect(() => {
+    if (task?.status === 'completed') {
+      clearAllRunCommandLogs(taskId);
+    }
+  }, [task?.status, taskId, clearAllRunCommandLogs]);
 
   const handleCopySessionId = useCallback(async () => {
     if (task?.sessionId) {
@@ -526,8 +538,17 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           {/* Right: Run + Overflow menu */}
           <div className="flex shrink-0 items-center gap-2">
             <RunButton
+              taskId={taskId}
               projectId={project.id}
               workingDir={task.worktreePath ?? project.path}
+              onOpenLogs={() => {
+                if (rightPane?.type === 'commandLogs') {
+                  closeRightPane();
+                } else {
+                  openCommandLogs();
+                }
+              }}
+              isLogsPaneOpen={rightPane?.type === 'commandLogs'}
             />
 
             {/* Overflow menu */}
@@ -788,6 +809,17 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           projectRoot={task?.worktreePath ?? project.path}
           selectedFilePath={rightPane.selectedFilePath}
           onSelectFile={selectFileExplorerFile}
+          onClose={closeRightPane}
+        />
+      )}
+
+      {/* Command logs pane */}
+      {rightPane?.type === 'commandLogs' && (
+        <CommandLogsPane
+          taskId={taskId}
+          projectId={project.id}
+          selectedCommandId={rightPane.selectedCommandId}
+          onSelectCommand={selectCommandLogsTab}
           onClose={closeRightPane}
         />
       )}

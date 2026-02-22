@@ -12,6 +12,7 @@ import type {
   PortsInUseErrorData,
   PackageScriptsResult,
   WorkspacePackage,
+  RunCommandLogStream,
 } from '@shared/run-command-types';
 
 import { ProjectCommandRepository } from '../database/repositories/project-commands';
@@ -19,18 +20,109 @@ import { dbg } from '../lib/debug';
 
 const execAsync = promisify(exec);
 
-type StatusChangeCallback = (projectId: string, status: RunStatus) => void;
+type StatusChangeCallback = (taskId: string, status: RunStatus) => void;
+type LogCallback = (
+  taskId: string,
+  runCommandId: string,
+  stream: RunCommandLogStream,
+  line: string,
+) => void;
 
 interface TrackedProcess {
   commandId: string;
   command: string;
   process: ChildProcess;
   status: 'running' | 'stopped' | 'errored';
+  stdoutBuffer: string;
+  stderrBuffer: string;
 }
 
 class RunCommandService {
-  private runningProcesses = new Map<string, TrackedProcess[]>();
+  private runningProcesses = new Map<string, Map<string, TrackedProcess>>();
+  private commandOperationLocks = new Map<string, Promise<void>>();
   private statusChangeCallbacks: StatusChangeCallback[] = [];
+  private logCallbacks: LogCallback[] = [];
+
+  private getCommandKey({
+    taskId,
+    runCommandId,
+  }: {
+    taskId: string;
+    runCommandId: string;
+  }): string {
+    return `${taskId}:${runCommandId}`;
+  }
+
+  private async withCommandLock<T>({
+    taskId,
+    runCommandId,
+    operation,
+  }: {
+    taskId: string;
+    runCommandId: string;
+    operation: () => Promise<T>;
+  }): Promise<T> {
+    const key = this.getCommandKey({ taskId, runCommandId });
+    const previous = this.commandOperationLocks.get(key) ?? Promise.resolve();
+
+    let release = () => {};
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    this.commandOperationLocks.set(key, current);
+    await previous;
+
+    try {
+      return await operation();
+    } finally {
+      release();
+      if (this.commandOperationLocks.get(key) === current) {
+        this.commandOperationLocks.delete(key);
+      }
+    }
+  }
+
+  private waitForExit({
+    tracked,
+    timeoutMs,
+  }: {
+    tracked: TrackedProcess;
+    timeoutMs: number;
+  }): Promise<boolean> {
+    if (
+      tracked.process.exitCode !== null ||
+      tracked.process.signalCode !== null
+    ) {
+      return Promise.resolve(true);
+    }
+
+    return new Promise<boolean>((resolve) => {
+      const onDone = () => {
+        clearTimeout(timer);
+        tracked.process.removeListener('exit', onExit);
+        tracked.process.removeListener('error', onError);
+      };
+
+      const onExit = () => {
+        onDone();
+        resolve(true);
+      };
+
+      const onError = () => {
+        onDone();
+        resolve(true);
+      };
+
+      const timer = setTimeout(() => {
+        onDone();
+        resolve(false);
+      }, timeoutMs);
+
+      tracked.process.once('exit', onExit);
+      tracked.process.once('error', onError);
+    });
+  }
 
   onStatusChange(callback: StatusChangeCallback): () => void {
     this.statusChangeCallbacks.push(callback);
@@ -40,19 +132,84 @@ class RunCommandService {
     };
   }
 
-  private notifyStatusChange(projectId: string): void {
-    const status = this.getRunStatus(projectId);
-    this.statusChangeCallbacks.forEach((cb) => cb(projectId, status));
+  onLog(callback: LogCallback): () => void {
+    this.logCallbacks.push(callback);
+    return () => {
+      const index = this.logCallbacks.indexOf(callback);
+      if (index > -1) this.logCallbacks.splice(index, 1);
+    };
   }
 
-  getRunStatus(projectId: string): RunStatus {
-    const tracked = this.runningProcesses.get(projectId) ?? [];
-    const commands: CommandRunStatus[] = tracked.map((t) => ({
-      id: t.commandId,
-      command: t.command,
-      status: t.status,
-      pid: t.process.pid,
-    }));
+  private notifyStatusChange(taskId: string): void {
+    const status = this.getRunStatus(taskId);
+    this.statusChangeCallbacks.forEach((cb) => cb(taskId, status));
+  }
+
+  private notifyLog(
+    taskId: string,
+    runCommandId: string,
+    stream: RunCommandLogStream,
+    line: string,
+  ): void {
+    this.logCallbacks.forEach((cb) => cb(taskId, runCommandId, stream, line));
+  }
+
+  private getTaskProcesses(taskId: string): Map<string, TrackedProcess> {
+    if (!this.runningProcesses.has(taskId)) {
+      this.runningProcesses.set(taskId, new Map<string, TrackedProcess>());
+    }
+    return this.runningProcesses.get(taskId)!;
+  }
+
+  private flushBuffer({
+    taskId,
+    tracked,
+    stream,
+  }: {
+    taskId: string;
+    tracked: TrackedProcess;
+    stream: RunCommandLogStream;
+  }): void {
+    const key = stream === 'stdout' ? 'stdoutBuffer' : 'stderrBuffer';
+    const value = tracked[key];
+    if (!value) {
+      return;
+    }
+    this.notifyLog(taskId, tracked.commandId, stream, value);
+    tracked[key] = '';
+  }
+
+  private appendLogChunk({
+    taskId,
+    tracked,
+    stream,
+    chunk,
+  }: {
+    taskId: string;
+    tracked: TrackedProcess;
+    stream: RunCommandLogStream;
+    chunk: string;
+  }): void {
+    const key = stream === 'stdout' ? 'stdoutBuffer' : 'stderrBuffer';
+    const combined = `${tracked[key]}${chunk.replace(/\r\n/g, '\n')}`;
+    const parts = combined.split('\n');
+    tracked[key] = parts.pop() ?? '';
+
+    for (const line of parts) {
+      this.notifyLog(taskId, tracked.commandId, stream, line);
+    }
+  }
+
+  getRunStatus(taskId: string): RunStatus {
+    const tracked = this.runningProcesses.get(taskId);
+    const commands: CommandRunStatus[] = tracked
+      ? [...tracked.values()].map((t) => ({
+          id: t.commandId,
+          command: t.command,
+          status: t.status,
+          pid: t.process.pid,
+        }))
+      : [];
     return {
       isRunning: commands.some((c) => c.status === 'running'),
       commands,
@@ -115,35 +272,69 @@ class RunCommandService {
     }
   }
 
-  async startCommands(
-    projectId: string,
-    workingDir: string,
-  ): Promise<RunStatus | PortsInUseErrorData> {
+  async startCommand({
+    taskId,
+    projectId,
+    workingDir,
+    runCommandId,
+  }: {
+    taskId: string;
+    projectId: string;
+    workingDir: string;
+    runCommandId: string;
+  }): Promise<RunStatus | PortsInUseErrorData> {
+    return this.withCommandLock({
+      taskId,
+      runCommandId,
+      operation: () =>
+        this.startCommandWithoutLock({
+          taskId,
+          projectId,
+          workingDir,
+          runCommandId,
+        }),
+    });
+  }
+
+  private async startCommandWithoutLock({
+    taskId,
+    projectId,
+    workingDir,
+    runCommandId,
+  }: {
+    taskId: string;
+    projectId: string;
+    workingDir: string;
+    runCommandId: string;
+  }): Promise<RunStatus | PortsInUseErrorData> {
     dbg.runCommand(
-      'Starting commands for project %s in %s',
-      projectId,
+      'Starting command %s for task %s in %s',
+      runCommandId,
+      taskId,
       workingDir,
     );
-    const commands = await ProjectCommandRepository.findByProjectId(projectId);
-    if (commands.length === 0) {
-      dbg.runCommand('No commands configured for project %s', projectId);
-      return { isRunning: false, commands: [] };
+    const command = await ProjectCommandRepository.findById(runCommandId);
+    if (!command || command.projectId !== projectId) {
+      dbg.runCommand(
+        'Command %s not found for project %s',
+        runCommandId,
+        projectId,
+      );
+      return this.getRunStatus(taskId);
     }
-    dbg.runCommand('Found %d commands to run', commands.length);
 
-    // Check all ports first
+    await this.stopCommandWithoutLock({ taskId, runCommandId });
+
     const portsInUse: PortInUse[] = [];
-    for (const cmd of commands) {
-      for (const port of cmd.ports) {
-        const processInfo = await this.checkPortInUse(port);
-        if (processInfo) {
-          portsInUse.push({
-            port,
-            commandId: cmd.id,
-            command: cmd.command,
-            processInfo,
-          });
-        }
+    for (const port of command.ports) {
+      const processInfo = await this.checkPortInUse(port);
+      if (processInfo) {
+        portsInUse.push({
+          port,
+          commandId: command.id,
+          command: command.command,
+          processInfo,
+        });
       }
     }
 
@@ -156,78 +347,143 @@ class RunCommandService {
       };
     }
 
-    // Stop any existing processes for this project
-    await this.stopCommands(projectId);
+    dbg.runCommand('Spawning command: %s', command.command);
+    const childProcess = spawn(command.command, {
+      cwd: workingDir,
+      shell: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      detached: false,
+    });
 
-    // Start all commands
-    const tracked: TrackedProcess[] = [];
-    for (const cmd of commands) {
-      dbg.runCommand('Spawning command: %s', cmd.command);
-      const childProcess = spawn(cmd.command, {
-        cwd: workingDir,
-        shell: true,
-        stdio: 'inherit',
-        detached: false,
+    const trackedProcess: TrackedProcess = {
+      commandId: command.id,
+      command: command.command,
+      process: childProcess,
+      status: 'running',
+      stdoutBuffer: '',
+      stderrBuffer: '',
+    };
+
+    const taskProcesses = this.getTaskProcesses(taskId);
+    taskProcesses.set(command.id, trackedProcess);
+
+    dbg.runCommand(
+      'Process started with PID %d for command: %s',
+      childProcess.pid,
+      command.command,
+    );
+
+    childProcess.stdout?.setEncoding('utf8');
+    childProcess.stdout?.on('data', (chunk: string) => {
+      this.appendLogChunk({
+        taskId,
+        tracked: trackedProcess,
+        stream: 'stdout',
+        chunk,
       });
+    });
 
-      const trackedProcess: TrackedProcess = {
-        commandId: cmd.id,
-        command: cmd.command,
-        process: childProcess,
-        status: 'running',
-      };
-
-      dbg.runCommand(
-        'Process started with PID %d for command: %s',
-        childProcess.pid,
-        cmd.command,
-      );
-
-      childProcess.on('exit', (code) => {
-        dbg.runCommand(
-          'Process %d exited with code %d',
-          childProcess.pid,
-          code,
-        );
-        trackedProcess.status = code === 0 ? 'stopped' : 'errored';
-        this.notifyStatusChange(projectId);
+    childProcess.stderr?.setEncoding('utf8');
+    childProcess.stderr?.on('data', (chunk: string) => {
+      this.appendLogChunk({
+        taskId,
+        tracked: trackedProcess,
+        stream: 'stderr',
+        chunk,
       });
+    });
 
-      childProcess.on('error', (err) => {
-        dbg.runCommand('Process %d error: %O', childProcess.pid, err);
-        trackedProcess.status = 'errored';
-        this.notifyStatusChange(projectId);
-      });
+    childProcess.on('exit', (code) => {
+      dbg.runCommand('Process %d exited with code %d', childProcess.pid, code);
+      this.flushBuffer({ taskId, tracked: trackedProcess, stream: 'stdout' });
+      this.flushBuffer({ taskId, tracked: trackedProcess, stream: 'stderr' });
+      trackedProcess.status = code === 0 ? 'stopped' : 'errored';
+      this.notifyStatusChange(taskId);
+    });
 
-      tracked.push(trackedProcess);
-    }
+    childProcess.on('error', (err) => {
+      dbg.runCommand('Process %d error: %O', childProcess.pid, err);
+      this.flushBuffer({ taskId, tracked: trackedProcess, stream: 'stdout' });
+      this.flushBuffer({ taskId, tracked: trackedProcess, stream: 'stderr' });
+      trackedProcess.status = 'errored';
+      this.notifyStatusChange(taskId);
+    });
 
-    this.runningProcesses.set(projectId, tracked);
-    this.notifyStatusChange(projectId);
-    dbg.runCommand('All commands started for project %s', projectId);
-    return this.getRunStatus(projectId);
+    this.notifyStatusChange(taskId);
+    return this.getRunStatus(taskId);
   }
 
-  async stopCommands(projectId: string): Promise<void> {
-    dbg.runCommand('Stopping commands for project %s', projectId);
-    const tracked = this.runningProcesses.get(projectId) ?? [];
-    for (const t of tracked) {
-      if (t.process.pid && t.status === 'running') {
-        try {
+  async stopCommand({
+    taskId,
+    runCommandId,
+  }: {
+    taskId: string;
+    runCommandId: string;
+  }): Promise<void> {
+    return this.withCommandLock({
+      taskId,
+      runCommandId,
+      operation: () => this.stopCommandWithoutLock({ taskId, runCommandId }),
+    });
+  }
+
+  private async stopCommandWithoutLock({
+    taskId,
+    runCommandId,
+  }: {
+    taskId: string;
+    runCommandId: string;
+  }): Promise<void> {
+    const taskProcesses = this.runningProcesses.get(taskId);
+    if (!taskProcesses) {
+      return;
+    }
+
+    const tracked = taskProcesses.get(runCommandId);
+    if (!tracked) {
+      return;
+    }
+
+    if (tracked.process.pid && tracked.status === 'running') {
+      let exited = false;
+      try {
+        dbg.runCommand(
+          'Sending SIGTERM to PID %d (%s)',
+          tracked.process.pid,
+          tracked.command,
+        );
+        process.kill(tracked.process.pid, 'SIGTERM');
+        exited = await this.waitForExit({ tracked, timeoutMs: 1500 });
+
+        if (!exited) {
           dbg.runCommand(
-            'Sending SIGTERM to PID %d (%s)',
-            t.process.pid,
-            t.command,
+            'SIGTERM timeout for PID %d, sending SIGKILL',
+            tracked.process.pid,
           );
-          process.kill(t.process.pid, 'SIGTERM');
-        } catch {
-          dbg.runCommand('Process %d may already be dead', t.process.pid);
+          process.kill(tracked.process.pid, 'SIGKILL');
+          exited = await this.waitForExit({ tracked, timeoutMs: 1500 });
         }
+      } catch {
+        dbg.runCommand('Process %d may already be dead', tracked.process.pid);
+        exited = true;
+      }
+
+      if (!exited) {
+        dbg.runCommand(
+          'Process %d did not exit; keeping tracked as running',
+          tracked.process.pid,
+        );
+        this.notifyStatusChange(taskId);
+        return;
       }
     }
-    this.runningProcesses.delete(projectId);
-    this.notifyStatusChange(projectId);
-    dbg.runCommand('Commands stopped for project %s', projectId);
+
+    taskProcesses.delete(runCommandId);
+    if (taskProcesses.size === 0) {
+      this.runningProcesses.delete(taskId);
+    }
+
+    this.notifyStatusChange(taskId);
   }
 
   async killPortsForCommand(
@@ -243,12 +499,23 @@ class RunCommandService {
   }
 
   async stopAllCommands(): Promise<void> {
-    const projectIds = [...this.runningProcesses.keys()];
-    dbg.runCommand('Stopping all commands for %d projects', projectIds.length);
-    for (const projectId of projectIds) {
-      await this.stopCommands(projectId);
+    const taskIds = [...this.runningProcesses.keys()];
+    dbg.runCommand('Stopping all commands for %d tasks', taskIds.length);
+    for (const taskId of taskIds) {
+      await this.stopCommandsForTask(taskId);
     }
     dbg.runCommand('All commands stopped');
+  }
+
+  async stopCommandsForTask(taskId: string): Promise<void> {
+    const taskProcesses = this.runningProcesses.get(taskId);
+    if (!taskProcesses) {
+      return;
+    }
+
+    for (const runCommandId of [...taskProcesses.keys()]) {
+      await this.stopCommand({ taskId, runCommandId });
+    }
   }
 
   async getPackageScripts(projectPath: string): Promise<PackageScriptsResult> {

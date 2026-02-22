@@ -348,6 +348,8 @@ export function registerIpcHandlers() {
         deleteWorktree?: boolean;
       },
     ) => {
+      await runCommandService.stopCommandsForTask(id);
+
       const task = await TaskRepository.findById(id);
 
       if (task?.worktreePath) {
@@ -384,12 +386,16 @@ export function registerIpcHandlers() {
   ipcMain.handle('tasks:toggleUserCompleted', async (_, id: string) => {
     // Fetch task before toggling to know the current state
     const taskBefore = await TaskRepository.findById(id);
+    const isCompleting = taskBefore && !taskBefore.userCompleted;
+
+    if (isCompleting) {
+      await runCommandService.stopCommandsForTask(id);
+    }
 
     // Perform the toggle
     const updatedTask = await TaskRepository.toggleUserCompleted(id);
 
     // Only check for missing worktree when completing (not uncompleting)
-    const isCompleting = taskBefore && !taskBefore.userCompleted;
     if (isCompleting && taskBefore.worktreePath && taskBefore.branchName) {
       const worktreeExists = await pathExists(taskBefore.worktreePath);
       if (!worktreeExists) {
@@ -637,6 +643,9 @@ export function registerIpcHandlers() {
       if (!task?.worktreePath) {
         throw new Error(`Task ${taskId} does not have a worktree`);
       }
+
+      await runCommandService.stopCommandsForTask(taskId);
+
       if (params.commitAllUnstaged) {
         const status = await getWorktreeStatus(task.worktreePath);
         if (status.hasUnstagedChanges) {
@@ -1391,15 +1400,24 @@ export function registerIpcHandlers() {
 
   // Run Commands
   ipcMain.handle(
-    'project:commands:run:start',
-    (_, { projectId, workingDir }: { projectId: string; workingDir: string }) =>
-      runCommandService.startCommands(projectId, workingDir),
+    'project:commands:run:startCommand',
+    (
+      _,
+      params: {
+        taskId: string;
+        projectId: string;
+        workingDir: string;
+        runCommandId: string;
+      },
+    ) => runCommandService.startCommand(params),
   );
-  ipcMain.handle('project:commands:run:stop', (_, projectId: string) =>
-    runCommandService.stopCommands(projectId),
+  ipcMain.handle(
+    'project:commands:run:stopCommand',
+    (_, params: { taskId: string; runCommandId: string }) =>
+      runCommandService.stopCommand(params),
   );
-  ipcMain.handle('project:commands:run:getStatus', (_, projectId: string) =>
-    runCommandService.getRunStatus(projectId),
+  ipcMain.handle('project:commands:run:getStatus', (_, taskId: string) =>
+    runCommandService.getRunStatus(taskId),
   );
   ipcMain.handle(
     'project:commands:run:killPortsForCommand',
@@ -1412,13 +1430,69 @@ export function registerIpcHandlers() {
       runCommandService.getPackageScripts(projectPath),
   );
 
+  const previousRunCommandStatuses = new Map<string, Map<string, string>>();
+
   // Subscribe to run command status changes and forward to renderer
-  runCommandService.onStatusChange((projectId, status) => {
+  runCommandService.onStatusChange((taskId, status) => {
+    BrowserWindow.getAllWindows().forEach((win) => {
+      win.webContents.send('project:commands:run:statusChange', taskId, status);
+    });
+
+    const previousByCommand =
+      previousRunCommandStatuses.get(taskId) ?? new Map<string, string>();
+    const nextByCommand = new Map<string, string>();
+
+    for (const commandStatus of status.commands) {
+      nextByCommand.set(commandStatus.id, commandStatus.status);
+
+      const previousStatus = previousByCommand.get(commandStatus.id);
+      const hasExited =
+        previousStatus === 'running' &&
+        (commandStatus.status === 'stopped' ||
+          commandStatus.status === 'errored');
+
+      if (!hasExited) {
+        continue;
+      }
+
+      const isAnyWindowFocused = BrowserWindow.getAllWindows().some((win) =>
+        win.isFocused(),
+      );
+      if (isAnyWindowFocused) {
+        continue;
+      }
+
+      void TaskRepository.findById(taskId).then((task) => {
+        const mainWindow = BrowserWindow.getAllWindows()[0] ?? null;
+        notificationService.notify({
+          id: `${taskId}:run-command:${commandStatus.id}`,
+          title:
+            commandStatus.status === 'stopped'
+              ? 'Run Command Finished'
+              : 'Run Command Failed',
+          body: `Task "${task?.name || 'Unknown'}": ${commandStatus.command}`,
+          onClick: () => {
+            mainWindow?.focus();
+          },
+        });
+      });
+    }
+
+    if (nextByCommand.size === 0) {
+      previousRunCommandStatuses.delete(taskId);
+    } else {
+      previousRunCommandStatuses.set(taskId, nextByCommand);
+    }
+  });
+
+  runCommandService.onLog((taskId, runCommandId, stream, line) => {
     BrowserWindow.getAllWindows().forEach((win) => {
       win.webContents.send(
-        'project:commands:run:statusChange',
-        projectId,
-        status,
+        'project:commands:run:log',
+        taskId,
+        runCommandId,
+        stream,
+        line,
       );
     });
   });

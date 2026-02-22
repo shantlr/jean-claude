@@ -5,7 +5,21 @@ import type {
   NormalizedEntry,
   NormalizedPermissionRequest,
 } from '@shared/normalized-message-v2';
+import type { RunCommandLogStream } from '@shared/run-command-types';
 import type { TaskStatus } from '@shared/types';
+
+const MAX_RUN_COMMAND_LOG_LINES = 5000;
+
+interface RunCommandLogEntry {
+  stream: RunCommandLogStream;
+  line: string;
+  timestamp: number;
+}
+
+interface RunCommandLogState {
+  lines: RunCommandLogEntry[];
+  updatedAt: number;
+}
 
 export interface TaskState {
   messages: NormalizedEntry[];
@@ -18,6 +32,7 @@ export interface TaskState {
     questions: AgentQuestion[];
   } | null;
   queuedPrompts: QueuedPrompt[];
+  runCommandLogs: Record<string, RunCommandLogState>;
   lastAccessedAt: number;
 }
 
@@ -51,6 +66,14 @@ interface TaskMessagesStore {
   ) => void;
   setQuestion: (taskId: string, question: TaskState['pendingQuestion']) => void;
   setQueuedPrompts: (taskId: string, queuedPrompts: QueuedPrompt[]) => void;
+  appendRunCommandLine: (
+    taskId: string,
+    runCommandId: string,
+    stream: RunCommandLogStream,
+    line: string,
+  ) => void;
+  clearRunCommandLogs: (taskId: string, runCommandId: string) => void;
+  clearAllRunCommandLogs: (taskId: string) => void;
   touchTask: (taskId: string) => void;
   unloadTask: (taskId: string) => void;
 
@@ -105,6 +128,7 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
           pendingPermission: null,
           pendingQuestion: null,
           queuedPrompts: [],
+          runCommandLogs: state.tasks[taskId]?.runCommandLogs ?? {},
           lastAccessedAt: Date.now(),
         },
       };
@@ -230,6 +254,83 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
           [taskId]: {
             ...task,
             queuedPrompts,
+          },
+        },
+      };
+    });
+  },
+
+  appendRunCommandLine: (taskId, runCommandId, stream, line) => {
+    set((state) => {
+      const task = state.tasks[taskId];
+      if (!task) return state;
+
+      const existingLog = task.runCommandLogs[runCommandId] ?? {
+        lines: [],
+        updatedAt: Date.now(),
+      };
+      const nextLines = [
+        ...existingLog.lines,
+        {
+          stream,
+          line,
+          timestamp: Date.now(),
+        },
+      ];
+      const cappedLines =
+        nextLines.length > MAX_RUN_COMMAND_LOG_LINES
+          ? nextLines.slice(-MAX_RUN_COMMAND_LOG_LINES)
+          : nextLines;
+
+      return {
+        tasks: {
+          ...state.tasks,
+          [taskId]: {
+            ...task,
+            runCommandLogs: {
+              ...task.runCommandLogs,
+              [runCommandId]: {
+                lines: cappedLines,
+                updatedAt: Date.now(),
+              },
+            },
+          },
+        },
+      };
+    });
+  },
+
+  clearRunCommandLogs: (taskId, runCommandId) => {
+    set((state) => {
+      const task = state.tasks[taskId];
+      if (!task) return state;
+
+      const { [runCommandId]: _removed, ...restLogs } = task.runCommandLogs;
+      void _removed;
+
+      return {
+        tasks: {
+          ...state.tasks,
+          [taskId]: {
+            ...task,
+            runCommandLogs: restLogs,
+          },
+        },
+      };
+    });
+  },
+
+  clearAllRunCommandLogs: (taskId) => {
+    set((state) => {
+      const task = state.tasks[taskId];
+      if (!task) return state;
+
+      return {
+        tasks: {
+          ...state.tasks,
+          [taskId]: {
+            ...task,
+            runCommandLogs: {},
           },
         },
       };

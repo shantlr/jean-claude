@@ -1,61 +1,118 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 
 import { api } from '@/lib/api';
+import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { RunStatus, PortsInUseErrorData } from '@shared/run-command-types';
 import { isPortsInUseError } from '@shared/run-command-types';
 
-export function useRunCommands(projectId: string, workingDir: string) {
+export function useRunCommands({
+  taskId,
+  projectId,
+  workingDir,
+}: {
+  taskId: string;
+  projectId: string;
+  workingDir: string;
+}) {
   const [status, setStatus] = useState<RunStatus | null>(null);
   const [portsInUseError, setPortsInUseError] =
     useState<PortsInUseErrorData | null>(null);
-  const [isStarting, setIsStarting] = useState(false);
-  const [isStopping, setIsStopping] = useState(false);
+  const [isStartingCommandId, setIsStartingCommandId] = useState<string | null>(
+    null,
+  );
+  const [isStoppingCommandId, setIsStoppingCommandId] = useState<string | null>(
+    null,
+  );
+  const [pendingStartCommandId, setPendingStartCommandId] = useState<
+    string | null
+  >(null);
 
-  // Fetch initial status
-  useEffect(() => {
-    api.runCommands.getStatus(projectId).then(setStatus);
-  }, [projectId]);
+  const appendRunCommandLine = useTaskMessagesStore(
+    (state) => state.appendRunCommandLine,
+  );
+  const clearRunCommandLogs = useTaskMessagesStore(
+    (state) => state.clearRunCommandLogs,
+  );
 
-  // Subscribe to status changes
   useEffect(() => {
-    const unsubscribe = api.runCommands.onStatusChange(
-      (changedProjectId, newStatus) => {
-        if (changedProjectId === projectId) {
+    api.runCommands.getStatus(taskId).then(setStatus);
+  }, [taskId]);
+
+  useEffect(() => {
+    const unsubscribeStatus = api.runCommands.onStatusChange(
+      (changedTaskId, newStatus) => {
+        if (changedTaskId === taskId) {
           setStatus(newStatus);
         }
       },
     );
-    return unsubscribe;
-  }, [projectId]);
 
-  const start = useCallback(async () => {
-    setIsStarting(true);
-    setPortsInUseError(null);
-    try {
-      const result = await api.runCommands.start(projectId, workingDir);
-      if (isPortsInUseError(result)) {
-        setPortsInUseError(result);
-      } else {
-        setStatus(result);
+    const unsubscribeLog = api.runCommands.onLog(
+      (changedTaskId, runCommandId, stream, line) => {
+        if (changedTaskId !== taskId) {
+          return;
+        }
+
+        appendRunCommandLine(taskId, runCommandId, stream, line);
+      },
+    );
+
+    return () => {
+      unsubscribeStatus();
+      unsubscribeLog();
+    };
+  }, [appendRunCommandLine, taskId]);
+
+  const startCommand = useCallback(
+    async (runCommandId: string) => {
+      setIsStartingCommandId(runCommandId);
+      setPortsInUseError(null);
+      setPendingStartCommandId(runCommandId);
+
+      const wasStartedBefore =
+        status?.commands.some((command) => command.id === runCommandId) ??
+        false;
+      if (wasStartedBefore) {
+        clearRunCommandLogs(taskId, runCommandId);
       }
-    } finally {
-      setIsStarting(false);
-    }
-  }, [projectId, workingDir]);
 
-  const stop = useCallback(async () => {
-    setIsStopping(true);
-    try {
-      await api.runCommands.stop(projectId);
-    } finally {
-      setIsStopping(false);
-    }
-  }, [projectId]);
+      try {
+        const result = await api.runCommands.startCommand({
+          taskId,
+          projectId,
+          workingDir,
+          runCommandId,
+        });
+
+        if (isPortsInUseError(result)) {
+          setPortsInUseError(result);
+          return;
+        }
+
+        setStatus(result);
+        setPendingStartCommandId(null);
+      } finally {
+        setIsStartingCommandId(null);
+      }
+    },
+    [taskId, projectId, workingDir, clearRunCommandLogs, status],
+  );
+
+  const stopCommand = useCallback(
+    async (runCommandId: string) => {
+      setIsStoppingCommandId(runCommandId);
+      try {
+        await api.runCommands.stopCommand({ taskId, runCommandId });
+      } finally {
+        setIsStoppingCommandId(null);
+      }
+    },
+    [taskId],
+  );
 
   const confirmKillPorts = useCallback(async () => {
-    if (!portsInUseError) return;
+    if (!portsInUseError || !pendingStartCommandId) return;
 
-    // Kill ports for each affected command
     const commandIds = [
       ...new Set(portsInUseError.portsInUse.map((p) => p.commandId)),
     ];
@@ -64,22 +121,30 @@ export function useRunCommands(projectId: string, workingDir: string) {
     }
 
     setPortsInUseError(null);
-
-    // Retry start
-    await start();
-  }, [projectId, portsInUseError, start]);
+    await startCommand(pendingStartCommandId);
+  }, [projectId, portsInUseError, pendingStartCommandId, startCommand]);
 
   const dismissPortsError = useCallback(() => {
     setPortsInUseError(null);
+    setPendingStartCommandId(null);
   }, []);
+
+  const statusByCommandId = useMemo(() => {
+    const byId: Record<string, RunStatus['commands'][number]> = {};
+    for (const commandStatus of status?.commands ?? []) {
+      byId[commandStatus.id] = commandStatus;
+    }
+    return byId;
+  }, [status]);
 
   return {
     status,
+    statusByCommandId,
     isRunning: status?.isRunning ?? false,
-    isStarting,
-    isStopping,
-    start,
-    stop,
+    isStartingCommandId,
+    isStoppingCommandId,
+    startCommand,
+    stopCommand,
     portsInUseError,
     confirmKillPorts,
     dismissPortsError,

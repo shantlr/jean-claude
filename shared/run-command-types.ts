@@ -27,6 +27,15 @@ export interface RunStatus {
   commands: CommandRunStatus[];
 }
 
+export type RunCommandLogStream = 'stdout' | 'stderr';
+
+export interface RunCommandLogEvent {
+  taskId: string;
+  runCommandId: string;
+  stream: RunCommandLogStream;
+  line: string;
+}
+
 export interface PortInUse {
   port: number;
   commandId: string;

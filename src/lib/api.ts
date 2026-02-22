@@ -568,19 +568,32 @@ export interface Api {
     delete: (id: string) => Promise<void>;
   };
   runCommands: {
-    start: (
-      projectId: string,
-      workingDir: string,
-    ) => Promise<RunStatus | PortsInUseErrorData>;
-    stop: (projectId: string) => Promise<void>;
-    getStatus: (projectId: string) => Promise<RunStatus>;
+    startCommand: (params: {
+      taskId: string;
+      projectId: string;
+      workingDir: string;
+      runCommandId: string;
+    }) => Promise<RunStatus | PortsInUseErrorData>;
+    stopCommand: (params: {
+      taskId: string;
+      runCommandId: string;
+    }) => Promise<void>;
+    getStatus: (taskId: string) => Promise<RunStatus>;
     killPortsForCommand: (
       projectId: string,
       commandId: string,
     ) => Promise<void>;
     getPackageScripts: (projectPath: string) => Promise<PackageScriptsResult>;
     onStatusChange: (
-      callback: (projectId: string, status: RunStatus) => void,
+      callback: (taskId: string, status: RunStatus) => void,
+    ) => () => void;
+    onLog: (
+      callback: (
+        taskId: string,
+        runCommandId: string,
+        stream: 'stdout' | 'stderr',
+        line: string,
+      ) => void,
     ) => () => void;
   };
   globalPrompt: {
@@ -896,11 +909,11 @@ export const api: Api = hasWindowApi
         delete: async () => {},
       },
       runCommands: {
-        start: async () => ({
+        startCommand: async () => ({
           isRunning: false,
           commands: [],
         }),
-        stop: async () => {},
+        stopCommand: async () => {},
         getStatus: async () => ({
           isRunning: false,
           commands: [],
@@ -913,6 +926,7 @@ export const api: Api = hasWindowApi
           workspacePackages: [],
         }),
         onStatusChange: () => () => {},
+        onLog: () => () => {},
       },
       globalPrompt: {
         onShow: () => () => {},

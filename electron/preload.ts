@@ -324,15 +324,22 @@ contextBridge.exposeInMainWorld('api', {
     delete: (id: string) => ipcRenderer.invoke('project:commands:delete', id),
   },
   runCommands: {
-    start: (projectId: string, workingDir: string) =>
-      ipcRenderer.invoke('project:commands:run:start', {
-        projectId,
-        workingDir,
+    startCommand: (params: {
+      taskId: string;
+      projectId: string;
+      workingDir: string;
+      runCommandId: string;
+    }) =>
+      ipcRenderer.invoke('project:commands:run:startCommand', {
+        taskId: params.taskId,
+        projectId: params.projectId,
+        workingDir: params.workingDir,
+        runCommandId: params.runCommandId,
       }),
-    stop: (projectId: string) =>
-      ipcRenderer.invoke('project:commands:run:stop', projectId),
-    getStatus: (projectId: string) =>
-      ipcRenderer.invoke('project:commands:run:getStatus', projectId),
+    stopCommand: (params: { taskId: string; runCommandId: string }) =>
+      ipcRenderer.invoke('project:commands:run:stopCommand', params),
+    getStatus: (taskId: string) =>
+      ipcRenderer.invoke('project:commands:run:getStatus', taskId),
     killPortsForCommand: (projectId: string, commandId: string) =>
       ipcRenderer.invoke('project:commands:run:killPortsForCommand', {
         projectId,
@@ -340,17 +347,34 @@ contextBridge.exposeInMainWorld('api', {
       }),
     getPackageScripts: (projectPath: string) =>
       ipcRenderer.invoke('project:commands:run:getPackageScripts', projectPath),
-    onStatusChange: (
-      callback: (projectId: string, status: unknown) => void,
-    ) => {
-      const handler = (_: unknown, projectId: string, status: unknown) =>
-        callback(projectId, status);
+    onStatusChange: (callback: (taskId: string, status: unknown) => void) => {
+      const handler = (_: unknown, taskId: string, status: unknown) =>
+        callback(taskId, status);
       ipcRenderer.on('project:commands:run:statusChange', handler);
       return () =>
         ipcRenderer.removeListener(
           'project:commands:run:statusChange',
           handler,
         );
+    },
+    onLog: (
+      callback: (
+        taskId: string,
+        runCommandId: string,
+        stream: 'stdout' | 'stderr',
+        line: string,
+      ) => void,
+    ) => {
+      const handler = (
+        _: unknown,
+        taskId: string,
+        runCommandId: string,
+        stream: 'stdout' | 'stderr',
+        line: string,
+      ) => callback(taskId, runCommandId, stream, line);
+      ipcRenderer.on('project:commands:run:log', handler);
+      return () =>
+        ipcRenderer.removeListener('project:commands:run:log', handler);
     },
   },
   globalPrompt: {

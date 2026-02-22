@@ -40,7 +40,12 @@ class NotificationService {
   }
 
   closeForTask(taskId: string): void {
-    this.close(`${taskId}:complete`);
+    const prefix = `${taskId}:`;
+    for (const id of [...this.active.keys()]) {
+      if (id.startsWith(prefix)) {
+        this.close(id);
+      }
+    }
   }
 }
 

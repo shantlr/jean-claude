@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
+import { useTaskMessagesStore } from '@/stores/task-messages';
 import type {
   InteractionMode,
   ModelPreference,
@@ -116,7 +117,10 @@ export function useDeleteTask() {
       id: string;
       deleteWorktree?: boolean;
     }) => api.tasks.delete(id, { deleteWorktree }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+    onSuccess: (_, { id }) => {
+      useTaskMessagesStore.getState().clearAllRunCommandLogs(id);
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
   });
 }
 
@@ -171,6 +175,9 @@ export function useToggleTaskUserCompleted() {
   return useMutation({
     mutationFn: (id: string) => api.tasks.toggleUserCompleted(id),
     onSuccess: (task, id) => {
+      if (task.userCompleted) {
+        useTaskMessagesStore.getState().clearAllRunCommandLogs(id);
+      }
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
       queryClient.invalidateQueries({
         queryKey: ['tasks', { projectId: task.projectId }],

@@ -20,6 +20,10 @@ export type RightPane =
   | {
       type: 'fileExplorer';
       selectedFilePath: string | null;
+    }
+  | {
+      type: 'commandLogs';
+      selectedCommandId: string | null;
     };
 
 interface DiffViewState {
@@ -61,6 +65,11 @@ const MIN_FILE_EXPLORER_TREE_WIDTH = 150;
 const DEFAULT_FILE_EXPLORER_PANE_WIDTH = 300;
 const MIN_FILE_EXPLORER_PANE_WIDTH = 250;
 
+// Constants for run command logs pane width
+const DEFAULT_COMMAND_LOGS_PANE_WIDTH = 520;
+const MIN_COMMAND_LOGS_PANE_WIDTH = 320;
+const MAX_COMMAND_LOGS_PANE_WIDTH = 1200;
+
 // Constants for sidebar width
 const DEFAULT_SIDEBAR_WIDTH = 256; // w-64 equivalent
 const MIN_SIDEBAR_WIDTH = 200;
@@ -90,6 +99,9 @@ interface NavigationState {
   // App-level: file explorer pane width (global setting)
   fileExplorerPaneWidth: number;
 
+  // App-level: run command logs pane width (global setting)
+  commandLogsPaneWidth: number;
+
   // App-level: sidebar content tab ('tasks' or 'prs')
   sidebarTab: 'tasks' | 'prs';
 
@@ -106,6 +118,7 @@ interface NavigationState {
   setDebugMessagesPaneWidth: (width: number) => void;
   setFileExplorerTreeWidth: (width: number) => void;
   setFileExplorerPaneWidth: (width: number) => void;
+  setCommandLogsPaneWidth: (width: number) => void;
   setSidebarTab: (tab: 'tasks' | 'prs') => void;
   setLastTaskForProject: (projectId: string, taskId: string) => void;
   setTaskRightPane: (taskId: string, pane: RightPane | null) => void;
@@ -124,6 +137,7 @@ const useStore = create<NavigationState>()(
       debugMessagesPaneWidth: DEFAULT_DEBUG_MESSAGES_PANE_WIDTH,
       fileExplorerTreeWidth: DEFAULT_FILE_EXPLORER_TREE_WIDTH,
       fileExplorerPaneWidth: DEFAULT_FILE_EXPLORER_PANE_WIDTH,
+      commandLogsPaneWidth: DEFAULT_COMMAND_LOGS_PANE_WIDTH,
       sidebarTab: 'tasks' as 'tasks' | 'prs',
       lastTaskByProject: {},
       taskState: {},
@@ -157,6 +171,14 @@ const useStore = create<NavigationState>()(
       setFileExplorerPaneWidth: (width) =>
         set({
           fileExplorerPaneWidth: Math.max(MIN_FILE_EXPLORER_PANE_WIDTH, width),
+        }),
+
+      setCommandLogsPaneWidth: (width) =>
+        set({
+          commandLogsPaneWidth: Math.min(
+            Math.max(MIN_COMMAND_LOGS_PANE_WIDTH, width),
+            MAX_COMMAND_LOGS_PANE_WIDTH,
+          ),
         }),
 
       setSidebarTab: (tab) => set({ sidebarTab: tab }),
@@ -416,6 +438,25 @@ export function useTaskState(taskId: string) {
     [taskId, setTaskRightPaneAction],
   );
 
+  const openCommandLogs = useCallback(
+    (selectedCommandId: string | null = null) =>
+      setTaskRightPaneAction(taskId, {
+        type: 'commandLogs',
+        selectedCommandId,
+      }),
+    [taskId, setTaskRightPaneAction],
+  );
+
+  const selectCommandLogsTab = useCallback(
+    (commandId: string | null) => {
+      setTaskRightPaneAction(taskId, {
+        type: 'commandLogs',
+        selectedCommandId: commandId,
+      });
+    },
+    [taskId, setTaskRightPaneAction],
+  );
+
   const selectFileExplorerFile = useCallback(
     (filePath: string | null) => {
       setTaskRightPaneAction(taskId, {
@@ -446,7 +487,9 @@ export function useTaskState(taskId: string) {
     openSettings,
     openDebugMessages,
     openFileExplorer,
+    openCommandLogs,
     selectFileExplorerFile,
+    selectCommandLogsTab,
     closeRightPane,
     toggleRightPane,
   };
@@ -570,4 +613,16 @@ export function useFileExplorerPaneWidth() {
   const width = useStore((state) => state.fileExplorerPaneWidth);
   const setWidth = useStore((state) => state.setFileExplorerPaneWidth);
   return { width, setWidth };
+}
+
+// Hook for run command logs pane width
+export function useCommandLogsPaneWidth() {
+  const width = useStore((state) => state.commandLogsPaneWidth);
+  const setWidth = useStore((state) => state.setCommandLogsPaneWidth);
+  return {
+    width,
+    setWidth,
+    minWidth: MIN_COMMAND_LOGS_PANE_WIDTH,
+    maxWidth: MAX_COMMAND_LOGS_PANE_WIDTH,
+  };
 }
