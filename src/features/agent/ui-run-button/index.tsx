@@ -34,9 +34,8 @@ export function RunButton({
     dismissPortsError,
   } = useRunCommands({ taskId, projectId, workingDir });
 
-  const runCommandLogs = useTaskMessagesStore(
-    (state) => state.tasks[taskId]?.runCommandLogs ?? {},
-  );
+  const runCommandLogs =
+    useTaskMessagesStore((state) => state.tasks[taskId]?.runCommandLogs) ?? {};
 
   // Don't show button if no commands configured
   if (commands.length === 0) {

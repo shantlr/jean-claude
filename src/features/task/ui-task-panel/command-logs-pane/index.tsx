@@ -25,9 +25,8 @@ export function CommandLogsPane({
   onClose: () => void;
 }) {
   const { data: commands = [] } = useProjectCommands(projectId);
-  const runCommandLogs = useTaskMessagesStore(
-    (state) => state.tasks[taskId]?.runCommandLogs ?? {},
-  );
+  const runCommandLogs =
+    useTaskMessagesStore((state) => state.tasks[taskId]?.runCommandLogs) ?? {};
   const [status, setStatus] = useState<RunStatus | null>(null);
 
   useEffect(() => {
