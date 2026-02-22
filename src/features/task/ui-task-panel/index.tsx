@@ -49,6 +49,7 @@ import { useSkills } from '@/hooks/use-skills';
 import {
   useTask,
   useDeleteTask,
+  useDeleteWorktree,
   useSetTaskMode,
   useSetTaskModelPreference,
   useClearTaskUserCompleted,
@@ -91,6 +92,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const { data: project } = useProject(projectId ?? '');
   const { data: editorSetting } = useEditorSetting();
   const deleteTask = useDeleteTask();
+  const deleteWorktree = useDeleteWorktree();
   const setTaskMode = useSetTaskMode();
   const addSessionAllowedTool = useAddSessionAllowedTool();
   const removeSessionAllowedTool = useRemoveSessionAllowedTool();
@@ -277,6 +279,44 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     }
   }, [task?.worktreePath, modal]);
 
+  const handleDeleteWorktree = useCallback(() => {
+    if (!task?.worktreePath) return;
+
+    const branchName =
+      task.branchName ?? getBranchFromWorktreePath(task.worktreePath);
+
+    modal.confirm({
+      title: 'Delete Worktree',
+      content: (
+        <div className="space-y-2">
+          <p>
+            This will remove the worktree directory and delete branch{' '}
+            <code className="rounded bg-neutral-800 px-1.5 py-0.5 text-xs text-neutral-300">
+              {branchName}
+            </code>
+            .
+          </p>
+          <p className="text-neutral-400">This action cannot be undone.</p>
+        </div>
+      ),
+      confirmLabel: 'Delete Worktree',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteWorktree.mutateAsync({ taskId });
+        } catch (error) {
+          modal.error({
+            title: 'Failed to Delete Worktree',
+            content:
+              error instanceof Error
+                ? error.message
+                : 'An unknown error occurred while deleting the worktree.',
+          });
+        }
+      },
+    });
+  }, [task?.worktreePath, task?.branchName, taskId, deleteWorktree, modal]);
+
   const handleAllowToolsForSession = useCallback(
     (toolName: string, input: Record<string, unknown>) => {
       addSessionAllowedTool.mutate({ id: taskId, toolName, input });
@@ -401,6 +441,15 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         handleOpenWorktreeInEditor();
       },
     },
+    task?.status !== 'running' &&
+      agentState.status !== 'running' &&
+      !!task?.worktreePath && {
+        label: 'Delete Worktree',
+        section: 'Task',
+        handler: () => {
+          handleDeleteWorktree();
+        },
+      },
     !!task?.pullRequestUrl && {
       label: 'Open Pull Request in Browser',
       section: 'Task',
@@ -618,6 +667,15 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               >
                 Task Settings
               </DropdownItem>
+              {task.worktreePath && !isRunning && (
+                <DropdownItem
+                  icon={<Trash2 />}
+                  variant="danger"
+                  onClick={handleDeleteWorktree}
+                >
+                  Delete Worktree
+                </DropdownItem>
+              )}
               {!isRunning && (
                 <DropdownItem
                   icon={<Trash2 />}

@@ -950,14 +950,30 @@ export function registerIpcHandlers() {
       const project = await ProjectRepository.findById(task.projectId);
       if (!project) return;
 
-      await cleanupWorktree({
-        worktreePath: task.worktreePath,
-        projectPath: project.path,
-        branchCleanup: options?.keepBranch ? 'keep' : 'delete',
-        force: true,
-      });
+      const shouldKeepBranch = options?.keepBranch ?? false;
+      const worktreeExists = await pathExists(task.worktreePath);
 
-      await TaskRepository.update(taskId, { worktreePath: null });
+      if (worktreeExists) {
+        await cleanupWorktree({
+          worktreePath: task.worktreePath,
+          projectPath: project.path,
+          branchName: task.branchName,
+          branchCleanup: shouldKeepBranch ? 'keep' : 'delete',
+          force: true,
+        });
+      } else if (!shouldKeepBranch && task.branchName) {
+        await cleanupMissingWorktree({
+          projectPath: project.path,
+          branchName: task.branchName,
+        });
+      }
+
+      await TaskRepository.update(taskId, {
+        worktreePath: null,
+        branchName: null,
+        startCommitHash: null,
+        sourceBranch: null,
+      });
     },
   );
 

@@ -137,6 +137,11 @@ export function useDeleteWorktree() {
     onSuccess: (_, { taskId }) => {
       queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['worktree-status', taskId] });
+      queryClient.invalidateQueries({ queryKey: ['worktree-diff', taskId] });
+      queryClient.invalidateQueries({
+        queryKey: ['worktree-file-content', taskId],
+      });
     },
   });
 }
