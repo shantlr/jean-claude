@@ -29,6 +29,7 @@ import type {
 } from '@shared/agent-backend-types';
 import type { InteractionMode } from '@shared/types';
 
+import { RawMessageRepository } from '../../../database/repositories';
 import { dbg } from '../../../lib/debug';
 
 import {
@@ -112,6 +113,10 @@ interface OpenCodeSessionState {
 export class OpenCodeBackend implements AgentBackend {
   private sessions = new Map<string, OpenCodeSessionState>();
   private taskContext: AgentTaskContext;
+
+  static async compactRawMessagesForTask(taskId: string): Promise<void> {
+    await RawMessageRepository.compactOpenCodeDeltasForTask(taskId);
+  }
 
   constructor(context: AgentTaskContext) {
     this.taskContext = context;

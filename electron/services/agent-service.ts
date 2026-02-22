@@ -36,6 +36,8 @@ import { dbg } from '../lib/debug';
 import { pathExists } from '../lib/fs';
 
 import { AGENT_BACKEND_CLASSES } from './agent-backends';
+import { ClaudeCodeBackend } from './agent-backends/claude/claude-code-backend';
+import { OpenCodeBackend } from './agent-backends/opencode/opencode-backend';
 import { generateTaskName } from './name-generation-service';
 import { notificationService } from './notification-service';
 import { getEffectivePermissions } from './permission-settings-service';
@@ -903,6 +905,25 @@ class AgentService {
 
   async getMessageCount(taskId: string): Promise<number> {
     return AgentMessageRepository.getMessageCount(taskId);
+  }
+
+  async compactRawMessages(taskId: string): Promise<void> {
+    const task = await TaskRepository.findById(taskId);
+    if (!task) return;
+
+    try {
+      if (task.agentBackend === 'opencode') {
+        await OpenCodeBackend.compactRawMessagesForTask(taskId);
+      } else {
+        await ClaudeCodeBackend.compactRawMessagesForTask(taskId);
+      }
+    } catch (error) {
+      dbg.agent(
+        'Failed compacting raw messages for task %s: %O',
+        taskId,
+        error,
+      );
+    }
   }
 
   async getMessagesWithRawData(taskId: string) {

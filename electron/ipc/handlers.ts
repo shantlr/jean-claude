@@ -395,6 +395,10 @@ export function registerIpcHandlers() {
     // Perform the toggle
     const updatedTask = await TaskRepository.toggleUserCompleted(id);
 
+    if (isCompleting) {
+      await agentService.compactRawMessages(id);
+    }
+
     // Only check for missing worktree when completing (not uncompleting)
     if (isCompleting && taskBefore.worktreePath && taskBefore.branchName) {
       const worktreeExists = await pathExists(taskBefore.worktreePath);

@@ -124,6 +124,10 @@ export class ClaudeCodeBackend implements AgentBackend {
   private sessions = new Map<string, ClaudeSession>();
   private taskContext: AgentTaskContext;
 
+  static async compactRawMessagesForTask(_taskId: string): Promise<void> {
+    // Claude raw events are already coarse enough for storage.
+  }
+
   constructor(context: AgentTaskContext) {
     this.taskContext = context;
   }
