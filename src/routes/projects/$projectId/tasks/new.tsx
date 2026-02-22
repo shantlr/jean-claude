@@ -181,6 +181,8 @@ function NewTask() {
               placeholder="Describe what you want the agent to do... (type / for commands)"
               skills={skills}
               showCommands={false}
+              projectRoot={project?.path ?? null}
+              enableFilePathAutocomplete
               maxHeight={400}
               className="min-h-[200px] border-neutral-700 bg-neutral-800 text-white focus:border-neutral-500"
             />

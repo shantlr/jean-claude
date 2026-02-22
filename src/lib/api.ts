@@ -501,6 +501,7 @@ export interface Api {
       dirPath: string,
       projectRoot: string,
     ) => Promise<{ name: string; path: string; isDirectory: boolean }[] | null>;
+    listProjectFiles: (projectRoot: string) => Promise<string[]>;
   };
   settings: {
     get: <K extends keyof AppSettings>(key: K) => Promise<AppSettings[K]>;
@@ -847,6 +848,7 @@ export const api: Api = hasWindowApi
         readPackageJson: async () => null,
         readFile: async () => null,
         listDirectory: async () => null,
+        listProjectFiles: async () => [],
       },
       settings: {
         get: async () => {

@@ -827,6 +827,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               onQueue={queuePrompt}
               onStop={handleStop}
               contextUsage={contextUsage}
+              projectRoot={task.worktreePath ?? project.path}
             />
           )}
       </div>
@@ -909,6 +910,7 @@ const TaskInputFooter = memo(function TaskInputFooter({
   onQueue,
   onStop,
   contextUsage,
+  projectRoot,
 }: {
   taskId: string;
   isRunning: boolean;
@@ -918,6 +920,7 @@ const TaskInputFooter = memo(function TaskInputFooter({
   onQueue: (message: string) => void;
   onStop: () => Promise<void>;
   contextUsage: ContextUsage;
+  projectRoot: string | null;
 }) {
   const { data: task } = useTask(taskId);
   const { data: skills } = useSkills(taskId);
@@ -994,6 +997,7 @@ const TaskInputFooter = memo(function TaskInputFooter({
         isRunning={isRunning}
         isStopping={isStopping}
         skills={skills}
+        projectRoot={projectRoot}
         value={promptDraft}
         onValueChange={setPromptDraft}
       />

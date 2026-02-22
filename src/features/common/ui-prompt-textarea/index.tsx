@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Loader2, Wand2 } from 'lucide-react';
+import { File, Loader2, Wand2 } from 'lucide-react';
 import {
   useState,
   useRef,
@@ -16,8 +16,14 @@ import type {
   SyntheticEvent,
   TextareaHTMLAttributes,
 } from 'react';
+import { createPortal } from 'react-dom';
 
+import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
 import { useInlineCompletion } from '@/hooks/use-inline-completion';
+import {
+  getFilePathSuggestions,
+  useProjectFilePaths,
+} from '@/hooks/use-project-file-paths';
 import type { Skill } from '@shared/skill-types';
 
 const COMMANDS = [
@@ -25,9 +31,59 @@ const COMMANDS = [
   { command: '/compact', description: 'Compact conversation history' },
 ];
 
+const FILE_SUGGESTION_LIMIT = 8;
+
+function getActiveMentionToken({
+  text,
+  cursorPosition,
+}: {
+  text: string;
+  cursorPosition: number;
+}): MentionToken | null {
+  if (cursorPosition < 0 || cursorPosition > text.length) return null;
+
+  const beforeCursor = text.slice(0, cursorPosition);
+  const mentionStart = beforeCursor.lastIndexOf('@');
+  if (mentionStart < 0) return null;
+
+  const characterBeforeMention =
+    mentionStart > 0 ? text[mentionStart - 1] : undefined;
+  if (characterBeforeMention && !/\s|[([{'"`]/.test(characterBeforeMention)) {
+    return null;
+  }
+
+  let mentionEnd = text.length;
+  for (let index = mentionStart + 1; index < text.length; index++) {
+    if (/\s/.test(text[index])) {
+      mentionEnd = index;
+      break;
+    }
+  }
+
+  if (cursorPosition < mentionStart + 1 || cursorPosition > mentionEnd) {
+    return null;
+  }
+
+  const query = text.slice(mentionStart + 1, cursorPosition);
+  if (/[@\s]/.test(query)) return null;
+
+  return {
+    start: mentionStart,
+    end: mentionEnd,
+    query,
+  };
+}
+
 type DropdownItem =
   | { type: 'command'; command: string; description: string }
-  | { type: 'skill'; skill: Skill };
+  | { type: 'skill'; skill: Skill }
+  | { type: 'file'; filePath: string };
+
+type MentionToken = {
+  start: number;
+  end: number;
+  query: string;
+};
 
 export interface PromptTextareaRef {
   focus: () => void;
@@ -49,6 +105,10 @@ export interface PromptTextareaProps extends Omit<
   showCommands?: boolean;
   /** Enable inline ghost text completion */
   enableCompletion?: boolean;
+  /** Project root for @file path suggestions */
+  projectRoot?: string | null;
+  /** Enable @file path suggestions */
+  enableFilePathAutocomplete?: boolean;
 }
 
 export const PromptTextarea = forwardRef<
@@ -63,6 +123,8 @@ export const PromptTextarea = forwardRef<
     onEnterKey,
     showCommands = true,
     enableCompletion = false,
+    projectRoot = null,
+    enableFilePathAutocomplete = false,
     className,
     onKeyDown: externalOnKeyDown,
     ...textareaProps
@@ -71,9 +133,6 @@ export const PromptTextarea = forwardRef<
 ) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [dropdownDismissed, setDropdownDismissed] = useState(false);
-  const [dropdownPosition, setDropdownPosition] = useState<'top' | 'bottom'>(
-    'top',
-  );
   const [cursorPosition, setCursorPosition] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -90,9 +149,41 @@ export const PromptTextarea = forwardRef<
     },
   }));
 
-  // Check if we should show the dropdown
-  const showDropdown = value.startsWith('/') && !dropdownDismissed;
+  const activeMentionToken = useMemo(
+    () =>
+      enableFilePathAutocomplete
+        ? getActiveMentionToken({ text: value, cursorPosition })
+        : null,
+    [enableFilePathAutocomplete, value, cursorPosition],
+  );
+
+  const showMentionDropdown = !!activeMentionToken && !dropdownDismissed;
+  const showSlashDropdown =
+    value.startsWith('/') && !showMentionDropdown && !dropdownDismissed;
+  const showDropdown = showMentionDropdown || showSlashDropdown;
+  const dropdownPosition = useDropdownPosition({
+    isOpen: showDropdown,
+    triggerRef: containerRef,
+    side: 'top',
+    align: 'left',
+  });
   const searchText = value.slice(1).toLowerCase();
+
+  const { filePaths, isLoading: isLoadingFilePaths } = useProjectFilePaths({
+    projectRoot,
+    enabled:
+      enableFilePathAutocomplete && !!projectRoot && !!activeMentionToken,
+  });
+
+  const fileSuggestions = useMemo(() => {
+    if (!showMentionDropdown || !activeMentionToken) return [];
+
+    return getFilePathSuggestions({
+      filePaths,
+      query: activeMentionToken.query,
+      limit: FILE_SUGGESTION_LIMIT,
+    });
+  }, [showMentionDropdown, activeMentionToken, filePaths]);
 
   // Inline completion hook — paused when slash dropdown is open
   const {
@@ -106,22 +197,13 @@ export const PromptTextarea = forwardRef<
     enabled: enableCompletion && !showDropdown,
   });
 
-  // Determine dropdown position based on available space
-  useEffect(() => {
-    if (!showDropdown || !containerRef.current) return;
-
-    const container = containerRef.current;
-    const rect = container.getBoundingClientRect();
-    const spaceAbove = rect.top;
-    const dropdownMaxHeight = 320; // max-h-80 = 20rem = 320px
-
-    // If not enough space above, show below
-    setDropdownPosition(spaceAbove < dropdownMaxHeight ? 'bottom' : 'top');
-  }, [showDropdown]);
-
-  // Filter commands and skills based on what user typed after /
+  // Filter slash commands/skills or @file path suggestions
   const filteredItems = useMemo((): DropdownItem[] => {
-    if (!showDropdown) return [];
+    if (showMentionDropdown) {
+      return fileSuggestions.map((filePath) => ({ type: 'file', filePath }));
+    }
+
+    if (!showSlashDropdown) return [];
 
     const items: DropdownItem[] = [];
 
@@ -148,7 +230,14 @@ export const PromptTextarea = forwardRef<
     }
 
     return items;
-  }, [showDropdown, searchText, skills, showCommands]);
+  }, [
+    showMentionDropdown,
+    showSlashDropdown,
+    fileSuggestions,
+    searchText,
+    skills,
+    showCommands,
+  ]);
 
   // Reset selected index when filtered items change
   useEffect(() => {
@@ -169,7 +258,9 @@ export const PromptTextarea = forwardRef<
   // Track previous value to detect backspace
   const prevValueRef = useRef(value);
   useEffect(() => {
-    if (dropdownDismissed && value.startsWith('/')) {
+    const hasDropdownTrigger = !!activeMentionToken || value.startsWith('/');
+
+    if (dropdownDismissed && hasDropdownTrigger) {
       // Re-show dropdown when user deletes characters (backspace)
       if (value.length < prevValueRef.current.length) {
         setDropdownDismissed(false);
@@ -179,34 +270,55 @@ export const PromptTextarea = forwardRef<
       setDropdownDismissed(false);
     }
     prevValueRef.current = value;
-  }, [value, dropdownDismissed]);
+  }, [value, dropdownDismissed, activeMentionToken]);
 
   // Close dropdown on click outside
   useEffect(() => {
-    if (!showDropdown || filteredItems.length === 0) return;
+    if (!showDropdown) return;
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
+      const target = event.target as Node;
+      const clickedInsideContainer = !!containerRef.current?.contains(target);
+      const clickedInsideDropdown = !!dropdownRef.current?.contains(target);
+      if (!clickedInsideContainer && !clickedInsideDropdown) {
         setDropdownDismissed(true);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showDropdown, filteredItems.length]);
+  }, [showDropdown]);
 
   const selectItem = useCallback(
     (item: DropdownItem) => {
-      const command =
-        item.type === 'command' ? item.command : `/${item.skill.name}`;
-      onChange(command);
+      if (item.type === 'file') {
+        if (!activeMentionToken) return;
+
+        const mentionValue = `@${item.filePath}`;
+        const before = value.slice(0, activeMentionToken.start);
+        const after = value.slice(activeMentionToken.end);
+        const needsSpace = after.length === 0 || !/^\s/.test(after);
+        const insertion = needsSpace ? `${mentionValue} ` : mentionValue;
+        const nextValue = `${before}${insertion}${after}`;
+        onChange(nextValue);
+
+        const nextCursorPosition = before.length + insertion.length;
+        setCursorPosition(nextCursorPosition);
+        requestAnimationFrame(() => {
+          if (!textareaRef.current) return;
+          textareaRef.current.selectionStart = nextCursorPosition;
+          textareaRef.current.selectionEnd = nextCursorPosition;
+        });
+      } else {
+        const command =
+          item.type === 'command' ? item.command : `/${item.skill.name}`;
+        onChange(command);
+      }
+
       setDropdownDismissed(true);
       textareaRef.current?.focus();
     },
-    [onChange],
+    [activeMentionToken, onChange, value],
   );
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -309,107 +421,166 @@ export const PromptTextarea = forwardRef<
     setCursorPosition(e.currentTarget.selectionStart);
   };
 
-  // Separate commands and skills for grouped display
+  // Separate item types for grouped display
+  const fileItems = filteredItems.filter((item) => item.type === 'file');
   const commandItems = filteredItems.filter((item) => item.type === 'command');
   const skillItems = filteredItems.filter((item) => item.type === 'skill');
 
   // Get the flat index for an item (used for selection highlighting)
-  const getItemIndex = (type: 'command' | 'skill', localIndex: number) => {
-    if (type === 'command') return localIndex;
-    return commandItems.length + localIndex;
+  const getItemIndex = (
+    type: 'file' | 'command' | 'skill',
+    localIndex: number,
+  ) => {
+    if (type === 'file') return localIndex;
+    if (type === 'command') return fileItems.length + localIndex;
+    return fileItems.length + commandItems.length + localIndex;
   };
 
   return (
     <div ref={containerRef} className="relative flex flex-1 items-end">
       {/* Autocompletion dropdown */}
-      {showDropdown && filteredItems.length > 0 && (
-        <div
-          ref={dropdownRef}
-          className={clsx(
-            'absolute right-0 left-0 max-h-80 overflow-y-auto rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg',
-            dropdownPosition === 'top' ? 'bottom-full mb-1' : 'top-full mt-1',
-          )}
-        >
-          {/* Commands section */}
-          {commandItems.map((item, localIndex) => {
-            if (item.type !== 'command') return null;
-            const index = getItemIndex('command', localIndex);
-            return (
-              <button
-                key={item.command}
-                type="button"
-                data-index={index}
-                onClick={() => selectItem(item)}
-                onMouseEnter={() => setSelectedIndex(index)}
-                className={clsx(
-                  'w-full px-3 py-1.5 text-left',
-                  index === selectedIndex
-                    ? 'bg-neutral-700'
-                    : 'hover:bg-neutral-700',
-                )}
-              >
-                <div className="text-xs font-medium text-neutral-200">
-                  {item.command}
-                </div>
-                <div className="text-xs text-neutral-400">
-                  {item.description}
-                </div>
-              </button>
-            );
-          })}
+      {showDropdown &&
+        dropdownPosition &&
+        ((showMentionDropdown &&
+          (filteredItems.length > 0 || isLoadingFilePaths)) ||
+          (!showMentionDropdown && filteredItems.length > 0)) &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            className={clsx(
+              'fixed z-50 max-h-80 overflow-y-auto rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg',
+            )}
+            style={{
+              top:
+                dropdownPosition.actualSide === 'bottom'
+                  ? dropdownPosition.top
+                  : undefined,
+              bottom:
+                dropdownPosition.actualSide === 'top'
+                  ? window.innerHeight - dropdownPosition.top
+                  : undefined,
+              left: dropdownPosition.left,
+              width: containerRef.current?.getBoundingClientRect().width,
+              maxHeight: dropdownPosition.maxHeight,
+            }}
+          >
+            {/* File paths */}
+            {fileItems.map((item, localIndex) => {
+              if (item.type !== 'file') return null;
+              const index = getItemIndex('file', localIndex);
 
-          {/* Divider between commands and skills */}
-          {commandItems.length > 0 && skillItems.length > 0 && (
-            <div className="my-1 border-t border-neutral-700" />
-          )}
-
-          {/* Skills section header */}
-          {skillItems.length > 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-500">
-              <Wand2 className="h-3 w-3" aria-hidden />
-              Skills
-            </div>
-          )}
-
-          {/* Skills */}
-          {skillItems.map((item, localIndex) => {
-            if (item.type !== 'skill') return null;
-            const index = getItemIndex('skill', localIndex);
-            const { skill } = item;
-            return (
-              <button
-                key={skill.name}
-                type="button"
-                data-index={index}
-                onClick={() => selectItem(item)}
-                onMouseEnter={() => setSelectedIndex(index)}
-                className={clsx(
-                  'w-full px-3 py-1.5 text-left',
-                  index === selectedIndex
-                    ? 'bg-neutral-700'
-                    : 'hover:bg-neutral-700',
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-neutral-200">
-                    /{skill.name}
-                  </span>
-                  {skill.source !== 'user' && (
-                    <span className="rounded bg-neutral-700 px-1 py-0.5 text-xs text-neutral-400">
-                      {skill.pluginName ?? skill.source}
-                    </span>
+              return (
+                <button
+                  key={item.filePath}
+                  type="button"
+                  data-index={index}
+                  onClick={() => selectItem(item)}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                  className={clsx(
+                    'flex w-full items-center gap-2 px-3 py-1.5 text-left',
+                    index === selectedIndex
+                      ? 'bg-neutral-700'
+                      : 'hover:bg-neutral-700',
                   )}
+                >
+                  <File className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+                  <span className="truncate text-xs text-neutral-200">
+                    {item.filePath}
+                  </span>
+                </button>
+              );
+            })}
+
+            {showMentionDropdown &&
+              isLoadingFilePaths &&
+              fileItems.length === 0 && (
+                <div className="flex items-center gap-2 px-3 py-2 text-xs text-neutral-400">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Loading files...
                 </div>
-                {skill.description && (
-                  <div className="line-clamp-2 text-xs text-neutral-400">
-                    {skill.description}
+              )}
+
+            {/* Commands section */}
+            {commandItems.map((item, localIndex) => {
+              if (item.type !== 'command') return null;
+              const index = getItemIndex('command', localIndex);
+              return (
+                <button
+                  key={item.command}
+                  type="button"
+                  data-index={index}
+                  onClick={() => selectItem(item)}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                  className={clsx(
+                    'w-full px-3 py-1.5 text-left',
+                    index === selectedIndex
+                      ? 'bg-neutral-700'
+                      : 'hover:bg-neutral-700',
+                  )}
+                >
+                  <div className="text-xs font-medium text-neutral-200">
+                    {item.command}
                   </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
+                  <div className="text-xs text-neutral-400">
+                    {item.description}
+                  </div>
+                </button>
+              );
+            })}
+
+            {/* Divider between commands and skills */}
+            {commandItems.length > 0 && skillItems.length > 0 && (
+              <div className="my-1 border-t border-neutral-700" />
+            )}
+
+            {/* Skills section header */}
+            {skillItems.length > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-500">
+                <Wand2 className="h-3 w-3" aria-hidden />
+                Skills
+              </div>
+            )}
+
+            {/* Skills */}
+            {skillItems.map((item, localIndex) => {
+              if (item.type !== 'skill') return null;
+              const index = getItemIndex('skill', localIndex);
+              const { skill } = item;
+              return (
+                <button
+                  key={skill.name}
+                  type="button"
+                  data-index={index}
+                  onClick={() => selectItem(item)}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                  className={clsx(
+                    'w-full px-3 py-1.5 text-left',
+                    index === selectedIndex
+                      ? 'bg-neutral-700'
+                      : 'hover:bg-neutral-700',
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-neutral-200">
+                      /{skill.name}
+                    </span>
+                    {skill.source !== 'user' && (
+                      <span className="rounded bg-neutral-700 px-1 py-0.5 text-xs text-neutral-400">
+                        {skill.pluginName ?? skill.source}
+                      </span>
+                    )}
+                  </div>
+                  {skill.description && (
+                    <div className="line-clamp-2 text-xs text-neutral-400">
+                      {skill.description}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>,
+          document.body,
+        )}
       <textarea
         ref={textareaRef}
         value={value}

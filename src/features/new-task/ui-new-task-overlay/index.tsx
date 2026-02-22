@@ -21,10 +21,15 @@ import {
 } from '@/features/agent/ui-backend-selector';
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
 import { ModelSelector } from '@/features/agent/ui-model-selector';
+import {
+  PromptTextarea,
+  type PromptTextareaRef,
+} from '@/features/common/ui-prompt-textarea';
 import { useBackendModels } from '@/hooks/use-backend-models';
 import { useDeleteProjectTodo } from '@/hooks/use-project-todos';
 import { useProjects, useProjectBranches } from '@/hooks/use-projects';
 import { useBackendsSetting } from '@/hooks/use-settings';
+import { useProjectSkills } from '@/hooks/use-skills';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
 import { useWorkItems, useIterations } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
@@ -146,7 +151,8 @@ export function NewTaskOverlay({
   );
   const markJobFailed = useBackgroundJobsStore((state) => state.markJobFailed);
 
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const searchInputRef = useRef<HTMLTextAreaElement>(null);
+  const promptInputRef = useRef<PromptTextareaRef>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [highlightedWorkItemId, setHighlightedWorkItemId] = useState<
     string | null
@@ -182,6 +188,9 @@ export function NewTaskOverlay({
         ? (projects.find((p) => p.id === selectedProjectId) ?? null)
         : null,
     [selectedProjectId, projects],
+  );
+  const { data: projectSkills = [] } = useProjectSkills(
+    selectedProjectId ?? undefined,
   );
 
   // Fetch work items for the selected project (used for navigation)
@@ -242,7 +251,7 @@ export function NewTaskOverlay({
 
     // In prompt mode, need text and a project
     if (inputMode === 'prompt') {
-      return !!(draft?.prompt?.trim() ?? '') && !!selectedProjectId;
+      return !!(draft.prompt ?? '').trim() && !!selectedProjectId;
     }
 
     return false;
@@ -423,7 +432,7 @@ export function NewTaskOverlay({
       if (inputMode === 'search' && searchStep === 'compose') {
         // Expand the template to get the final prompt
         finalPrompt = expandTemplate(promptTemplate, selectedWorkItems);
-        workItemIds = draft.workItemIds ?? [];
+        workItemIds = draft.workItemIds ?? null;
         workItemUrls = selectedWorkItems.map((wi) => wi.url);
       } else {
         finalPrompt = draft.prompt ?? '';
@@ -461,7 +470,13 @@ export function NewTaskOverlay({
       clearDraft();
 
       // Refocus the input for the next task
-      setTimeout(() => inputRef.current?.focus(), 50);
+      setTimeout(() => {
+        if (inputMode === 'prompt') {
+          promptInputRef.current?.focus();
+          return;
+        }
+        searchInputRef.current?.focus();
+      }, 50);
 
       void createTaskMutation
         .mutateAsync({
@@ -547,10 +562,18 @@ export function NewTaskOverlay({
     }
   }, [inputMode, searchStep, backToSelect, onClose]);
 
+  // Show search input only in select step
+  const showSearchInput = inputMode === 'search' && searchStep === 'select';
+  const showPromptInput = inputMode === 'prompt';
+
   // Focus input on mount
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (showPromptInput) {
+      promptInputRef.current?.focus();
+      return;
+    }
+    searchInputRef.current?.focus();
+  }, [showPromptInput]);
 
   // Handle input change
   const handleInputChange = useCallback(
@@ -566,6 +589,16 @@ export function NewTaskOverlay({
       }
     },
     [inputMode, updateDraft, createTaskMutation],
+  );
+
+  const handlePromptChange = useCallback(
+    (nextPrompt: string) => {
+      if (createTaskMutation.isError) {
+        createTaskMutation.reset();
+      }
+      updateDraft({ prompt: nextPrompt });
+    },
+    [createTaskMutation, updateDraft],
   );
 
   // Get current input value
@@ -674,10 +707,6 @@ export function NewTaskOverlay({
     [inputMode, searchStep],
   );
 
-  // Show search input only in select step
-  const showSearchInput = inputMode === 'search' && searchStep === 'select';
-  const showPromptInput = inputMode === 'prompt';
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
@@ -692,14 +721,30 @@ export function NewTaskOverlay({
         {(showSearchInput || showPromptInput) && (
           <div className="flex shrink-0 items-start border-b border-neutral-700 px-4 py-3">
             <div className="flex flex-1 flex-col">
-              <textarea
-                ref={inputRef}
-                value={inputValue}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                placeholder={getPlaceholder(inputMode)}
-                className="placeholder:text-muted-foreground field-sizing-content max-h-[40svh] min-h-[60px] flex-1 resize-none bg-transparent text-sm outline-none"
-              />
+              {showSearchInput ? (
+                <textarea
+                  ref={searchInputRef}
+                  value={inputValue}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder={getPlaceholder(inputMode)}
+                  className="placeholder:text-muted-foreground field-sizing-content max-h-[40svh] min-h-[60px] flex-1 resize-none bg-transparent text-sm outline-none"
+                />
+              ) : (
+                <PromptTextarea
+                  ref={promptInputRef}
+                  value={inputValue}
+                  onChange={handlePromptChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder={getPlaceholder(inputMode)}
+                  skills={projectSkills}
+                  showCommands={false}
+                  maxHeight={320}
+                  projectRoot={selectedProject?.path ?? null}
+                  enableFilePathAutocomplete
+                  className="min-h-[60px] border-none bg-transparent px-0 py-0 text-sm text-neutral-200 focus:border-none focus:ring-0"
+                />
+              )}
             </div>
           </div>
         )}

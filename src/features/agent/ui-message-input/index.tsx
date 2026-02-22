@@ -22,6 +22,7 @@ export function MessageInput({
   isRunning = false,
   isStopping = false,
   skills = [],
+  projectRoot = null,
   value: externalValue,
   onValueChange,
 }: {
@@ -33,6 +34,7 @@ export function MessageInput({
   isRunning?: boolean;
   isStopping?: boolean;
   skills?: Skill[];
+  projectRoot?: string | null;
   value?: string;
   onValueChange?: (value: string) => void;
 }) {
@@ -110,6 +112,8 @@ export function MessageInput({
         onEnterKey={handleEnterKey}
         onKeyDown={handleKeyDown}
         enableCompletion={completionSetting?.enabled ?? false}
+        projectRoot={projectRoot}
+        enableFilePathAutocomplete
         placeholder={
           isRunning
             ? 'Type to queue a follow-up... (Esc twice to stop)'
