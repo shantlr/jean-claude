@@ -264,25 +264,34 @@ button {
     color-mix(in srgb, var(--color-teal-500) 50%, transparent);
 }
 
-/* Animated gradient border for completed-but-unread tasks (green-to-gold) */
+@keyframes completed-unread-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0
+      color-mix(in srgb, var(--color-emerald-500) 22%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 10px 1px
+      color-mix(in srgb, var(--color-cyan-400) 35%, transparent);
+  }
+}
+
+/* Pulsing border for completed-but-unread tasks (emerald-to-cyan) */
 @utility completed-unread-border {
   position: relative;
   isolation: isolate;
   background:
     linear-gradient(var(--color-neutral-800), var(--color-neutral-800))
       padding-box,
-    conic-gradient(
-        from var(--gradient-angle),
-        var(--color-green-500),
-        var(--color-amber-400),
-        var(--color-green-300),
-        var(--color-green-500)
+    linear-gradient(
+        120deg,
+        var(--color-emerald-500),
+        var(--color-cyan-400),
+        var(--color-emerald-400)
       )
       border-box;
   border: 1px solid transparent;
-  animation: gradient-rotate 2s linear infinite;
-  box-shadow: 0 0 6px 0px
-    color-mix(in srgb, var(--color-green-500) 35%, transparent);
+  animation: completed-unread-breathe 2.6s ease-in-out infinite;
 }
 
 @utility completed-unread-border-selected {
@@ -291,16 +300,13 @@ button {
   background:
     linear-gradient(var(--color-neutral-700), var(--color-neutral-700))
       padding-box,
-    conic-gradient(
-        from var(--gradient-angle),
-        var(--color-green-500),
-        var(--color-amber-400),
-        var(--color-green-300),
-        var(--color-green-500)
+    linear-gradient(
+        120deg,
+        var(--color-emerald-500),
+        var(--color-cyan-400),
+        var(--color-emerald-400)
       )
       border-box;
   border: 1px solid transparent;
-  animation: gradient-rotate 2s linear infinite;
-  box-shadow: 0 0 6px 0px
-    color-mix(in srgb, var(--color-green-500) 50%, transparent);
+  animation: completed-unread-breathe 2.6s ease-in-out infinite;
 }
