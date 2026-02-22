@@ -242,7 +242,7 @@ export function NewTaskOverlay({
 
     // In prompt mode, need text and a project
     if (inputMode === 'prompt') {
-      return !!draft.prompt.trim() && !!selectedProjectId;
+      return !!(draft?.prompt?.trim() ?? '') && !!selectedProjectId;
     }
 
     return false;
@@ -307,7 +307,9 @@ export function NewTaskOverlay({
 
   const availableModelPreferences = useMemo(
     () =>
-      getModelsForBackend(currentBackend, dynamicModels).map((model) => model.value),
+      getModelsForBackend(currentBackend, dynamicModels).map(
+        (model) => model.value,
+      ),
     [currentBackend, dynamicModels],
   );
 
@@ -421,10 +423,10 @@ export function NewTaskOverlay({
       if (inputMode === 'search' && searchStep === 'compose') {
         // Expand the template to get the final prompt
         finalPrompt = expandTemplate(promptTemplate, selectedWorkItems);
-        workItemIds = draft.workItemIds;
+        workItemIds = draft.workItemIds ?? [];
         workItemUrls = selectedWorkItems.map((wi) => wi.url);
       } else {
-        finalPrompt = draft.prompt;
+        finalPrompt = draft.prompt ?? '';
       }
 
       const backlogTodoId = draft.backlogTodoId ?? null;
