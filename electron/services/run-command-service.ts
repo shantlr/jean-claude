@@ -20,6 +20,11 @@ import { dbg } from '../lib/debug';
 
 const execAsync = promisify(exec);
 
+function getProcessEnvWithoutNodeEnv(): NodeJS.ProcessEnv {
+  const { NODE_ENV: _nodeEnv, ...env } = process.env;
+  return env;
+}
+
 type StatusChangeCallback = (taskId: string, status: RunStatus) => void;
 type LogCallback = (
   taskId: string,
@@ -352,6 +357,7 @@ class RunCommandService {
       cwd: workingDir,
       shell: true,
       stdio: ['ignore', 'pipe', 'pipe'],
+      env: getProcessEnvWithoutNodeEnv(),
       // Create a new process group so we can kill the shell AND its children
       detached: true,
     });

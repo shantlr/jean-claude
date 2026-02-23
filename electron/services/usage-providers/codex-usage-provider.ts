@@ -32,6 +32,11 @@ interface RateLimitsResult {
   rateLimitsByLimitId?: Record<string, RateLimitData>;
 }
 
+function getProcessEnvWithoutNodeEnv(): NodeJS.ProcessEnv {
+  const { NODE_ENV: _nodeEnv, ...env } = process.env;
+  return env;
+}
+
 export class CodexUsageProvider implements BackendUsageProvider {
   private process: ChildProcess | null = null;
   private readline: ReadlineInterface | null = null;
@@ -110,7 +115,7 @@ export class CodexUsageProvider implements BackendUsageProvider {
 
     this.process = spawn('codex', ['app-server'], {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env },
+      env: getProcessEnvWithoutNodeEnv(),
     });
 
     // Parse newline-delimited JSON from stdout
