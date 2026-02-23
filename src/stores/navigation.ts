@@ -1,5 +1,5 @@
 import { useNavigate, useParams, useRouterState } from '@tanstack/react-router';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -135,7 +135,10 @@ interface NavigationState {
   setTaskRightPane: (taskId: string, pane: RightPane | null) => void;
   setTaskViewMode: (taskId: string, mode: TaskViewMode) => void;
   setDiffViewSelectedFile: (taskId: string, filePath: string | null) => void;
-  setFileExplorerSelectedFile: (taskId: string, filePath: string | null) => void;
+  setFileExplorerSelectedFile: (
+    taskId: string,
+    filePath: string | null,
+  ) => void;
   toggleFileExplorerExpandedDir: (taskId: string, dirPath: string) => void;
   clearProjectNavHistoryState: (projectId: string) => void;
   clearTaskNavHistoryState: (taskId: string) => void;
@@ -470,16 +473,17 @@ export function useLastTaskForProject(projectId: string) {
 
 // Hook for per-task state
 export function useTaskState(taskId: string) {
-  const taskState = useStore((state) => {
-    const storedTaskState = state.taskState[taskId];
-    return {
+  const storedTaskState = useStore((state) => {
+    return state.taskState[taskId];
+  });
+  const taskState = useMemo(
+    () => ({
       ...defaultTaskState,
       ...storedTaskState,
-      diffView: {
-        ...(storedTaskState?.diffView ?? defaultDiffViewState),
-      },
-    };
-  });
+      diffView: storedTaskState?.diffView ?? defaultDiffViewState,
+    }),
+    [storedTaskState],
+  );
   const setTaskRightPaneAction = useStore((state) => state.setTaskRightPane);
 
   const setRightPane = useCallback(
@@ -564,7 +568,8 @@ export function useTaskState(taskId: string) {
 
 export function useTaskFileExplorerState(taskId: string) {
   const fileExplorerState = useStore(
-    (state) => state.taskState[taskId]?.fileExplorer ?? defaultFileExplorerState,
+    (state) =>
+      state.taskState[taskId]?.fileExplorer ?? defaultFileExplorerState,
   );
   const setFileExplorerSelectedFileAction = useStore(
     (state) => state.setFileExplorerSelectedFile,

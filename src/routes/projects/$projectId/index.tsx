@@ -1,4 +1,5 @@
 import { createFileRoute, Navigate } from '@tanstack/react-router';
+import { useEffect } from 'react';
 
 import { useProjectTasks } from '@/hooks/use-tasks';
 import { useLastTaskForProject } from '@/stores/navigation';
@@ -12,6 +13,16 @@ function ProjectIndex() {
   const { data: tasks, isLoading } = useProjectTasks(projectId);
   const { lastTaskId, clearTaskNavHistoryState } =
     useLastTaskForProject(projectId);
+
+  const lastTaskNotFound = lastTaskId
+    ? !!tasks?.find((t) => t.id === lastTaskId)
+    : false;
+
+  useEffect(() => {
+    if (lastTaskNotFound) {
+      clearTaskNavHistoryState(lastTaskId);
+    }
+  }, [clearTaskNavHistoryState, lastTaskId, lastTaskNotFound]);
 
   if (isLoading) {
     return (
@@ -27,11 +38,6 @@ function ProjectIndex() {
     const lastTask = lastTaskId ? tasks.find((t) => t.id === lastTaskId) : null;
 
     const targetTaskId = lastTask?.id ?? tasks[0].id;
-
-    // Clean up stale reference if needed
-    if (lastTaskId && !lastTask) {
-      clearTaskNavHistoryState(lastTaskId);
-    }
 
     return (
       <Navigate
