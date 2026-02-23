@@ -3,7 +3,7 @@ import type {
   Part as OcPart,
   Message as OcMessage,
   AssistantMessage as OcAssistantMessage,
-} from '@opencode-ai/sdk';
+} from '@opencode-ai/sdk/v2';
 
 import type { AgentMessage } from '@shared/agent-types';
 import type { NormalizedEntry } from '@shared/normalized-message-v2';

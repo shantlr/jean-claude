@@ -5,7 +5,7 @@
 // - Uses createOpencode() to spawn a server + client on first use
 // - Server is shared across all sessions (one per app instance)
 // - Events received via SSE subscription, filtered by session ID
-// - Permissions handled via client.postSessionIdPermissionsPermissionId()
+// - Permissions handled via client.permission.reply()
 // - Sessions created via client.session.create() + client.session.prompt()
 
 import {
@@ -16,8 +16,8 @@ import {
   type Part as OcPart,
   type Message as OcMessage,
   type AssistantMessage as OcAssistantMessage,
-  type Permission as OcPermission,
-} from '@opencode-ai/sdk';
+  type PermissionRequest as OcPermission,
+} from '@opencode-ai/sdk/v2';
 
 import type {
   AgentBackend,
@@ -139,8 +139,8 @@ export class OpenCodeBackend implements AgentBackend {
       // Try to resume existing session — never fall back to creating a new one
       try {
         const existing = await client.session.get({
-          path: { id: config.sessionId },
-          query: { directory: config.cwd },
+          sessionID: config.sessionId,
+          directory: config.cwd,
         });
         if (existing.data) {
           session = existing.data;
@@ -205,8 +205,8 @@ export class OpenCodeBackend implements AgentBackend {
     try {
       const { client } = await getOrCreateServer();
       await client.session.abort({
-        path: { id: sessionId },
-        query: { directory: state.cwd },
+        sessionID: sessionId,
+        directory: state.cwd,
       });
     } catch (error) {
       dbg.agent('Error aborting OpenCode session %s: %O', sessionId, error);
@@ -244,10 +244,10 @@ export class OpenCodeBackend implements AgentBackend {
     }
 
     try {
-      await client.postSessionIdPermissionsPermissionId({
-        path: { id: sessionId, permissionID: requestId },
-        query: { directory: state.cwd },
-        body: { response: ocResponse },
+      await client.permission.reply({
+        requestID: requestId,
+        directory: state.cwd,
+        reply: ocResponse,
       });
     } catch (error) {
       dbg.agent(
@@ -267,7 +267,7 @@ export class OpenCodeBackend implements AgentBackend {
 
   async respondToQuestion(
     sessionId: string,
-    _requestId: string,
+    requestId: string,
     answer: Record<string, string>,
   ): Promise<void> {
     const state = this.sessions.get(sessionId);
@@ -276,34 +276,28 @@ export class OpenCodeBackend implements AgentBackend {
       return;
     }
 
-    // Format the user's answers as a human-readable follow-up prompt
-    const answerLines = Object.entries(answer)
-      .map(([question, response]) => `"${question}"="${response}"`)
-      .join(', ');
-    const promptText = `User answered: ${answerLines}`;
-
     // Clear pending question state
     state.pendingQuestionCallId = null;
 
-    // Send the answer as a follow-up prompt
     const { client } = await getOrCreateServer();
     dbg.agent(
-      'OpenCodeBackend.respondToQuestion sending follow-up prompt for %s',
+      'OpenCodeBackend.respondToQuestion sending reply for %s',
       sessionId,
     );
 
-    // Fire and forget — events arrive via SSE stream which is still running.
-    client.session
-      .prompt({
-        path: { id: sessionId },
-        query: { directory: state.cwd },
-        body: {
-          parts: [{ type: 'text' as const, text: promptText }],
-        },
+    // Map Record<string, string> answers to Array<QuestionAnswer>
+    // QuestionAnswer = Array<string> — each answer is the selected option(s)
+    const answers = Object.values(answer).map((value) => [value]);
+
+    client.question
+      .reply({
+        requestID: requestId,
+        directory: state.cwd,
+        answers,
       })
       .catch((error) => {
         dbg.agent(
-          'OpenCodeBackend.respondToQuestion prompt error for %s: %O',
+          'OpenCodeBackend.respondToQuestion reply error for %s: %O',
           sessionId,
           error,
         );
@@ -338,8 +332,7 @@ export class OpenCodeBackend implements AgentBackend {
     config: AgentBackendConfig,
   ): Promise<OcSession> {
     const result = await client.session.create({
-      query: { directory: config.cwd },
-      body: {},
+      directory: config.cwd,
     });
 
     if (!result.data) {
@@ -390,7 +383,7 @@ export class OpenCodeBackend implements AgentBackend {
 
     // Subscribe to event stream
     const subscription = await client.event.subscribe({
-      query: { directory: state.cwd },
+      directory: state.cwd,
     });
 
     // Track whether we've received the prompt response
@@ -401,17 +394,14 @@ export class OpenCodeBackend implements AgentBackend {
 
     // Send the initial prompt (fire and forget — events arrive via SSE)
     const model = this.parseModel(config.model);
-    const promptBody = {
-      parts: [{ type: 'text' as const, text: prompt }],
-      ...(model ? { model } : {}),
-      agent: this.getPrimaryAgentName(config.interactionMode),
-    };
 
     const promptPromise = client.session
       .prompt({
-        path: { id: sessionId },
-        query: { directory: state.cwd },
-        body: promptBody,
+        sessionID: sessionId,
+        directory: state.cwd,
+        parts: [{ type: 'text' as const, text: prompt }],
+        ...(model ? { model } : {}),
+        agent: this.getPrimaryAgentName(config.interactionMode),
       })
       .then(async (result) => {
         promptComplete = true;

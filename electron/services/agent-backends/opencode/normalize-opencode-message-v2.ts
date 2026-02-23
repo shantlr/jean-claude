@@ -16,13 +16,13 @@ import type {
   AssistantMessage as OcAssistantMessage,
   UserMessage as OcUserMessage,
   Session as OcSession,
-  Permission as OcPermission,
+  PermissionRequest as OcPermission,
   TextPart,
   ToolPart,
   CompactionPart,
   ToolStateCompleted,
   ToolStateError,
-} from '@opencode-ai/sdk';
+} from '@opencode-ai/sdk/v2';
 
 import type {
   NormalizedEntry,
@@ -136,16 +136,16 @@ function normalizeEvent(
 
     // --- Permissions ---
 
-    case 'permission.updated': {
+    case 'permission.asked': {
       const permission = event.properties as OcPermission;
       return [
         {
           type: 'permission-request',
           request: {
             requestId: permission.id,
-            toolName: permission.type,
+            toolName: permission.permission,
             input: permission.metadata,
-            description: permission.title,
+            description: permission.permission,
           },
         },
       ];
