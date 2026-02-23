@@ -10,6 +10,7 @@ import {
   GitCompare,
   MoreHorizontal,
   FolderTree,
+  Bug,
 } from 'lucide-react';
 import { useEffect, useState, useCallback, useRef, memo } from 'react';
 
@@ -363,6 +364,14 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     }
   }, [rightPane, closeRightPane, openSettings]);
 
+  const handleToggleDebugMessagesPane = useCallback(() => {
+    if (rightPane?.type === 'debugMessages') {
+      closeRightPane();
+      return;
+    }
+    openDebugMessages();
+  }, [rightPane, closeRightPane, openDebugMessages]);
+
   const handleMergeStarted = useCallback(() => {
     // Close the diff view when merge is dispatched (worktree will be deleted)
     if (isDiffViewOpen) {
@@ -417,11 +426,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           : 'Open Raw Message Pane',
       section: 'Task',
       handler: () => {
-        if (rightPane?.type === 'debugMessages') {
-          closeRightPane();
-          return;
-        }
-        openDebugMessages();
+        handleToggleDebugMessagesPane();
       },
     },
     {
@@ -675,6 +680,13 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                 checked={rightPane?.type === 'settings'}
               >
                 Task Settings
+              </DropdownItem>
+              <DropdownItem
+                icon={<Bug />}
+                onClick={handleToggleDebugMessagesPane}
+                checked={rightPane?.type === 'debugMessages'}
+              >
+                Raw Messages
               </DropdownItem>
               {task.worktreePath && !isRunning && (
                 <DropdownItem
