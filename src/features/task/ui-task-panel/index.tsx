@@ -82,6 +82,7 @@ import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
 import { DebugMessagesPane } from './debug-messages-pane';
 import { DeleteTaskDialog } from './delete-task-dialog';
 import { FileExplorerPane } from './file-explorer-pane';
+import { TaskPendingNoteInput } from './task-pending-note-input';
 import { TaskSettingsPane } from './task-settings-pane';
 
 export function TaskPanel({ taskId }: { taskId: string }) {
@@ -156,7 +157,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   } = useAgentControls(taskId);
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-
   // Ref for the task panel container (used by shrink-to-target animation)
   const taskPanelRef = useRef<HTMLDivElement>(null);
   const overflowMenuRef = useRef<{ toggle: () => void } | null>(null);
@@ -514,10 +514,16 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             TASK_PANEL_HEADER_HEIGHT_CLS,
           )}
         >
-          {/* Left: Task title */}
-          <h1 className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-200">
-            {task.name ?? task.prompt.split('\n')[0]}
-          </h1>
+          {/* Left: Task title and note input */}
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <h1 className="min-w-0 shrink truncate text-sm font-semibold text-neutral-200">
+              {task.name ?? task.prompt.split('\n')[0]}
+            </h1>
+            <TaskPendingNoteInput
+              taskId={taskId}
+              pendingMessage={task.pendingMessage}
+            />
+          </div>
 
           {/* Center: Branch, PR badge, Work items */}
           <div className="flex shrink items-center gap-2">
