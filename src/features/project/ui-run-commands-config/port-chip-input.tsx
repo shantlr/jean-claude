@@ -38,7 +38,7 @@ export function PortChipInput({
       {ports.map((port) => (
         <span
           key={port}
-          className="flex items-center gap-1 rounded bg-neutral-700 px-2 py-0.5 text-sm"
+          className="flex items-center gap-1 rounded bg-neutral-700 px-2 py-0.5 text-sm text-neutral-100"
         >
           {port}
           <button
@@ -57,7 +57,7 @@ export function PortChipInput({
         onKeyDown={handleKeyDown}
         onBlur={() => inputValue.trim() && addPort(inputValue)}
         placeholder={ports.length === 0 ? 'Add port...' : ''}
-        className="min-w-16 flex-1 border-none bg-transparent text-sm outline-none placeholder:text-neutral-500"
+        className="min-w-16 flex-1 border-none bg-transparent text-sm text-neutral-100 outline-none placeholder:text-neutral-500"
       />
     </div>
   );

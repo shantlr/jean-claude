@@ -68,7 +68,7 @@ export function CommandRow({
             onFocus={() => setShowSuggestions(true)}
             onBlur={handleCommandBlur}
             placeholder="Enter command (e.g., pnpm dev)"
-            className="w-full rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm outline-none focus:border-blue-500"
+            className="w-full rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none placeholder:text-neutral-500 focus:border-blue-500"
           />
           {showSuggestions && filteredSuggestions.length > 0 && (
             <div className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg">
@@ -77,7 +77,7 @@ export function CommandRow({
                   key={suggestion}
                   type="button"
                   onMouseDown={() => handleSelectSuggestion(suggestion)}
-                  className="w-full px-3 py-1.5 text-left text-sm hover:bg-neutral-700"
+                  className="w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-neutral-700"
                 >
                   {suggestion}
                 </button>
