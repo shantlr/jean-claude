@@ -590,12 +590,15 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               taskId={taskId}
               projectId={project.id}
               workingDir={task.worktreePath ?? project.path}
-              onOpenLogs={() => {
+              onToggleLogs={() => {
                 if (rightPane?.type === 'commandLogs') {
                   closeRightPane();
                 } else {
                   openCommandLogs();
                 }
+              }}
+              onRunCommand={(runCommandId) => {
+                openCommandLogs(runCommandId);
               }}
               isLogsPaneOpen={rightPane?.type === 'commandLogs'}
             />

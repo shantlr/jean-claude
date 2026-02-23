@@ -12,13 +12,15 @@ export function RunButton({
   taskId,
   projectId,
   workingDir,
-  onOpenLogs,
+  onToggleLogs,
+  onRunCommand,
   isLogsPaneOpen,
 }: {
   taskId: string;
   projectId: string;
   workingDir: string;
-  onOpenLogs: () => void;
+  onToggleLogs: () => void;
+  onRunCommand: (runCommandId: string) => void;
   isLogsPaneOpen: boolean;
 }) {
   const { data: commands = [] } = useProjectCommands(projectId);
@@ -64,6 +66,7 @@ export function RunButton({
       return;
     }
 
+    onRunCommand(runCommandId);
     void startCommand(runCommandId);
   };
 
@@ -125,7 +128,7 @@ export function RunButton({
         {hasLogEntries && (
           <button
             type="button"
-            onClick={onOpenLogs}
+            onClick={onToggleLogs}
             className={clsx(
               'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm transition-colors',
               isLogsPaneOpen
