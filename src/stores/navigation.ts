@@ -19,7 +19,6 @@ export type RightPane =
     }
   | {
       type: 'fileExplorer';
-      selectedFilePath: string | null;
     }
   | {
       type: 'commandLogs';
@@ -30,22 +29,34 @@ interface DiffViewState {
   selectedFilePath: string | null;
 }
 
+interface FileExplorerState {
+  selectedFilePath: string | null;
+  expandedDirs: Set<string>;
+}
+
 type TaskViewMode = 'diff' | 'pr' | undefined;
 
 interface TaskState {
   rightPane: RightPane | null;
   activeView: TaskViewMode;
   diffView: DiffViewState;
+  fileExplorer?: FileExplorerState;
 }
 
 const defaultDiffViewState: DiffViewState = {
   selectedFilePath: null,
 };
 
+const defaultFileExplorerState: FileExplorerState = {
+  selectedFilePath: null,
+  expandedDirs: new Set<string>(),
+};
+
 const defaultTaskState: TaskState = {
   rightPane: null,
   activeView: undefined,
   diffView: defaultDiffViewState,
+  fileExplorer: defaultFileExplorerState,
 };
 
 // Constants for diff file tree width
@@ -124,6 +135,8 @@ interface NavigationState {
   setTaskRightPane: (taskId: string, pane: RightPane | null) => void;
   setTaskViewMode: (taskId: string, mode: TaskViewMode) => void;
   setDiffViewSelectedFile: (taskId: string, filePath: string | null) => void;
+  setFileExplorerSelectedFile: (taskId: string, filePath: string | null) => void;
+  toggleFileExplorerExpandedDir: (taskId: string, dirPath: string) => void;
   clearProjectNavHistoryState: (projectId: string) => void;
   clearTaskNavHistoryState: (taskId: string) => void;
 }
@@ -230,6 +243,50 @@ const useStore = create<NavigationState>()(
           },
         })),
 
+      setFileExplorerSelectedFile: (taskId, filePath) =>
+        set((state) => ({
+          taskState: {
+            ...state.taskState,
+            [taskId]: {
+              ...defaultTaskState,
+              ...state.taskState[taskId],
+              fileExplorer: {
+                ...(state.taskState[taskId]?.fileExplorer ??
+                  defaultFileExplorerState),
+                selectedFilePath: filePath,
+              },
+            },
+          },
+        })),
+
+      toggleFileExplorerExpandedDir: (taskId, dirPath) =>
+        set((state) => {
+          const taskState = state.taskState[taskId] ?? defaultTaskState;
+          const fileExplorerState =
+            taskState.fileExplorer ?? defaultFileExplorerState;
+          const nextExpandedDirs = new Set(fileExplorerState.expandedDirs);
+
+          if (nextExpandedDirs.has(dirPath)) {
+            nextExpandedDirs.delete(dirPath);
+          } else {
+            nextExpandedDirs.add(dirPath);
+          }
+
+          return {
+            taskState: {
+              ...state.taskState,
+              [taskId]: {
+                ...defaultTaskState,
+                ...state.taskState[taskId],
+                fileExplorer: {
+                  ...fileExplorerState,
+                  expandedDirs: nextExpandedDirs,
+                },
+              },
+            },
+          };
+        }),
+
       clearProjectNavHistoryState: (projectId) =>
         set((state) => {
           const { [projectId]: _, ...restTasks } = state.lastTaskByProject;
@@ -277,7 +334,22 @@ const useStore = create<NavigationState>()(
           };
         }),
     }),
-    { name: 'navigation' },
+    {
+      name: 'navigation',
+      partialize: (state) => ({
+        ...state,
+        taskState: Object.fromEntries(
+          Object.entries(state.taskState).map(([taskId, taskState]) => [
+            taskId,
+            {
+              rightPane: taskState.rightPane,
+              activeView: taskState.activeView,
+              diffView: taskState.diffView,
+            },
+          ]),
+        ),
+      }),
+    },
   ),
 );
 
@@ -398,9 +470,16 @@ export function useLastTaskForProject(projectId: string) {
 
 // Hook for per-task state
 export function useTaskState(taskId: string) {
-  const taskState = useStore(
-    (state) => state.taskState[taskId] ?? defaultTaskState,
-  );
+  const taskState = useStore((state) => {
+    const storedTaskState = state.taskState[taskId];
+    return {
+      ...defaultTaskState,
+      ...storedTaskState,
+      diffView: {
+        ...(storedTaskState?.diffView ?? defaultDiffViewState),
+      },
+    };
+  });
   const setTaskRightPaneAction = useStore((state) => state.setTaskRightPane);
 
   const setRightPane = useCallback(
@@ -433,7 +512,6 @@ export function useTaskState(taskId: string) {
     () =>
       setTaskRightPaneAction(taskId, {
         type: 'fileExplorer',
-        selectedFilePath: null,
       }),
     [taskId, setTaskRightPaneAction],
   );
@@ -452,16 +530,6 @@ export function useTaskState(taskId: string) {
       setTaskRightPaneAction(taskId, {
         type: 'commandLogs',
         selectedCommandId: commandId,
-      });
-    },
-    [taskId, setTaskRightPaneAction],
-  );
-
-  const selectFileExplorerFile = useCallback(
-    (filePath: string | null) => {
-      setTaskRightPaneAction(taskId, {
-        type: 'fileExplorer',
-        selectedFilePath: filePath,
       });
     },
     [taskId, setTaskRightPaneAction],
@@ -488,10 +556,39 @@ export function useTaskState(taskId: string) {
     openDebugMessages,
     openFileExplorer,
     openCommandLogs,
-    selectFileExplorerFile,
     selectCommandLogsTab,
     closeRightPane,
     toggleRightPane,
+  };
+}
+
+export function useTaskFileExplorerState(taskId: string) {
+  const fileExplorerState = useStore(
+    (state) => state.taskState[taskId]?.fileExplorer ?? defaultFileExplorerState,
+  );
+  const setFileExplorerSelectedFileAction = useStore(
+    (state) => state.setFileExplorerSelectedFile,
+  );
+  const toggleFileExplorerExpandedDirAction = useStore(
+    (state) => state.toggleFileExplorerExpandedDir,
+  );
+
+  const selectFile = useCallback(
+    (filePath: string | null) =>
+      setFileExplorerSelectedFileAction(taskId, filePath),
+    [taskId, setFileExplorerSelectedFileAction],
+  );
+
+  const toggleDir = useCallback(
+    (dirPath: string) => toggleFileExplorerExpandedDirAction(taskId, dirPath),
+    [taskId, toggleFileExplorerExpandedDirAction],
+  );
+
+  return {
+    selectedFilePath: fileExplorerState.selectedFilePath,
+    expandedDirs: fileExplorerState.expandedDirs,
+    selectFile,
+    toggleDir,
   };
 }
 

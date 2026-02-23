@@ -125,7 +125,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     openFileExplorer,
     openCommandLogs,
     selectCommandLogsTab,
-    selectFileExplorerFile,
     openSettings,
     openDebugMessages,
     closeRightPane,
@@ -497,6 +496,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     agentState.status === 'running' || task.status === 'running';
   const isWaiting =
     agentState.status === 'waiting' || task.status === 'waiting';
+  const taskRootPath = task.worktreePath ?? project.path;
   const hasMessages = agentState.messages.length > 0;
   const canSendMessage = !isRunning && hasMessages && !!task.sessionId;
   const backendLabel =
@@ -595,7 +595,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             <RunButton
               taskId={taskId}
               projectId={project.id}
-              workingDir={task.worktreePath ?? project.path}
+              workingDir={taskRootPath}
               onToggleLogs={() => {
                 if (rightPane?.type === 'commandLogs') {
                   closeRightPane();
@@ -836,7 +836,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               onQueue={queuePrompt}
               onStop={handleStop}
               contextUsage={contextUsage}
-              projectRoot={task.worktreePath ?? project.path}
+              projectRoot={taskRootPath}
             />
           )}
       </div>
@@ -871,14 +871,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       )}
 
       {/* File explorer pane */}
-      {rightPane?.type === 'fileExplorer' && project && (
-        <FileExplorerPane
-          rootPath={task?.worktreePath ?? project.path}
-          projectRoot={task?.worktreePath ?? project.path}
-          selectedFilePath={rightPane.selectedFilePath}
-          onSelectFile={selectFileExplorerFile}
-          onClose={closeRightPane}
-        />
+      {rightPane?.type === 'fileExplorer' && (
+        <FileExplorerPane taskId={taskId} onClose={closeRightPane} />
       )}
 
       {/* Command logs pane */}

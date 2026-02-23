@@ -1,12 +1,14 @@
 import clsx from 'clsx';
 import { FolderTree, RefreshCw, X } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 
 import { useInvalidateDirectoryListings } from '@/hooks/use-directory-listing';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
+import { useTaskRootPath } from '@/hooks/use-task-root-path';
 import {
   useFileExplorerPaneWidth,
   useFileExplorerTreeWidth,
+  useTaskFileExplorerState,
 } from '@/stores/navigation';
 
 import { FileContentViewer } from './file-content-viewer';
@@ -16,49 +18,37 @@ const MIN_TREE_WIDTH = 150;
 const MIN_PANE_WIDTH = 250;
 
 export function FileExplorerPane({
-  rootPath,
-  projectRoot,
-  selectedFilePath,
-  onSelectFile,
+  taskId,
   onClose,
 }: {
-  rootPath: string;
-  projectRoot: string;
-  selectedFilePath: string | null;
-  onSelectFile: (filePath: string | null) => void;
+  taskId: string;
   onClose: () => void;
 }) {
   const invalidateListings = useInvalidateDirectoryListings();
+  const { rootPath, isLoading: isRootPathLoading } = useTaskRootPath(taskId);
   const { width: treeWidth, setWidth: setTreeWidth } =
     useFileExplorerTreeWidth();
   const { width: paneWidth, setWidth: setPaneWidth } =
     useFileExplorerPaneWidth();
+  const { selectedFilePath, expandedDirs, selectFile, toggleDir } =
+    useTaskFileExplorerState(taskId);
 
-  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(
-    () => new Set(),
+  const handleToggleDir = useCallback(
+    (dirPath: string) => {
+      toggleDir(dirPath);
+    },
+    [toggleDir],
   );
-
-  const handleToggleDir = useCallback((dirPath: string) => {
-    setExpandedDirs((prev) => {
-      const next = new Set(prev);
-      if (next.has(dirPath)) {
-        next.delete(dirPath);
-      } else {
-        next.add(dirPath);
-      }
-      return next;
-    });
-  }, []);
 
   const handleSelectFile = useCallback(
     (filePath: string) => {
       // Toggle: clicking the same file deselects it
-      onSelectFile(filePath === selectedFilePath ? null : filePath);
+      selectFile(filePath === selectedFilePath ? null : filePath);
     },
-    [onSelectFile, selectedFilePath],
+    [selectFile, selectedFilePath],
   );
 
-  const hasSelectedFile = selectedFilePath !== null;
+  const hasSelectedFile = !!rootPath && selectedFilePath !== null;
 
   // Always use persisted pane width — resizable in both tree-only and split modes
   const effectiveWidth = Math.max(paneWidth, MIN_PANE_WIDTH);
@@ -101,16 +91,22 @@ export function FileExplorerPane({
         <div className="flex shrink items-center gap-2 overflow-hidden text-xs font-medium text-ellipsis whitespace-nowrap text-neutral-300">
           <FolderTree className="h-4 w-4 shrink-0" />
           {selectedFilePath
-            ? selectedFilePath.startsWith(rootPath)
+            ? rootPath && selectedFilePath.startsWith(rootPath)
               ? selectedFilePath.slice(rootPath.length)
               : selectedFilePath
             : 'Files'}
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <button
-            onClick={() => invalidateListings(projectRoot)}
+            onClick={() => {
+              if (!rootPath) {
+                return;
+              }
+              invalidateListings(rootPath);
+            }}
             className="rounded p-1 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
             title="Refresh"
+            disabled={!rootPath}
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
@@ -136,17 +132,23 @@ export function FileExplorerPane({
             maxWidth: hasSelectedFile ? '75%' : '100%',
           }}
         >
-          <FileTree
-            rootPath={rootPath}
-            projectRoot={projectRoot}
-            selectedFilePath={selectedFilePath}
-            onSelectFile={handleSelectFile}
-            expandedDirs={expandedDirs}
-            onToggleDir={handleToggleDir}
-          />
+          {rootPath ? (
+            <FileTree
+              rootPath={rootPath}
+              projectRoot={rootPath}
+              selectedFilePath={selectedFilePath}
+              onSelectFile={handleSelectFile}
+              expandedDirs={expandedDirs}
+              onToggleDir={handleToggleDir}
+            />
+          ) : (
+            <div className="px-3 py-2 text-xs text-neutral-500">
+              {isRootPathLoading ? 'Loading workspace...' : 'Workspace unavailable'}
+            </div>
+          )}
         </div>
 
-        {!!selectedFilePath && (
+        {!!rootPath && !!selectedFilePath && (
           <>
             {/* Resize handle between tree and content */}
             <div
