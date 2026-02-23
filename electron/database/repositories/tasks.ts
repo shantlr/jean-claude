@@ -308,13 +308,15 @@ export const TaskRepository = {
   },
 
   setHasUnread: async (id: string, hasUnread: boolean) => {
+    const hasUnreadValue = hasUnread ? 1 : 0;
     await db
       .updateTable('tasks')
       .set({
-        hasUnread: hasUnread ? 1 : 0,
+        hasUnread: hasUnreadValue,
         updatedAt: new Date().toISOString(),
       })
       .where('id', '=', id)
+      .where('hasUnread', '!=', hasUnreadValue)
       .execute();
   },
 
