@@ -267,12 +267,16 @@ button {
 @keyframes completed-unread-breathe {
   0%,
   100% {
-    box-shadow: 0 0 0 0
-      color-mix(in srgb, var(--color-emerald-500) 22%, transparent);
+    box-shadow: 0 0 4px 0
+      color-mix(in srgb, var(--color-emerald-500) 16%, transparent);
   }
-  50% {
-    box-shadow: 0 0 10px 1px
-      color-mix(in srgb, var(--color-cyan-400) 35%, transparent);
+  30% {
+    box-shadow: 0 0 7px 0
+      color-mix(in srgb, var(--color-emerald-400) 24%, transparent);
+  }
+  62% {
+    box-shadow: 0 0 11px 1px
+      color-mix(in srgb, var(--color-cyan-400) 30%, transparent);
   }
 }
 
@@ -291,7 +295,8 @@ button {
       )
       border-box;
   border: 1px solid transparent;
-  animation: completed-unread-breathe 2.6s ease-in-out infinite;
+  animation: completed-unread-breathe 3.2s cubic-bezier(0.4, 0, 0.2, 1)
+    infinite;
 }
 
 @utility completed-unread-border-selected {
@@ -308,5 +313,6 @@ button {
       )
       border-box;
   border: 1px solid transparent;
-  animation: completed-unread-breathe 2.6s ease-in-out infinite;
+  animation: completed-unread-breathe 3.2s cubic-bezier(0.4, 0, 0.2, 1)
+    infinite;
 }
