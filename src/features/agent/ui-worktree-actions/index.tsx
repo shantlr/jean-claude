@@ -131,7 +131,7 @@ export function WorktreeActions({
         targetBranch: selectedBranch,
         squash: params.squash,
         commitMessage: params.commitMessage,
-        commitAllUnstaged: params.commitAllUnstaged,
+        commitAllUnstaged: false,
       })
       .then((result) => {
         if (result.success) {

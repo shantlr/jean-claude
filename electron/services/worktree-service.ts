@@ -784,6 +784,7 @@ export interface MergeWorktreeResult {
 
 export interface CheckMergeConflictsParams {
   worktreePath: string;
+  projectPath: string;
   targetBranch: string;
 }
 
@@ -793,30 +794,33 @@ export interface CheckMergeConflictsResult {
 }
 
 function isMergeConflictError(errorMessage: string): boolean {
+  const normalized = errorMessage.toLowerCase();
   return (
-    errorMessage.includes('CONFLICT') ||
-    errorMessage.includes('Automatic merge failed')
+    normalized.includes('conflict') ||
+    normalized.includes('automatic merge failed')
   );
 }
 
-async function abortMergeIfInProgress(worktreePath: string): Promise<void> {
-  try {
-    await execAsync('git rev-parse -q --verify MERGE_HEAD', {
-      cwd: worktreePath,
-      encoding: 'utf-8',
-    });
-  } catch {
-    return;
+function getExecErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return String(error);
   }
 
-  try {
-    await execAsync('git merge --abort', {
-      cwd: worktreePath,
-      encoding: 'utf-8',
-    });
-  } catch (error) {
-    dbg.worktree('Failed to abort temporary merge check: %O', error);
-  }
+  const execError = error as Error & {
+    stdout?: string | Buffer;
+    stderr?: string | Buffer;
+  };
+
+  const stdout =
+    typeof execError.stdout === 'string'
+      ? execError.stdout
+      : (execError.stdout?.toString('utf-8') ?? '');
+  const stderr =
+    typeof execError.stderr === 'string'
+      ? execError.stderr
+      : (execError.stderr?.toString('utf-8') ?? '');
+
+  return [execError.message, stdout, stderr].filter(Boolean).join('\n');
 }
 
 export type WorktreeBranchCleanupBehavior = 'delete' | 'keep';
@@ -1036,7 +1040,7 @@ export async function mergeWorktree(
 export async function checkMergeConflicts(
   params: CheckMergeConflictsParams,
 ): Promise<CheckMergeConflictsResult> {
-  const { worktreePath, targetBranch } = params;
+  const { worktreePath, projectPath, targetBranch } = params;
 
   if (!(await pathExists(worktreePath))) {
     return {
@@ -1045,18 +1049,38 @@ export async function checkMergeConflicts(
     };
   }
 
+  if (!(await pathExists(projectPath))) {
+    return {
+      hasConflicts: false,
+      error: 'Project path no longer exists',
+    };
+  }
+
   try {
-    await execAsync(
-      `git merge --no-commit --no-ff ${JSON.stringify(targetBranch)}`,
+    const { stdout: branchOutput } = await execAsync(
+      'git rev-parse --abbrev-ref HEAD',
       {
         cwd: worktreePath,
         encoding: 'utf-8',
       },
     );
+    const worktreeBranch = branchOutput.trim();
+
+    const { stdout } = await execAsync(
+      `git merge-tree --write-tree --messages ${JSON.stringify(targetBranch)} ${JSON.stringify(worktreeBranch)}`,
+      {
+        cwd: projectPath,
+        encoding: 'utf-8',
+      },
+    );
+
+    if (isMergeConflictError(stdout)) {
+      return { hasConflicts: true };
+    }
 
     return { hasConflicts: false };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage = getExecErrorMessage(error);
     if (isMergeConflictError(errorMessage)) {
       return { hasConflicts: true };
     }
@@ -1065,8 +1089,6 @@ export async function checkMergeConflicts(
       hasConflicts: false,
       error: `Failed to check merge conflicts: ${errorMessage}`,
     };
-  } finally {
-    await abortMergeIfInProgress(worktreePath);
   }
 }
 

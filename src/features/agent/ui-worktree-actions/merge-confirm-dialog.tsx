@@ -4,7 +4,10 @@ import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useCommands } from '@/common/hooks/use-commands';
 import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
-import { useCheckMergeConflicts } from '@/hooks/use-worktree-diff';
+import {
+  useCheckMergeConflicts,
+  useCommitWorktree,
+} from '@/hooks/use-worktree-diff';
 
 export function MergeConfirmDialog({
   isOpen,
@@ -24,7 +27,7 @@ export function MergeConfirmDialog({
     squash: boolean;
     commitMessage?: string;
     commitAllUnstaged?: boolean;
-  }) => void;
+  }) => void | Promise<void>;
   taskId: string;
   branchName: string;
   targetBranch: string;
@@ -38,8 +41,12 @@ export function MergeConfirmDialog({
   const [commitAllUnstaged, setCommitAllUnstaged] =
     useState(hasUnstagedChanges);
   const commitMessageRef = useRef<HTMLTextAreaElement>(null);
+  const submitLockRef = useRef(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasConflicts, setHasConflicts] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
+  const commitMutation = useCommitWorktree();
   const checkMergeConflictsMutation = useCheckMergeConflicts();
   const { mutateAsync: checkMergeConflicts, isPending: isCheckingConflicts } =
     checkMergeConflictsMutation;
@@ -50,6 +57,7 @@ export function MergeConfirmDialog({
       setSquash(true);
       setCommitMessage(defaultCommitMessage ?? '');
       setCommitAllUnstaged(hasUnstagedChanges);
+      setSubmitError(null);
       setHasConflicts(false);
       setCheckError(null);
     }
@@ -57,12 +65,6 @@ export function MergeConfirmDialog({
 
   useEffect(() => {
     if (!isOpen) return;
-
-    if (hasUnstagedChanges) {
-      setHasConflicts(false);
-      setCheckError(null);
-      return;
-    }
 
     let isCanceled = false;
 
@@ -96,7 +98,7 @@ export function MergeConfirmDialog({
     return () => {
       isCanceled = true;
     };
-  }, [isOpen, taskId, targetBranch, hasUnstagedChanges, checkMergeConflicts]);
+  }, [isOpen, taskId, targetBranch, checkMergeConflicts]);
 
   useEffect(() => {
     if (!isOpen || !squash) return;
@@ -108,19 +110,54 @@ export function MergeConfirmDialog({
 
   const canConfirm =
     !isPending &&
-    !isCheckingConflicts &&
-    !hasConflicts &&
-    !checkError &&
+    !isSubmitting &&
     (!squash || !!commitMessage.trim()) &&
     (!hasUnstagedChanges || commitAllUnstaged);
 
-  const handleConfirm = () => {
-    if (!canConfirm) return;
-    onConfirm({
-      squash,
-      commitMessage: squash ? commitMessage : undefined,
-      commitAllUnstaged: hasUnstagedChanges ? commitAllUnstaged : undefined,
-    });
+  const handleConfirm = async () => {
+    if (!canConfirm || submitLockRef.current) return;
+
+    submitLockRef.current = true;
+    setSubmitError(null);
+    setIsSubmitting(true);
+
+    try {
+      if (hasUnstagedChanges && commitAllUnstaged) {
+        await commitMutation.mutateAsync({
+          taskId,
+          message: 'chore: commit unstaged changes before merge',
+          stageAll: true,
+        });
+      }
+
+      const result = await checkMergeConflicts({ taskId, targetBranch });
+      if (result.error) {
+        setSubmitError(`Unable to check merge conflicts: ${result.error}`);
+        return;
+      }
+
+      if (result.hasConflicts) {
+        setSubmitError(
+          'Merge conflicts were detected with this target branch. Resolve them before merging.',
+        );
+        return;
+      }
+
+      await onConfirm({
+        squash,
+        commitMessage: squash ? commitMessage : undefined,
+        commitAllUnstaged: false,
+      });
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to run merge pre-check',
+      );
+    } finally {
+      setIsSubmitting(false);
+      submitLockRef.current = false;
+    }
   };
 
   useCommands('merge-confirm-dialog', [
@@ -141,8 +178,8 @@ export function MergeConfirmDialog({
       isOpen={isOpen}
       onClose={onClose}
       title="Merge Worktree"
-      closeOnClickOutside={!isPending}
-      closeOnEscape={!isPending}
+      closeOnClickOutside={!isPending && !isSubmitting}
+      closeOnEscape={!isPending && !isSubmitting}
       contentRef={contentRef}
     >
       <p className="mb-4 text-neutral-200">
@@ -168,6 +205,12 @@ export function MergeConfirmDialog({
       {checkError && (
         <div className="mb-4 rounded-md border border-amber-700 bg-amber-950/40 px-3 py-2 text-sm text-amber-200">
           Unable to check merge conflicts: {checkError}
+        </div>
+      )}
+
+      {submitError && (
+        <div className="mb-4 rounded-md border border-red-700 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+          {submitError}
         </div>
       )}
 
@@ -230,7 +273,7 @@ export function MergeConfirmDialog({
         <button
           type="button"
           onClick={onClose}
-          disabled={isPending}
+          disabled={isPending || isSubmitting}
           className="rounded-md px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
         >
           Cancel
@@ -241,7 +284,9 @@ export function MergeConfirmDialog({
           disabled={!canConfirm}
           className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+          {(isPending || isSubmitting) && (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          )}
           {squash ? 'Squash & Merge' : 'Merge'}
           <Kbd shortcut="cmd+enter" />
         </button>

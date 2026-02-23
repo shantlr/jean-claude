@@ -625,8 +625,13 @@ export function registerIpcHandlers() {
       if (!task?.worktreePath) {
         throw new Error(`Task ${taskId} does not have a worktree`);
       }
+      const project = await ProjectRepository.findById(task.projectId);
+      if (!project) {
+        throw new Error(`Project ${task.projectId} not found`);
+      }
       return checkMergeConflicts({
         worktreePath: task.worktreePath,
+        projectPath: project.path,
         targetBranch: params.targetBranch,
       });
     },

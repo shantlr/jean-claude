@@ -223,6 +223,7 @@ Agent events flow via IPC channels: `agent:message`, `agent:status`, `agent:perm
 **Task Name Generation**: Task names are auto-generated from prompts using Claude Haiku with structured JSON output. Names are limited to 40 characters for worktree directory compatibility. Handled by `name-generation-service.ts`.
 
 **Permission Allow Modes**: When granting permissions, users can choose scope:
+
 - Session only (default)
 - Project-wide (persisted in `.claude/settings.local.json`)
 - Worktree-specific (persisted in `.claude/settings.local.worktrees.json`)
@@ -543,25 +544,25 @@ docs/plans/            # Design and implementation documents
 
 ### Pages
 
-| Route | Purpose |
-|-------|---------|
-| `/` | Redirects to last visited project/task (persisted in navigation store) |
-| `/all` | Cross-project view showing all active tasks |
-| `/all/:taskId` | Task view from cross-project context |
-| `/all/prs/:projectId` | Pull requests list from cross-project context |
-| `/all/prs/:projectId/:prId` | PR detail from cross-project context |
-| `/settings` | Settings overlay with tabbed navigation |
-| `/settings/general` | Configure editor preferences |
-| `/settings/azure-devops` | Manage Azure DevOps organizations and PAT tokens |
-| `/settings/tokens` | Manage tokens for different providers |
-| `/settings/mcp-servers` | Manage MCP server templates and presets |
-| `/settings/debug` | Debug database viewer with DB size display |
-| `/projects/new` | Wizard to add project: local folder, clone repo, or link Azure DevOps repo |
-| `/projects/:projectId` | Project layout with sidebar listing tasks and PRs |
-| `/projects/:projectId/tasks/new` | Form to create a task with prompt, mode, backend, model, worktree options, work item linking |
+| Route                                | Purpose                                                                                                |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `/`                                  | Redirects to last visited project/task (persisted in navigation store)                                 |
+| `/all`                               | Cross-project view showing all active tasks                                                            |
+| `/all/:taskId`                       | Task view from cross-project context                                                                   |
+| `/all/prs/:projectId`                | Pull requests list from cross-project context                                                          |
+| `/all/prs/:projectId/:prId`          | PR detail from cross-project context                                                                   |
+| `/settings`                          | Settings overlay with tabbed navigation                                                                |
+| `/settings/general`                  | Configure editor preferences                                                                           |
+| `/settings/azure-devops`             | Manage Azure DevOps organizations and PAT tokens                                                       |
+| `/settings/tokens`                   | Manage tokens for different providers                                                                  |
+| `/settings/mcp-servers`              | Manage MCP server templates and presets                                                                |
+| `/settings/debug`                    | Debug database viewer with DB size display                                                             |
+| `/projects/new`                      | Wizard to add project: local folder, clone repo, or link Azure DevOps repo                             |
+| `/projects/:projectId`               | Project layout with sidebar listing tasks and PRs                                                      |
+| `/projects/:projectId/tasks/new`     | Form to create a task with prompt, mode, backend, model, worktree options, work item linking           |
 | `/projects/:projectId/tasks/:taskId` | Main agent UI: message stream, file preview, diff view, file explorer, debug panel, permissions, input |
-| `/projects/:projectId/prs` | Project pull requests list |
-| `/projects/:projectId/prs/:prId` | Pull request viewer with overview, files, commits, comments tabs |
+| `/projects/:projectId/prs`           | Project pull requests list                                                                             |
+| `/projects/:projectId/prs/:prId`     | Pull request viewer with overview, files, commits, comments tabs                                       |
 
 ## Development Notes
 
@@ -626,6 +627,12 @@ import { MessageStream } from '@/features/agent/ui-message-stream';
 ```
 
 Exception: `src/common/ui/icons/index.ts` is allowed as an icon asset re-export entrypoint.
+
+When a component starts to get bloated, push logic down to the most specific
+child component that owns the behavior. Keep parent components focused on
+composition and data flow, and keep feature-specific state, fetching/mutations,
+validation, and transient UI state (loading/errors) close to where they are
+used.
 
 ### Electron IPC
 
