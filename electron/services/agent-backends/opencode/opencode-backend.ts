@@ -26,6 +26,8 @@ import type {
   AgentSession,
   AgentTaskContext,
   NormalizedPermissionResponse,
+  NormalizedQuestion,
+  NormalizedQuestionRequest,
 } from '@shared/agent-backend-types';
 import type { InteractionMode } from '@shared/types';
 
@@ -108,6 +110,8 @@ interface OpenCodeSessionState {
   normalizationCtx: OpenCodeNormalizationContext;
   /** Current message index for raw persistence ordering */
   messageIndex: number;
+  /** CallID of the pending question tool (for dedup — only emit question AgentEvent once) */
+  pendingQuestionCallId: string | null;
 }
 
 export class OpenCodeBackend implements AgentBackend {
@@ -178,6 +182,7 @@ export class OpenCodeBackend implements AgentBackend {
         totalCost: 0,
       },
       messageIndex: this.taskContext.sessionStartIndex,
+      pendingQuestionCallId: null,
     };
 
     this.sessions.set(session.id, state);
@@ -263,14 +268,46 @@ export class OpenCodeBackend implements AgentBackend {
   async respondToQuestion(
     sessionId: string,
     _requestId: string,
-    _answer: Record<string, string>,
+    answer: Record<string, string>,
   ): Promise<void> {
-    // OpenCode doesn't have a separate question mechanism like Claude's AskUserQuestion.
-    // Questions in OpenCode are handled as permissions or prompts.
+    const state = this.sessions.get(sessionId);
+    if (!state) {
+      dbg.agent('OpenCodeBackend.respondToQuestion — no session %s', sessionId);
+      return;
+    }
+
+    // Format the user's answers as a human-readable follow-up prompt
+    const answerLines = Object.entries(answer)
+      .map(([question, response]) => `"${question}"="${response}"`)
+      .join(', ');
+    const promptText = `User answered: ${answerLines}`;
+
+    // Clear pending question state
+    state.pendingQuestionCallId = null;
+
+    // Send the answer as a follow-up prompt
+    const { client } = await getOrCreateServer();
     dbg.agent(
-      'OpenCodeBackend.respondToQuestion called for %s — not directly supported',
+      'OpenCodeBackend.respondToQuestion sending follow-up prompt for %s',
       sessionId,
     );
+
+    // Fire and forget — events arrive via SSE stream which is still running.
+    client.session
+      .prompt({
+        path: { id: sessionId },
+        query: { directory: state.cwd },
+        body: {
+          parts: [{ type: 'text' as const, text: promptText }],
+        },
+      })
+      .catch((error) => {
+        dbg.agent(
+          'OpenCodeBackend.respondToQuestion prompt error for %s: %O',
+          sessionId,
+          error,
+        );
+      });
   }
 
   async setMode(_sessionId: string, _mode: InteractionMode): Promise<void> {
@@ -676,7 +713,7 @@ export class OpenCodeBackend implements AgentBackend {
     // --- Convert NormalizationEvents → AgentEvents ---
     // Only 'entry' needs special handling (add rawMessageId);
     // all other variants are structurally compatible.
-    return normEvents.map((ne): AgentEvent => {
+    const agentEvents: AgentEvent[] = normEvents.map((ne): AgentEvent => {
       if (ne.type === 'entry') {
         return {
           ...ne,
@@ -685,6 +722,55 @@ export class OpenCodeBackend implements AgentBackend {
       }
       return ne as AgentEvent;
     });
+
+    // --- Post-conversion: detect question tool entries and emit question AgentEvent ---
+    // When OpenCode's `question` tool appears with populated questions,
+    // emit a question AgentEvent so the agent-service shows the interactive dialog.
+    // Only emit once per callID (dedup via pendingQuestionCallId).
+    for (const ae of agentEvents) {
+      if (
+        (ae.type === 'entry' || ae.type === 'entry-update') &&
+        ae.entry.type === 'tool-use' &&
+        ae.entry.name === 'ask-user-question' &&
+        state.pendingQuestionCallId !== ae.entry.toolId
+      ) {
+        const askEntry = ae.entry as {
+          toolId: string;
+          name: 'ask-user-question';
+          input: {
+            questions: Array<{
+              question: string;
+              header: string;
+              multiSelect?: boolean;
+              options: Array<{ label: string; description: string }>;
+            }>;
+          };
+        };
+        if (askEntry.input.questions.length > 0) {
+          state.pendingQuestionCallId = askEntry.toolId;
+          const questions: NormalizedQuestion[] = askEntry.input.questions.map(
+            (q) => ({
+              question: q.question,
+              header: q.header,
+              multiSelect: q.multiSelect ?? false,
+              options: q.options.map((o) => ({
+                label: o.label,
+                description: o.description,
+              })),
+            }),
+          );
+          agentEvents.push({
+            type: 'question',
+            request: {
+              requestId: askEntry.toolId,
+              questions,
+            } satisfies NormalizedQuestionRequest,
+          });
+        }
+      }
+    }
+
+    return agentEvents;
   }
 
   /**

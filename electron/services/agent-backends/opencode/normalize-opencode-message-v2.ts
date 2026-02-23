@@ -634,6 +634,16 @@ function mapOpenCodeTool(
         input: { todos: extractOpenCodeTodos(input) },
       };
 
+    case 'question':
+    case 'ask-user-question':
+    case 'askuserquestion':
+      return {
+        name: 'ask-user-question',
+        input: {
+          questions: extractOpenCodeQuestions(input),
+        },
+      };
+
     default:
       // Fallback — pass through as-is
       return { name: toolName, input } as Omit<
@@ -675,6 +685,9 @@ function mapToolResult(name: string, state: ToolStateCompleted): unknown {
 
     case 'web-search':
       return { content: state.output };
+
+    case 'ask-user-question':
+      return { answers: [] };
 
     default:
       return state.output;
@@ -884,4 +897,31 @@ function extractOpenCodeTodoResult(state: ToolStateCompleted): {
     ? (todos as unknown[]).map(mapOpenCodeTodoItem)
     : [];
   return { oldTodos: [], newTodos };
+}
+
+function extractOpenCodeQuestions(input: Record<string, unknown>): Array<{
+  question: string;
+  header: string;
+  multiSelect?: boolean;
+  options: Array<{ label: string; description: string }>;
+}> {
+  const questions = input.questions;
+  if (!Array.isArray(questions)) return [];
+  return (questions as unknown[]).map((q) => {
+    const obj = q as Record<string, unknown>;
+    return {
+      question: str(obj.question),
+      header: str(obj.header),
+      multiSelect: obj.multiSelect === true ? true : undefined,
+      options: Array.isArray(obj.options)
+        ? (obj.options as unknown[]).map((o) => {
+            const opt = o as Record<string, unknown>;
+            return {
+              label: str(opt.label),
+              description: str(opt.description),
+            };
+          })
+        : [],
+    };
+  });
 }

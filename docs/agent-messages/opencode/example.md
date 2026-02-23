@@ -389,6 +389,114 @@ We normalize this to the `edit` tool type, extracting the file path from the pat
 - Completed `metadata.diff` contains the full unified diff output
 - We normalize to `edit` by extracting the file path from the `*** Update File:` line in the patch
 
+## Question tool use
+
+OpenCode uses a `question` tool to ask the user questions, similar to Claude's `AskUserQuestion`.
+The input structure is the same: a `questions` array with `header`, `question`, and `options` fields.
+Normalized to `ask-user-question` — same as Claude's AskUserQuestion — triggering the interactive question dialog.
+
+### Pending state
+
+```json
+{
+  "type": "message.part.updated",
+  "properties": {
+    "part": {
+      "id": "prt_c8b0e74fa001yk5X7pmYbTn4Hp",
+      "sessionID": "ses_39dfe072affenyBfFZvZcqWfb1",
+      "messageID": "msg_c8b0e5ee5001Eq4H73654956sE",
+      "type": "tool",
+      "callID": "call_IXiz402DEoUh0rw0PAtzgzO1",
+      "tool": "question",
+      "state": {
+        "status": "pending",
+        "input": {},
+        "raw": ""
+      }
+    }
+  }
+}
+```
+
+### Running state
+
+```json
+{
+  "type": "message.part.updated",
+  "properties": {
+    "part": {
+      "id": "prt_c8b0e74fa001yk5X7pmYbTn4Hp",
+      "sessionID": "ses_39dfe072affenyBfFZvZcqWfb1",
+      "messageID": "msg_c8b0e5ee5001Eq4H73654956sE",
+      "type": "tool",
+      "callID": "call_IXiz402DEoUh0rw0PAtzgzO1",
+      "tool": "question",
+      "state": {
+        "status": "running",
+        "input": {
+          "questions": [
+            {
+              "header": "Scope",
+              "question": "Should `sale createBooking` include only the API mutation + hook/store wiring, or also full typed request/response models?",
+              "options": [
+                {
+                  "label": "Hook + wiring (Recommended)",
+                  "description": "Add API call, feature hook, and set booking in store; keep request/response types minimal and pragmatic."
+                },
+                {
+                  "label": "Full typed models",
+                  "description": "Add detailed CreateBookingInputDto/BookingOutputDto types and use them end-to-end now."
+                }
+              ]
+            }
+          ]
+        },
+        "time": { "start": 1771250000000 }
+      },
+      "metadata": { "openai": { "itemId": "fc_09c1..." } }
+    }
+  }
+}
+```
+
+### Normalized entry
+
+```json
+{
+  "id": "msg_c8b0e5ee5001Eq4H73654956sE:prt_c8b0e74fa001yk5X7pmYbTn4Hp",
+  "date": "+058117-12-29T02:39:33.000Z",
+  "model": "openai/gpt-5.3-codex",
+  "type": "tool-use",
+  "toolId": "call_IXiz402DEoUh0rw0PAtzgzO1",
+  "name": "ask-user-question",
+  "input": {
+    "questions": [
+      {
+        "header": "Scope",
+        "question": "Should `sale createBooking` include only the API mutation + hook/store wiring, or also full typed request/response models?",
+        "options": [
+          {
+            "label": "Hook + wiring (Recommended)",
+            "description": "Add API call, feature hook, and set booking in store; keep request/response types minimal and pragmatic."
+          },
+          {
+            "label": "Full typed models",
+            "description": "Add detailed CreateBookingInputDto/BookingOutputDto types and use them end-to-end now."
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Key differences from Claude's AskUserQuestion
+
+- OpenCode raw tool name is `"question"` (Claude uses `"AskUserQuestion"`) — both normalize to `ask-user-question`
+- Input structure is identical: `questions` array with `header`, `question`, `options`
+- Options have the same `label` + `description` shape
+- Response mechanism differs: Claude resolves via SDK's `canUseTool` callback; OpenCode receives the answer as a follow-up `session.prompt()`
+
 ## session.error (APIError)
 
 When OpenCode emits `session.error` with an API provider error payload, keep only the actionable detail.
