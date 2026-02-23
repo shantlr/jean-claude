@@ -1278,6 +1278,14 @@ export function registerIpcHandlers() {
   );
 
   ipcMain.handle(
+    AGENT_CHANNELS.COMPACT_RAW_MESSAGES,
+    (_, taskId: string) => {
+      dbg.ipc('agent:compactRawMessages %s', taskId);
+      return agentService.compactRawMessages(taskId);
+    },
+  );
+
+  ipcMain.handle(
     AGENT_CHANNELS.REPROCESS_NORMALIZATION,
     (_, taskId: string) => {
       dbg.ipc('agent:reprocessNormalization %s', taskId);

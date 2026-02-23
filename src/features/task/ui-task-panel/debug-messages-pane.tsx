@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Copy,
   Check,
+  FolderArchive,
 } from 'lucide-react';
 import { useState, useCallback, useEffect } from 'react';
 
@@ -372,6 +373,13 @@ export function DebugMessagesPane({
     },
   });
 
+  const compactMutation = useMutation({
+    mutationFn: () => api.agent.compactRawMessages(taskId),
+    onSuccess: () => {
+      refetch();
+    },
+  });
+
   const { width, setWidth, minWidth, maxWidth } = useDebugMessagesPaneWidth();
 
   const { isDragging, handleMouseDown } = useHorizontalResize({
@@ -426,6 +434,24 @@ export function DebugMessagesPane({
           )}
         </h3>
         <div className="flex items-center gap-1">
+          <button
+            onClick={() => compactMutation.mutate()}
+            disabled={compactMutation.isPending}
+            className={clsx(
+              'cursor-pointer rounded p-1.5 transition-colors',
+              compactMutation.isPending
+                ? 'text-blue-400'
+                : 'text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200',
+            )}
+            title="Compact raw messages"
+          >
+            <FolderArchive
+              className={clsx(
+                'h-3.5 w-3.5',
+                compactMutation.isPending && 'animate-pulse',
+              )}
+            />
+          </button>
           <button
             onClick={() => reprocessMutation.mutate()}
             disabled={reprocessMutation.isPending}
@@ -487,9 +513,19 @@ export function DebugMessagesPane({
             ✓ Reprocessed {reprocessMutation.data} messages
           </span>
         )}
+        {compactMutation.isSuccess && (
+          <span className="text-[10px] text-blue-400">
+            ✓ Raw messages compacted
+          </span>
+        )}
         {reprocessMutation.isError && (
           <span className="text-[10px] text-red-400">
             Reprocess failed: {(reprocessMutation.error as Error).message}
+          </span>
+        )}
+        {compactMutation.isError && (
+          <span className="text-[10px] text-red-400">
+            Compaction failed: {(compactMutation.error as Error).message}
           </span>
         )}
         {debugMessages && debugMessages.length > 0 && (
