@@ -110,8 +110,9 @@ interface OpenCodeSessionState {
   normalizationCtx: OpenCodeNormalizationContext;
   /** Current message index for raw persistence ordering */
   messageIndex: number;
-  /** CallID of the pending question tool (for dedup — only emit question AgentEvent once) */
-  pendingQuestionCallId: string | null;
+  /** Question request IDs already emitted as question AgentEvents (for dedup).
+   *  Keyed by the QuestionRequest.id from `question.asked` SSE events. */
+  emittedQuestionRequestIds: Set<string>;
 }
 
 export class OpenCodeBackend implements AgentBackend {
@@ -182,7 +183,7 @@ export class OpenCodeBackend implements AgentBackend {
         totalCost: 0,
       },
       messageIndex: this.taskContext.sessionStartIndex,
-      pendingQuestionCallId: null,
+      emittedQuestionRequestIds: new Set(),
     };
 
     this.sessions.set(session.id, state);
@@ -275,9 +276,6 @@ export class OpenCodeBackend implements AgentBackend {
       dbg.agent('OpenCodeBackend.respondToQuestion — no session %s', sessionId);
       return;
     }
-
-    // Clear pending question state
-    state.pendingQuestionCallId = null;
 
     const { client } = await getOrCreateServer();
     dbg.agent(
@@ -721,50 +719,42 @@ export class OpenCodeBackend implements AgentBackend {
       return ne as AgentEvent;
     });
 
-    // --- Post-conversion: detect question tool entries and emit question AgentEvent ---
-    // When OpenCode's `question` tool appears with populated questions,
-    // emit a question AgentEvent so the agent-service shows the interactive dialog.
-    // Only emit once per callID (dedup via pendingQuestionCallId).
-    for (const ae of agentEvents) {
+    // --- Post-conversion: detect question.asked SSE events and emit question AgentEvent ---
+    // OpenCode emits `question.asked` events with a QuestionRequest that carries
+    // the correct server-side request ID. We use that ID (not the tool's callID)
+    // so that `client.question.reply({ requestID })` resolves on the server.
+    if (event.type === 'question.asked') {
+      const qr = event.properties as {
+        id: string;
+        sessionID: string;
+        questions: Array<{
+          question: string;
+          header: string;
+          multiple?: boolean;
+          options: Array<{ label: string; description: string }>;
+        }>;
+      };
       if (
-        (ae.type === 'entry' || ae.type === 'entry-update') &&
-        ae.entry.type === 'tool-use' &&
-        ae.entry.name === 'ask-user-question' &&
-        state.pendingQuestionCallId !== ae.entry.toolId
+        !state.emittedQuestionRequestIds.has(qr.id) &&
+        qr.questions.length > 0
       ) {
-        const askEntry = ae.entry as {
-          toolId: string;
-          name: 'ask-user-question';
-          input: {
-            questions: Array<{
-              question: string;
-              header: string;
-              multiSelect?: boolean;
-              options: Array<{ label: string; description: string }>;
-            }>;
-          };
-        };
-        if (askEntry.input.questions.length > 0) {
-          state.pendingQuestionCallId = askEntry.toolId;
-          const questions: NormalizedQuestion[] = askEntry.input.questions.map(
-            (q) => ({
-              question: q.question,
-              header: q.header,
-              multiSelect: q.multiSelect ?? false,
-              options: q.options.map((o) => ({
-                label: o.label,
-                description: o.description,
-              })),
-            }),
-          );
-          agentEvents.push({
-            type: 'question',
-            request: {
-              requestId: askEntry.toolId,
-              questions,
-            } satisfies NormalizedQuestionRequest,
-          });
-        }
+        state.emittedQuestionRequestIds.add(qr.id);
+        const questions: NormalizedQuestion[] = qr.questions.map((q) => ({
+          question: q.question,
+          header: q.header,
+          multiSelect: q.multiple ?? false,
+          options: q.options.map((o) => ({
+            label: o.label,
+            description: o.description,
+          })),
+        }));
+        agentEvents.push({
+          type: 'question',
+          request: {
+            requestId: qr.id,
+            questions,
+          } satisfies NormalizedQuestionRequest,
+        });
       }
     }
 

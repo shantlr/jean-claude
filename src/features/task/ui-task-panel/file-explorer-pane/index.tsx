@@ -143,7 +143,9 @@ export function FileExplorerPane({
             />
           ) : (
             <div className="px-3 py-2 text-xs text-neutral-500">
-              {isRootPathLoading ? 'Loading workspace...' : 'Workspace unavailable'}
+              {isRootPathLoading
+                ? 'Loading workspace...'
+                : 'Workspace unavailable'}
             </div>
           )}
         </div>
