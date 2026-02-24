@@ -281,15 +281,16 @@ export class OpenCodeBackend implements AgentBackend {
 
     const { client } = await getOrCreateServer();
     dbg.agent(
-      'OpenCodeBackend.respondToQuestion sending reply for %s',
+      'OpenCodeBackend.respondToQuestion sending reply for %s with answer %O',
       sessionId,
+      answer,
     );
 
     // Map Record<string, string> answers to Array<QuestionAnswer>
     // QuestionAnswer = Array<string> — each answer is the selected option(s)
     const answers = Object.values(answer).map((value) => [value]);
 
-    client.question
+    const r = await client.question
       .reply({
         requestID: requestId,
         directory: state.cwd,
@@ -302,6 +303,11 @@ export class OpenCodeBackend implements AgentBackend {
           error,
         );
       });
+    dbg.agent(
+      'OpenCodeBackend.respondToQuestion reply sent for %s, response: %O',
+      sessionId,
+      r,
+    );
   }
 
   async setMode(_sessionId: string, _mode: InteractionMode): Promise<void> {
@@ -697,6 +703,13 @@ export class OpenCodeBackend implements AgentBackend {
     for (const ne of normEvents) {
       if (ne.type === 'entry') {
         ctx.emittedEntryIds.add(ne.entry.id);
+      }
+      if (ne.type === 'permission-request') {
+        dbg.agentPermission(
+          'Received permission request: %s %O',
+          ne.request.toolName,
+          ne.request.input,
+        );
       }
     }
 

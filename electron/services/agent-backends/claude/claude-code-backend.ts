@@ -426,7 +426,7 @@ export class ClaudeCodeBackend implements AgentBackend {
     toolName: string,
     input: Record<string, unknown>,
   ): Promise<PermissionResult> {
-    dbg.agentPermission('Tool request: %s', toolName);
+    dbg.agentPermission('Tool request: %s', toolName, input);
 
     // Check if tool is in session-allowed list
     if (
