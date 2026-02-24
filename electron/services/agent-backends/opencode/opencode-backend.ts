@@ -290,7 +290,7 @@ export class OpenCodeBackend implements AgentBackend {
     // QuestionAnswer = Array<string> — each answer is the selected option(s)
     const answers = Object.values(answer).map((value) => [value]);
 
-    const r = await client.question
+    client.question
       .reply({
         requestID: requestId,
         directory: state.cwd,
@@ -303,11 +303,6 @@ export class OpenCodeBackend implements AgentBackend {
           error,
         );
       });
-    dbg.agent(
-      'OpenCodeBackend.respondToQuestion reply sent for %s, response: %O',
-      sessionId,
-      r,
-    );
   }
 
   async setMode(_sessionId: string, _mode: InteractionMode): Promise<void> {
