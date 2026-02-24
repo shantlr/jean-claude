@@ -37,12 +37,22 @@ export function DeleteTaskDialog({
   useCommands('delete-task-dialog', [
     isOpen && {
       label: 'Confirm Delete',
-      shortcut: 'cmd+enter',
+      shortcut: ['cmd+enter', 'cmd+backspace'],
       hideInCommandPalette: true,
       handler: () => {
         handleConfirm();
       },
     },
+    isOpen &&
+      hasWorktree && {
+        label: 'Toggle Worktree Cleanup',
+        shortcut: 'cmd+shift+w',
+        hideInCommandPalette: true,
+        handler: () => {
+          if (isPending) return false;
+          setDeleteWorktree((value) => !value);
+        },
+      },
   ]);
 
   if (!isOpen) return null;
@@ -70,7 +80,10 @@ export function DeleteTaskDialog({
             className="mt-0.5 h-4 w-4 rounded border-neutral-600 bg-neutral-700"
           />
           <span>
-            Delete associated worktree and branch
+            <span className="inline-flex items-center gap-1">
+              Delete associated worktree and branch
+              <Kbd shortcut="cmd+shift+w" className="text-[9px]" />
+            </span>
             <span className="block text-xs text-neutral-400">
               If unchecked, the worktree is kept unless it has no changes.
             </span>
@@ -95,7 +108,10 @@ export function DeleteTaskDialog({
         >
           {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
           Delete
-          <Kbd shortcut="cmd+enter" />
+          <span className="inline-flex items-center gap-1">
+            <Kbd shortcut="cmd+enter" />
+            <Kbd shortcut="cmd+backspace" />
+          </span>
         </button>
       </div>
     </Modal>
