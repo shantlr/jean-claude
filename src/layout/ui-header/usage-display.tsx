@@ -48,6 +48,22 @@ function getUsageLevel(usageRatio: number): UsageLevel {
   return 'excellent';
 }
 
+/** Returns true if any range (primary or secondary) has raw utilization >= threshold. */
+function hasAnyRangeOver(data: UsageDisplayData, threshold: number): boolean {
+  if (data.fiveHour && data.fiveHour.utilization >= threshold) return true;
+  if (data.sevenDay && data.sevenDay.utilization >= threshold) return true;
+  return false;
+}
+
+/** Returns true if any secondary (non-primary) range has raw utilization >= threshold. */
+function hasSecondaryRangeOver(
+  data: UsageDisplayData,
+  threshold: number,
+): boolean {
+  if (data.sevenDay && data.sevenDay.utilization >= threshold) return true;
+  return false;
+}
+
 const LEVEL_DOT_COLORS: Record<UsageLevel, string> = {
   excellent: 'bg-blue-400',
   low: 'bg-green-400',
@@ -96,7 +112,16 @@ function TooltipContent({
         <div>
           <div className="flex items-center justify-between gap-4">
             <span className="text-neutral-400">5-hour</span>
-            <span className="font-medium">
+            <span
+              className={clsx(
+                'font-medium',
+                data.fiveHour.utilization >= 100
+                  ? 'text-red-400'
+                  : data.fiveHour.utilization >= 90
+                    ? 'text-orange-400'
+                    : undefined,
+              )}
+            >
               {data.fiveHour.utilization.toFixed(0)}%
             </span>
           </div>
@@ -120,12 +145,32 @@ function TooltipContent({
         <div>
           <div className="flex items-center justify-between gap-4">
             <span className="text-neutral-400">7-day</span>
-            <span className="font-medium">
+            <span
+              className={clsx(
+                'font-medium',
+                data.sevenDay.utilization >= 100
+                  ? 'text-red-400'
+                  : data.sevenDay.utilization >= 90
+                    ? 'text-orange-400'
+                    : undefined,
+              )}
+            >
               {data.sevenDay.utilization.toFixed(0)}%
             </span>
           </div>
-          <div className="text-neutral-500">
-            Resets {data.sevenDay.timeUntilReset}
+          <div className="flex items-center justify-between gap-4 text-neutral-500">
+            <span>
+              Ratio:{' '}
+              {(() => {
+                const r = getUsageRatio({
+                  utilization: data.sevenDay!.utilization,
+                  resetsAt: data.sevenDay!.resetsAt,
+                  windowDurationMs: data.sevenDay!.windowDurationMs,
+                });
+                return Number.isFinite(r) ? r.toFixed(1) : '∞';
+              })()}
+            </span>
+            <span>Resets {data.sevenDay.timeUntilReset}</span>
           </div>
         </div>
       )}
@@ -174,7 +219,22 @@ function ProviderUsageChip({
     windowDurationMs: fiveHour.windowDurationMs,
   });
   const level = getUsageLevel(usageRatio);
-  const percentage = Math.min(fiveHour.utilization, 100);
+
+  const isExhausted = hasAnyRangeOver(result.data, 100);
+  const hasSecondaryWarning =
+    !isExhausted && hasSecondaryRangeOver(result.data, 90);
+
+  const textColor = isExhausted ? 'text-red-400' : LEVEL_TEXT_COLORS[level];
+  const dotColor = isExhausted ? 'bg-red-400' : LEVEL_DOT_COLORS[level];
+  const ringClass = isExhausted
+    ? 'ring-1 ring-red-400/60'
+    : hasSecondaryWarning
+      ? 'ring-1 ring-orange-400/50'
+      : '';
+
+  const displayPercentage = isExhausted
+    ? '100'
+    : Math.min(fiveHour.utilization, 100).toFixed(0);
 
   return (
     <Tooltip
@@ -183,22 +243,20 @@ function ProviderUsageChip({
       }
       side="bottom"
     >
-      <div className="flex items-center gap-1.5 rounded px-1.5 py-0.5">
-        {Icon ? (
-          <Icon
-            className={clsx('h-3.5 w-3.5 shrink-0', LEVEL_TEXT_COLORS[level])}
-          />
-        ) : (
-          <div
-            className={clsx(
-              'h-1.5 w-1.5 rounded-full',
-              LEVEL_DOT_COLORS[level],
-            )}
-          />
+      <div
+        className={clsx(
+          'flex items-center gap-1.5 rounded px-1.5 py-0.5',
+          ringClass,
         )}
-        <span className={clsx('text-xs font-medium', LEVEL_TEXT_COLORS[level])}>
+      >
+        {Icon ? (
+          <Icon className={clsx('h-3.5 w-3.5 shrink-0', textColor)} />
+        ) : (
+          <div className={clsx('h-1.5 w-1.5 rounded-full', dotColor)} />
+        )}
+        <span className={clsx('text-xs font-medium', textColor)}>
           {Icon ? '' : `${meta.shortLabel} `}
-          {percentage.toFixed(0)}%
+          {displayPercentage}%
         </span>
       </div>
     </Tooltip>

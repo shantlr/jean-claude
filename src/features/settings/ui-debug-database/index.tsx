@@ -97,7 +97,8 @@ export function DebugDatabase() {
           <button
             onClick={handleDeleteOldCompletedTasks}
             disabled={
-              staleCompletedTasksCount === 0 || deleteOldCompletedTasks.isPending
+              staleCompletedTasksCount === 0 ||
+              deleteOldCompletedTasks.isPending
             }
             className="cursor-pointer rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-red-500/10"
           >

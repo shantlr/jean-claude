@@ -134,29 +134,27 @@ export const DebugRepository = {
     };
   },
 
-  countOldCompletedTasks:
-    async (): Promise<OldCompletedTasksCountResult> => {
-      const cutoffDate = getCompletedTasksCutoffDate();
-      const countResult = await db
-        .selectFrom('tasks')
-        .select((eb) => eb.fn.countAll<number>().as('count'))
-        .where('userCompleted', '=', 1)
-        .where('updatedAt', '<', cutoffDate)
-        .executeTakeFirstOrThrow();
+  countOldCompletedTasks: async (): Promise<OldCompletedTasksCountResult> => {
+    const cutoffDate = getCompletedTasksCutoffDate();
+    const countResult = await db
+      .selectFrom('tasks')
+      .select((eb) => eb.fn.countAll<number>().as('count'))
+      .where('userCompleted', '=', 1)
+      .where('updatedAt', '<', cutoffDate)
+      .executeTakeFirstOrThrow();
 
-      return { count: countResult.count };
-    },
+    return { count: countResult.count };
+  },
 
-  deleteOldCompletedTasks:
-    async (): Promise<DeleteOldCompletedTasksResult> => {
-      const cutoffDate = getCompletedTasksCutoffDate();
-      const rows = await db
-        .deleteFrom('tasks')
-        .where('userCompleted', '=', 1)
-        .where('updatedAt', '<', cutoffDate)
-        .returning('id')
-        .execute();
+  deleteOldCompletedTasks: async (): Promise<DeleteOldCompletedTasksResult> => {
+    const cutoffDate = getCompletedTasksCutoffDate();
+    const rows = await db
+      .deleteFrom('tasks')
+      .where('userCompleted', '=', 1)
+      .where('updatedAt', '<', cutoffDate)
+      .returning('id')
+      .execute();
 
-      return { deletedCount: rows.length };
-    },
+    return { deletedCount: rows.length };
+  },
 };
