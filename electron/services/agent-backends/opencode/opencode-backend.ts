@@ -473,6 +473,11 @@ export class OpenCodeBackend implements AgentBackend {
 
         const ocEvent = event as OcEvent;
 
+        // Skip heartbeat events — they carry no useful data
+        if (ocEvent.type === 'server.heartbeat') {
+          continue;
+        }
+
         // Only process events for our session
         const sessionIdFromEvent = this.getSessionIdFromEvent(ocEvent);
         if (sessionIdFromEvent && sessionIdFromEvent !== sessionId) {

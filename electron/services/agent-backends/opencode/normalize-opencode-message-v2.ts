@@ -165,10 +165,33 @@ function normalizeEvent(
 
     case 'session.status': {
       const props = event.properties as {
-        status: { type: string; attempt?: number; message?: string };
+        status: {
+          type: string;
+          attempt?: number;
+          message?: string;
+          next?: number;
+        };
       };
       if (props.status.type === 'retry') {
-        return [{ type: 'rate-limit', retryAfterMs: undefined }];
+        const msg = (props.status.message ?? '').toLowerCase();
+        const isRateLimit =
+          msg.includes('rate') ||
+          msg.includes('limit') ||
+          msg.includes('quota') ||
+          msg.includes('throttl');
+        if (isRateLimit) {
+          const retryAfterMs =
+            typeof props.status.next === 'number'
+              ? Math.max(0, props.status.next - Date.now())
+              : undefined;
+          return [
+            {
+              type: 'rate-limit',
+              retryAfterMs,
+              message: props.status.message,
+            },
+          ];
+        }
       }
       return [];
     }

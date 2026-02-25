@@ -257,7 +257,7 @@ export type NormalizationEvent =
   | { type: 'permission-request'; request: NormalizedPermissionRequest }
   | { type: 'complete'; result: NormalizedResult }
   | { type: 'error'; error: string }
-  | { type: 'rate-limit'; retryAfterMs?: number };
+  | { type: 'rate-limit'; retryAfterMs?: number; message?: string };
 
 import type { InteractionMode } from './types';
 

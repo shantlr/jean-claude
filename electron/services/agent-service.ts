@@ -532,6 +532,28 @@ class AgentService {
         break;
       }
 
+      case 'rate-limit': {
+        const message =
+          event.message || 'Rate limit reached — retrying automatically';
+        dbg.agent(
+          'Rate limit for task %s: %s (retryAfterMs: %s)',
+          taskId,
+          message,
+          event.retryAfterMs,
+        );
+
+        // Emit a synthetic error entry so the user sees the rate-limit in the timeline
+        await this.persistAndEmitSyntheticEntry(taskId, session, {
+          id: nanoid(),
+          date: new Date().toISOString(),
+          isSynthetic: true,
+          type: 'result',
+          value: message,
+          isError: true,
+        });
+        break;
+      }
+
       case 'mode-change': {
         await TaskRepository.update(taskId, { interactionMode: event.mode });
         break;
