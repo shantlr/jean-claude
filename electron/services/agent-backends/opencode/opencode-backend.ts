@@ -120,7 +120,7 @@ export class OpenCodeBackend implements AgentBackend {
   private taskContext: AgentTaskContext;
 
   static async compactRawMessagesForTask(taskId: string): Promise<void> {
-    await RawMessageRepository.compactOpenCodeDeltasForTask(taskId);
+    await RawMessageRepository.compactOpenCodeRawMessagesForTask(taskId);
   }
 
   constructor(context: AgentTaskContext) {
