@@ -993,8 +993,38 @@ class AgentService {
     ]);
 
     for (const task of staleTasks) {
-      await TaskRepository.update(task.id, { status: 'interrupted' });
-      // Note: No need to emit status here since no UI is connected yet at startup
+      try {
+        // Get next messageIndex for this task's message stream
+        const messageCount = await AgentMessageRepository.getMessageCount(
+          task.id,
+        );
+
+        // Persist synthetic interrupted entry so the timeline shows the interruption
+        await AgentMessageRepository.create({
+          taskId: task.id,
+          messageIndex: messageCount,
+          entry: {
+            id: nanoid(),
+            date: new Date().toISOString(),
+            isSynthetic: true,
+            type: 'result',
+            value: 'Task interrupted',
+            isError: true,
+          },
+          rawMessageId: null,
+        });
+
+        await TaskRepository.update(task.id, { status: 'interrupted' });
+      } catch (error) {
+        dbg.agent('Failed to recover stale task %s: %O', task.id, error);
+        // Best-effort: still try to mark the task as interrupted even if
+        // the synthetic message failed to persist
+        try {
+          await TaskRepository.update(task.id, { status: 'interrupted' });
+        } catch {
+          dbg.agent('Failed to update status for stale task %s', task.id);
+        }
+      }
     }
 
     if (staleTasks.length > 0) {
