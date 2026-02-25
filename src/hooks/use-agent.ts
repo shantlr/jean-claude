@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTaskMessages } from '@/hooks/use-task-messages';
 import { api } from '@/lib/api';
 import { useTaskMessagesStore } from '@/stores/task-messages';
+import { useToastStore } from '@/stores/toasts';
 import type { PermissionResponse, QuestionResponse } from '@shared/agent-types';
 
 export function useAgentStream(taskId: string) {
@@ -31,6 +32,7 @@ export function useAgentControls(taskId: string) {
   const queryClient = useQueryClient();
   const setPermission = useTaskMessagesStore((s) => s.setPermission);
   const setQuestion = useTaskMessagesStore((s) => s.setQuestion);
+  const addToast = useToastStore((s) => s.addToast);
 
   const start = useCallback(async () => {
     setIsStarting(true);
@@ -53,18 +55,38 @@ export function useAgentControls(taskId: string) {
 
   const respondToPermission = useCallback(
     async (requestId: string, response: PermissionResponse) => {
-      await api.agent.respond(taskId, requestId, response);
+      try {
+        await api.agent.respond(taskId, requestId, response);
+      } catch (error) {
+        addToast({
+          type: 'error',
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Failed to respond to permission request',
+        });
+      }
       setPermission(taskId, null);
     },
-    [taskId, setPermission],
+    [taskId, setPermission, addToast],
   );
 
   const respondToQuestion = useCallback(
     async (requestId: string, response: QuestionResponse) => {
-      await api.agent.respond(taskId, requestId, response);
+      try {
+        await api.agent.respond(taskId, requestId, response);
+      } catch (error) {
+        addToast({
+          type: 'error',
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Failed to respond to question',
+        });
+      }
       setQuestion(taskId, null);
     },
-    [taskId, setQuestion],
+    [taskId, setQuestion, addToast],
   );
 
   const sendMessage = useCallback(

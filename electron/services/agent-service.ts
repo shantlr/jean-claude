@@ -671,7 +671,17 @@ class AgentService {
     );
     const session = this.sessions.get(taskId);
     if (!session) {
-      throw new Error(`No active session for task ${taskId}`);
+      dbg.agentSession(
+        'No active session for task %s, marking as interrupted',
+        taskId,
+      );
+      await TaskRepository.update(taskId, { status: 'interrupted' });
+      this.emitEvent(taskId, {
+        type: 'status',
+        status: 'interrupted',
+        error: 'Session is no longer active',
+      });
+      return;
     }
 
     // Find and remove the pending request
