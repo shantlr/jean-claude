@@ -15,6 +15,8 @@ import { QueuedPromptEntry } from './ui-queued-prompt-entry';
 import { SkillEntry } from './ui-skill-entry';
 import { SubagentEntry } from './ui-subagent-entry';
 import { TimelineEntry, CompactingEntry } from './ui-timeline-entry';
+import { TimelinePromptNavigator } from './ui-timeline-prompt-navigator';
+import { computePromptIndexMap } from './use-prompt-navigation';
 
 // Threshold in pixels - if user is within this distance from bottom, auto-scroll
 const SCROLL_THRESHOLD = 10;
@@ -46,6 +48,12 @@ export const MessageStream = memo(function MessageStream({
     [messages],
   );
 
+  // Prompt index map for data-prompt-index attributes (used by navigator's scroll tracking)
+  const promptIndexMap = useMemo(
+    () => computePromptIndexMap(displayMessages),
+    [displayMessages],
+  );
+
   // Check if scroll position is near bottom
   const checkIfNearBottom = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -74,10 +82,6 @@ export const MessageStream = memo(function MessageStream({
     }
   }, [displayMessages.length, queuedPrompts.length]);
 
-  console.log({
-    messages,
-  });
-
   if (messages.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-neutral-500">
@@ -92,17 +96,28 @@ export const MessageStream = memo(function MessageStream({
       onScroll={handleScroll}
       className="h-full overflow-auto"
     >
+      <TimelinePromptNavigator
+        scrollContainerRef={scrollContainerRef}
+        displayMessages={displayMessages}
+      />
       {/* Timeline vertical line */}
       <div className="relative ml-3 border-l border-neutral-700">
         {displayMessages.map((displayMessage, index) => {
           if (displayMessage.kind === 'skill') {
+            const promptIdx = promptIndexMap.get(index);
             return (
-              <SkillEntry
+              <div
                 key={index}
-                skillToolUse={displayMessage.skillToolUse}
-                promptEntry={displayMessage.promptEntry}
-                onFilePathClick={onFilePathClick}
-              />
+                {...(promptIdx !== undefined
+                  ? { 'data-prompt-index': promptIdx }
+                  : {})}
+              >
+                <SkillEntry
+                  skillToolUse={displayMessage.skillToolUse}
+                  promptEntry={displayMessage.promptEntry}
+                  onFilePathClick={onFilePathClick}
+                />
+              </div>
             );
           }
           if (displayMessage.kind === 'compacting') {
@@ -121,6 +136,17 @@ export const MessageStream = memo(function MessageStream({
                 childEntries={displayMessage.childEntries}
                 onFilePathClick={onFilePathClick}
               />
+            );
+          }
+          const promptIdx = promptIndexMap.get(index);
+          if (promptIdx !== undefined) {
+            return (
+              <div key={index} data-prompt-index={promptIdx}>
+                <TimelineEntry
+                  entry={displayMessage.entry}
+                  onFilePathClick={onFilePathClick}
+                />
+              </div>
             );
           }
           return (
