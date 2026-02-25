@@ -308,6 +308,10 @@ contextBridge.exposeInMainWorld('api', {
   debug: {
     getTableNames: () => ipcRenderer.invoke('debug:getTableNames'),
     getDatabaseSize: () => ipcRenderer.invoke('debug:getDatabaseSize'),
+    countOldCompletedTasks: () =>
+      ipcRenderer.invoke('debug:countOldCompletedTasks'),
+    deleteOldCompletedTasks: () =>
+      ipcRenderer.invoke('debug:deleteOldCompletedTasks'),
     queryTable: (params: {
       table: string;
       search?: string;

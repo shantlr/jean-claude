@@ -1361,6 +1361,12 @@ export function registerIpcHandlers() {
   ipcMain.handle('debug:getDatabaseSize', () =>
     DebugRepository.getDatabaseSize(),
   );
+  ipcMain.handle('debug:countOldCompletedTasks', () =>
+    DebugRepository.countOldCompletedTasks(),
+  );
+  ipcMain.handle('debug:deleteOldCompletedTasks', () =>
+    DebugRepository.deleteOldCompletedTasks(),
+  );
   ipcMain.handle(
     'debug:queryTable',
     (

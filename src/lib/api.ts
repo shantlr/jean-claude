@@ -224,6 +224,14 @@ export interface DebugDatabaseSizeResult {
   bytes: number;
 }
 
+export interface OldCompletedTasksCountResult {
+  count: number;
+}
+
+export interface DeleteOldCompletedTasksResult {
+  deletedCount: number;
+}
+
 export interface TaskWithProject {
   id: string;
   projectId: string;
@@ -558,6 +566,8 @@ export interface Api {
   debug: {
     getTableNames: () => Promise<string[]>;
     getDatabaseSize: () => Promise<DebugDatabaseSizeResult>;
+    countOldCompletedTasks: () => Promise<OldCompletedTasksCountResult>;
+    deleteOldCompletedTasks: () => Promise<DeleteOldCompletedTasksResult>;
     queryTable: (params: QueryTableParams) => Promise<QueryTableResult>;
   };
   usage: {
@@ -894,6 +904,8 @@ export const api: Api = hasWindowApi
       debug: {
         getTableNames: async () => [],
         getDatabaseSize: async () => ({ bytes: 0 }),
+        countOldCompletedTasks: async () => ({ count: 0 }),
+        deleteOldCompletedTasks: async () => ({ deletedCount: 0 }),
         queryTable: async () => ({ columns: [], rows: [], total: 0 }),
       },
       usage: {

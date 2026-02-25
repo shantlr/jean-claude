@@ -39,6 +39,22 @@ export interface DatabaseSizeResult {
   bytes: number;
 }
 
+export interface OldCompletedTasksCountResult {
+  count: number;
+}
+
+export interface DeleteOldCompletedTasksResult {
+  deletedCount: number;
+}
+
+const COMPLETED_TASK_RETENTION_DAYS = 7;
+
+function getCompletedTasksCutoffDate(): string {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - COMPLETED_TASK_RETENTION_DAYS);
+  return cutoff.toISOString();
+}
+
 export const DebugRepository = {
   getTableNames: (): string[] => {
     return [...ALLOWED_TABLES];
@@ -117,4 +133,30 @@ export const DebugRepository = {
       total,
     };
   },
+
+  countOldCompletedTasks:
+    async (): Promise<OldCompletedTasksCountResult> => {
+      const cutoffDate = getCompletedTasksCutoffDate();
+      const countResult = await db
+        .selectFrom('tasks')
+        .select((eb) => eb.fn.countAll<number>().as('count'))
+        .where('userCompleted', '=', 1)
+        .where('updatedAt', '<', cutoffDate)
+        .executeTakeFirstOrThrow();
+
+      return { count: countResult.count };
+    },
+
+  deleteOldCompletedTasks:
+    async (): Promise<DeleteOldCompletedTasksResult> => {
+      const cutoffDate = getCompletedTasksCutoffDate();
+      const rows = await db
+        .deleteFrom('tasks')
+        .where('userCompleted', '=', 1)
+        .where('updatedAt', '<', cutoffDate)
+        .returning('id')
+        .execute();
+
+      return { deletedCount: rows.length };
+    },
 };

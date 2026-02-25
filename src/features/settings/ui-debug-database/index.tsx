@@ -2,9 +2,11 @@ import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
 import {
+  useDeleteOldCompletedTasks,
   useDebugDatabaseSize,
   useDebugTableNames,
   useDebugTableQuery,
+  useOldCompletedTasksCount,
 } from '@/hooks/use-debug';
 
 const PAGE_SIZE = 20;
@@ -12,6 +14,8 @@ const PAGE_SIZE = 20;
 export function DebugDatabase() {
   const { data: tableNames = [] } = useDebugTableNames();
   const { data: databaseSize } = useDebugDatabaseSize();
+  const { data: oldCompletedTasksCount } = useOldCompletedTasksCount();
+  const deleteOldCompletedTasks = useDeleteOldCompletedTasks();
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
@@ -46,6 +50,24 @@ export function DebugDatabase() {
   const showingFrom = data && data.total > 0 ? page * PAGE_SIZE + 1 : 0;
   const showingTo = data ? Math.min((page + 1) * PAGE_SIZE, data.total) : 0;
 
+  const staleCompletedTasksCount = oldCompletedTasksCount?.count ?? 0;
+
+  const handleDeleteOldCompletedTasks = () => {
+    if (staleCompletedTasksCount === 0 || deleteOldCompletedTasks.isPending) {
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      `Delete ${staleCompletedTasksCount} completed task(s) older than 7 days? This cannot be undone.`,
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    deleteOldCompletedTasks.mutate();
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -60,6 +82,30 @@ export function DebugDatabase() {
             Current DB size: {formatBytes(databaseSize.bytes)}
           </p>
         )}
+      </div>
+
+      <div className="rounded-lg border border-neutral-700 bg-neutral-900 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-sm font-medium text-neutral-200">
+              Cleanup old completed tasks
+            </h3>
+            <p className="mt-1 text-sm text-neutral-400">
+              Completed tasks older than 7 days: {staleCompletedTasksCount}
+            </p>
+          </div>
+          <button
+            onClick={handleDeleteOldCompletedTasks}
+            disabled={
+              staleCompletedTasksCount === 0 || deleteOldCompletedTasks.isPending
+            }
+            className="cursor-pointer rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-red-500/10"
+          >
+            {deleteOldCompletedTasks.isPending
+              ? 'Deleting...'
+              : 'Delete old completed tasks'}
+          </button>
+        </div>
       </div>
 
       {/* Table selector */}

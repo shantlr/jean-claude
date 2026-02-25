@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api, QueryTableParams, QueryTableResult } from '@/lib/api';
 
@@ -21,5 +21,26 @@ export function useDebugTableQuery(params: QueryTableParams | null) {
     queryKey: ['debug', 'table', params?.table, params?.search, params?.offset],
     queryFn: () => api.debug.queryTable(params!),
     enabled: params !== null,
+  });
+}
+
+export function useOldCompletedTasksCount() {
+  return useQuery({
+    queryKey: ['debug', 'old-completed-tasks-count'],
+    queryFn: () => api.debug.countOldCompletedTasks(),
+  });
+}
+
+export function useDeleteOldCompletedTasks() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api.debug.deleteOldCompletedTasks(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['debug', 'old-completed-tasks-count'],
+      });
+      queryClient.invalidateQueries({ queryKey: ['debug', 'table'] });
+    },
   });
 }
