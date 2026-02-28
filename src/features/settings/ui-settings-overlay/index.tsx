@@ -68,7 +68,9 @@ function GlobalContent({ menuItem }: { menuItem: GlobalMenuItem }) {
 export function SettingsOverlay({ onClose }: { onClose: () => void }) {
   const { currentProject } = useCurrentSettingsProject();
 
-  const [activeTab, setActiveTab] = useState<'global' | 'project'>('global');
+  const [activeTab, setActiveTab] = useState<'global' | 'project'>(
+    currentProject !== null ? 'project' : 'global',
+  );
   const [globalMenuItem, setGlobalMenuItem] =
     useState<GlobalMenuItem>('general');
   const [projectMenuItem, setProjectMenuItem] =
