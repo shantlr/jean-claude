@@ -14,9 +14,12 @@ const dbPath = process.env.JEAN_CLAUDE_DB_PATH || defaultDbPath;
 
 dbg.main('Using database at: %s', dbPath);
 
+const client = new Database(dbPath);
+client.pragma('journal_mode = WAL');
+
 export const db = new Kysely<DatabaseSchema>({
   dialect: new SqliteDialect({
-    database: new Database(dbPath),
+    database: client,
   }),
 });
 

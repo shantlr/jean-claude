@@ -350,6 +350,7 @@ export function registerIpcHandlers() {
       },
     ) => {
       await runCommandService.stopCommandsForTask(id);
+      dbg.ipc('Stopped commands for task %s', id);
 
       const task = await TaskRepository.findById(id);
 
@@ -363,10 +364,12 @@ export function registerIpcHandlers() {
             branchCleanup: 'delete',
             force: options?.deleteWorktree ?? false,
           });
+          dbg.ipc('Deleted worktree for task %s', id);
         }
       }
 
       await TaskRepository.delete(id);
+      dbg.ipc('Deleted task %s', id);
     },
   );
   ipcMain.handle(
@@ -1263,35 +1266,46 @@ export function registerIpcHandlers() {
     },
   );
 
-  ipcMain.handle(AGENT_CHANNELS.GET_MESSAGES, (_, taskId: string) => {
-    return agentService.getMessages(taskId);
-  });
-
-  ipcMain.handle(AGENT_CHANNELS.GET_MESSAGE_COUNT, (_, taskId: string) => {
-    return agentService.getMessageCount(taskId);
-  });
-
-  ipcMain.handle(AGENT_CHANNELS.GET_PENDING_REQUEST, (_, taskId: string) => {
-    return agentService.getPendingRequest(taskId);
+  ipcMain.handle(AGENT_CHANNELS.GET_MESSAGES, async (_, taskId: string) => {
+    return await agentService.getMessages(taskId);
   });
 
   ipcMain.handle(
-    AGENT_CHANNELS.GET_MESSAGES_WITH_RAW_DATA,
-    (_, taskId: string) => {
-      return agentService.getMessagesWithRawData(taskId);
+    AGENT_CHANNELS.GET_MESSAGE_COUNT,
+    async (_, taskId: string) => {
+      return await agentService.getMessageCount(taskId);
     },
   );
 
-  ipcMain.handle(AGENT_CHANNELS.COMPACT_RAW_MESSAGES, (_, taskId: string) => {
-    dbg.ipc('agent:compactRawMessages %s', taskId);
-    return agentService.compactRawMessages(taskId);
-  });
+  ipcMain.handle(
+    AGENT_CHANNELS.GET_PENDING_REQUEST,
+    async (_, taskId: string) => {
+      return await agentService.getPendingRequest(taskId);
+    },
+  );
+
+  ipcMain.handle(
+    AGENT_CHANNELS.GET_MESSAGES_WITH_RAW_DATA,
+    async (_, taskId: string) => {
+      return await agentService.getMessagesWithRawData(taskId);
+    },
+  );
+
+  ipcMain.handle(
+    AGENT_CHANNELS.COMPACT_RAW_MESSAGES,
+    async (_, taskId: string) => {
+      dbg.ipc('agent:compactRawMessages %s', taskId);
+      await agentService.compactRawMessages(taskId);
+      dbg.ipc('agent:compactRawMessages completed for %s', taskId);
+    },
+  );
 
   ipcMain.handle(
     AGENT_CHANNELS.REPROCESS_NORMALIZATION,
-    (_, taskId: string) => {
+    async (_, taskId: string) => {
       dbg.ipc('agent:reprocessNormalization %s', taskId);
-      return agentService.reprocessNormalization(taskId);
+      await agentService.reprocessNormalization(taskId);
+      dbg.ipc('agent:reprocessNormalization completed for %s', taskId);
     },
   );
 
