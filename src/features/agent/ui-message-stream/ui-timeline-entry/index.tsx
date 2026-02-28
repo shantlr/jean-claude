@@ -162,7 +162,17 @@ function formatToolResult(toolUse: NormalizedToolUse): string {
   const result = toolUse.result;
   if (result === undefined || result === null) return '';
   if (typeof result === 'string') return result;
-  if (typeof result === 'object') return JSON.stringify(result, null, 2);
+  if (typeof result === 'object') {
+    // Extract content string from bash results instead of showing raw JSON
+    if (
+      toolUse.name === 'bash' &&
+      'content' in result &&
+      typeof (result as Record<string, unknown>).content === 'string'
+    ) {
+      return (result as { content: string }).content;
+    }
+    return JSON.stringify(result, null, 2);
+  }
   return String(result);
 }
 
