@@ -46,7 +46,7 @@ export function TimelinePromptNavigator({
             <ChevronUp className="h-3.5 w-3.5" />
           </button>
 
-          <span className="text-[10px] tabular-nums leading-tight text-neutral-400">
+          <span className="text-[10px] leading-tight text-neutral-400 tabular-nums">
             {currentIndex + 1}/{totalPrompts}
           </span>
 

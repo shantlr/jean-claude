@@ -1,6 +1,11 @@
 import { useRouter } from '@tanstack/react-router';
 import clsx from 'clsx';
-import { AlertCircle, GitPullRequest, MessageSquare } from 'lucide-react';
+import {
+  AlertCircle,
+  GitPullRequest,
+  Loader2,
+  MessageSquare,
+} from 'lucide-react';
 
 import { NumberKey } from '@/common/context/keyboard-bindings/types';
 import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
@@ -8,6 +13,7 @@ import { Kbd } from '@/common/ui/kbd';
 import { StatusIndicator } from '@/features/task/ui-status-indicator';
 import type { TaskWithProject } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/time';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useCurrentVisibleProject } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { TaskStatus } from '@shared/types';
@@ -25,6 +31,14 @@ export function TaskSummaryCard({
 }) {
   const router = useRouter();
   const taskState = useTaskMessagesStore((s) => s.tasks[task.id]);
+  const isDeleting = useBackgroundJobsStore((state) =>
+    state.jobs.some(
+      (job) =>
+        job.status === 'running' &&
+        job.type === 'task-deletion' &&
+        job.taskId === task.id,
+    ),
+  );
   const { projectId } = useCurrentVisibleProject();
   const hasPendingPermission = !!taskState?.pendingPermission;
   const hasPendingQuestion = !!taskState?.pendingQuestion;
@@ -73,6 +87,7 @@ export function TaskSummaryCard({
       }}
       className={clsx(
         'flex cursor-pointer flex-col gap-1 rounded-lg px-3 py-2 transition-colors',
+        isDeleting && 'opacity-50',
         hasPendingPermission
           ? isSelected
             ? 'permission-border-selected'
@@ -96,7 +111,11 @@ export function TaskSummaryCard({
     >
       {/* Top row: status, name, number badge */}
       <div className="flex items-center gap-1">
-        <StatusIndicator status={task.status as TaskStatus} />
+        {isDeleting ? (
+          <Loader2 className="h-3 w-3 shrink-0 animate-spin text-neutral-400" />
+        ) : (
+          <StatusIndicator status={task.status as TaskStatus} />
+        )}
         {task.pullRequestId && (
           <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-green-500" />
         )}
