@@ -201,6 +201,24 @@ export const useBackgroundJobsStore = create<BackgroundJobsState>()(
     {
       name: 'background-jobs',
       partialize: (state) => ({ jobs: state.jobs }),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        const hasStale = state.jobs.some((job) => job.status === 'running');
+        if (hasStale) {
+          useBackgroundJobsStore.setState({
+            jobs: state.jobs.map((job) =>
+              job.status === 'running'
+                ? {
+                    ...job,
+                    status: 'failed' as const,
+                    completedAt: new Date().toISOString(),
+                    errorMessage: 'Interrupted by app restart',
+                  }
+                : job,
+            ),
+          });
+        }
+      },
     },
   ),
 );
