@@ -11,8 +11,6 @@ import {
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useToastStore } from '@/stores/toasts';
 
-import { CreatePrDialog } from '../ui-create-pr-dialog';
-
 import { CommitModal } from './commit-modal';
 import { MergeConfirmDialog } from './merge-confirm-dialog';
 
@@ -23,12 +21,9 @@ export function WorktreeActions({
   sourceBranch,
   defaultBranch,
   taskName,
-  taskPrompt,
-  workItemId,
-  repoProviderId,
-  repoProjectId,
-  repoId,
+  hasRepoLink,
   onMergeStarted,
+  onOpenPrView,
 }: {
   taskId: string;
   projectId: string;
@@ -36,13 +31,9 @@ export function WorktreeActions({
   sourceBranch: string | null;
   defaultBranch: string | null;
   taskName: string | null;
-  taskPrompt: string;
-  workItemId: string | null;
-  // Project repo link (nullable — only show PR button when linked)
-  repoProviderId: string | null;
-  repoProjectId: string | null;
-  repoId: string | null;
+  hasRepoLink: boolean;
   onMergeStarted: () => void;
+  onOpenPrView: () => void;
 }) {
   const [isCommitModalOpen, setIsCommitModalOpen] = useState(false);
   const [isMergeConfirmOpen, setIsMergeConfirmOpen] = useState(false);
@@ -50,8 +41,6 @@ export function WorktreeActions({
   const [selectedBranch, setSelectedBranch] = useState<string>(
     sourceBranch ?? defaultBranch ?? 'main',
   );
-  const [isPrDialogOpen, setIsPrDialogOpen] = useState(false);
-  const hasRepoLink = !!repoProviderId && !!repoProjectId && !!repoId;
 
   const { data: status, isLoading: isStatusLoading } =
     useWorktreeStatus(taskId);
@@ -205,7 +194,7 @@ export function WorktreeActions({
       {hasRepoLink && (
         <button
           type="button"
-          onClick={() => setIsPrDialogOpen(true)}
+          onClick={onOpenPrView}
           disabled={!canCreatePr}
           className="flex w-full items-center justify-center gap-2 rounded-md bg-green-700 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
           title={canCreatePr ? 'Create pull request' : 'Commit changes first'}
@@ -236,19 +225,6 @@ export function WorktreeActions({
         defaultCommitMessage={taskName ?? undefined}
         contentRef={mergeDialogRef}
       />
-
-      {hasRepoLink && (
-        <CreatePrDialog
-          isOpen={isPrDialogOpen}
-          onClose={() => setIsPrDialogOpen(false)}
-          taskId={taskId}
-          taskName={taskName}
-          taskPrompt={taskPrompt}
-          branchName={branchName}
-          targetBranch={selectedBranch}
-          workItemId={workItemId}
-        />
-      )}
     </div>
   );
 }

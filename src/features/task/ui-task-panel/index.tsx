@@ -8,6 +8,7 @@ import {
   Settings,
   GitBranch,
   GitCompare,
+  GitPullRequest,
   MoreHorizontal,
   FolderTree,
   Bug,
@@ -142,7 +143,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   } = useDiffViewState(taskId);
 
   // PR view state
-  const { isOpen: isPrViewOpen, closePrView } = usePrViewState(taskId);
+  const { isOpen: isPrViewOpen, openPrView, togglePrView, closePrView } =
+    usePrViewState(taskId);
 
   const agentState = useAgentStream(taskId);
   const contextUsage = useContextUsage(agentState.messages);
@@ -505,6 +507,10 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const taskRootPath = task.worktreePath ?? project.path;
   const hasMessages = agentState.messages.length > 0;
   const canSendMessage = !isRunning && hasMessages && !!task.sessionId;
+  const hasRepoLink =
+    !!project.repoProviderId &&
+    !!project.repoProjectId &&
+    !!project.repoId;
   const backendLabel =
     AVAILABLE_BACKENDS.find((backend) => backend.value === task.agentBackend)
       ?.label ?? 'Claude Code';
@@ -654,6 +660,15 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                   Diff
                 </DropdownItem>
               )}
+              {task.worktreePath && hasRepoLink && (
+                <DropdownItem
+                  icon={<GitPullRequest />}
+                  onClick={togglePrView}
+                  checked={isPrViewOpen}
+                >
+                  Pull Request
+                </DropdownItem>
+              )}
 
               <DropdownDivider />
 
@@ -751,12 +766,9 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               sourceBranch={task.sourceBranch}
               defaultBranch={project.defaultBranch}
               taskName={task.name}
-              taskPrompt={task.prompt}
-              workItemId={task.workItemIds?.[0] ?? null}
-              repoProviderId={project.repoProviderId}
-              repoProjectId={project.repoProjectId}
-              repoId={project.repoId}
+              hasRepoLink={hasRepoLink}
               onMergeStarted={handleMergeStarted}
+              onOpenPrView={openPrView}
             />
           ) : agentState.isLoading ? (
             <div className="flex h-full items-center justify-center">

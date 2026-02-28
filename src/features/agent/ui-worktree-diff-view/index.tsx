@@ -34,12 +34,9 @@ export function WorktreeDiffView({
   sourceBranch,
   defaultBranch,
   taskName,
-  taskPrompt,
-  workItemId,
-  repoProviderId,
-  repoProjectId,
-  repoId,
+  hasRepoLink,
   onMergeStarted,
+  onOpenPrView,
 }: {
   taskId: string;
   projectId: string;
@@ -49,12 +46,9 @@ export function WorktreeDiffView({
   sourceBranch: string | null;
   defaultBranch: string | null;
   taskName: string | null;
-  taskPrompt: string;
-  workItemId: string | null;
-  repoProviderId: string | null;
-  repoProjectId: string | null;
-  repoId: string | null;
+  hasRepoLink: boolean;
   onMergeStarted: () => void;
+  onOpenPrView: () => void;
 }) {
   const { data, isLoading, error, refresh } = useWorktreeDiff(taskId, true);
   const { data: summary, isLoading: isSummaryLoading } = useTaskSummary(taskId);
@@ -255,12 +249,9 @@ export function WorktreeDiffView({
           sourceBranch={sourceBranch}
           defaultBranch={defaultBranch}
           taskName={taskName}
-          taskPrompt={taskPrompt}
-          workItemId={workItemId}
-          repoProviderId={repoProviderId}
-          repoProjectId={repoProjectId}
-          repoId={repoId}
+          hasRepoLink={hasRepoLink}
           onMergeStarted={onMergeStarted}
+          onOpenPrView={onOpenPrView}
         />
         {/* Resize handle */}
         <div
