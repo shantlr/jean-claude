@@ -7,7 +7,7 @@ import { promisify } from 'util';
 
 import { BrowserWindow, ipcMain, dialog } from 'electron';
 
-import type { AgentBackendType } from '@shared/agent-backend-types';
+import type { AgentBackendType, PromptPart } from '@shared/agent-backend-types';
 import {
   AGENT_CHANNELS,
   PermissionResponse,
@@ -238,7 +238,8 @@ export function registerIpcHandlers() {
         autoStart?: boolean;
       },
     ) => {
-      const { useWorktree, sourceBranch, autoStart, ...taskData } = data;
+      const { useWorktree, sourceBranch, autoStart, images, ...taskData } =
+        data;
       dbg.ipc(
         'tasks:createWithWorktree useWorktree=%s, sourceBranch=%s, autoStart=%s',
         useWorktree,
@@ -327,6 +328,10 @@ export function registerIpcHandlers() {
         const window = BrowserWindow.fromWebContents(event.sender);
         if (window) {
           agentService.setMainWindow(window);
+        }
+        // Attach pending images so they're included in the first prompt
+        if (images?.length) {
+          agentService.setPendingImages(task.id, images);
         }
         // Start agent in background (don't await to return task immediately)
         agentService.start(task.id).catch((err) => {
@@ -1244,17 +1249,17 @@ export function registerIpcHandlers() {
 
   ipcMain.handle(
     AGENT_CHANNELS.SEND_MESSAGE,
-    (_, taskId: string, message: string) => {
-      dbg.ipc('agent:sendMessage %s (length: %d)', taskId, message.length);
-      return agentService.sendMessage(taskId, message);
+    (_, taskId: string, parts: PromptPart[]) => {
+      dbg.ipc('agent:sendMessage %s (parts: %d)', taskId, parts.length);
+      return agentService.sendMessage(taskId, parts);
     },
   );
 
   ipcMain.handle(
     AGENT_CHANNELS.QUEUE_PROMPT,
-    (_, taskId: string, prompt: string) => {
+    (_, taskId: string, parts: PromptPart[]) => {
       dbg.ipc('agent:queuePrompt %s', taskId);
-      return agentService.queuePrompt(taskId, prompt);
+      return agentService.queuePrompt(taskId, parts);
     },
   );
 

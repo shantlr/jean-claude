@@ -11,7 +11,11 @@
 // immediately available to the consumer (agent-service), even while the SDK
 // generator is blocked waiting for the canUseTool promise to resolve.
 
-import { PermissionResult, query } from '@anthropic-ai/claude-agent-sdk';
+import {
+  PermissionResult,
+  query,
+  type SDKUserMessage,
+} from '@anthropic-ai/claude-agent-sdk';
 import { nanoid } from 'nanoid';
 
 import type {
@@ -24,6 +28,7 @@ import type {
   NormalizedPermissionRequest,
   NormalizedQuestionRequest,
   NormalizedQuestion,
+  PromptPart,
 } from '@shared/agent-backend-types';
 import type { AgentMessage, AgentQuestion } from '@shared/agent-types';
 import type { InteractionMode } from '@shared/types';
@@ -33,6 +38,11 @@ import {
   buildPermissionString,
   isToolAllowedByPermissions,
 } from '../../permission-settings-service';
+import {
+  getPromptText,
+  getPromptImages,
+  buildPromptMarkdown,
+} from '../../prompt-utils';
 
 import { normalizeClaudeMessageV2 } from './normalize-claude-message-v2';
 import type { NormalizationContext } from './normalize-claude-message-v2';
@@ -134,7 +144,7 @@ export class ClaudeCodeBackend implements AgentBackend {
 
   async start(
     config: AgentBackendConfig,
-    prompt: string,
+    parts: PromptPart[],
   ): Promise<AgentSession> {
     const sessionKey = nanoid();
     const abortController = new AbortController();
@@ -157,7 +167,7 @@ export class ClaudeCodeBackend implements AgentBackend {
 
     // Start processing the SDK generator in the background.
     // Events are pushed to the channel and consumed by agent-service.
-    this.runSdkGenerator(config, prompt, session, sessionKey);
+    this.runSdkGenerator(config, parts, session, sessionKey);
 
     return {
       sessionId: sessionKey,
@@ -276,7 +286,7 @@ export class ClaudeCodeBackend implements AgentBackend {
    */
   private async runSdkGenerator(
     config: AgentBackendConfig,
-    prompt: string,
+    parts: PromptPart[],
     session: ClaudeSession,
     sessionKey: string,
   ): Promise<void> {
@@ -288,7 +298,7 @@ export class ClaudeCodeBackend implements AgentBackend {
         date: new Date().toISOString(),
         isSynthetic: true,
         type: 'user-prompt',
-        value: prompt,
+        value: buildPromptMarkdown(parts),
       },
     });
 
@@ -322,6 +332,54 @@ export class ClaudeCodeBackend implements AgentBackend {
 
     if (session.sessionId) {
       queryOptions.resume = session.sessionId;
+    }
+
+    const promptText = getPromptText(parts);
+    const images = getPromptImages(parts);
+
+    // When images are present, construct an SDKUserMessage with multimodal
+    // content blocks (text + base64 images) so Claude can see the images.
+    // Otherwise, pass the plain text string for simplicity.
+    let prompt: string | AsyncIterable<SDKUserMessage>;
+    if (images.length > 0) {
+      const content: Array<
+        | { type: 'text'; text: string }
+        | {
+            type: 'image';
+            source: { type: 'base64'; media_type: string; data: string };
+          }
+      > = [];
+
+      if (promptText) {
+        content.push({ type: 'text', text: promptText });
+      }
+
+      for (const img of images) {
+        content.push({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: img.mimeType,
+            data: img.data,
+          },
+        });
+      }
+
+      const userMessage: SDKUserMessage = {
+        type: 'user',
+        message: {
+          role: 'user',
+          content: content as SDKUserMessage['message']['content'],
+        },
+        parent_tool_use_id: null,
+        session_id: session.sessionId ?? '',
+      };
+
+      prompt = (async function* () {
+        yield userMessage;
+      })();
+    } else {
+      prompt = promptText;
     }
 
     const generator = query({ prompt, options: queryOptions });

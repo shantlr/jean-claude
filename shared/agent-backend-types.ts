@@ -18,6 +18,29 @@ export type {
 
 export type AgentBackendType = 'claude-code' | 'opencode';
 
+// --- Prompt content parts ---
+
+export type PromptTextPart = {
+  type: 'text';
+  text: string;
+};
+
+export type PromptImagePart = {
+  type: 'image';
+  /** base64-encoded image data (no data URI prefix) */
+  data: string;
+  /** MIME type, e.g. "image/webp", "image/jpeg" */
+  mimeType: string;
+  /** Optional original filename */
+  filename?: string;
+  /** AVIF-compressed base64 for storage (set by UI before IPC) */
+  storageData?: string;
+  /** MIME type of the storage version */
+  storageMimeType?: string;
+};
+
+export type PromptPart = PromptTextPart | PromptImagePart;
+
 // --- Backend interface ---
 
 export interface AgentBackendConfig {
@@ -71,7 +94,7 @@ export interface AgentTaskContext {
 }
 
 export interface AgentBackend {
-  start(config: AgentBackendConfig, prompt: string): Promise<AgentSession>;
+  start(config: AgentBackendConfig, parts: PromptPart[]): Promise<AgentSession>;
   stop(sessionId: string): Promise<void>;
   respondToPermission(
     sessionId: string,

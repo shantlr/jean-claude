@@ -9,6 +9,7 @@ import {
   PromptTextareaRef,
 } from '@/features/common/ui-prompt-textarea';
 import { useCompletionSetting } from '@/hooks/use-settings';
+import type { PromptPart, PromptImagePart } from '@shared/agent-backend-types';
 import type { Skill } from '@shared/skill-types';
 
 const DOUBLE_ESCAPE_THRESHOLD = 300; // ms
@@ -25,9 +26,10 @@ export function MessageInput({
   projectRoot = null,
   value: externalValue,
   onValueChange,
+  supportsImages = true,
 }: {
-  onSend: (message: string) => void;
-  onQueue?: (message: string) => void;
+  onSend: (parts: PromptPart[]) => void;
+  onQueue?: (parts: PromptPart[]) => void;
   onStop?: () => void;
   disabled?: boolean;
   placeholder?: string;
@@ -37,6 +39,8 @@ export function MessageInput({
   projectRoot?: string | null;
   value?: string;
   onValueChange?: (value: string) => void;
+  /** Whether the current backend supports image attachments (default: true) */
+  supportsImages?: boolean;
 }) {
   const { data: completionSetting } = useCompletionSetting();
   const [internalValue, setInternalValue] = useState('');
@@ -52,22 +56,37 @@ export function MessageInput({
   const textareaRef = useRef<PromptTextareaRef>(null);
   const lastEscapeRef = useRef<number>(0);
 
+  const [images, setImages] = useState<PromptImagePart[]>([]);
+
+  const handleImageAttach = useCallback((image: PromptImagePart) => {
+    setImages((prev) => [...prev, image]);
+  }, []);
+
+  const handleImageRemove = useCallback((index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
   const handleSubmit = useCallback(() => {
     const trimmed = value.trim();
-    if (!trimmed) return;
+    if (!trimmed && images.length === 0) return;
+
+    const parts: PromptPart[] = [];
+    if (trimmed) parts.push({ type: 'text', text: trimmed });
+    parts.push(...images);
 
     if (isRunning && onQueue) {
       // Queue the message if agent is running
-      onQueue(trimmed);
+      onQueue(parts);
     } else if (!disabled) {
       // Send normally if not running
-      onSend(trimmed);
+      onSend(parts);
     }
 
     setValue('');
+    setImages([]);
     // Reset textarea height
     textareaRef.current?.resetHeight();
-  }, [value, disabled, isRunning, onSend, onQueue, setValue]);
+  }, [value, images, disabled, isRunning, onSend, onQueue, setValue]);
 
   const handleEnterKey = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -114,6 +133,9 @@ export function MessageInput({
         enableCompletion={completionSetting?.enabled ?? false}
         projectRoot={projectRoot}
         enableFilePathAutocomplete
+        images={supportsImages ? images : undefined}
+        onImageAttach={supportsImages ? handleImageAttach : undefined}
+        onImageRemove={supportsImages ? handleImageRemove : undefined}
         placeholder={
           isRunning
             ? 'Type to queue a follow-up... (Esc twice to stop)'
@@ -124,7 +146,9 @@ export function MessageInput({
       {/* Send/Queue button */}
       <button
         onClick={handleSubmit}
-        disabled={!value.trim() || (disabled && !isRunning)}
+        disabled={
+          (!value.trim() && images.length === 0) || (disabled && !isRunning)
+        }
         className={clsx(
           'flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-white disabled:cursor-not-allowed disabled:opacity-50',
           isRunning

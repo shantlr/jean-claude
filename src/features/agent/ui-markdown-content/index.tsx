@@ -157,6 +157,10 @@ function customUrlTransform(url: string): string {
   if (url.startsWith('azure-image-proxy://')) {
     return url;
   }
+  // Allow data: URIs (used for inline image attachments)
+  if (url.startsWith('data:image/')) {
+    return url;
+  }
   // For other URLs, only allow safe protocols
   const safeProtocols = ['http:', 'https:', 'mailto:', 'tel:'];
   try {

@@ -71,6 +71,7 @@ import {
 } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import { useTaskPrompt } from '@/stores/task-prompts';
+import type { AgentBackendType, PromptPart } from '@shared/agent-backend-types';
 import {
   PRESET_EDITORS,
   type InteractionMode,
@@ -911,6 +912,16 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   );
 }
 
+/** Whether a backend supports image attachments in prompts.
+ *  All Claude models support vision. OpenCode models generally do too,
+ *  but per-model capability detection requires SDK support (not yet available). */
+function backendSupportsImages(backend?: AgentBackendType | null): boolean {
+  // Both claude-code and opencode backends support image input.
+  // When per-model capability data becomes available from the BackendModel type,
+  // this should additionally check the selected model's capabilities.
+  return backend !== undefined && backend !== null;
+}
+
 /**
  * Extracted input footer that owns the prompt draft state.
  * This isolates the rapidly-changing prompt text from the rest of TaskPanel,
@@ -931,8 +942,8 @@ const TaskInputFooter = memo(function TaskInputFooter({
   isRunning: boolean;
   isStopping: boolean;
   canSendMessage: boolean;
-  onSend: (message: string) => void;
-  onQueue: (message: string) => void;
+  onSend: (parts: PromptPart[]) => void;
+  onQueue: (parts: PromptPart[]) => void;
   onStop: () => Promise<void>;
   contextUsage: ContextUsage;
   projectRoot: string | null;
@@ -967,20 +978,20 @@ const TaskInputFooter = memo(function TaskInputFooter({
   );
 
   const handleSendMessage = useCallback(
-    (message: string) => {
+    (parts: PromptPart[]) => {
       if (task?.userCompleted) {
         clearUserCompleted.mutate(taskId);
       }
       clearPromptDraft();
-      onSend(message);
+      onSend(parts);
     },
     [task?.userCompleted, taskId, clearUserCompleted, clearPromptDraft, onSend],
   );
 
   const handleQueuePrompt = useCallback(
-    (message: string) => {
+    (parts: PromptPart[]) => {
       clearPromptDraft();
-      onQueue(message);
+      onQueue(parts);
     },
     [clearPromptDraft, onQueue],
   );
@@ -1015,6 +1026,7 @@ const TaskInputFooter = memo(function TaskInputFooter({
         projectRoot={projectRoot}
         value={promptDraft}
         onValueChange={setPromptDraft}
+        supportsImages={backendSupportsImages(task?.agentBackend)}
       />
     </div>
   );

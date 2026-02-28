@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { File, Loader2, Wand2 } from 'lucide-react';
+import { File, Loader2, Wand2, ImageIcon, X } from 'lucide-react';
 import {
   useState,
   useRef,
@@ -13,6 +13,8 @@ import {
 import type {
   KeyboardEvent,
   ChangeEvent,
+  ClipboardEvent,
+  DragEvent,
   SyntheticEvent,
   TextareaHTMLAttributes,
 } from 'react';
@@ -24,6 +26,9 @@ import {
   getFilePathSuggestions,
   useProjectFilePaths,
 } from '@/hooks/use-project-file-paths';
+import { compressImage } from '@/lib/image-compression';
+import { useToastStore } from '@/stores/toasts';
+import type { PromptImagePart } from '@shared/agent-backend-types';
 import type { Skill } from '@shared/skill-types';
 
 const COMMANDS = [
@@ -85,6 +90,42 @@ type MentionToken = {
   query: string;
 };
 
+const MAX_IMAGES = 5;
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_IMAGE_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'image/avif',
+];
+
+async function processImageFile(
+  file: File,
+  onAttach: (image: PromptImagePart) => void,
+  onError?: (message: string) => void,
+): Promise<void> {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    onError?.(`Unsupported image type: ${file.type}`);
+    return;
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    onError?.(
+      `Image too large (${(file.size / 1024 / 1024).toFixed(1)} MB, max ${MAX_FILE_SIZE / 1024 / 1024} MB)`,
+    );
+    return;
+  }
+  const { agent, storage } = await compressImage(file);
+  onAttach({
+    type: 'image',
+    data: agent.data,
+    mimeType: agent.mimeType,
+    filename: file.name,
+    storageData: storage.data,
+    storageMimeType: storage.mimeType,
+  });
+}
+
 export interface PromptTextareaRef {
   focus: () => void;
   blur: () => void;
@@ -109,6 +150,12 @@ export interface PromptTextareaProps extends Omit<
   projectRoot?: string | null;
   /** Enable @file path suggestions */
   enableFilePathAutocomplete?: boolean;
+  /** Attached images */
+  images?: PromptImagePart[];
+  /** Called when user attaches an image (paste, drop, or file picker) */
+  onImageAttach?: (image: PromptImagePart) => void;
+  /** Called when user removes an attached image */
+  onImageRemove?: (index: number) => void;
 }
 
 export const PromptTextarea = forwardRef<
@@ -125,6 +172,9 @@ export const PromptTextarea = forwardRef<
     enableCompletion = false,
     projectRoot = null,
     enableFilePathAutocomplete = false,
+    images,
+    onImageAttach,
+    onImageRemove,
     className,
     onKeyDown: externalOnKeyDown,
     ...textareaProps
@@ -421,6 +471,127 @@ export const PromptTextarea = forwardRef<
     setCursorPosition(e.currentTarget.selectionStart);
   };
 
+  // --- Image attachment handlers ---
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const addToast = useToastStore((s) => s.addToast);
+  const showImageError = useCallback(
+    (message: string) => addToast({ message, type: 'error' }),
+    [addToast],
+  );
+
+  const handlePaste = useCallback(
+    (e: ClipboardEvent<HTMLTextAreaElement>) => {
+      if (!onImageAttach) return;
+
+      const items = Array.from(e.clipboardData.items);
+      const imageItems = items.filter((item) => item.type.startsWith('image/'));
+
+      if (imageItems.length > 0) {
+        const currentCount = images?.length ?? 0;
+        const allowed = MAX_IMAGES - currentCount;
+        if (allowed <= 0) return;
+
+        e.preventDefault();
+        for (const item of imageItems.slice(0, allowed)) {
+          const file = item.getAsFile();
+          if (file) {
+            void processImageFile(file, onImageAttach, showImageError).catch(
+              (err) => {
+                showImageError('Failed to process image');
+                console.error('Failed to process pasted image:', err);
+              },
+            );
+          }
+        }
+      }
+      // If no images, default text paste proceeds
+    },
+    [onImageAttach, images, showImageError],
+  );
+
+  const handleDragOver = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      if (!onImageAttach) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(true);
+    },
+    [onImageAttach],
+  );
+
+  const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only clear drag state when actually leaving the container,
+    // not when entering a child element (e.g. the textarea).
+    const related = e.relatedTarget as Node | null;
+    if (related && e.currentTarget.contains(related)) return;
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+
+      if (!onImageAttach) return;
+
+      const currentCount = images?.length ?? 0;
+      const allowed = MAX_IMAGES - currentCount;
+      if (allowed <= 0) return;
+
+      const files = Array.from(e.dataTransfer.files);
+      const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+      for (const file of imageFiles.slice(0, allowed)) {
+        void processImageFile(file, onImageAttach, showImageError).catch(
+          (err) => {
+            showImageError('Failed to process image');
+            console.error('Failed to process dropped image:', err);
+          },
+        );
+      }
+    },
+    [onImageAttach, images, showImageError],
+  );
+
+  const handleFileSelect = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      if (!onImageAttach || !e.target.files) return;
+
+      const currentCount = images?.length ?? 0;
+      const allowed = MAX_IMAGES - currentCount;
+      if (allowed <= 0) return;
+
+      const files = Array.from(e.target.files);
+      for (const file of files.slice(0, allowed)) {
+        void processImageFile(file, onImageAttach, showImageError).catch(
+          (err) => {
+            showImageError('Failed to process image');
+            console.error('Failed to process selected image:', err);
+          },
+        );
+      }
+      // Reset input so the same file can be selected again
+      e.target.value = '';
+    },
+    [onImageAttach, images, showImageError],
+  );
+
+  // Prevent the textarea's native file-drop behavior (inserting filename as text).
+  // The actual drop handling is on the parent container.
+  const handleTextareaDragOver = useCallback(
+    (e: DragEvent<HTMLTextAreaElement>) => {
+      if (!onImageAttach) return;
+      const hasFiles = Array.from(e.dataTransfer.types).includes('Files');
+      if (hasFiles) {
+        e.preventDefault();
+      }
+    },
+    [onImageAttach],
+  );
+
   // Separate item types for grouped display
   const fileItems = filteredItems.filter((item) => item.type === 'file');
   const commandItems = filteredItems.filter((item) => item.type === 'command');
@@ -437,7 +608,13 @@ export const PromptTextarea = forwardRef<
   };
 
   return (
-    <div ref={containerRef} className="relative flex flex-1 items-end">
+    <div
+      ref={containerRef}
+      className="flex flex-1 flex-col"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       {/* Autocompletion dropdown */}
       {showDropdown &&
         dropdownPosition &&
@@ -581,35 +758,96 @@ export const PromptTextarea = forwardRef<
           </div>,
           document.body,
         )}
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        onSelect={handleSelect}
-        rows={1}
-        autoComplete="off"
-        className={clsx(
-          'min-h-[40px] w-full resize-none rounded-lg border border-neutral-600 bg-neutral-900 px-3 py-2 text-sm leading-[20px] text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
-          className,
+
+      {/* Textarea wrapper — relative for ghost overlay + absolute elements */}
+      <div className="relative flex items-end">
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          onSelect={handleSelect}
+          onPaste={handlePaste}
+          onDragOver={handleTextareaDragOver}
+          rows={1}
+          autoComplete="off"
+          className={clsx(
+            'min-h-[40px] w-full resize-none rounded-lg border border-neutral-600 bg-neutral-900 px-3 py-2 text-sm leading-[20px] text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+            isDragOver && 'border-blue-500 bg-blue-500/10',
+            className,
+          )}
+          {...textareaProps}
+        />
+        {/* Ghost text overlay — matches textarea border+padding so text aligns */}
+        {completion && (
+          <div
+            ref={ghostRef}
+            className="pointer-events-none absolute inset-0 overflow-hidden border border-transparent px-3 py-2 text-sm leading-[20px] break-words whitespace-pre-wrap"
+            style={{ maxHeight: `${maxHeight}px` }}
+          >
+            <span className="invisible">{value.slice(0, cursorPosition)}</span>
+            <span className="text-neutral-500">{completion}</span>
+          </div>
         )}
-        {...textareaProps}
-      />
-      {/* Ghost text overlay — matches textarea border+padding so text aligns */}
-      {completion && (
-        <div
-          ref={ghostRef}
-          className="pointer-events-none absolute inset-0 overflow-hidden border border-transparent px-3 py-2 text-sm leading-[20px] break-words whitespace-pre-wrap"
-          style={{ maxHeight: `${maxHeight}px` }}
-        >
-          <span className="invisible">{value.slice(0, cursorPosition)}</span>
-          <span className="text-neutral-500">{completion}</span>
-        </div>
-      )}
-      {/* Completion loading indicator */}
-      {isCompletionLoading && !completion && (
-        <div className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2">
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-500" />
+        {/* Completion loading indicator */}
+        {isCompletionLoading && !completion && (
+          <div className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-500" />
+          </div>
+        )}
+
+        {/* File picker button */}
+        {onImageAttach && (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute right-2 bottom-2 rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
+              title="Attach image"
+            >
+              <ImageIcon className="h-4 w-4" />
+            </button>
+          </>
+        )}
+
+        {/* Drag overlay */}
+        {isDragOver && (
+          <div className="absolute inset-0 flex items-center justify-center rounded-lg border-2 border-dashed border-blue-500 bg-blue-500/10">
+            <span className="text-sm text-blue-400">Drop image here</span>
+          </div>
+        )}
+      </div>
+
+      {/* Image previews — below the textarea in normal flow */}
+      {images && images.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {images.map((img, index) => (
+            <div
+              key={`${img.filename ?? 'img'}-${index}`}
+              className="group relative"
+            >
+              <img
+                src={`data:${img.storageMimeType ?? img.mimeType};base64,${img.storageData ?? img.data}`}
+                alt={img.filename || 'Attached image'}
+                className="h-16 w-16 rounded border border-neutral-600 object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => onImageRemove?.(index)}
+                className="absolute -top-1.5 -right-1.5 hidden h-4 w-4 items-center justify-center rounded-full bg-neutral-700 text-xs text-neutral-300 group-hover:flex hover:bg-red-600"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>

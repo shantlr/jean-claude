@@ -18,6 +18,7 @@ import {
   type AssistantMessage as OcAssistantMessage,
   type PermissionRequest as OcPermission,
 } from '@opencode-ai/sdk/v2';
+import { nanoid } from 'nanoid';
 
 import type {
   AgentBackend,
@@ -28,11 +29,13 @@ import type {
   NormalizedPermissionResponse,
   NormalizedQuestion,
   NormalizedQuestionRequest,
+  PromptPart,
 } from '@shared/agent-backend-types';
 import type { InteractionMode } from '@shared/types';
 
 import { RawMessageRepository } from '../../../database/repositories';
 import { dbg } from '../../../lib/debug';
+import { buildPromptMarkdown } from '../../prompt-utils';
 
 import {
   normalizeOpenCodeV2,
@@ -129,7 +132,7 @@ export class OpenCodeBackend implements AgentBackend {
 
   async start(
     config: AgentBackendConfig,
-    prompt: string,
+    parts: PromptPart[],
   ): Promise<AgentSession> {
     const { client } = await getOrCreateServer();
 
@@ -189,7 +192,7 @@ export class OpenCodeBackend implements AgentBackend {
     this.sessions.set(session.id, state);
 
     // Build the event stream
-    const events = this.createEventStream(client, state, prompt, config);
+    const events = this.createEventStream(client, state, parts, config);
 
     return {
       sessionId: session.id,
@@ -372,13 +375,27 @@ export class OpenCodeBackend implements AgentBackend {
   private async *createEventStream(
     client: OpencodeClient,
     state: OpenCodeSessionState,
-    prompt: string,
+    parts: PromptPart[],
     config: AgentBackendConfig,
   ): AsyncGenerator<AgentEvent> {
     const sessionId = state.session.id;
 
     // Emit session ID
     yield { type: 'session-id', sessionId };
+
+    // Emit a synthetic user-prompt entry so the user sees their prompt
+    // (including inline images) in the timeline
+    yield {
+      type: 'entry',
+      rawMessageId: null,
+      entry: {
+        id: nanoid(),
+        date: new Date().toISOString(),
+        isSynthetic: true,
+        type: 'user-prompt',
+        value: buildPromptMarkdown(parts),
+      },
+    } as AgentEvent;
 
     // Subscribe to event stream
     const subscription = await client.event.subscribe({
@@ -398,7 +415,17 @@ export class OpenCodeBackend implements AgentBackend {
       .prompt({
         sessionID: sessionId,
         directory: state.cwd,
-        parts: [{ type: 'text' as const, text: prompt }],
+        parts: parts.map((part) => {
+          if (part.type === 'text') {
+            return { type: 'text' as const, text: part.text };
+          }
+          return {
+            type: 'file' as const,
+            mime: part.mimeType,
+            url: `data:${part.mimeType};base64,${part.data}`,
+            ...(part.filename ? { filename: part.filename } : {}),
+          };
+        }),
         ...(model ? { model } : {}),
         agent: this.getPrimaryAgentName(config.interactionMode),
       })
@@ -474,7 +501,7 @@ export class OpenCodeBackend implements AgentBackend {
         const ocEvent = event as OcEvent;
 
         // Skip heartbeat events — they carry no useful data
-        if (ocEvent.type === 'server.heartbeat') {
+        if ((ocEvent.type as string) === 'server.heartbeat') {
           continue;
         }
 

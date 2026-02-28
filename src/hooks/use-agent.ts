@@ -5,6 +5,7 @@ import { useTaskMessages } from '@/hooks/use-task-messages';
 import { api } from '@/lib/api';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import { useToastStore } from '@/stores/toasts';
+import type { PromptPart } from '@shared/agent-backend-types';
 import type { PermissionResponse, QuestionResponse } from '@shared/agent-types';
 
 export function useAgentStream(taskId: string) {
@@ -90,15 +91,15 @@ export function useAgentControls(taskId: string) {
   );
 
   const sendMessage = useCallback(
-    async (message: string) => {
-      await api.agent.sendMessage(taskId, message);
+    async (parts: PromptPart[]) => {
+      await api.agent.sendMessage(taskId, parts);
     },
     [taskId],
   );
 
   const queuePrompt = useCallback(
-    async (prompt: string) => {
-      return api.agent.queuePrompt(taskId, prompt);
+    async (parts: PromptPart[]) => {
+      return api.agent.queuePrompt(taskId, parts);
     },
     [taskId],
   );

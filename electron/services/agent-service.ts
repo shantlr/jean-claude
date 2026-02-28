@@ -13,6 +13,8 @@ import type {
   NormalizedPermissionRequest,
   NormalizedQuestion,
   NormalizedQuestionRequest,
+  PromptImagePart,
+  PromptPart,
 } from '@shared/agent-backend-types';
 import {
   AGENT_CHANNELS,
@@ -41,6 +43,12 @@ import { OpenCodeBackend } from './agent-backends/opencode/opencode-backend';
 import { generateTaskName } from './name-generation-service';
 import { notificationService } from './notification-service';
 import { getEffectivePermissions } from './permission-settings-service';
+import { textPrompt, getPromptText } from './prompt-utils';
+
+/** In-memory store for queued prompt parts, keyed by QueuedPrompt.id.
+ *  Keeps full PromptPart[] (with image base64) out of the QueuedPrompt.content
+ *  field which crosses IPC to the renderer for display. */
+const queuedPromptParts = new Map<string, PromptPart[]>();
 
 // --- Active session tracking ---
 
@@ -66,6 +74,7 @@ class AgentService {
   private sessions: Map<string, ActiveSession> = new Map();
   private mainWindow: BrowserWindow | null = null;
   private focusedTaskId: string | null = null;
+  private pendingImageAttachments = new Map<string, PromptImagePart[]>();
 
   setMainWindow(window: BrowserWindow) {
     this.mainWindow = window;
@@ -73,6 +82,14 @@ class AgentService {
 
   setFocusedTask(taskId: string | null): void {
     this.focusedTaskId = taskId;
+  }
+
+  /**
+   * Store images for a task that will be started shortly.
+   * Images are consumed (deleted) when start() is called.
+   */
+  setPendingImages(taskId: string, images: PromptImagePart[]): void {
+    this.pendingImageAttachments.set(taskId, images);
   }
 
   private getLiveWindows(): BrowserWindow[] {
@@ -188,7 +205,7 @@ class AgentService {
    */
   private async runBackend(
     taskId: string,
-    prompt: string,
+    parts: PromptPart[],
     session: ActiveSession,
     options?: { generateNameOnInit?: boolean; initialPrompt?: string },
   ): Promise<void> {
@@ -232,7 +249,7 @@ class AgentService {
       // NOTE: fire-and-forget
       void this.generateAndPersistTaskName(
         taskId,
-        options.initialPrompt ?? prompt,
+        options.initialPrompt ?? getPromptText(parts),
       ).catch((err) => {
         dbg.agent('Error generating task name: %O', err);
       });
@@ -265,7 +282,7 @@ class AgentService {
         sessionId: session.sdkSessionId ?? undefined,
         sessionAllowedTools: mergedAllowedTools,
       },
-      prompt,
+      parts,
     );
 
     session.backendSessionId = agentSession.sessionId;
@@ -478,7 +495,11 @@ class AgentService {
             queuedPrompts: session.queuedPrompts,
           });
           // Recursively process next queued prompt
-          return await this.runBackend(taskId, nextPrompt.content, session);
+          const queuedParts =
+            queuedPromptParts.get(nextPrompt.id) ??
+            textPrompt(nextPrompt.content);
+          queuedPromptParts.delete(nextPrompt.id);
+          return await this.runBackend(taskId, queuedParts, session);
         }
 
         // No more queued prompts - finalize
@@ -588,9 +609,18 @@ class AgentService {
     await TaskRepository.update(taskId, { status: 'running' });
     this.emitEvent(taskId, { type: 'status', status: 'running' });
 
+    // Build prompt parts from task text + any pending image attachments
+    const pendingImages = this.pendingImageAttachments.get(taskId);
+    this.pendingImageAttachments.delete(taskId);
+
+    const parts: PromptPart[] = textPrompt(task.prompt);
+    if (pendingImages && pendingImages.length > 0) {
+      parts.push(...pendingImages);
+    }
+
     try {
       dbg.agentSession('Starting agent for task %s', taskId);
-      await this.runBackend(taskId, task.prompt, session, {
+      await this.runBackend(taskId, parts, session, {
         generateNameOnInit: true,
         initialPrompt: task.prompt,
       });
@@ -628,7 +658,10 @@ class AgentService {
       return;
     }
 
-    // Clear queued prompts
+    // Clear queued prompts and their stored parts
+    for (const prompt of session.queuedPrompts) {
+      queuedPromptParts.delete(prompt.id);
+    }
     session.queuedPrompts = [];
     this.emitEvent(taskId, { type: 'queue-update', queuedPrompts: [] });
 
@@ -755,7 +788,7 @@ class AgentService {
     }
   }
 
-  async sendMessage(taskId: string, message: string): Promise<void> {
+  async sendMessage(taskId: string, parts: PromptPart[]): Promise<void> {
     // If session exists and running, stop it first
     if (this.sessions.has(taskId)) {
       await this.stop(taskId);
@@ -766,7 +799,7 @@ class AgentService {
 
     try {
       dbg.agentSession('Sending follow-up message for task %s', taskId);
-      await this.runBackend(taskId, message, session);
+      await this.runBackend(taskId, parts, session);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
@@ -796,15 +829,19 @@ class AgentService {
   /**
    * Queue a prompt to be sent after the current agent work completes.
    */
-  queuePrompt(taskId: string, prompt: string): { promptId: string } {
+  queuePrompt(taskId: string, parts: PromptPart[]): { promptId: string } {
     const session = this.sessions.get(taskId);
     if (!session) {
       throw new Error(`No active session for task ${taskId}`);
     }
 
+    const id = nanoid();
+    // Store full parts (with images) in memory map, keep only text for IPC display
+    queuedPromptParts.set(id, parts);
+
     const queuedPrompt: QueuedPrompt = {
-      id: nanoid(),
-      content: prompt,
+      id,
+      content: getPromptText(parts),
       createdAt: Date.now(),
     };
 
@@ -832,6 +869,7 @@ class AgentService {
       throw new Error(`Queued prompt ${promptId} not found`);
     }
 
+    queuedPromptParts.delete(promptId);
     session.queuedPrompts.splice(index, 1);
     this.emitEvent(taskId, {
       type: 'queue-update',

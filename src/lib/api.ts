@@ -1,3 +1,4 @@
+import type { PromptPart } from '@shared/agent-backend-types';
 import type {
   AgentQuestion,
   PermissionResponse,
@@ -530,10 +531,10 @@ export interface Api {
       requestId: string,
       response: PermissionResponse | QuestionResponse,
     ) => Promise<void>;
-    sendMessage: (taskId: string, message: string) => Promise<void>;
+    sendMessage: (taskId: string, parts: PromptPart[]) => Promise<void>;
     queuePrompt: (
       taskId: string,
-      prompt: string,
+      parts: PromptPart[],
     ) => Promise<{ promptId: string }>;
     cancelQueuedPrompt: (taskId: string, promptId: string) => Promise<void>;
     getBackendModels: (

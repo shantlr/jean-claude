@@ -40,7 +40,10 @@ import {
   type WorkItemsViewMode,
 } from '@/stores/new-task-draft';
 import { useUIStore } from '@/stores/ui';
-import type { AgentBackendType } from '@shared/agent-backend-types';
+import type {
+  AgentBackendType,
+  PromptImagePart,
+} from '@shared/agent-backend-types';
 import {
   normalizeInteractionModeForBackend,
   type Project,
@@ -439,6 +442,8 @@ export function NewTaskOverlay({
       }
 
       const backlogTodoId = draft.backlogTodoId ?? null;
+      const draftImages =
+        draft.images && draft.images.length > 0 ? draft.images : undefined;
 
       const jobId = addRunningJob({
         type: 'task-creation',
@@ -482,6 +487,7 @@ export function NewTaskOverlay({
         .mutateAsync({
           projectId: selectedProjectId,
           prompt: finalPrompt,
+          images: draftImages,
           interactionMode: currentInteractionMode,
           modelPreference: currentModelPreference,
           agentBackend: currentBackend,
@@ -599,6 +605,24 @@ export function NewTaskOverlay({
       updateDraft({ prompt: nextPrompt });
     },
     [createTaskMutation, updateDraft],
+  );
+
+  const handleImageAttach = useCallback(
+    (image: PromptImagePart) => {
+      updateDraft({
+        images: [...(draft?.images ?? []), image],
+      });
+    },
+    [draft?.images, updateDraft],
+  );
+
+  const handleImageRemove = useCallback(
+    (index: number) => {
+      updateDraft({
+        images: (draft?.images ?? []).filter((_, i) => i !== index),
+      });
+    },
+    [draft?.images, updateDraft],
   );
 
   // Get current input value
@@ -742,6 +766,9 @@ export function NewTaskOverlay({
                   maxHeight={320}
                   projectRoot={selectedProject?.path ?? null}
                   enableFilePathAutocomplete
+                  images={draft?.images}
+                  onImageAttach={handleImageAttach}
+                  onImageRemove={handleImageRemove}
                   className="min-h-[60px] border-none bg-transparent px-0 py-0 text-sm text-neutral-200 focus:border-none focus:ring-0"
                 />
               )}

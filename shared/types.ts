@@ -1,7 +1,7 @@
 // Shared types used by both renderer and main process
 // These are plain TypeScript types without database-specific dependencies
 
-import type { AgentBackendType } from './agent-backend-types';
+import type { AgentBackendType, PromptImagePart } from './agent-backend-types';
 import type { UsageProviderType } from './usage-types';
 
 export type ProviderType = 'azure-devops' | 'github' | 'gitlab';
@@ -261,6 +261,8 @@ export interface NewTask {
   projectId: string;
   name?: string | null;
   prompt: string;
+  /** Transient image attachments (not persisted in tasks table) */
+  images?: PromptImagePart[];
   status?: TaskStatus;
   sessionId?: string | null;
   worktreePath?: string | null;

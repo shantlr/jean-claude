@@ -2,7 +2,10 @@ import { useCallback } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-import type { AgentBackendType } from '@shared/agent-backend-types';
+import type {
+  AgentBackendType,
+  PromptImagePart,
+} from '@shared/agent-backend-types';
 import type { InteractionMode, ModelPreference } from '@shared/types';
 
 export type InputMode = 'search' | 'prompt';
@@ -21,6 +24,8 @@ export interface NewTaskDraft {
   workItemsViewMode: WorkItemsViewMode;
   // Prompt mode state
   prompt: string;
+  /** Image attachments for the initial prompt (transient, not persisted) */
+  images: PromptImagePart[];
   // Shared state
   createWorktree: boolean;
   sourceBranch: string | null;
@@ -69,7 +74,19 @@ const useStore = create<NewTaskDraftState>()(
 
       clearAllDrafts: () => set({ drafts: {}, selectedProjectId: null }),
     }),
-    { name: 'new-task-draft' },
+    {
+      name: 'new-task-draft',
+      partialize: (state) => ({
+        ...state,
+        // Strip images (large base64 blobs) from persisted drafts
+        drafts: Object.fromEntries(
+          Object.entries(state.drafts).map(([key, draft]) => [
+            key,
+            draft ? { ...draft, images: undefined } : draft,
+          ]),
+        ),
+      }),
+    },
   ),
 );
 
