@@ -34,9 +34,9 @@ export function TimelinePromptNavigator({
     // Sticky wrapper: h-0 so it takes no vertical space.
     // top-1/2 keeps it vertically centered in the scroll viewport.
     <div className="pointer-events-none sticky top-1/2 z-20 h-0">
-      {/* Position centered on the timeline line (ml-3 = 12px from left) */}
-      <div className="pointer-events-auto absolute left-[3px] -translate-y-1/2">
-        <div className="flex flex-col items-center gap-0.5 rounded-full border border-neutral-600 bg-neutral-800/90 px-0.5 py-1 shadow-lg backdrop-blur-sm">
+      {/* Centered on the timeline line: ml-3 = 12px from left, translate-x-1/2 centers the widget on it */}
+      <div className="pointer-events-auto absolute left-3 -translate-x-1/2 -translate-y-1/2">
+        <div className="flex flex-col items-center gap-0.5 rounded-full border border-neutral-600/60 bg-neutral-900/50 px-0.5 py-1 shadow-lg backdrop-blur-sm">
           <button
             onClick={goToPrevious}
             disabled={isFirst}
@@ -46,9 +46,10 @@ export function TimelinePromptNavigator({
             <ChevronUp className="h-3.5 w-3.5" />
           </button>
 
-          <span className="text-[10px] leading-tight text-neutral-400 tabular-nums">
-            {currentIndex + 1}/{totalPrompts}
-          </span>
+          <div className="flex flex-col items-center leading-none tabular-nums text-neutral-400">
+            <span className="text-[10px]">{currentIndex + 1}</span>
+            <span className="text-[10px]">{totalPrompts}</span>
+          </div>
 
           <button
             onClick={goToNext}
