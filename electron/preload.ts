@@ -448,8 +448,11 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('claudeProjects:cleanup', params),
   },
   completion: {
-    complete: (params: { prompt: string; suffix?: string }) =>
-      ipcRenderer.invoke('completion:complete', params),
+    complete: (params: {
+      prompt: string;
+      suffix?: string;
+      projectId?: string;
+    }) => ipcRenderer.invoke('completion:complete', params),
     test: () => ipcRenderer.invoke('completion:test'),
     saveSettings: (params: {
       enabled: boolean;
@@ -457,6 +460,8 @@ contextBridge.exposeInMainWorld('api', {
       model: string;
       serverUrl: string;
     }) => ipcRenderer.invoke('completion:saveSettings', params),
+    generateContext: (params: { projectId: string }) =>
+      ipcRenderer.invoke('completion:generateContext', params),
   },
   projectTodos: {
     list: (projectId: string) =>

@@ -28,7 +28,7 @@ import {
 import { useBackendModels } from '@/hooks/use-backend-models';
 import { useDeleteProjectTodo } from '@/hooks/use-project-todos';
 import { useProjects, useProjectBranches } from '@/hooks/use-projects';
-import { useBackendsSetting } from '@/hooks/use-settings';
+import { useBackendsSetting, useCompletionSetting } from '@/hooks/use-settings';
 import { useProjectSkills } from '@/hooks/use-skills';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
 import { useWorkItems, useIterations } from '@/hooks/use-work-items';
@@ -153,6 +153,8 @@ export function NewTaskOverlay({
     (state) => state.markJobSucceeded,
   );
   const markJobFailed = useBackgroundJobsStore((state) => state.markJobFailed);
+
+  const { data: completionSetting } = useCompletionSetting();
 
   const searchInputRef = useRef<HTMLTextAreaElement>(null);
   const promptInputRef = useRef<PromptTextareaRef>(null);
@@ -766,6 +768,8 @@ export function NewTaskOverlay({
                   maxHeight={320}
                   projectRoot={selectedProject?.path ?? null}
                   enableFilePathAutocomplete
+                  enableCompletion={completionSetting?.enabled ?? false}
+                  projectId={selectedProject?.id}
                   images={draft?.images}
                   onImageAttach={handleImageAttach}
                   onImageRemove={handleImageRemove}

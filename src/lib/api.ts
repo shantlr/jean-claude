@@ -663,6 +663,7 @@ export interface Api {
     complete: (params: {
       prompt: string;
       suffix?: string;
+      projectId?: string;
     }) => Promise<string | null>;
     test: () => Promise<{ success: boolean; error?: string }>;
     saveSettings: (params: {
@@ -671,6 +672,7 @@ export interface Api {
       model: string;
       serverUrl: string;
     }) => Promise<void>;
+    generateContext: (params: { projectId: string }) => Promise<string | null>;
   };
   projectTodos: {
     list: (projectId: string) => Promise<ProjectTodo[]>;
@@ -984,6 +986,7 @@ export const api: Api = hasWindowApi
         complete: async () => null,
         test: async () => ({ success: false, error: 'API not available' }),
         saveSettings: async () => {},
+        generateContext: async () => null,
       },
       projectTodos: {
         list: async () => [],

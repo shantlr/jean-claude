@@ -181,6 +181,7 @@ export interface Project {
   workItemProjectId: string | null;
   workItemProjectName: string | null;
   defaultAgentBackend: AgentBackendType | null; // null = use global default
+  completionContext: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -204,6 +205,7 @@ export interface NewProject {
   workItemProjectId?: string | null;
   workItemProjectName?: string | null;
   defaultAgentBackend?: AgentBackendType | null;
+  completionContext?: string | null;
   createdAt?: string;
   updatedAt: string;
 }
@@ -227,6 +229,7 @@ export interface UpdateProject {
   workItemProjectId?: string | null;
   workItemProjectName?: string | null;
   defaultAgentBackend?: AgentBackendType | null;
+  completionContext?: string | null;
   updatedAt?: string;
 }
 

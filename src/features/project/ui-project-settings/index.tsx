@@ -13,8 +13,10 @@ import {
   useDeleteProject,
 } from '@/hooks/use-projects';
 import { useBackendsSetting } from '@/hooks/use-settings';
+import { api } from '@/lib/api';
 import { PROJECT_COLORS } from '@/lib/colors';
 import { useNavigationStore } from '@/stores/navigation';
+import { useToastStore } from '@/stores/toasts';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 
 export function ProjectSettings({
@@ -32,6 +34,7 @@ export function ProjectSettings({
   const clearProjectNavHistoryState = useNavigationStore(
     (s) => s.clearProjectNavHistoryState,
   );
+  const addToast = useToastStore((s) => s.addToast);
 
   const [name, setName] = useState('');
   const [color, setColor] = useState('');
@@ -39,6 +42,8 @@ export function ProjectSettings({
   const [defaultAgentBackend, setDefaultAgentBackend] =
     useState<AgentBackendType | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [completionContext, setCompletionContext] = useState('');
+  const [isGeneratingContext, setIsGeneratingContext] = useState(false);
 
   // Resolve enabled backends from global settings
   const { data: backendsSetting } = useBackendsSetting();
@@ -57,6 +62,7 @@ export function ProjectSettings({
       setColor(project.color);
       setDefaultBranch(project.defaultBranch ?? '');
       setDefaultAgentBackend(project.defaultAgentBackend);
+      setCompletionContext(project.completionContext ?? '');
     }
   }, [project]);
 
@@ -90,6 +96,7 @@ export function ProjectSettings({
         color,
         defaultBranch: defaultBranch || null,
         defaultAgentBackend,
+        completionContext: completionContext || null,
       },
     });
   }
@@ -100,11 +107,34 @@ export function ProjectSettings({
     onProjectDeleted();
   }
 
+  async function handleGenerateContext() {
+    setIsGeneratingContext(true);
+    try {
+      const result = await api.completion.generateContext({ projectId });
+      if (result) {
+        setCompletionContext(result);
+      } else {
+        addToast({
+          message: 'No task history found. Create some tasks first.',
+          type: 'error',
+        });
+      }
+    } catch {
+      addToast({
+        message: 'Failed to generate context. Please try again.',
+        type: 'error',
+      });
+    } finally {
+      setIsGeneratingContext(false);
+    }
+  }
+
   const hasChanges =
     name !== project.name ||
     color !== project.color ||
     defaultBranch !== (project.defaultBranch ?? '') ||
-    defaultAgentBackend !== project.defaultAgentBackend;
+    defaultAgentBackend !== project.defaultAgentBackend ||
+    completionContext !== (project.completionContext ?? '');
 
   return (
     <div className="space-y-6">
@@ -235,6 +265,36 @@ export function ProjectSettings({
             The agent backend used for new tasks in this project
           </p>
         </div>
+      </div>
+
+      {/* Autocomplete Context */}
+      <div
+        id="project-autocomplete-context"
+        className="border-t border-neutral-700 pt-6"
+      >
+        <h2 className="mb-4 text-lg font-semibold text-neutral-200">
+          Autocomplete Context
+        </h2>
+        <p className="mb-3 text-xs text-neutral-500">
+          Provides context to the autocomplete model when completing prompts in
+          this project. Describe what the project is about and include example
+          prompts.
+        </p>
+        <textarea
+          value={completionContext}
+          onChange={(e) => setCompletionContext(e.target.value)}
+          placeholder={`Project: An e-commerce platform for artisan goods\n\nExample prompts:\n- add filtering by price range to the product catalog\n- fix the checkout flow when cart has mixed shipping`}
+          rows={8}
+          className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-600 focus:border-neutral-500 focus:outline-none"
+        />
+        <button
+          type="button"
+          onClick={handleGenerateContext}
+          disabled={isGeneratingContext}
+          className="mt-2 cursor-pointer rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-neutral-300 transition-colors hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isGeneratingContext ? 'Generating...' : 'Generate from task history'}
+        </button>
       </div>
 
       {/* Provider Integration */}

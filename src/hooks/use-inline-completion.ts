@@ -9,10 +9,12 @@ export function useInlineCompletion({
   text,
   cursorPosition,
   enabled,
+  projectId,
 }: {
   text: string;
   cursorPosition: number;
   enabled: boolean;
+  projectId?: string;
 }) {
   const [completion, setCompletion] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +48,11 @@ export function useInlineCompletion({
       const suffix =
         cursorPosition < text.length ? text.slice(cursorPosition) : undefined;
 
-      const result = await api.completion.complete({ prompt, suffix });
+      const result = await api.completion.complete({
+        prompt,
+        suffix,
+        projectId,
+      });
 
       // Only apply if this is still the latest request
       if (requestIdRef.current === currentRequestId) {
@@ -62,7 +68,7 @@ export function useInlineCompletion({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [text, cursorPosition, enabled]);
+  }, [text, cursorPosition, enabled, projectId]);
 
   const accept = useCallback(() => {
     const current = completion;

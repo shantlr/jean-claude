@@ -27,6 +27,7 @@ export function MessageInput({
   value: externalValue,
   onValueChange,
   supportsImages = true,
+  projectId,
 }: {
   onSend: (parts: PromptPart[]) => void;
   onQueue?: (parts: PromptPart[]) => void;
@@ -41,6 +42,8 @@ export function MessageInput({
   onValueChange?: (value: string) => void;
   /** Whether the current backend supports image attachments (default: true) */
   supportsImages?: boolean;
+  /** Project ID for FIM completion context */
+  projectId?: string;
 }) {
   const { data: completionSetting } = useCompletionSetting();
   const [internalValue, setInternalValue] = useState('');
@@ -131,6 +134,7 @@ export function MessageInput({
         onEnterKey={handleEnterKey}
         onKeyDown={handleKeyDown}
         enableCompletion={completionSetting?.enabled ?? false}
+        projectId={projectId}
         projectRoot={projectRoot}
         enableFilePathAutocomplete
         images={supportsImages ? images : undefined}

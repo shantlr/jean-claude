@@ -1,6 +1,9 @@
 import { Mistral } from '@mistralai/mistralai';
 
-import { SettingsRepository } from '../database/repositories';
+import {
+  ProjectRepository,
+  SettingsRepository,
+} from '../database/repositories';
 import { dbg } from '../lib/debug';
 
 import { encryptionService } from './encryption-service';
@@ -27,9 +30,11 @@ function getClient(apiKey: string, serverUrl: string | undefined): Mistral {
 export async function complete({
   prompt,
   suffix,
+  projectId,
 }: {
   prompt: string;
   suffix?: string;
+  projectId?: string;
 }): Promise<string | null> {
   try {
     const settings = await SettingsRepository.get('completion');
@@ -44,18 +49,28 @@ export async function complete({
       return null;
     }
 
+    // Prepend project completion context if available
+    let effectivePrompt = prompt;
+    if (projectId) {
+      const project = await ProjectRepository.findById(projectId);
+      if (project?.completionContext) {
+        effectivePrompt = project.completionContext + '\n\n' + prompt;
+      }
+    }
+
     const apiKey = encryptionService.decrypt(settings.apiKey);
     const client = getClient(apiKey, settings.serverUrl);
 
     dbg.completion(
-      'Requesting FIM completion (model=%s, promptLen=%d)',
+      'Requesting FIM completion (model=%s, promptLen=%d, withContext=%s)',
       settings.model,
-      prompt.length,
+      effectivePrompt.length,
+      effectivePrompt !== prompt,
     );
 
     const result = await client.fim.complete({
       model: settings.model,
-      prompt,
+      prompt: effectivePrompt,
       suffix: suffix || undefined,
       maxTokens: 64,
       temperature: 0,

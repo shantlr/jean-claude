@@ -1878,7 +1878,7 @@ export function registerIpcHandlers() {
   // Completion
   ipcMain.handle(
     'completion:complete',
-    (_, params: { prompt: string; suffix?: string }) => {
+    (_, params: { prompt: string; suffix?: string; projectId?: string }) => {
       dbg.ipc('completion:complete (prompt length: %d)', params.prompt.length);
       return completeText(params);
     },
@@ -1932,6 +1932,15 @@ export function registerIpcHandlers() {
 
       // Invalidate cached SDK client so next request uses new settings
       resetCompletionClient();
+    },
+  );
+  ipcMain.handle(
+    'completion:generateContext',
+    async (_, params: { projectId: string }) => {
+      dbg.ipc('completion:generateContext projectId=%s', params.projectId);
+      const { generateCompletionContext } =
+        await import('../services/completion-context-generation-service');
+      return generateCompletionContext(params);
     },
   );
 

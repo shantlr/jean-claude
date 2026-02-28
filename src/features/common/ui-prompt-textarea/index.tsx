@@ -146,6 +146,8 @@ export interface PromptTextareaProps extends Omit<
   showCommands?: boolean;
   /** Enable inline ghost text completion */
   enableCompletion?: boolean;
+  /** Project ID for FIM completion context */
+  projectId?: string;
   /** Project root for @file path suggestions */
   projectRoot?: string | null;
   /** Enable @file path suggestions */
@@ -170,6 +172,7 @@ export const PromptTextarea = forwardRef<
     onEnterKey,
     showCommands = true,
     enableCompletion = false,
+    projectId,
     projectRoot = null,
     enableFilePathAutocomplete = false,
     images,
@@ -245,6 +248,7 @@ export const PromptTextarea = forwardRef<
     text: value,
     cursorPosition,
     enabled: enableCompletion && !showDropdown,
+    projectId,
   });
 
   // Filter slash commands/skills or @file path suggestions

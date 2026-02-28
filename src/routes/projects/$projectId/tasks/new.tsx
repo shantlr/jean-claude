@@ -10,7 +10,7 @@ import { ModelSelector } from '@/features/agent/ui-model-selector';
 import { WorkItemsBrowser } from '@/features/agent/ui-work-items-browser';
 import { PromptTextarea } from '@/features/common/ui-prompt-textarea';
 import { useProject, useProjectBranches } from '@/hooks/use-projects';
-import { useBackendsSetting } from '@/hooks/use-settings';
+import { useBackendsSetting, useCompletionSetting } from '@/hooks/use-settings';
 import { useProjectSkills } from '@/hooks/use-skills';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
 import { useNewTaskFormStore } from '@/stores/new-task-form';
@@ -30,6 +30,7 @@ function NewTask() {
     useProjectBranches(projectId);
   const { data: skills = [] } = useProjectSkills(projectId);
 
+  const { data: completionSetting } = useCompletionSetting();
   const [showWorkItems, setShowWorkItems] = useState(false);
   const hasWorkItemsLink =
     !!project?.workItemProviderId && !!project?.workItemProjectId;
@@ -183,6 +184,8 @@ function NewTask() {
               showCommands={false}
               projectRoot={project?.path ?? null}
               enableFilePathAutocomplete
+              enableCompletion={completionSetting?.enabled ?? false}
+              projectId={projectId}
               maxHeight={400}
               className="min-h-[200px] border-neutral-700 bg-neutral-800 text-white focus:border-neutral-500"
             />

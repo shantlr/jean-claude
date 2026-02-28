@@ -1039,6 +1039,7 @@ const TaskInputFooter = memo(function TaskInputFooter({
         value={promptDraft}
         onValueChange={setPromptDraft}
         supportsImages={backendSupportsImages(task?.agentBackend)}
+        projectId={task?.projectId}
       />
     </div>
   );

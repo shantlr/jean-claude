@@ -80,6 +80,7 @@ export interface ProjectTable {
   workItemProjectName: string | null;
   // Agent backend (null = use global default)
   defaultAgentBackend: string | null;
+  completionContext: string | null;
   createdAt: Generated<string>;
   updatedAt: string;
 }
