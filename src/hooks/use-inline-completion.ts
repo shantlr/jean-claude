@@ -7,12 +7,10 @@ const MIN_INPUT_LENGTH = 10;
 
 export function useInlineCompletion({
   text,
-  cursorPosition,
   enabled,
   projectId,
 }: {
   text: string;
-  cursorPosition: number;
   enabled: boolean;
   projectId?: string;
 }) {
@@ -44,13 +42,9 @@ export function useInlineCompletion({
     setIsLoading(true);
 
     debounceTimerRef.current = setTimeout(async () => {
-      const prompt = text.slice(0, cursorPosition);
-      const suffix =
-        cursorPosition < text.length ? text.slice(cursorPosition) : undefined;
-
+      // Always complete from the end of the text — cursor position is ignored
       const result = await api.completion.complete({
-        prompt,
-        suffix,
+        prompt: text,
         projectId,
       });
 
@@ -68,7 +62,7 @@ export function useInlineCompletion({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [text, cursorPosition, enabled, projectId]);
+  }, [text, enabled, projectId]);
 
   const accept = useCallback(() => {
     const current = completion;

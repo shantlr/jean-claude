@@ -246,7 +246,6 @@ export const PromptTextarea = forwardRef<
     dismiss,
   } = useInlineCompletion({
     text: value,
-    cursorPosition,
     enabled: enableCompletion && !showDropdown,
     projectId,
   });
@@ -382,12 +381,11 @@ export const PromptTextarea = forwardRef<
         e.preventDefault();
         const completionText = accept();
         if (completionText) {
-          const before = value.slice(0, cursorPosition);
-          const after = value.slice(cursorPosition);
-          const newValue = before + completionText + after;
+          // Always append completion at the end of text
+          const newValue = value + completionText;
           onChange(newValue);
-          // Move cursor to end of inserted completion
-          const newCursorPos = cursorPosition + completionText.length;
+          // Move cursor to end of text
+          const newCursorPos = newValue.length;
           setCursorPosition(newCursorPos);
           // Set cursor position in textarea after React re-renders
           requestAnimationFrame(() => {
@@ -789,7 +787,7 @@ export const PromptTextarea = forwardRef<
             className="pointer-events-none absolute inset-0 overflow-hidden border border-transparent px-3 py-2 text-sm leading-[20px] break-words whitespace-pre-wrap"
             style={{ maxHeight: `${maxHeight}px` }}
           >
-            <span className="invisible">{value.slice(0, cursorPosition)}</span>
+            <span className="invisible">{value}</span>
             <span className="text-neutral-500">{completion}</span>
           </div>
         )}
