@@ -795,33 +795,35 @@ export const PromptTextarea = forwardRef<
             <span className="text-neutral-500">{completion}</span>
           </div>
         )}
-        {/* Completion loading indicator */}
-        {isCompletionLoading && !completion && (
-          <div className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2">
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-500" />
+        {/* Completion loader + file picker button */}
+        {(onImageAttach || (isCompletionLoading && !completion)) && (
+          <div className="absolute right-2 bottom-2 flex items-center gap-1">
+            {isCompletionLoading && !completion && (
+              <div className="pointer-events-none">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-500" />
+              </div>
+            )}
+            {onImageAttach && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
+                  title="Attach image"
+                >
+                  <ImageIcon className="h-4 w-4" />
+                </button>
+              </>
+            )}
           </div>
-        )}
-
-        {/* File picker button */}
-        {onImageAttach && (
-          <>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={handleFileSelect}
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="absolute right-2 bottom-2 rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
-              title="Attach image"
-            >
-              <ImageIcon className="h-4 w-4" />
-            </button>
-          </>
         )}
 
         {/* Drag overlay */}
