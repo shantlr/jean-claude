@@ -339,3 +339,48 @@ button {
   animation: completed-unread-breathe 3.2s cubic-bezier(0.4, 0, 0.2, 1)
     infinite;
 }
+
+/* ── Step flow bar: running chip animated border ── */
+@utility step-chip-running {
+  background:
+    linear-gradient(var(--color-neutral-900), var(--color-neutral-900))
+      padding-box,
+    conic-gradient(
+        from var(--gradient-angle),
+        var(--color-blue-400),
+        var(--color-purple-400),
+        var(--color-blue-300),
+        var(--color-blue-400)
+      )
+      border-box;
+  border: 1px solid transparent;
+  animation: gradient-rotate 2s linear infinite;
+  box-shadow:
+    0 0 8px 0 color-mix(in srgb, var(--color-blue-400) 25%, transparent),
+    inset 0 1px 0 0
+      color-mix(in srgb, var(--color-blue-400) 8%, transparent);
+}
+
+/* ── Step flow bar: animated connector between steps ── */
+@keyframes step-connector-flow {
+  0% {
+    background-position: -100% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@utility step-connector-running {
+  height: 2px;
+  border-radius: 1px;
+  background: linear-gradient(
+    90deg,
+    var(--color-neutral-700) 0%,
+    var(--color-blue-400) 40%,
+    var(--color-purple-400) 60%,
+    var(--color-neutral-700) 100%
+  );
+  background-size: 200% 100%;
+  animation: step-connector-flow 2s ease-in-out infinite;
+}
