@@ -31,7 +31,7 @@
     "icons": "rm -rf resources/icons && npx electron-icon-builder --output=./resources --flatten --input",
     "ts-check": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.59",

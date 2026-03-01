@@ -6,14 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Jean-Claude is an Electron desktop app for managing coding agents across multiple projects. It supports multiple agent backends (Claude Code Agent SDK and OpenCode SDK) to spawn and manage agent sessions. The app follows a two-process architecture: Electron main process (Node.js) handles database and IPC, while the renderer process (React) handles the UI.
 
-## Commands
+## Agent guidelines
 
-```bash
-pnpm dev      # Start development server with hot reload
-pnpm build    # Build for production
-pnpm lint     # Run ESLint
-pnpm format   # Format with Prettier
-```
+<IMPORTANT>
+Once you are done with your task
+First run `pnpm lint --fix` to automatically fix linting errors.
+Then run `pnpm ts-check` to verify that there are no TypeScript errors.
+And then run `pnpm lint` to see if there are any remaining linting errors that need to be fixed.
+</IMPORTANT>
 
 ## Architecture
 
