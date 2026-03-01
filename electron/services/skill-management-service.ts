@@ -152,6 +152,53 @@ async function readSkillDir(
   }
 }
 
+async function discoverNestedSkillDirs(baseDir: string): Promise<string[]> {
+  const discovered = new Set<string>();
+  const visited = new Set<string>();
+
+  const walk = async (dir: string): Promise<void> => {
+    if (visited.has(dir)) return;
+    visited.add(dir);
+
+    const info = await readSkillDir(dir);
+    if (info) {
+      discovered.add(dir);
+      return;
+    }
+
+    let entries: Array<{
+      name: string;
+      isDirectory: () => boolean;
+      isSymbolicLink: () => boolean;
+    }>;
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue;
+      if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
+
+      const nestedPath = path.join(dir, entry.name);
+      let resolvedPath = nestedPath;
+      if (entry.isSymbolicLink()) {
+        try {
+          resolvedPath = await fs.realpath(nestedPath);
+        } catch {
+          continue;
+        }
+      }
+
+      await walk(resolvedPath);
+    }
+  };
+
+  await walk(baseDir);
+  return Array.from(discovered);
+}
+
 /**
  * Scans the JC canonical directory for a backend's user skills.
  * For each skill, checks whether a symlink exists in the backend's expected
@@ -212,6 +259,7 @@ async function discoverLegacyUserSkills(
   const config = SKILL_PATH_CONFIGS[backendType];
   const jcDir = getJcUserSkillsDir(backendType);
   const skills: ManagedSkill[] = [];
+  const seenSkillPaths = new Set<string>();
 
   try {
     const entries = await fs.readdir(config.userSkillsDir, {
@@ -242,10 +290,43 @@ async function discoverLegacyUserSkills(
 
       const info = await readSkillDir(resolvedPath);
       if (info) {
+        if (seenSkillPaths.has(resolvedPath)) continue;
+        seenSkillPaths.add(resolvedPath);
+
         skills.push({
           ...info,
           source: 'user',
           skillPath: resolvedPath,
+          enabled: true,
+          backendType,
+          editable: false,
+        });
+        continue;
+      }
+
+      if (backendType !== 'opencode') {
+        continue;
+      }
+
+      const nestedSkillDirs = await discoverNestedSkillDirs(resolvedPath);
+      for (const nestedSkillDir of nestedSkillDirs) {
+        if (seenSkillPaths.has(nestedSkillDir)) continue;
+
+        const nestedInfo = await readSkillDir(nestedSkillDir);
+        if (!nestedInfo) continue;
+
+        const parentFolderName = path.basename(path.dirname(nestedSkillDir));
+        const nestedSkillName = parentFolderName
+          ? `${parentFolderName}/${nestedInfo.name}`
+          : nestedInfo.name;
+
+        seenSkillPaths.add(nestedSkillDir);
+
+        skills.push({
+          ...nestedInfo,
+          name: nestedSkillName,
+          source: 'user',
+          skillPath: nestedSkillDir,
           enabled: true,
           backendType,
           editable: false,

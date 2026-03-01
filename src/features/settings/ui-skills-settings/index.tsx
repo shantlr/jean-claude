@@ -10,6 +10,7 @@ import {
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { ManagedSkill } from '@shared/skill-types';
 
+import { SkillDetails } from './skill-details';
 import { SkillForm } from './skill-form';
 import { SkillList } from './skill-list';
 
@@ -83,7 +84,7 @@ export function SkillsSettings() {
   return (
     <div className="flex h-full gap-6">
       {/* Left: List */}
-      <div className="w-80 flex-shrink-0">
+      <div className="w-80 flex-shrink-0 pb-2">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-neutral-200">Skills</h2>
           <button
@@ -137,9 +138,10 @@ export function SkillsSettings() {
             <SkillList
               skills={pluginSkills}
               selectedPath={selectedPath}
-              onSelect={() => {}}
+              onSelect={handleSelect}
               onDelete={() => {}}
               onToggleEnabled={() => {}}
+              isSelectable={() => true}
             />
           </div>
         )}
@@ -148,13 +150,24 @@ export function SkillsSettings() {
       {/* Right: Form pane */}
       {(isCreating || selectedSkill) && (
         <div className="flex-1 rounded-lg border border-neutral-700 bg-neutral-800/50 p-6">
-          <SkillForm
-            skillPath={selectedSkill?.skillPath}
-            backendType={backendType}
-            scope="user"
-            onClose={handleClose}
-            onSaved={handleSaved}
-          />
+          {isCreating ? (
+            <SkillForm
+              backendType={backendType}
+              scope="user"
+              onClose={handleClose}
+              onSaved={handleSaved}
+            />
+          ) : selectedSkill?.editable ? (
+            <SkillForm
+              skillPath={selectedSkill.skillPath}
+              backendType={backendType}
+              scope="user"
+              onClose={handleClose}
+              onSaved={handleSaved}
+            />
+          ) : selectedSkill ? (
+            <SkillDetails skill={selectedSkill} onClose={handleClose} />
+          ) : null}
         </div>
       )}
     </div>
