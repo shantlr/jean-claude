@@ -306,11 +306,13 @@ Ad-hoc notes attached to tasks (`tasks.pendingMessage` field):
 
 ### Skills System
 
-The skills service (`electron/services/skill-service.ts`) discovers and loads Claude Code skills:
+The skills service (`electron/services/skill-management-service.ts`) discovers and manages skills for all agent backends:
 
-- **Skill Sources** (priority order): project (`.claude/skills/`) > user (`~/.claude/skills/`) > plugins (`~/.claude/plugins/cache/`)
+- **Skill Sources** (priority order): project (`.claude/skills/`) > user (`~/.claude/skills/` or `~/.config/opencode/skills/`) > plugins (`~/.claude/plugins/cache/`)
+- **Backend-aware**: Each backend has its own skill path configuration (Claude Code uses `~/.claude/skills/`, OpenCode uses `~/.config/opencode/skills/`)
 - **Discovery**: Each skill has a `SKILL.md` file with YAML frontmatter (`name`, `description`)
 - **Deduplication**: Skills are merged by name, higher priority sources override lower
+- **Enable/Disable**: JC-managed skills use symlinks; disabling removes symlink without deleting the skill
 - **UI Display**: Skills appear in message timeline as expandable entries showing the skill documentation
 
 ### Context Usage Tracking
@@ -478,7 +480,7 @@ electron/              # Main process
     notification-service.ts
     permission-settings-service.ts  # Worktree permission management
     run-command-service.ts  # Shell command execution with port monitoring
-    skill-service.ts   # Claude Code skills discovery and loading
+    skill-management-service.ts  # Unified skills discovery, CRUD, and enable/disable
     summary-generation-service.ts  # AI-generated task summaries
     task-service.ts    # Task lifecycle management
     worktree-service.ts     # Git worktree creation, diff, commit, merge, conflict detection

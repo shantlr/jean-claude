@@ -118,7 +118,6 @@ import {
   disableSkill,
   enableSkill,
 } from '../services/skill-management-service';
-import { getAllSkills } from '../services/skill-service';
 import { generateSummary } from '../services/summary-generation-service';
 import {
   checkMergeConflicts,
@@ -200,7 +199,21 @@ export function registerIpcHandlers() {
       projectId,
       project.path,
     );
-    return getAllSkills(project.path);
+    const backendType =
+      (project.defaultAgentBackend as AgentBackendType | null) ?? 'claude-code';
+    const managed = await getAllManagedSkills({
+      backendType,
+      projectPath: project.path,
+    });
+    return managed
+      .filter((s) => s.enabled)
+      .map(({ name, description, source, pluginName, skillPath }) => ({
+        name,
+        description,
+        source,
+        pluginName,
+        skillPath,
+      }));
   });
 
   // Tasks
@@ -740,7 +753,19 @@ export function registerIpcHandlers() {
       throw new Error(`Project ${task.projectId} not found`);
     }
     dbg.ipc('tasks:getSkills for task: %s, path: %s', taskId, projectPath);
-    return getAllSkills(projectPath);
+    const managed = await getAllManagedSkills({
+      backendType: task.agentBackend,
+      projectPath,
+    });
+    return managed
+      .filter((s) => s.enabled)
+      .map(({ name, description, source, pluginName, skillPath }) => ({
+        name,
+        description,
+        source,
+        pluginName,
+        skillPath,
+      }));
   });
 
   // Providers

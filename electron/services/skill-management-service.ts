@@ -197,9 +197,14 @@ async function discoverJcManagedUserSkills(
 }
 
 /**
- * Scans the backend's expected skills directory for entries that are real
- * directories (not symlinks) — these are legacy or externally-created skills
- * not managed by Jean-Claude. They appear as enabled and editable.
+ * Scans the backend's expected skills directory for entries that are NOT
+ * managed by Jean-Claude. This includes:
+ * - Real directories (legacy skills created directly)
+ * - Symlinks whose targets are outside the JC canonical directory (externally
+ *   created symlinks, e.g. by opencode or the user)
+ *
+ * JC-managed symlinks (pointing into JC canonical dir) are skipped — they're
+ * already covered by `discoverJcManagedUserSkills`.
  */
 async function discoverLegacyUserSkills(
   backendType: AgentBackendType,
@@ -214,8 +219,7 @@ async function discoverLegacyUserSkills(
     });
     for (const entry of entries) {
       if (entry.name.startsWith('.')) continue;
-      // Only real directories — symlinks are JC-managed (already covered above)
-      if (!entry.isDirectory()) continue;
+      if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
 
       const skillDir = path.join(config.userSkillsDir, entry.name);
 
@@ -223,15 +227,28 @@ async function discoverLegacyUserSkills(
       const jcEquivalent = path.join(jcDir, entry.name);
       if (await pathExists(jcEquivalent)) continue;
 
-      const info = await readSkillDir(skillDir);
+      // For symlinks, skip JC-managed ones (target inside canonical dir)
+      // and resolve to actual path for reading
+      let resolvedPath = skillDir;
+      if (entry.isSymbolicLink()) {
+        try {
+          resolvedPath = await fs.realpath(skillDir);
+        } catch {
+          continue; // broken symlink
+        }
+        // If symlink points into JC canonical dir, it's JC-managed — skip
+        if (resolvedPath.startsWith(jcDir + path.sep)) continue;
+      }
+
+      const info = await readSkillDir(resolvedPath);
       if (info) {
         skills.push({
           ...info,
           source: 'user',
-          skillPath: skillDir,
+          skillPath: resolvedPath,
           enabled: true,
           backendType,
-          editable: true,
+          editable: false,
         });
       }
     }
