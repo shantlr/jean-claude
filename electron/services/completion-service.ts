@@ -31,10 +31,12 @@ export async function complete({
   prompt,
   suffix,
   projectId,
+  contextBeforePrompt,
 }: {
   prompt: string;
   suffix?: string;
   projectId?: string;
+  contextBeforePrompt?: string;
 }): Promise<string | null> {
   try {
     const settings = await SettingsRepository.get('completion');
@@ -49,14 +51,27 @@ export async function complete({
       return null;
     }
 
-    // Prepend project completion context if available
-    let effectivePrompt = prompt;
+    let projectCompletionContext = '';
     if (projectId) {
       const project = await ProjectRepository.findById(projectId);
       if (project?.completionContext) {
-        effectivePrompt = project.completionContext + '\n\n' + prompt;
+        projectCompletionContext = project.completionContext;
       }
     }
+
+    const trimmedConversationContext = contextBeforePrompt?.trim();
+    const contextParts = [
+      projectCompletionContext
+        ? `<project_context>\n${projectCompletionContext}\n</project_context>`
+        : '',
+      trimmedConversationContext
+        ? `<assistant_message>\n${trimmedConversationContext}\n</assistant_message>`
+        : '',
+    ].filter((value) => value.length > 0);
+    const effectivePrompt =
+      contextParts.length > 0
+        ? `${contextParts.join('\n\n')}\n\nFollow-up prompt:\n${prompt}`
+        : prompt;
 
     const apiKey = encryptionService.decrypt(settings.apiKey);
     const client = getClient(apiKey, settings.serverUrl);

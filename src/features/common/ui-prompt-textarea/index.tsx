@@ -148,6 +148,8 @@ export interface PromptTextareaProps extends Omit<
   enableCompletion?: boolean;
   /** Project ID for FIM completion context */
   projectId?: string;
+  /** Returns recent context to prepend before the prompt when needed */
+  getCompletionContextBeforePrompt?: () => string;
   /** Project root for @file path suggestions */
   projectRoot?: string | null;
   /** Enable @file path suggestions */
@@ -173,6 +175,7 @@ export const PromptTextarea = forwardRef<
     showCommands = true,
     enableCompletion = false,
     projectId,
+    getCompletionContextBeforePrompt,
     projectRoot = null,
     enableFilePathAutocomplete = false,
     images,
@@ -248,6 +251,7 @@ export const PromptTextarea = forwardRef<
     text: value,
     enabled: enableCompletion && !showDropdown,
     projectId,
+    getContextBeforePrompt: getCompletionContextBeforePrompt,
   });
 
   // Filter slash commands/skills or @file path suggestions

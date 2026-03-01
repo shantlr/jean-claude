@@ -452,6 +452,7 @@ contextBridge.exposeInMainWorld('api', {
       prompt: string;
       suffix?: string;
       projectId?: string;
+      contextBeforePrompt?: string;
     }) => ipcRenderer.invoke('completion:complete', params),
     test: () => ipcRenderer.invoke('completion:test'),
     saveSettings: (params: {

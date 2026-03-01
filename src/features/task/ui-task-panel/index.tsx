@@ -73,6 +73,7 @@ import {
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import { useTaskPrompt } from '@/stores/task-prompts';
 import type { AgentBackendType, PromptPart } from '@shared/agent-backend-types';
+import type { NormalizedEntry } from '@shared/normalized-message-v2';
 import {
   PRESET_EDITORS,
   type InteractionMode,
@@ -87,6 +88,26 @@ import { DeleteTaskDialog } from './delete-task-dialog';
 import { FileExplorerPane } from './file-explorer-pane';
 import { TaskPendingNoteInput } from './task-pending-note-input';
 import { TaskSettingsPane } from './task-settings-pane';
+
+const LAST_ASSISTANT_MESSAGE_MAX_LENGTH = 1200;
+
+function getLastAssistantMessage(messages: NormalizedEntry[]): string {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const message = messages[index];
+    if (message.type !== 'assistant-message') {
+      continue;
+    }
+
+    const trimmed = message.value.trim();
+    if (!trimmed) {
+      continue;
+    }
+
+    return trimmed.slice(-LAST_ASSISTANT_MESSAGE_MAX_LENGTH);
+  }
+
+  return '';
+}
 
 export function TaskPanel({ taskId }: { taskId: string }) {
   const navigate = useNavigate();
@@ -510,6 +531,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     agentState.status === 'waiting' || task.status === 'waiting';
   const taskRootPath = task.worktreePath ?? project.path;
   const hasMessages = agentState.messages.length > 0;
+  const getCompletionContextBeforePrompt = () =>
+    getLastAssistantMessage(agentState.messages);
   const canSendMessage = !isRunning && hasMessages && !!task.sessionId;
   const hasRepoLink =
     !!project.repoProviderId && !!project.repoProjectId && !!project.repoId;
@@ -864,6 +887,9 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               onStop={handleStop}
               contextUsage={contextUsage}
               projectRoot={taskRootPath}
+              getCompletionContextBeforePrompt={
+                getCompletionContextBeforePrompt
+              }
             />
           )}
       </div>
@@ -951,6 +977,7 @@ const TaskInputFooter = memo(function TaskInputFooter({
   onStop,
   contextUsage,
   projectRoot,
+  getCompletionContextBeforePrompt,
 }: {
   taskId: string;
   isRunning: boolean;
@@ -961,6 +988,7 @@ const TaskInputFooter = memo(function TaskInputFooter({
   onStop: () => Promise<void>;
   contextUsage: ContextUsage;
   projectRoot: string | null;
+  getCompletionContextBeforePrompt: () => string;
 }) {
   const { data: task } = useTask(taskId);
   const { data: skills } = useSkills(taskId);
@@ -1042,6 +1070,7 @@ const TaskInputFooter = memo(function TaskInputFooter({
         onValueChange={setPromptDraft}
         supportsImages={backendSupportsImages(task?.agentBackend)}
         projectId={task?.projectId}
+        getCompletionContextBeforePrompt={getCompletionContextBeforePrompt}
       />
     </div>
   );

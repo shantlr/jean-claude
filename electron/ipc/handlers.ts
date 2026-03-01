@@ -1831,7 +1831,15 @@ export function registerIpcHandlers() {
   // Completion
   ipcMain.handle(
     'completion:complete',
-    (_, params: { prompt: string; suffix?: string; projectId?: string }) => {
+    (
+      _,
+      params: {
+        prompt: string;
+        suffix?: string;
+        projectId?: string;
+        contextBeforePrompt?: string;
+      },
+    ) => {
       dbg.ipc('completion:complete (prompt length: %d)', params.prompt.length);
       return completeText(params);
     },

@@ -9,15 +9,22 @@ export function useInlineCompletion({
   text,
   enabled,
   projectId,
+  getContextBeforePrompt,
 }: {
   text: string;
   enabled: boolean;
   projectId?: string;
+  getContextBeforePrompt?: () => string;
 }) {
   const [completion, setCompletion] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const requestIdRef = useRef(0);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const getContextBeforePromptRef = useRef(getContextBeforePrompt);
+
+  useEffect(() => {
+    getContextBeforePromptRef.current = getContextBeforePrompt;
+  }, [getContextBeforePrompt]);
 
   // Clear completion and debounce a new request when text changes
   useEffect(() => {
@@ -42,10 +49,13 @@ export function useInlineCompletion({
     setIsLoading(true);
 
     debounceTimerRef.current = setTimeout(async () => {
+      const contextBeforePrompt = getContextBeforePromptRef.current?.();
+
       // Always complete from the end of the text — cursor position is ignored
       const result = await api.completion.complete({
         prompt: text,
         projectId,
+        contextBeforePrompt,
       });
 
       // Only apply if this is still the latest request

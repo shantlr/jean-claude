@@ -666,6 +666,7 @@ export interface Api {
       prompt: string;
       suffix?: string;
       projectId?: string;
+      contextBeforePrompt?: string;
     }) => Promise<string | null>;
     test: () => Promise<{ success: boolean; error?: string }>;
     saveSettings: (params: {

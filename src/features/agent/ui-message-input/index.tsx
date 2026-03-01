@@ -28,6 +28,7 @@ export function MessageInput({
   onValueChange,
   supportsImages = true,
   projectId,
+  getCompletionContextBeforePrompt,
 }: {
   onSend: (parts: PromptPart[]) => void;
   onQueue?: (parts: PromptPart[]) => void;
@@ -44,6 +45,8 @@ export function MessageInput({
   supportsImages?: boolean;
   /** Project ID for FIM completion context */
   projectId?: string;
+  /** Returns recent context to prepend before prompt completion when needed */
+  getCompletionContextBeforePrompt?: () => string;
 }) {
   const { data: completionSetting } = useCompletionSetting();
   const [internalValue, setInternalValue] = useState('');
@@ -135,6 +138,7 @@ export function MessageInput({
         onKeyDown={handleKeyDown}
         enableCompletion={completionSetting?.enabled ?? false}
         projectId={projectId}
+        getCompletionContextBeforePrompt={getCompletionContextBeforePrompt}
         projectRoot={projectRoot}
         enableFilePathAutocomplete
         images={supportsImages ? images : undefined}
