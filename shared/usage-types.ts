@@ -4,27 +4,23 @@ export interface UsageLimitData {
   resets_at: string;
 }
 
-export interface ClaudeUsageResponse {
-  five_hour: UsageLimitData | null;
-  seven_day: UsageLimitData | null;
-  seven_day_oauth_apps?: UsageLimitData | null;
-  seven_day_opus?: UsageLimitData | null;
+// Internal types for the app
+export interface UsageRange {
+  utilization: number;
+  resetsAt: Date;
+  timeUntilReset: string;
+  windowDurationMs: number;
 }
 
-// Internal types for the app
+export interface UsageLimit {
+  key: string;
+  label: string;
+  isPrimary: boolean;
+  range: UsageRange;
+}
+
 export interface UsageDisplayData {
-  fiveHour: {
-    utilization: number;
-    resetsAt: Date;
-    timeUntilReset: string;
-    windowDurationMs: number;
-  } | null;
-  sevenDay: {
-    utilization: number;
-    resetsAt: Date;
-    timeUntilReset: string;
-    windowDurationMs: number;
-  } | null;
+  limits: UsageLimit[];
 }
 
 export type UsageLevel = 'excellent' | 'low' | 'medium' | 'high' | 'critical';

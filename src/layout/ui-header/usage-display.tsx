@@ -9,6 +9,7 @@ import type {
   UsageDisplayData,
   UsageLevel,
   UsageProviderType,
+  UsageRange,
   UsageResult,
 } from '@shared/usage-types';
 import { USAGE_PROVIDERS } from '@shared/usage-types';
@@ -48,20 +49,19 @@ function getUsageLevel(usageRatio: number): UsageLevel {
   return 'excellent';
 }
 
-/** Returns true if any range (primary or secondary) has raw utilization >= threshold. */
+/** Returns true if any limit has raw utilization >= threshold. */
 function hasAnyRangeOver(data: UsageDisplayData, threshold: number): boolean {
-  if (data.fiveHour && data.fiveHour.utilization >= threshold) return true;
-  if (data.sevenDay && data.sevenDay.utilization >= threshold) return true;
-  return false;
+  return data.limits.some((l) => l.range.utilization >= threshold);
 }
 
-/** Returns true if any secondary (non-primary) range has raw utilization >= threshold. */
+/** Returns true if any non-primary limit has raw utilization >= threshold. */
 function hasSecondaryRangeOver(
   data: UsageDisplayData,
   threshold: number,
 ): boolean {
-  if (data.sevenDay && data.sevenDay.utilization >= threshold) return true;
-  return false;
+  return data.limits.some(
+    (l) => !l.isPrimary && l.range.utilization >= threshold,
+  );
 }
 
 const LEVEL_DOT_COLORS: Record<UsageLevel, string> = {
@@ -96,6 +96,42 @@ function getProviderMeta(providerType: UsageProviderType) {
   );
 }
 
+function TooltipRangeRow({
+  label,
+  range,
+}: {
+  label: string;
+  range: UsageRange;
+}) {
+  const ratio = getUsageRatio({
+    utilization: range.utilization,
+    resetsAt: range.resetsAt,
+    windowDurationMs: range.windowDurationMs,
+  });
+  const level = getUsageLevel(ratio);
+  const ratioColor = LEVEL_TEXT_COLORS[level];
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-neutral-400">{label}</span>
+        <span className={clsx('font-medium', ratioColor)}>
+          {range.utilization.toFixed(0)}%
+        </span>
+      </div>
+      <div className="flex items-center justify-between gap-4 text-neutral-500">
+        <span>
+          Ratio:{' '}
+          <span className={ratioColor}>
+            {Number.isFinite(ratio) ? ratio.toFixed(1) : '∞'}
+          </span>
+        </span>
+        <span>Resets {range.timeUntilReset}</span>
+      </div>
+    </div>
+  );
+}
+
 function TooltipContent({
   providerType,
   data,
@@ -108,72 +144,13 @@ function TooltipContent({
   return (
     <div className="space-y-1.5">
       <div className="font-medium text-neutral-200">{meta.label}</div>
-      {data.fiveHour && (
-        <div>
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-neutral-400">5-hour</span>
-            <span
-              className={clsx(
-                'font-medium',
-                data.fiveHour.utilization >= 100
-                  ? 'text-red-400'
-                  : data.fiveHour.utilization >= 90
-                    ? 'text-orange-400'
-                    : undefined,
-              )}
-            >
-              {data.fiveHour.utilization.toFixed(0)}%
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-4 text-neutral-500">
-            <span>
-              Ratio:{' '}
-              {(() => {
-                const r = getUsageRatio({
-                  utilization: data.fiveHour!.utilization,
-                  resetsAt: data.fiveHour!.resetsAt,
-                  windowDurationMs: data.fiveHour!.windowDurationMs,
-                });
-                return Number.isFinite(r) ? r.toFixed(1) : '∞';
-              })()}
-            </span>
-            <span>Resets {data.fiveHour.timeUntilReset}</span>
-          </div>
-        </div>
-      )}
-      {data.sevenDay && (
-        <div>
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-neutral-400">7-day</span>
-            <span
-              className={clsx(
-                'font-medium',
-                data.sevenDay.utilization >= 100
-                  ? 'text-red-400'
-                  : data.sevenDay.utilization >= 90
-                    ? 'text-orange-400'
-                    : undefined,
-              )}
-            >
-              {data.sevenDay.utilization.toFixed(0)}%
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-4 text-neutral-500">
-            <span>
-              Ratio:{' '}
-              {(() => {
-                const r = getUsageRatio({
-                  utilization: data.sevenDay!.utilization,
-                  resetsAt: data.sevenDay!.resetsAt,
-                  windowDurationMs: data.sevenDay!.windowDurationMs,
-                });
-                return Number.isFinite(r) ? r.toFixed(1) : '∞';
-              })()}
-            </span>
-            <span>Resets {data.sevenDay.timeUntilReset}</span>
-          </div>
-        </div>
-      )}
+      {data.limits.map((limit) => (
+        <TooltipRangeRow
+          key={limit.key}
+          label={limit.label}
+          range={limit.range}
+        />
+      ))}
     </div>
   );
 }
@@ -188,7 +165,9 @@ function ProviderUsageChip({
   const meta = getProviderMeta(providerType);
   const Icon = PROVIDER_ICONS[providerType];
 
-  if (!result.data?.fiveHour) {
+  const { data } = result;
+  const primary = data?.limits.find((l) => l.isPrimary);
+  if (!data || !primary) {
     if (result.error?.type === 'no_token') return null;
 
     return (
@@ -212,17 +191,15 @@ function ProviderUsageChip({
     );
   }
 
-  const { fiveHour } = result.data;
   const usageRatio = getUsageRatio({
-    utilization: fiveHour.utilization,
-    resetsAt: fiveHour.resetsAt,
-    windowDurationMs: fiveHour.windowDurationMs,
+    utilization: primary.range.utilization,
+    resetsAt: primary.range.resetsAt,
+    windowDurationMs: primary.range.windowDurationMs,
   });
   const level = getUsageLevel(usageRatio);
 
-  const isExhausted = hasAnyRangeOver(result.data, 100);
-  const hasSecondaryWarning =
-    !isExhausted && hasSecondaryRangeOver(result.data, 90);
+  const isExhausted = hasAnyRangeOver(data, 100);
+  const hasSecondaryWarning = !isExhausted && hasSecondaryRangeOver(data, 90);
 
   const textColor = isExhausted ? 'text-red-400' : LEVEL_TEXT_COLORS[level];
   const dotColor = isExhausted ? 'bg-red-400' : LEVEL_DOT_COLORS[level];
@@ -234,13 +211,11 @@ function ProviderUsageChip({
 
   const displayPercentage = isExhausted
     ? '100'
-    : Math.min(fiveHour.utilization, 100).toFixed(0);
+    : Math.min(primary.range.utilization, 100).toFixed(0);
 
   return (
     <Tooltip
-      content={
-        <TooltipContent providerType={providerType} data={result.data} />
-      }
+      content={<TooltipContent providerType={providerType} data={data} />}
       side="bottom"
     >
       <div

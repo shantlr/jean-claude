@@ -2,9 +2,9 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 
 import type {
-  ClaudeUsageResponse,
-  UsageResult,
+  UsageLimitData,
   UsageDisplayData,
+  UsageResult,
 } from '@shared/usage-types';
 
 import type { BackendUsageProvider } from './types';
@@ -57,7 +57,7 @@ export class ClaudeUsageProvider implements BackendUsageProvider {
         };
       }
 
-      const apiData = (await response.json()) as ClaudeUsageResponse;
+      const apiData = (await response.json()) as Record<string, unknown>;
       return {
         data: this.transformResponse(apiData),
         error: null,
@@ -105,31 +105,65 @@ export class ClaudeUsageProvider implements BackendUsageProvider {
     }
   }
 
-  private transformResponse(apiData: ClaudeUsageResponse): UsageDisplayData {
+  private transformResponse(
+    apiData: Record<string, unknown>,
+  ): UsageDisplayData {
     const FIVE_HOUR_MS = 5 * 60 * 60 * 1000;
     const SEVEN_DAY_MS = 7 * 24 * 60 * 60 * 1000;
+    const DEFAULT_MS = 24 * 60 * 60 * 1000;
 
-    return {
-      fiveHour: apiData.five_hour
-        ? {
-            utilization: apiData.five_hour.utilization,
-            resetsAt: new Date(apiData.five_hour.resets_at),
-            timeUntilReset: formatTimeUntil(
-              new Date(apiData.five_hour.resets_at),
-            ),
-            windowDurationMs: FIVE_HOUR_MS,
-          }
-        : null,
-      sevenDay: apiData.seven_day
-        ? {
-            utilization: apiData.seven_day.utilization,
-            resetsAt: new Date(apiData.seven_day.resets_at),
-            timeUntilReset: formatTimeUntil(
-              new Date(apiData.seven_day.resets_at),
-            ),
-            windowDurationMs: SEVEN_DAY_MS,
-          }
-        : null,
+    const limits: UsageDisplayData['limits'] = [];
+
+    for (const [key, value] of Object.entries(apiData)) {
+      if (!this.isUsageLimitData(value)) continue;
+
+      const windowDurationMs = key.startsWith('five_hour')
+        ? FIVE_HOUR_MS
+        : key.startsWith('seven_day')
+          ? SEVEN_DAY_MS
+          : DEFAULT_MS;
+
+      limits.push({
+        key,
+        label: this.keyToLabel(key),
+        isPrimary: key === 'five_hour',
+        range: {
+          utilization: value.utilization,
+          resetsAt: new Date(value.resets_at),
+          timeUntilReset: formatTimeUntil(new Date(value.resets_at)),
+          windowDurationMs,
+        },
+      });
+    }
+
+    // Sort: primary first, then alphabetically
+    limits.sort((a, b) => {
+      if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
+      return a.key.localeCompare(b.key);
+    });
+
+    return { limits };
+  }
+
+  private isUsageLimitData(value: unknown): value is UsageLimitData {
+    return (
+      typeof value === 'object' &&
+      value !== null &&
+      typeof (value as Record<string, unknown>).utilization === 'number' &&
+      typeof (value as Record<string, unknown>).resets_at === 'string'
+    );
+  }
+
+  private keyToLabel(key: string): string {
+    const TOKEN_MAP: Record<string, string> = {
+      five: '5',
+      seven: '7',
+      hour: 'hour',
+      day: 'day',
     };
+    return key
+      .split('_')
+      .map((t) => TOKEN_MAP[t] ?? t.charAt(0).toUpperCase() + t.slice(1))
+      .join(' ');
   }
 }

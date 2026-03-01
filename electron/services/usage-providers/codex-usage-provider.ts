@@ -243,29 +243,41 @@ export class CodexUsageProvider implements BackendUsageProvider {
   }
 
   private transformRateLimits(rateLimits: RateLimitData): UsageDisplayData {
-    return {
-      fiveHour: rateLimits.primary
-        ? {
-            utilization: rateLimits.primary.usedPercent,
-            resetsAt: new Date(rateLimits.primary.resetsAt * 1000),
-            timeUntilReset: formatTimeUntil(
-              new Date(rateLimits.primary.resetsAt * 1000),
-            ),
-            windowDurationMs: rateLimits.primary.windowDurationMins * 60 * 1000,
-          }
-        : null,
-      sevenDay: rateLimits.secondary
-        ? {
-            utilization: rateLimits.secondary.usedPercent,
-            resetsAt: new Date(rateLimits.secondary.resetsAt * 1000),
-            timeUntilReset: formatTimeUntil(
-              new Date(rateLimits.secondary.resetsAt * 1000),
-            ),
-            windowDurationMs:
-              rateLimits.secondary.windowDurationMins * 60 * 1000,
-          }
-        : null,
-    };
+    const limits: UsageDisplayData['limits'] = [];
+
+    if (rateLimits.primary) {
+      limits.push({
+        key: 'primary',
+        label: 'Primary',
+        isPrimary: true,
+        range: {
+          utilization: rateLimits.primary.usedPercent,
+          resetsAt: new Date(rateLimits.primary.resetsAt * 1000),
+          timeUntilReset: formatTimeUntil(
+            new Date(rateLimits.primary.resetsAt * 1000),
+          ),
+          windowDurationMs: rateLimits.primary.windowDurationMins * 60 * 1000,
+        },
+      });
+    }
+
+    if (rateLimits.secondary) {
+      limits.push({
+        key: 'secondary',
+        label: 'Secondary',
+        isPrimary: false,
+        range: {
+          utilization: rateLimits.secondary.usedPercent,
+          resetsAt: new Date(rateLimits.secondary.resetsAt * 1000),
+          timeUntilReset: formatTimeUntil(
+            new Date(rateLimits.secondary.resetsAt * 1000),
+          ),
+          windowDurationMs: rateLimits.secondary.windowDurationMins * 60 * 1000,
+        },
+      });
+    }
+
+    return { limits };
   }
 
   private killProcess(): void {
