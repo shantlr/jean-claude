@@ -1,3 +1,33 @@
+# Add Project Grid Layout Implementation Plan
+
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+
+**Goal:** Rework the Add Project source-selection view into a fixed-height page where a 3-column detected-projects grid scrolls independently, and the Local Folder / Clone Azure DevOps buttons live in the header.
+
+**Architecture:** Single-file change — `src/routes/projects/new.tsx`. The page wrapper becomes `flex flex-col overflow-hidden` (no page scroll). The header uses `flex justify-between` to place action buttons inline with the title. The detected-projects area becomes `min-h-0 flex-1 overflow-y-auto` wrapping a `grid grid-cols-3`. Cards are vertical flex stacks with fixed `h-[88px]` for grid consistency.
+
+**Tech Stack:** React, TailwindCSS, TanStack Query, lucide-react
+
+---
+
+## Reference Files
+
+Skim before starting:
+- `src/routes/projects/new.tsx` — full file to rewrite (current: 343 lines)
+- `docs/plans/2026-02-28-add-project-grid-layout-design.md` — approved design doc
+
+---
+
+### Task 1: Replace `src/routes/projects/new.tsx`
+
+**Files:**
+- Modify: `src/routes/projects/new.tsx`
+
+This is a full replacement of the source-selection view. The form state (`pageState === 'form'`) and all event handlers are **preserved unchanged** — only the source-selection JSX and outer layout are rewritten.
+
+**Step 1: Replace the entire file with the following**
+
+```tsx
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, Folder, FolderOpen, Search } from 'lucide-react';
@@ -264,7 +294,6 @@ function AddProjectPage() {
                   <button
                     key={project.path}
                     type="button"
-                    aria-label={`Add project: ${project.name}`}
                     onClick={() => handleSelectDetectedProject(project)}
                     className="flex h-[88px] w-full cursor-pointer flex-col rounded-lg border border-neutral-700 bg-neutral-800/50 p-3 text-left transition-colors hover:border-neutral-600 hover:bg-neutral-800"
                   >
@@ -322,3 +351,39 @@ async function inferProjectName(folderPath: string): Promise<string> {
   if (pkg?.name) return pkg.name;
   return folderPath.split(/[/\\]/).pop() || 'Untitled';
 }
+```
+
+**Step 2: Type-check and lint**
+
+```bash
+pnpm ts-check 2>&1 | grep "projects/new"
+pnpm lint --fix
+```
+
+Expected: zero new errors. Pre-existing NodeJS namespace errors in other files are unrelated.
+
+---
+
+### Task 2: Final verification
+
+**Step 1: Full type-check**
+
+```bash
+pnpm ts-check
+```
+
+Confirm zero new errors in `src/routes/projects/new.tsx`.
+
+**Step 2: Visual checklist**
+
+Navigate to **Add Project** and verify:
+- [ ] Page does NOT scroll — only the grid area scrolls
+- [ ] Header shows "Add Project" on left, [Local Folder] + [Clone Azure DevOps] buttons on right
+- [ ] Loading: 6 skeleton placeholders appear in 3-column grid
+- [ ] Loaded: cards are 3 per row, equal height (`88px`), each shows name + badges + tilde-path
+- [ ] Search box appears below header once projects load
+- [ ] Filtering works in real-time; "No projects match…" spans all 3 columns
+- [ ] Clicking a card navigates to the form
+- [ ] Clicking Local Folder opens the OS directory picker
+- [ ] Clicking Clone opens the clone pane
+- [ ] Zero detected projects: grid hidden, only header with buttons visible

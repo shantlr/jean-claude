@@ -106,6 +106,7 @@ import {
   getSettingsLocalPath,
   getWorktreeSettingsPath,
 } from '../services/permission-settings-service';
+import { detectProjects } from '../services/project-detection-service';
 import { projectFileIndexService } from '../services/project-file-index-service';
 import { runCommandService } from '../services/run-command-service';
 import { getAllSkills } from '../services/skill-service';
@@ -1076,68 +1077,11 @@ export function registerIpcHandlers() {
     return result.canceled ? null : result.filePaths[0];
   });
 
-  // Projects: get detected projects from ~/.claude.json
+  // Projects: get detected projects from all known CLI sources
   ipcMain.handle('projects:getDetected', async () => {
-    try {
-      const claudeJsonPath = path.join(os.homedir(), '.claude.json');
-      const content = await fs.readFile(claudeJsonPath, 'utf-8');
-      const claudeJson = JSON.parse(content) as {
-        projects?: Record<string, unknown>;
-      };
-
-      if (!claudeJson.projects) {
-        return [];
-      }
-
-      // Get existing project paths from database to filter them out
-      const existingProjects = await ProjectRepository.findAll();
-      const existingPaths = new Set(existingProjects.map((p) => p.path));
-
-      // Extract project paths and filter
-      const detectedProjects: Array<{ path: string; name: string }> = [];
-
-      for (const projectPath of Object.keys(claudeJson.projects)) {
-        // Skip if already in database
-        if (existingPaths.has(projectPath)) {
-          continue;
-        }
-
-        // Skip worktree paths (contain .worktrees or .idling/worktrees or .claude-worktrees)
-        if (
-          projectPath.includes('.worktrees') ||
-          projectPath.includes('.idling/worktrees') ||
-          projectPath.includes('.claude-worktrees')
-        ) {
-          continue;
-        }
-
-        // Skip paths inside ~/.jean-claude (internal app directory)
-        const jeanClaudeDir = path.join(os.homedir(), '.jean-claude');
-        if (projectPath.startsWith(jeanClaudeDir)) {
-          continue;
-        }
-
-        // Check if path still exists
-        const exists = await pathExists(projectPath);
-        if (!exists) {
-          continue;
-        }
-
-        // Extract name from path (last segment)
-        const name = path.basename(projectPath);
-
-        detectedProjects.push({ path: projectPath, name });
-      }
-
-      // Sort by name
-      detectedProjects.sort((a, b) => a.name.localeCompare(b.name));
-
-      return detectedProjects;
-    } catch (error) {
-      dbg.ipc('Error reading ~/.claude.json (ignored): %O', error);
-      // If file doesn't exist or can't be parsed, return empty array
-      return [];
-    }
+    const existingProjects = await ProjectRepository.findAll();
+    const existingPaths = new Set(existingProjects.map((p) => p.path));
+    return detectProjects(existingPaths);
   });
 
   // Filesystem

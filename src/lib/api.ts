@@ -89,6 +89,8 @@ export interface WorktreeFileContent {
 export interface DetectedProject {
   path: string;
   name: string;
+  displayPath: string;
+  sources: ('claude-code' | 'opencode' | 'codex')[];
 }
 
 // Task Summary types
