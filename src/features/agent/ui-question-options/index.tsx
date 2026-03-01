@@ -50,7 +50,7 @@ function QuestionInput({
                   onActivate({ questionIndex, optionIndex: index });
                   onSelectOption({ questionIndex, optionIndex: index });
                 }}
-                className={`rounded-full px-3 py-1.5 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none ${
+                className={`rounded-md px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none ${
                   selectedLabels.includes(option.label)
                     ? 'bg-blue-600 text-white'
                     : isActive && activeOptionIndex === index
@@ -59,7 +59,12 @@ function QuestionInput({
                 }`}
                 title={option.description}
               >
-                {option.label}
+                <div className="font-medium">{option.label}</div>
+                {option.description ? (
+                  <div className="mt-0.5 text-xs leading-tight text-current/80">
+                    {option.description}
+                  </div>
+                ) : null}
               </button>
             );
           })}
@@ -81,7 +86,7 @@ function QuestionInput({
               onActivate({ questionIndex, optionIndex: index });
               onSelectOption({ questionIndex, optionIndex: index });
             }}
-            className={`rounded-full px-3 py-1.5 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none ${
+            className={`rounded-md px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none ${
               value === option.label && !isOtherOpen
                 ? 'bg-blue-600 text-white'
                 : isActive && activeOptionIndex === index
@@ -90,7 +95,12 @@ function QuestionInput({
             }`}
             title={option.description}
           >
-            {option.label}
+            <div className="font-medium">{option.label}</div>
+            {option.description ? (
+              <div className="mt-0.5 text-xs leading-tight text-current/80">
+                {option.description}
+              </div>
+            ) : null}
           </button>
         ))}
         <button
@@ -101,7 +111,7 @@ function QuestionInput({
             onActivate({ questionIndex, optionIndex: optionCount - 1 });
             onSelectOption({ questionIndex, optionIndex: optionCount - 1 });
           }}
-          className={`rounded-full px-3 py-1.5 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none ${
+          className={`rounded-md px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none ${
             isOtherOpen
               ? 'bg-blue-600 text-white'
               : isActive && activeOptionIndex === optionCount - 1
@@ -109,7 +119,10 @@ function QuestionInput({
                 : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
           }`}
         >
-          Other
+          <div className="font-medium">Other</div>
+          <div className="mt-0.5 text-xs leading-tight text-current/80">
+            Enter a custom answer
+          </div>
         </button>
       </div>
       {isOtherOpen && (
