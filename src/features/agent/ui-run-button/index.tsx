@@ -4,13 +4,12 @@ import { FileText, Loader2, Play, Square } from 'lucide-react';
 import { Dropdown, DropdownItem, DropdownDivider } from '@/common/ui/dropdown';
 import { useProjectCommands } from '@/hooks/use-project-commands';
 import { useRunCommands } from '@/hooks/use-run-commands';
-import { useTaskMessagesStore, type TaskState } from '@/stores/task-messages';
+import { useTaskMessagesStore } from '@/stores/task-messages';
 
 import { KillPortsModal } from './kill-ports-modal';
 
 export function RunButton({
   taskId,
-  stepId,
   projectId,
   workingDir,
   onToggleLogs,
@@ -18,7 +17,6 @@ export function RunButton({
   isLogsPaneOpen,
 }: {
   taskId: string;
-  stepId: string | null;
   projectId: string;
   workingDir: string;
   onToggleLogs: () => void;
@@ -36,12 +34,10 @@ export function RunButton({
     portsInUseError,
     confirmKillPorts,
     dismissPortsError,
-  } = useRunCommands({ taskId, stepId, projectId, workingDir });
+  } = useRunCommands({ taskId, projectId, workingDir });
 
-  const runCommandLogs: TaskState['runCommandLogs'] =
-    useTaskMessagesStore((state) =>
-      stepId ? state.steps[stepId]?.runCommandLogs : undefined,
-    ) ?? {};
+  const runCommandLogs =
+    useTaskMessagesStore((state) => state.runCommandLogs[taskId]) ?? {};
 
   // Don't show button if no commands configured
   if (commands.length === 0) {

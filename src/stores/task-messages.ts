@@ -21,6 +21,8 @@ interface RunCommandLogState {
   updatedAt: number;
 }
 
+export type RunCommandLogs = Record<string, RunCommandLogState>;
+
 export interface TaskState {
   messages: NormalizedEntry[];
   status: TaskStatus;
@@ -32,13 +34,14 @@ export interface TaskState {
     questions: AgentQuestion[];
   } | null;
   queuedPrompts: QueuedPrompt[];
-  runCommandLogs: Record<string, RunCommandLogState>;
   lastAccessedAt: number;
 }
 
 interface TaskMessagesStore {
   /** Keyed by stepId — each step has its own message/state entry */
   steps: Record<string, TaskState>;
+  /** Keyed by taskId — run command logs are task-level, not step-level */
+  runCommandLogs: Record<string, RunCommandLogs>;
   cacheLimit: number;
 
   // Actions (all keyed by stepId)
@@ -68,13 +71,13 @@ interface TaskMessagesStore {
   setQuestion: (stepId: string, question: TaskState['pendingQuestion']) => void;
   setQueuedPrompts: (stepId: string, queuedPrompts: QueuedPrompt[]) => void;
   appendRunCommandLine: (
-    stepId: string,
+    taskId: string,
     runCommandId: string,
     stream: RunCommandLogStream,
     line: string,
   ) => void;
-  clearRunCommandLogs: (stepId: string, runCommandId: string) => void;
-  clearAllRunCommandLogs: (stepId: string) => void;
+  clearRunCommandLogs: (taskId: string, runCommandId: string) => void;
+  clearAllRunCommandLogs: (taskId: string) => void;
   touchStep: (stepId: string) => void;
   unloadStep: (stepId: string) => void;
 
@@ -116,6 +119,7 @@ function evictIfNeeded(
 
 export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
   steps: {},
+  runCommandLogs: {},
   cacheLimit: DEFAULT_CACHE_LIMIT,
 
   loadStep: (stepId, messages, status) => {
@@ -129,7 +133,6 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
           pendingPermission: null,
           pendingQuestion: null,
           queuedPrompts: [],
-          runCommandLogs: state.steps[stepId]?.runCommandLogs ?? {},
           lastAccessedAt: Date.now(),
         },
       };
@@ -261,12 +264,10 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
     });
   },
 
-  appendRunCommandLine: (stepId, runCommandId, stream, line) => {
+  appendRunCommandLine: (taskId, runCommandId, stream, line) => {
     set((state) => {
-      const step = state.steps[stepId];
-      if (!step) return state;
-
-      const existingLog = step.runCommandLogs[runCommandId] ?? {
+      const taskLogs = state.runCommandLogs[taskId] ?? {};
+      const existingLog = taskLogs[runCommandId] ?? {
         lines: [],
         updatedAt: Date.now(),
       };
@@ -284,16 +285,13 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
           : nextLines;
 
       return {
-        steps: {
-          ...state.steps,
-          [stepId]: {
-            ...step,
-            runCommandLogs: {
-              ...step.runCommandLogs,
-              [runCommandId]: {
-                lines: cappedLines,
-                updatedAt: Date.now(),
-              },
+        runCommandLogs: {
+          ...state.runCommandLogs,
+          [taskId]: {
+            ...taskLogs,
+            [runCommandId]: {
+              lines: cappedLines,
+              updatedAt: Date.now(),
             },
           },
         },
@@ -301,40 +299,31 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
     });
   },
 
-  clearRunCommandLogs: (stepId, runCommandId) => {
+  clearRunCommandLogs: (taskId, runCommandId) => {
     set((state) => {
-      const step = state.steps[stepId];
-      if (!step) return state;
+      const taskLogs = state.runCommandLogs[taskId];
+      if (!taskLogs) return state;
 
-      const { [runCommandId]: _removed, ...restLogs } = step.runCommandLogs;
+      const { [runCommandId]: _removed, ...restLogs } = taskLogs;
       void _removed;
 
       return {
-        steps: {
-          ...state.steps,
-          [stepId]: {
-            ...step,
-            runCommandLogs: restLogs,
-          },
+        runCommandLogs: {
+          ...state.runCommandLogs,
+          [taskId]: restLogs,
         },
       };
     });
   },
 
-  clearAllRunCommandLogs: (stepId) => {
+  clearAllRunCommandLogs: (taskId) => {
     set((state) => {
-      const step = state.steps[stepId];
-      if (!step) return state;
+      if (!state.runCommandLogs[taskId]) return state;
 
-      return {
-        steps: {
-          ...state.steps,
-          [stepId]: {
-            ...step,
-            runCommandLogs: {},
-          },
-        },
-      };
+      const { [taskId]: _removed, ...rest } = state.runCommandLogs;
+      void _removed;
+
+      return { runCommandLogs: rest };
     });
   },
 

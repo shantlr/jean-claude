@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
+import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { InteractionMode, NewTask, UpdateTask } from '@shared/types';
 
@@ -113,6 +114,9 @@ export function useUpdateTask() {
 
 export function useDeleteTask() {
   const queryClient = useQueryClient();
+  const clearAllRunCommandLogs = useTaskMessagesStore(
+    (s) => s.clearAllRunCommandLogs,
+  );
   return useMutation({
     mutationFn: ({
       id,
@@ -122,10 +126,7 @@ export function useDeleteTask() {
       deleteWorktree?: boolean;
     }) => api.tasks.delete(id, { deleteWorktree }),
     onSuccess: (_, { id }) => {
-      // TODO(multi-step): clearAllRunCommandLogs needs stepId, not taskId.
-      // Run command logs will be garbage collected when the step is evicted from cache.
-      // The task panel already clears logs correctly via activeStepId.
-      void id;
+      clearAllRunCommandLogs(id);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
@@ -178,12 +179,13 @@ export function useSetTaskMode() {
 
 export function useToggleTaskUserCompleted() {
   const queryClient = useQueryClient();
+  const clearAllRunCommandLogs = useTaskMessagesStore(
+    (s) => s.clearAllRunCommandLogs,
+  );
   return useMutation({
     mutationFn: (id: string) => api.tasks.toggleUserCompleted(id),
     onSuccess: (task, id) => {
-      // TODO(multi-step): clearAllRunCommandLogs needs stepId, not taskId.
-      // Run command logs are cleared correctly in the task panel via activeStepId.
-      void id;
+      clearAllRunCommandLogs(id);
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
       queryClient.invalidateQueries({
         queryKey: ['tasks', { projectId: task.projectId }],

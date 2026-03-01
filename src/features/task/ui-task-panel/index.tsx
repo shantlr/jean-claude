@@ -235,10 +235,10 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   }, [taskId]);
 
   useEffect(() => {
-    if (task?.status === 'completed' && activeStepId) {
-      clearAllRunCommandLogs(activeStepId);
+    if (task?.status === 'completed') {
+      clearAllRunCommandLogs(taskId);
     }
-  }, [task?.status, activeStepId, clearAllRunCommandLogs]);
+  }, [task?.status, taskId, clearAllRunCommandLogs]);
 
   // Auto-select an active step when none is selected
   useEffect(() => {
@@ -718,7 +718,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           <div className="flex shrink-0 items-center gap-2">
             <RunButton
               taskId={taskId}
-              stepId={activeStepId}
               projectId={project.id}
               workingDir={taskRootPath}
               onToggleLogs={() => {
@@ -1051,7 +1050,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       {rightPane?.type === 'commandLogs' && (
         <CommandLogsPane
           taskId={taskId}
-          stepId={activeStepId}
           projectId={project.id}
           selectedCommandId={rightPane.selectedCommandId}
           onSelectCommand={selectCommandLogsTab}

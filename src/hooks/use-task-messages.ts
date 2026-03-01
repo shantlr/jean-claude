@@ -11,7 +11,6 @@ const DEFAULT_TASK_STATE: TaskState = {
   pendingPermission: null,
   pendingQuestion: null,
   queuedPrompts: [],
-  runCommandLogs: {},
   lastAccessedAt: 0,
 };
 
