@@ -26,11 +26,12 @@ import type {
 import {
   PRESET_EDITORS,
   type InteractionMode,
-  type ModelPreference,
   type EditorSetting,
   type AppSettings,
   type NewToken,
   type UpdateToken,
+  type NewTaskStep,
+  type UpdateTaskStep,
 } from '@shared/types';
 import type { UsageProviderType } from '@shared/usage-types';
 
@@ -47,6 +48,7 @@ import {
 import { McpTemplateRepository } from '../database/repositories/mcp-templates';
 import { ProjectCommandRepository } from '../database/repositories/project-commands';
 import { ProjectMcpOverrideRepository } from '../database/repositories/project-mcp-overrides';
+import { TaskStepRepository } from '../database/repositories/task-steps';
 import {
   NewProject,
   NewTask,
@@ -118,6 +120,7 @@ import {
   disableSkill,
   enableSkill,
 } from '../services/skill-management-service';
+import { StepService } from '../services/step-service';
 import { generateSummary } from '../services/summary-generation-service';
 import {
   checkMergeConflicts,
@@ -230,27 +233,48 @@ export function registerIpcHandlers() {
   ipcMain.handle('tasks:findById', (_, id: string) =>
     TaskRepository.findById(id),
   );
-  ipcMain.handle('tasks:create', async (_, data: NewTask) => {
-    const task = await TaskRepository.create(data);
+  ipcMain.handle(
+    'tasks:create',
+    async (
+      _,
+      data: NewTask & {
+        interactionMode?: InteractionMode | null;
+        modelPreference?: string | null;
+        agentBackend?: AgentBackendType | null;
+      },
+    ) => {
+      const task = await TaskRepository.create(data);
 
-    // Activate associated work items and assign to current user if unassigned (fire and forget)
-    if (task?.workItemIds && task.workItemIds.length > 0) {
-      const project = await ProjectRepository.findById(data.projectId);
-      if (project?.workItemProviderId) {
-        dbg.ipc('Activating %d work items', task.workItemIds.length);
-        for (const workItemId of task.workItemIds) {
-          activateWorkItem({
-            providerId: project.workItemProviderId,
-            workItemId: parseInt(workItemId, 10),
-          }).catch((err) => {
-            dbg.ipc('Failed to activate work item %s: %O', workItemId, err);
-          });
+      // Auto-create a single step for the task
+      await StepService.create({
+        taskId: task.id,
+        name: 'Step 1',
+        promptTemplate: data.prompt,
+        interactionMode: data.interactionMode ?? null,
+        modelPreference: data.modelPreference ?? null,
+        agentBackend: data.agentBackend ?? null,
+        images: data.images ?? null,
+      });
+
+      // Activate associated work items and assign to current user if unassigned (fire and forget)
+      if (task?.workItemIds && task.workItemIds.length > 0) {
+        const project = await ProjectRepository.findById(data.projectId);
+        if (project?.workItemProviderId) {
+          dbg.ipc('Activating %d work items', task.workItemIds.length);
+          for (const workItemId of task.workItemIds) {
+            activateWorkItem({
+              providerId: project.workItemProviderId,
+              workItemId: parseInt(workItemId, 10),
+            }).catch((err) => {
+              dbg.ipc('Failed to activate work item %s: %O', workItemId, err);
+            });
+          }
         }
       }
-    }
 
-    return task;
-  });
+      return task;
+    },
+  );
   ipcMain.handle(
     'tasks:createWithWorktree',
     async (
@@ -259,6 +283,9 @@ export function registerIpcHandlers() {
         useWorktree: boolean;
         sourceBranch?: string | null;
         autoStart?: boolean;
+        interactionMode?: InteractionMode | null;
+        modelPreference?: string | null;
+        agentBackend?: AgentBackendType | null;
       },
     ) => {
       const { useWorktree, sourceBranch, autoStart, images, ...taskData } =
@@ -327,6 +354,17 @@ export function registerIpcHandlers() {
         });
       }
 
+      // Auto-create a single step for the task
+      const step = await StepService.create({
+        taskId: task.id,
+        name: 'Step 1',
+        promptTemplate: data.prompt,
+        interactionMode: data.interactionMode ?? null,
+        modelPreference: data.modelPreference ?? null,
+        agentBackend: data.agentBackend ?? null,
+        images: images ?? null,
+      });
+
       // Activate associated work items and assign to current user if unassigned (fire and forget)
       if (task?.workItemIds && task.workItemIds.length > 0) {
         const projectForWorkItems = await ProjectRepository.findById(
@@ -347,7 +385,7 @@ export function registerIpcHandlers() {
 
       // Auto-start the agent if requested
       if (autoStart && task) {
-        dbg.ipc('Auto-starting agent for task %s', task.id);
+        dbg.ipc('Auto-starting agent for step %s (task %s)', step.id, task.id);
         const window = BrowserWindow.fromWebContents(event.sender);
         if (window) {
           agentService.setMainWindow(window);
@@ -357,8 +395,8 @@ export function registerIpcHandlers() {
           agentService.setPendingImages(task.id, images);
         }
         // Start agent in background (don't await to return task immediately)
-        agentService.start(task.id).catch((err) => {
-          dbg.ipc('Error auto-starting agent for task %s: %O', task.id, err);
+        agentService.start(step.id).catch((err) => {
+          dbg.ipc('Error auto-starting agent for step %s: %O', step.id, err);
         });
       }
 
@@ -401,18 +439,10 @@ export function registerIpcHandlers() {
     },
   );
   ipcMain.handle(
-    'tasks:setMode',
-    async (_, taskId: string, mode: InteractionMode) => {
-      await agentService.setMode(taskId, mode);
-      return TaskRepository.findById(taskId);
-    },
-  );
-  ipcMain.handle(
-    'tasks:setModelPreference',
-    async (_, taskId: string, modelPreference: string) => {
-      return TaskRepository.update(taskId, {
-        modelPreference: modelPreference as ModelPreference,
-      });
+    'steps:setMode',
+    async (_, stepId: string, mode: InteractionMode) => {
+      await agentService.setMode(stepId, mode);
+      return TaskStepRepository.findById(stepId);
     },
   );
   ipcMain.handle('tasks:toggleUserCompleted', async (_, id: string) => {
@@ -740,33 +770,23 @@ export function registerIpcHandlers() {
     return getProjectBranches(project.path);
   });
 
-  ipcMain.handle('tasks:getSkills', async (_, taskId: string) => {
-    const task = await TaskRepository.findById(taskId);
-    if (!task) {
-      throw new Error(`Task ${taskId} not found`);
-    }
-    // Use worktree path if available, otherwise use project path
-    const projectPath =
-      task.worktreePath ??
-      (await ProjectRepository.findById(task.projectId))?.path;
-    if (!projectPath) {
-      throw new Error(`Project ${task.projectId} not found`);
-    }
-    dbg.ipc('tasks:getSkills for task: %s, path: %s', taskId, projectPath);
-    const managed = await getAllManagedSkills({
-      backendType: task.agentBackend,
-      projectPath,
-    });
-    return managed
-      .filter((s) => s.enabled)
-      .map(({ name, description, source, pluginName, skillPath }) => ({
-        name,
-        description,
-        source,
-        pluginName,
-        skillPath,
-      }));
-  });
+  // Steps
+  ipcMain.handle('steps:findByTaskId', (_, taskId: string) =>
+    StepService.findByTaskId(taskId),
+  );
+  ipcMain.handle('steps:findById', (_, stepId: string) =>
+    StepService.findById(stepId),
+  );
+  ipcMain.handle('steps:create', (_, data: NewTaskStep) =>
+    StepService.create(data),
+  );
+  ipcMain.handle('steps:update', (_, stepId: string, data: UpdateTaskStep) =>
+    StepService.update(stepId, data),
+  );
+
+  ipcMain.handle('steps:resolvePrompt', (_, stepId: string) =>
+    StepService.resolveAndValidate(stepId),
+  );
 
   // Providers
   ipcMain.handle('providers:findAll', () => ProviderRepository.findAll());
@@ -1198,74 +1218,68 @@ export function registerIpcHandlers() {
   });
 
   // Agent
-  ipcMain.handle(AGENT_CHANNELS.START, (event, taskId: string) => {
-    dbg.ipc('agent:start %s', taskId);
+  ipcMain.handle(AGENT_CHANNELS.START, (event, stepId: string) => {
+    dbg.ipc('agent:start %s', stepId);
     const window = BrowserWindow.fromWebContents(event.sender);
     if (window) {
       agentService.setMainWindow(window);
     }
-    return agentService.start(taskId);
+    return agentService.start(stepId);
   });
 
-  ipcMain.handle(AGENT_CHANNELS.STOP, (_, taskId: string) => {
-    dbg.ipc('agent:stop %s', taskId);
-    return agentService.stop(taskId);
+  ipcMain.handle(AGENT_CHANNELS.STOP, (_, stepId: string) => {
+    dbg.ipc('agent:stop %s', stepId);
+    return agentService.stop(stepId);
   });
 
   ipcMain.handle(
     AGENT_CHANNELS.RESPOND,
     (
       _,
-      taskId: string,
+      stepId: string,
       requestId: string,
       response: PermissionResponse | QuestionResponse,
     ) => {
-      dbg.ipc('agent:respond task=%s, request=%s', taskId, requestId);
-      return agentService.respond(taskId, requestId, response);
+      dbg.ipc('agent:respond step=%s, request=%s', stepId, requestId);
+      return agentService.respond(stepId, requestId, response);
     },
   );
 
   ipcMain.handle(
     AGENT_CHANNELS.SEND_MESSAGE,
-    (_, taskId: string, parts: PromptPart[]) => {
-      dbg.ipc('agent:sendMessage %s (parts: %d)', taskId, parts.length);
-      return agentService.sendMessage(taskId, parts);
+    (_, stepId: string, parts: PromptPart[]) => {
+      dbg.ipc('agent:sendMessage %s (parts: %d)', stepId, parts.length);
+      return agentService.sendMessage(stepId, parts);
     },
   );
 
   ipcMain.handle(
     AGENT_CHANNELS.QUEUE_PROMPT,
-    (_, taskId: string, parts: PromptPart[]) => {
-      dbg.ipc('agent:queuePrompt %s', taskId);
-      return agentService.queuePrompt(taskId, parts);
+    (_, stepId: string, prompt: string) => {
+      dbg.ipc('agent:queuePrompt %s', stepId);
+      return agentService.queuePrompt(stepId, prompt);
     },
   );
 
   ipcMain.handle(
     AGENT_CHANNELS.CANCEL_QUEUED_PROMPT,
-    (_, taskId: string, promptId: string) => {
-      dbg.ipc('agent:cancelQueuedPrompt task=%s, prompt=%s', taskId, promptId);
-      return agentService.cancelQueuedPrompt(taskId, promptId);
+    (_, stepId: string, promptId: string) => {
+      dbg.ipc('agent:cancelQueuedPrompt step=%s, prompt=%s', stepId, promptId);
+      return agentService.cancelQueuedPrompt(stepId, promptId);
     },
   );
 
-  ipcMain.handle(AGENT_CHANNELS.GET_MESSAGES, async (_, taskId: string) => {
-    return await agentService.getMessages(taskId);
+  ipcMain.handle(AGENT_CHANNELS.GET_MESSAGES, (_, stepId: string) => {
+    return agentService.getMessages(stepId);
   });
 
-  ipcMain.handle(
-    AGENT_CHANNELS.GET_MESSAGE_COUNT,
-    async (_, taskId: string) => {
-      return await agentService.getMessageCount(taskId);
-    },
-  );
+  ipcMain.handle(AGENT_CHANNELS.GET_MESSAGE_COUNT, (_, stepId: string) => {
+    return agentService.getMessageCount(stepId);
+  });
 
-  ipcMain.handle(
-    AGENT_CHANNELS.GET_PENDING_REQUEST,
-    async (_, taskId: string) => {
-      return await agentService.getPendingRequest(taskId);
-    },
-  );
+  ipcMain.handle(AGENT_CHANNELS.GET_PENDING_REQUEST, (_, stepId: string) => {
+    return agentService.getPendingRequest(stepId);
+  });
 
   ipcMain.handle(
     AGENT_CHANNELS.GET_MESSAGES_WITH_RAW_DATA,

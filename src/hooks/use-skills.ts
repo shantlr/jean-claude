@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
+import type { Skill } from '@shared/skill-types';
 
 export const skillsQueryKeys = {
   all: ['skills'] as const,
@@ -9,12 +10,13 @@ export const skillsQueryKeys = {
     [...skillsQueryKeys.all, 'project', projectId] as const,
 };
 
-export function useSkills(taskId: string | undefined) {
+// tasks:getSkills removed — return empty until step-aware skill discovery lands
+export function useSkills(_taskId: string | undefined) {
   return useQuery({
-    queryKey: skillsQueryKeys.byTask(taskId ?? ''),
-    queryFn: () => api.tasks.getSkills(taskId!),
-    enabled: !!taskId,
-    staleTime: 5 * 60 * 1000, // Skills don't change often, cache for 5 minutes
+    queryKey: skillsQueryKeys.byTask(''),
+    queryFn: (): Promise<Skill[]> => Promise.resolve([]),
+    initialData: [] as Skill[],
+    staleTime: Infinity,
   });
 }
 

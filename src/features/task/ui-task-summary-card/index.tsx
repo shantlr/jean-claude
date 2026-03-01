@@ -30,7 +30,6 @@ export function TaskSummaryCard({
   isSelected?: boolean;
 }) {
   const router = useRouter();
-  const taskState = useTaskMessagesStore((s) => s.tasks[task.id]);
   const isDeleting = useBackgroundJobsStore((state) =>
     state.jobs.some(
       (job) =>
@@ -40,8 +39,20 @@ export function TaskSummaryCard({
     ),
   );
   const { projectId } = useCurrentVisibleProject();
-  const hasPendingPermission = !!taskState?.pendingPermission;
-  const hasPendingQuestion = !!taskState?.pendingQuestion;
+
+  // Check if any loaded step for this task has a pending permission or question
+  // TODO(multi-step): This is a linear scan over all cached steps. Consider a
+  // reverse mapping (stepId→taskId) or memoized selector if step count grows.
+  const hasPendingPermission = useTaskMessagesStore((s) =>
+    Object.values(s.steps).some(
+      (step) => step.pendingPermission?.taskId === task.id,
+    ),
+  );
+  const hasPendingQuestion = useTaskMessagesStore((s) =>
+    Object.values(s.steps).some(
+      (step) => step.pendingQuestion?.taskId === task.id,
+    ),
+  );
   const needsAttention = hasPendingPermission || hasPendingQuestion;
 
   const displayNumber = index !== undefined ? index + 1 : undefined;

@@ -8,8 +8,14 @@ import { useToastStore } from '@/stores/toasts';
 import type { PromptPart } from '@shared/agent-backend-types';
 import type { PermissionResponse, QuestionResponse } from '@shared/agent-types';
 
-export function useAgentStream(taskId: string) {
-  const taskMessages = useTaskMessages(taskId);
+export function useAgentStream({
+  taskId,
+  stepId,
+}: {
+  taskId: string;
+  stepId: string | null;
+}) {
+  const taskMessages = useTaskMessages({ taskId, stepId });
   const queryClient = useQueryClient();
 
   // Invalidate task queries when status changes to a terminal state
@@ -27,7 +33,13 @@ export function useAgentStream(taskId: string) {
   return taskMessages;
 }
 
-export function useAgentControls(taskId: string) {
+export function useAgentControls({
+  taskId,
+  stepId,
+}: {
+  taskId: string;
+  stepId: string | null;
+}) {
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const queryClient = useQueryClient();
@@ -36,28 +48,31 @@ export function useAgentControls(taskId: string) {
   const addToast = useToastStore((s) => s.addToast);
 
   const start = useCallback(async () => {
+    if (!stepId) return;
     setIsStarting(true);
     try {
-      await api.agent.start(taskId);
+      await api.agent.start(stepId);
     } finally {
       setIsStarting(false);
     }
-  }, [taskId]);
+  }, [stepId]);
 
   const stop = useCallback(async () => {
+    if (!stepId) return;
     setIsStopping(true);
     try {
-      await api.agent.stop(taskId);
+      await api.agent.stop(stepId);
     } finally {
       setIsStopping(false);
       queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
     }
-  }, [taskId, queryClient]);
+  }, [stepId, taskId, queryClient]);
 
   const respondToPermission = useCallback(
     async (requestId: string, response: PermissionResponse) => {
+      if (!stepId) return;
       try {
-        await api.agent.respond(taskId, requestId, response);
+        await api.agent.respond(stepId, requestId, response);
       } catch (error) {
         addToast({
           type: 'error',
@@ -67,15 +82,16 @@ export function useAgentControls(taskId: string) {
               : 'Failed to respond to permission request',
         });
       }
-      setPermission(taskId, null);
+      setPermission(stepId, null);
     },
-    [taskId, setPermission, addToast],
+    [stepId, setPermission, addToast],
   );
 
   const respondToQuestion = useCallback(
     async (requestId: string, response: QuestionResponse) => {
+      if (!stepId) return;
       try {
-        await api.agent.respond(taskId, requestId, response);
+        await api.agent.respond(stepId, requestId, response);
       } catch (error) {
         addToast({
           type: 'error',
@@ -85,30 +101,37 @@ export function useAgentControls(taskId: string) {
               : 'Failed to respond to question',
         });
       }
-      setQuestion(taskId, null);
+      setQuestion(stepId, null);
     },
-    [taskId, setQuestion, addToast],
+    [stepId, setQuestion, addToast],
   );
 
   const sendMessage = useCallback(
     async (parts: PromptPart[]) => {
-      await api.agent.sendMessage(taskId, parts);
+      if (!stepId) return;
+      await api.agent.sendMessage(stepId, parts);
     },
-    [taskId],
+    [stepId],
   );
 
   const queuePrompt = useCallback(
     async (parts: PromptPart[]) => {
-      return api.agent.queuePrompt(taskId, parts);
+      if (!stepId) return { promptId: '' };
+      const prompt = parts
+        .filter((p) => p.type === 'text')
+        .map((p) => (p as { type: 'text'; text: string }).text)
+        .join('');
+      return api.agent.queuePrompt(stepId, prompt);
     },
-    [taskId],
+    [stepId],
   );
 
   const cancelQueuedPrompt = useCallback(
     async (promptId: string) => {
-      await api.agent.cancelQueuedPrompt(taskId, promptId);
+      if (!stepId) return;
+      await api.agent.cancelQueuedPrompt(stepId, promptId);
     },
-    [taskId],
+    [stepId],
   );
 
   return {

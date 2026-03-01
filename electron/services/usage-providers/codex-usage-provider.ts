@@ -32,7 +32,7 @@ interface RateLimitsResult {
   rateLimitsByLimitId?: Record<string, RateLimitData>;
 }
 
-function getProcessEnvWithoutNodeEnv(): NodeJS.ProcessEnv {
+function getProcessEnvWithoutNodeEnv(): typeof process.env {
   const { NODE_ENV: _nodeEnv, ...env } = process.env;
   return env;
 }

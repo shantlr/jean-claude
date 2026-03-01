@@ -37,15 +37,46 @@ export const AgentMessageRepository = {
   },
 
   /**
+   * Find all normalized entries for a step.
+   * Each row is one entry — no deduplication needed.
+   */
+  findByStepId: async (stepId: string): Promise<NormalizedEntry[]> => {
+    const rows = await db
+      .selectFrom('agent_messages')
+      .select(['agent_messages.data'])
+      .where('agent_messages.stepId', '=', stepId)
+      .orderBy('agent_messages.messageIndex', 'asc')
+      .execute();
+
+    return rows
+      .filter((row) => row.data)
+      .map((row) => JSON.parse(row.data) as NormalizedEntry);
+  },
+
+  /**
+   * Get the count of normalized entries for a step.
+   */
+  getMessageCountByStepId: async (stepId: string): Promise<number> => {
+    const result = await db
+      .selectFrom('agent_messages')
+      .select((eb) => eb.fn.count<number>('id').as('count'))
+      .where('stepId', '=', stepId)
+      .executeTakeFirst();
+    return result?.count ?? 0;
+  },
+
+  /**
    * Create a normalized entry row, optionally linked to a raw message.
    */
   create: async ({
     taskId,
+    stepId,
     messageIndex,
     entry,
     rawMessageId,
   }: {
     taskId: string;
+    stepId?: string | null;
     messageIndex: number;
     entry: NormalizedEntry;
     rawMessageId?: string | null;
@@ -55,6 +86,7 @@ export const AgentMessageRepository = {
       .values({
         id: entry.id,
         taskId,
+        stepId: stepId ?? null,
         messageIndex,
         type: entry.type,
         toolId: entry.type === 'tool-use' ? entry.toolId : null,
@@ -284,7 +316,7 @@ export const AgentMessageRepository = {
   reprocessNormalization: async (taskId: string): Promise<number> => {
     const rawRows = await db
       .selectFrom('raw_messages')
-      .select(['id', 'messageIndex', 'rawData', 'rawFormat'])
+      .select(['id', 'messageIndex', 'rawData', 'rawFormat', 'stepId'])
       .where('taskId', '=', taskId)
       .orderBy('messageIndex', 'asc')
       .execute();
@@ -301,6 +333,7 @@ export const AgentMessageRepository = {
     const entries: Array<{
       originalIndex: number;
       rawMessageId: string | null;
+      stepId: string | null;
       entry: NormalizedEntry;
     }> = [];
 
@@ -330,6 +363,7 @@ export const AgentMessageRepository = {
             entries.push({
               originalIndex: raw.messageIndex,
               rawMessageId: raw.id,
+              stepId: raw.stepId,
               entry: event.entry,
             });
             if (event.entry.type === 'tool-use') {
@@ -409,6 +443,7 @@ export const AgentMessageRepository = {
             entries.push({
               originalIndex: raw.messageIndex,
               rawMessageId: raw.id,
+              stepId: raw.stepId,
               entry: event.entry,
             });
             if (event.entry.type === 'tool-use') {
@@ -437,12 +472,13 @@ export const AgentMessageRepository = {
       }
     }
 
-    // Add synthetic entries back
+    // Add synthetic entries back (preserve stepId from original rows)
     for (const syn of syntheticRows) {
       if (!syn.data) continue;
       entries.push({
         originalIndex: syn.messageIndex,
         rawMessageId: null,
+        stepId: syn.stepId,
         entry: JSON.parse(syn.data) as NormalizedEntry,
       });
     }
@@ -456,12 +492,13 @@ export const AgentMessageRepository = {
       .execute();
 
     for (let i = 0; i < entries.length; i++) {
-      const { entry, rawMessageId } = entries[i];
+      const { entry, rawMessageId, stepId } = entries[i];
       await db
         .insertInto('agent_messages')
         .values({
           id: entry.id,
           taskId,
+          stepId: stepId ?? null,
           messageIndex: i,
           type: entry.type,
           toolId: entry.type === 'tool-use' ? entry.toolId : null,

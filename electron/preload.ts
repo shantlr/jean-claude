@@ -51,10 +51,6 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('tasks:update', id, data),
     delete: (id: string, options?: { deleteWorktree?: boolean }) =>
       ipcRenderer.invoke('tasks:delete', id, options),
-    setMode: (id: string, mode: string) =>
-      ipcRenderer.invoke('tasks:setMode', id, mode),
-    setModelPreference: (id: string, modelPreference: string) =>
-      ipcRenderer.invoke('tasks:setModelPreference', id, modelPreference),
     toggleUserCompleted: (id: string) =>
       ipcRenderer.invoke('tasks:toggleUserCompleted', id),
     clearUserCompleted: (id: string) =>
@@ -79,8 +75,6 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('tasks:allowForProjectWorktrees', id, toolName, input),
     reorder: (projectId: string, activeIds: string[], completedIds: string[]) =>
       ipcRenderer.invoke('tasks:reorder', projectId, activeIds, completedIds),
-    getSkills: (taskId: string) =>
-      ipcRenderer.invoke('tasks:getSkills', taskId),
     worktree: {
       getDiff: (taskId: string) =>
         ipcRenderer.invoke('tasks:worktree:getDiff', taskId),
@@ -135,6 +129,18 @@ contextBridge.exposeInMainWorld('api', {
       isDraft: boolean;
       deleteWorktree?: boolean;
     }) => ipcRenderer.invoke('tasks:createPullRequest', params),
+  },
+  steps: {
+    findByTaskId: (taskId: string) =>
+      ipcRenderer.invoke('steps:findByTaskId', taskId),
+    findById: (stepId: string) => ipcRenderer.invoke('steps:findById', stepId),
+    create: (data: unknown) => ipcRenderer.invoke('steps:create', data),
+    update: (stepId: string, data: unknown) =>
+      ipcRenderer.invoke('steps:update', stepId, data),
+    resolvePrompt: (stepId: string) =>
+      ipcRenderer.invoke('steps:resolvePrompt', stepId),
+    setMode: (stepId: string, mode: string) =>
+      ipcRenderer.invoke('steps:setMode', stepId, mode),
   },
   providers: {
     findAll: () => ipcRenderer.invoke('providers:findAll'),
@@ -275,24 +281,24 @@ contextBridge.exposeInMainWorld('api', {
     getAvailableEditors: () => ipcRenderer.invoke('shell:getAvailableEditors'),
   },
   agent: {
-    start: (taskId: string) => ipcRenderer.invoke(AGENT_CHANNELS.START, taskId),
-    stop: (taskId: string) => ipcRenderer.invoke(AGENT_CHANNELS.STOP, taskId),
-    respond: (taskId: string, requestId: string, response: unknown) =>
-      ipcRenderer.invoke(AGENT_CHANNELS.RESPOND, taskId, requestId, response),
-    sendMessage: (taskId: string, parts: unknown[]) =>
-      ipcRenderer.invoke(AGENT_CHANNELS.SEND_MESSAGE, taskId, parts),
-    queuePrompt: (taskId: string, parts: unknown[]) =>
-      ipcRenderer.invoke(AGENT_CHANNELS.QUEUE_PROMPT, taskId, parts),
-    cancelQueuedPrompt: (taskId: string, promptId: string) =>
-      ipcRenderer.invoke(AGENT_CHANNELS.CANCEL_QUEUED_PROMPT, taskId, promptId),
+    start: (stepId: string) => ipcRenderer.invoke(AGENT_CHANNELS.START, stepId),
+    stop: (stepId: string) => ipcRenderer.invoke(AGENT_CHANNELS.STOP, stepId),
+    respond: (stepId: string, requestId: string, response: unknown) =>
+      ipcRenderer.invoke(AGENT_CHANNELS.RESPOND, stepId, requestId, response),
+    sendMessage: (stepId: string, parts: unknown[]) =>
+      ipcRenderer.invoke(AGENT_CHANNELS.SEND_MESSAGE, stepId, parts),
+    queuePrompt: (stepId: string, prompt: string) =>
+      ipcRenderer.invoke(AGENT_CHANNELS.QUEUE_PROMPT, stepId, prompt),
+    cancelQueuedPrompt: (stepId: string, promptId: string) =>
+      ipcRenderer.invoke(AGENT_CHANNELS.CANCEL_QUEUED_PROMPT, stepId, promptId),
     getBackendModels: (backend: string) =>
       ipcRenderer.invoke('agent:getBackendModels', backend),
-    getMessages: (taskId: string) =>
-      ipcRenderer.invoke(AGENT_CHANNELS.GET_MESSAGES, taskId),
-    getMessageCount: (taskId: string) =>
-      ipcRenderer.invoke(AGENT_CHANNELS.GET_MESSAGE_COUNT, taskId),
-    getPendingRequest: (taskId: string) =>
-      ipcRenderer.invoke(AGENT_CHANNELS.GET_PENDING_REQUEST, taskId),
+    getMessages: (stepId: string) =>
+      ipcRenderer.invoke(AGENT_CHANNELS.GET_MESSAGES, stepId),
+    getMessageCount: (stepId: string) =>
+      ipcRenderer.invoke(AGENT_CHANNELS.GET_MESSAGE_COUNT, stepId),
+    getPendingRequest: (stepId: string) =>
+      ipcRenderer.invoke(AGENT_CHANNELS.GET_PENDING_REQUEST, stepId),
     getMessagesWithRawData: (taskId: string) =>
       ipcRenderer.invoke(AGENT_CHANNELS.GET_MESSAGES_WITH_RAW_DATA, taskId),
     compactRawMessages: (taskId: string) =>

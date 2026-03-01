@@ -39,25 +39,25 @@ export function TaskMessageManager() {
 
   useEffect(() => {
     const unsub = api.agent.onEvent((event) => {
-      const { taskId } = event;
+      const { taskId, stepId } = event;
 
       switch (event.type) {
         case 'entry':
-          if (isLoaded(taskId)) {
-            addEntry(taskId, event.entry);
+          if (isLoaded(stepId)) {
+            addEntry(stepId, event.entry);
             invalidateWorktreeDiffIfNeeded(queryClient, taskId, event.entry);
           }
           break;
         case 'entry-update':
-          if (isLoaded(taskId)) {
-            updateEntry(taskId, event.entry);
+          if (isLoaded(stepId)) {
+            updateEntry(stepId, event.entry);
             invalidateWorktreeDiffIfNeeded(queryClient, taskId, event.entry);
           }
           break;
         case 'tool-result':
-          if (isLoaded(taskId)) {
+          if (isLoaded(stepId)) {
             updateToolResult(
-              taskId,
+              stepId,
               event.toolId,
               event.result,
               event.isError,
@@ -66,18 +66,22 @@ export function TaskMessageManager() {
           }
           break;
         case 'status':
-          if (isLoaded(taskId)) {
-            setStatus(taskId, event.status, event.error);
+          if (isLoaded(stepId)) {
+            setStatus(stepId, event.status, event.error);
           }
+          // Also invalidate task queries so task-level status updates
+          queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
+          queryClient.invalidateQueries({ queryKey: ['tasks'] });
+          queryClient.invalidateQueries({ queryKey: ['steps', { taskId }] });
           break;
         case 'permission':
-          if (isLoaded(taskId)) {
-            setPermission(taskId, event);
+          if (isLoaded(stepId)) {
+            setPermission(stepId, event);
           }
           break;
         case 'question':
-          if (isLoaded(taskId)) {
-            setQuestion(taskId, event);
+          if (isLoaded(stepId)) {
+            setQuestion(stepId, event);
           }
           break;
         case 'name-updated':
@@ -85,8 +89,8 @@ export function TaskMessageManager() {
           queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
           break;
         case 'queue-update':
-          if (isLoaded(taskId)) {
-            setQueuedPrompts(taskId, event.queuedPrompts);
+          if (isLoaded(stepId)) {
+            setQueuedPrompts(stepId, event.queuedPrompts);
           }
           break;
       }

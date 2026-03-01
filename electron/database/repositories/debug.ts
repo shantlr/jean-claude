@@ -10,6 +10,7 @@ const ALL_TABLES: Record<TableName, true> = {
   providers: true,
   projects: true,
   tasks: true,
+  task_steps: true,
   agent_messages: true,
   raw_messages: true,
   settings: true,

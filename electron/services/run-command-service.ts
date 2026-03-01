@@ -20,7 +20,7 @@ import { dbg } from '../lib/debug';
 
 const execAsync = promisify(exec);
 
-function getProcessEnvWithoutNodeEnv(): NodeJS.ProcessEnv {
+function getProcessEnvWithoutNodeEnv(): typeof process.env {
   const { NODE_ENV: _nodeEnv, ...env } = process.env;
   return env;
 }

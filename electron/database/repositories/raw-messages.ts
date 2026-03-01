@@ -79,12 +79,14 @@ export const RawMessageRepository = {
    */
   create: async ({
     taskId,
+    stepId,
     messageIndex,
     backendSessionId,
     rawData,
     rawFormat,
   }: {
     taskId: string;
+    stepId?: string | null;
     messageIndex: number;
     backendSessionId: string | null;
     rawData: unknown;
@@ -95,6 +97,7 @@ export const RawMessageRepository = {
       .values({
         id: nanoid(),
         taskId,
+        stepId: stepId ?? null,
         messageIndex,
         backendSessionId,
         rawData: JSON.stringify(rawData),

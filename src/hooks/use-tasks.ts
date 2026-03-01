@@ -6,13 +6,17 @@ import {
 } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
-import { useTaskMessagesStore } from '@/stores/task-messages';
-import type {
-  InteractionMode,
-  ModelPreference,
-  NewTask,
-  UpdateTask,
-} from '@shared/types';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import type { InteractionMode, NewTask, UpdateTask } from '@shared/types';
+
+// The creation payload includes step-related fields alongside task fields.
+// The IPC handler extracts interactionMode/modelPreference/agentBackend
+// to auto-create the initial TaskStep.
+type CreateTaskPayload = NewTask & {
+  interactionMode?: InteractionMode | null;
+  modelPreference?: string | null;
+  agentBackend?: AgentBackendType | null;
+};
 
 export function useTasks() {
   return useQuery({
@@ -63,7 +67,7 @@ export function useTask(id: string) {
 export function useCreateTask() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: NewTask) => api.tasks.create(data),
+    mutationFn: (data: CreateTaskPayload) => api.tasks.create(data),
     onSuccess: (task) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({
@@ -77,7 +81,7 @@ export function useCreateTaskWithWorktree() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (
-      data: NewTask & {
+      data: CreateTaskPayload & {
         useWorktree: boolean;
         sourceBranch?: string | null;
         autoStart?: boolean;
@@ -118,7 +122,10 @@ export function useDeleteTask() {
       deleteWorktree?: boolean;
     }) => api.tasks.delete(id, { deleteWorktree }),
     onSuccess: (_, { id }) => {
-      useTaskMessagesStore.getState().clearAllRunCommandLogs(id);
+      // TODO(multi-step): clearAllRunCommandLogs needs stepId, not taskId.
+      // Run command logs will be garbage collected when the step is evicted from cache.
+      // The task panel already clears logs correctly via activeStepId.
+      void id;
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
@@ -146,33 +153,27 @@ export function useDeleteWorktree() {
   });
 }
 
-export function useSetTaskMode() {
+export function useSetStepMode() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, mode }: { id: string; mode: InteractionMode }) =>
-      api.tasks.setMode(id, mode),
-    onSuccess: (task) => {
+    mutationFn: ({ stepId, mode }: { stepId: string; mode: InteractionMode }) =>
+      api.steps.setMode(stepId, mode),
+    onSuccess: (step) => {
+      queryClient.invalidateQueries({
+        queryKey: ['steps', { taskId: step.taskId }],
+      });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.setQueryData(['task', task.id], task);
     },
   });
 }
 
-export function useSetTaskModelPreference() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      id,
-      modelPreference,
-    }: {
-      id: string;
-      modelPreference: ModelPreference;
-    }) => api.tasks.setModelPreference(id, modelPreference),
-    onSuccess: (task) => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.setQueryData(['task', task.id], task);
-    },
-  });
+/**
+ * @deprecated Use useSetStepMode instead. Kept as a compatibility shim
+ * that delegates to the step-based API. Callers should migrate to pass
+ * stepId directly.
+ */
+export function useSetTaskMode() {
+  return useSetStepMode();
 }
 
 export function useToggleTaskUserCompleted() {
@@ -180,9 +181,9 @@ export function useToggleTaskUserCompleted() {
   return useMutation({
     mutationFn: (id: string) => api.tasks.toggleUserCompleted(id),
     onSuccess: (task, id) => {
-      if (task.userCompleted) {
-        useTaskMessagesStore.getState().clearAllRunCommandLogs(id);
-      }
+      // TODO(multi-step): clearAllRunCommandLogs needs stepId, not taskId.
+      // Run command logs are cleared correctly in the task panel via activeStepId.
+      void id;
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
       queryClient.invalidateQueries({
         queryKey: ['tasks', { projectId: task.projectId }],

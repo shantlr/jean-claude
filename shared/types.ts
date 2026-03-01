@@ -239,14 +239,11 @@ export interface Task {
   name: string | null;
   prompt: string;
   status: TaskStatus;
-  sessionId: string | null;
   worktreePath: string | null;
   startCommitHash: string | null;
   sourceBranch: string | null;
   branchName: string | null;
   hasUnread: boolean;
-  interactionMode: InteractionMode;
-  modelPreference: ModelPreference;
   userCompleted: boolean;
   sessionAllowedTools: string[];
   workItemIds: string[] | null;
@@ -254,7 +251,6 @@ export interface Task {
   pullRequestId: string | null;
   pullRequestUrl: string | null;
   pendingMessage: string | null;
-  agentBackend: AgentBackendType;
   createdAt: string;
   updatedAt: string;
 }
@@ -267,14 +263,11 @@ export interface NewTask {
   /** Transient image attachments (not persisted in tasks table) */
   images?: PromptImagePart[];
   status?: TaskStatus;
-  sessionId?: string | null;
   worktreePath?: string | null;
   startCommitHash?: string | null;
   sourceBranch?: string | null;
   branchName?: string | null;
   hasUnread?: boolean;
-  interactionMode?: InteractionMode;
-  modelPreference?: ModelPreference;
   userCompleted?: boolean;
   sessionAllowedTools?: string[];
   workItemIds?: string[] | null;
@@ -282,7 +275,6 @@ export interface NewTask {
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
   pendingMessage?: string | null;
-  agentBackend?: AgentBackendType;
   createdAt?: string;
   updatedAt: string;
 }
@@ -292,14 +284,11 @@ export interface UpdateTask {
   name?: string | null;
   prompt?: string;
   status?: TaskStatus;
-  sessionId?: string | null;
   worktreePath?: string | null;
   startCommitHash?: string | null;
   sourceBranch?: string | null;
   branchName?: string | null;
   hasUnread?: boolean;
-  interactionMode?: InteractionMode;
-  modelPreference?: ModelPreference;
   userCompleted?: boolean;
   sessionAllowedTools?: string[];
   workItemIds?: string[] | null;
@@ -307,8 +296,93 @@ export interface UpdateTask {
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
   pendingMessage?: string | null;
-  agentBackend?: AgentBackendType;
   updatedAt?: string;
+}
+
+export type TaskStepStatus =
+  | 'pending'
+  | 'ready'
+  | 'running'
+  | 'completed'
+  | 'errored'
+  | 'interrupted';
+
+export type TaskStepType = 'agent' | 'create-pull-request' | 'fork';
+
+/** Meta for `create-pull-request` steps — params + result after execution */
+export interface CreatePullRequestStepMeta {
+  title?: string;
+  description?: string;
+  targetBranch?: string;
+  draft?: boolean;
+  /** Set after the PR is created */
+  pullRequestId?: string;
+  pullRequestUrl?: string;
+}
+
+/** Meta for `fork` steps — tracks the origin of the fork */
+export interface ForkStepMeta {
+  forkedFromStepId: string;
+  /** Snapshot of the session ID at the time of forking */
+  forkedFromSessionId?: string;
+}
+
+export type TaskStepMeta =
+  | CreatePullRequestStepMeta
+  | ForkStepMeta
+  | Record<string, never>;
+
+export interface TaskStep {
+  id: string;
+  taskId: string;
+  name: string;
+  type: TaskStepType;
+  dependsOn: string[];
+  promptTemplate: string;
+  resolvedPrompt: string | null;
+  status: TaskStepStatus;
+  sessionId: string | null;
+  interactionMode: InteractionMode | null;
+  modelPreference: ModelPreference | null;
+  agentBackend: AgentBackendType | null;
+  output: string | null;
+  images: PromptImagePart[] | null;
+  meta: TaskStepMeta;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewTaskStep {
+  id?: string;
+  taskId: string;
+  name: string;
+  type?: TaskStepType;
+  dependsOn?: string[];
+  promptTemplate: string;
+  interactionMode?: InteractionMode | null;
+  modelPreference?: ModelPreference | null;
+  agentBackend?: AgentBackendType | null;
+  images?: PromptImagePart[] | null;
+  meta?: TaskStepMeta;
+  sortOrder?: number;
+}
+
+export interface UpdateTaskStep {
+  name?: string;
+  type?: TaskStepType;
+  dependsOn?: string[];
+  promptTemplate?: string;
+  resolvedPrompt?: string | null;
+  status?: TaskStepStatus;
+  sessionId?: string | null;
+  interactionMode?: InteractionMode | null;
+  modelPreference?: ModelPreference | null;
+  agentBackend?: AgentBackendType | null;
+  output?: string | null;
+  images?: PromptImagePart[] | null;
+  meta?: TaskStepMeta;
+  sortOrder?: number;
 }
 
 export interface ProjectTodo {

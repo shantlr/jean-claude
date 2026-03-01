@@ -348,9 +348,11 @@ function DebugMessageCard({ message }: { message: DebugMessageWithRawData }) {
 
 export function DebugMessagesPane({
   taskId,
+  stepId,
   onClose,
 }: {
   taskId: string;
+  stepId: string | null;
   onClose: () => void;
 }) {
   const {
@@ -361,13 +363,17 @@ export function DebugMessagesPane({
   } = useMessagesWithRawData(taskId);
 
   const [searchFilter, setSearchFilter] = useState('');
-  const unloadTask = useTaskMessagesStore((s) => s.unloadTask);
+  const unloadStep = useTaskMessagesStore((s) => s.unloadStep);
 
   const reprocessMutation = useMutation({
     mutationFn: () => api.agent.reprocessNormalization(taskId),
     onSuccess: () => {
       // Invalidate the main message stream (Zustand store) so it re-fetches
-      unloadTask(taskId);
+      // TODO(multi-step): Reprocessing is task-level but unload is step-level.
+      // When multi-step workflows are supported, all steps for the task should be unloaded.
+      if (stepId) {
+        unloadStep(stepId);
+      }
       // Refresh the debug pane's own data
       refetch();
     },

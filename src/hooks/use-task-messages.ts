@@ -15,82 +15,92 @@ const DEFAULT_TASK_STATE: TaskState = {
   lastAccessedAt: 0,
 };
 
-export function useTaskMessages(taskId: string) {
-  const taskState = useTaskMessagesStore((s) => s.tasks[taskId]);
-  const loadTask = useTaskMessagesStore((s) => s.loadTask);
-  const touchTask = useTaskMessagesStore((s) => s.touchTask);
-  const unloadTask = useTaskMessagesStore((s) => s.unloadTask);
+export function useTaskMessages({
+  taskId,
+  stepId,
+}: {
+  taskId: string;
+  stepId: string | null;
+}) {
+  const stepState = useTaskMessagesStore((s) =>
+    stepId ? s.steps[stepId] : undefined,
+  );
+  const loadStep = useTaskMessagesStore((s) => s.loadStep);
+  const touchStep = useTaskMessagesStore((s) => s.touchStep);
+  const unloadStep = useTaskMessagesStore((s) => s.unloadStep);
   const setPermission = useTaskMessagesStore((s) => s.setPermission);
   const setQuestion = useTaskMessagesStore((s) => s.setQuestion);
-  const isLoaded = !!taskState;
-  // Track which task we're currently fetching to prevent duplicate requests
+  const isLoaded = !!stepState;
+  // Track which step we're currently fetching to prevent duplicate requests
   const fetchingRef = useRef<string | null>(null);
-  // Track which task we've done a sync check for (only relevant when already loaded)
+  // Track which step we've done a sync check for (only relevant when already loaded)
   const syncCheckedRef = useRef<string | null>(null);
 
   const fetchPendingRequest = useCallback(async () => {
-    const pendingRequest = await api.agent.getPendingRequest(taskId);
+    if (!stepId) return;
+    const pendingRequest = await api.agent.getPendingRequest(stepId);
     if (pendingRequest) {
       if (pendingRequest.type === 'permission') {
-        setPermission(taskId, pendingRequest.data);
+        setPermission(stepId, pendingRequest.data);
       } else {
-        setQuestion(taskId, pendingRequest.data);
+        setQuestion(stepId, pendingRequest.data);
       }
     }
-  }, [taskId, setPermission, setQuestion]);
+  }, [stepId, setPermission, setQuestion]);
 
   const fetchMessages = useCallback(() => {
-    fetchingRef.current = taskId;
+    if (!stepId) return;
+    fetchingRef.current = stepId;
     Promise.all([
-      api.agent.getMessages(taskId),
+      api.agent.getMessages(stepId),
       api.tasks.findById(taskId),
     ]).then(([messages, task]) => {
       if (task) {
-        loadTask(taskId, messages, task.status);
-        // Also fetch pending request after loading task
+        loadStep(stepId, messages, task.status);
+        // Also fetch pending request after loading step
         fetchPendingRequest();
       }
       // Clear fetching ref after load completes
-      if (fetchingRef.current === taskId) {
+      if (fetchingRef.current === stepId) {
         fetchingRef.current = null;
       }
     });
-  }, [taskId, loadTask, fetchPendingRequest]);
+  }, [taskId, stepId, loadStep, fetchPendingRequest]);
 
   const refetch = useCallback(() => {
+    if (!stepId) return;
     // Force a fresh fetch by unloading and re-fetching
-    unloadTask(taskId);
+    unloadStep(stepId);
     syncCheckedRef.current = null;
     fetchMessages();
-  }, [taskId, unloadTask, fetchMessages]);
+  }, [stepId, unloadStep, fetchMessages]);
 
   useEffect(() => {
+    if (!stepId) return;
+
     if (!isLoaded) {
       // Not loaded - fetch everything from backend
       // Reset sync check since we need a fresh load
       syncCheckedRef.current = null;
 
-      // Only fetch if we're not already fetching this task
-      if (fetchingRef.current !== taskId) {
+      // Only fetch if we're not already fetching this step
+      if (fetchingRef.current !== stepId) {
         fetchMessages();
       }
     } else {
       // Already loaded - clear fetching ref
       fetchingRef.current = null;
-      touchTask(taskId);
+      touchStep(stepId);
 
-      // Only run sync check once per task open (not on every re-render)
-      if (syncCheckedRef.current !== taskId) {
-        syncCheckedRef.current = taskId;
+      // Only run sync check once per step open (not on every re-render)
+      if (syncCheckedRef.current !== stepId) {
+        syncCheckedRef.current = stepId;
 
         // Check message count sync
-        api.agent.getMessageCount(taskId).then((backendCount) => {
-          const frontendCount = taskState?.messages.length ?? 0;
+        api.agent.getMessageCount(stepId).then((backendCount) => {
+          const frontendCount = stepState?.messages.length ?? 0;
           if (backendCount !== frontendCount) {
             // Out of sync - reload from backend
-            console.log(
-              `[useTaskMessages] Sync mismatch for task ${taskId}: frontend=${frontendCount}, backend=${backendCount}. Reloading.`,
-            );
             fetchMessages();
           }
         });
@@ -100,31 +110,30 @@ export function useTaskMessages(taskId: string) {
       }
     }
   }, [
-    taskId,
+    stepId,
     isLoaded,
-    touchTask,
-    taskState?.messages.length,
+    touchStep,
+    stepState?.messages.length,
     fetchMessages,
     fetchPendingRequest,
   ]);
 
   // Refetch pending request when window regains focus
   useEffect(() => {
+    if (!stepId) return;
+
     const handleFocus = () => {
-      // Only refetch if the task is loaded and in a waiting state
-      if (isLoaded && taskState?.status === 'waiting') {
-        console.log(
-          `[useTaskMessages] Window focused, refetching pending request for task ${taskId}`,
-        );
+      // Only refetch if the step is loaded and in a waiting state
+      if (isLoaded && stepState?.status === 'waiting') {
         fetchPendingRequest();
       }
     };
 
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, [taskId, isLoaded, taskState?.status, fetchPendingRequest]);
+  }, [stepId, isLoaded, stepState?.status, fetchPendingRequest]);
 
-  const state = taskState ?? DEFAULT_TASK_STATE;
+  const state = stepState ?? DEFAULT_TASK_STATE;
 
   return {
     messages: state.messages,
@@ -133,7 +142,7 @@ export function useTaskMessages(taskId: string) {
     pendingPermission: state.pendingPermission,
     pendingQuestion: state.pendingQuestion,
     queuedPrompts: state.queuedPrompts,
-    isLoading: !isLoaded,
+    isLoading: !stepId || !isLoaded,
     refetch,
   };
 }

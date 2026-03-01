@@ -7,10 +7,12 @@ import { isPortsInUseError } from '@shared/run-command-types';
 
 export function useRunCommands({
   taskId,
+  stepId,
   projectId,
   workingDir,
 }: {
   taskId: string;
+  stepId: string | null;
   projectId: string;
   workingDir: string;
 }) {
@@ -58,8 +60,8 @@ export function useRunCommands({
       const wasStartedBefore =
         status?.commands.some((command) => command.id === runCommandId) ??
         false;
-      if (wasStartedBefore) {
-        clearRunCommandLogs(taskId, runCommandId);
+      if (wasStartedBefore && stepId) {
+        clearRunCommandLogs(stepId, runCommandId);
       }
 
       try {
@@ -81,7 +83,7 @@ export function useRunCommands({
         setIsStartingCommandId(null);
       }
     },
-    [taskId, projectId, workingDir, clearRunCommandLogs, status],
+    [taskId, stepId, projectId, workingDir, clearRunCommandLogs, status],
   );
 
   const stopCommand = useCallback(

@@ -21,4 +21,7 @@ export type AgentUIEventPayload =
   | { type: 'name-updated'; name: string }
   | { type: 'queue-update'; queuedPrompts: QueuedPrompt[] };
 
-export type AgentUIEvent = { taskId: string } & AgentUIEventPayload;
+export type AgentUIEvent = {
+  taskId: string;
+  stepId: string;
+} & AgentUIEventPayload;

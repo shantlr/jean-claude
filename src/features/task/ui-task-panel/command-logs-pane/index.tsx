@@ -13,27 +13,31 @@ import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useProjectCommands } from '@/hooks/use-project-commands';
 import { api } from '@/lib/api';
 import { useCommandLogsPaneWidth } from '@/stores/navigation';
-import { useTaskMessagesStore } from '@/stores/task-messages';
+import { useTaskMessagesStore, type TaskState } from '@/stores/task-messages';
 import type { RunStatus } from '@shared/run-command-types';
 
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from '../constants';
 
 export function CommandLogsPane({
   taskId,
+  stepId,
   projectId,
   selectedCommandId,
   onSelectCommand,
   onClose,
 }: {
   taskId: string;
+  stepId: string | null;
   projectId: string;
   selectedCommandId: string | null;
   onSelectCommand: (commandId: string | null) => void;
   onClose: () => void;
 }) {
   const { data: commands = [] } = useProjectCommands(projectId);
-  const runCommandLogs =
-    useTaskMessagesStore((state) => state.tasks[taskId]?.runCommandLogs) ?? {};
+  const runCommandLogs: TaskState['runCommandLogs'] =
+    useTaskMessagesStore((state) =>
+      stepId ? state.steps[stepId]?.runCommandLogs : undefined,
+    ) ?? {};
   const [status, setStatus] = useState<RunStatus | null>(null);
 
   useEffect(() => {

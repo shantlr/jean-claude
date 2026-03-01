@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 import clsx from 'clsx';
 import {
   Loader2,
+  Play,
   Trash2,
   ExternalLink,
   RefreshCw,
@@ -40,6 +41,7 @@ import { PrBadge } from '@/features/agent/ui-pr-badge';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
 import { RunButton } from '@/features/agent/ui-run-button';
 import { WorktreeDiffView } from '@/features/agent/ui-worktree-diff-view';
+import { StepFlowBar } from '@/features/task/ui-step-flow-bar';
 import { TaskPrView } from '@/features/task/ui-task-pr-view';
 import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
 import { useBackendModels } from '@/hooks/use-backend-models';
@@ -49,11 +51,16 @@ import { useProject } from '@/hooks/use-projects';
 import { useEditorSetting } from '@/hooks/use-settings';
 import { useSkills } from '@/hooks/use-skills';
 import {
+  useCreateStep,
+  useStep,
+  useSteps,
+  useUpdateStep,
+} from '@/hooks/use-steps';
+import {
   useTask,
   useDeleteTask,
   useDeleteWorktree,
   useSetTaskMode,
-  useSetTaskModelPreference,
   useClearTaskUserCompleted,
   useAddSessionAllowedTool,
   useRemoveSessionAllowedTool,
@@ -72,7 +79,12 @@ import {
 } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import { useTaskPrompt } from '@/stores/task-prompts';
-import type { AgentBackendType, PromptPart } from '@shared/agent-backend-types';
+import { useToastStore } from '@/stores/toasts';
+import type {
+  AgentBackendType,
+  PromptImagePart,
+  PromptPart,
+} from '@shared/agent-backend-types';
 import type { NormalizedEntry } from '@shared/normalized-message-v2';
 import {
   PRESET_EDITORS,
@@ -81,6 +93,7 @@ import {
   type EditorSetting,
 } from '@shared/types';
 
+import { AddStepDialog } from './add-step-dialog';
 import { CommandLogsPane } from './command-logs-pane';
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
 import { DebugMessagesPane } from './debug-messages-pane';
@@ -123,7 +136,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const removeSessionAllowedTool = useRemoveSessionAllowedTool();
   const allowForProject = useAllowForProject();
   const allowForProjectWorktrees = useAllowForProjectWorktrees();
-  const unloadTask = useTaskMessagesStore((state) => state.unloadTask);
+  const unloadStep = useTaskMessagesStore((state) => state.unloadStep);
   const clearAllRunCommandLogs = useTaskMessagesStore(
     (state) => state.clearAllRunCommandLogs,
   );
@@ -145,6 +158,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   // Task state from store (replaces useState for pane state)
   const {
     rightPane,
+    activeStepId,
+    setActiveStepId,
     openFilePreview,
     openFileExplorer,
     openCommandLogs,
@@ -154,6 +169,10 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     closeRightPane,
     toggleRightPane,
   } = useTaskState(taskId);
+
+  // Steps data for auto-selection
+  const { data: steps } = useSteps(taskId);
+  const { data: activeStep } = useStep(activeStepId ?? '');
 
   // Diff view state
   const {
@@ -171,10 +190,11 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     closePrView,
   } = usePrViewState(taskId);
 
-  const agentState = useAgentStream(taskId);
+  const agentState = useAgentStream({ taskId, stepId: activeStepId });
   const contextUsage = useContextUsage(agentState.messages);
   const model = useModel(agentState.messages);
   const {
+    start,
     stop,
     respondToPermission,
     respondToQuestion,
@@ -182,9 +202,12 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     queuePrompt,
     cancelQueuedPrompt,
     isStopping,
-  } = useAgentControls(taskId);
+  } = useAgentControls({ taskId, stepId: activeStepId });
 
+  const addToast = useToastStore((s) => s.addToast);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isAddStepDialogOpen, setIsAddStepDialogOpen] = useState(false);
+  const createStep = useCreateStep();
   // Ref for the task panel container (used by shrink-to-target animation)
   const taskPanelRef = useRef<HTMLDivElement>(null);
   const overflowMenuRef = useRef<{ toggle: () => void } | null>(null);
@@ -211,16 +234,41 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   }, [taskId]);
 
   useEffect(() => {
-    if (task?.status === 'completed') {
-      clearAllRunCommandLogs(taskId);
+    if (task?.status === 'completed' && activeStepId) {
+      clearAllRunCommandLogs(activeStepId);
     }
-  }, [task?.status, taskId, clearAllRunCommandLogs]);
+  }, [task?.status, activeStepId, clearAllRunCommandLogs]);
+
+  // Auto-select an active step when none is selected
+  useEffect(() => {
+    if (!steps || steps.length === 0) return;
+    // If the currently selected step still exists, keep it
+    if (activeStepId && steps.some((s) => s.id === activeStepId)) return;
+
+    // Priority: first running → first ready → last completed → first step
+    const running = steps.find((s) => s.status === 'running');
+    if (running) {
+      setActiveStepId(running.id);
+      return;
+    }
+    const ready = steps.find((s) => s.status === 'ready');
+    if (ready) {
+      setActiveStepId(ready.id);
+      return;
+    }
+    const completedSteps = steps.filter((s) => s.status === 'completed');
+    if (completedSteps.length > 0) {
+      setActiveStepId(completedSteps[completedSteps.length - 1]!.id);
+      return;
+    }
+    setActiveStepId(steps[0]!.id);
+  }, [steps, activeStepId, setActiveStepId]);
 
   const handleCopySessionId = useCallback(async () => {
-    if (task?.sessionId) {
-      await navigator.clipboard.writeText(task.sessionId);
+    if (activeStep?.sessionId) {
+      await navigator.clipboard.writeText(activeStep.sessionId);
     }
-  }, [task?.sessionId]);
+  }, [activeStep?.sessionId]);
 
   const handleFilePathClick = useCallback(
     (filePath: string, lineStart?: number, lineEnd?: number) => {
@@ -256,7 +304,9 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       void triggerAnimation();
 
       // Clean up stores immediately
-      unloadTask(taskId);
+      if (activeStepId) {
+        unloadStep(activeStepId);
+      }
       clearTaskNavHistoryState(taskId);
 
       // Navigate away
@@ -278,9 +328,10 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       task,
       project,
       taskId,
+      activeStepId,
       addRunningJob,
       triggerAnimation,
-      unloadTask,
+      unloadStep,
       clearTaskNavHistoryState,
       navigate,
       deleteTask,
@@ -399,6 +450,37 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     }
     openDebugMessages();
   }, [rightPane, closeRightPane, openDebugMessages]);
+
+  const handleAddStep = useCallback(
+    async (data: {
+      promptTemplate: string;
+      agentBackend: AgentBackendType;
+      modelPreference: ModelPreference;
+      images: PromptImagePart[];
+    }) => {
+      const name = data.promptTemplate.split('\n')[0]?.slice(0, 40) ?? 'Step';
+      try {
+        const step = await createStep.mutateAsync({
+          taskId,
+          name,
+          promptTemplate: data.promptTemplate,
+          agentBackend: data.agentBackend,
+          modelPreference: data.modelPreference,
+          images: data.images.length > 0 ? data.images : null,
+          dependsOn: [],
+        });
+        setIsAddStepDialogOpen(false);
+        setActiveStepId(step.id);
+      } catch (error) {
+        addToast({
+          type: 'error',
+          message:
+            error instanceof Error ? error.message : 'Failed to create step',
+        });
+      }
+    },
+    [taskId, createStep, setActiveStepId, addToast],
+  );
 
   const handleMergeStarted = useCallback(() => {
     // Close the diff view when merge is dispatched (worktree will be deleted)
@@ -533,12 +615,13 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const hasMessages = agentState.messages.length > 0;
   const getCompletionContextBeforePrompt = () =>
     getLastAssistantMessage(agentState.messages);
-  const canSendMessage = !isRunning && hasMessages && !!task.sessionId;
+  const canSendMessage = !isRunning && hasMessages && !!activeStep?.sessionId;
   const hasRepoLink =
     !!project.repoProviderId && !!project.repoProjectId && !!project.repoId;
   const backendLabel =
-    AVAILABLE_BACKENDS.find((backend) => backend.value === task.agentBackend)
-      ?.label ?? 'Claude Code';
+    AVAILABLE_BACKENDS.find(
+      (backend) => backend.value === activeStep?.agentBackend,
+    )?.label ?? 'Claude Code';
 
   return (
     <div ref={taskPanelRef} className="flex h-full w-full overflow-hidden">
@@ -631,6 +714,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           <div className="flex shrink-0 items-center gap-2">
             <RunButton
               taskId={taskId}
+              stepId={activeStepId}
               projectId={project.id}
               workingDir={taskRootPath}
               onToggleLogs={() => {
@@ -749,7 +833,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               )}
 
               {/* Group 3: Info (only when session data exists) */}
-              {(task.sessionId || model) && (
+              {(activeStep?.sessionId || model) && (
                 <>
                   <DropdownDivider />
                   {model && (
@@ -758,10 +842,10 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                       value={formatModelName(model)}
                     />
                   )}
-                  {task.sessionId && (
+                  {activeStep?.sessionId && (
                     <DropdownInfo
                       label="Session"
-                      value={`${task.sessionId.slice(0, 8)}...`}
+                      value={`${activeStep.sessionId.slice(0, 8)}...`}
                       onClick={handleCopySessionId}
                     />
                   )}
@@ -770,6 +854,12 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             </Dropdown>
           </div>
         </div>
+
+        {/* Step flow bar */}
+        <StepFlowBar
+          taskId={taskId}
+          onAddStep={() => setIsAddStepDialogOpen(true)}
+        />
 
         {/* Main content area: PR view OR Diff view OR Message stream */}
         <div className="min-h-0 flex-1">
@@ -810,17 +900,33 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           ) : (
             <div className="h-full overflow-y-auto p-6">
               <div className="mb-2 text-sm font-medium text-neutral-400">
-                Prompt
+                {activeStep?.name ?? 'Prompt'}
               </div>
               <div className="rounded-lg border border-neutral-700 bg-neutral-800 p-4">
                 <pre className="overflow-x-hidden font-sans text-xs whitespace-pre-wrap">
-                  {task.prompt}
+                  {activeStep?.promptTemplate ?? task.prompt}
                 </pre>
               </div>
               {isRunning ? (
                 <div className="mt-6 flex items-center justify-center gap-2 rounded-lg border border-dashed border-neutral-700 p-8">
                   <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
                   <p className="text-neutral-400">Starting agent...</p>
+                </div>
+              ) : activeStep?.status === 'ready' ? (
+                <div className="mt-6 flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-700 p-8">
+                  <button
+                    onClick={() => void start()}
+                    className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
+                  >
+                    <Play className="h-4 w-4" />
+                    Start Step
+                  </button>
+                </div>
+              ) : activeStep?.status === 'pending' ? (
+                <div className="mt-6 flex items-center justify-center rounded-lg border border-dashed border-neutral-700 p-8">
+                  <p className="text-sm text-neutral-500">
+                    Waiting for dependencies to complete
+                  </p>
                 </div>
               ) : (
                 <div className="mt-6 flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-700 p-8">
@@ -860,7 +966,11 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             onAllowForSession={handleAllowToolsForSession}
             onAllowForProject={handleAllowForProject}
             onAllowForProjectWorktrees={handleAllowForProjectWorktrees}
-            onSetMode={(mode) => setTaskMode.mutate({ id: taskId, mode })}
+            onSetMode={(mode) =>
+              activeStepId
+                ? setTaskMode.mutate({ stepId: activeStepId, mode })
+                : undefined
+            }
             worktreePath={task.worktreePath}
           />
         )}
@@ -879,6 +989,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           !agentState.pendingQuestion && (
             <TaskInputFooter
               taskId={taskId}
+              activeStepId={activeStepId}
               isRunning={isRunning}
               isStopping={isStopping}
               canSendMessage={!!canSendMessage}
@@ -920,7 +1031,11 @@ export function TaskPanel({ taskId }: { taskId: string }) {
 
       {/* Debug messages pane */}
       {rightPane?.type === 'debugMessages' && (
-        <DebugMessagesPane taskId={taskId} onClose={closeRightPane} />
+        <DebugMessagesPane
+          taskId={taskId}
+          stepId={activeStepId}
+          onClose={closeRightPane}
+        />
       )}
 
       {/* File explorer pane */}
@@ -932,12 +1047,22 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       {rightPane?.type === 'commandLogs' && (
         <CommandLogsPane
           taskId={taskId}
+          stepId={activeStepId}
           projectId={project.id}
           selectedCommandId={rightPane.selectedCommandId}
           onSelectCommand={selectCommandLogsTab}
           onClose={closeRightPane}
         />
       )}
+
+      {/* Add step modal */}
+      <AddStepDialog
+        isOpen={isAddStepDialogOpen}
+        onClose={() => setIsAddStepDialogOpen(false)}
+        onConfirm={(data) => void handleAddStep(data)}
+        defaultBackend={activeStep?.agentBackend ?? 'claude-code'}
+        defaultModel={activeStep?.modelPreference ?? 'default'}
+      />
 
       {/* Delete confirmation modal */}
       <DeleteTaskDialog
@@ -969,6 +1094,7 @@ function backendSupportsImages(backend?: AgentBackendType | null): boolean {
  */
 const TaskInputFooter = memo(function TaskInputFooter({
   taskId,
+  activeStepId,
   isRunning,
   isStopping,
   canSendMessage,
@@ -980,6 +1106,7 @@ const TaskInputFooter = memo(function TaskInputFooter({
   getCompletionContextBeforePrompt,
 }: {
   taskId: string;
+  activeStepId: string | null;
   isRunning: boolean;
   isStopping: boolean;
   canSendMessage: boolean;
@@ -991,12 +1118,16 @@ const TaskInputFooter = memo(function TaskInputFooter({
   getCompletionContextBeforePrompt: () => string;
 }) {
   const { data: task } = useTask(taskId);
+  const { data: activeStep } = useStep(activeStepId ?? '');
   const { data: skills } = useSkills(taskId);
-  const { data: dynamicModels } = useBackendModels(
-    task?.agentBackend ?? 'claude-code',
-  );
-  const setTaskMode = useSetTaskMode();
-  const setTaskModelPreference = useSetTaskModelPreference();
+
+  // Use step values for backend/mode/model (these live on steps now)
+  const effectiveBackend = activeStep?.agentBackend ?? 'claude-code';
+  const effectiveMode = activeStep?.interactionMode ?? 'ask';
+  const effectiveModel = activeStep?.modelPreference ?? 'default';
+
+  const { data: dynamicModels } = useBackendModels(effectiveBackend);
+  const setStepMode = useSetTaskMode();
   const clearUserCompleted = useClearTaskUserCompleted();
 
   const {
@@ -1007,16 +1138,21 @@ const TaskInputFooter = memo(function TaskInputFooter({
 
   const handleModeChange = useCallback(
     (mode: InteractionMode) => {
-      setTaskMode.mutate({ id: taskId, mode });
+      if (activeStepId) {
+        setStepMode.mutate({ stepId: activeStepId, mode });
+      }
     },
-    [taskId, setTaskMode],
+    [activeStepId, setStepMode],
   );
 
+  const updateStep = useUpdateStep();
   const handleModelChange = useCallback(
     (modelPreference: ModelPreference) => {
-      setTaskModelPreference.mutate({ id: taskId, modelPreference });
+      if (activeStepId) {
+        updateStep.mutate({ stepId: activeStepId, data: { modelPreference } });
+      }
     },
-    [taskId, setTaskModelPreference],
+    [activeStepId, updateStep],
   );
 
   const handleSendMessage = useCallback(
@@ -1042,19 +1178,16 @@ const TaskInputFooter = memo(function TaskInputFooter({
     <div className="flex items-center gap-2 border-t border-neutral-700 bg-neutral-800 px-4 py-3">
       <ContextUsageDisplay contextUsage={contextUsage} />
       <ModeSelector
-        value={task?.interactionMode ?? 'ask'}
+        value={effectiveMode}
         onChange={handleModeChange}
-        backend={task?.agentBackend ?? 'claude-code'}
+        backend={effectiveBackend}
         disabled={isRunning}
       />
       <ModelSelector
-        value={task?.modelPreference ?? 'default'}
+        value={effectiveModel}
         onChange={handleModelChange}
         disabled={isRunning}
-        models={getModelsForBackend(
-          task?.agentBackend ?? 'claude-code',
-          dynamicModels,
-        )}
+        models={getModelsForBackend(effectiveBackend, dynamicModels)}
       />
       <MessageInput
         onSend={handleSendMessage}
@@ -1068,7 +1201,7 @@ const TaskInputFooter = memo(function TaskInputFooter({
         projectRoot={projectRoot}
         value={promptDraft}
         onValueChange={setPromptDraft}
-        supportsImages={backendSupportsImages(task?.agentBackend)}
+        supportsImages={backendSupportsImages(activeStep?.agentBackend)}
         projectId={task?.projectId}
         getCompletionContextBeforePrompt={getCompletionContextBeforePrompt}
       />

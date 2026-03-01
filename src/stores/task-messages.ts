@@ -37,173 +37,174 @@ export interface TaskState {
 }
 
 interface TaskMessagesStore {
-  tasks: Record<string, TaskState>;
+  /** Keyed by stepId — each step has its own message/state entry */
+  steps: Record<string, TaskState>;
   cacheLimit: number;
 
-  // Actions
-  loadTask: (
-    taskId: string,
+  // Actions (all keyed by stepId)
+  loadStep: (
+    stepId: string,
     messages: NormalizedEntry[],
     status: TaskStatus,
   ) => void;
-  addEntry: (taskId: string, entry: NormalizedEntry) => void;
-  updateEntry: (taskId: string, entry: NormalizedEntry) => void;
+  addEntry: (stepId: string, entry: NormalizedEntry) => void;
+  updateEntry: (stepId: string, entry: NormalizedEntry) => void;
   updateToolResult: (
-    taskId: string,
+    stepId: string,
     toolId: string,
     result: string | undefined,
     isError: boolean,
     durationMs?: number,
   ) => void;
   setStatus: (
-    taskId: string,
+    stepId: string,
     status: TaskStatus,
     error?: string | null,
   ) => void;
   setPermission: (
-    taskId: string,
+    stepId: string,
     permission: TaskState['pendingPermission'],
   ) => void;
-  setQuestion: (taskId: string, question: TaskState['pendingQuestion']) => void;
-  setQueuedPrompts: (taskId: string, queuedPrompts: QueuedPrompt[]) => void;
+  setQuestion: (stepId: string, question: TaskState['pendingQuestion']) => void;
+  setQueuedPrompts: (stepId: string, queuedPrompts: QueuedPrompt[]) => void;
   appendRunCommandLine: (
-    taskId: string,
+    stepId: string,
     runCommandId: string,
     stream: RunCommandLogStream,
     line: string,
   ) => void;
-  clearRunCommandLogs: (taskId: string, runCommandId: string) => void;
-  clearAllRunCommandLogs: (taskId: string) => void;
-  touchTask: (taskId: string) => void;
-  unloadTask: (taskId: string) => void;
+  clearRunCommandLogs: (stepId: string, runCommandId: string) => void;
+  clearAllRunCommandLogs: (stepId: string) => void;
+  touchStep: (stepId: string) => void;
+  unloadStep: (stepId: string) => void;
 
   // Selectors
-  isLoaded: (taskId: string) => boolean;
-  getRunningTaskIds: () => string[];
+  isLoaded: (stepId: string) => boolean;
+  getRunningStepIds: () => string[];
 }
 
 const DEFAULT_CACHE_LIMIT = 25;
 
 function evictIfNeeded(
-  tasks: Record<string, TaskState>,
+  steps: Record<string, TaskState>,
   cacheLimit: number,
 ): Record<string, TaskState> {
-  const entries = Object.entries(tasks);
-  const inactiveTasks = entries.filter(
+  const entries = Object.entries(steps);
+  const inactiveSteps = entries.filter(
     ([, state]) => state.status !== 'running',
   );
 
-  if (inactiveTasks.length <= cacheLimit) {
-    return tasks;
+  if (inactiveSteps.length <= cacheLimit) {
+    return steps;
   }
 
   // Sort by lastAccessedAt ascending (oldest first)
-  inactiveTasks.sort((a, b) => a[1].lastAccessedAt - b[1].lastAccessedAt);
+  inactiveSteps.sort((a, b) => a[1].lastAccessedAt - b[1].lastAccessedAt);
 
-  const toEvict = inactiveTasks.length - cacheLimit;
-  const idsToEvict = new Set(inactiveTasks.slice(0, toEvict).map(([id]) => id));
+  const toEvict = inactiveSteps.length - cacheLimit;
+  const idsToEvict = new Set(inactiveSteps.slice(0, toEvict).map(([id]) => id));
 
-  const newTasks: Record<string, TaskState> = {};
+  const newSteps: Record<string, TaskState> = {};
   for (const [id, state] of entries) {
     if (!idsToEvict.has(id)) {
-      newTasks[id] = state;
+      newSteps[id] = state;
     }
   }
 
-  return newTasks;
+  return newSteps;
 }
 
 export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
-  tasks: {},
+  steps: {},
   cacheLimit: DEFAULT_CACHE_LIMIT,
 
-  loadTask: (taskId, messages, status) => {
+  loadStep: (stepId, messages, status) => {
     set((state) => {
-      const newTasks = {
-        ...state.tasks,
-        [taskId]: {
+      const newSteps = {
+        ...state.steps,
+        [stepId]: {
           messages,
           status,
           error: null,
           pendingPermission: null,
           pendingQuestion: null,
           queuedPrompts: [],
-          runCommandLogs: state.tasks[taskId]?.runCommandLogs ?? {},
+          runCommandLogs: state.steps[stepId]?.runCommandLogs ?? {},
           lastAccessedAt: Date.now(),
         },
       };
-      return { tasks: evictIfNeeded(newTasks, state.cacheLimit) };
+      return { steps: evictIfNeeded(newSteps, state.cacheLimit) };
     });
   },
 
-  addEntry: (taskId, entry) => {
+  addEntry: (stepId, entry) => {
     set((state) => {
-      const task = state.tasks[taskId];
-      if (!task) return state;
+      const step = state.steps[stepId];
+      if (!step) return state;
       return {
-        tasks: {
-          ...state.tasks,
-          [taskId]: {
-            ...task,
-            messages: [...task.messages, entry],
+        steps: {
+          ...state.steps,
+          [stepId]: {
+            ...step,
+            messages: [...step.messages, entry],
           },
         },
       };
     });
   },
 
-  updateEntry: (taskId, entry) => {
+  updateEntry: (stepId, entry) => {
     set((state) => {
-      const task = state.tasks[taskId];
-      if (!task) return state;
-      const idx = task.messages.findIndex((m) => m.id === entry.id);
+      const step = state.steps[stepId];
+      if (!step) return state;
+      const idx = step.messages.findIndex((m) => m.id === entry.id);
       let updatedMessages: NormalizedEntry[];
       if (idx !== -1) {
-        updatedMessages = [...task.messages];
+        updatedMessages = [...step.messages];
         updatedMessages[idx] = entry;
       } else {
-        updatedMessages = [...task.messages, entry];
+        updatedMessages = [...step.messages, entry];
       }
       return {
-        tasks: {
-          ...state.tasks,
-          [taskId]: { ...task, messages: updatedMessages },
+        steps: {
+          ...state.steps,
+          [stepId]: { ...step, messages: updatedMessages },
         },
       };
     });
   },
 
-  updateToolResult: (taskId, toolId, result, _isError, _durationMs) => {
+  updateToolResult: (stepId, toolId, result, _isError, _durationMs) => {
     set((state) => {
-      const task = state.tasks[taskId];
-      if (!task) return state;
-      const idx = task.messages.findIndex(
+      const step = state.steps[stepId];
+      if (!step) return state;
+      const idx = step.messages.findIndex(
         (m) => m.type === 'tool-use' && 'toolId' in m && m.toolId === toolId,
       );
       if (idx === -1) return state;
-      const entry = task.messages[idx] as NormalizedEntry;
+      const entry = step.messages[idx] as NormalizedEntry;
       if (entry.type !== 'tool-use') return state;
       const patched = { ...entry, result } as NormalizedEntry;
-      const updatedMessages = [...task.messages];
+      const updatedMessages = [...step.messages];
       updatedMessages[idx] = patched;
       return {
-        tasks: {
-          ...state.tasks,
-          [taskId]: { ...task, messages: updatedMessages },
+        steps: {
+          ...state.steps,
+          [stepId]: { ...step, messages: updatedMessages },
         },
       };
     });
   },
 
-  setStatus: (taskId, status, error = null) => {
+  setStatus: (stepId, status, error = null) => {
     set((state) => {
-      const task = state.tasks[taskId];
-      if (!task) return state;
+      const step = state.steps[stepId];
+      if (!step) return state;
       return {
-        tasks: {
-          ...state.tasks,
-          [taskId]: {
-            ...task,
+        steps: {
+          ...state.steps,
+          [stepId]: {
+            ...step,
             status,
             error,
           },
@@ -212,15 +213,15 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
     });
   },
 
-  setPermission: (taskId, permission) => {
+  setPermission: (stepId, permission) => {
     set((state) => {
-      const task = state.tasks[taskId];
-      if (!task) return state;
+      const step = state.steps[stepId];
+      if (!step) return state;
       return {
-        tasks: {
-          ...state.tasks,
-          [taskId]: {
-            ...task,
+        steps: {
+          ...state.steps,
+          [stepId]: {
+            ...step,
             pendingPermission: permission,
           },
         },
@@ -228,15 +229,15 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
     });
   },
 
-  setQuestion: (taskId, question) => {
+  setQuestion: (stepId, question) => {
     set((state) => {
-      const task = state.tasks[taskId];
-      if (!task) return state;
+      const step = state.steps[stepId];
+      if (!step) return state;
       return {
-        tasks: {
-          ...state.tasks,
-          [taskId]: {
-            ...task,
+        steps: {
+          ...state.steps,
+          [stepId]: {
+            ...step,
             pendingQuestion: question,
           },
         },
@@ -244,15 +245,15 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
     });
   },
 
-  setQueuedPrompts: (taskId, queuedPrompts) => {
+  setQueuedPrompts: (stepId, queuedPrompts) => {
     set((state) => {
-      const task = state.tasks[taskId];
-      if (!task) return state;
+      const step = state.steps[stepId];
+      if (!step) return state;
       return {
-        tasks: {
-          ...state.tasks,
-          [taskId]: {
-            ...task,
+        steps: {
+          ...state.steps,
+          [stepId]: {
+            ...step,
             queuedPrompts,
           },
         },
@@ -260,12 +261,12 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
     });
   },
 
-  appendRunCommandLine: (taskId, runCommandId, stream, line) => {
+  appendRunCommandLine: (stepId, runCommandId, stream, line) => {
     set((state) => {
-      const task = state.tasks[taskId];
-      if (!task) return state;
+      const step = state.steps[stepId];
+      if (!step) return state;
 
-      const existingLog = task.runCommandLogs[runCommandId] ?? {
+      const existingLog = step.runCommandLogs[runCommandId] ?? {
         lines: [],
         updatedAt: Date.now(),
       };
@@ -283,12 +284,12 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
           : nextLines;
 
       return {
-        tasks: {
-          ...state.tasks,
-          [taskId]: {
-            ...task,
+        steps: {
+          ...state.steps,
+          [stepId]: {
+            ...step,
             runCommandLogs: {
-              ...task.runCommandLogs,
+              ...step.runCommandLogs,
               [runCommandId]: {
                 lines: cappedLines,
                 updatedAt: Date.now(),
@@ -300,19 +301,19 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
     });
   },
 
-  clearRunCommandLogs: (taskId, runCommandId) => {
+  clearRunCommandLogs: (stepId, runCommandId) => {
     set((state) => {
-      const task = state.tasks[taskId];
-      if (!task) return state;
+      const step = state.steps[stepId];
+      if (!step) return state;
 
-      const { [runCommandId]: _removed, ...restLogs } = task.runCommandLogs;
+      const { [runCommandId]: _removed, ...restLogs } = step.runCommandLogs;
       void _removed;
 
       return {
-        tasks: {
-          ...state.tasks,
-          [taskId]: {
-            ...task,
+        steps: {
+          ...state.steps,
+          [stepId]: {
+            ...step,
             runCommandLogs: restLogs,
           },
         },
@@ -320,16 +321,16 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
     });
   },
 
-  clearAllRunCommandLogs: (taskId) => {
+  clearAllRunCommandLogs: (stepId) => {
     set((state) => {
-      const task = state.tasks[taskId];
-      if (!task) return state;
+      const step = state.steps[stepId];
+      if (!step) return state;
 
       return {
-        tasks: {
-          ...state.tasks,
-          [taskId]: {
-            ...task,
+        steps: {
+          ...state.steps,
+          [stepId]: {
+            ...step,
             runCommandLogs: {},
           },
         },
@@ -337,15 +338,15 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
     });
   },
 
-  touchTask: (taskId) => {
+  touchStep: (stepId) => {
     set((state) => {
-      const task = state.tasks[taskId];
-      if (!task) return state;
+      const step = state.steps[stepId];
+      if (!step) return state;
       return {
-        tasks: {
-          ...state.tasks,
-          [taskId]: {
-            ...task,
+        steps: {
+          ...state.steps,
+          [stepId]: {
+            ...step,
             lastAccessedAt: Date.now(),
           },
         },
@@ -353,18 +354,18 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
     });
   },
 
-  unloadTask: (taskId) => {
+  unloadStep: (stepId) => {
     set((state) => {
-      const { [taskId]: _removed, ...rest } = state.tasks;
+      const { [stepId]: _removed, ...rest } = state.steps;
       void _removed; // Intentionally unused - destructuring to exclude from rest
-      return { tasks: rest };
+      return { steps: rest };
     });
   },
 
-  isLoaded: (taskId) => !!get().tasks[taskId],
+  isLoaded: (stepId) => !!get().steps[stepId],
 
-  getRunningTaskIds: () =>
-    Object.entries(get().tasks)
+  getRunningStepIds: () =>
+    Object.entries(get().steps)
       .filter(([, state]) => state.status === 'running')
       .map(([id]) => id),
 }));

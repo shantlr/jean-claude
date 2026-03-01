@@ -16,6 +16,10 @@ export type {
   Task,
   NewTask,
   UpdateTask,
+  TaskStep,
+  NewTaskStep,
+  UpdateTaskStep,
+  TaskStepStatus,
   ProviderType,
   ProjectType,
   TaskStatus,
@@ -29,6 +33,7 @@ export interface Database {
   tasks: TaskTable;
   agent_messages: AgentMessageTable;
   raw_messages: RawMessageTable;
+  task_steps: TaskStepTable;
   settings: SettingsTable;
   project_commands: ProjectCommandTable;
   mcp_templates: McpTemplateTable;
@@ -91,14 +96,11 @@ export interface TaskTable {
   name: string | null;
   prompt: string;
   status: TaskStatus;
-  sessionId: string | null;
   worktreePath: string | null;
   startCommitHash: string | null;
   sourceBranch: string | null;
   branchName: string | null;
   hasUnread: number; // SQLite boolean: 0 = read, 1 = unread
-  interactionMode: string;
-  modelPreference: string | null;
   userCompleted: number; // SQLite stores booleans as 0/1
   sessionAllowedTools: string | null; // JSON array of tool names
   sortOrder: number;
@@ -108,7 +110,6 @@ export interface TaskTable {
   pullRequestId: string | null;
   pullRequestUrl: string | null;
   pendingMessage: string | null;
-  agentBackend: string; // NOT NULL, no default — must be set explicitly
   createdAt: Generated<string>;
   updatedAt: string;
 }
@@ -116,6 +117,7 @@ export interface TaskTable {
 export interface AgentMessageTable {
   id: Generated<string>;
   taskId: string;
+  stepId: string | null;
   messageIndex: number;
   type: string;
   toolId: string | null;
@@ -132,12 +134,38 @@ export interface AgentMessageTable {
 export interface RawMessageTable {
   id: Generated<string>;
   taskId: string;
+  stepId: string | null;
   messageIndex: number;
   backendSessionId: string | null; // SDK session ID for traceability
   rawData: string; // Original SDK message JSON
   rawFormat: string; // Which SDK produced the raw data ('claude-code' | 'opencode')
   createdAt: Generated<string>;
 }
+
+export interface TaskStepTable {
+  id: Generated<string>;
+  taskId: string;
+  name: string;
+  type: string; // TaskStepType, default 'agent'
+  dependsOn: string; // JSON array of step IDs
+  promptTemplate: string;
+  resolvedPrompt: string | null;
+  status: string; // TaskStepStatus
+  sessionId: string | null;
+  interactionMode: string | null;
+  modelPreference: string | null;
+  agentBackend: string | null;
+  output: string | null;
+  images: string | null; // JSON stringified PromptImagePart[]
+  meta: string | null; // JSON, shape depends on type
+  sortOrder: number;
+  createdAt: Generated<string>;
+  updatedAt: string;
+}
+
+export type TaskStepRow = Selectable<TaskStepTable>;
+export type NewTaskStepRow = Insertable<TaskStepTable>;
+export type UpdateTaskStepRow = Updateable<TaskStepTable>;
 
 // Kysely-specific types for database operations
 export type TokenRow = Selectable<TokenTable>;

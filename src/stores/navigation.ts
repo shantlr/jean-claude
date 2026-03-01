@@ -41,6 +41,7 @@ interface TaskState {
   activeView: TaskViewMode;
   diffView: DiffViewState;
   fileExplorer?: FileExplorerState;
+  activeStepId: string | null;
 }
 
 const defaultDiffViewState: DiffViewState = {
@@ -57,6 +58,7 @@ const defaultTaskState: TaskState = {
   activeView: undefined,
   diffView: defaultDiffViewState,
   fileExplorer: defaultFileExplorerState,
+  activeStepId: null,
 };
 
 // Constants for diff file tree width
@@ -140,6 +142,7 @@ interface NavigationState {
     filePath: string | null,
   ) => void;
   toggleFileExplorerExpandedDir: (taskId: string, dirPath: string) => void;
+  setActiveStepId: (taskId: string, stepId: string | null) => void;
   clearProjectNavHistoryState: (projectId: string) => void;
   clearTaskNavHistoryState: (taskId: string) => void;
 }
@@ -289,6 +292,18 @@ const useStore = create<NavigationState>()(
             },
           };
         }),
+
+      setActiveStepId: (taskId, stepId) =>
+        set((state) => ({
+          taskState: {
+            ...state.taskState,
+            [taskId]: {
+              ...defaultTaskState,
+              ...state.taskState[taskId],
+              activeStepId: stepId,
+            },
+          },
+        })),
 
       clearProjectNavHistoryState: (projectId) =>
         set((state) => {
@@ -485,6 +500,7 @@ export function useTaskState(taskId: string) {
     [storedTaskState],
   );
   const setTaskRightPaneAction = useStore((state) => state.setTaskRightPane);
+  const setActiveStepIdAction = useStore((state) => state.setActiveStepId);
 
   const setRightPane = useCallback(
     (pane: RightPane | null) => setTaskRightPaneAction(taskId, pane),
@@ -551,10 +567,17 @@ export function useTaskState(taskId: string) {
     }
   }, [taskState.rightPane, closeRightPane, openSettings]);
 
+  const setActiveStepId = useCallback(
+    (stepId: string | null) => setActiveStepIdAction(taskId, stepId),
+    [taskId, setActiveStepIdAction],
+  );
+
   return {
     taskState,
     rightPane: taskState.rightPane,
+    activeStepId: taskState.activeStepId,
     setRightPane,
+    setActiveStepId,
     openFilePreview,
     openSettings,
     openDebugMessages,

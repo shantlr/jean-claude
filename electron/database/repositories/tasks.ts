@@ -1,10 +1,4 @@
-import type { AgentBackendType } from '@shared/agent-backend-types';
-import {
-  InteractionMode,
-  ModelPreference,
-  Task,
-  TaskStatus,
-} from '@shared/types';
+import { Task, TaskStatus } from '@shared/types';
 
 import { dbg } from '../../lib/debug';
 import { db } from '../index';
@@ -17,14 +11,11 @@ interface CreateTaskInput {
   name?: string | null;
   prompt: string;
   status?: TaskStatus;
-  sessionId?: string | null;
   worktreePath?: string | null;
   startCommitHash?: string | null;
   sourceBranch?: string | null;
   branchName?: string | null;
   hasUnread?: boolean;
-  interactionMode?: InteractionMode;
-  modelPreference?: ModelPreference;
   userCompleted?: boolean;
   sessionAllowedTools?: string[];
   workItemIds?: string[] | null;
@@ -32,7 +23,6 @@ interface CreateTaskInput {
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
   pendingMessage?: string | null;
-  agentBackend?: AgentBackendType;
   createdAt?: string;
   updatedAt: string;
 }
@@ -42,14 +32,11 @@ interface UpdateTaskInput {
   name?: string | null;
   prompt?: string;
   status?: TaskStatus;
-  sessionId?: string | null;
   worktreePath?: string | null;
   startCommitHash?: string | null;
   sourceBranch?: string | null;
   branchName?: string | null;
   hasUnread?: boolean;
-  interactionMode?: InteractionMode;
-  modelPreference?: ModelPreference;
   userCompleted?: boolean;
   sessionAllowedTools?: string[];
   workItemIds?: string[] | null;
@@ -57,7 +44,6 @@ interface UpdateTaskInput {
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
   pendingMessage?: string | null;
-  agentBackend?: AgentBackendType;
   updatedAt?: string;
 }
 
@@ -69,30 +55,21 @@ function toTask<T extends TaskRow>(
   | 'userCompleted'
   | 'hasUnread'
   | 'sessionAllowedTools'
-  | 'interactionMode'
-  | 'modelPreference'
   | 'workItemIds'
   | 'workItemUrls'
-  | 'agentBackend'
 > & {
   userCompleted: boolean;
   hasUnread: boolean;
   sessionAllowedTools: string[];
-  interactionMode: InteractionMode;
-  modelPreference: ModelPreference;
   workItemIds: string[] | null;
   workItemUrls: string[] | null;
-  agentBackend: AgentBackendType;
 } {
   const {
     userCompleted,
     hasUnread,
     sessionAllowedTools,
-    interactionMode,
-    modelPreference,
     workItemIds,
     workItemUrls,
-    agentBackend,
     ...rest
   } = row;
   return {
@@ -102,11 +79,8 @@ function toTask<T extends TaskRow>(
     sessionAllowedTools: sessionAllowedTools
       ? JSON.parse(sessionAllowedTools)
       : [],
-    interactionMode: interactionMode as InteractionMode,
-    modelPreference: (modelPreference as ModelPreference) ?? 'default',
     workItemIds: workItemIds ? JSON.parse(workItemIds) : null,
     workItemUrls: workItemUrls ? JSON.parse(workItemUrls) : null,
-    agentBackend: agentBackend as AgentBackendType,
   };
 }
 
@@ -118,20 +92,14 @@ function toTaskOrUndefined<T extends TaskRow>(
       | 'userCompleted'
       | 'hasUnread'
       | 'sessionAllowedTools'
-      | 'interactionMode'
-      | 'modelPreference'
       | 'workItemIds'
       | 'workItemUrls'
-      | 'agentBackend'
     > & {
       userCompleted: boolean;
       hasUnread: boolean;
       sessionAllowedTools: string[];
-      interactionMode: InteractionMode;
-      modelPreference: ModelPreference;
       workItemIds: string[] | null;
       workItemUrls: string[] | null;
-      agentBackend: AgentBackendType;
     })
   | undefined {
   return row ? toTask(row) : undefined;
@@ -149,8 +117,6 @@ function toDbValues(data: CreateTaskInput): NewTaskRow {
   } = data;
   return {
     ...rest,
-    // agentBackend is NOT NULL without a default — ensure it's always set
-    agentBackend: data.agentBackend ?? 'claude-code',
     ...(userCompleted !== undefined && {
       userCompleted: userCompleted ? 1 : 0,
     }),

@@ -45,6 +45,9 @@ import type {
   Task,
   NewTask,
   UpdateTask,
+  TaskStep,
+  NewTaskStep,
+  UpdateTaskStep,
   Provider,
   NewProvider,
   UpdateProvider,
@@ -52,7 +55,6 @@ import type {
   NewToken,
   UpdateToken,
   InteractionMode,
-  ModelPreference,
   AppSettings,
   ProjectTodo,
 } from '@shared/types';
@@ -243,12 +245,10 @@ export interface TaskWithProject {
   name: string | null;
   prompt: string;
   status: string;
-  sessionId: string | null;
   worktreePath: string | null;
   startCommitHash: string | null;
   branchName: string | null;
   hasUnread: boolean;
-  interactionMode: string;
   userCompleted: boolean;
   sessionAllowedTools: string[];
   workItemId: string | null;
@@ -307,12 +307,21 @@ export interface Api {
       offset: number;
     }) => Promise<CompletedTasksResult>;
     findById: (id: string) => Promise<Task | undefined>;
-    create: (data: NewTask) => Promise<Task>;
+    create: (
+      data: NewTask & {
+        interactionMode?: InteractionMode | null;
+        modelPreference?: string | null;
+        agentBackend?: AgentBackendType | null;
+      },
+    ) => Promise<Task>;
     createWithWorktree: (
       data: NewTask & {
         useWorktree: boolean;
         sourceBranch?: string | null;
         autoStart?: boolean;
+        interactionMode?: InteractionMode | null;
+        modelPreference?: string | null;
+        agentBackend?: AgentBackendType | null;
       },
     ) => Promise<Task>;
     update: (id: string, data: UpdateTask) => Promise<Task>;
@@ -320,11 +329,6 @@ export interface Api {
       id: string,
       options?: { deleteWorktree?: boolean },
     ) => Promise<void>;
-    setMode: (id: string, mode: InteractionMode) => Promise<Task>;
-    setModelPreference: (
-      id: string,
-      modelPreference: ModelPreference,
-    ) => Promise<Task>;
     toggleUserCompleted: (id: string) => Promise<Task>;
     clearUserCompleted: (id: string) => Promise<Task>;
     addSessionAllowedTool: (
@@ -348,7 +352,6 @@ export interface Api {
       activeIds: string[],
       completedIds: string[],
     ) => Promise<Task[]>;
-    getSkills: (taskId: string) => Promise<Skill[]>;
     worktree: {
       getDiff: (taskId: string) => Promise<WorktreeDiffResult>;
       getFileContent: (
@@ -392,6 +395,19 @@ export interface Api {
       isDraft: boolean;
       deleteWorktree?: boolean;
     }) => Promise<{ id: number; url: string }>;
+  };
+  steps: {
+    findByTaskId: (taskId: string) => Promise<TaskStep[]>;
+    findById: (stepId: string) => Promise<TaskStep | undefined>;
+    create: (data: NewTaskStep) => Promise<TaskStep>;
+    update: (stepId: string, data: UpdateTaskStep) => Promise<TaskStep>;
+
+    resolvePrompt: (stepId: string) => Promise<{
+      resolvedPrompt: string;
+      step: TaskStep;
+      warnings: string[];
+    }>;
+    setMode: (stepId: string, mode: InteractionMode) => Promise<TaskStep>;
   };
   providers: {
     findAll: () => Promise<Provider[]>;
@@ -526,30 +542,30 @@ export interface Api {
     getAvailableEditors: () => Promise<{ id: string; available: boolean }[]>;
   };
   agent: {
-    start: (taskId: string) => Promise<void>;
-    stop: (taskId: string) => Promise<void>;
+    start: (stepId: string) => Promise<void>;
+    stop: (stepId: string) => Promise<void>;
     respond: (
-      taskId: string,
+      stepId: string,
       requestId: string,
       response: PermissionResponse | QuestionResponse,
     ) => Promise<void>;
-    sendMessage: (taskId: string, parts: PromptPart[]) => Promise<void>;
+    sendMessage: (stepId: string, parts: PromptPart[]) => Promise<void>;
     queuePrompt: (
-      taskId: string,
-      parts: PromptPart[],
+      stepId: string,
+      prompt: string,
     ) => Promise<{ promptId: string }>;
-    cancelQueuedPrompt: (taskId: string, promptId: string) => Promise<void>;
+    cancelQueuedPrompt: (stepId: string, promptId: string) => Promise<void>;
     getBackendModels: (
       backend: string,
     ) => Promise<{ id: string; label: string }[]>;
-    getMessages: (taskId: string) => Promise<NormalizedEntry[]>;
-    getMessageCount: (taskId: string) => Promise<number>;
+    getMessages: (stepId: string) => Promise<NormalizedEntry[]>;
+    getMessageCount: (stepId: string) => Promise<number>;
     getMessagesWithRawData: (
       taskId: string,
     ) => Promise<DebugMessageWithRawData[]>;
     compactRawMessages: (taskId: string) => Promise<void>;
     reprocessNormalization: (taskId: string) => Promise<number>;
-    getPendingRequest: (taskId: string) => Promise<
+    getPendingRequest: (stepId: string) => Promise<
       | {
           type: 'permission';
           data: NormalizedPermissionRequest & { taskId: string };
@@ -770,12 +786,6 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         delete: async () => {},
-        setMode: async () => {
-          throw new Error('API not available');
-        },
-        setModelPreference: async () => {
-          throw new Error('API not available');
-        },
         toggleUserCompleted: async () => {
           throw new Error('API not available');
         },
@@ -795,7 +805,6 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         reorder: async () => [],
-        getSkills: async () => [],
         worktree: {
           getDiff: async () => ({ files: [] }),
           getFileContent: async () => ({
@@ -826,6 +835,24 @@ export const api: Api = hasWindowApi
           },
         },
         createPullRequest: async () => ({ id: 0, url: '' }),
+      },
+      steps: {
+        findByTaskId: async () => [],
+        findById: async () => undefined,
+        create: async () => {
+          throw new Error('API not available');
+        },
+        update: async () => {
+          throw new Error('API not available');
+        },
+        delete: async () => {},
+        reorder: async () => [],
+        resolvePrompt: async () => {
+          throw new Error('API not available');
+        },
+        setMode: async () => {
+          throw new Error('API not available');
+        },
       },
       providers: {
         findAll: async () => [],
