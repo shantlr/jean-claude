@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 
 import { api } from '@/lib/api';
 import type { AgentBackendType } from '@shared/agent-backend-types';
@@ -120,4 +121,26 @@ export function useEnableSkill() {
       });
     },
   });
+}
+
+export function useAllManagedSkills(projectPath?: string) {
+  const claude = useManagedSkills('claude-code', projectPath);
+  const opencode = useManagedSkills('opencode', projectPath);
+
+  const skills = useMemo(() => {
+    const all = [...(claude.data ?? []), ...(opencode.data ?? [])];
+    const seen = new Set<string>();
+    return all.filter((s) => {
+      if (seen.has(s.skillPath)) return false;
+      seen.add(s.skillPath);
+      return true;
+    });
+  }, [claude.data, opencode.data]);
+
+  return {
+    data: skills,
+    isLoading: claude.isLoading || opencode.isLoading,
+    isError: claude.isError || opencode.isError,
+    error: claude.error ?? opencode.error,
+  };
 }

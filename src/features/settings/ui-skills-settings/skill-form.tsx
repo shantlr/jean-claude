@@ -33,6 +33,7 @@ export function SkillForm({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [content, setContent] = useState('');
+  const [formBackendType, setFormBackendType] = useState(backendType);
   const addToast = useToastStore((s) => s.addToast);
 
   useEffect(() => {
@@ -59,7 +60,7 @@ export function SkillForm({
         });
       } else {
         await createSkill.mutateAsync({
-          backendType,
+          backendType: formBackendType,
           scope,
           projectPath,
           name,
@@ -121,6 +122,27 @@ export function SkillForm({
             className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
           />
         </div>
+
+        {!isEditing && (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-neutral-400">
+              Backend
+            </label>
+            <select
+              value={formBackendType}
+              onChange={(e) =>
+                setFormBackendType(e.target.value as AgentBackendType)
+              }
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 focus:border-blue-500 focus:outline-none"
+            >
+              <option value="claude-code">Claude Code</option>
+              <option value="opencode">OpenCode</option>
+            </select>
+            <p className="mt-1 text-xs text-neutral-500">
+              Which agent backend this skill will be available to
+            </p>
+          </div>
+        )}
 
         <div>
           <label className="mb-1 block text-sm font-medium text-neutral-400">

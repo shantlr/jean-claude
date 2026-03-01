@@ -1,28 +1,20 @@
 import { Plus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 import {
-  useManagedSkills,
+  useAllManagedSkills,
   useDeleteSkill,
   useDisableSkill,
   useEnableSkill,
 } from '@/hooks/use-managed-skills';
-import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { ManagedSkill } from '@shared/skill-types';
 
+import { SkillCardGrid } from './skill-card-grid';
 import { SkillDetails } from './skill-details';
 import { SkillForm } from './skill-form';
-import { SkillList } from './skill-list';
-
-const BACKENDS: { value: AgentBackendType; label: string }[] = [
-  { value: 'claude-code', label: 'Claude Code' },
-  { value: 'opencode', label: 'OpenCode' },
-];
 
 export function SkillsSettings() {
-  const [backendType, setBackendType] =
-    useState<AgentBackendType>('claude-code');
-  const { data: skills, isLoading } = useManagedSkills(backendType);
+  const { data: skills, isLoading } = useAllManagedSkills();
   const deleteSkill = useDeleteSkill();
   const disableSkill = useDisableSkill();
   const enableSkill = useEnableSkill();
@@ -31,12 +23,6 @@ export function SkillsSettings() {
   const [isCreating, setIsCreating] = useState(false);
 
   const selectedSkill = skills?.find((s) => s.skillPath === selectedPath);
-
-  const { userSkills, pluginSkills } = useMemo(() => {
-    const user = (skills ?? []).filter((s) => s.source === 'user');
-    const plugin = (skills ?? []).filter((s) => s.source === 'plugin');
-    return { userSkills: user, pluginSkills: plugin };
-  }, [skills]);
 
   const handleCreate = () => {
     setSelectedPath(null);
@@ -49,7 +35,12 @@ export function SkillsSettings() {
   };
 
   const handleDelete = async (skillPath: string) => {
-    await deleteSkill.mutateAsync({ skillPath, backendType });
+    const skill = skills?.find((s) => s.skillPath === skillPath);
+    if (!skill) return;
+    await deleteSkill.mutateAsync({
+      skillPath,
+      backendType: skill.backendType,
+    });
     if (selectedPath === skillPath) setSelectedPath(null);
   };
 
@@ -83,8 +74,8 @@ export function SkillsSettings() {
 
   return (
     <div className="flex h-full gap-6">
-      {/* Left: List */}
-      <div className="w-80 flex-shrink-0 pb-2">
+      {/* Left: Card Grid */}
+      <div className="flex min-w-0 flex-1 flex-col">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-neutral-200">Skills</h2>
           <button
@@ -96,63 +87,21 @@ export function SkillsSettings() {
           </button>
         </div>
 
-        {/* Backend selector */}
-        <div className="mb-4">
-          <select
-            value={backendType}
-            onChange={(e) => {
-              setBackendType(e.target.value as AgentBackendType);
-              setSelectedPath(null);
-              setIsCreating(false);
-            }}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 focus:border-blue-500 focus:outline-none"
-          >
-            {BACKENDS.map((b) => (
-              <option key={b.value} value={b.value}>
-                {b.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* User Skills */}
-        <div className="mb-4">
-          <h3 className="mb-2 text-xs font-medium tracking-wide text-blue-400 uppercase">
-            User Skills
-          </h3>
-          <SkillList
-            skills={userSkills}
+        <div className="min-h-0 flex-1 overflow-y-auto pb-2">
+          <SkillCardGrid
+            skills={skills ?? []}
             selectedPath={selectedPath}
             onSelect={handleSelect}
-            onDelete={handleDelete}
-            onToggleEnabled={handleToggleEnabled}
           />
         </div>
-
-        {/* Plugin Skills */}
-        {pluginSkills.length > 0 && (
-          <div>
-            <h3 className="mb-2 text-xs font-medium tracking-wide text-orange-400 uppercase">
-              Plugin Skills (read-only)
-            </h3>
-            <SkillList
-              skills={pluginSkills}
-              selectedPath={selectedPath}
-              onSelect={handleSelect}
-              onDelete={() => {}}
-              onToggleEnabled={() => {}}
-              isSelectable={() => true}
-            />
-          </div>
-        )}
       </div>
 
-      {/* Right: Form pane */}
+      {/* Right: Detail/Form pane */}
       {(isCreating || selectedSkill) && (
-        <div className="flex-1 rounded-lg border border-neutral-700 bg-neutral-800/50 p-6">
+        <div className="w-96 flex-shrink-0 rounded-lg border border-neutral-700 bg-neutral-800/50 p-6">
           {isCreating ? (
             <SkillForm
-              backendType={backendType}
+              backendType="claude-code"
               scope="user"
               onClose={handleClose}
               onSaved={handleSaved}
@@ -160,13 +109,18 @@ export function SkillsSettings() {
           ) : selectedSkill?.editable ? (
             <SkillForm
               skillPath={selectedSkill.skillPath}
-              backendType={backendType}
+              backendType={selectedSkill.backendType}
               scope="user"
               onClose={handleClose}
               onSaved={handleSaved}
             />
           ) : selectedSkill ? (
-            <SkillDetails skill={selectedSkill} onClose={handleClose} />
+            <SkillDetails
+              skill={selectedSkill}
+              onClose={handleClose}
+              onToggleEnabled={handleToggleEnabled}
+              onDelete={handleDelete}
+            />
           ) : null}
         </div>
       )}

@@ -1,13 +1,14 @@
 import { Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { SkillCardGrid } from '@/features/settings/ui-skills-settings/skill-card-grid';
+import { SkillDetails } from '@/features/settings/ui-skills-settings/skill-details';
 import { SkillForm } from '@/features/settings/ui-skills-settings/skill-form';
-import { SkillList } from '@/features/settings/ui-skills-settings/skill-list';
 import {
-  useManagedSkills,
   useDeleteSkill,
   useDisableSkill,
   useEnableSkill,
+  useManagedSkills,
 } from '@/hooks/use-managed-skills';
 import { useProject } from '@/hooks/use-projects';
 import { useBackendsSetting } from '@/hooks/use-settings';
@@ -36,11 +37,15 @@ export function ProjectSkillsSettings({ projectId }: { projectId: string }) {
 
   const selectedSkill = skills?.find((s) => s.skillPath === selectedPath);
 
-  const { projectSkills, inheritedSkills } = useMemo(() => {
-    const proj = (skills ?? []).filter((s) => s.source === 'project');
-    const inherited = (skills ?? []).filter((s) => s.source !== 'project');
-    return { projectSkills: proj, inheritedSkills: inherited };
-  }, [skills]);
+  const handleDelete = async (skillPath: string) => {
+    const skill = skills?.find((s) => s.skillPath === skillPath);
+    if (!skill) return;
+    await deleteSkill.mutateAsync({
+      skillPath,
+      backendType: skill.backendType,
+    });
+    if (selectedPath === skillPath) setSelectedPath(null);
+  };
 
   const handleToggleEnabled = async (skill: ManagedSkill) => {
     if (skill.enabled) {
@@ -56,10 +61,11 @@ export function ProjectSkillsSettings({ projectId }: { projectId: string }) {
     }
   };
 
-  const handleDelete = async (skillPath: string) => {
-    await deleteSkill.mutateAsync({ skillPath, backendType });
-    if (selectedPath === skillPath) setSelectedPath(null);
-  };
+  const { projectSkills, inheritedSkills } = useMemo(() => {
+    const proj = (skills ?? []).filter((s) => s.source === 'project');
+    const inherited = (skills ?? []).filter((s) => s.source !== 'project');
+    return { projectSkills: proj, inheritedSkills: inherited };
+  }, [skills]);
 
   if (isLoading || !project) {
     return <p className="text-sm text-neutral-500">Loading...</p>;
@@ -87,20 +93,18 @@ export function ProjectSkillsSettings({ projectId }: { projectId: string }) {
       </div>
 
       <div className="flex gap-6">
-        <div className="w-80 flex-shrink-0 space-y-4">
+        <div className="min-w-0 flex-1 space-y-4">
           <div>
             <h3 className="mb-2 text-xs font-medium tracking-wide text-green-400 uppercase">
               Project Skills
             </h3>
-            <SkillList
+            <SkillCardGrid
               skills={projectSkills}
               selectedPath={selectedPath}
               onSelect={(p) => {
                 setIsCreating(false);
                 setSelectedPath(p);
               }}
-              onDelete={handleDelete}
-              onToggleEnabled={handleToggleEnabled}
             />
           </div>
 
@@ -109,33 +113,46 @@ export function ProjectSkillsSettings({ projectId }: { projectId: string }) {
               <h3 className="mb-2 text-xs font-medium tracking-wide text-neutral-500 uppercase">
                 Inherited (user &amp; plugins)
               </h3>
-              <SkillList
+              <SkillCardGrid
                 skills={inheritedSkills}
-                selectedPath={null}
-                onSelect={() => {}}
-                onDelete={() => {}}
-                onToggleEnabled={() => {}}
+                selectedPath={selectedPath}
+                onSelect={(p) => {
+                  setIsCreating(false);
+                  setSelectedPath(p);
+                }}
               />
             </div>
           )}
         </div>
 
         {(isCreating || selectedSkill) && (
-          <div className="flex-1 rounded-lg border border-neutral-700 bg-neutral-800/50 p-6">
-            <SkillForm
-              skillPath={selectedSkill?.skillPath}
-              backendType={backendType}
-              scope="project"
-              projectPath={project.path}
-              onClose={() => {
-                setSelectedPath(null);
-                setIsCreating(false);
-              }}
-              onSaved={() => {
-                setSelectedPath(null);
-                setIsCreating(false);
-              }}
-            />
+          <div className="w-96 flex-shrink-0 rounded-lg border border-neutral-700 bg-neutral-800/50 p-6">
+            {isCreating || selectedSkill?.editable ? (
+              <SkillForm
+                skillPath={selectedSkill?.skillPath}
+                backendType={backendType}
+                scope="project"
+                projectPath={project.path}
+                onClose={() => {
+                  setSelectedPath(null);
+                  setIsCreating(false);
+                }}
+                onSaved={() => {
+                  setSelectedPath(null);
+                  setIsCreating(false);
+                }}
+              />
+            ) : selectedSkill ? (
+              <SkillDetails
+                skill={selectedSkill}
+                onClose={() => {
+                  setSelectedPath(null);
+                  setIsCreating(false);
+                }}
+                onToggleEnabled={handleToggleEnabled}
+                onDelete={handleDelete}
+              />
+            ) : null}
           </div>
         )}
       </div>
