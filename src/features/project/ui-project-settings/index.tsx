@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { AVAILABLE_BACKENDS } from '@/features/agent/ui-backend-selector';
 import { ProjectMcpSettings } from '@/features/project/ui-project-mcp-settings';
+import { ProjectSkillsSettings } from '@/features/project/ui-project-skills-settings';
 import { RepoLink } from '@/features/project/ui-repo-link';
 import { RunCommandsConfig } from '@/features/project/ui-run-commands-config';
 import { WorkItemsLink } from '@/features/project/ui-work-items-link';
@@ -329,6 +330,11 @@ export function ProjectSettings({
       {/* Run Commands */}
       <div id="project-run-commands">
         <RunCommandsConfig projectId={projectId} projectPath={project.path} />
+      </div>
+
+      {/* Skills */}
+      <div id="project-skills" className="border-t border-neutral-700 pt-6">
+        <ProjectSkillsSettings projectId={projectId} />
       </div>
 
       {/* MCP Server Templates */}

@@ -475,5 +475,32 @@ contextBridge.exposeInMainWorld('api', {
     reorder: (projectId: string, orderedIds: string[]) =>
       ipcRenderer.invoke('project-todos:reorder', projectId, orderedIds),
   },
+  skillManagement: {
+    getAll: (backendType: string, projectPath?: string) =>
+      ipcRenderer.invoke('skills:getAll', backendType, projectPath),
+    getContent: (skillPath: string) =>
+      ipcRenderer.invoke('skills:getContent', skillPath),
+    create: (params: {
+      backendType: string;
+      scope: string;
+      projectPath?: string;
+      name: string;
+      description: string;
+      content: string;
+    }) => ipcRenderer.invoke('skills:create', params),
+    update: (params: {
+      skillPath: string;
+      backendType: string;
+      name?: string;
+      description?: string;
+      content?: string;
+    }) => ipcRenderer.invoke('skills:update', params),
+    delete: (skillPath: string, backendType: string) =>
+      ipcRenderer.invoke('skills:delete', skillPath, backendType),
+    disable: (skillPath: string, backendType: string) =>
+      ipcRenderer.invoke('skills:disable', skillPath, backendType),
+    enable: (skillPath: string, backendType: string) =>
+      ipcRenderer.invoke('skills:enable', skillPath, backendType),
+  },
 });
 console.log('Preload script loaded');

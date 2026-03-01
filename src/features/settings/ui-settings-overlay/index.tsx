@@ -12,12 +12,14 @@ import { AzureDevOpsTab } from '@/features/settings/ui-azure-devops-tab';
 import { DebugDatabase } from '@/features/settings/ui-debug-database';
 import { GeneralSettings } from '@/features/settings/ui-general-settings';
 import { McpServersSettings } from '@/features/settings/ui-mcp-servers-settings';
+import { SkillsSettings } from '@/features/settings/ui-skills-settings';
 import { TokensTab } from '@/features/settings/ui-tokens-tab';
 
 import { useCurrentSettingsProject } from './use-current-settings-project';
 
 type GlobalMenuItem =
   | 'general'
+  | 'skills'
   | 'mcp-servers'
   | 'tokens'
   | 'azure-devops'
@@ -28,11 +30,13 @@ type ProjectMenuItem =
   | 'details'
   | 'integrations'
   | 'run-commands'
+  | 'skills'
   | 'mcp-overrides'
   | 'danger-zone';
 
 const GLOBAL_MENU_ITEMS: { id: GlobalMenuItem; label: string }[] = [
   { id: 'general', label: 'General' },
+  { id: 'skills', label: 'Skills' },
   { id: 'mcp-servers', label: 'MCP Servers' },
   { id: 'tokens', label: 'Tokens' },
   { id: 'azure-devops', label: 'Azure DevOps' },
@@ -44,6 +48,7 @@ const PROJECT_MENU_ITEMS: { id: ProjectMenuItem; label: string }[] = [
   { id: 'details', label: 'Details' },
   { id: 'integrations', label: 'Integrations' },
   { id: 'run-commands', label: 'Run Commands' },
+  { id: 'skills', label: 'Skills' },
   { id: 'mcp-overrides', label: 'MCP Overrides' },
   { id: 'danger-zone', label: 'Danger Zone' },
 ];
@@ -52,6 +57,8 @@ function GlobalContent({ menuItem }: { menuItem: GlobalMenuItem }) {
   switch (menuItem) {
     case 'general':
       return <GeneralSettings />;
+    case 'skills':
+      return <SkillsSettings />;
     case 'mcp-servers':
       return <McpServersSettings />;
     case 'tokens':

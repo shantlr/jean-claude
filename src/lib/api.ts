@@ -1,4 +1,4 @@
-import type { PromptPart } from '@shared/agent-backend-types';
+import type { AgentBackendType, PromptPart } from '@shared/agent-backend-types';
 import type {
   AgentQuestion,
   PermissionResponse,
@@ -37,7 +37,7 @@ import type {
   PortsInUseErrorData,
   PackageScriptsResult,
 } from '@shared/run-command-types';
-import type { Skill } from '@shared/skill-types';
+import type { ManagedSkill, Skill, SkillScope } from '@shared/skill-types';
 import type {
   Project,
   NewProject,
@@ -687,6 +687,36 @@ export interface Api {
     delete: (id: string) => Promise<void>;
     reorder: (projectId: string, orderedIds: string[]) => Promise<void>;
   };
+  skillManagement: {
+    getAll: (
+      backendType: AgentBackendType,
+      projectPath?: string,
+    ) => Promise<ManagedSkill[]>;
+    getContent: (
+      skillPath: string,
+    ) => Promise<{ name: string; description: string; content: string }>;
+    create: (params: {
+      backendType: AgentBackendType;
+      scope: SkillScope;
+      projectPath?: string;
+      name: string;
+      description: string;
+      content: string;
+    }) => Promise<ManagedSkill>;
+    update: (params: {
+      skillPath: string;
+      backendType: AgentBackendType;
+      name?: string;
+      description?: string;
+      content?: string;
+    }) => Promise<ManagedSkill>;
+    delete: (skillPath: string, backendType: AgentBackendType) => Promise<void>;
+    disable: (
+      skillPath: string,
+      backendType: AgentBackendType,
+    ) => Promise<void>;
+    enable: (skillPath: string, backendType: AgentBackendType) => Promise<void>;
+  };
 }
 
 declare global {
@@ -1001,5 +1031,30 @@ export const api: Api = hasWindowApi
         },
         delete: async () => {},
         reorder: async () => {},
+      },
+      skillManagement: {
+        getAll: async () => [],
+        getContent: async () => ({ name: '', description: '', content: '' }),
+        create: async () => ({
+          name: '',
+          description: '',
+          source: 'user' as const,
+          skillPath: '',
+          enabled: true,
+          backendType: 'claude-code' as const,
+          editable: true,
+        }),
+        update: async () => ({
+          name: '',
+          description: '',
+          source: 'user' as const,
+          skillPath: '',
+          enabled: true,
+          backendType: 'claude-code' as const,
+          editable: true,
+        }),
+        delete: async () => {},
+        disable: async () => {},
+        enable: async () => {},
       },
     } as Api);

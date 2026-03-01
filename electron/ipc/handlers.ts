@@ -109,6 +109,15 @@ import {
 import { detectProjects } from '../services/project-detection-service';
 import { projectFileIndexService } from '../services/project-file-index-service';
 import { runCommandService } from '../services/run-command-service';
+import {
+  getAllManagedSkills,
+  getSkillContent,
+  createSkill,
+  updateSkill,
+  deleteSkill,
+  disableSkill,
+  enableSkill,
+} from '../services/skill-management-service';
 import { getAllSkills } from '../services/skill-service';
 import { generateSummary } from '../services/summary-generation-service';
 import {
@@ -1923,6 +1932,83 @@ export function registerIpcHandlers() {
     (_, projectId: string, orderedIds: string[]) => {
       dbg.ipc('project-todos:reorder %s %o', projectId, orderedIds);
       return ProjectTodoRepository.reorder(projectId, orderedIds);
+    },
+  );
+
+  // Skill Management
+  ipcMain.handle(
+    'skills:getAll',
+    async (_, backendType: AgentBackendType, projectPath?: string) => {
+      dbg.ipc('skills:getAll backend=%s project=%s', backendType, projectPath);
+      return getAllManagedSkills({ backendType, projectPath });
+    },
+  );
+
+  ipcMain.handle('skills:getContent', async (_, skillPath: string) => {
+    dbg.ipc('skills:getContent path=%s', skillPath);
+    return getSkillContent({ skillPath });
+  });
+
+  ipcMain.handle(
+    'skills:create',
+    async (
+      _,
+      params: {
+        backendType: AgentBackendType;
+        scope: 'user' | 'project';
+        projectPath?: string;
+        name: string;
+        description: string;
+        content: string;
+      },
+    ) => {
+      dbg.ipc('skills:create name=%s scope=%s', params.name, params.scope);
+      return createSkill(params);
+    },
+  );
+
+  ipcMain.handle(
+    'skills:update',
+    async (
+      _,
+      params: {
+        skillPath: string;
+        backendType: AgentBackendType;
+        name?: string;
+        description?: string;
+        content?: string;
+      },
+    ) => {
+      dbg.ipc(
+        'skills:update path=%s backend=%s',
+        params.skillPath,
+        params.backendType,
+      );
+      return updateSkill(params);
+    },
+  );
+
+  ipcMain.handle(
+    'skills:delete',
+    async (_, skillPath: string, backendType: AgentBackendType) => {
+      dbg.ipc('skills:delete path=%s backend=%s', skillPath, backendType);
+      return deleteSkill({ skillPath, backendType });
+    },
+  );
+
+  ipcMain.handle(
+    'skills:disable',
+    async (_, skillPath: string, backendType: AgentBackendType) => {
+      dbg.ipc('skills:disable path=%s backend=%s', skillPath, backendType);
+      return disableSkill({ skillPath, backendType });
+    },
+  );
+
+  ipcMain.handle(
+    'skills:enable',
+    async (_, skillPath: string, backendType: AgentBackendType) => {
+      dbg.ipc('skills:enable path=%s backend=%s', skillPath, backendType);
+      return enableSkill({ skillPath, backendType });
     },
   );
 }
