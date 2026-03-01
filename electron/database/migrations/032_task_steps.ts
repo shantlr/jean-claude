@@ -3,7 +3,17 @@ import { Kysely, sql } from 'kysely';
 export async function up(db: Kysely<unknown>): Promise<void> {
   // All phases in a single transaction for full atomicity.
   // If any phase fails the entire migration is rolled back.
+
   await db.transaction().execute(async (trx) => {
+    // Backfill index: when a task is deleted, SQLite cascade-deletes raw_messages
+    // rows and must check the NO ACTION FK on agent_messages.rawMessageId for each
+    // deleted row. Without this index that check is a full table scan — O(n²).
+    await trx.schema
+      .createIndex('idx_agent_messages_rawMessageId')
+      .on('agent_messages')
+      .column('rawMessageId')
+      .execute();
+
     // Phase 1: Create task_steps table
     await trx.schema
       .createTable('task_steps')
@@ -155,35 +165,47 @@ export async function up(db: Kysely<unknown>): Promise<void> {
 }
 
 export async function down(db: Kysely<unknown>): Promise<void> {
-  await db.schema.dropIndex('agent_messages_step_idx').ifExists().execute();
-  await db.schema.dropIndex('raw_messages_step_idx').ifExists().execute();
-  await db.schema.alterTable('agent_messages').dropColumn('stepId').execute();
-  await db.schema.alterTable('raw_messages').dropColumn('stepId').execute();
+  await db.transaction().execute(async (trx) => {
+    await trx.schema
+      .dropIndex('idx_agent_messages_rawMessageId')
+      .ifExists()
+      .execute();
+    await trx.schema.dropIndex('agent_messages_step_idx').ifExists().execute();
+    await trx.schema.dropIndex('raw_messages_step_idx').ifExists().execute();
+    await trx.schema
+      .alterTable('agent_messages')
+      .dropColumn('stepId')
+      .execute();
+    await trx.schema.alterTable('raw_messages').dropColumn('stepId').execute();
 
-  await db.schema.alterTable('tasks').addColumn('sessionId', 'text').execute();
-  await db.schema
-    .alterTable('tasks')
-    .addColumn('interactionMode', 'text', (col) =>
-      col.notNull().defaultTo('plan'),
-    )
-    .execute();
-  await db.schema
-    .alterTable('tasks')
-    .addColumn('modelPreference', 'text')
-    .execute();
-  await db.schema
-    .alterTable('tasks')
-    .addColumn('agentBackend', 'text', (col) =>
-      col.notNull().defaultTo('claude-code'),
-    )
-    .execute();
+    await trx.schema
+      .alterTable('tasks')
+      .addColumn('sessionId', 'text')
+      .execute();
+    await trx.schema
+      .alterTable('tasks')
+      .addColumn('interactionMode', 'text', (col) =>
+        col.notNull().defaultTo('plan'),
+      )
+      .execute();
+    await trx.schema
+      .alterTable('tasks')
+      .addColumn('modelPreference', 'text')
+      .execute();
+    await trx.schema
+      .alterTable('tasks')
+      .addColumn('agentBackend', 'text', (col) =>
+        col.notNull().defaultTo('claude-code'),
+      )
+      .execute();
 
-  await sql`UPDATE tasks SET
-    sessionId = (SELECT sessionId FROM task_steps WHERE task_steps.taskId = tasks.id LIMIT 1),
-    interactionMode = COALESCE((SELECT interactionMode FROM task_steps WHERE task_steps.taskId = tasks.id LIMIT 1), 'plan'),
-    modelPreference = (SELECT modelPreference FROM task_steps WHERE task_steps.taskId = tasks.id LIMIT 1),
-    agentBackend = COALESCE((SELECT agentBackend FROM task_steps WHERE task_steps.taskId = tasks.id LIMIT 1), 'claude-code')
-  `.execute(db);
+    await sql`UPDATE tasks SET
+      sessionId = (SELECT sessionId FROM task_steps WHERE task_steps.taskId = tasks.id LIMIT 1),
+      interactionMode = COALESCE((SELECT interactionMode FROM task_steps WHERE task_steps.taskId = tasks.id LIMIT 1), 'plan'),
+      modelPreference = (SELECT modelPreference FROM task_steps WHERE task_steps.taskId = tasks.id LIMIT 1),
+      agentBackend = COALESCE((SELECT agentBackend FROM task_steps WHERE task_steps.taskId = tasks.id LIMIT 1), 'claude-code')
+    `.execute(trx);
 
-  await db.schema.dropTable('task_steps').execute();
+    await trx.schema.dropTable('task_steps').execute();
+  });
 }

@@ -173,6 +173,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   // Steps data for auto-selection
   const { data: steps } = useSteps(taskId);
   const { data: activeStep } = useStep(activeStepId ?? '');
+  console.log(steps);
 
   // Diff view state
   const {
@@ -599,6 +600,9 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       },
   ]);
 
+  console.log({
+    agentState,
+  });
   if (!task || !project) {
     return (
       <div className="flex h-full items-center justify-center text-neutral-500">

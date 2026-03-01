@@ -129,9 +129,9 @@ SQLite doesn't support `ALTER COLUMN`, so changing column constraints or default
 import { Kysely, sql } from 'kysely';
 
 export async function up(db: Kysely<unknown>): Promise<void> {
-  await db.transaction().execute(async (trx) => {
-    // 1. Disable FK constraints to prevent cascade deletes
+  // 1. Disable FK constraints to prevent cascade deletes
     await sql`PRAGMA foreign_keys = OFF`.execute(trx);
+  await db.transaction().execute(async (trx) => {
 
     // 2. Create new table with desired schema
     await sql`DROP TABLE IF EXISTS tablename_new`.execute(trx);
@@ -147,8 +147,6 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     await trx.schema.dropTable('tablename').execute();
     await sql`ALTER TABLE tablename_new RENAME TO tablename`.execute(trx);
 
-    // 5. Re-enable FK constraints and verify integrity
-    await sql`PRAGMA foreign_keys = ON`.execute(trx);
     const fkCheck = await sql<{
       table: string;
     }>`PRAGMA foreign_key_check`.execute(trx);
@@ -156,6 +154,8 @@ export async function up(db: Kysely<unknown>): Promise<void> {
       throw new Error(`Foreign key violation: ${JSON.stringify(fkCheck.rows)}`);
     }
   });
+  // 5. Re-enable FK constraints and verify integrity
+  await sql`PRAGMA foreign_keys = ON`.execute(trx);
 }
 ```
 

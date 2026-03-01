@@ -243,17 +243,24 @@ export function registerIpcHandlers() {
         agentBackend?: AgentBackendType | null;
       },
     ) => {
-      const task = await TaskRepository.create(data);
+      const {
+        interactionMode,
+        modelPreference,
+        agentBackend,
+        images,
+        ...taskData
+      } = data;
+      const task = await TaskRepository.create(taskData);
 
       // Auto-create a single step for the task
       await StepService.create({
         taskId: task.id,
         name: 'Step 1',
         promptTemplate: data.prompt,
-        interactionMode: data.interactionMode ?? null,
-        modelPreference: data.modelPreference ?? null,
-        agentBackend: data.agentBackend ?? null,
-        images: data.images ?? null,
+        interactionMode: interactionMode ?? null,
+        modelPreference: modelPreference ?? null,
+        agentBackend: agentBackend ?? null,
+        images: images ?? null,
       });
 
       // Activate associated work items and assign to current user if unassigned (fire and forget)
@@ -288,8 +295,16 @@ export function registerIpcHandlers() {
         agentBackend?: AgentBackendType | null;
       },
     ) => {
-      const { useWorktree, sourceBranch, autoStart, images, ...taskData } =
-        data;
+      const {
+        useWorktree,
+        sourceBranch,
+        autoStart,
+        images,
+        interactionMode,
+        modelPreference,
+        agentBackend,
+        ...taskData
+      } = data;
       dbg.ipc(
         'tasks:createWithWorktree useWorktree=%s, sourceBranch=%s, autoStart=%s',
         useWorktree,
@@ -359,9 +374,9 @@ export function registerIpcHandlers() {
         taskId: task.id,
         name: 'Step 1',
         promptTemplate: data.prompt,
-        interactionMode: data.interactionMode ?? null,
-        modelPreference: data.modelPreference ?? null,
-        agentBackend: data.agentBackend ?? null,
+        interactionMode: interactionMode ?? null,
+        modelPreference: modelPreference ?? null,
+        agentBackend: agentBackend ?? null,
         images: images ?? null,
       });
 
