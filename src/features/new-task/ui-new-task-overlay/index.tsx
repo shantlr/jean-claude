@@ -672,14 +672,14 @@ export function NewTaskOverlay({
     },
     {
       label: 'Navigate to Next Project Tab',
-      shortcut: ['tab', 'cmd+right'],
+      shortcut: 'cmd+right',
       handler: () => {
         navigateTab('next');
       },
     },
     {
       label: 'Navigate to Previous Project Tab',
-      shortcut: ['shift+tab', 'cmd+left'],
+      shortcut: 'cmd+left',
       handler: () => {
         navigateTab('prev');
       },
@@ -916,7 +916,7 @@ export function NewTaskOverlay({
           <div className="flex items-center gap-3 text-xs whitespace-nowrap text-neutral-500">
             {showSearchInput && (
               <span className="flex items-center gap-1">
-                <Kbd shortcut="tab" /> project
+                <Kbd shortcut="cmd+right" /> project
               </span>
             )}
             {canToggleMode && showSearchInput && (
