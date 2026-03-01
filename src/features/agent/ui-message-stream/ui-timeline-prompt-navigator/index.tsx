@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, ChevronsDown } from 'lucide-react';
 import type { RefObject } from 'react';
 import { useMemo } from 'react';
 
@@ -20,10 +20,11 @@ export function TimelinePromptNavigator({
     [displayMessages],
   );
 
-  const { currentIndex, goToNext, goToPrevious } = usePromptNavigation({
-    scrollContainerRef,
-    totalPrompts,
-  });
+  const { currentIndex, goToNext, goToPrevious, goToLast } =
+    usePromptNavigation({
+      scrollContainerRef,
+      totalPrompts,
+    });
 
   if (totalPrompts === 0) return null;
 
@@ -46,7 +47,7 @@ export function TimelinePromptNavigator({
             <ChevronUp className="h-3.5 w-3.5" />
           </button>
 
-          <div className="flex flex-col items-center leading-none tabular-nums text-neutral-400">
+          <div className="flex flex-col items-center leading-none text-neutral-400 tabular-nums">
             <span className="text-[10px]">{currentIndex + 1}</span>
             <span className="text-[10px]">{totalPrompts}</span>
           </div>
@@ -58,6 +59,15 @@ export function TimelinePromptNavigator({
             aria-label="Next prompt"
           >
             <ChevronDown className="h-3.5 w-3.5" />
+          </button>
+
+          <button
+            onClick={goToLast}
+            disabled={isLast}
+            className="rounded-full p-0.5 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-neutral-400"
+            aria-label="Last prompt"
+          >
+            <ChevronsDown className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>

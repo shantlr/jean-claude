@@ -133,6 +133,11 @@ export function usePromptNavigation({
     scrollToPrompt(prev);
   }, [totalPrompts, currentIndex, scrollToPrompt]);
 
+  const goToLast = useCallback(() => {
+    if (totalPrompts === 0) return;
+    scrollToPrompt(totalPrompts - 1);
+  }, [totalPrompts, scrollToPrompt]);
+
   // Update index when prompt count changes
   useEffect(() => {
     updateCurrentIndex();
@@ -152,5 +157,6 @@ export function usePromptNavigation({
     totalPrompts,
     goToNext,
     goToPrevious,
+    goToLast,
   };
 }

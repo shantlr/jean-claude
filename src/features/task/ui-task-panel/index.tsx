@@ -143,8 +143,12 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   } = useDiffViewState(taskId);
 
   // PR view state
-  const { isOpen: isPrViewOpen, openPrView, togglePrView, closePrView } =
-    usePrViewState(taskId);
+  const {
+    isOpen: isPrViewOpen,
+    openPrView,
+    togglePrView,
+    closePrView,
+  } = usePrViewState(taskId);
 
   const agentState = useAgentStream(taskId);
   const contextUsage = useContextUsage(agentState.messages);
@@ -508,9 +512,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const hasMessages = agentState.messages.length > 0;
   const canSendMessage = !isRunning && hasMessages && !!task.sessionId;
   const hasRepoLink =
-    !!project.repoProviderId &&
-    !!project.repoProjectId &&
-    !!project.repoId;
+    !!project.repoProviderId && !!project.repoProjectId && !!project.repoId;
   const backendLabel =
     AVAILABLE_BACKENDS.find((backend) => backend.value === task.agentBackend)
       ?.label ?? 'Claude Code';
