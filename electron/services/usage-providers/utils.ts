@@ -8,11 +8,17 @@ export function formatTimeUntil(date: Date): string {
 
   if (diffMs <= 0) return 'now';
 
-  const hours = Math.floor(diffMs / (1000 * 60 * 60));
-  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  const totalMinutes = Math.floor(diffMs / (1000 * 60));
+  const totalHours = Math.floor(totalMinutes / 60);
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  const minutes = totalMinutes % 60;
 
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
+  if (days > 0) {
+    return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
+  }
+  if (totalHours > 0) {
+    return minutes > 0 ? `${totalHours}h ${minutes}m` : `${totalHours}h`;
   }
   return `${minutes}m`;
 }
