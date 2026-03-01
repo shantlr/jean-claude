@@ -27,9 +27,6 @@ export function useRunCommands({
     string | null
   >(null);
 
-  const appendRunCommandLine = useTaskMessagesStore(
-    (state) => state.appendRunCommandLine,
-  );
   const clearRunCommandLogs = useTaskMessagesStore(
     (state) => state.clearRunCommandLogs,
   );
@@ -47,21 +44,10 @@ export function useRunCommands({
       },
     );
 
-    const unsubscribeLog = api.runCommands.onLog(
-      (changedTaskId, runCommandId, stream, line) => {
-        if (changedTaskId !== taskId) {
-          return;
-        }
-
-        appendRunCommandLine(taskId, runCommandId, stream, line);
-      },
-    );
-
     return () => {
       unsubscribeStatus();
-      unsubscribeLog();
     };
-  }, [appendRunCommandLine, taskId]);
+  }, [taskId]);
 
   const startCommand = useCallback(
     async (runCommandId: string) => {

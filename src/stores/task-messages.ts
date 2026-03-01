@@ -82,7 +82,7 @@ interface TaskMessagesStore {
   getRunningTaskIds: () => string[];
 }
 
-const DEFAULT_CACHE_LIMIT = 10;
+const DEFAULT_CACHE_LIMIT = 25;
 
 function evictIfNeeded(
   tasks: Record<string, TaskState>,

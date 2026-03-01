@@ -33,6 +33,9 @@ export function TaskMessageManager() {
   const setQuestion = useTaskMessagesStore((s) => s.setQuestion);
   const setQueuedPrompts = useTaskMessagesStore((s) => s.setQueuedPrompts);
   const isLoaded = useTaskMessagesStore((s) => s.isLoaded);
+  const appendRunCommandLine = useTaskMessagesStore(
+    (s) => s.appendRunCommandLine,
+  );
 
   useEffect(() => {
     const unsub = api.agent.onEvent((event) => {
@@ -101,6 +104,16 @@ export function TaskMessageManager() {
     setQueuedPrompts,
     isLoaded,
   ]);
+
+  useEffect(() => {
+    const unsub = api.runCommands.onLog(
+      (taskId, runCommandId, stream, line) => {
+        appendRunCommandLine(taskId, runCommandId, stream, line);
+      },
+    );
+
+    return unsub;
+  }, [appendRunCommandLine]);
 
   return null;
 }
