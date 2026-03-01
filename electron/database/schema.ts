@@ -40,6 +40,7 @@ export interface Database {
   project_mcp_overrides: ProjectMcpOverrideTable;
   task_summaries: TaskSummaryTable;
   project_todos: ProjectTodoTable;
+  completion_usage: CompletionUsageTable;
 }
 
 export interface TokenTable {
@@ -260,3 +261,12 @@ export interface ProjectTodoTable {
 export type ProjectTodoRow = Selectable<ProjectTodoTable>;
 export type NewProjectTodoRow = Insertable<ProjectTodoTable>;
 export type UpdateProjectTodoRow = Updateable<ProjectTodoTable>;
+
+export interface CompletionUsageTable {
+  date: string;
+  promptTokens: number;
+  completionTokens: number;
+  requests: number;
+}
+
+export type CompletionUsageRow = Selectable<CompletionUsageTable>;

@@ -86,3 +86,17 @@ export function useUpdateUsageDisplaySetting() {
     },
   });
 }
+
+// Completion daily usage hook
+export function useCompletionDailyUsage() {
+  const { data: completionSetting } = useCompletionSetting();
+  const enabled = completionSetting?.enabled ?? false;
+
+  return useQuery({
+    queryKey: ['completion-daily-usage'],
+    queryFn: () => api.completion.getDailyUsage(),
+    enabled,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+}

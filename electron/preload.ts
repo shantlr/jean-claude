@@ -469,6 +469,7 @@ contextBridge.exposeInMainWorld('api', {
     }) => ipcRenderer.invoke('completion:saveSettings', params),
     generateContext: (params: { projectId: string }) =>
       ipcRenderer.invoke('completion:generateContext', params),
+    getDailyUsage: () => ipcRenderer.invoke('completion:getDailyUsage'),
   },
   projectTodos: {
     list: (projectId: string) =>

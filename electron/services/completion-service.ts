@@ -1,6 +1,7 @@
 import { Mistral } from '@mistralai/mistralai';
 
 import {
+  CompletionUsageRepository,
   ProjectRepository,
   SettingsRepository,
 } from '../database/repositories';
@@ -92,6 +93,18 @@ export async function complete({
       stop: ['\n\n'],
     });
 
+    // Record token usage for daily cost tracking
+    if (result.usage) {
+      const today = new Date().toISOString().slice(0, 10);
+      CompletionUsageRepository.recordUsage({
+        date: today,
+        promptTokens: result.usage.promptTokens ?? 0,
+        completionTokens: result.usage.completionTokens ?? 0,
+      }).catch((err) => {
+        dbg.completion('Failed to record usage: %O', err);
+      });
+    }
+
     const content = result.choices?.[0]?.message?.content ?? null;
     if (content === null) {
       dbg.completion('FIM returned no content');
@@ -162,6 +175,27 @@ export async function testCompletion(): Promise<{
       error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
+}
+
+// Codestral pricing per million tokens
+const CODESTRAL_INPUT_COST_PER_M = 0.3;
+const CODESTRAL_OUTPUT_COST_PER_M = 0.9;
+
+export async function getDailyUsage() {
+  const today = new Date().toISOString().slice(0, 10);
+  const usage = await CompletionUsageRepository.getDailyUsage(today);
+
+  const costUsd =
+    (usage.promptTokens * CODESTRAL_INPUT_COST_PER_M +
+      usage.completionTokens * CODESTRAL_OUTPUT_COST_PER_M) /
+    1_000_000;
+
+  const inputCostUsd =
+    (usage.promptTokens * CODESTRAL_INPUT_COST_PER_M) / 1_000_000;
+  const outputCostUsd =
+    (usage.completionTokens * CODESTRAL_OUTPUT_COST_PER_M) / 1_000_000;
+
+  return { ...usage, costUsd, inputCostUsd, outputCostUsd };
 }
 
 /** Invalidate the cached Mistral client (call when settings change). */

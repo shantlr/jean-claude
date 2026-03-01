@@ -8,3 +8,4 @@ export { SettingsRepository } from './settings';
 export { DebugRepository } from './debug';
 export { TaskSummaryRepository } from './task-summaries';
 export { ProjectTodoRepository } from './project-todos';
+export { CompletionUsageRepository } from './completion-usage';

@@ -692,6 +692,15 @@ export interface Api {
       serverUrl: string;
     }) => Promise<void>;
     generateContext: (params: { projectId: string }) => Promise<string | null>;
+    getDailyUsage: () => Promise<{
+      date: string;
+      promptTokens: number;
+      completionTokens: number;
+      requests: number;
+      costUsd: number;
+      inputCostUsd: number;
+      outputCostUsd: number;
+    }>;
   };
   projectTodos: {
     list: (projectId: string) => Promise<ProjectTodo[]>;
@@ -1047,6 +1056,15 @@ export const api: Api = hasWindowApi
         test: async () => ({ success: false, error: 'API not available' }),
         saveSettings: async () => {},
         generateContext: async () => null,
+        getDailyUsage: async () => ({
+          date: '',
+          promptTokens: 0,
+          completionTokens: 0,
+          requests: 0,
+          costUsd: 0,
+          inputCostUsd: 0,
+          outputCostUsd: 0,
+        }),
       },
       projectTodos: {
         list: async () => [],

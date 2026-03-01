@@ -19,6 +19,7 @@ const ALL_TABLES: Record<TableName, true> = {
   project_mcp_overrides: true,
   task_summaries: true,
   project_todos: true,
+  completion_usage: true,
 };
 
 const ALLOWED_TABLES = Object.keys(ALL_TABLES) as TableName[];

@@ -87,6 +87,7 @@ import {
   complete as completeText,
   testCompletion,
   resetClient as resetCompletionClient,
+  getDailyUsage as getCompletionDailyUsage,
 } from '../services/completion-service';
 import {
   handlePromptResponse,
@@ -1958,6 +1959,11 @@ export function registerIpcHandlers() {
       return generateCompletionContext(params);
     },
   );
+
+  ipcMain.handle('completion:getDailyUsage', async () => {
+    dbg.ipc('completion:getDailyUsage');
+    return getCompletionDailyUsage();
+  });
 
   // Project Todos
   ipcMain.handle('project-todos:list', (_, projectId: string) =>

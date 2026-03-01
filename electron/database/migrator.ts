@@ -31,6 +31,7 @@ import * as m029 from './migrations/029_project_todos';
 import * as m030 from './migrations/030_replace_lastreadindex_with_hasunread';
 import * as m031 from './migrations/031_project_completion_context';
 import * as m032 from './migrations/032_task_steps';
+import * as m033 from './migrations/033_completion_usage';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -64,6 +65,7 @@ const migrations: Record<string, Migration> = {
   '030_replace_lastreadindex_with_hasunread': m030,
   '031_project_completion_context': m031,
   '032_task_steps': m032,
+  '033_completion_usage': m033,
 };
 
 export const migrationProvider: MigrationProvider = {
