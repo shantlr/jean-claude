@@ -10,7 +10,8 @@ Jean-Claude is an Electron desktop app for managing coding agents across multipl
 
 <IMPORTANT>
 Once you are done with your task
-First run `pnpm lint --fix` to automatically fix linting errors.
+First run `pnpm install`.
+Then run `pnpm lint --fix` to automatically fix linting errors.
 Then run `pnpm ts-check` to verify that there are no TypeScript errors.
 And then run `pnpm lint` to see if there are any remaining linting errors that need to be fixed.
 </IMPORTANT>
