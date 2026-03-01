@@ -42,10 +42,10 @@ export function BackgroundJobsOverlay({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="flex max-h-[70svh] w-[min(900px,96vw)] flex-col overflow-hidden rounded-lg border border-neutral-700 bg-neutral-800 shadow-2xl"
+        className="flex max-h-[70svh] w-[min(900px,96vw)] flex-col overflow-hidden rounded-xl border border-white/10 bg-neutral-900/85 shadow-2xl shadow-black/50 backdrop-blur-xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-neutral-700 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent px-4 py-3">
           <div>
             <h2 className="text-sm font-semibold text-neutral-100">
               Background Jobs
@@ -57,7 +57,7 @@ export function BackgroundJobsOverlay({ onClose }: { onClose: () => void }) {
           <div className="flex items-center gap-2">
             <button
               onClick={clearFinished}
-              className="rounded border border-neutral-600 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-500 hover:bg-neutral-700"
+              className="rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-neutral-300 transition-colors hover:bg-white/10"
             >
               Clear Finished
             </button>
@@ -73,7 +73,7 @@ export function BackgroundJobsOverlay({ onClose }: { onClose: () => void }) {
 
         <div className="overflow-y-auto p-3">
           {jobs.length === 0 ? (
-            <div className="rounded border border-dashed border-neutral-700 px-4 py-8 text-center text-sm text-neutral-500">
+            <div className="rounded-lg border border-dashed border-white/10 px-4 py-8 text-center text-sm text-neutral-500">
               No background jobs yet.
             </div>
           ) : (
@@ -172,10 +172,12 @@ function JobRow({
   return (
     <div
       className={clsx(
-        'rounded border px-3 py-2',
-        job.status === 'running' && 'border-blue-900/60 bg-blue-950/20',
-        job.status === 'succeeded' && 'border-emerald-900/50 bg-emerald-950/20',
-        job.status === 'failed' && 'border-red-900/60 bg-red-950/20',
+        'rounded-lg border px-3 py-2',
+        job.status === 'running' &&
+          'border-blue-400/20 bg-blue-500/[0.08] backdrop-blur-sm',
+        job.status === 'succeeded' &&
+          'border-emerald-400/20 bg-emerald-500/[0.08]',
+        job.status === 'failed' && 'border-red-400/20 bg-red-500/[0.08]',
       )}
     >
       <div className="flex items-start gap-2">
@@ -200,7 +202,7 @@ function JobRow({
                 onClick={() => {
                   void onRetryTaskCreation(job);
                 }}
-                className="rounded border border-neutral-600 px-2 py-1 text-xs text-neutral-200 transition-colors hover:border-neutral-500 hover:bg-neutral-700"
+                className="rounded border border-white/[0.15] bg-white/5 px-2 py-1 text-xs text-neutral-200 transition-colors hover:bg-white/10"
               >
                 Retry
               </button>
@@ -211,7 +213,7 @@ function JobRow({
                 onClick={() => {
                   void onRetryTaskDeletion(job);
                 }}
-                className="rounded border border-neutral-600 px-2 py-1 text-xs text-neutral-200 transition-colors hover:border-neutral-500 hover:bg-neutral-700"
+                className="rounded border border-white/[0.15] bg-white/5 px-2 py-1 text-xs text-neutral-200 transition-colors hover:bg-white/10"
               >
                 Retry
               </button>
@@ -223,7 +225,7 @@ function JobRow({
                 <button
                   type="button"
                   onClick={() => onOpenTask(job)}
-                  className="rounded border border-blue-700 px-2 py-1 text-xs text-blue-200 transition-colors hover:bg-blue-900/40"
+                  className="rounded border border-blue-400/25 bg-blue-500/10 px-2 py-1 text-xs text-blue-200 transition-colors hover:bg-blue-500/20"
                 >
                   Open Task
                 </button>

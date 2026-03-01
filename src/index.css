@@ -162,6 +162,29 @@ button {
   animation: jobs-pulse 0.6s ease-out;
 }
 
+@utility jobs-running-border {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(
+        color-mix(in srgb, var(--color-blue-950) 30%, transparent),
+        color-mix(in srgb, var(--color-blue-950) 30%, transparent)
+      )
+      padding-box,
+    conic-gradient(
+        from var(--gradient-angle),
+        var(--color-blue-500),
+        var(--color-purple-500),
+        var(--color-blue-400),
+        var(--color-blue-500)
+      )
+      border-box;
+  border: 1px solid transparent;
+  animation: gradient-rotate 3s linear infinite;
+  box-shadow: 0 0 12px 0px
+    color-mix(in srgb, var(--color-blue-500) 15%, transparent);
+}
+
 @utility running-border-selected {
   position: relative;
   isolation: isolate;

@@ -1,3 +1,4 @@
+import clsx from 'clsx';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 
@@ -94,7 +95,12 @@ export function Header() {
           type="button"
           data-animation-target="jobs-button"
           onClick={() => openOverlay('background-jobs')}
-          className="relative flex h-6 items-center gap-1 rounded px-2 text-xs text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white"
+          className={clsx(
+            'relative flex h-6 items-center gap-1 rounded-lg px-2 text-xs transition-all duration-500',
+            runningJobsCount > 0
+              ? 'jobs-running-border text-white'
+              : 'border border-white/[0.08] bg-white/5 text-neutral-400 hover:border-white/[0.15] hover:bg-white/10 hover:text-white',
+          )}
         >
           {runningJobsCount > 0 ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -103,7 +109,7 @@ export function Header() {
           )}
           <span>Jobs</span>
           {runningJobsCount > 0 && (
-            <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] leading-none text-white">
+            <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] leading-none text-white shadow-[0_0_6px_rgba(59,130,246,0.4)]">
               {runningJobsCount}
             </span>
           )}
