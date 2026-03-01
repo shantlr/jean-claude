@@ -160,29 +160,33 @@ async function detectCodexProjects(): Promise<
       allJsonlFiles.push(...(await findJsonlFiles(dir)));
     }
 
-    const cwds = await runInChunks(allJsonlFiles, IO_CHUNK_SIZE, async (filePath) => {
-      try {
-        const firstLine = await readFirstLine(filePath);
-        if (!firstLine) return null;
+    const cwds = await runInChunks(
+      allJsonlFiles,
+      IO_CHUNK_SIZE,
+      async (filePath) => {
+        try {
+          const firstLine = await readFirstLine(filePath);
+          if (!firstLine) return null;
 
-        const entry = JSON.parse(firstLine) as {
-          type?: string;
-          payload?: { cwd?: string };
-        };
+          const entry = JSON.parse(firstLine) as {
+            type?: string;
+            payload?: { cwd?: string };
+          };
 
-        const cwd = entry.payload?.cwd;
-        if (entry.type === 'session_meta' && typeof cwd === 'string' && cwd) {
-          return cwd;
+          const cwd = entry.payload?.cwd;
+          if (entry.type === 'session_meta' && typeof cwd === 'string' && cwd) {
+            return cwd;
+          }
+        } catch (err) {
+          dbg.ipc(
+            'detectCodexProjects: skipping malformed file %s: %O',
+            filePath,
+            err,
+          );
         }
-      } catch (err) {
-        dbg.ipc(
-          'detectCodexProjects: skipping malformed file %s: %O',
-          filePath,
-          err,
-        );
-      }
-      return null;
-    });
+        return null;
+      },
+    );
 
     // Deduplicate cwds (multiple session files can share the same working dir)
     const seenCwds = new Set<string>();

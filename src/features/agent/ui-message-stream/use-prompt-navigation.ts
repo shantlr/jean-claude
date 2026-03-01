@@ -39,11 +39,18 @@ export function usePromptNavigation({
   totalPrompts: number;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const rafRef = useRef<number | null>(null);
   const isNavigatingRef = useRef(false);
   const navigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+
+  const checkIsAtBottom = useCallback((container: HTMLDivElement) => {
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+    return distanceFromBottom <= 16;
+  }, []);
 
   // Find the DOM element for a given prompt index
   const findPromptElement = useCallback(
@@ -75,7 +82,8 @@ export function usePromptNavigation({
     }
 
     setCurrentIndex(best);
-  }, [scrollContainerRef, totalPrompts, findPromptElement]);
+    setIsAtBottom(checkIsAtBottom(container));
+  }, [scrollContainerRef, totalPrompts, findPromptElement, checkIsAtBottom]);
 
   // Self-attach scroll listener to the container
   useEffect(() => {
@@ -135,8 +143,23 @@ export function usePromptNavigation({
 
   const goToLast = useCallback(() => {
     if (totalPrompts === 0) return;
-    scrollToPrompt(totalPrompts - 1);
-  }, [totalPrompts, scrollToPrompt]);
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    isNavigatingRef.current = true;
+    if (navigationTimeoutRef.current !== null) {
+      clearTimeout(navigationTimeoutRef.current);
+    }
+
+    setCurrentIndex(totalPrompts - 1);
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+
+    navigationTimeoutRef.current = setTimeout(() => {
+      isNavigatingRef.current = false;
+      navigationTimeoutRef.current = null;
+      updateCurrentIndex();
+    }, 500);
+  }, [scrollContainerRef, totalPrompts, updateCurrentIndex]);
 
   // Update index when prompt count changes
   useEffect(() => {
@@ -154,6 +177,7 @@ export function usePromptNavigation({
 
   return {
     currentIndex,
+    isAtBottom,
     totalPrompts,
     goToNext,
     goToPrevious,

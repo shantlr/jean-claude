@@ -20,7 +20,7 @@ export function TimelinePromptNavigator({
     [displayMessages],
   );
 
-  const { currentIndex, goToNext, goToPrevious, goToLast } =
+  const { currentIndex, isAtBottom, goToNext, goToPrevious, goToLast } =
     usePromptNavigation({
       scrollContainerRef,
       totalPrompts,
@@ -63,9 +63,9 @@ export function TimelinePromptNavigator({
 
           <button
             onClick={goToLast}
-            disabled={isLast}
+            disabled={isAtBottom}
             className="rounded-full p-0.5 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-neutral-400"
-            aria-label="Last prompt"
+            aria-label="Go to bottom"
           >
             <ChevronsDown className="h-3.5 w-3.5" />
           </button>
