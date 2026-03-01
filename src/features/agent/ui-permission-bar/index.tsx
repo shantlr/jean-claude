@@ -48,9 +48,12 @@ function ToolInputDisplay({
   switch (toolName) {
     case 'Bash':
       return (
-        <code className="block truncate rounded bg-neutral-800 px-2 py-1 text-sm text-neutral-200">
+        <pre
+          className="max-h-40 overflow-auto rounded bg-neutral-800 px-2 py-1 text-sm break-all whitespace-pre-wrap text-neutral-200"
+          title={String(input.command || '')}
+        >
           {String(input.command || '')}
-        </code>
+        </pre>
       );
 
     case 'Write':
