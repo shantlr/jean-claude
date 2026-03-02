@@ -9,6 +9,7 @@ import {
 } from '@/hooks/use-managed-skills';
 import type { ManagedSkill } from '@shared/skill-types';
 
+import { LegacySkillMigrationDialog } from './legacy-skill-migration-dialog';
 import { SkillCardGrid } from './skill-card-grid';
 import { SkillDetails } from './skill-details';
 import { SkillForm } from './skill-form';
@@ -21,6 +22,7 @@ export function SkillsSettings() {
 
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [showMigrationDialog, setShowMigrationDialog] = useState(false);
 
   const selectedSkill = skills?.find((s) => s.skillPath === selectedPath);
 
@@ -78,13 +80,22 @@ export function SkillsSettings() {
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-neutral-200">Skills</h2>
-          <button
-            onClick={handleCreate}
-            className="flex cursor-pointer items-center gap-1 rounded-lg bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600"
-          >
-            <Plus className="h-4 w-4" />
-            Add
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowMigrationDialog(true)}
+              className="cursor-pointer rounded-lg border border-neutral-600 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:border-neutral-500 hover:bg-neutral-800"
+            >
+              Migrate Legacy Skills
+            </button>
+            <button
+              onClick={handleCreate}
+              className="flex cursor-pointer items-center gap-1 rounded-lg bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600"
+            >
+              <Plus className="h-4 w-4" />
+              Add
+            </button>
+          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto pb-2">
@@ -123,6 +134,12 @@ export function SkillsSettings() {
             />
           ) : null}
         </div>
+      )}
+
+      {showMigrationDialog && (
+        <LegacySkillMigrationDialog
+          onClose={() => setShowMigrationDialog(false)}
+        />
       )}
     </div>
   );

@@ -30,3 +30,36 @@ export interface AgentSkillPathConfig {
 }
 
 export type SkillScope = 'user' | 'project';
+
+export type LegacySkillMigrationStatus =
+  | 'migrate'
+  | 'skip-conflict'
+  | 'skip-invalid';
+
+export interface LegacySkillMigrationPreviewItem {
+  id: string;
+  backendType: AgentBackendType;
+  legacyPath: string;
+  targetCanonicalPath: string;
+  name: string;
+  status: LegacySkillMigrationStatus;
+  reason?: string;
+}
+
+export interface LegacySkillMigrationPreviewResult {
+  items: LegacySkillMigrationPreviewItem[];
+}
+
+export interface LegacySkillMigrationExecuteItemResult {
+  id: string;
+  backendType: AgentBackendType;
+  legacyPath: string;
+  targetCanonicalPath: string;
+  name: string;
+  status: 'migrated' | 'failed' | 'skipped';
+  reason?: string;
+}
+
+export interface LegacySkillMigrationExecuteResult {
+  results: LegacySkillMigrationExecuteItemResult[];
+}

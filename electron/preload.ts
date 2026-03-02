@@ -509,6 +509,9 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('skills:disable', skillPath, backendType),
     enable: (skillPath: string, backendType: string) =>
       ipcRenderer.invoke('skills:enable', skillPath, backendType),
+    migrationPreview: () => ipcRenderer.invoke('skills:migrationPreview'),
+    migrationExecute: (params: { itemIds: string[] }) =>
+      ipcRenderer.invoke('skills:migrationExecute', params),
   },
 });
 console.log('Preload script loaded');

@@ -3,7 +3,11 @@ import { useMemo } from 'react';
 
 import { api } from '@/lib/api';
 import type { AgentBackendType } from '@shared/agent-backend-types';
-import type { SkillScope } from '@shared/skill-types';
+import type {
+  LegacySkillMigrationExecuteResult,
+  LegacySkillMigrationPreviewResult,
+  SkillScope,
+} from '@shared/skill-types';
 
 export const managedSkillsQueryKeys = {
   all: ['managedSkills'] as const,
@@ -115,6 +119,28 @@ export function useEnableSkill() {
       skillPath: string;
       backendType: AgentBackendType;
     }) => api.skillManagement.enable(skillPath, backendType),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: managedSkillsQueryKeys.all,
+      });
+    },
+  });
+}
+
+export function useLegacySkillMigrationPreview() {
+  return useMutation<LegacySkillMigrationPreviewResult>({
+    mutationFn: () => api.skillManagement.migrationPreview(),
+  });
+}
+
+export function useLegacySkillMigrationExecute() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    LegacySkillMigrationExecuteResult,
+    Error,
+    { itemIds: string[] }
+  >({
+    mutationFn: (params) => api.skillManagement.migrationExecute(params),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: managedSkillsQueryKeys.all,

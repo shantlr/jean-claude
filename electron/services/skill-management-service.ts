@@ -5,6 +5,9 @@ import * as path from 'path';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type {
   AgentSkillPathConfig,
+  LegacySkillMigrationExecuteResult,
+  LegacySkillMigrationPreviewItem,
+  LegacySkillMigrationPreviewResult,
   ManagedSkill,
   SkillScope,
 } from '@shared/skill-types';
@@ -129,6 +132,22 @@ function buildSkillMd({
     lines.push(content);
   }
   return lines.join('\n') + '\n';
+}
+
+/** Converts a skill name into a safe directory name (lowercase, alphanumeric + dashes). */
+function normalizeSkillDirName(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+}
+
+/** Builds a unique migration item identifier from backend type and legacy path. */
+function createMigrationId({
+  backendType,
+  legacyPath,
+}: {
+  backendType: AgentBackendType;
+  legacyPath: string;
+}): string {
+  return `${backendType}:${legacyPath}`;
 }
 
 // --- Directory scanning ---
@@ -397,6 +416,168 @@ async function discoverSkillsInDir({
   return skills;
 }
 
+/**
+ * Scans a backend's user skills directory for entries that are NOT managed by
+ * Jean-Claude and classifies each as migratable, conflicting, or invalid.
+ * Used by the migration preview to show users what will happen before they confirm.
+ */
+async function discoverLegacyMigrationCandidates({
+  backendType,
+}: {
+  backendType: AgentBackendType;
+}): Promise<
+  Array<{
+    backendType: AgentBackendType;
+    name: string;
+    legacyPath: string;
+    targetCanonicalPath: string;
+    status: 'migrate' | 'skip-conflict' | 'skip-invalid';
+    reason?: string;
+  }>
+> {
+  const config = SKILL_PATH_CONFIGS[backendType];
+  const jcDir = getJcUserSkillsDir(backendType);
+  const candidates: Array<{
+    backendType: AgentBackendType;
+    name: string;
+    legacyPath: string;
+    targetCanonicalPath: string;
+    status: 'migrate' | 'skip-conflict' | 'skip-invalid';
+    reason?: string;
+  }> = [];
+
+  const pushCandidate = ({
+    name,
+    legacyPath,
+    status,
+    reason,
+  }: {
+    name: string;
+    legacyPath: string;
+    status: 'migrate' | 'skip-conflict' | 'skip-invalid';
+    reason?: string;
+  }) => {
+    const targetCanonicalPath = path.join(jcDir, normalizeSkillDirName(name));
+    candidates.push({
+      backendType,
+      name,
+      legacyPath,
+      targetCanonicalPath,
+      status,
+      reason,
+    });
+  };
+
+  try {
+    const entries = await fs.readdir(config.userSkillsDir, {
+      withFileTypes: true,
+    });
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue;
+      if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
+
+      const skillDir = path.join(config.userSkillsDir, entry.name);
+      const jcEquivalent = path.join(jcDir, entry.name);
+      if (await pathExists(jcEquivalent)) continue;
+
+      let resolvedPath = skillDir;
+      if (entry.isSymbolicLink()) {
+        try {
+          resolvedPath = await fs.realpath(skillDir);
+        } catch {
+          pushCandidate({
+            name: entry.name,
+            legacyPath: skillDir,
+            status: 'skip-invalid',
+            reason: 'Broken symlink',
+          });
+          continue;
+        }
+
+        if (resolvedPath.startsWith(jcDir + path.sep)) {
+          continue;
+        }
+      }
+
+      const info = await readSkillDir(resolvedPath);
+      if (info) {
+        const normalizedName = normalizeSkillDirName(info.name);
+        const conflictPath = path.join(jcDir, normalizedName);
+        const hasConflict = await pathExists(conflictPath);
+        pushCandidate({
+          name: info.name,
+          legacyPath: skillDir,
+          status: hasConflict ? 'skip-conflict' : 'migrate',
+          reason: hasConflict
+            ? `Canonical skill already exists at ${conflictPath}`
+            : undefined,
+        });
+        continue;
+      }
+
+      if (backendType !== 'opencode') {
+        pushCandidate({
+          name: entry.name,
+          legacyPath: skillDir,
+          status: 'skip-invalid',
+          reason: 'SKILL.md not found',
+        });
+        continue;
+      }
+
+      const nestedSkillDirs = await discoverNestedSkillDirs(resolvedPath);
+      if (nestedSkillDirs.length === 0) {
+        pushCandidate({
+          name: entry.name,
+          legacyPath: skillDir,
+          status: 'skip-invalid',
+          reason: 'No nested SKILL.md found',
+        });
+        continue;
+      }
+
+      for (const nestedSkillDir of nestedSkillDirs) {
+        const nestedInfo = await readSkillDir(nestedSkillDir);
+        if (!nestedInfo) {
+          pushCandidate({
+            name: entry.name,
+            legacyPath: nestedSkillDir,
+            status: 'skip-invalid',
+            reason: 'Invalid nested SKILL.md',
+          });
+          continue;
+        }
+
+        const parentFolderName = path.basename(path.dirname(nestedSkillDir));
+        const nestedSkillName = parentFolderName
+          ? `${parentFolderName}/${nestedInfo.name}`
+          : nestedInfo.name;
+        const normalizedName = normalizeSkillDirName(nestedSkillName);
+        const conflictPath = path.join(jcDir, normalizedName);
+        const hasConflict = await pathExists(conflictPath);
+        pushCandidate({
+          name: nestedSkillName,
+          legacyPath: nestedSkillDir,
+          status: hasConflict ? 'skip-conflict' : 'migrate',
+          reason: hasConflict
+            ? `Canonical skill already exists at ${conflictPath}`
+            : undefined,
+        });
+      }
+    }
+  } catch (error) {
+    if (!isEnoent(error)) {
+      dbg.skill(
+        'Error preparing migration candidates for %s: %O',
+        backendType,
+        error,
+      );
+    }
+  }
+
+  return candidates;
+}
+
 async function discoverPluginSkills(
   pluginsDir: string,
   backendType: AgentBackendType,
@@ -482,6 +663,167 @@ export async function getAllManagedSkills({
   return results.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/**
+ * Returns a preview of all legacy skills across both backends, classifying each
+ * as migratable, conflicting, or invalid. No filesystem changes are made.
+ */
+export async function previewLegacySkillMigration(): Promise<LegacySkillMigrationPreviewResult> {
+  const claudeCandidates = await discoverLegacyMigrationCandidates({
+    backendType: 'claude-code',
+  });
+  const opencodeCandidates = await discoverLegacyMigrationCandidates({
+    backendType: 'opencode',
+  });
+
+  const items: LegacySkillMigrationPreviewItem[] = [
+    ...claudeCandidates,
+    ...opencodeCandidates,
+  ].map((candidate) => ({
+    id: createMigrationId({
+      backendType: candidate.backendType,
+      legacyPath: candidate.legacyPath,
+    }),
+    backendType: candidate.backendType,
+    legacyPath: candidate.legacyPath,
+    targetCanonicalPath: candidate.targetCanonicalPath,
+    name: candidate.name,
+    status: candidate.status,
+    reason: candidate.reason,
+  }));
+
+  return { items };
+}
+
+/**
+ * Executes migration for the given item IDs: copies each legacy skill into JC
+ * canonical storage, removes the legacy entry, and replaces it with a symlink.
+ * Re-validates each item before mutating the filesystem. Per-item failures are
+ * captured without aborting the remaining items, with rollback on partial failure.
+ */
+export async function executeLegacySkillMigration({
+  itemIds,
+}: {
+  itemIds: string[];
+}): Promise<LegacySkillMigrationExecuteResult> {
+  const preview = await previewLegacySkillMigration();
+  const migratableById = new Map(
+    preview.items
+      .filter((item) => item.status === 'migrate')
+      .map((item) => [item.id, item]),
+  );
+
+  const results: LegacySkillMigrationExecuteResult['results'] = [];
+
+  for (const itemId of itemIds) {
+    const item = migratableById.get(itemId);
+    if (!item) {
+      const colonIdx = itemId.indexOf(':');
+      const parsedBackend =
+        colonIdx > 0 ? itemId.slice(0, colonIdx) : 'claude-code';
+      results.push({
+        id: itemId,
+        backendType: parsedBackend as AgentBackendType,
+        legacyPath: colonIdx > 0 ? itemId.slice(colonIdx + 1) : '',
+        targetCanonicalPath: '',
+        name: '',
+        status: 'skipped',
+        reason: 'Item is no longer migratable. Run preview again.',
+      });
+      continue;
+    }
+
+    const targetCanonicalPath = item.targetCanonicalPath;
+    const tempCanonicalPath = `${targetCanonicalPath}.tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    let legacyRemoved = false;
+
+    try {
+      const currentInfo = await readSkillDir(item.legacyPath);
+      if (!currentInfo) {
+        throw new Error('Legacy skill is no longer valid');
+      }
+
+      if (await pathExists(targetCanonicalPath)) {
+        throw new Error(
+          `Canonical target already exists: ${targetCanonicalPath}`,
+        );
+      }
+
+      await fs.mkdir(path.dirname(targetCanonicalPath), { recursive: true });
+      await fs.cp(item.legacyPath, tempCanonicalPath, {
+        recursive: true,
+        dereference: true,
+        errorOnExist: true,
+      });
+      await fs.rename(tempCanonicalPath, targetCanonicalPath);
+
+      const stat = await fs.lstat(item.legacyPath);
+      if (stat.isSymbolicLink()) {
+        await fs.unlink(item.legacyPath);
+      } else {
+        await fs.rm(item.legacyPath, { recursive: true, force: true });
+      }
+      legacyRemoved = true;
+
+      await fs.symlink(targetCanonicalPath, item.legacyPath);
+
+      const resolved = await fs.realpath(item.legacyPath);
+      if (resolved !== targetCanonicalPath) {
+        throw new Error('Created symlink does not resolve to canonical target');
+      }
+
+      results.push({
+        id: item.id,
+        backendType: item.backendType,
+        legacyPath: item.legacyPath,
+        targetCanonicalPath: item.targetCanonicalPath,
+        name: item.name,
+        status: 'migrated',
+      });
+    } catch (error) {
+      if (legacyRemoved) {
+        try {
+          await fs.cp(targetCanonicalPath, item.legacyPath, {
+            recursive: true,
+            dereference: true,
+            force: true,
+          });
+        } catch (rollbackCopyError) {
+          dbg.skill(
+            'Rollback copy failed for migrated skill %s: %O',
+            item.id,
+            rollbackCopyError,
+          );
+        }
+        try {
+          await fs.rm(targetCanonicalPath, { recursive: true, force: true });
+        } catch (rollbackCleanupError) {
+          dbg.skill(
+            'Rollback cleanup failed for migrated skill %s (canonical orphan at %s): %O',
+            item.id,
+            targetCanonicalPath,
+            rollbackCleanupError,
+          );
+        }
+      }
+
+      await fs.rm(tempCanonicalPath, { recursive: true, force: true });
+
+      results.push({
+        id: item.id,
+        backendType: item.backendType,
+        legacyPath: item.legacyPath,
+        targetCanonicalPath: item.targetCanonicalPath,
+        name: item.name,
+        status: 'failed',
+        reason:
+          error instanceof Error ? error.message : 'Failed to migrate skill',
+      });
+    }
+  }
+
+  return { results };
+}
+
 export async function getSkillContent({
   skillPath,
 }: {
@@ -521,7 +863,7 @@ export async function createSkill({
   content: string;
 }): Promise<ManagedSkill> {
   const config = SKILL_PATH_CONFIGS[backendType];
-  const dirName = name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+  const dirName = normalizeSkillDirName(name);
 
   if (scope === 'project') {
     // Project skills live directly in the project directory — no JC canonical store

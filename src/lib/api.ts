@@ -37,7 +37,13 @@ import type {
   PortsInUseErrorData,
   PackageScriptsResult,
 } from '@shared/run-command-types';
-import type { ManagedSkill, Skill, SkillScope } from '@shared/skill-types';
+import type {
+  LegacySkillMigrationExecuteResult,
+  LegacySkillMigrationPreviewResult,
+  ManagedSkill,
+  Skill,
+  SkillScope,
+} from '@shared/skill-types';
 import type {
   Project,
   NewProject,
@@ -742,6 +748,10 @@ export interface Api {
       backendType: AgentBackendType,
     ) => Promise<void>;
     enable: (skillPath: string, backendType: AgentBackendType) => Promise<void>;
+    migrationPreview: () => Promise<LegacySkillMigrationPreviewResult>;
+    migrationExecute: (params: {
+      itemIds: string[];
+    }) => Promise<LegacySkillMigrationExecuteResult>;
   };
 }
 
@@ -1102,5 +1112,7 @@ export const api: Api = hasWindowApi
         delete: async () => {},
         disable: async () => {},
         enable: async () => {},
+        migrationPreview: async () => ({ items: [] }),
+        migrationExecute: async () => ({ results: [] }),
       },
     } as Api);

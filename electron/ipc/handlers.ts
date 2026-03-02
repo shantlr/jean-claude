@@ -120,6 +120,8 @@ import {
   deleteSkill,
   disableSkill,
   enableSkill,
+  previewLegacySkillMigration,
+  executeLegacySkillMigration,
 } from '../services/skill-management-service';
 import { StepService } from '../services/step-service';
 import { generateSummary } from '../services/summary-generation-service';
@@ -2077,6 +2079,19 @@ export function registerIpcHandlers() {
     async (_, skillPath: string, backendType: AgentBackendType) => {
       dbg.ipc('skills:enable path=%s backend=%s', skillPath, backendType);
       return enableSkill({ skillPath, backendType });
+    },
+  );
+
+  ipcMain.handle('skills:migrationPreview', async () => {
+    dbg.ipc('skills:migrationPreview');
+    return previewLegacySkillMigration();
+  });
+
+  ipcMain.handle(
+    'skills:migrationExecute',
+    async (_, params: { itemIds: string[] }) => {
+      dbg.ipc('skills:migrationExecute count=%d', params.itemIds.length);
+      return executeLegacySkillMigration({ itemIds: params.itemIds });
     },
   );
 }
