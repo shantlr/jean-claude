@@ -137,27 +137,19 @@ export function AddStepDialog({
             shortcut="cmd+i"
             side="top"
           />
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-neutral-400">
-              Backend
-            </span>
-            <BackendSelector
-              value={backend}
-              onChange={handleBackendChange}
-              shortcut="cmd+j"
-              side="top"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-neutral-400">Model</span>
-            <ModelSelector
-              value={model}
-              onChange={setModel}
-              models={getModelsForBackend(backend, dynamicModels)}
-              shortcut="cmd+l"
-              side="top"
-            />
-          </div>
+          <BackendSelector
+            value={backend}
+            onChange={handleBackendChange}
+            shortcut="cmd+j"
+            side="top"
+          />
+          <ModelSelector
+            value={model}
+            onChange={setModel}
+            models={getModelsForBackend(backend, dynamicModels)}
+            shortcut="cmd+l"
+            side="top"
+          />
         </div>
         <div className="flex justify-end gap-3 pt-1">
           <button
