@@ -7,6 +7,7 @@ import {
   BackendSelector,
   getModelsForBackend,
 } from '@/features/agent/ui-backend-selector';
+import { ModeSelector } from '@/features/agent/ui-mode-selector';
 import { ModelSelector } from '@/features/agent/ui-model-selector';
 import {
   PromptTextarea,
@@ -17,7 +18,11 @@ import type {
   AgentBackendType,
   PromptImagePart,
 } from '@shared/agent-backend-types';
-import type { ModelPreference } from '@shared/types';
+import {
+  normalizeInteractionModeForBackend,
+  type InteractionMode,
+  type ModelPreference,
+} from '@shared/types';
 
 export function AddStepDialog({
   isOpen,
@@ -30,6 +35,7 @@ export function AddStepDialog({
   onClose: () => void;
   onConfirm: (data: {
     promptTemplate: string;
+    interactionMode: InteractionMode;
     agentBackend: AgentBackendType;
     modelPreference: ModelPreference;
     images: PromptImagePart[];
@@ -38,6 +44,8 @@ export function AddStepDialog({
   defaultModel?: ModelPreference;
 }) {
   const [promptTemplate, setPromptTemplate] = useState('');
+  const [interactionMode, setInteractionMode] =
+    useState<InteractionMode>('ask');
   const [backend, setBackend] = useState<AgentBackendType>(defaultBackend);
   const [model, setModel] = useState<ModelPreference>(defaultModel);
   const [images, setImages] = useState<PromptImagePart[]>([]);
@@ -48,6 +56,7 @@ export function AddStepDialog({
   useEffect(() => {
     if (isOpen) {
       setPromptTemplate('');
+      setInteractionMode('ask');
       setBackend(defaultBackend);
       setModel(defaultModel);
       setImages([]);
@@ -67,11 +76,23 @@ export function AddStepDialog({
     if (!canSubmit) return;
     onConfirm({
       promptTemplate: promptTemplate.trim(),
+      interactionMode: normalizeInteractionModeForBackend({
+        backend,
+        mode: interactionMode,
+      }),
       agentBackend: backend,
       modelPreference: model,
       images,
     });
-  }, [canSubmit, onConfirm, promptTemplate, backend, model, images]);
+  }, [
+    canSubmit,
+    onConfirm,
+    promptTemplate,
+    interactionMode,
+    backend,
+    model,
+    images,
+  ]);
 
   const handleEnterKey = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -109,6 +130,13 @@ export function AddStepDialog({
           onImageRemove={handleImageRemove}
         />
         <div className="flex items-center gap-3">
+          <ModeSelector
+            value={interactionMode}
+            onChange={setInteractionMode}
+            backend={backend}
+            shortcut="cmd+i"
+            side="top"
+          />
           <div className="flex flex-col gap-1">
             <span className="text-xs font-medium text-neutral-400">
               Backend
@@ -116,6 +144,7 @@ export function AddStepDialog({
             <BackendSelector
               value={backend}
               onChange={handleBackendChange}
+              shortcut="cmd+j"
               side="top"
             />
           </div>
@@ -125,6 +154,7 @@ export function AddStepDialog({
               value={model}
               onChange={setModel}
               models={getModelsForBackend(backend, dynamicModels)}
+              shortcut="cmd+l"
               side="top"
             />
           </div>

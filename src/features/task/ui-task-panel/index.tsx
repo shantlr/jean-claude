@@ -455,6 +455,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const handleAddStep = useCallback(
     async (data: {
       promptTemplate: string;
+      interactionMode: InteractionMode;
       agentBackend: AgentBackendType;
       modelPreference: ModelPreference;
       images: PromptImagePart[];
@@ -465,6 +466,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           taskId,
           name,
           promptTemplate: data.promptTemplate,
+          interactionMode: data.interactionMode,
           agentBackend: data.agentBackend,
           modelPreference: data.modelPreference,
           images: data.images.length > 0 ? data.images : null,
