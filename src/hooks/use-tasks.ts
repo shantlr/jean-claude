@@ -160,6 +160,7 @@ export function useSetStepMode() {
     mutationFn: ({ stepId, mode }: { stepId: string; mode: InteractionMode }) =>
       api.steps.setMode(stepId, mode),
     onSuccess: (step) => {
+      queryClient.invalidateQueries({ queryKey: ['steps', step.id] });
       queryClient.invalidateQueries({
         queryKey: ['steps', { taskId: step.taskId }],
       });

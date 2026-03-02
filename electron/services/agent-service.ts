@@ -27,7 +27,10 @@ import {
 import type { AgentUIEventPayload } from '@shared/agent-ui-events';
 import type { NormalizedEntry } from '@shared/normalized-message-v2';
 import type { InteractionMode } from '@shared/types';
-import { normalizeInteractionModeForBackend } from '@shared/types';
+import {
+  getDefaultInteractionModeForBackend,
+  normalizeInteractionModeForBackend,
+} from '@shared/types';
 
 import {
   TaskRepository,
@@ -295,7 +298,10 @@ class AgentService {
         cwd: workingDir,
         interactionMode: normalizeInteractionModeForBackend({
           backend: session.backendType,
-          mode: (step?.interactionMode ?? 'plan') as InteractionMode,
+          mode: (step?.interactionMode ??
+            getDefaultInteractionModeForBackend({
+              backend: session.backendType,
+            })) as InteractionMode,
         }),
         model:
           step?.modelPreference && step.modelPreference !== 'default'

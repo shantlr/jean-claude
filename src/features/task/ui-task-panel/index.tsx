@@ -88,6 +88,7 @@ import type {
 import type { NormalizedEntry } from '@shared/normalized-message-v2';
 import {
   PRESET_EDITORS,
+  getDefaultInteractionModeForBackend,
   type InteractionMode,
   type ModelPreference,
   type EditorSetting,
@@ -173,7 +174,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   // Steps data for auto-selection
   const { data: steps } = useSteps(taskId);
   const { data: activeStep } = useStep(activeStepId ?? '');
-  console.log(steps);
 
   // Diff view state
   const {
@@ -1135,7 +1135,9 @@ const TaskInputFooter = memo(function TaskInputFooter({
 
   // Use step values for backend/mode/model (these live on steps now)
   const effectiveBackend = activeStep?.agentBackend ?? 'claude-code';
-  const effectiveMode = activeStep?.interactionMode ?? 'ask';
+  const effectiveMode =
+    activeStep?.interactionMode ??
+    getDefaultInteractionModeForBackend({ backend: effectiveBackend });
   const effectiveModel = activeStep?.modelPreference ?? 'default';
 
   const { data: dynamicModels } = useBackendModels(effectiveBackend);
