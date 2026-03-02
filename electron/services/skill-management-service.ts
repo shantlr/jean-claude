@@ -18,11 +18,11 @@ import { isEnoent } from '../lib/fs';
 // --- Jean-Claude canonical skill storage ---
 //
 // All JC-managed user skills live under:
-//   ~/.config/jean-claude/skills/<backendType>/user/<skillName>/
+//   ~/.config/jean-claude/skills/user/<skillName>/
 //
 // Backend-expected paths contain symlinks pointing to this canonical location:
-//   ~/.claude/skills/<skillName>  →  ~/.config/jean-claude/skills/claude-code/user/<skillName>/
-//   ~/.config/opencode/skills/<skillName>  →  ~/.config/jean-claude/skills/opencode/user/<skillName>/
+//   ~/.claude/skills/<skillName>  →  ~/.config/jean-claude/skills/user/<skillName>/
+//   ~/.config/opencode/skills/<skillName>  →  ~/.config/jean-claude/skills/user/<skillName>/
 //
 // Enable  = create symlink in the backend's skills dir
 // Disable = remove the symlink (canonical stays in JC folder, skill is never lost)
@@ -34,9 +34,7 @@ const JC_SKILLS_BASE_DIR = path.join(
   'skills',
 );
 
-function getJcUserSkillsDir(backendType: AgentBackendType): string {
-  return path.join(JC_SKILLS_BASE_DIR, backendType, 'user');
-}
+const JC_USER_SKILLS_DIR = path.join(JC_SKILLS_BASE_DIR, 'user');
 
 // --- Backend path configurations ---
 
@@ -219,24 +217,25 @@ async function discoverNestedSkillDirs(baseDir: string): Promise<string[]> {
 }
 
 /**
- * Scans the JC canonical directory for a backend's user skills.
- * For each skill, checks whether a symlink exists in the backend's expected
- * skills directory to determine enabled/disabled status.
+ * Scans the JC canonical directory for user skills.
+ * For each skill, checks whether a symlink exists in the given backend's
+ * expected skills directory to determine enabled/disabled status.
  */
 async function discoverJcManagedUserSkills(
   backendType: AgentBackendType,
 ): Promise<ManagedSkill[]> {
-  const jcDir = getJcUserSkillsDir(backendType);
   const config = SKILL_PATH_CONFIGS[backendType];
   const skills: ManagedSkill[] = [];
 
   try {
-    const entries = await fs.readdir(jcDir, { withFileTypes: true });
+    const entries = await fs.readdir(JC_USER_SKILLS_DIR, {
+      withFileTypes: true,
+    });
     for (const entry of entries) {
       if (entry.name.startsWith('.')) continue;
       if (!entry.isDirectory()) continue;
 
-      const canonicalPath = path.join(jcDir, entry.name);
+      const canonicalPath = path.join(JC_USER_SKILLS_DIR, entry.name);
       const info = await readSkillDir(canonicalPath);
       if (!info) continue;
 
@@ -255,7 +254,11 @@ async function discoverJcManagedUserSkills(
     }
   } catch (error) {
     if (!isEnoent(error)) {
-      dbg.skill('Error reading JC user skills dir %s: %O', jcDir, error);
+      dbg.skill(
+        'Error reading JC user skills dir %s: %O',
+        JC_USER_SKILLS_DIR,
+        error,
+      );
     }
   }
 
@@ -276,7 +279,6 @@ async function discoverLegacyUserSkills(
   backendType: AgentBackendType,
 ): Promise<ManagedSkill[]> {
   const config = SKILL_PATH_CONFIGS[backendType];
-  const jcDir = getJcUserSkillsDir(backendType);
   const skills: ManagedSkill[] = [];
   const seenSkillPaths = new Set<string>();
 
@@ -291,7 +293,7 @@ async function discoverLegacyUserSkills(
       const skillDir = path.join(config.userSkillsDir, entry.name);
 
       // Skip if a JC canonical entry exists for this name (already covered)
-      const jcEquivalent = path.join(jcDir, entry.name);
+      const jcEquivalent = path.join(JC_USER_SKILLS_DIR, entry.name);
       if (await pathExists(jcEquivalent)) continue;
 
       // For symlinks, skip JC-managed ones (target inside canonical dir)
@@ -304,7 +306,7 @@ async function discoverLegacyUserSkills(
           continue; // broken symlink
         }
         // If symlink points into JC canonical dir, it's JC-managed — skip
-        if (resolvedPath.startsWith(jcDir + path.sep)) continue;
+        if (resolvedPath.startsWith(JC_USER_SKILLS_DIR + path.sep)) continue;
       }
 
       const info = await readSkillDir(resolvedPath);
@@ -436,7 +438,6 @@ async function discoverLegacyMigrationCandidates({
   }>
 > {
   const config = SKILL_PATH_CONFIGS[backendType];
-  const jcDir = getJcUserSkillsDir(backendType);
   const candidates: Array<{
     backendType: AgentBackendType;
     name: string;
@@ -457,7 +458,10 @@ async function discoverLegacyMigrationCandidates({
     status: 'migrate' | 'skip-conflict' | 'skip-invalid';
     reason?: string;
   }) => {
-    const targetCanonicalPath = path.join(jcDir, normalizeSkillDirName(name));
+    const targetCanonicalPath = path.join(
+      JC_USER_SKILLS_DIR,
+      normalizeSkillDirName(name),
+    );
     candidates.push({
       backendType,
       name,
@@ -477,7 +481,7 @@ async function discoverLegacyMigrationCandidates({
       if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
 
       const skillDir = path.join(config.userSkillsDir, entry.name);
-      const jcEquivalent = path.join(jcDir, entry.name);
+      const jcEquivalent = path.join(JC_USER_SKILLS_DIR, entry.name);
       if (await pathExists(jcEquivalent)) continue;
 
       let resolvedPath = skillDir;
@@ -494,7 +498,7 @@ async function discoverLegacyMigrationCandidates({
           continue;
         }
 
-        if (resolvedPath.startsWith(jcDir + path.sep)) {
+        if (resolvedPath.startsWith(JC_USER_SKILLS_DIR + path.sep)) {
           continue;
         }
       }
@@ -502,7 +506,7 @@ async function discoverLegacyMigrationCandidates({
       const info = await readSkillDir(resolvedPath);
       if (info) {
         const normalizedName = normalizeSkillDirName(info.name);
-        const conflictPath = path.join(jcDir, normalizedName);
+        const conflictPath = path.join(JC_USER_SKILLS_DIR, normalizedName);
         const hasConflict = await pathExists(conflictPath);
         pushCandidate({
           name: info.name,
@@ -553,7 +557,7 @@ async function discoverLegacyMigrationCandidates({
           ? `${parentFolderName}/${nestedInfo.name}`
           : nestedInfo.name;
         const normalizedName = normalizeSkillDirName(nestedSkillName);
-        const conflictPath = path.join(jcDir, normalizedName);
+        const conflictPath = path.join(JC_USER_SKILLS_DIR, normalizedName);
         const hasConflict = await pathExists(conflictPath);
         pushCandidate({
           name: nestedSkillName,
@@ -901,8 +905,7 @@ export async function createSkill({
   }
 
   // User-scope: create in JC canonical dir, then symlink into backend's path
-  const jcDir = getJcUserSkillsDir(backendType);
-  const canonicalPath = path.join(jcDir, dirName);
+  const canonicalPath = path.join(JC_USER_SKILLS_DIR, dirName);
   const symlinkPath = path.join(config.userSkillsDir, dirName);
 
   // Check for conflicts in the JC canonical store
@@ -982,8 +985,7 @@ export async function updateSkill({
   dbg.skill('Updated skill at %s', skillPath);
 
   // Determine source and enabled status from path
-  const jcDir = getJcUserSkillsDir(backendType);
-  const isJcManaged = skillPath.startsWith(jcDir + path.sep);
+  const isJcManaged = skillPath.startsWith(JC_USER_SKILLS_DIR + path.sep);
   const config = SKILL_PATH_CONFIGS[backendType];
   const symlinkPath = path.join(config.userSkillsDir, path.basename(skillPath));
   const enabled = isJcManaged ? await isSymlink(symlinkPath) : true;
@@ -1007,24 +1009,27 @@ export async function deleteSkill({
   skillPath: string;
   backendType: AgentBackendType;
 }): Promise<void> {
-  const config = SKILL_PATH_CONFIGS[backendType];
-  const jcDir = getJcUserSkillsDir(backendType);
   const dirName = path.basename(skillPath);
 
-  // If this is a JC-managed skill, also remove the symlink from the backend path
-  if (skillPath.startsWith(jcDir + path.sep) || skillPath === jcDir) {
-    const symlinkPath = path.join(config.userSkillsDir, dirName);
-    try {
-      if (await isSymlink(symlinkPath)) {
-        await fs.unlink(symlinkPath);
+  // If this is a JC-managed skill, remove symlinks from all backend paths
+  if (
+    skillPath.startsWith(JC_USER_SKILLS_DIR + path.sep) ||
+    skillPath === JC_USER_SKILLS_DIR
+  ) {
+    for (const cfg of Object.values(SKILL_PATH_CONFIGS)) {
+      const symlinkPath = path.join(cfg.userSkillsDir, dirName);
+      try {
+        if (await isSymlink(symlinkPath)) {
+          await fs.unlink(symlinkPath);
+        }
+      } catch {
+        // Symlink may already be absent (skill was disabled) — that's fine
       }
-    } catch {
-      // Symlink may already be absent (skill was disabled) — that's fine
     }
   }
 
   await fs.rm(skillPath, { recursive: true, force: true });
-  dbg.skill('Deleted skill at %s', skillPath);
+  dbg.skill('Deleted skill at %s (backend hint: %s)', skillPath, backendType);
 }
 
 /**

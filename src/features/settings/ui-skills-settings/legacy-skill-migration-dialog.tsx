@@ -58,10 +58,21 @@ export function LegacySkillMigrationDialog({
   >([]);
   const [result, setResult] =
     useState<LegacySkillMigrationExecuteResult | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     previewMutateAsync()
-      .then((data) => setPreviewItems(data.items))
+      .then((data) => {
+        setPreviewItems(data.items);
+        // Auto-select all migratable items
+        setSelectedIds(
+          new Set(
+            data.items
+              .filter((item) => item.status === 'migrate')
+              .map((item) => item.id),
+          ),
+        );
+      })
       .catch((error: unknown) => {
         const message =
           error instanceof Error
@@ -80,19 +91,6 @@ export function LegacySkillMigrationDialog({
     } as const;
   }, [previewItems]);
 
-  const counts = useMemo(() => {
-    const migrate = previewItems.filter(
-      (item) => item.status === 'migrate',
-    ).length;
-    const conflict = previewItems.filter(
-      (item) => item.status === 'skip-conflict',
-    ).length;
-    const invalid = previewItems.filter(
-      (item) => item.status === 'skip-invalid',
-    ).length;
-    return { migrate, conflict, invalid };
-  }, [previewItems]);
-
   const migratableIds = useMemo(
     () =>
       previewItems
@@ -100,6 +98,18 @@ export function LegacySkillMigrationDialog({
         .map((item) => item.id),
     [previewItems],
   );
+
+  const counts = useMemo(() => {
+    const selected = selectedIds.size;
+    const migrate = migratableIds.length;
+    const conflict = previewItems.filter(
+      (item) => item.status === 'skip-conflict',
+    ).length;
+    const invalid = previewItems.filter(
+      (item) => item.status === 'skip-invalid',
+    ).length;
+    return { selected, migrate, conflict, invalid };
+  }, [previewItems, migratableIds, selectedIds]);
 
   const executeCounts = useMemo(() => {
     if (!result) return null;
@@ -119,10 +129,30 @@ export function LegacySkillMigrationDialog({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
+  const toggleItem = useCallback((itemId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback(() => {
+    if (selectedIds.size === migratableIds.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(migratableIds));
+    }
+  }, [selectedIds.size, migratableIds]);
+
   const handleExecute = useCallback(async () => {
     try {
       const next = await executeMutation.mutateAsync({
-        itemIds: migratableIds,
+        itemIds: Array.from(selectedIds),
       });
       setResult(next);
     } catch (error) {
@@ -130,7 +160,7 @@ export function LegacySkillMigrationDialog({
         error instanceof Error ? error.message : 'Failed to execute migration';
       addToast({ message, type: 'error' });
     }
-  }, [executeMutation, migratableIds, addToast]);
+  }, [executeMutation, selectedIds, addToast]);
 
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/55">
@@ -194,9 +224,22 @@ export function LegacySkillMigrationDialog({
 
           {!previewMutation.isPending && !result && (
             <div className="space-y-4">
-              <div className="rounded border border-neutral-700 bg-neutral-800/40 p-3 text-xs text-neutral-300">
-                Ready: {counts.migrate} · Conflicts: {counts.conflict} ·
-                Invalid: {counts.invalid}
+              <div className="flex items-center justify-between rounded border border-neutral-700 bg-neutral-800/40 p-3 text-xs text-neutral-300">
+                <span>
+                  Selected: {counts.selected}/{counts.migrate} · Conflicts:{' '}
+                  {counts.conflict} · Invalid: {counts.invalid}
+                </span>
+                {migratableIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={toggleAll}
+                    className="text-xs text-blue-400 hover:text-blue-300"
+                  >
+                    {selectedIds.size === migratableIds.length
+                      ? 'Deselect all'
+                      : 'Select all'}
+                  </button>
+                )}
               </div>
 
               {(['claude-code', 'opencode'] as const).map((backendType) => {
@@ -209,30 +252,48 @@ export function LegacySkillMigrationDialog({
                       {backendLabel(backendType)}
                     </div>
                     <div className="space-y-2">
-                      {items.map((item) => (
-                        <div
-                          key={item.id}
-                          className="rounded border border-neutral-700 bg-neutral-900/70 p-3"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="text-sm font-medium text-neutral-100">
-                              {item.name}
+                      {items.map((item) => {
+                        const isMigratable = item.status === 'migrate';
+                        const isChecked = selectedIds.has(item.id);
+
+                        return (
+                          <label
+                            key={item.id}
+                            className={`flex gap-3 rounded border border-neutral-700 bg-neutral-900/70 p-3 ${
+                              isMigratable
+                                ? 'cursor-pointer hover:border-neutral-600'
+                                : 'opacity-60'
+                            }`}
+                          >
+                            {isMigratable ? (
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleItem(item.id)}
+                                className="mt-0.5 h-4 w-4 shrink-0 accent-blue-500"
+                              />
+                            ) : (
+                              <div className="mt-0.5 h-4 w-4 shrink-0" />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="text-sm font-medium text-neutral-100">
+                                  {item.name}
+                                </div>
+                                <StatusBadge status={item.status} />
+                              </div>
+                              <div className="mt-1 text-xs text-neutral-500">
+                                {item.legacyPath} → {item.targetCanonicalPath}
+                              </div>
+                              {item.reason && (
+                                <div className="mt-2 text-xs text-amber-300">
+                                  {item.reason}
+                                </div>
+                              )}
                             </div>
-                            <StatusBadge status={item.status} />
-                          </div>
-                          <div className="mt-1 text-xs text-neutral-500">
-                            {item.legacyPath}
-                          </div>
-                          <div className="mt-1 text-xs text-neutral-500">
-                            to {item.targetCanonicalPath}
-                          </div>
-                          {item.reason && (
-                            <div className="mt-2 text-xs text-amber-300">
-                              {item.reason}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -253,10 +314,12 @@ export function LegacySkillMigrationDialog({
             <button
               type="button"
               onClick={handleExecute}
-              disabled={migratableIds.length === 0 || executeMutation.isPending}
+              disabled={selectedIds.size === 0 || executeMutation.isPending}
               className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {executeMutation.isPending ? 'Migrating...' : 'Confirm Migration'}
+              {executeMutation.isPending
+                ? 'Migrating...'
+                : `Migrate ${selectedIds.size} skill${selectedIds.size !== 1 ? 's' : ''}`}
             </button>
           )}
         </div>
