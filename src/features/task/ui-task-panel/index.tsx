@@ -598,6 +598,14 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           setIsDeleteDialogOpen(true);
         },
       },
+    {
+      label: 'Add Step',
+      shortcut: 'cmd+shift+n',
+      section: 'Task',
+      handler: () => {
+        setIsAddStepDialogOpen(true);
+      },
+    },
   ]);
 
   console.log({

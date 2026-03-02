@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 
+import { Kbd } from '@/common/ui/kbd';
 import { useProjects } from '@/hooks/use-projects';
 import { api } from '@/lib/api';
 import {
@@ -71,11 +72,12 @@ export function Header() {
         <button
           type="button"
           onClick={() => openOverlay('project-switcher')}
-          className="max-w-[320px] cursor-pointer truncate rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-left text-xs text-neutral-300 transition-colors hover:border-neutral-700 hover:bg-neutral-800"
+          className="flex max-w-[320px] cursor-pointer items-center gap-1.5 truncate rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-left text-xs text-neutral-300 transition-colors hover:border-neutral-700 hover:bg-neutral-800"
           style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
           title={selectedProjectLabel}
         >
-          {selectedProjectLabel}
+          <span className="truncate">{selectedProjectLabel}</span>
+          <Kbd shortcut="cmd+o" className="text-[9px]" />
         </button>
       </div>
 

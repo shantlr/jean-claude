@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { AlertTriangle, Check, Circle, Loader2, Plus, X } from 'lucide-react';
 import { Fragment, useCallback } from 'react';
 
+import { Kbd } from '@/common/ui/kbd';
 import { useSteps } from '@/hooks/use-steps';
 import { useTaskState } from '@/stores/navigation';
 import type { TaskStep, TaskStepStatus } from '@shared/types';
@@ -186,9 +187,10 @@ export function StepFlowBar({
             </div>
             <button
               onClick={onAddStep}
-              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-dashed border-neutral-700/60 text-neutral-600 transition-colors hover:border-neutral-500 hover:text-neutral-400"
+              className="flex h-5 shrink-0 items-center gap-1.5 rounded-md border border-dashed border-neutral-700/60 px-1.5 text-neutral-600 transition-colors hover:border-neutral-500 hover:text-neutral-400"
             >
               <Plus className="h-3 w-3" />
+              <Kbd shortcut="cmd+shift+n" className="text-[9px]" />
             </button>
           </>
         )}
