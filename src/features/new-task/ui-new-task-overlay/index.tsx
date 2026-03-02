@@ -754,7 +754,7 @@ export function NewTaskOverlay({
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
                   placeholder={getPlaceholder(inputMode)}
-                  className="placeholder:text-muted-foreground field-sizing-content max-h-[40svh] min-h-[60px] flex-1 resize-none bg-transparent text-sm outline-none"
+                  className="field-sizing-content max-h-[40svh] min-h-[60px] flex-1 resize-none bg-transparent text-sm text-neutral-200 placeholder-neutral-500 outline-none"
                 />
               ) : (
                 <PromptTextarea
@@ -773,7 +773,7 @@ export function NewTaskOverlay({
                   images={draft?.images}
                   onImageAttach={handleImageAttach}
                   onImageRemove={handleImageRemove}
-                  className="min-h-[60px] border-none bg-transparent px-0 py-0 text-sm text-neutral-200 focus:border-none focus:ring-0"
+                  className="min-h-[60px] border-transparent bg-transparent px-0 py-0 text-sm text-neutral-200 placeholder-neutral-500 focus:border-transparent focus:ring-0 focus:outline-none"
                 />
               )}
             </div>

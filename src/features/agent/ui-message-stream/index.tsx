@@ -27,6 +27,7 @@ export const MessageStream = memo(function MessageStream({
   queuedPrompts = [],
   onFilePathClick,
   onCancelQueuedPrompt,
+  bottomPadding = 0,
 }: {
   messages: NormalizedEntry[];
   isRunning?: boolean;
@@ -37,6 +38,8 @@ export const MessageStream = memo(function MessageStream({
     lineEnd?: number,
   ) => void;
   onCancelQueuedPrompt?: (promptId: string) => void;
+  /** Extra bottom padding (px) so content can scroll behind a floating footer */
+  bottomPadding?: number;
 }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -95,6 +98,7 @@ export const MessageStream = memo(function MessageStream({
       ref={scrollContainerRef}
       onScroll={handleScroll}
       className="h-full overflow-auto"
+      style={bottomPadding > 0 ? { paddingBottom: bottomPadding } : undefined}
     >
       <TimelinePromptNavigator
         scrollContainerRef={scrollContainerRef}

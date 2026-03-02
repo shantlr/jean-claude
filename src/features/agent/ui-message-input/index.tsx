@@ -29,6 +29,7 @@ export function MessageInput({
   supportsImages = true,
   projectId,
   getCompletionContextBeforePrompt,
+  onFocusChange,
 }: {
   onSend: (parts: PromptPart[]) => void;
   onQueue?: (parts: PromptPart[]) => void;
@@ -47,6 +48,8 @@ export function MessageInput({
   projectId?: string;
   /** Returns recent context to prepend before prompt completion when needed */
   getCompletionContextBeforePrompt?: () => string;
+  /** Callback when textarea focus state changes */
+  onFocusChange?: (focused: boolean) => void;
 }) {
   const { data: completionSetting } = useCompletionSetting();
   const [internalValue, setInternalValue] = useState('');
@@ -150,6 +153,8 @@ export function MessageInput({
             : placeholder
         }
         disabled={disabled && !isRunning}
+        onFocus={() => onFocusChange?.(true)}
+        onBlur={() => onFocusChange?.(false)}
       />
       {/* Send/Queue button */}
       <button
@@ -158,10 +163,10 @@ export function MessageInput({
           (!value.trim() && images.length === 0) || (disabled && !isRunning)
         }
         className={clsx(
-          'flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-white disabled:cursor-not-allowed disabled:opacity-50',
+          'flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-white transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50',
           isRunning
-            ? 'bg-amber-600 hover:bg-amber-500'
-            : 'bg-blue-600 hover:bg-blue-500',
+            ? 'bg-gradient-to-r from-amber-500 to-orange-500 shadow-md shadow-amber-500/25 hover:from-amber-400 hover:to-orange-400 hover:shadow-lg hover:shadow-amber-500/40'
+            : 'bg-gradient-to-r from-blue-500 to-purple-500 shadow-md shadow-blue-500/25 hover:scale-105 hover:from-blue-400 hover:to-purple-400 hover:shadow-lg hover:shadow-blue-500/40',
         )}
         aria-label={isRunning ? 'Queue this message' : 'Send message'}
         title={
@@ -194,7 +199,7 @@ export function MessageInput({
         <button
           onClick={onStop}
           disabled={isStopping}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-600 text-white hover:bg-red-500 disabled:opacity-50"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-md shadow-red-500/25 transition-all duration-200 hover:scale-105 hover:from-red-400 hover:to-rose-400 hover:shadow-lg hover:shadow-red-500/40 disabled:opacity-50"
           aria-label={isStopping ? 'Stopping agent' : 'Stop agent'}
           title={
             isStopping

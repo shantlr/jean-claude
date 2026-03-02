@@ -212,6 +212,28 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   // Ref for the task panel container (used by shrink-to-target animation)
   const taskPanelRef = useRef<HTMLDivElement>(null);
   const overflowMenuRef = useRef<{ toggle: () => void } | null>(null);
+
+  // Track floating footer height so scroll containers can add matching bottom padding
+  const [footerHeight, setFooterHeight] = useState(0);
+  const footerObserverRef = useRef<ResizeObserver | null>(null);
+  const footerRef = useCallback((node: HTMLDivElement | null) => {
+    footerObserverRef.current?.disconnect();
+    if (node) {
+      const observer = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        if (entry) {
+          setFooterHeight(
+            entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height,
+          );
+        }
+      });
+      observer.observe(node);
+      footerObserverRef.current = observer;
+    } else {
+      setFooterHeight(0);
+      footerObserverRef.current = null;
+    }
+  }, []);
   const { triggerAnimation } = useShrinkToTarget({
     panelRef: taskPanelRef,
     targetSelector: '[data-animation-target="jobs-button"]',
@@ -640,7 +662,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   return (
     <div ref={taskPanelRef} className="flex h-full w-full overflow-hidden">
       {/* Main content */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col">
         {/* Header */}
         <div
           className={clsx(
@@ -909,9 +931,15 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               queuedPrompts={agentState.queuedPrompts}
               onFilePathClick={handleFilePathClick}
               onCancelQueuedPrompt={cancelQueuedPrompt}
+              bottomPadding={footerHeight}
             />
           ) : (
-            <div className="h-full overflow-y-auto p-6">
+            <div
+              className="h-full overflow-y-auto p-6"
+              style={
+                footerHeight > 0 ? { paddingBottom: footerHeight } : undefined
+              }
+            >
               <div className="mb-2 text-sm font-medium text-neutral-400">
                 {activeStep?.name ?? 'Prompt'}
               </div>
@@ -996,25 +1024,32 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           />
         )}
 
-        {/* Message input */}
+        {/* Message input — floats above content so messages scroll underneath */}
         {(canSendMessage || isWaiting || hasMessages) &&
           !agentState.pendingPermission &&
           !agentState.pendingQuestion && (
-            <TaskInputFooter
-              taskId={taskId}
-              activeStepId={activeStepId}
-              isRunning={isRunning}
-              isStopping={isStopping}
-              canSendMessage={!!canSendMessage}
-              onSend={sendMessage}
-              onQueue={queuePrompt}
-              onStop={handleStop}
-              contextUsage={contextUsage}
-              projectRoot={taskRootPath}
-              getCompletionContextBeforePrompt={
-                getCompletionContextBeforePrompt
-              }
-            />
+            <div
+              ref={footerRef}
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
+            >
+              <div className="pointer-events-auto">
+                <TaskInputFooter
+                  taskId={taskId}
+                  activeStepId={activeStepId}
+                  isRunning={isRunning}
+                  isStopping={isStopping}
+                  canSendMessage={!!canSendMessage}
+                  onSend={sendMessage}
+                  onQueue={queuePrompt}
+                  onStop={handleStop}
+                  contextUsage={contextUsage}
+                  projectRoot={taskRootPath}
+                  getCompletionContextBeforePrompt={
+                    getCompletionContextBeforePrompt
+                  }
+                />
+              </div>
+            </div>
           )}
       </div>
 
@@ -1188,8 +1223,15 @@ const TaskInputFooter = memo(function TaskInputFooter({
     [clearPromptDraft, onQueue],
   );
 
+  const [inputFocused, setInputFocused] = useState(false);
+
   return (
-    <div className="flex items-center gap-2 border-t border-neutral-700 bg-neutral-800 px-4 py-3">
+    <div
+      className={clsx(
+        'mx-3 mb-3 flex items-center gap-2 rounded-xl px-4 py-3 transition-shadow duration-300',
+        inputFocused ? 'prompt-input-border-focused' : 'prompt-input-border',
+      )}
+    >
       <ContextUsageDisplay contextUsage={contextUsage} />
       <ModeSelector
         value={effectiveMode}
@@ -1218,6 +1260,7 @@ const TaskInputFooter = memo(function TaskInputFooter({
         supportsImages={backendSupportsImages(activeStep?.agentBackend)}
         projectId={task?.projectId}
         getCompletionContextBeforePrompt={getCompletionContextBeforePrompt}
+        onFocusChange={setInputFocused}
       />
     </div>
   );

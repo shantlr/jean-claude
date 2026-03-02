@@ -778,9 +778,12 @@ export const PromptTextarea = forwardRef<
           rows={1}
           autoComplete="off"
           className={clsx(
-            'min-h-[40px] w-full resize-none rounded-lg border border-neutral-600 bg-neutral-900 px-3 py-2 text-sm leading-[20px] text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+            // Structural classes (always applied)
+            'min-h-[40px] w-full resize-none text-sm leading-[20px] text-neutral-200 placeholder-neutral-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+            // Chrome classes (border, bg, padding, rounding) — replaced when className is provided
+            className ??
+              'rounded-lg border border-neutral-700/50 bg-neutral-900/50 px-3 py-2 focus:border-neutral-600 focus:ring-1 focus:ring-white/10',
             isDragOver && 'border-blue-500 bg-blue-500/10',
-            className,
           )}
           {...textareaProps}
         />
@@ -788,7 +791,10 @@ export const PromptTextarea = forwardRef<
         {completion && (
           <div
             ref={ghostRef}
-            className="pointer-events-none absolute inset-0 overflow-hidden border border-transparent px-3 py-2 text-sm leading-[20px] break-words whitespace-pre-wrap"
+            className={clsx(
+              'pointer-events-none absolute inset-0 overflow-hidden text-sm leading-[20px] break-words whitespace-pre-wrap',
+              className ? className : 'border border-transparent px-3 py-2',
+            )}
             style={{ maxHeight: `${maxHeight}px` }}
           >
             <span className="invisible">{value}</span>

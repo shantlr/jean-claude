@@ -384,3 +384,49 @@ button {
   background-size: 200% 100%;
   animation: step-connector-flow 2s linear infinite;
 }
+
+/* ── Prompt input: floating card with animated gradient border ── */
+@utility prompt-input-border {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(var(--color-neutral-800), var(--color-neutral-800))
+      padding-box,
+    conic-gradient(
+        from var(--gradient-angle),
+        var(--color-blue-500),
+        var(--color-violet-500),
+        var(--color-purple-500),
+        var(--color-violet-500),
+        var(--color-blue-500)
+      )
+      border-box;
+  border: 1px solid transparent;
+  animation: gradient-rotate 4s linear infinite;
+  box-shadow:
+    0 0 12px 0 color-mix(in srgb, var(--color-blue-500) 20%, transparent),
+    0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
+@utility prompt-input-border-focused {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(var(--color-neutral-800), var(--color-neutral-800))
+      padding-box,
+    conic-gradient(
+        from var(--gradient-angle),
+        var(--color-blue-500),
+        var(--color-violet-500),
+        var(--color-purple-500),
+        var(--color-violet-500),
+        var(--color-blue-500)
+      )
+      border-box;
+  border: 1px solid transparent;
+  animation: gradient-rotate 4s linear infinite;
+  box-shadow:
+    0 0 14px 0 color-mix(in srgb, var(--color-blue-500) 25%, transparent),
+    0 0 6px 0 color-mix(in srgb, var(--color-purple-500) 15%, transparent),
+    0 4px 6px -1px rgba(0, 0, 0, 0.25);
+}

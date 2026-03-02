@@ -187,7 +187,7 @@ function NewTask() {
               enableCompletion={completionSetting?.enabled ?? false}
               projectId={projectId}
               maxHeight={400}
-              className="min-h-[200px] border-neutral-700 bg-neutral-800 text-white focus:border-neutral-500"
+              className="min-h-[200px] rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white focus:border-neutral-500 focus:ring-1 focus:ring-white/10"
             />
           </div>
 
