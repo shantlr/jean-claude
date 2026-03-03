@@ -44,10 +44,12 @@ export function PrComments({
   threads,
   onAddComment,
   isAddingComment,
+  bottomPadding = 0,
 }: {
   threads: AzureDevOpsCommentThread[];
   onAddComment: (content: string) => void;
   isAddingComment?: boolean;
+  bottomPadding?: number;
 }) {
   // Filter out deleted threads and system-generated threads
   const visibleThreads = threads.filter(
@@ -60,7 +62,10 @@ export function PrComments({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto p-4">
+      <div
+        className="flex-1 overflow-y-auto p-4"
+        style={bottomPadding > 0 ? { paddingBottom: bottomPadding } : undefined}
+      >
         {visibleThreads.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-neutral-500">
             No comments yet

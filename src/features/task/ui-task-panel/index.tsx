@@ -903,6 +903,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               taskId={taskId}
               projectId={project.id}
               onClose={closePrView}
+              bottomPadding={footerHeight}
             />
           ) : isDiffViewOpen && task.worktreePath ? (
             <WorktreeDiffView
@@ -919,6 +920,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               hasRepoLink={hasRepoLink}
               onMergeStarted={handleMergeStarted}
               onOpenPrView={openPrView}
+              bottomPadding={footerHeight}
             />
           ) : agentState.isLoading ? (
             <div className="flex h-full items-center justify-center">

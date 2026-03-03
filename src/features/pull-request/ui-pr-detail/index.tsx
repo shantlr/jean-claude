@@ -37,9 +37,11 @@ type Tab = 'overview' | 'files' | 'commits' | 'comments';
 export function PrDetail({
   projectId,
   prId,
+  bottomPadding = 0,
 }: {
   projectId: string;
   prId: number;
+  bottomPadding?: number;
 }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -161,6 +163,7 @@ export function PrDetail({
           <PrOverview
             pr={pr}
             providerId={project?.repoProviderId ?? undefined}
+            bottomPadding={bottomPadding}
           />
         )}
 
@@ -168,6 +171,9 @@ export function PrDetail({
           <div
             ref={containerRef}
             className={clsx('flex h-full', isDragging && 'select-none')}
+            style={
+              bottomPadding > 0 ? { paddingBottom: bottomPadding } : undefined
+            }
           >
             {/* File tree */}
             <div
@@ -222,7 +228,7 @@ export function PrDetail({
               <Loader2 className="h-5 w-5 animate-spin text-neutral-500" />
             </div>
           ) : (
-            <PrCommits commits={commits} />
+            <PrCommits commits={commits} bottomPadding={bottomPadding} />
           ))}
 
         {activeTab === 'comments' && (
@@ -230,6 +236,7 @@ export function PrDetail({
             threads={threads}
             onAddComment={handleAddComment}
             isAddingComment={addComment.isPending}
+            bottomPadding={bottomPadding}
           />
         )}
       </div>

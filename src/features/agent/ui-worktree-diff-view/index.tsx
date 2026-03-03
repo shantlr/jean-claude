@@ -37,6 +37,7 @@ export function WorktreeDiffView({
   hasRepoLink,
   onMergeStarted,
   onOpenPrView,
+  bottomPadding = 0,
 }: {
   taskId: string;
   projectId: string;
@@ -49,6 +50,7 @@ export function WorktreeDiffView({
   hasRepoLink: boolean;
   onMergeStarted: () => void;
   onOpenPrView: () => void;
+  bottomPadding?: number;
 }) {
   const { data, isLoading, error, refresh } = useWorktreeDiff(taskId, true);
   const { data: summary, isLoading: isSummaryLoading } = useTaskSummary(taskId);
@@ -273,7 +275,12 @@ export function WorktreeDiffView({
         />
 
         {/* File diff content */}
-        <div className="flex-1 overflow-auto">
+        <div
+          className="flex-1 overflow-auto"
+          style={
+            bottomPadding > 0 ? { paddingBottom: bottomPadding } : undefined
+          }
+        >
           {selectedFile ? (
             <WorktreeFileDiffContent
               file={selectedFile}

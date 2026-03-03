@@ -21,10 +21,12 @@ export function TaskPrView({
   taskId,
   projectId,
   onClose,
+  bottomPadding = 0,
 }: {
   taskId: string;
   projectId: string;
   onClose: () => void;
+  bottomPadding?: number;
 }) {
   const { data: task } = useTask(taskId);
   const { data: project } = useProject(projectId);
@@ -46,7 +48,11 @@ export function TaskPrView({
           </span>
         </div>
         <div className="min-h-0 flex-1">
-          <PrDetail projectId={projectId} prId={Number(task.pullRequestId)} />
+          <PrDetail
+            projectId={projectId}
+            prId={Number(task.pullRequestId)}
+            bottomPadding={bottomPadding}
+          />
         </div>
       </div>
     );
@@ -60,6 +66,7 @@ export function TaskPrView({
       task={task}
       project={project}
       onClose={onClose}
+      bottomPadding={bottomPadding}
     />
   );
 }
@@ -70,6 +77,7 @@ function PrLinkingView({
   task,
   project,
   onClose,
+  bottomPadding = 0,
 }: {
   taskId: string;
   projectId: string;
@@ -91,6 +99,7 @@ function PrLinkingView({
       }
     | undefined;
   onClose: () => void;
+  bottomPadding?: number;
 }) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { data: allPrs, isLoading: isPrsLoading } = usePullRequests(
@@ -168,7 +177,10 @@ function PrLinkingView({
         </span>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+      <div
+        className="min-h-0 flex-1 overflow-y-auto p-4"
+        style={bottomPadding > 0 ? { paddingBottom: bottomPadding } : undefined}
+      >
         {isPrsLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
