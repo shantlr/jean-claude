@@ -169,7 +169,8 @@ Key points:
 ### Key Entities
 
 - **Projects**: Local directories or git-provider repos (has color for tile display, defaultBranch for worktree merges, defaultAgentBackend for backend selection, optional repo/work item linking)
-- **Tasks**: Work units with agent sessions (status: running/waiting/completed/errored/interrupted, interactionMode: ask/auto/plan, agentBackend: claude-code/opencode, modelPreference for per-task model selection, branchName for worktree tasks, sourceBranch for tracking origin, pendingMessage for ad-hoc notes, optional pullRequestId/pullRequestUrl)
+- **Tasks**: Work units containing one or more steps (status: running/waiting/completed/errored/interrupted, agentBackend: claude-code/opencode, branchName for worktree tasks, sourceBranch for tracking origin, pendingMessage for ad-hoc notes, optional pullRequestId/pullRequestUrl)
+- **Task Steps**: Individual agent sessions within a task (status: pending/ready/running/completed/errored/interrupted, type: agent/create-pull-request/fork, each with its own interactionMode, modelPreference, agentBackend, sessionId, promptTemplate, images, and meta)
 - **Providers**: Git provider credentials (Azure DevOps, GitHub, GitLab)
 - **Settings**: App configuration (key-value pairs, e.g., editor preference, backends configuration, completion settings)
 - **Agent Messages**: Normalized message entries from agent sessions (one row per semantic entry with type, toolId, parentToolId, data, model)
@@ -179,6 +180,7 @@ Key points:
 - **MCP Templates**: Model Context Protocol server configurations with variable substitution
 - **Project MCP Overrides**: Per-project enable/disable of MCP templates
 - **Task Summaries**: AI-generated summaries with "What I Did", "Key Decisions", and file annotations
+- **Completion Usage**: Daily autocomplete token/cost tracking (per-day aggregates of prompt tokens, completion tokens, requests)
 
 ### Agent Backend Abstraction
 
@@ -228,6 +230,34 @@ Agent events flow via IPC channels: `agent:message`, `agent:status`, `agent:perm
 - Session only (default)
 - Project-wide (persisted in `.claude/settings.local.json`)
 - Worktree-specific (persisted in `.claude/settings.local.worktrees.json`)
+
+### Task Steps (Multi-Step Workflow)
+
+Tasks support multiple sequential steps, each representing an independent agent session. This moves from a flat conversation model to a structured workflow where users can orchestrate multi-step tasks with different configurations per step.
+
+- **Database**: `task_steps` table with FK to `tasks`, stored in `electron/database/repositories/task-steps.ts`
+- **Types**: `TaskStep`, `NewTaskStep`, `UpdateTaskStep` in `shared/types.ts`
+- **Step Types**: `TaskStepType` = `'agent' | 'create-pull-request' | 'fork'`
+- **Step Statuses**: `TaskStepStatus` = `'pending' | 'ready' | 'running' | 'completed' | 'errored' | 'interrupted'`
+- **Per-step config**: Each step has its own `interactionMode`, `modelPreference`, `agentBackend`, `sessionId`, `promptTemplate`, `resolvedPrompt`, and `images`
+- **Step Meta**: Typed metadata depending on step type — `CreatePullRequestStepMeta` (PR params/result), `ForkStepMeta` (tracks origin step/session)
+- **Ordering**: `sortOrder` field for sequential display; `dependsOn` field (JSON array of step IDs) for dependency tracking
+- **Auto-creation**: Task creation automatically creates an initial step with the task's prompt and configuration
+- **Message isolation**: The task-messages store is keyed by `stepId` (not `taskId`), so each step has independent message history, status, permissions, and queued prompts
+- **LRU cache**: Up to 25 inactive steps cached in memory; oldest accessed steps evicted when limit exceeded
+
+**Step Flow Bar** (`src/features/task/ui-step-flow-bar/`):
+
+- Horizontal bar of interactive step chips with animated status indicators (spinner for running, checkmark for completed, etc.)
+- Connectors between steps with animated transitions for running/completed states
+- Clicking a step sets `activeStepId` in the navigation store
+- "Add Step" button at the end with `Cmd+Shift+N` shortcut
+
+**Add Step Dialog** (`src/features/task/ui-task-panel/add-step-dialog.tsx`):
+
+- Modal for creating new steps with prompt textarea, mode selector (`Cmd+I`), backend selector (`Cmd+J`), model selector (`Cmd+L`)
+- Supports image attachment
+- Returns `{ promptTemplate, interactionMode, agentBackend, modelPreference, images }`
 
 ### Background Jobs
 
@@ -294,6 +324,8 @@ Inline code completion powered by Mistral Codestral FIM (`electron/services/comp
 - **Settings UI**: `ui-autocomplete-settings/` with getting-started guide and connection test
 - **Integration**: `useInlineCompletion` hook in message input, Tab to accept
 - **API**: `complete({ prompt, suffix })` returns suggested completion or null
+- **Usage Tracking**: Daily token/cost tracking with `completion_usage` table (date PK, promptTokens, completionTokens, requests). Each completion request auto-records usage via upsert. Cost calculated using Codestral pricing ($0.30/M input, $0.90/M output)
+- **Cost Display**: `CompletionCostDisplay` in app header shows `FIM $X.XX` with tooltip breakdown (requests, input/output tokens + cost). Hidden until first request of the day. Polls every 60 seconds via `useCompletionDailyUsage()` hook
 
 ### Pending Messages
 
@@ -304,16 +336,44 @@ Ad-hoc notes attached to tasks (`tasks.pendingMessage` field):
 - **Display**: Shown in task summary card when present
 - **Purpose**: Store next steps or notes without creating agent messages
 
+### Prompt Textarea
+
+The shared prompt textarea component (`src/features/common/ui-prompt-textarea/`) is used across the app (message input, add step dialog, new task form) and provides rich authoring features:
+
+- **Slash commands**: Type `/` to see built-in commands (`/init`, `/compact`) and available skills in a dropdown
+- **@mention file paths**: Type `@` followed by a path to get file path suggestions (limit 8 results)
+- **Inline FIM completion**: Ghost text completion from Mistral FIM (accept with Tab, dismiss with Escape)
+- **Image attachment**: Paste, drag-and-drop, or file picker for images (max 5 images, 10MB each, PNG/JPEG/GIF/WebP/AVIF). Auto-compressed. Thumbnail preview grid with remove on hover
+- **Dropdown navigation**: Arrow keys for selection, Enter to confirm, Escape to dismiss. Smart top/bottom positioning based on viewport space
+- **Message queuing**: When agent is running, send button becomes "Queue" (amber). Double-Escape with empty input interrupts running agent
+
 ### Skills System
 
 The skills service (`electron/services/skill-management-service.ts`) discovers and manages skills for all agent backends:
 
-- **Skill Sources** (priority order): project (`.claude/skills/`) > user (`~/.claude/skills/` or `~/.config/opencode/skills/`) > plugins (`~/.claude/plugins/cache/`)
+- **Canonical Storage**: All JC-managed user skills live in `~/.config/jean-claude/skills/<backendType>/user/<skillName>/`
+- **Symlink System**: Backend-expected paths use symlinks pointing to the canonical location (e.g., `~/.claude/skills/<skillName>` → canonical). Enable = create symlink; disable = remove symlink (skill never deleted)
+- **Skill Sources** (priority order): JC-managed user > legacy user > project (`.claude/skills/`) > plugins (`~/.claude/plugins/cache/`)
 - **Backend-aware**: Each backend has its own skill path configuration (Claude Code uses `~/.claude/skills/`, OpenCode uses `~/.config/opencode/skills/`)
 - **Discovery**: Each skill has a `SKILL.md` file with YAML frontmatter (`name`, `description`)
 - **Deduplication**: Skills are merged by name, higher priority sources override lower
-- **Enable/Disable**: JC-managed skills use symlinks; disabling removes symlink without deleting the skill
+- **Types**: `ManagedSkill` (full metadata with source, enabled, editable, backendType), `SkillScope` (`'user' | 'project'`)
+- **Editability**: JC-managed user/project skills are editable; legacy and plugin skills are read-only
 - **UI Display**: Skills appear in message timeline as expandable entries showing the skill documentation
+
+**Skills Settings UI** (`src/features/settings/ui-skills-settings/`):
+
+- **Card Grid**: Responsive grid (`skill-card-grid.tsx`) with cards showing name, description, backend badge (orange for Claude Code, blue for OpenCode), source badge, and enabled status
+- **Details/Form**: Right pane shows read-only details for non-editable skills or an edit form for editable skills (name, description, markdown content)
+- **Project-level**: `src/features/project/ui-project-skills-settings/` filters by project's default backend, separates project vs inherited skills
+- **Hooks**: `useManagedSkills()`, `useAllManagedSkills()`, `useSkillContent()`, `useCreateSkill()`, `useUpdateSkill()`, `useDeleteSkill()`, `useEnableSkill()`, `useDisableSkill()`
+
+**Legacy Skill Migration** (`legacy-skill-migration-dialog.tsx`):
+
+- **Purpose**: Migrate manually installed skills from backend-specific paths into JC canonical storage
+- **Preview**: `skills:migrationPreview` IPC discovers candidates across all backends, classifying each as `'migrate'`, `'skip-conflict'`, or `'skip-invalid'`
+- **Execute**: `skills:migrationExecute` copies skill to canonical, replaces legacy with symlink, with per-item rollback on failure
+- **UI**: Modal dialog showing grouped items by backend with status badges and result summary
 
 ### Context Usage Tracking
 
@@ -466,6 +526,9 @@ electron/              # Main process
   preload.ts           # IPC bridge exposed to renderer
   ipc/handlers.ts      # IPC route handlers
   database/            # SQLite layer (schema, migrations, repositories)
+    repositories/
+      completion-usage.ts  # Daily autocomplete token/cost tracking
+      task-steps.ts        # Task step CRUD and queries
   services/            # Business logic
     agent-service.ts   # Agent session lifecycle management
     agent-usage-service.ts  # Claude Code OAuth usage stats
@@ -494,7 +557,7 @@ electron/              # Main process
         normalize-opencode-message-v2.ts  # OpenCode message → normalized entries
 
 shared/                # Types shared between main and renderer
-  types.ts             # Domain types (Project, Task, Provider, InteractionMode)
+  types.ts             # Domain types (Project, Task, TaskStep, Provider, InteractionMode)
   agent-types.ts       # Agent-specific types (AgentMessage, ContentBlock, TodoItem, etc.)
   agent-backend-types.ts  # Backend abstraction (AgentBackend, AgentBackendType, AgentEvent)
   agent-ui-events.ts   # Agent UI event types
@@ -503,22 +566,22 @@ shared/                # Types shared between main and renderer
   mcp-types.ts         # MCP template, preset, and variable types
   normalized-message-v2.ts # Normalized message schema (entry types, tool-use types)
   run-command-types.ts # Run command configuration types
-  skill-types.ts       # Skill discovery and metadata types
+  skill-types.ts       # Skill discovery, metadata, managed skill, and migration types
   usage-types.ts       # Claude usage API types
 
 src/                   # Renderer (React)
   routes/              # TanStack Router file-based routes
-  layout/              # App shell components (header, sidebars)
+  layout/              # App shell components (header with completion cost display, sidebars)
   features/            # Feature-based components
-    agent/             # Message stream, timeline, tool cards, mode/model/backend selectors, diff view, worktree actions, file explorer, todo list, summary panel
+    agent/             # Message stream, timeline, tool cards, mode/model/backend selectors, message input, run button, question options, diff view, worktree actions, file explorer, todo list, summary panel
     background-jobs/   # Background jobs overlay
     command-palette/   # Command palette overlay (ui-command-palette-overlay)
     common/            # Shared feature components (ui-file-diff, ui-azure-html-content, ui-prompt-textarea)
     new-task/          # New task overlay, work item list and details, prompt composer
-    project/           # Project tile, repo/work items linking, clone pane, run commands config, MCP settings, backlog overlay
+    project/           # Project tile, repo/work items linking, clone pane, run commands config, MCP settings, skills settings, backlog overlay
     pull-request/      # PR viewing (detail, header, overview, diff, commits, comments, list)
-    task/              # Task list item, task panel (with file explorer, debug messages), task summary card, task PR view
-    settings/          # General settings, debug viewer, Azure DevOps management, MCP servers, tokens, autocomplete settings
+    task/              # Task list item, task panel (with file explorer, debug messages, step flow bar, add step dialog), task summary card, task PR view
+    settings/          # General settings, debug viewer, Azure DevOps management, MCP servers, tokens, autocomplete settings, skills settings (card grid, migration dialog)
   common/              # Shared infrastructure
     context/           # React contexts
       keyboard-bindings/   # Global keyboard binding system (RootKeyboardBindings, useRegisterKeyboardBindings)
@@ -531,12 +594,12 @@ src/                   # Renderer (React)
     ui/                # Atomic reusable UI components (kbd, select, dropdown, modal, toast, user-avatar, etc.)
   hooks/               # React Query and custom hooks
   stores/              # Zustand stores for UI state
-    navigation.ts      # Last visited location, per-task pane state, diff view state, file explorer widths
+    navigation.ts      # Last visited location, per-task pane state, activeStepId, diff view state, file explorer widths
     new-task-draft.ts  # Per-project task drafts with search/prompt modes
     new-task-form.ts   # New task form state
     overlays.ts        # Global overlay state (new-task, command-palette)
     background-jobs.ts # Background job queue (task creation, merge, deletion, summary generation)
-    task-messages.ts   # Queued prompts by task
+    task-messages.ts   # Per-step message state (messages, status, permissions, queued prompts) with LRU cache
     task-prompts.ts    # Task prompt management
     toasts.ts          # Toast notification state
     ui.ts              # UI-wide state (sidebar collapsed)
@@ -563,7 +626,7 @@ docs/plans/            # Design and implementation documents
 | `/projects/new`                      | Wizard to add project: local folder, clone repo, or link Azure DevOps repo                             |
 | `/projects/:projectId`               | Project layout with sidebar listing tasks and PRs                                                      |
 | `/projects/:projectId/tasks/new`     | Form to create a task with prompt, mode, backend, model, worktree options, work item linking           |
-| `/projects/:projectId/tasks/:taskId` | Main agent UI: message stream, file preview, diff view, file explorer, debug panel, permissions, input |
+| `/projects/:projectId/tasks/:taskId` | Main agent UI: step flow bar, message stream, file preview, diff view, file explorer, debug panel, permissions, input |
 | `/projects/:projectId/prs`           | Project pull requests list                                                                             |
 | `/projects/:projectId/prs/:prId`     | Pull request viewer with overview, files, commits, comments tabs                                       |
 
