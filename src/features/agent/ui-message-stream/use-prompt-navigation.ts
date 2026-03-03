@@ -63,18 +63,23 @@ export function usePromptNavigation({
   );
 
   // Determine which prompt is "current" based on scroll position.
-  // The last prompt whose top edge is at or above the viewport upper-third wins.
+  // We pick the last prompt whose top edge has scrolled at or above a small
+  // threshold past the viewport top. A small fixed buffer (50px) avoids
+  // sub-pixel jitter after scrollIntoView without being so large that a
+  // nearby prompt gets promoted to "current" prematurely (the old
+  // clientHeight/3 threshold was ~200-350px, causing the index to jump ahead
+  // when two prompts were close together).
   const updateCurrentIndex = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container || totalPrompts === 0) return;
 
-    const midpoint = container.scrollTop + container.clientHeight / 3;
+    const threshold = container.scrollTop + 50;
     let best = 0;
 
     for (let i = 0; i < totalPrompts; i++) {
       const el = findPromptElement(i);
       if (!el) continue;
-      if ((el as HTMLElement).offsetTop <= midpoint) {
+      if ((el as HTMLElement).offsetTop <= threshold) {
         best = i;
       } else {
         break;
