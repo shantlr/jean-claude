@@ -105,7 +105,7 @@ export const MessageStream = memo(function MessageStream({
         displayMessages={displayMessages}
       />
       {/* Timeline vertical line */}
-      <div className="relative ml-3 border-l border-neutral-700">
+      <div className="timeline-gradient-line relative ml-3">
         {displayMessages.map((displayMessage, index) => {
           if (displayMessage.kind === 'skill') {
             const promptIdx = promptIndexMap.get(index);
@@ -163,7 +163,7 @@ export const MessageStream = memo(function MessageStream({
         })}
         {isRunning && (
           <div className="relative py-1.5 pl-6">
-            <div className="absolute top-2.5 -left-1 h-2 w-2 animate-pulse rounded-full bg-purple-500" />
+            <div className="absolute top-2.5 -left-1 h-2 w-2 animate-pulse rounded-full bg-purple-500 shadow-[0_0_6px_theme(colors.purple.500/40)]" />
             <span className="text-xs text-neutral-500">Working...</span>
           </div>
         )}

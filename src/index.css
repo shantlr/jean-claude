@@ -430,3 +430,24 @@ button {
     0 0 6px 0 color-mix(in srgb, var(--color-purple-500) 15%, transparent),
     0 4px 6px -1px rgba(0, 0, 0, 0.25);
 }
+
+/* ── Timeline: gradient vertical line that fades at top and bottom ── */
+.timeline-gradient-line {
+  border-left: none;
+}
+
+.timeline-gradient-line::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0px,
+    var(--color-neutral-700) 24px,
+    var(--color-neutral-700) calc(100% - 24px),
+    transparent 100%
+  );
+}

@@ -216,7 +216,17 @@ function DotEntry({
     <div className={`relative pl-6 ${bgClass}`}>
       {/* Dot - centered on the border-left line (-4px to center 8px dot) */}
       <div
-        className={`absolute top-2.5 -left-1 h-2 w-2 rounded-full ${dotColor} ${isPending ? 'animate-pulse' : ''}`}
+        className={clsx(
+          'absolute top-2.5 -left-1 h-2 w-2 rounded-full',
+          dotColor,
+          isPending && 'animate-pulse',
+          isPending &&
+            type === 'tool' &&
+            'shadow-[0_0_6px_theme(colors.blue.500/40)]',
+          isPending &&
+            type === 'system' &&
+            'shadow-[0_0_6px_theme(colors.amber.500/40)]',
+        )}
       />
 
       {/* Content */}
@@ -238,7 +248,16 @@ function DotEntry({
               aria-hidden
             />
           )}
-          <span className="text-xs text-neutral-300">
+          <span
+            className={clsx(
+              'text-xs',
+              type === 'tool'
+                ? 'text-neutral-400'
+                : type === 'result'
+                  ? 'text-neutral-500'
+                  : 'text-neutral-300',
+            )}
+          >
             <SummaryText text={summary} codeStyle={codeStyle} />
           </span>
         </div>
@@ -582,10 +601,8 @@ function UserEntry({
   );
 
   return (
-    <div className="group/user relative bg-purple-500/5 pl-6">
-      {/* Dot - purple for user */}
-      <div className="absolute top-2.5 -left-1 h-2 w-2 rounded-full bg-purple-500" />
-      <div className="py-1.5 pr-3 text-xs text-neutral-300">
+    <div className="group/user relative border-l-2 border-purple-500 bg-purple-500/8 pl-6">
+      <div className="py-2.5 pr-3 text-[13px] leading-relaxed text-neutral-200">
         <MarkdownContent
           content={displayText}
           onFilePathClick={onFilePathClick}
@@ -672,7 +689,11 @@ export function CompactingEntry({ isComplete }: { isComplete: boolean }) {
     <div className="relative pl-6">
       {/* Dot - orange/amber for compacting */}
       <div
-        className={`absolute top-2.5 -left-1 h-2 w-2 rounded-full bg-amber-500 ${!isComplete ? 'animate-pulse' : ''}`}
+        className={clsx(
+          'absolute top-2.5 -left-1 h-2 w-2 rounded-full bg-amber-500',
+          !isComplete &&
+            'animate-pulse shadow-[0_0_6px_theme(colors.amber.500/40)]',
+        )}
       />
       <div className="py-1.5 pr-3">
         <div className="flex items-center gap-2">

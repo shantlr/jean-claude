@@ -81,7 +81,9 @@ export function SubagentEntry({
   const isPending = !isComplete;
 
   // Determine dot color - cyan for sub-agents (distinct from blue tools, purple user/skills)
-  const dotColor = isPending ? 'bg-cyan-500 animate-pulse' : 'bg-cyan-500';
+  const dotColor = isPending
+    ? 'bg-cyan-500 animate-pulse shadow-[0_0_6px_theme(colors.cyan.500/40)]'
+    : 'bg-cyan-500';
   const bgClass = 'bg-cyan-500/5';
 
   return (
