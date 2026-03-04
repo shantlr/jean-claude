@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   useAllManagedSkills,
@@ -25,6 +25,12 @@ export function SkillsSettings() {
   const [showMigrationDialog, setShowMigrationDialog] = useState(false);
 
   const selectedSkill = skills?.find((s) => s.skillPath === selectedPath);
+
+  const { mySkills, installedSkills } = useMemo(() => {
+    const my = (skills ?? []).filter((s) => s.editable);
+    const installed = (skills ?? []).filter((s) => !s.editable);
+    return { mySkills: my, installedSkills: installed };
+  }, [skills]);
 
   const handleCreate = () => {
     setSelectedPath(null);
@@ -98,12 +104,38 @@ export function SkillsSettings() {
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto pb-2">
-          <SkillCardGrid
-            skills={skills ?? []}
-            selectedPath={selectedPath}
-            onSelect={handleSelect}
-          />
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-2">
+          {mySkills.length > 0 && (
+            <div>
+              <h3 className="mb-2 text-xs font-medium tracking-wide text-green-400 uppercase">
+                My Skills
+              </h3>
+              <SkillCardGrid
+                skills={mySkills}
+                selectedPath={selectedPath}
+                onSelect={handleSelect}
+              />
+            </div>
+          )}
+
+          {installedSkills.length > 0 && (
+            <div>
+              <h3 className="mb-2 text-xs font-medium tracking-wide text-neutral-500 uppercase">
+                Installed Skills
+              </h3>
+              <SkillCardGrid
+                skills={installedSkills}
+                selectedPath={selectedPath}
+                onSelect={handleSelect}
+              />
+            </div>
+          )}
+
+          {mySkills.length === 0 && installedSkills.length === 0 && (
+            <p className="py-8 text-center text-sm text-neutral-500">
+              No skills found. Click &quot;Add&quot; to create one.
+            </p>
+          )}
         </div>
       </div>
 
