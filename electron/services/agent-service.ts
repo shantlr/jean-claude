@@ -437,7 +437,7 @@ class AgentService {
         if (this.mainWindow && !this.mainWindow.isFocused()) {
           const task = await TaskRepository.findById(taskId);
           notificationService.notify({
-            id: `${stepId}:permission`,
+            id: `${taskId}:permission`,
             title: 'Permission Required',
             body: `Task "${task?.name || 'Unknown'}" needs approval for ${request.toolName}`,
             onClick: () => {
@@ -483,7 +483,7 @@ class AgentService {
         if (this.mainWindow && !this.mainWindow.isFocused()) {
           const task = await TaskRepository.findById(taskId);
           notificationService.notify({
-            id: `${stepId}:question`,
+            id: `${taskId}:question`,
             title: 'Question from Agent',
             body: `Task "${task?.name || 'Unknown'}" has a question`,
             onClick: () => {
@@ -562,7 +562,7 @@ class AgentService {
         if (this.mainWindow && !this.mainWindow.isFocused()) {
           const updatedTask = await TaskRepository.findById(taskId);
           notificationService.notify({
-            id: `${stepId}:complete`,
+            id: `${taskId}:complete`,
             title: status === 'completed' ? 'Task Completed' : 'Task Failed',
             body: `Task "${updatedTask?.name || 'Unknown'}" ${status === 'completed' ? 'finished successfully' : 'encountered an error'}`,
             onClick: () => {
