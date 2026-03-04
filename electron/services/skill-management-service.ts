@@ -336,16 +336,11 @@ async function discoverLegacyUserSkills(
         const nestedInfo = await readSkillDir(nestedSkillDir);
         if (!nestedInfo) continue;
 
-        const parentFolderName = path.basename(path.dirname(nestedSkillDir));
-        const nestedSkillName = parentFolderName
-          ? `${parentFolderName}/${nestedInfo.name}`
-          : nestedInfo.name;
-
         seenSkillPaths.add(nestedSkillDir);
 
         skills.push({
           ...nestedInfo,
-          name: nestedSkillName,
+          name: `${entry.name}/${nestedInfo.name}`,
           source: 'user',
           skillPath: nestedSkillDir,
           enabled: true,
@@ -552,10 +547,7 @@ async function discoverLegacyMigrationCandidates({
           continue;
         }
 
-        const parentFolderName = path.basename(path.dirname(nestedSkillDir));
-        const nestedSkillName = parentFolderName
-          ? `${parentFolderName}/${nestedInfo.name}`
-          : nestedInfo.name;
+        const nestedSkillName = `${entry.name}/${nestedInfo.name}`;
         const normalizedName = normalizeSkillDirName(nestedSkillName);
         const conflictPath = path.join(JC_USER_SKILLS_DIR, normalizedName);
         const hasConflict = await pathExists(conflictPath);
