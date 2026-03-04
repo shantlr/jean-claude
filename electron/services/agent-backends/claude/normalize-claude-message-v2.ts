@@ -493,11 +493,19 @@ export function addResultToToolUse(
         result: extractAskUserResult(tur) ?? { answers: [] },
       };
 
-    case 'todo-write':
+    case 'todo-write': {
+      const todoPart = part as Extract<
+        NormalizedToolUse,
+        { name: 'todo-write' }
+      >;
       return {
         ...part,
-        result: extractTodoResult(tur) ?? { oldTodos: [], newTodos: [] },
+        result: extractTodoResult(tur) ?? {
+          oldTodos: [],
+          newTodos: todoPart.input.todos ?? [],
+        },
       };
+    }
 
     case 'exit-plan-mode':
       return { ...part, result: { content } };
