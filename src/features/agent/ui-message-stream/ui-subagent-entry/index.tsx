@@ -8,6 +8,7 @@ import type {
   ToolUseByName,
 } from '@shared/normalized-message-v2';
 
+import { MarkdownContent } from '../../ui-markdown-content';
 import { TimelineEntry } from '../ui-timeline-entry';
 
 import { getLastActivitySummary } from './last-activity';
@@ -53,6 +54,7 @@ export function SubagentEntry({
       : undefined;
   const description = subAgent?.input.description ?? '';
   const subagentType = subAgent?.input.agentType;
+  const resultOutput = subAgent?.result?.output?.trim();
   const isComplete = !!toolUse.result;
 
   // Get the model used by the sub-agent from child entries
@@ -79,6 +81,9 @@ export function SubagentEntry({
   );
 
   const isPending = !isComplete;
+  const resultPreview = resultOutput
+    ? resultOutput.slice(0, 140) + (resultOutput.length > 140 ? '...' : '')
+    : null;
 
   // Determine dot color - cyan for sub-agents (distinct from blue tools, purple user/skills)
   const dotColor = isPending
@@ -132,11 +137,31 @@ export function SubagentEntry({
         {!isExpanded && lastActivity && (
           <div className="ml-5 text-xs text-neutral-500">{lastActivity}</div>
         )}
+
+        {/* Sub-agent result preview (only when collapsed and available) */}
+        {!isExpanded && resultPreview && (
+          <div className="ml-5 max-h-9 overflow-hidden text-xs text-neutral-400">
+            Result: {resultPreview}
+          </div>
+        )}
       </div>
 
       {/* Expanded nested timeline */}
-      {isExpanded && displayEntries.length > 0 && (
+      {isExpanded && (resultOutput || displayEntries.length > 0) && (
         <div className="mb-2 ml-5 border-l border-neutral-700 pl-0">
+          {resultOutput && (
+            <div className="px-3 pb-3">
+              <div className="mb-1 text-[11px] font-medium tracking-wide text-cyan-300 uppercase">
+                Result
+              </div>
+              <div className="max-h-96 overflow-auto rounded bg-black/30 p-3 text-xs text-neutral-300">
+                <MarkdownContent
+                  content={resultOutput}
+                  onFilePathClick={onFilePathClick}
+                />
+              </div>
+            </div>
+          )}
           {displayEntries.map((entry, index) => (
             <TimelineEntry
               key={index}
@@ -147,8 +172,8 @@ export function SubagentEntry({
         </div>
       )}
 
-      {/* Empty state when expanded but no entries yet */}
-      {isExpanded && displayEntries.length === 0 && (
+      {/* Empty state when expanded but no entries and no result yet */}
+      {isExpanded && displayEntries.length === 0 && !resultOutput && (
         <div className="mb-2 ml-5 border-l border-neutral-700 pl-3 text-xs text-neutral-500">
           Waiting for sub-agent activity...
         </div>
