@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { AlertTriangle, Check, Circle, Loader2, Plus, X } from 'lucide-react';
-import { Fragment, useCallback } from 'react';
+import { Fragment, useCallback, useEffect, useRef } from 'react';
 
 import { Kbd } from '@/common/ui/kbd';
 import { useSteps } from '@/hooks/use-steps';
@@ -78,8 +78,21 @@ function StepChip({
   isActive: boolean;
   onClick: () => void;
 }) {
+  const ref = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isActive && ref.current) {
+      ref.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'nearest',
+      });
+    }
+  }, [isActive]);
+
   return (
     <button
+      ref={ref}
       onClick={onClick}
       disabled={step.status === 'pending'}
       className={clsx(
@@ -160,7 +173,7 @@ export function StepFlowBar({
 
   return (
     <div className="border-b border-white/[0.06] bg-neutral-900/60 px-4 py-2 backdrop-blur-sm">
-      <div className="flex items-center">
+      <div className="no-scrollbar flex items-center overflow-x-auto">
         {steps.map((step, index) => (
           <Fragment key={step.id}>
             {index > 0 && (

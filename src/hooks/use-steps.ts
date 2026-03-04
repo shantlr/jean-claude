@@ -24,6 +24,14 @@ export function useCreateStep() {
   return useMutation({
     mutationFn: (data: NewTaskStep) => api.steps.create(data),
     onSuccess: (step: TaskStep) => {
+      // Optimistically add the new step to the cache so the auto-select
+      // effect in TaskPanel sees it immediately (prevents a race where the
+      // stale steps array causes activeStepId to be reset before the
+      // refetch completes).
+      queryClient.setQueryData(
+        ['steps', { taskId: step.taskId }],
+        (old: TaskStep[] | undefined) => (old ? [...old, step] : [step]),
+      );
       queryClient.invalidateQueries({
         queryKey: ['steps', { taskId: step.taskId }],
       });
