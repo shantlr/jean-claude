@@ -18,7 +18,6 @@ import {
   type AssistantMessage as OcAssistantMessage,
   type PermissionRequest as OcPermission,
 } from '@opencode-ai/sdk/v2';
-import { nanoid } from 'nanoid';
 
 import type {
   AgentBackend,
@@ -35,7 +34,6 @@ import type { InteractionMode } from '@shared/types';
 
 import { RawMessageRepository } from '../../../database/repositories';
 import { dbg } from '../../../lib/debug';
-import { buildPromptMarkdown } from '../../prompt-utils';
 
 import {
   normalizeOpenCodeV2,
@@ -382,20 +380,6 @@ export class OpenCodeBackend implements AgentBackend {
 
     // Emit session ID
     yield { type: 'session-id', sessionId };
-
-    // Emit a synthetic user-prompt entry so the user sees their prompt
-    // (including inline images) in the timeline
-    yield {
-      type: 'entry',
-      rawMessageId: null,
-      entry: {
-        id: nanoid(),
-        date: new Date().toISOString(),
-        isSynthetic: true,
-        type: 'user-prompt',
-        value: buildPromptMarkdown(parts),
-      },
-    } as AgentEvent;
 
     // Subscribe to event stream
     const subscription = await client.event.subscribe({
