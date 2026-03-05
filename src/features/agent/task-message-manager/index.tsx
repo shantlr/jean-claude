@@ -36,6 +36,9 @@ export function TaskMessageManager() {
   const appendRunCommandLine = useTaskMessagesStore(
     (s) => s.appendRunCommandLine,
   );
+  const setRunCommandRunning = useTaskMessagesStore(
+    (s) => s.setRunCommandRunning,
+  );
 
   useEffect(() => {
     const unsub = api.agent.onEvent((event) => {
@@ -118,6 +121,14 @@ export function TaskMessageManager() {
 
     return unsub;
   }, [appendRunCommandLine]);
+
+  useEffect(() => {
+    const unsub = api.runCommands.onStatusChange((taskId, status) => {
+      setRunCommandRunning(taskId, status.isRunning);
+    });
+
+    return unsub;
+  }, [setRunCommandRunning]);
 
   return null;
 }

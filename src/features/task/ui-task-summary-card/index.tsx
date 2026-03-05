@@ -5,6 +5,7 @@ import {
   GitPullRequest,
   Loader2,
   MessageSquare,
+  Terminal,
 } from 'lucide-react';
 
 import { NumberKey } from '@/common/context/keyboard-bindings/types';
@@ -54,6 +55,9 @@ export function TaskSummaryCard({
     ),
   );
   const needsAttention = hasPendingPermission || hasPendingQuestion;
+  const hasRunningCommand = useTaskMessagesStore(
+    (s) => s.runCommandRunning[task.id] ?? false,
+  );
 
   const displayNumber = index !== undefined ? index + 1 : undefined;
   const displayName = task.name ?? task.prompt.split('\n')[0].slice(0, 30);
@@ -129,6 +133,11 @@ export function TaskSummaryCard({
         )}
         {task.pullRequestId && (
           <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-green-500" />
+        )}
+        {hasRunningCommand && (
+          <span title="Command running">
+            <Terminal className="animate-command-running h-3.5 w-3.5 shrink-0 text-green-500" />
+          </span>
         )}
         <span className="min-w-0 flex-1 truncate text-sm font-medium">
           {displayName}

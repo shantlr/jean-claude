@@ -42,6 +42,8 @@ interface TaskMessagesStore {
   steps: Record<string, TaskState>;
   /** Keyed by taskId — run command logs are task-level, not step-level */
   runCommandLogs: Record<string, RunCommandLogs>;
+  /** Keyed by taskId — whether the task has any running commands */
+  runCommandRunning: Record<string, boolean>;
   cacheLimit: number;
 
   // Actions (all keyed by stepId)
@@ -78,6 +80,7 @@ interface TaskMessagesStore {
   ) => void;
   clearRunCommandLogs: (taskId: string, runCommandId: string) => void;
   clearAllRunCommandLogs: (taskId: string) => void;
+  setRunCommandRunning: (taskId: string, isRunning: boolean) => void;
   touchStep: (stepId: string) => void;
   unloadStep: (stepId: string) => void;
 
@@ -120,6 +123,7 @@ function evictIfNeeded(
 export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
   steps: {},
   runCommandLogs: {},
+  runCommandRunning: {},
   cacheLimit: DEFAULT_CACHE_LIMIT,
 
   loadStep: (stepId, messages, status) => {
@@ -318,12 +322,35 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
 
   clearAllRunCommandLogs: (taskId) => {
     set((state) => {
-      if (!state.runCommandLogs[taskId]) return state;
+      if (!state.runCommandLogs[taskId] && !state.runCommandRunning[taskId])
+        return state;
 
-      const { [taskId]: _removed, ...rest } = state.runCommandLogs;
-      void _removed;
+      const { [taskId]: _removedLogs, ...restLogs } = state.runCommandLogs;
+      void _removedLogs;
+      const { [taskId]: _removedRunning, ...restRunning } =
+        state.runCommandRunning;
+      void _removedRunning;
 
-      return { runCommandLogs: rest };
+      return { runCommandLogs: restLogs, runCommandRunning: restRunning };
+    });
+  },
+
+  setRunCommandRunning: (taskId, isRunning) => {
+    set((state) => {
+      if (!isRunning && !state.runCommandRunning[taskId]) {
+        return state;
+      }
+      if (isRunning && state.runCommandRunning[taskId]) {
+        return state;
+      }
+      if (!isRunning) {
+        const { [taskId]: _removed, ...rest } = state.runCommandRunning;
+        void _removed;
+        return { runCommandRunning: rest };
+      }
+      return {
+        runCommandRunning: { ...state.runCommandRunning, [taskId]: true },
+      };
     });
   },
 
