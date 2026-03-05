@@ -1,4 +1,4 @@
-import { Bot, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { Bot, Check, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
 import { formatModelName } from '@/hooks/use-model';
@@ -11,7 +11,7 @@ import type {
 import { MarkdownContent } from '../../ui-markdown-content';
 import { TimelineEntry } from '../ui-timeline-entry';
 
-import { getLastActivitySummary } from './last-activity';
+import { getLastActivitySummary, getTodoProgress } from './last-activity';
 
 /**
  * Filter entries for display in the nested timeline.
@@ -74,6 +74,12 @@ export function SubagentEntry({
     [childEntries],
   );
 
+  // Get todo progress from child entries
+  const todoProgress = useMemo(
+    () => getTodoProgress(childEntries),
+    [childEntries],
+  );
+
   // Filter entries for display
   const displayEntries = useMemo(
     () => filterDisplayEntries(childEntries),
@@ -132,6 +138,40 @@ export function SubagentEntry({
             <ChevronRight className="ml-auto h-3 w-3 shrink-0 text-neutral-500" />
           )}
         </div>
+
+        {/* Todo progress (always shown when collapsed and has todos) */}
+        {!isExpanded && todoProgress && (
+          <div className="ml-5 flex min-w-0 items-center gap-1.5 text-xs">
+            {todoProgress.activeTask ? (
+              <>
+                <Loader2
+                  className="h-3 w-3 shrink-0 animate-spin text-blue-400"
+                  aria-hidden
+                />
+                <span className="truncate text-blue-300">
+                  {todoProgress.activeTask}
+                </span>
+                <span className="shrink-0 text-neutral-500">
+                  ({todoProgress.completed}/{todoProgress.total})
+                </span>
+              </>
+            ) : todoProgress.completed > 0 ? (
+              <>
+                <Check
+                  className="h-3 w-3 shrink-0 text-green-400"
+                  aria-hidden
+                />
+                <span className="shrink-0 text-green-400">
+                  {todoProgress.completed}/{todoProgress.total} completed
+                </span>
+              </>
+            ) : (
+              <span className="shrink-0 text-neutral-500">
+                {todoProgress.total} todos pending
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Last activity preview (only when collapsed and has activity) */}
         {!isExpanded && lastActivity && (

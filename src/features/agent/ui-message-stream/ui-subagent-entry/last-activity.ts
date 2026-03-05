@@ -91,3 +91,30 @@ export function getLastActivitySummary(
   }
   return null;
 }
+
+/**
+ * Extract todo progress from the most recent todo-write entry.
+ * Returns the in-progress task label and completed/total counts.
+ */
+export function getTodoProgress(
+  entries: NormalizedEntry[],
+): { activeTask: string | null; completed: number; total: number } | null {
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const entry = entries[i];
+    if (entry.type !== 'tool-use' || entry.name !== 'todo-write') continue;
+
+    const todoEntry = entry as ToolUseByName<'todo-write'>;
+    const todos = todoEntry.result?.newTodos ?? todoEntry.input.todos;
+    if (!todos || todos.length === 0) continue;
+
+    const completed = todos.filter((t) => t.status === 'completed').length;
+    const inProgress = todos.find((t) => t.status === 'in_progress');
+    // description carries activeForm from normalizer, fall back to content
+    const activeTask = inProgress
+      ? (inProgress.description ?? inProgress.content)
+      : null;
+
+    return { activeTask, completed, total: todos.length };
+  }
+  return null;
+}
