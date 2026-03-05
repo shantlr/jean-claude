@@ -481,6 +481,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       agentBackend: AgentBackendType;
       modelPreference: ModelPreference;
       images: PromptImagePart[];
+      start: boolean;
     }) => {
       const name = data.promptTemplate.split('\n')[0]?.slice(0, 40) ?? 'Step';
       try {
@@ -493,6 +494,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           modelPreference: data.modelPreference,
           images: data.images.length > 0 ? data.images : null,
           dependsOn: [],
+          start: data.start,
         });
         setIsAddStepDialogOpen(false);
         setActiveStepId(step.id);

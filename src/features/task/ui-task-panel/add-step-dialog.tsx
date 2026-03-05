@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 
+import { useCommands } from '@/common/hooks/use-commands';
 import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
 import {
@@ -39,6 +40,7 @@ export function AddStepDialog({
     agentBackend: AgentBackendType;
     modelPreference: ModelPreference;
     images: PromptImagePart[];
+    start: boolean;
   }) => void;
   defaultBackend?: AgentBackendType;
   defaultModel?: ModelPreference;
@@ -49,6 +51,7 @@ export function AddStepDialog({
   const [backend, setBackend] = useState<AgentBackendType>(defaultBackend);
   const [model, setModel] = useState<ModelPreference>(defaultModel);
   const [images, setImages] = useState<PromptImagePart[]>([]);
+  const [autoStart, setAutoStart] = useState(false);
   const textareaRef = useRef<PromptTextareaRef>(null);
 
   const { data: dynamicModels } = useBackendModels(backend);
@@ -60,6 +63,7 @@ export function AddStepDialog({
       setBackend(defaultBackend);
       setModel(defaultModel);
       setImages([]);
+      setAutoStart(false);
       setTimeout(() => textareaRef.current?.focus(), 0);
     }
   }, [isOpen, defaultBackend, defaultModel]);
@@ -83,6 +87,7 @@ export function AddStepDialog({
       agentBackend: backend,
       modelPreference: model,
       images,
+      start: autoStart,
     });
   }, [
     canSubmit,
@@ -92,6 +97,7 @@ export function AddStepDialog({
     backend,
     model,
     images,
+    autoStart,
   ]);
 
   const handleEnterKey = useCallback(
@@ -111,6 +117,17 @@ export function AddStepDialog({
   const handleImageRemove = useCallback((index: number) => {
     setImages((prev) => prev.filter((_, i) => i !== index));
   }, []);
+
+  useCommands('add-step-dialog', [
+    isOpen && {
+      label: 'Toggle Auto-start',
+      shortcut: 'cmd+shift+s',
+      hideInCommandPalette: true,
+      handler: () => {
+        setAutoStart((prev) => !prev);
+      },
+    },
+  ]);
 
   if (!isOpen) return null;
 
@@ -151,23 +168,35 @@ export function AddStepDialog({
             side="top"
           />
         </div>
-        <div className="flex justify-end gap-3 pt-1">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-700"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Add Step
-            <Kbd shortcut="cmd+enter" className="ml-1" />
-          </button>
+        <div className="flex items-center justify-between pt-1">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-300">
+            <input
+              type="checkbox"
+              checked={autoStart}
+              onChange={(e) => setAutoStart(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-neutral-600 bg-neutral-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+            />
+            Auto-start
+            <Kbd shortcut="cmd+shift+s" />
+          </label>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Add Step
+              <Kbd shortcut="cmd+enter" className="ml-1" />
+            </button>
+          </div>
         </div>
       </div>
     </Modal>

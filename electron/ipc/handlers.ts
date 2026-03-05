@@ -795,8 +795,28 @@ export function registerIpcHandlers() {
   ipcMain.handle('steps:findById', (_, stepId: string) =>
     StepService.findById(stepId),
   );
-  ipcMain.handle('steps:create', (_, data: NewTaskStep) =>
-    StepService.create(data),
+  ipcMain.handle(
+    'steps:create',
+    async (event, data: NewTaskStep & { start?: boolean }) => {
+      const { start, ...stepData } = data;
+      const step = await StepService.create(stepData);
+
+      if (start) {
+        dbg.ipc('Auto-starting step %s (task %s)', step.id, step.taskId);
+        const window = BrowserWindow.fromWebContents(event.sender);
+        if (window) {
+          agentService.setMainWindow(window);
+        }
+        if (step.images?.length) {
+          agentService.setPendingImages(step.taskId, step.images);
+        }
+        agentService.start(step.id).catch((err) => {
+          dbg.ipc('Error auto-starting step %s: %O', step.id, err);
+        });
+      }
+
+      return step;
+    },
   );
   ipcMain.handle('steps:update', (_, stepId: string, data: UpdateTaskStep) =>
     StepService.update(stepId, data),

@@ -22,7 +22,8 @@ export function useStep(stepId: string) {
 export function useCreateStep() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: NewTaskStep) => api.steps.create(data),
+    mutationFn: (data: NewTaskStep & { start?: boolean }) =>
+      api.steps.create(data),
     onSuccess: (step: TaskStep) => {
       // Optimistically add the new step to the cache so the auto-select
       // effect in TaskPanel sees it immediately (prevents a race where the

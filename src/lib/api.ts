@@ -405,7 +405,7 @@ export interface Api {
   steps: {
     findByTaskId: (taskId: string) => Promise<TaskStep[]>;
     findById: (stepId: string) => Promise<TaskStep | undefined>;
-    create: (data: NewTaskStep) => Promise<TaskStep>;
+    create: (data: NewTaskStep & { start?: boolean }) => Promise<TaskStep>;
     update: (stepId: string, data: UpdateTaskStep) => Promise<TaskStep>;
 
     resolvePrompt: (stepId: string) => Promise<{
