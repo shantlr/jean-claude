@@ -782,43 +782,11 @@ export function NewTaskOverlay({
 
         {/* Project tabs - only show in select or prompt mode */}
         {(showSearchInput || showPromptInput) && (
-          <div className="border-border flex shrink-0 items-center gap-1 overflow-x-auto border-b border-neutral-700 px-4 py-2">
-            {/* All tab */}
-            <button
-              onClick={() => setSelectedProjectId(null)}
-              className={clsx(
-                'shrink-0 rounded px-2 py-1 text-xs font-medium transition-colors',
-                selectedProjectId === null
-                  ? 'bg-neutral-700 text-white'
-                  : 'text-neutral-400 hover:bg-neutral-800 hover:text-white',
-              )}
-            >
-              All
-            </button>
-
-            {/* Separator */}
-            <div className="h-4 w-px shrink-0 bg-neutral-700" />
-
-            {/* Project tabs */}
-            {sortedProjects.map((project) => (
-              <button
-                key={project.id}
-                onClick={() => setSelectedProjectId(project.id)}
-                className={clsx(
-                  'flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-colors',
-                  selectedProjectId === project.id
-                    ? 'bg-neutral-700 text-white'
-                    : 'text-neutral-400 hover:bg-neutral-800 hover:text-white',
-                )}
-              >
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: project.color }}
-                />
-                <span className="max-w-20 truncate">{project.name}</span>
-              </button>
-            ))}
-          </div>
+          <ProjectTabs
+            sortedProjects={sortedProjects}
+            selectedProjectId={selectedProjectId}
+            onSelectProject={setSelectedProjectId}
+          />
         )}
 
         {/* Main content area */}
@@ -961,6 +929,77 @@ export function NewTaskOverlay({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ProjectTabs({
+  sortedProjects,
+  selectedProjectId,
+  onSelectProject,
+}: {
+  sortedProjects: Project[];
+  selectedProjectId: string | null;
+  onSelectProject: (projectId: string | null) => void;
+}) {
+  const projectTabsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const tabsContainer = projectTabsRef.current;
+    if (!tabsContainer) return;
+
+    const selectedValue = selectedProjectId ?? 'all';
+    const selector = `[data-project-tab="${selectedValue}"]`;
+    const selectedTab =
+      tabsContainer.querySelector<HTMLButtonElement>(selector);
+    if (!selectedTab) return;
+
+    selectedTab.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'center',
+    });
+  }, [selectedProjectId, sortedProjects.length]);
+
+  return (
+    <div
+      ref={projectTabsRef}
+      className="border-border flex shrink-0 items-center gap-1 overflow-x-auto border-b border-neutral-700 px-4 py-2"
+    >
+      <button
+        data-project-tab="all"
+        onClick={() => onSelectProject(null)}
+        className={clsx(
+          'shrink-0 rounded px-2 py-1 text-xs font-medium transition-colors',
+          selectedProjectId === null
+            ? 'bg-neutral-700 text-white'
+            : 'text-neutral-400 hover:bg-neutral-800 hover:text-white',
+        )}
+      >
+        All
+      </button>
+
+      <div className="h-4 w-px shrink-0 bg-neutral-700" />
+
+      {sortedProjects.map((project) => (
+        <button
+          key={project.id}
+          data-project-tab={project.id}
+          onClick={() => onSelectProject(project.id)}
+          className={clsx(
+            'flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-colors',
+            selectedProjectId === project.id
+              ? 'bg-neutral-700 text-white'
+              : 'text-neutral-400 hover:bg-neutral-800 hover:text-white',
+          )}
+        >
+          <span
+            className="h-2 w-2 rounded-full"
+            style={{ backgroundColor: project.color }}
+          />
+          <span className="max-w-20 truncate">{project.name}</span>
+        </button>
+      ))}
     </div>
   );
 }
