@@ -238,23 +238,30 @@ export function WorktreeDiffView({
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
         </div>
-        <DiffFileTree
-          files={diffFiles}
-          selectedPath={selectedFilePath}
-          onSelectFile={onSelectFile}
-          filesWithAnnotations={filesWithAnnotations}
-        />
-        <WorktreeActions
-          taskId={taskId}
-          projectId={projectId}
-          branchName={branchName}
-          sourceBranch={sourceBranch}
-          defaultBranch={defaultBranch}
-          taskName={taskName}
-          hasRepoLink={hasRepoLink}
-          onMergeStarted={onMergeStarted}
-          onOpenPrView={onOpenPrView}
-        />
+        <div
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+          style={
+            bottomPadding > 0 ? { paddingBottom: bottomPadding } : undefined
+          }
+        >
+          <DiffFileTree
+            files={diffFiles}
+            selectedPath={selectedFilePath}
+            onSelectFile={onSelectFile}
+            filesWithAnnotations={filesWithAnnotations}
+          />
+          <WorktreeActions
+            taskId={taskId}
+            projectId={projectId}
+            branchName={branchName}
+            sourceBranch={sourceBranch}
+            defaultBranch={defaultBranch}
+            taskName={taskName}
+            hasRepoLink={hasRepoLink}
+            onMergeStarted={onMergeStarted}
+            onOpenPrView={onOpenPrView}
+          />
+        </div>
         {/* Resize handle */}
         <div
           onMouseDown={handleMouseDown}
