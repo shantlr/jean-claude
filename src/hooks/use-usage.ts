@@ -12,9 +12,9 @@ export function useBackendUsage() {
     queryKey: ['backend-usage', enabledProviders],
     queryFn: () => api.usage.getAll(enabledProviders),
     enabled: enabledProviders.length > 0,
-    refetchInterval: 60_000,
+    refetchInterval: 120_000,
     refetchIntervalInBackground: false,
-    staleTime: 30_000,
+    staleTime: 60_000,
     retry: 2,
     refetchOnWindowFocus: true,
   });

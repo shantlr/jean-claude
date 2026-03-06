@@ -96,7 +96,7 @@ export function useCompletionDailyUsage() {
     queryKey: ['completion-daily-usage'],
     queryFn: () => api.completion.getDailyUsage(),
     enabled,
-    refetchInterval: 60_000,
-    staleTime: 30_000,
+    refetchInterval: 120_000,
+    staleTime: 60_000,
   });
 }
