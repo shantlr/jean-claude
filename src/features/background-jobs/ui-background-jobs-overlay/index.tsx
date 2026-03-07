@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import clsx from 'clsx';
-import { CheckCircle2, CircleAlert, Loader2, X } from 'lucide-react';
+import { CheckCircle2, CircleAlert, Copy, Loader2, X } from 'lucide-react';
 import { useMemo, type ReactNode } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
@@ -12,12 +12,14 @@ import {
   getRunningJobsCount,
   type BackgroundJob,
 } from '@/stores/background-jobs';
+import { useToastStore } from '@/stores/toasts';
 
 export function BackgroundJobsOverlay({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const jobs = useBackgroundJobsStore((state) => state.jobs);
   const clearFinished = useBackgroundJobsStore((state) => state.clearFinished);
+  const addToast = useToastStore((state) => state.addToast);
   const markJobRunning = useBackgroundJobsStore(
     (state) => state.markJobRunning,
   );
@@ -82,6 +84,24 @@ export function BackgroundJobsOverlay({ onClose }: { onClose: () => void }) {
                 <JobRow
                   key={job.id}
                   job={job}
+                  onCopyPrompt={async (targetJob) => {
+                    if (targetJob.type !== 'task-creation') return;
+                    const prompt = targetJob.details.creationInput.prompt;
+                    if (!prompt.trim()) return;
+
+                    try {
+                      await navigator.clipboard.writeText(prompt);
+                      addToast({
+                        type: 'success',
+                        message: 'Prompt copied to clipboard',
+                      });
+                    } catch {
+                      addToast({
+                        type: 'error',
+                        message: 'Failed to copy prompt',
+                      });
+                    }
+                  }}
                   onRetryTaskCreation={async (targetJob) => {
                     if (targetJob.type !== 'task-creation') return;
                     markJobRunning(targetJob.id);
@@ -151,11 +171,13 @@ export function BackgroundJobsOverlay({ onClose }: { onClose: () => void }) {
 
 function JobRow({
   job,
+  onCopyPrompt,
   onRetryTaskCreation,
   onRetryTaskDeletion,
   onOpenTask,
 }: {
   job: BackgroundJob;
+  onCopyPrompt: (job: BackgroundJob) => Promise<void>;
   onRetryTaskCreation: (job: BackgroundJob) => Promise<void>;
   onRetryTaskDeletion: (job: BackgroundJob) => Promise<void>;
   onOpenTask: (job: BackgroundJob) => void;
@@ -196,6 +218,19 @@ function JobRow({
             <p className="mt-1 text-xs text-red-300">{job.errorMessage}</p>
           )}
           <div className="mt-2 flex items-center gap-2">
+            {job.type === 'task-creation' &&
+              job.details.creationInput.prompt.trim() && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void onCopyPrompt(job);
+                  }}
+                  className="inline-flex items-center gap-1 rounded border border-white/[0.15] bg-white/5 px-2 py-1 text-xs text-neutral-200 transition-colors hover:bg-white/10"
+                >
+                  <Copy className="h-3 w-3" />
+                  Copy Prompt
+                </button>
+              )}
             {job.type === 'task-creation' && job.status === 'failed' && (
               <button
                 type="button"
