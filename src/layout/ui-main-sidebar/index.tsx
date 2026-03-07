@@ -55,8 +55,8 @@ export function MainSidebar() {
       <div
         onMouseDown={handleMouseDown}
         className={clsx(
-          'absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500/50',
-          isDragging && 'bg-blue-500/50',
+          'absolute top-0 right-0 h-full w-0.5 cursor-col-resize transition-all duration-150 hover:w-1 hover:bg-blue-500/50',
+          isDragging && 'w-1 bg-blue-500/50',
         )}
       />
     </aside>

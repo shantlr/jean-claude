@@ -1,5 +1,10 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { ChevronDown, ClipboardList, SlidersHorizontal } from 'lucide-react';
+import {
+  ChevronDown,
+  ClipboardList,
+  ListTodo,
+  SlidersHorizontal,
+} from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
@@ -249,8 +254,8 @@ export function TaskList() {
       {/* Task/PR content tabs - only show when applicable */}
       {showContentTabs && <SidebarContentTabs />}
 
-      {/* Divider */}
-      <div className="mx-2 border-b border-neutral-800" />
+      {/* Spacer between tabs and content */}
+      <div className="h-px" />
 
       {/* Content area - show tasks or PRs based on selected tab */}
       {sidebarTab === 'prs' && showContentTabs ? (
@@ -258,11 +263,23 @@ export function TaskList() {
       ) : (
         <>
           {/* Task cards */}
-          <div className="flex-1 space-y-1 overflow-y-auto p-2">
+          <div
+            className="flex-1 space-y-1.5 overflow-y-auto overscroll-contain px-2 py-2.5"
+            style={{
+              maskImage:
+                'linear-gradient(to bottom, transparent 0px, black 8px, black calc(100% - 8px), transparent 100%)',
+            }}
+          >
             {/* Active tasks section */}
             {filteredActiveTasks.length === 0 ? (
-              <div className="py-8 text-center text-sm text-neutral-500">
-                No active tasks
+              <div className="flex flex-col items-center gap-2 py-12 text-center">
+                <ListTodo className="h-6 w-6 text-neutral-700" />
+                <span className="text-sm text-neutral-600">
+                  No active tasks
+                </span>
+                <span className="text-[11px] text-neutral-700">
+                  Press &#x2318;N to create a task
+                </span>
               </div>
             ) : (
               filteredActiveTasks.map((task, index) => (
@@ -280,7 +297,7 @@ export function TaskList() {
             {filteredCompletedTasks.length > 0 && (
               <>
                 <div className="flex items-center gap-2 px-1 pt-4 pb-1">
-                  <span className="text-xs font-medium text-neutral-500">
+                  <span className="text-[10px] font-semibold tracking-wider text-neutral-500 uppercase">
                     Completed
                   </span>
                   <div className="h-px flex-1 bg-neutral-800" />
@@ -314,17 +331,16 @@ export function TaskList() {
           </div>
 
           {/* Footer buttons */}
-          <div className="mx-2 border-t border-neutral-800" />
           <div className="flex items-center gap-1 p-2">
             {backlogProjectId && (
               <button
                 onClick={openBacklog}
-                className="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white"
+                className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-neutral-400 transition-colors hover:bg-neutral-800/60 hover:text-white"
               >
                 <ClipboardList size={14} />
                 <span>Backlog</span>
                 {typeof todoCount === 'number' && todoCount > 0 && (
-                  <span className="rounded-full bg-neutral-700 px-1.5 py-0.5 text-xs leading-none text-neutral-300">
+                  <span className="rounded-full bg-neutral-700/60 px-1.5 py-0.5 text-xs leading-none text-neutral-400">
                     {todoCount}
                   </span>
                 )}
@@ -333,7 +349,7 @@ export function TaskList() {
             )}
             <button
               onClick={() => toggleOverlay('settings')}
-              className="flex grow items-center gap-2 rounded px-2 py-1.5 text-sm text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white"
+              className="flex grow items-center gap-2 rounded-md px-2 py-2 text-sm text-neutral-400 transition-colors hover:bg-neutral-800/60 hover:text-white"
             >
               <SlidersHorizontal size={14} />
               <span>Settings</span>

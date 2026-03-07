@@ -30,7 +30,7 @@ export function StatusIndicator({
     <span
       {...props}
       className={clsx(
-        `inline-block h-2 w-2 rounded-full`,
+        `inline-block h-2 w-2 rounded-full transition-colors duration-300`,
         STATUS_COLORS[status],
         props.className,
       )}

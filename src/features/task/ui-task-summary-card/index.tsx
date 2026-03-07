@@ -101,7 +101,8 @@ export function TaskSummaryCard({
         }
       }}
       className={clsx(
-        'flex cursor-pointer flex-col gap-1 rounded-lg px-3 py-2 transition-colors',
+        'flex cursor-pointer flex-col gap-1.5 rounded-lg px-3.5 py-2.5 transition-all duration-200 ease-out',
+        'sidebar-card-enter',
         isDeleting && 'opacity-50',
         hasPendingPermission
           ? isSelected
@@ -120,8 +121,8 @@ export function TaskSummaryCard({
                   ? 'completed-unread-border-selected'
                   : 'completed-unread-border'
                 : isSelected
-                  ? 'border border-blue-500 bg-neutral-700'
-                  : 'border border-transparent hover:bg-neutral-800',
+                  ? 'border border-blue-500 bg-neutral-800 shadow-sm'
+                  : 'border border-transparent hover:translate-x-0.5 hover:bg-neutral-800/70',
       )}
     >
       {/* Top row: status, name, number badge */}
@@ -139,7 +140,7 @@ export function TaskSummaryCard({
             <Terminal className="animate-command-running h-3.5 w-3.5 shrink-0 text-green-500" />
           </span>
         )}
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold">
           {displayName}
         </span>
         {displayNumber !== undefined && displayNumber <= 9 && (
@@ -154,9 +155,9 @@ export function TaskSummaryCard({
       </div>
 
       {/* Bottom row: project tag, time */}
-      <div className="flex items-center gap-2 text-xs text-neutral-400">
+      <div className="flex items-center gap-2 text-[11px] text-neutral-500">
         <span className="truncate">{projectName}</span>
-        <span className="ml-auto shrink-0">
+        <span className="ml-auto shrink-0 tabular-nums">
           {formatRelativeTime(task.updatedAt)}
         </span>
       </div>

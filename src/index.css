@@ -467,3 +467,19 @@ button {
     transparent 100%
   );
 }
+
+/* ── Sidebar: card enter animation (fade + slide from left) ── */
+@keyframes sidebar-card-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@utility sidebar-card-enter {
+  animation: sidebar-card-enter 200ms ease-out both;
+}
