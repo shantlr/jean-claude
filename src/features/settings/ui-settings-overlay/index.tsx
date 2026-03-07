@@ -6,6 +6,7 @@ import FocusLock from 'react-focus-lock';
 import { RemoveScroll } from 'react-remove-scroll';
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import { Kbd } from '@/common/ui/kbd';
 import { ProjectSettings } from '@/features/project/ui-project-settings';
 import { AutocompleteSettings } from '@/features/settings/ui-autocomplete-settings';
 import { AzureDevOpsTab } from '@/features/settings/ui-azure-devops-tab';
@@ -87,22 +88,6 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
 
   const hasProjectTab = currentProject !== null;
 
-  // Register Escape to close
-  useRegisterKeyboardBindings('settings-overlay', {
-    escape: () => {
-      onClose();
-      return true;
-    },
-  });
-
-  const handleBackdropClick = useCallback(() => {
-    onClose();
-  }, [onClose]);
-
-  const handlePanelClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-  }, []);
-
   const handleProjectMenuClick = useCallback((item: ProjectMenuItem) => {
     setProjectMenuItem(item);
     // Scroll to the section in the project settings content
@@ -113,6 +98,78 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
         el.scrollIntoView({ behavior: 'smooth' });
       }
     }, 50);
+  }, []);
+
+  const navigateMenu = useCallback(
+    (direction: 'up' | 'down') => {
+      if (activeTab === 'global') {
+        const currentIndex = GLOBAL_MENU_ITEMS.findIndex(
+          (item) => item.id === globalMenuItem,
+        );
+        const nextIndex =
+          direction === 'down'
+            ? (currentIndex + 1) % GLOBAL_MENU_ITEMS.length
+            : (currentIndex - 1 + GLOBAL_MENU_ITEMS.length) %
+              GLOBAL_MENU_ITEMS.length;
+        setGlobalMenuItem(GLOBAL_MENU_ITEMS[nextIndex].id);
+      } else if (activeTab === 'project') {
+        const currentIndex = PROJECT_MENU_ITEMS.findIndex(
+          (item) => item.id === projectMenuItem,
+        );
+        const nextIndex =
+          direction === 'down'
+            ? (currentIndex + 1) % PROJECT_MENU_ITEMS.length
+            : (currentIndex - 1 + PROJECT_MENU_ITEMS.length) %
+              PROJECT_MENU_ITEMS.length;
+        handleProjectMenuClick(PROJECT_MENU_ITEMS[nextIndex].id);
+      }
+    },
+    [activeTab, globalMenuItem, projectMenuItem, handleProjectMenuClick],
+  );
+
+  useRegisterKeyboardBindings('settings-overlay', {
+    escape: () => {
+      onClose();
+      return true;
+    },
+    'cmd+1': {
+      handler: () => {
+        setActiveTab('global');
+        return true;
+      },
+      ignoreIfInput: true,
+    },
+    'cmd+2': {
+      handler: () => {
+        if (hasProjectTab) {
+          setActiveTab('project');
+        }
+        return true;
+      },
+      ignoreIfInput: true,
+    },
+    up: {
+      handler: () => {
+        navigateMenu('up');
+        return true;
+      },
+      ignoreIfInput: true,
+    },
+    down: {
+      handler: () => {
+        navigateMenu('down');
+        return true;
+      },
+      ignoreIfInput: true,
+    },
+  });
+
+  const handleBackdropClick = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  const handlePanelClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
   }, []);
 
   const handleProjectDeleted = useCallback(() => {
@@ -227,6 +284,24 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                   />
                 )}
               </div>
+            </div>
+
+            {/* Footer tips */}
+            <div className="flex shrink-0 items-center gap-3 border-t border-neutral-700 px-4 py-2 text-xs text-neutral-500">
+              <span className="flex items-center gap-1">
+                <Kbd shortcut="cmd+1" /> global
+              </span>
+              {hasProjectTab && (
+                <span className="flex items-center gap-1">
+                  <Kbd shortcut="cmd+2" /> project
+                </span>
+              )}
+              <span className="flex items-center gap-1">
+                <Kbd shortcut="up" /> <Kbd shortcut="down" /> navigate
+              </span>
+              <span className="flex items-center gap-1">
+                <Kbd shortcut="escape" /> close
+              </span>
             </div>
           </div>
         </div>
