@@ -335,7 +335,7 @@ export function QuestionOptions({
   ]);
 
   return (
-    <div className="border-t border-teal-700/50 bg-teal-900/20 px-4 py-3">
+    <div className="border border-teal-700/50 bg-teal-900/20 px-4 py-3">
       <div className="space-y-4">
         {request.questions.map((question, index) => (
           <div key={`${index}-${question.question}`} className="space-y-2">

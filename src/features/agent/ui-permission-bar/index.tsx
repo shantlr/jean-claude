@@ -284,10 +284,8 @@ export function PermissionBar({
     });
   };
 
-  console.log('ASKED PERMISSION', request);
-
   return (
-    <div className="border-t border-yellow-700/50 bg-yellow-900/20 px-4 py-3">
+    <div className="border border-yellow-700/50 bg-yellow-900/20 px-4 py-3">
       <div className="flex max-h-[60vh] min-h-0 flex-col gap-3">
         <div className="min-h-0 overflow-y-auto pr-1">
           <div className="flex items-start gap-3">

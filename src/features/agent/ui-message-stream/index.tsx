@@ -7,8 +7,20 @@ import {
   useCallback,
 } from 'react';
 
-import type { QueuedPrompt } from '@shared/agent-types';
-import type { NormalizedEntry } from '@shared/normalized-message-v2';
+import type {
+  AgentQuestion,
+  PermissionResponse,
+  QuestionResponse,
+  QueuedPrompt,
+} from '@shared/agent-types';
+import type {
+  NormalizedEntry,
+  NormalizedPermissionRequest,
+} from '@shared/normalized-message-v2';
+import type { InteractionMode } from '@shared/types';
+
+import { PermissionBar } from '../ui-permission-bar';
+import { QuestionOptions } from '../ui-question-options';
 
 import { GameOfLife } from './game-of-life';
 import { mergeSkillMessages } from './message-merger';
@@ -22,6 +34,34 @@ import { computePromptIndexMap } from './use-prompt-navigation';
 // Threshold in pixels - if user is within this distance from bottom, auto-scroll
 const SCROLL_THRESHOLD = 10;
 
+export interface PermissionBannerProps {
+  request: NormalizedPermissionRequest & { taskId: string };
+  onRespond: (requestId: string, response: PermissionResponse) => void;
+  onAllowForSession?: (
+    toolName: string,
+    input: Record<string, unknown>,
+  ) => void;
+  onAllowForProject?: (
+    toolName: string,
+    input: Record<string, unknown>,
+  ) => void;
+  onAllowForProjectWorktrees?: (
+    toolName: string,
+    input: Record<string, unknown>,
+  ) => void;
+  onSetMode?: (mode: InteractionMode) => void;
+  worktreePath?: string | null;
+}
+
+export interface QuestionBannerProps {
+  request: {
+    taskId: string;
+    requestId: string;
+    questions: AgentQuestion[];
+  };
+  onRespond: (requestId: string, response: QuestionResponse) => void;
+}
+
 export const MessageStream = memo(function MessageStream({
   messages,
   isRunning,
@@ -29,6 +69,8 @@ export const MessageStream = memo(function MessageStream({
   onFilePathClick,
   onCancelQueuedPrompt,
   bottomPadding = 0,
+  pendingPermission,
+  pendingQuestion,
 }: {
   messages: NormalizedEntry[];
   isRunning?: boolean;
@@ -41,6 +83,10 @@ export const MessageStream = memo(function MessageStream({
   onCancelQueuedPrompt?: (promptId: string) => void;
   /** Extra bottom padding (px) so content can scroll behind a floating footer */
   bottomPadding?: number;
+  /** Permission request to render inline at the bottom of the stream */
+  pendingPermission?: PermissionBannerProps | null;
+  /** Question request to render inline at the bottom of the stream */
+  pendingQuestion?: QuestionBannerProps | null;
 }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -79,12 +125,16 @@ export const MessageStream = memo(function MessageStream({
     isNearBottomRef.current = true;
   }, []);
 
-  // Auto-scroll to bottom when new messages arrive or prompts are queued, but only if user is near bottom
+  // Derive a boolean so the effect only fires when a banner appears/disappears
+  const hasPendingBanner = !!pendingPermission || !!pendingQuestion;
+
+  // Auto-scroll to bottom when new messages arrive, prompts are queued,
+  // or a permission/question banner appears — but only if user is near bottom
   useEffect(() => {
     if (isNearBottomRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: 'instant' });
     }
-  }, [displayMessages.length, queuedPrompts.length]);
+  }, [displayMessages.length, queuedPrompts.length, hasPendingBanner]);
 
   if (messages.length === 0) {
     return (
@@ -195,6 +245,31 @@ export const MessageStream = memo(function MessageStream({
             onCancel={onCancelQueuedPrompt ?? (() => {})}
           />
         ))}
+        {/* Permission request (in-stream banner) */}
+        {pendingPermission && (
+          <div className="my-2 mr-3 ml-2 overflow-hidden rounded-lg">
+            <PermissionBar
+              request={pendingPermission.request}
+              onRespond={pendingPermission.onRespond}
+              onAllowForSession={pendingPermission.onAllowForSession}
+              onAllowForProject={pendingPermission.onAllowForProject}
+              onAllowForProjectWorktrees={
+                pendingPermission.onAllowForProjectWorktrees
+              }
+              onSetMode={pendingPermission.onSetMode}
+              worktreePath={pendingPermission.worktreePath}
+            />
+          </div>
+        )}
+        {/* Question (in-stream banner) */}
+        {pendingQuestion && (
+          <div className="my-2 mr-3 ml-2 overflow-hidden rounded-lg">
+            <QuestionOptions
+              request={pendingQuestion.request}
+              onRespond={pendingQuestion.onRespond}
+            />
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
     </div>

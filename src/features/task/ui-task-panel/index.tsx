@@ -14,7 +14,7 @@ import {
   FolderTree,
   Bug,
 } from 'lucide-react';
-import { useEffect, useState, useCallback, useRef, memo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef, memo } from 'react';
 
 import { useModal } from '@/common/context/modal';
 import { useCommands } from '@/common/hooks/use-commands';
@@ -448,6 +448,44 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     [taskId, allowForProjectWorktrees],
   );
 
+  const handleSetMode = useCallback(
+    (mode: InteractionMode) => {
+      if (activeStepId) {
+        setTaskMode.mutate({ stepId: activeStepId, mode });
+      }
+    },
+    [activeStepId, setTaskMode],
+  );
+
+  const permissionProps = useMemo(() => {
+    if (!agentState.pendingPermission) return null;
+    return {
+      request: agentState.pendingPermission,
+      onRespond: respondToPermission,
+      onAllowForSession: handleAllowToolsForSession,
+      onAllowForProject: handleAllowForProject,
+      onAllowForProjectWorktrees: handleAllowForProjectWorktrees,
+      onSetMode: handleSetMode,
+      worktreePath: task?.worktreePath,
+    };
+  }, [
+    agentState.pendingPermission,
+    respondToPermission,
+    handleAllowToolsForSession,
+    handleAllowForProject,
+    handleAllowForProjectWorktrees,
+    handleSetMode,
+    task?.worktreePath,
+  ]);
+
+  const questionProps = useMemo(() => {
+    if (!agentState.pendingQuestion) return null;
+    return {
+      request: agentState.pendingQuestion,
+      onRespond: respondToQuestion,
+    };
+  }, [agentState.pendingQuestion, respondToQuestion]);
+
   const getEditorLabel = (setting: EditorSetting): string => {
     if (setting.type === 'preset') {
       const editor = PRESET_EDITORS.find((e) => e.id === setting.id);
@@ -635,9 +673,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     },
   ]);
 
-  console.log({
-    agentState,
-  });
   if (!task || !project) {
     return (
       <div className="flex h-full items-center justify-center text-neutral-500">
@@ -939,6 +974,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               onFilePathClick={handleFilePathClick}
               onCancelQueuedPrompt={cancelQueuedPrompt}
               bottomPadding={footerHeight}
+              pendingPermission={permissionProps}
+              pendingQuestion={questionProps}
             />
           ) : (
             <div
@@ -988,6 +1025,28 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                   </button>
                 </div>
               )}
+              {/* Fallback banners when no messages yet */}
+              {agentState.pendingPermission && (
+                <div className="mt-4 overflow-hidden rounded-lg">
+                  <PermissionBar
+                    request={agentState.pendingPermission}
+                    onRespond={respondToPermission}
+                    onAllowForSession={handleAllowToolsForSession}
+                    onAllowForProject={handleAllowForProject}
+                    onAllowForProjectWorktrees={handleAllowForProjectWorktrees}
+                    onSetMode={handleSetMode}
+                    worktreePath={task.worktreePath}
+                  />
+                </div>
+              )}
+              {agentState.pendingQuestion && (
+                <div className="mt-4 overflow-hidden rounded-lg">
+                  <QuestionOptions
+                    request={agentState.pendingQuestion}
+                    onRespond={respondToQuestion}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1006,58 +1065,31 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           </div>
         )}
 
-        {/* Permission bar */}
-        {agentState.pendingPermission && (
-          <PermissionBar
-            request={agentState.pendingPermission}
-            onRespond={respondToPermission}
-            onAllowForSession={handleAllowToolsForSession}
-            onAllowForProject={handleAllowForProject}
-            onAllowForProjectWorktrees={handleAllowForProjectWorktrees}
-            onSetMode={(mode) =>
-              activeStepId
-                ? setTaskMode.mutate({ stepId: activeStepId, mode })
-                : undefined
-            }
-            worktreePath={task.worktreePath}
-          />
-        )}
-
-        {/* Question options */}
-        {agentState.pendingQuestion && (
-          <QuestionOptions
-            request={agentState.pendingQuestion}
-            onRespond={respondToQuestion}
-          />
-        )}
-
         {/* Message input — floats above content so messages scroll underneath */}
-        {(canSendMessage || isWaiting || hasMessages) &&
-          !agentState.pendingPermission &&
-          !agentState.pendingQuestion && (
-            <div
-              ref={footerRef}
-              className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
-            >
-              <div className="pointer-events-auto">
-                <TaskInputFooter
-                  taskId={taskId}
-                  activeStepId={activeStepId}
-                  isRunning={isRunning}
-                  isStopping={isStopping}
-                  canSendMessage={!!canSendMessage}
-                  onSend={sendMessage}
-                  onQueue={queuePrompt}
-                  onStop={handleStop}
-                  contextUsage={contextUsage}
-                  projectRoot={taskRootPath}
-                  getCompletionContextBeforePrompt={
-                    getCompletionContextBeforePrompt
-                  }
-                />
-              </div>
+        {(canSendMessage || isWaiting || hasMessages) && (
+          <div
+            ref={footerRef}
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
+          >
+            <div className="pointer-events-auto">
+              <TaskInputFooter
+                taskId={taskId}
+                activeStepId={activeStepId}
+                isRunning={isRunning}
+                isStopping={isStopping}
+                canSendMessage={!!canSendMessage}
+                onSend={sendMessage}
+                onQueue={queuePrompt}
+                onStop={handleStop}
+                contextUsage={contextUsage}
+                projectRoot={taskRootPath}
+                getCompletionContextBeforePrompt={
+                  getCompletionContextBeforePrompt
+                }
+              />
             </div>
-          )}
+          </div>
+        )}
       </div>
 
       {/* File preview pane */}
