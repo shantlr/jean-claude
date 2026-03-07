@@ -164,7 +164,8 @@ button {
 
 /* Pulsing green glow for running command indicator */
 @keyframes command-running-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     filter: drop-shadow(0 0 2px rgba(34, 197, 94, 0.6));
   }
@@ -334,8 +335,7 @@ button {
       )
       border-box;
   border: 1px solid transparent;
-  animation: completed-unread-breathe 3.2s cubic-bezier(0.4, 0, 0.2, 1)
-    infinite;
+  animation: completed-unread-breathe 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 @utility completed-unread-border-selected {
@@ -352,8 +352,7 @@ button {
       )
       border-box;
   border: 1px solid transparent;
-  animation: completed-unread-breathe 3.2s cubic-bezier(0.4, 0, 0.2, 1)
-    infinite;
+  animation: completed-unread-breathe 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 /* ── Step flow bar: running chip animated border ── */
@@ -373,8 +372,7 @@ button {
   animation: gradient-rotate 2s linear infinite;
   box-shadow:
     0 0 8px 0 color-mix(in srgb, var(--color-blue-400) 25%, transparent),
-    inset 0 1px 0 0
-      color-mix(in srgb, var(--color-blue-400) 8%, transparent);
+    inset 0 1px 0 0 color-mix(in srgb, var(--color-blue-400) 8%, transparent);
 }
 
 /* ── Step flow bar: animated connector between steps ── */
@@ -466,6 +464,49 @@ button {
     var(--color-neutral-700) calc(100% - 24px),
     transparent 100%
   );
+}
+
+@keyframes timeline-working-ping {
+  0% {
+    opacity: 0.45;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+@keyframes timeline-working-core {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes timeline-working-dot {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  45% {
+    opacity: 0.75;
+  }
+}
+
+@utility animate-timeline-working-ping {
+  animation: timeline-working-ping 1.8s ease-out infinite;
+}
+
+@utility animate-timeline-working-core {
+  animation: timeline-working-core 1.8s ease-in-out infinite;
+}
+
+@utility animate-timeline-working-dot {
+  animation: timeline-working-dot 1.2s ease-in-out infinite;
 }
 
 /* ── Sidebar: card enter animation (fade + slide from left) ── */

@@ -1,3 +1,4 @@
+import { Loader2 } from 'lucide-react';
 import {
   memo,
   useEffect,
@@ -162,9 +163,31 @@ export const MessageStream = memo(function MessageStream({
           );
         })}
         {isRunning && (
-          <div className="relative py-1.5 pl-6">
-            <div className="absolute top-2.5 -left-1 h-2 w-2 animate-pulse rounded-full bg-purple-500 shadow-[0_0_6px_theme(colors.purple.500/40)]" />
-            <span className="text-xs text-neutral-500">Working...</span>
+          <div className="relative pl-6">
+            <div className="absolute top-2.5 -left-1 flex h-2 w-2 items-center justify-center">
+              <span className="animate-timeline-working-ping absolute h-3 w-3 rounded-full bg-sky-400/20" />
+              <span className="animate-timeline-working-core h-2 w-2 rounded-full bg-sky-400 shadow-[0_0_5px_theme(colors.sky.400/35)]" />
+            </div>
+            <div className="py-1.5 pr-3">
+              <div className="flex items-center gap-2">
+                <Loader2
+                  className="h-3 w-3 shrink-0 animate-spin text-sky-400/90"
+                  aria-hidden
+                />
+                <span className="text-xs font-medium text-neutral-400">
+                  Working
+                </span>
+                <span className="flex items-center gap-0.5" aria-hidden>
+                  {[0, 1, 2].map((i) => (
+                    <span
+                      key={i}
+                      className="animate-timeline-working-dot h-1 w-1 rounded-full bg-sky-300/70"
+                      style={{ animationDelay: `${i * 150}ms` }}
+                    />
+                  ))}
+                </span>
+              </div>
+            </div>
           </div>
         )}
         {/* Queued prompts */}
