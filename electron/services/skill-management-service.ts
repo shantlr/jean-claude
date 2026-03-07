@@ -36,18 +36,32 @@ const JC_SKILLS_BASE_DIR = path.join(
 
 const JC_USER_SKILLS_DIR = path.join(JC_SKILLS_BASE_DIR, 'user');
 
+// --- Claude Code plugin paths ---
+
+const CLAUDE_SETTINGS_PATH = path.join(
+  os.homedir(),
+  '.claude',
+  'settings.json',
+);
+const CLAUDE_PLUGINS_CACHE_DIR = path.join(
+  os.homedir(),
+  '.claude',
+  'plugins',
+  'cache',
+);
+
 // --- Backend path configurations ---
 
 const SKILL_PATH_CONFIGS: Record<AgentBackendType, AgentSkillPathConfig> = {
   'claude-code': {
     userSkillsDir: path.join(os.homedir(), '.claude', 'skills'),
     projectSkillsDir: '.claude/skills',
-    pluginSkillsDir: path.join(os.homedir(), '.claude', 'plugins', 'cache'),
+    discoverExternalSkills: () =>
+      discoverActivePluginSkills({ backendType: 'claude-code' }),
   },
   opencode: {
     userSkillsDir: path.join(os.homedir(), '.config', 'opencode', 'skills'),
     projectSkillsDir: undefined,
-    pluginSkillsDir: undefined,
   },
 };
 
@@ -454,6 +468,77 @@ async function discoverSkillsInDir({
   return skills;
 }
 
+// --- Active plugin discovery ---
+
+/**
+ * Reads ~/.claude/settings.json and returns the enabledPlugins map.
+ * Keys are in "pluginName@marketplaceName" format, values are booleans.
+ */
+async function readEnabledPlugins(): Promise<Record<string, boolean>> {
+  try {
+    const content = await fs.readFile(CLAUDE_SETTINGS_PATH, 'utf-8');
+    const settings = JSON.parse(content) as {
+      enabledPlugins?: Record<string, boolean>;
+    };
+    return settings.enabledPlugins ?? {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Discovers skills from active (enabled) Claude Code plugins only.
+ * Reads enabledPlugins from ~/.claude/settings.json, then scans the
+ * plugin cache for matching entries instead of scanning the entire cache.
+ */
+async function discoverActivePluginSkills({
+  backendType,
+}: {
+  backendType: AgentBackendType;
+}): Promise<ManagedSkill[]> {
+  const enabledPlugins = await readEnabledPlugins();
+  const skills: ManagedSkill[] = [];
+
+  for (const [key, enabled] of Object.entries(enabledPlugins)) {
+    if (!enabled) continue;
+
+    // Key format: "pluginName@marketplaceName"
+    const atIdx = key.indexOf('@');
+    if (atIdx === -1) continue;
+
+    const pluginName = key.slice(0, atIdx);
+    const marketplaceName = key.slice(atIdx + 1);
+    const pluginDir = path.join(
+      CLAUDE_PLUGINS_CACHE_DIR,
+      marketplaceName,
+      pluginName,
+    );
+
+    try {
+      const versionDirs = await fs.readdir(pluginDir, { withFileTypes: true });
+      for (const versionDir of versionDirs) {
+        if (!versionDir.isDirectory()) continue;
+        const skillsPath = path.join(pluginDir, versionDir.name, 'skills');
+
+        const pluginSkills = await discoverSkillsInDir({
+          baseDir: skillsPath,
+          source: 'plugin',
+          enabledBackends: { [backendType]: true },
+          editable: false,
+          pluginName,
+        });
+        skills.push(...pluginSkills);
+      }
+    } catch (error) {
+      if (!isEnoent(error)) {
+        dbg.skill('Error reading plugin dir %s: %O', pluginDir, error);
+      }
+    }
+  }
+
+  return skills;
+}
+
 /**
  * Scans a backend's user skills directory for entries that are NOT managed by
  * Jean-Claude and classifies each as migratable, conflicting, or invalid.
@@ -615,51 +700,14 @@ async function discoverLegacyMigrationCandidates({
   return candidates;
 }
 
-async function discoverPluginSkills(
-  pluginsDir: string,
-  backendType: AgentBackendType,
-): Promise<ManagedSkill[]> {
-  const skills: ManagedSkill[] = [];
-  try {
-    const packageDirs = await fs.readdir(pluginsDir, { withFileTypes: true });
-    for (const packageDir of packageDirs) {
-      if (!packageDir.isDirectory()) continue;
-      const packagePath = path.join(pluginsDir, packageDir.name);
-      const pluginDirs = await fs.readdir(packagePath, { withFileTypes: true });
+// --- Shared discovery utility ---
 
-      for (const pluginDir of pluginDirs) {
-        if (!pluginDir.isDirectory()) continue;
-        const pluginPath = path.join(packagePath, pluginDir.name);
-        const versionDirs = await fs.readdir(pluginPath, {
-          withFileTypes: true,
-        });
-
-        for (const versionDir of versionDirs) {
-          if (!versionDir.isDirectory()) continue;
-          const skillsPath = path.join(pluginPath, versionDir.name, 'skills');
-
-          const pluginSkills = await discoverSkillsInDir({
-            baseDir: skillsPath,
-            source: 'plugin',
-            enabledBackends: { [backendType]: true },
-            editable: false,
-            pluginName: pluginDir.name,
-          });
-          skills.push(...pluginSkills);
-        }
-      }
-    }
-  } catch (error) {
-    if (!isEnoent(error)) {
-      dbg.skill('Error reading plugins dir %s: %O', pluginsDir, error);
-    }
-  }
-  return skills;
-}
-
-// --- Public API ---
-
-export async function getAllManagedSkills({
+/**
+ * Discovers all skill sources for a single backend: JC-managed, legacy,
+ * project, and external (e.g., active plugins). Used by both the per-backend
+ * and unified public APIs to avoid duplicating discovery logic.
+ */
+async function discoverSkillsForBackend({
   backendType,
   projectPath,
 }: {
@@ -688,13 +736,24 @@ export async function getAllManagedSkills({
     );
   }
 
-  // Plugin skills (read-only)
-  if (config.pluginSkillsDir) {
-    results.push(
-      ...(await discoverPluginSkills(config.pluginSkillsDir, backendType)),
-    );
+  // External skills (e.g., active plugins)
+  if (config.discoverExternalSkills) {
+    results.push(...(await config.discoverExternalSkills()));
   }
 
+  return results;
+}
+
+// --- Public API ---
+
+export async function getAllManagedSkills({
+  backendType,
+  projectPath,
+}: {
+  backendType: AgentBackendType;
+  projectPath?: string;
+}): Promise<ManagedSkill[]> {
+  const results = await discoverSkillsForBackend({ backendType, projectPath });
   return results.sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -706,12 +765,14 @@ export async function getAllManagedSkillsUnified({
   const results: ManagedSkill[] = [];
   const seenPaths = new Set<string>();
 
+  // JC-managed skills first (unified across all backends)
   const jcSkills = await discoverJcManagedUserSkills();
   for (const skill of jcSkills) {
     seenPaths.add(skill.skillPath);
     results.push(skill);
   }
 
+  // Per-backend: legacy, project, and external skills (deduplicated)
   for (const [backend, config] of Object.entries(SKILL_PATH_CONFIGS)) {
     const backendType = backend as AgentBackendType;
 
@@ -737,12 +798,9 @@ export async function getAllManagedSkillsUnified({
       }
     }
 
-    if (config.pluginSkillsDir) {
-      const pluginSkills = await discoverPluginSkills(
-        config.pluginSkillsDir,
-        backendType,
-      );
-      for (const skill of pluginSkills) {
+    if (config.discoverExternalSkills) {
+      const externalSkills = await config.discoverExternalSkills();
+      for (const skill of externalSkills) {
         if (seenPaths.has(skill.skillPath)) continue;
         seenPaths.add(skill.skillPath);
         results.push(skill);

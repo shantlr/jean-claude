@@ -26,7 +26,8 @@ export type Skill = Pick<
 export interface AgentSkillPathConfig {
   userSkillsDir: string;
   projectSkillsDir?: string; // relative to project root
-  pluginSkillsDir?: string;
+  /** Optional function to discover additional skills (e.g., active plugins) */
+  discoverExternalSkills?: () => Promise<ManagedSkill[]>;
 }
 
 export type SkillScope = 'user' | 'project';
