@@ -1,5 +1,5 @@
 import { Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
 
 import { AVAILABLE_BACKENDS } from '@/features/agent/ui-backend-selector';
 import { ProjectMcpSettings } from '@/features/project/ui-project-mcp-settings';
@@ -20,11 +20,26 @@ import { useNavigationStore } from '@/stores/navigation';
 import { useToastStore } from '@/stores/toasts';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 
+export type ProjectSettingsMenuItem =
+  | 'details'
+  | 'autocomplete'
+  | 'integrations'
+  | 'run-commands'
+  | 'skills'
+  | 'mcp-overrides'
+  | 'danger-zone';
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled project settings menu item: ${String(value)}`);
+}
+
 export function ProjectSettings({
   projectId,
+  menuItem,
   onProjectDeleted,
 }: {
   projectId: string;
+  menuItem: ProjectSettingsMenuItem;
   onProjectDeleted: () => void;
 }) {
   const { data: project } = useProject(projectId);
@@ -80,6 +95,12 @@ export function ProjectSettings({
       setDefaultBranch(initial);
     }
   }, [branches, project?.defaultBranch, defaultBranch]);
+
+  useEffect(() => {
+    if (menuItem !== 'danger-zone' && showDeleteConfirm) {
+      setShowDeleteConfirm(false);
+    }
+  }, [menuItem, showDeleteConfirm]);
 
   if (!project) {
     return (
@@ -137,182 +158,240 @@ export function ProjectSettings({
     defaultAgentBackend !== project.defaultAgentBackend ||
     completionContext !== (project.completionContext ?? '');
 
-  return (
-    <div className="space-y-6">
-      <div id="project-details" className="space-y-6">
-        {/* Name */}
-        <div>
-          <label
-            htmlFor="name"
-            className="mb-1 block text-sm font-medium text-neutral-300"
-          >
-            Name
-          </label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
-          />
-        </div>
+  let content: ReactElement;
 
-        {/* Path */}
-        <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-300">
-            Path
-          </label>
-          <div className="rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2">
-            <span className="text-sm text-neutral-400">{project.path}</span>
+  switch (menuItem) {
+    case 'details':
+      content = (
+        <div className="space-y-6">
+          <div>
+            <label
+              htmlFor="name"
+              className="mb-1 block text-sm font-medium text-neutral-300"
+            >
+              Name
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
+            />
           </div>
-        </div>
 
-        {/* Type */}
-        <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-300">
-            Type
-          </label>
-          <span className="inline-block rounded-md bg-neutral-700 px-2 py-1 text-sm">
-            {project.type === 'local' ? 'Local folder' : 'Git provider'}
-          </span>
-        </div>
-
-        {/* Color */}
-        <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-300">
-            Color
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {PROJECT_COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setColor(c)}
-                className={`h-8 w-8 cursor-pointer rounded-lg transition-all ${
-                  color === c
-                    ? 'ring-2 ring-white ring-offset-2 ring-offset-neutral-900'
-                    : 'hover:scale-110'
-                }`}
-                style={{ backgroundColor: c }}
-              />
-            ))}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-neutral-300">
+              Path
+            </label>
+            <div className="rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2">
+              <span className="text-sm text-neutral-400">{project.path}</span>
+            </div>
           </div>
-        </div>
 
-        {/* Default Branch */}
-        <div>
-          <label
-            htmlFor="defaultBranch"
-            className="mb-1 block text-sm font-medium text-neutral-300"
-          >
-            Default merge branch
-          </label>
-          <select
-            id="defaultBranch"
-            value={defaultBranch}
-            onChange={(e) => setDefaultBranch(e.target.value)}
-            disabled={branchesLoading || !branches?.length}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white focus:border-neutral-500 focus:outline-none disabled:opacity-50"
-          >
-            {branchesLoading ? (
-              <option>Loading...</option>
-            ) : branches?.length === 0 ? (
-              <option>No branches found</option>
-            ) : (
-              branches?.map((branch) => (
-                <option key={branch} value={branch}>
-                  {branch}
-                </option>
-              ))
-            )}
-          </select>
-          <p className="mt-1 text-xs text-neutral-500">
-            The branch that worktrees will merge into
-          </p>
-        </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-neutral-300">
+              Type
+            </label>
+            <span className="inline-block rounded-md bg-neutral-700 px-2 py-1 text-sm">
+              {project.type === 'local' ? 'Local folder' : 'Git provider'}
+            </span>
+          </div>
 
-        {/* Default Agent Backend */}
-        <div>
-          <label
-            htmlFor="defaultAgentBackend"
-            className="mb-1 block text-sm font-medium text-neutral-300"
-          >
-            Default agent backend
-          </label>
-          <select
-            id="defaultAgentBackend"
-            value={defaultAgentBackend ?? ''}
-            onChange={(e) => {
-              const val = e.target.value;
-              setDefaultAgentBackend(
-                val === '' ? null : (val as AgentBackendType),
-              );
-            }}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white focus:border-neutral-500 focus:outline-none"
-          >
-            <option value="">
-              Use global default
-              {backendsSetting?.defaultBackend
-                ? ` (${AVAILABLE_BACKENDS.find((b) => b.value === backendsSetting.defaultBackend)?.label ?? backendsSetting.defaultBackend})`
-                : ''}
-            </option>
-            {enabledBackends.map((b) => (
-              <option key={b.value} value={b.value}>
-                {b.label}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-neutral-300">
+              Color
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {PROJECT_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className={`h-8 w-8 cursor-pointer rounded-lg transition-all ${
+                    color === c
+                      ? 'ring-2 ring-white ring-offset-2 ring-offset-neutral-900'
+                      : 'hover:scale-110'
+                  }`}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor="defaultBranch"
+              className="mb-1 block text-sm font-medium text-neutral-300"
+            >
+              Default merge branch
+            </label>
+            <select
+              id="defaultBranch"
+              value={defaultBranch}
+              onChange={(e) => setDefaultBranch(e.target.value)}
+              disabled={branchesLoading || !branches?.length}
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white focus:border-neutral-500 focus:outline-none disabled:opacity-50"
+            >
+              {branchesLoading ? (
+                <option>Loading...</option>
+              ) : branches?.length === 0 ? (
+                <option>No branches found</option>
+              ) : (
+                branches?.map((branch) => (
+                  <option key={branch} value={branch}>
+                    {branch}
+                  </option>
+                ))
+              )}
+            </select>
+            <p className="mt-1 text-xs text-neutral-500">
+              The branch that worktrees will merge into
+            </p>
+          </div>
+
+          <div>
+            <label
+              htmlFor="defaultAgentBackend"
+              className="mb-1 block text-sm font-medium text-neutral-300"
+            >
+              Default agent backend
+            </label>
+            <select
+              id="defaultAgentBackend"
+              value={defaultAgentBackend ?? ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                setDefaultAgentBackend(
+                  val === '' ? null : (val as AgentBackendType),
+                );
+              }}
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white focus:border-neutral-500 focus:outline-none"
+            >
+              <option value="">
+                Use global default
+                {backendsSetting?.defaultBackend
+                  ? ` (${AVAILABLE_BACKENDS.find((b) => b.value === backendsSetting.defaultBackend)?.label ?? backendsSetting.defaultBackend})`
+                  : ''}
               </option>
-            ))}
-          </select>
-          <p className="mt-1 text-xs text-neutral-500">
-            The agent backend used for new tasks in this project
-          </p>
+              {enabledBackends.map((b) => (
+                <option key={b.value} value={b.value}>
+                  {b.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-neutral-500">
+              The agent backend used for new tasks in this project
+            </p>
+          </div>
         </div>
-      </div>
-
-      {/* Autocomplete Context */}
-      <div
-        id="project-autocomplete-context"
-        className="border-t border-neutral-700 pt-6"
-      >
-        <h2 className="mb-4 text-lg font-semibold text-neutral-200">
-          Autocomplete Context
-        </h2>
-        <p className="mb-3 text-xs text-neutral-500">
-          Provides context to the autocomplete model when completing prompts in
-          this project. Describe what the project is about and include example
-          prompts.
-        </p>
-        <textarea
-          value={completionContext}
-          onChange={(e) => setCompletionContext(e.target.value)}
-          placeholder={`Project: An e-commerce platform for artisan goods\n\nExample prompts:\n- add filtering by price range to the product catalog\n- fix the checkout flow when cart has mixed shipping`}
-          rows={8}
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-600 focus:border-neutral-500 focus:outline-none"
-        />
-        <button
-          type="button"
-          onClick={handleGenerateContext}
-          disabled={isGeneratingContext}
-          className="mt-2 cursor-pointer rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-neutral-300 transition-colors hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isGeneratingContext ? 'Generating...' : 'Generate from task history'}
-        </button>
-      </div>
-
-      {/* Provider Integration */}
-      <div
-        id="project-integrations"
-        className="border-t border-neutral-700 pt-6"
-      >
-        <h2 className="mb-4 text-lg font-semibold text-neutral-200">
-          Integrations
-        </h2>
+      );
+      break;
+    case 'autocomplete':
+      content = (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-neutral-200">
+            Autocomplete Context
+          </h2>
+          <p className="text-xs text-neutral-500">
+            Provides context to the autocomplete model when completing prompts
+            in this project. Describe what the project is about and include
+            example prompts.
+          </p>
+          <textarea
+            value={completionContext}
+            onChange={(e) => setCompletionContext(e.target.value)}
+            placeholder={`Project: An e-commerce platform for artisan goods\n\nExample prompts:\n- add filtering by price range to the product catalog\n- fix the checkout flow when cart has mixed shipping`}
+            rows={8}
+            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-600 focus:border-neutral-500 focus:outline-none"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleGenerateContext}
+              disabled={isGeneratingContext}
+              className="cursor-pointer rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-neutral-300 transition-colors hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isGeneratingContext
+                ? 'Generating...'
+                : 'Generate from task history'}
+            </button>
+          </div>
+        </div>
+      );
+      break;
+    case 'integrations':
+      content = (
         <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-neutral-200">
+            Integrations
+          </h2>
           <RepoLink project={project} />
           <WorkItemsLink project={project} />
         </div>
-      </div>
+      );
+      break;
+    case 'run-commands':
+      content = (
+        <RunCommandsConfig projectId={projectId} projectPath={project.path} />
+      );
+      break;
+    case 'skills':
+      content = <ProjectSkillsSettings projectId={projectId} />;
+      break;
+    case 'mcp-overrides':
+      content = <ProjectMcpSettings projectId={projectId} />;
+      break;
+    case 'danger-zone':
+      content = (
+        <div>
+          <h2 className="mb-4 text-lg font-semibold text-red-400">
+            Danger Zone
+          </h2>
+          {showDeleteConfirm ? (
+            <div className="rounded-lg border border-red-900 bg-red-950/50 p-4">
+              <p className="mb-4 text-sm text-neutral-300">
+                Are you sure you want to delete this project? This action cannot
+                be undone.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleteProject.isPending}
+                  className="cursor-pointer rounded-lg bg-red-600 px-4 py-2 font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                >
+                  {deleteProject.isPending ? 'Deleting...' : 'Delete Project'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="cursor-pointer rounded-lg bg-neutral-700 px-4 py-2 font-medium transition-colors hover:bg-neutral-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex cursor-pointer items-center gap-2 rounded-lg border border-red-900 bg-red-950/50 px-4 py-2 text-red-400 transition-colors hover:bg-red-950"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete Project
+            </button>
+          )}
+        </div>
+      );
+      break;
+    default:
+      assertNever(menuItem);
+  }
 
-      {/* Save button */}
+  return (
+    <div className="space-y-6">
+      {content}
       {hasChanges && (
         <button
           type="button"
@@ -323,69 +402,6 @@ export function ProjectSettings({
           {updateProject.isPending ? 'Saving...' : 'Save Changes'}
         </button>
       )}
-
-      {/* Divider */}
-      <div className="border-t border-neutral-700" />
-
-      {/* Run Commands */}
-      <div id="project-run-commands">
-        <RunCommandsConfig projectId={projectId} projectPath={project.path} />
-      </div>
-
-      {/* Skills */}
-      <div id="project-skills" className="border-t border-neutral-700 pt-6">
-        <ProjectSkillsSettings projectId={projectId} />
-      </div>
-
-      {/* MCP Server Templates */}
-      <div
-        id="project-mcp-overrides"
-        className="border-t border-neutral-700 pt-6"
-      >
-        <ProjectMcpSettings projectId={projectId} />
-      </div>
-
-      {/* Danger zone */}
-      <div
-        id="project-danger-zone"
-        className="border-t border-neutral-700 pt-6"
-      >
-        <h2 className="mb-4 text-lg font-semibold text-red-400">Danger Zone</h2>
-        {showDeleteConfirm ? (
-          <div className="rounded-lg border border-red-900 bg-red-950/50 p-4">
-            <p className="mb-4 text-sm text-neutral-300">
-              Are you sure you want to delete this project? This action cannot
-              be undone.
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={deleteProject.isPending}
-                className="cursor-pointer rounded-lg bg-red-600 px-4 py-2 font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
-              >
-                {deleteProject.isPending ? 'Deleting...' : 'Delete Project'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                className="cursor-pointer rounded-lg bg-neutral-700 px-4 py-2 font-medium transition-colors hover:bg-neutral-600"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowDeleteConfirm(true)}
-            className="flex cursor-pointer items-center gap-2 rounded-lg border border-red-900 bg-red-950/50 px-4 py-2 text-red-400 transition-colors hover:bg-red-950"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete Project
-          </button>
-        )}
-      </div>
     </div>
   );
 }

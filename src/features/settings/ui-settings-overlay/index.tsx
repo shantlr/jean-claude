@@ -1,13 +1,16 @@
 import clsx from 'clsx';
 import { ArrowLeft } from 'lucide-react';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
 import { RemoveScroll } from 'react-remove-scroll';
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
 import { Kbd } from '@/common/ui/kbd';
-import { ProjectSettings } from '@/features/project/ui-project-settings';
+import {
+  ProjectSettings,
+  type ProjectSettingsMenuItem,
+} from '@/features/project/ui-project-settings';
 import { AutocompleteSettings } from '@/features/settings/ui-autocomplete-settings';
 import { AzureDevOpsTab } from '@/features/settings/ui-azure-devops-tab';
 import { DebugDatabase } from '@/features/settings/ui-debug-database';
@@ -27,14 +30,6 @@ type GlobalMenuItem =
   | 'autocomplete'
   | 'debug';
 
-type ProjectMenuItem =
-  | 'details'
-  | 'integrations'
-  | 'run-commands'
-  | 'skills'
-  | 'mcp-overrides'
-  | 'danger-zone';
-
 const GLOBAL_MENU_ITEMS: { id: GlobalMenuItem; label: string }[] = [
   { id: 'general', label: 'General' },
   { id: 'skills', label: 'Skills' },
@@ -45,8 +40,9 @@ const GLOBAL_MENU_ITEMS: { id: GlobalMenuItem; label: string }[] = [
   { id: 'debug', label: 'Debug' },
 ];
 
-const PROJECT_MENU_ITEMS: { id: ProjectMenuItem; label: string }[] = [
+const PROJECT_MENU_ITEMS: { id: ProjectSettingsMenuItem; label: string }[] = [
   { id: 'details', label: 'Details' },
+  { id: 'autocomplete', label: 'Autocomplete' },
   { id: 'integrations', label: 'Integrations' },
   { id: 'run-commands', label: 'Run Commands' },
   { id: 'skills', label: 'Skills' },
@@ -82,23 +78,9 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
   const [globalMenuItem, setGlobalMenuItem] =
     useState<GlobalMenuItem>('general');
   const [projectMenuItem, setProjectMenuItem] =
-    useState<ProjectMenuItem>('details');
-
-  const contentRef = useRef<HTMLDivElement>(null);
+    useState<ProjectSettingsMenuItem>('details');
 
   const hasProjectTab = currentProject !== null;
-
-  const handleProjectMenuClick = useCallback((item: ProjectMenuItem) => {
-    setProjectMenuItem(item);
-    // Scroll to the section in the project settings content
-    // Use a short delay to allow React to render the content area
-    setTimeout(() => {
-      const el = document.getElementById(`project-${item}`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth' });
-      }
-    }, 50);
-  }, []);
 
   const navigateMenu = useCallback(
     (direction: 'up' | 'down') => {
@@ -121,10 +103,10 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
             ? (currentIndex + 1) % PROJECT_MENU_ITEMS.length
             : (currentIndex - 1 + PROJECT_MENU_ITEMS.length) %
               PROJECT_MENU_ITEMS.length;
-        handleProjectMenuClick(PROJECT_MENU_ITEMS[nextIndex].id);
+        setProjectMenuItem(PROJECT_MENU_ITEMS[nextIndex].id);
       }
     },
-    [activeTab, globalMenuItem, projectMenuItem, handleProjectMenuClick],
+    [activeTab, globalMenuItem, projectMenuItem],
   );
 
   useRegisterKeyboardBindings('settings-overlay', {
@@ -252,11 +234,20 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                 )}
 
                 {activeTab === 'project' && hasProjectTab && (
-                  <nav className="flex flex-col gap-1">
+                  <nav
+                    className="flex flex-col gap-1"
+                    role="tablist"
+                    aria-label="Project settings sections"
+                  >
                     {PROJECT_MENU_ITEMS.map((item) => (
                       <button
                         key={item.id}
-                        onClick={() => handleProjectMenuClick(item.id)}
+                        id={`project-settings-tab-${item.id}`}
+                        role="tab"
+                        type="button"
+                        aria-selected={projectMenuItem === item.id}
+                        aria-controls={`project-settings-panel-${item.id}`}
+                        onClick={() => setProjectMenuItem(item.id)}
                         className={clsx(
                           'rounded px-3 py-1.5 text-left text-sm transition-colors',
                           projectMenuItem === item.id
@@ -272,7 +263,24 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
               </div>
 
               {/* Right content area */}
-              <div ref={contentRef} className="flex-1 overflow-y-auto p-6">
+              <div
+                className="flex-1 overflow-y-auto p-6"
+                role={
+                  activeTab === 'project' && hasProjectTab
+                    ? 'tabpanel'
+                    : undefined
+                }
+                id={
+                  activeTab === 'project' && hasProjectTab
+                    ? `project-settings-panel-${projectMenuItem}`
+                    : undefined
+                }
+                aria-labelledby={
+                  activeTab === 'project' && hasProjectTab
+                    ? `project-settings-tab-${projectMenuItem}`
+                    : undefined
+                }
+              >
                 {activeTab === 'global' && (
                   <GlobalContent menuItem={globalMenuItem} />
                 )}
@@ -280,6 +288,7 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                 {activeTab === 'project' && hasProjectTab && (
                   <ProjectSettings
                     projectId={currentProject.id}
+                    menuItem={projectMenuItem}
                     onProjectDeleted={handleProjectDeleted}
                   />
                 )}
