@@ -124,6 +124,11 @@ import {
   previewLegacySkillMigration,
   executeLegacySkillMigration,
 } from '../services/skill-management-service';
+import {
+  searchRegistry,
+  fetchRegistrySkillContent,
+  installFromRegistry,
+} from '../services/skill-registry-service';
 import { StepService } from '../services/step-service';
 import { generateSummary } from '../services/summary-generation-service';
 import {
@@ -2377,6 +2382,44 @@ export function registerIpcHandlers() {
     async (_, params: { itemIds: string[] }) => {
       dbg.ipc('skills:migrationExecute count=%d', params.itemIds.length);
       return executeLegacySkillMigration({ itemIds: params.itemIds });
+    },
+  );
+
+  // --- Skills registry (skills.sh) ---
+
+  ipcMain.handle('skills:registrySearch', async (_, query: string) => {
+    dbg.ipc('skills:registrySearch query=%s', query);
+    return searchRegistry({ query });
+  });
+
+  ipcMain.handle(
+    'skills:registryFetchContent',
+    async (_, source: string, skillId: string) => {
+      dbg.ipc(
+        'skills:registryFetchContent source=%s skillId=%s',
+        source,
+        skillId,
+      );
+      return fetchRegistrySkillContent({ source, skillId });
+    },
+  );
+
+  ipcMain.handle(
+    'skills:registryInstall',
+    async (
+      _,
+      params: {
+        source: string;
+        skillId: string;
+        enabledBackends: AgentBackendType[];
+      },
+    ) => {
+      dbg.ipc(
+        'skills:registryInstall source=%s skill=%s',
+        params.source,
+        params.skillId,
+      );
+      return installFromRegistry(params);
     },
   );
 }

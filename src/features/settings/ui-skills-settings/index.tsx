@@ -1,6 +1,7 @@
-import { Plus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Plus, Search } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 
+import { useCommands } from '@/common/hooks/use-commands';
 import {
   useAllManagedSkills,
   useDeleteSkill,
@@ -13,6 +14,7 @@ import type { ManagedSkill } from '@shared/skill-types';
 import { LegacySkillMigrationDialog } from './legacy-skill-migration-dialog';
 import { SkillCardGrid } from './skill-card-grid';
 import { SkillDetails } from './skill-details';
+import { SkillRegistryBrowser } from './skill-registry-browser';
 import { SkillEditor } from './skill-editor';
 
 export function SkillsSettings() {
@@ -24,8 +26,23 @@ export function SkillsSettings() {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [editingPath, setEditingPath] = useState<string | null | 'new'>(null);
   const [showMigrationDialog, setShowMigrationDialog] = useState(false);
+  const [showRegistryBrowser, setShowRegistryBrowser] = useState(false);
 
   const selectedSkill = skills?.find((s) => s.skillPath === selectedPath);
+
+  const openBrowser = useCallback(() => {
+    setShowRegistryBrowser(true);
+  }, []);
+
+  useCommands('skills-settings', [
+    {
+      label: 'Browse Skills Registry',
+      handler: openBrowser,
+      shortcut: 'cmd+shift+b',
+      section: 'Skills',
+      keywords: ['browse', 'registry', 'discover', 'install', 'skills.sh'],
+    },
+  ]);
 
   const { mySkills, installedSkills } = useMemo(() => {
     const my = (skills ?? []).filter((s) => s.editable);
@@ -132,6 +149,15 @@ export function SkillsSettings() {
               Migrate Legacy Skills
             </button>
             <button
+              type="button"
+              onClick={() => setShowRegistryBrowser(true)}
+              className="flex cursor-pointer items-center gap-1 rounded-lg border border-neutral-600 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:border-neutral-500 hover:bg-neutral-800"
+            >
+              <Search className="h-4 w-4" />
+              Browse
+            </button>
+            <button
+              type="button"
               onClick={handleCreate}
               className="flex cursor-pointer items-center gap-1 rounded-lg bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600"
             >
@@ -198,6 +224,10 @@ export function SkillsSettings() {
         <LegacySkillMigrationDialog
           onClose={() => setShowMigrationDialog(false)}
         />
+      )}
+
+      {showRegistryBrowser && (
+        <SkillRegistryBrowser onClose={() => setShowRegistryBrowser(false)} />
       )}
     </div>
   );

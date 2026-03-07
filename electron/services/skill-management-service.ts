@@ -14,6 +14,11 @@ import type {
 
 import { dbg } from '../lib/debug';
 import { isEnoent } from '../lib/fs';
+import {
+  buildSkillMd,
+  extractBody,
+  parseFrontmatter,
+} from '../lib/skill-frontmatter';
 
 // --- Jean-Claude canonical skill storage ---
 //
@@ -91,59 +96,6 @@ async function pathExists(p: string): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-// --- Frontmatter parsing ---
-
-interface SkillFrontmatter {
-  name?: string;
-  description?: string;
-}
-
-function parseFrontmatter(content: string): SkillFrontmatter {
-  const match = content.match(/^---\n([\s\S]*?)\n---/);
-  if (!match) return {};
-
-  const frontmatter: SkillFrontmatter = {};
-  for (const line of match[1].split('\n')) {
-    const colonIndex = line.indexOf(':');
-    if (colonIndex === -1) continue;
-
-    const key = line.slice(0, colonIndex).trim();
-    let value = line.slice(colonIndex + 1).trim();
-
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-
-    if (key === 'name') frontmatter.name = value;
-    else if (key === 'description') frontmatter.description = value;
-  }
-
-  return frontmatter;
-}
-
-function buildSkillMd({
-  name,
-  description,
-  content,
-}: {
-  name: string;
-  description: string;
-  content: string;
-}): string {
-  const lines = ['---'];
-  lines.push(`name: ${name}`);
-  if (description) lines.push(`description: ${description}`);
-  lines.push('---');
-  if (content) {
-    lines.push('');
-    lines.push(content);
-  }
-  return lines.join('\n') + '\n';
 }
 
 /** Converts a skill name into a safe directory name (lowercase, alphanumeric + dashes). */
@@ -981,17 +933,10 @@ export async function getSkillContent({
   const raw = await fs.readFile(filePath, 'utf-8');
   const fm = parseFrontmatter(raw);
 
-  // Extract body (everything after the frontmatter block)
-  let content = raw;
-  const fmMatch = raw.match(/^---\n[\s\S]*?\n---\n?/);
-  if (fmMatch) {
-    content = raw.slice(fmMatch[0].length).trim();
-  }
-
   return {
     name: fm.name || path.basename(skillPath),
     description: fm.description || '',
-    content,
+    content: extractBody(raw),
   };
 }
 

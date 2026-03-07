@@ -1,10 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type {
   LegacySkillMigrationExecuteResult,
   LegacySkillMigrationPreviewResult,
+  RegistrySearchResult,
+  RegistrySkillContent,
   SkillScope,
 } from '@shared/skill-types';
 
@@ -150,6 +157,52 @@ export function useLegacySkillMigrationExecute() {
     { itemIds: string[] }
   >({
     mutationFn: (params) => api.skillManagement.migrationExecute(params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: managedSkillsQueryKeys.all,
+      });
+    },
+  });
+}
+
+// --- Skills Registry (skills.sh) ---
+
+const registryQueryKeys = {
+  search: (query: string) => ['skillRegistry', 'search', query] as const,
+  content: (source: string | null, skillId: string | null) =>
+    ['skillRegistry', 'content', source, skillId] as const,
+};
+
+export function useRegistrySearch(query: string) {
+  return useQuery<RegistrySearchResult>({
+    queryKey: registryQueryKeys.search(query),
+    queryFn: () => api.skillManagement.registrySearch(query),
+    enabled: query.trim().length >= 2,
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useRegistrySkillContent(
+  source: string | null,
+  skillId: string | null,
+) {
+  return useQuery<RegistrySkillContent>({
+    queryKey: registryQueryKeys.content(source, skillId),
+    queryFn: () => api.skillManagement.registryFetchContent(source!, skillId!),
+    enabled: !!source && !!skillId,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useInstallRegistrySkill() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: {
+      source: string;
+      skillId: string;
+      enabledBackends: AgentBackendType[];
+    }) => api.skillManagement.registryInstall(params),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: managedSkillsQueryKeys.all,

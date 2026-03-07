@@ -376,6 +376,20 @@ The skills service (`electron/services/skill-management-service.ts`) discovers a
 - **Execute**: `skills:migrationExecute` copies skill to canonical, replaces legacy with symlink, with per-item rollback on failure
 - **UI**: Modal dialog showing grouped items by backend with status badges and result summary
 
+**Skill Registry Browser** (`skill-registry-browser.tsx`):
+
+- **Purpose**: Discover and install community skills from the [skills.sh](https://skills.sh) registry (Vercel Labs ecosystem, 86K+ skills)
+- **Search**: Queries `GET skills.sh/api/search?q=<query>` with debounced input (300ms). Results show name, install count, source repo
+- **Preview**: Fetches `SKILL.md` content from GitHub raw URLs (`raw.githubusercontent.com`) for preview before install
+- **Install**: Shallow git clone → discover SKILL.md → `createSkill()` to canonical storage → copy companion files (AGENTS.md, resources/, rules/)
+- **Duplicate Detection**: Shows "Installed" badge when a local skill with the same name exists; disables install button
+- **Backend Selection**: Users choose which backends (Claude Code / OpenCode) to enable during install
+- **Service**: `electron/services/skill-registry-service.ts` with `searchRegistry()`, `fetchRegistrySkillContent()`, `installFromRegistry()`
+- **IPC**: `skills:registrySearch`, `skills:registryFetchContent`, `skills:registryInstall`
+- **Hooks**: `useRegistrySearch()`, `useRegistrySkillContent()`, `useInstallRegistrySkill()`
+- **Types**: `RegistrySkill`, `RegistrySearchResult`, `RegistrySkillContent` in `shared/skill-types.ts`
+- **UI**: Full-screen dialog with search bar, responsive results grid, and right preview pane with install controls
+
 ### Context Usage Tracking
 
 The context usage display tracks token consumption during agent sessions:
@@ -545,6 +559,7 @@ electron/              # Main process
     permission-settings-service.ts  # Worktree permission management
     run-command-service.ts  # Shell command execution with port monitoring
     skill-management-service.ts  # Unified skills discovery, CRUD, and enable/disable
+    skill-registry-service.ts    # Search, preview, and install skills from skills.sh registry
     summary-generation-service.ts  # AI-generated task summaries
     task-service.ts    # Task lifecycle management
     worktree-service.ts     # Git worktree creation, diff, commit, merge, conflict detection
@@ -582,7 +597,7 @@ src/                   # Renderer (React)
     project/           # Project tile, repo/work items linking, clone pane, run commands config, MCP settings, skills settings, backlog overlay
     pull-request/      # PR viewing (detail, header, overview, diff, commits, comments, list)
     task/              # Task list item, task panel (with file explorer, debug messages, step flow bar, add step dialog), task summary card, task PR view
-    settings/          # General settings, debug viewer, Azure DevOps management, MCP servers, tokens, autocomplete settings, skills settings (card grid, migration dialog)
+    settings/          # General settings, debug viewer, Azure DevOps management, MCP servers, tokens, autocomplete settings, skills settings (card grid, migration dialog, registry browser)
   common/              # Shared infrastructure
     context/           # React contexts
       keyboard-bindings/   # Global keyboard binding system (RootKeyboardBindings, useRegisterKeyboardBindings)

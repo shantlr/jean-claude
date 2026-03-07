@@ -522,6 +522,15 @@ contextBridge.exposeInMainWorld('api', {
     migrationPreview: () => ipcRenderer.invoke('skills:migrationPreview'),
     migrationExecute: (params: { itemIds: string[] }) =>
       ipcRenderer.invoke('skills:migrationExecute', params),
+    registrySearch: (query: string) =>
+      ipcRenderer.invoke('skills:registrySearch', query),
+    registryFetchContent: (source: string, skillId: string) =>
+      ipcRenderer.invoke('skills:registryFetchContent', source, skillId),
+    registryInstall: (params: {
+      source: string;
+      skillId: string;
+      enabledBackends: string[];
+    }) => ipcRenderer.invoke('skills:registryInstall', params),
   },
 });
 console.log('Preload script loaded');

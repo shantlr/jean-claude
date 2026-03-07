@@ -41,6 +41,8 @@ import type {
   LegacySkillMigrationExecuteResult,
   LegacySkillMigrationPreviewResult,
   ManagedSkill,
+  RegistrySearchResult,
+  RegistrySkillContent,
   Skill,
   SkillScope,
 } from '@shared/skill-types';
@@ -759,6 +761,16 @@ export interface Api {
     migrationExecute: (params: {
       itemIds: string[];
     }) => Promise<LegacySkillMigrationExecuteResult>;
+    registrySearch: (query: string) => Promise<RegistrySearchResult>;
+    registryFetchContent: (
+      source: string,
+      skillId: string,
+    ) => Promise<RegistrySkillContent>;
+    registryInstall: (params: {
+      source: string;
+      skillId: string;
+      enabledBackends: AgentBackendType[];
+    }) => Promise<ManagedSkill>;
   };
 }
 
@@ -1127,5 +1139,19 @@ export const api: Api = hasWindowApi
         enable: async () => {},
         migrationPreview: async () => ({ items: [] }),
         migrationExecute: async () => ({ results: [] }),
+        registrySearch: async () => ({ query: '', skills: [], count: 0 }),
+        registryFetchContent: async () => ({
+          name: '',
+          description: '',
+          content: '',
+        }),
+        registryInstall: async () => ({
+          name: '',
+          description: '',
+          source: 'user' as const,
+          skillPath: '',
+          enabledBackends: { 'claude-code': true },
+          editable: true,
+        }),
       },
     } as Api);

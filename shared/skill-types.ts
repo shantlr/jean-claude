@@ -64,3 +64,28 @@ export interface LegacySkillMigrationExecuteItemResult {
 export interface LegacySkillMigrationExecuteResult {
   results: LegacySkillMigrationExecuteItemResult[];
 }
+
+// --- Registry types (skills.sh) ---
+
+/** A skill from the skills.sh search API */
+export interface RegistrySkill {
+  id: string;
+  skillId: string;
+  name: string;
+  installs: number;
+  source: string;
+}
+
+/** Search results from skills.sh */
+export interface RegistrySearchResult {
+  query: string;
+  skills: RegistrySkill[];
+  count: number;
+}
+
+/** Content fetched for a registry skill preview */
+export interface RegistrySkillContent {
+  name: string;
+  description: string;
+  content: string;
+}
