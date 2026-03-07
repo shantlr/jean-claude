@@ -1,4 +1,3 @@
-import { Loader2 } from 'lucide-react';
 import {
   memo,
   useEffect,
@@ -11,6 +10,7 @@ import {
 import type { QueuedPrompt } from '@shared/agent-types';
 import type { NormalizedEntry } from '@shared/normalized-message-v2';
 
+import { GameOfLife } from './game-of-life';
 import { mergeSkillMessages } from './message-merger';
 import { QueuedPromptEntry } from './ui-queued-prompt-entry';
 import { SkillEntry } from './ui-skill-entry';
@@ -169,11 +169,8 @@ export const MessageStream = memo(function MessageStream({
               <span className="animate-timeline-working-core h-2 w-2 rounded-full bg-sky-400 shadow-[0_0_5px_theme(colors.sky.400/35)]" />
             </div>
             <div className="py-1.5 pr-3">
-              <div className="flex items-center gap-2">
-                <Loader2
-                  className="h-3 w-3 shrink-0 animate-spin text-sky-400/90"
-                  aria-hidden
-                />
+              <div className="flex items-center gap-2.5">
+                <GameOfLife />
                 <span className="text-xs font-medium text-neutral-400">
                   Working
                 </span>
