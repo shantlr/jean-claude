@@ -307,7 +307,11 @@ export type TaskStepStatus =
   | 'errored'
   | 'interrupted';
 
-export type TaskStepType = 'agent' | 'create-pull-request' | 'fork';
+export type TaskStepType =
+  | 'agent'
+  | 'create-pull-request'
+  | 'fork'
+  | 'pr-review';
 
 /** Meta for `create-pull-request` steps — params + result after execution */
 export interface CreatePullRequestStepMeta {
@@ -327,9 +331,26 @@ export interface ForkStepMeta {
   forkedFromSessionId?: string;
 }
 
+/** Meta for `pr-review` steps — review comments parsed from agent output */
+export interface PrReviewStepMeta {
+  pullRequestId: number;
+  projectId: string;
+  comments: Array<{
+    filePath: string;
+    lineNumber: number;
+    comment: string;
+    enabled: boolean;
+  }>;
+  parseError?: string;
+  submissionError?: string;
+  submittedAt?: string;
+  submittedCount?: number;
+}
+
 export type TaskStepMeta =
   | CreatePullRequestStepMeta
   | ForkStepMeta
+  | PrReviewStepMeta
   | Record<string, never>;
 
 export interface TaskStep {

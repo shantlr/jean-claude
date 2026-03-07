@@ -256,6 +256,15 @@ function JobDetails({ job }: { job: BackgroundJob }) {
         </div>
       );
     },
+    'pr-review-creation': (typedJob) => {
+      if (typedJob.type !== 'pr-review-creation') return null;
+
+      return (
+        <div className="mt-1 space-y-0.5 text-xs text-neutral-400">
+          <p>PR #{typedJob.details.pullRequestId}</p>
+        </div>
+      );
+    },
     'summary-generation': (typedJob) => {
       if (typedJob.type !== 'summary-generation') return null;
 

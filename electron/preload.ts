@@ -129,6 +129,8 @@ contextBridge.exposeInMainWorld('api', {
       isDraft: boolean;
       deleteWorktree?: boolean;
     }) => ipcRenderer.invoke('tasks:createPullRequest', params),
+    createPrReview: (params: { projectId: string; pullRequestId: number }) =>
+      ipcRenderer.invoke('tasks:createPrReview', params),
   },
   steps: {
     findByTaskId: (taskId: string) =>
@@ -141,6 +143,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('steps:resolvePrompt', stepId),
     setMode: (stepId: string, mode: string) =>
       ipcRenderer.invoke('steps:setMode', stepId, mode),
+    submitPrReview: (stepId: string) =>
+      ipcRenderer.invoke('steps:submitPrReview', stepId),
   },
   providers: {
     findAll: () => ipcRenderer.invoke('providers:findAll'),

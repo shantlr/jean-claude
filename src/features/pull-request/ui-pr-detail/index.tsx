@@ -122,7 +122,7 @@ export function PrDetail({
   return (
     <div className="flex h-full w-full flex-col overflow-hidden text-xs">
       {/* Header */}
-      <PrHeader pr={pr} />
+      <PrHeader pr={pr} projectId={projectId} />
 
       {/* Tabs */}
       <div className="flex border-b border-neutral-700">

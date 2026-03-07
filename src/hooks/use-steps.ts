@@ -59,3 +59,17 @@ export function useResolveStepPrompt() {
     mutationFn: (stepId: string) => api.steps.resolvePrompt(stepId),
   });
 }
+
+export function useSubmitPrReview() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (stepId: string) => api.steps.submitPrReview(stepId),
+    onSuccess: (step: TaskStep) => {
+      queryClient.invalidateQueries({
+        queryKey: ['steps', { taskId: step.taskId }],
+      });
+      queryClient.invalidateQueries({ queryKey: ['steps', step.id] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+}

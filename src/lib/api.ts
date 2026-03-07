@@ -401,6 +401,10 @@ export interface Api {
       isDraft: boolean;
       deleteWorktree?: boolean;
     }) => Promise<{ id: number; url: string }>;
+    createPrReview: (params: {
+      projectId: string;
+      pullRequestId: number;
+    }) => Promise<Task>;
   };
   steps: {
     findByTaskId: (taskId: string) => Promise<TaskStep[]>;
@@ -414,6 +418,7 @@ export interface Api {
       warnings: string[];
     }>;
     setMode: (stepId: string, mode: InteractionMode) => Promise<TaskStep>;
+    submitPrReview: (stepId: string) => Promise<TaskStep>;
   };
   providers: {
     findAll: () => Promise<Provider[]>;
@@ -855,6 +860,9 @@ export const api: Api = hasWindowApi
           },
         },
         createPullRequest: async () => ({ id: 0, url: '' }),
+        createPrReview: async () => {
+          throw new Error('API not available');
+        },
       },
       steps: {
         findByTaskId: async () => [],
@@ -871,6 +879,9 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         setMode: async () => {
+          throw new Error('API not available');
+        },
+        submitPrReview: async () => {
           throw new Error('API not available');
         },
       },

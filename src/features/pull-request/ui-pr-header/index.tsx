@@ -1,8 +1,18 @@
-import { ExternalLink, GitPullRequest, GitMerge } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
+import {
+  ExternalLink,
+  Eye,
+  GitPullRequest,
+  GitMerge,
+  Loader2,
+} from 'lucide-react';
+import { useCallback, useState } from 'react';
 
 import { UserAvatar, getVoteLabel } from '@/common/ui/user-avatar';
+import { api } from '@/lib/api';
 import type { AzureDevOpsPullRequestDetails } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/time';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
 
 function getStatusBadge(
   status: AzureDevOpsPullRequestDetails['status'],
@@ -45,7 +55,54 @@ function getBranchName(refName: string) {
   return refName.replace('refs/heads/', '');
 }
 
-export function PrHeader({ pr }: { pr: AzureDevOpsPullRequestDetails }) {
+export function PrHeader({
+  pr,
+  projectId,
+}: {
+  pr: AzureDevOpsPullRequestDetails;
+  projectId: string;
+}) {
+  const navigate = useNavigate();
+  const addRunningJob = useBackgroundJobsStore((s) => s.addRunningJob);
+  const markJobSucceeded = useBackgroundJobsStore((s) => s.markJobSucceeded);
+  const markJobFailed = useBackgroundJobsStore((s) => s.markJobFailed);
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleReview = useCallback(async () => {
+    setIsCreating(true);
+    const jobId = addRunningJob({
+      type: 'pr-review-creation',
+      title: `Creating review for PR #${pr.id}`,
+      projectId,
+      details: { pullRequestId: pr.id },
+    });
+
+    try {
+      const task = await api.tasks.createPrReview({
+        projectId,
+        pullRequestId: pr.id,
+      });
+      markJobSucceeded(jobId);
+      void navigate({
+        to: '/projects/$projectId/tasks/$taskId',
+        params: { projectId, taskId: task.id },
+      });
+    } catch (error) {
+      markJobFailed(
+        jobId,
+        error instanceof Error ? error.message : 'Failed to create review task',
+      );
+      setIsCreating(false);
+    }
+  }, [
+    pr.id,
+    projectId,
+    navigate,
+    addRunningJob,
+    markJobSucceeded,
+    markJobFailed,
+  ]);
+
   // Filter out group reviewers (isContainer) - only show individual users
   const reviewers = pr.reviewers.filter((r) => !r.isContainer);
 
@@ -57,6 +114,20 @@ export function PrHeader({ pr }: { pr: AzureDevOpsPullRequestDetails }) {
             <span className="text-neutral-500">#{pr.id}</span>
             <div className="flex">{getStatusBadge(pr.status, pr.isDraft)}</div>
             <div className="grow" />
+            {pr.status === 'active' && (
+              <button
+                onClick={handleReview}
+                disabled={isCreating}
+                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
+              >
+                {isCreating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+                Review
+              </button>
+            )}
             <a
               href={pr.url}
               target="_blank"

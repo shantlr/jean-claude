@@ -74,6 +74,61 @@ function computeTaskStatus(
 }
 
 /**
+ * Extract a JSON array of review comments from fenced ```json blocks in text.
+ */
+function extractReviewComments(output: string): {
+  comments: Array<{ filePath: string; lineNumber: number; comment: string }>;
+  error?: string;
+} {
+  const jsonMatch = output.match(/```json\s*\n([\s\S]*?)```/);
+  if (!jsonMatch) {
+    return { comments: [], error: 'No ```json block found in agent output' };
+  }
+
+  try {
+    const parsed = JSON.parse(jsonMatch[1]) as unknown;
+    if (!Array.isArray(parsed)) {
+      return { comments: [], error: 'JSON block is not an array' };
+    }
+
+    const comments: Array<{
+      filePath: string;
+      lineNumber: number;
+      comment: string;
+    }> = [];
+    for (const item of parsed) {
+      if (
+        typeof item === 'object' &&
+        item !== null &&
+        typeof (item as Record<string, unknown>).filePath === 'string' &&
+        typeof (item as Record<string, unknown>).lineNumber === 'number' &&
+        typeof (item as Record<string, unknown>).comment === 'string'
+      ) {
+        comments.push({
+          filePath: (item as Record<string, unknown>).filePath as string,
+          lineNumber: (item as Record<string, unknown>).lineNumber as number,
+          comment: (item as Record<string, unknown>).comment as string,
+        });
+      }
+    }
+
+    if (comments.length === 0 && parsed.length > 0) {
+      return {
+        comments: [],
+        error: `JSON array has ${parsed.length} items but none match {filePath, lineNumber, comment} shape`,
+      };
+    }
+
+    return { comments };
+  } catch (e) {
+    return {
+      comments: [],
+      error: `Failed to parse JSON: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+}
+
+/**
  * After a step completes, check if any dependent steps should transition from pending to ready.
  */
 async function updateDependentStepStatuses(taskId: string): Promise<void> {
@@ -88,7 +143,25 @@ async function updateDependentStepStatuses(taskId: string): Promise<void> {
       completedIds.has(depId),
     );
     if (allDepsCompleted) {
-      await TaskStepRepository.update(step.id, { status: 'ready' });
+      if (step.type === 'pr-review') {
+        const depStep = steps.find((s) => s.id === step.dependsOn[0]);
+        const output = depStep?.output ?? '';
+        const { comments, error } = extractReviewComments(output);
+
+        const currentMeta = (step.meta ?? {}) as Record<string, unknown>;
+        const updatedMeta = {
+          ...currentMeta,
+          comments: comments.map((c) => ({ ...c, enabled: true })),
+          parseError: error ?? undefined,
+        };
+
+        await TaskStepRepository.update(step.id, {
+          status: 'ready',
+          meta: updatedMeta as import('@shared/types').TaskStepMeta,
+        });
+      } else {
+        await TaskStepRepository.update(step.id, { status: 'ready' });
+      }
     }
   }
 }

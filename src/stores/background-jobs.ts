@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 
 export type BackgroundJobType =
   | 'task-creation'
+  | 'pr-review-creation'
   | 'summary-generation'
   | 'task-deletion'
   | 'merge';
@@ -30,6 +31,12 @@ export type BackgroundJob =
         promptPreview: string | null;
         creationInput: Parameters<typeof api.tasks.createWithWorktree>[0];
         backlogTodoId: string | null;
+      };
+    })
+  | (BackgroundJobBase & {
+      type: 'pr-review-creation';
+      details: {
+        pullRequestId: number;
       };
     })
   | (BackgroundJobBase & {
@@ -65,6 +72,15 @@ type NewBackgroundJobInput =
         promptPreview: string | null;
         creationInput: Parameters<typeof api.tasks.createWithWorktree>[0];
         backlogTodoId: string | null;
+      };
+    }
+  | {
+      type: 'pr-review-creation';
+      title: string;
+      taskId?: string | null;
+      projectId?: string | null;
+      details: {
+        pullRequestId: number;
       };
     }
   | {

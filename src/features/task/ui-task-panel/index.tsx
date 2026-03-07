@@ -41,6 +41,7 @@ import { PrBadge } from '@/features/agent/ui-pr-badge';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
 import { RunButton } from '@/features/agent/ui-run-button';
 import { WorktreeDiffView } from '@/features/agent/ui-worktree-diff-view';
+import { PrReviewValidation } from '@/features/task/ui-pr-review-validation';
 import { StepFlowBar } from '@/features/task/ui-step-flow-bar';
 import { TaskPrView } from '@/features/task/ui-task-pr-view';
 import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
@@ -924,6 +925,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               onOpenPrView={openPrView}
               bottomPadding={footerHeight}
             />
+          ) : activeStep?.type === 'pr-review' ? (
+            <PrReviewValidation step={activeStep} />
           ) : agentState.isLoading ? (
             <div className="flex h-full items-center justify-center">
               <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />

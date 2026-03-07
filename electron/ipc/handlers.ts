@@ -422,6 +422,166 @@ export function registerIpcHandlers() {
       return task;
     },
   );
+  ipcMain.handle(
+    'tasks:createPrReview',
+    async (
+      event,
+      params: {
+        projectId: string;
+        pullRequestId: number;
+      },
+    ) => {
+      const { projectId, pullRequestId } = params;
+      dbg.ipc(
+        'tasks:createPrReview projectId=%s prId=%d',
+        projectId,
+        pullRequestId,
+      );
+
+      // 1. Get project and PR details
+      const project = await ProjectRepository.findById(projectId);
+      if (!project) throw new Error(`Project ${projectId} not found`);
+      if (
+        !project.repoProviderId ||
+        !project.repoProjectId ||
+        !project.repoId
+      ) {
+        throw new Error('Project has no linked repository');
+      }
+
+      const pr = await getPullRequest({
+        providerId: project.repoProviderId,
+        projectId: project.repoProjectId,
+        repoId: project.repoId,
+        pullRequestId,
+      });
+
+      // 2. Extract branch names
+      const sourceBranch = pr.sourceRefName.replace('refs/heads/', '');
+      const targetBranch = pr.targetRefName.replace('refs/heads/', '');
+
+      // 3. Generate task name
+      const rawName = `Review: ${pr.title}`;
+      const taskName =
+        rawName.length > 40 ? rawName.slice(0, 37) + '...' : rawName;
+
+      // 4. Create worktree on the PR source branch
+      const remoteSourceBranch = `origin/${sourceBranch}`;
+
+      try {
+        await execAsync(`git fetch origin "${sourceBranch}"`, {
+          cwd: project.path,
+          encoding: 'utf-8',
+        });
+      } catch (fetchError) {
+        dbg.ipc(
+          'Failed to fetch origin/%s before review worktree creation: %O',
+          sourceBranch,
+          fetchError,
+        );
+      }
+
+      let worktreeResult:
+        | {
+            worktreePath: string;
+            startCommitHash: string;
+            branchName: string;
+          }
+        | undefined;
+
+      try {
+        worktreeResult = await createWorktree(
+          project.path,
+          project.id,
+          project.name,
+          `Review PR #${pullRequestId}`,
+          taskName,
+          remoteSourceBranch,
+        );
+      } catch (remoteBranchError) {
+        dbg.ipc(
+          'Failed to create worktree from %s, retrying with local branch %s: %O',
+          remoteSourceBranch,
+          sourceBranch,
+          remoteBranchError,
+        );
+
+        worktreeResult = await createWorktree(
+          project.path,
+          project.id,
+          project.name,
+          `Review PR #${pullRequestId}`,
+          taskName,
+          sourceBranch,
+        );
+      }
+
+      const { worktreePath, startCommitHash, branchName } = worktreeResult;
+
+      // 5. Create task linked to PR
+      const task = await TaskRepository.create({
+        projectId,
+        prompt: `Review PR #${pullRequestId}: ${pr.title}`,
+        name: taskName,
+        worktreePath,
+        startCommitHash,
+        branchName,
+        sourceBranch,
+        pullRequestId: String(pullRequestId),
+        pullRequestUrl: pr.url ?? null,
+        updatedAt: new Date().toISOString(),
+      });
+
+      // 6. Create Step 1: Review Changes (agent)
+      const reviewStep = await StepService.create({
+        taskId: task.id,
+        name: 'Review Changes',
+        promptTemplate: [
+          'You are reviewing a pull request.',
+          `Review the changes between \`origin/${targetBranch}\` and the current branch.`,
+          'Analyze code quality, potential bugs, design issues, and suggest improvements.',
+          '',
+          'At the end of your review, output a JSON block fenced with ```json containing an array of review comments with this shape:',
+          '`[{ "filePath": "path/to/file", "lineNumber": 42, "comment": "Your review comment" }]`',
+          '',
+          'Each comment should reference a specific file and line number from the changed files.',
+        ].join('\n'),
+        interactionMode: 'auto',
+        agentBackend: project.defaultAgentBackend ?? 'claude-code',
+        sortOrder: 0,
+      });
+
+      // 7. Create Step 2: Submit Review (pr-review)
+      await TaskStepRepository.create({
+        taskId: task.id,
+        name: 'Submit Review',
+        type: 'pr-review',
+        dependsOn: [reviewStep.id],
+        promptTemplate: '',
+        sortOrder: 1,
+        meta: {
+          pullRequestId,
+          projectId,
+          comments: [],
+        } as import('@shared/types').PrReviewStepMeta,
+      });
+
+      // 8. Auto-start the review step
+      const window = BrowserWindow.fromWebContents(event.sender);
+      if (window) {
+        agentService.setMainWindow(window);
+      }
+      agentService.start(reviewStep.id).catch((err) => {
+        dbg.ipc(
+          'Error auto-starting review agent for step %s: %O',
+          reviewStep.id,
+          err,
+        );
+      });
+
+      return task;
+    },
+  );
   ipcMain.handle('tasks:update', (_, id: string, data: UpdateTask) =>
     TaskRepository.update(id, data),
   );
@@ -464,6 +624,102 @@ export function registerIpcHandlers() {
       return TaskStepRepository.findById(stepId);
     },
   );
+  ipcMain.handle('steps:submitPrReview', async (_, stepId: string) => {
+    dbg.ipc('steps:submitPrReview stepId=%s', stepId);
+
+    const step = await TaskStepRepository.findById(stepId);
+    if (!step) throw new Error(`Step not found: ${stepId}`);
+    if (step.type !== 'pr-review')
+      throw new Error('Step is not a pr-review type');
+
+    const meta = step.meta as import('@shared/types').PrReviewStepMeta;
+    const enabledComments = meta.comments.filter((c) => c.enabled);
+
+    if (enabledComments.length > 0) {
+      const project = await ProjectRepository.findById(meta.projectId);
+      if (
+        !project?.repoProviderId ||
+        !project?.repoProjectId ||
+        !project?.repoId
+      ) {
+        throw new Error('Project has no linked repository');
+      }
+
+      const results = await Promise.allSettled(
+        enabledComments.map((comment) =>
+          addPullRequestFileComment({
+            providerId: project.repoProviderId!,
+            projectId: project.repoProjectId!,
+            repoId: project.repoId!,
+            pullRequestId: meta.pullRequestId,
+            filePath: comment.filePath,
+            line: comment.lineNumber,
+            content: comment.comment,
+          }),
+        ),
+      );
+
+      const failedCommentSet = new Set<(typeof enabledComments)[number]>();
+      for (const [index, result] of results.entries()) {
+        if (result.status === 'rejected') {
+          failedCommentSet.add(enabledComments[index]);
+        }
+      }
+
+      const failed = failedCommentSet.size;
+      if (failed > 0) {
+        dbg.ipc(
+          '%d of %d comments failed to post',
+          failed,
+          enabledComments.length,
+        );
+
+        const updatedMeta: import('@shared/types').PrReviewStepMeta = {
+          ...meta,
+          comments: meta.comments.map((comment) => ({
+            ...comment,
+            enabled: failedCommentSet.has(comment),
+          })),
+          submittedAt: new Date().toISOString(),
+          submittedCount: enabledComments.length - failed,
+          submissionError: `${failed} of ${enabledComments.length} comments failed to post. You can retry the remaining comments.`,
+        };
+
+        await TaskStepRepository.update(stepId, {
+          status: 'ready',
+          meta: updatedMeta,
+        });
+
+        await StepService.syncTaskStatus(step.taskId);
+        return TaskStepRepository.findById(stepId);
+      }
+
+      const updatedMeta: import('@shared/types').PrReviewStepMeta = {
+        ...meta,
+        submittedAt: new Date().toISOString(),
+        submittedCount: enabledComments.length - failed,
+        submissionError: undefined,
+      };
+      await TaskStepRepository.update(stepId, {
+        status: 'completed',
+        meta: updatedMeta,
+      });
+    } else {
+      const updatedMeta: import('@shared/types').PrReviewStepMeta = {
+        ...meta,
+        submittedAt: new Date().toISOString(),
+        submittedCount: 0,
+        submissionError: undefined,
+      };
+      await TaskStepRepository.update(stepId, {
+        status: 'completed',
+        meta: updatedMeta,
+      });
+    }
+
+    await StepService.syncTaskStatus(step.taskId);
+    return TaskStepRepository.findById(stepId);
+  });
   ipcMain.handle('tasks:toggleUserCompleted', async (_, id: string) => {
     // Fetch task before toggling to know the current state
     const taskBefore = await TaskRepository.findById(id);
