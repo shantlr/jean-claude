@@ -336,33 +336,32 @@ export function QuestionOptions({
 
   return (
     <div className="border-t border-teal-700/50 bg-teal-900/20 px-4 py-3">
-      <div className="mb-3 flex items-start gap-2">
-        <HelpCircle className="mt-0.5 h-5 w-5 shrink-0 text-teal-400" />
-        <div className="space-y-2">
-          {request.questions.map((q, i) => (
-            <div key={i} className="text-sm font-medium text-teal-300">
-              {request.questions.length > 1 ? `${i + 1}. ` : ''}
-              {q.question}
-            </div>
-          ))}
-        </div>
-      </div>
       <div className="space-y-4">
         {request.questions.map((question, index) => (
-          <QuestionInput
-            key={`${index}-${question.question}`}
-            question={question}
-            questionIndex={index}
-            value={answers[question.question] || ''}
-            isOtherOpen={otherOpenByQuestion[question.question] ?? false}
-            isActive={activeQuestionIndex === index}
-            activeOptionIndex={
-              activeQuestionIndex === index ? activeOptionIndex : 0
-            }
-            onActivate={activateOption}
-            onSelectOption={selectOption}
-            onOtherChange={updateOtherAnswer}
-          />
+          <div key={`${index}-${question.question}`} className="space-y-2">
+            <div className="flex items-start gap-2">
+              <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-teal-400" />
+              <div className="text-sm font-medium text-teal-300">
+                {request.questions.length > 1 ? `${index + 1}. ` : ''}
+                {question.question}
+              </div>
+            </div>
+            <div className="pl-6">
+              <QuestionInput
+                question={question}
+                questionIndex={index}
+                value={answers[question.question] || ''}
+                isOtherOpen={otherOpenByQuestion[question.question] ?? false}
+                isActive={activeQuestionIndex === index}
+                activeOptionIndex={
+                  activeQuestionIndex === index ? activeOptionIndex : 0
+                }
+                onActivate={activateOption}
+                onSelectOption={selectOption}
+                onOtherChange={updateOtherAnswer}
+              />
+            </div>
+          </div>
         ))}
       </div>
       <div className="mt-4 flex justify-end">
