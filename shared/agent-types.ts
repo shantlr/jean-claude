@@ -114,11 +114,21 @@ export interface UserMessage {
   content: string | ContentBlock[];
 }
 
-export type ContentBlock = TextBlock | ToolUseBlock | ToolResultBlock;
+export type ContentBlock =
+  | TextBlock
+  | ThinkingBlock
+  | ToolUseBlock
+  | ToolResultBlock;
 
 export interface TextBlock {
   type: 'text';
   text: string;
+}
+
+export interface ThinkingBlock {
+  type: 'thinking';
+  thinking: string;
+  signature?: string;
 }
 
 export interface ToolUseBlock {

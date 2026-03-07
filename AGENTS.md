@@ -199,7 +199,8 @@ The app supports multiple agent backends through a common interface (`shared/age
 
 Messages from different backends are normalized to a unified schema (`shared/normalized-message-v2.ts`):
 
-- **Flat schema**: One row per semantic entry (user-prompt, assistant-message, system-status, result, tool-use)
+- **Flat schema**: One row per semantic entry (user-prompt, assistant-message, thinking, system-status, result, tool-use)
+- **Thinking entries**: Extended thinking / chain-of-thought blocks from Claude (`thinking` content blocks) and OpenCode (`reasoning` parts), rendered as collapsible entries in the timeline
 - **Tool-use types**: Typed per tool — bash, read, glob, grep, mcp, ask-user-question, write, edit, todo-write, exit-plan-mode, skill, web-fetch, web-search, sub-agent
 - **Normalizers**: Each backend has its own normalizer converting SDK messages to `NormalizationEvent[]`
   - `claude/normalize-claude-message-v2.ts`

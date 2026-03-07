@@ -16,6 +16,7 @@ import type {
   AssistantMessage,
   ContentBlock,
   TextBlock,
+  ThinkingBlock,
   ToolUseBlock,
   ToolResultBlock,
 } from '@shared/agent-types';
@@ -171,8 +172,23 @@ function normalizeAssistantRaw(
       ctx.pendingToolUses.set(toolUse.toolId, entry);
 
       events.push({ type: 'entry', entry });
+    } else if (block.type === 'thinking') {
+      const thinking = (block as ThinkingBlock).thinking;
+      if (thinking) {
+        events.push({
+          type: 'entry',
+          entry: {
+            id: nanoid(),
+            date: new Date().toISOString(),
+            model: msg.model,
+            isSynthetic: raw.isSynthetic || undefined,
+            parentToolId,
+            type: 'thinking',
+            value: thinking,
+          },
+        });
+      }
     }
-    // thinking/reasoning blocks — skip for now
     // tool_result blocks in assistant messages — unusual, skip
   }
 

@@ -9,6 +9,7 @@ export type NormalizedEntry = {
 export type NormalizedEntryBody =
   | { type: 'user-prompt'; value: string; isSDKSynthetic?: boolean }
   | { type: 'assistant-message'; value: string }
+  | { type: 'thinking'; value: string }
   | { type: 'system-status'; status: 'compacting' | null }
   | {
       type: 'result';

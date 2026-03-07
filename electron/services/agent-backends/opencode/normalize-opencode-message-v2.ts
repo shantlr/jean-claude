@@ -18,6 +18,7 @@ import type {
   Session as OcSession,
   PermissionRequest as OcPermission,
   TextPart,
+  ReasoningPart,
   ToolPart,
   CompactionPart,
   ToolStateCompleted,
@@ -402,15 +403,32 @@ function normalizeAssistantPartToEntry(
         ctx,
       );
 
+    case 'reasoning': {
+      const reasoningPart = part as ReasoningPart;
+      if (!reasoningPart.text) return [];
+      const reasoningEntryId = `${messageId}:${part.id}`;
+      const isReasoningUpdate = ctx.emittedEntryIds.has(reasoningEntryId);
+      return [
+        {
+          type: isReasoningUpdate ? 'entry-update' : 'entry',
+          entry: {
+            id: reasoningEntryId,
+            date,
+            model,
+            type: 'thinking',
+            value: reasoningPart.text,
+          },
+        },
+      ];
+    }
+
     // --- Part types ignored in normalization ---
     //
-    // reasoning:    Extended thinking / chain-of-thought. Reserved for future "show thinking" UI.
     // retry:        Agent retrying after API error. Backend emits 'rate-limit' AgentEvents instead.
     // step-start/finish: Per-step cost/token boundaries. Already aggregated on AssistantMessage.
     // snapshot:     Serialized execution state checkpoint. Internal to OpenCode's resumption.
     // patch:        File change hashes for incremental state tracking. Internal bookkeeping.
     // agent:        Agent identity marker (e.g., "plan", "build"). Available on message metadata.
-    case 'reasoning':
     case 'retry':
     case 'step-start':
     case 'step-finish':

@@ -176,7 +176,7 @@ function formatToolResult(toolUse: NormalizedToolUse): string {
   return String(result);
 }
 
-type EntryType = 'user' | 'tool' | 'text' | 'result' | 'system';
+type EntryType = 'user' | 'tool' | 'text' | 'thinking' | 'result' | 'system';
 
 // Single dot entry component
 function DotEntry({
@@ -199,7 +199,7 @@ function DotEntry({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const hasExpandedContent = !!expandedContent;
 
-  // Dot colors: blue for tools, yellow for system, gray for text/result, purple for user
+  // Dot colors: blue for tools, yellow for system, amber for thinking, gray for text/result, purple for user
   const dotColor = isError
     ? 'bg-red-500'
     : type === 'tool'
@@ -208,7 +208,9 @@ function DotEntry({
         ? 'bg-purple-500'
         : type === 'system'
           ? 'bg-yellow-500'
-          : 'bg-neutral-500';
+          : type === 'thinking'
+            ? 'bg-amber-400'
+            : 'bg-neutral-500';
 
   const bgClass = type === 'user' ? 'bg-purple-500/5' : '';
 
@@ -567,6 +569,21 @@ function TextEntry({
   );
 }
 
+// Thinking entry - collapsible extended thinking / chain-of-thought
+function ThinkingEntry({ text }: { text: string }) {
+  return (
+    <DotEntry
+      type="thinking"
+      summary="Thinking…"
+      expandedContent={
+        <pre className="max-h-64 overflow-auto text-xs whitespace-pre-wrap text-neutral-400">
+          {text}
+        </pre>
+      }
+    />
+  );
+}
+
 // User message entry - shows full content, clickable for file paths
 const USER_MESSAGE_MAX_CHARS = 300;
 
@@ -734,6 +751,9 @@ export function TimelineEntry({
     case 'assistant-message':
       if (!entry.value.trim()) return null;
       return <TextEntry text={entry.value} onFilePathClick={onFilePathClick} />;
+    case 'thinking':
+      if (!entry.value.trim()) return null;
+      return <ThinkingEntry text={entry.value} />;
     case 'tool-use':
       // Sub-agent tool-use entries are rendered as SubagentEntry in message stream
       if (entry.name === 'sub-agent') return null;
