@@ -1,4 +1,8 @@
-import type { UsageProviderMap, UsageProviderType } from '@shared/usage-types';
+import type {
+  UsageProviderMap,
+  UsageProviderType,
+  UsageResult,
+} from '@shared/usage-types';
 
 import { ClaudeUsageProvider } from './usage-providers/claude-usage-provider';
 import { CodexUsageProvider } from './usage-providers/codex-usage-provider';
@@ -6,6 +10,14 @@ import type { BackendUsageProvider } from './usage-providers/types';
 
 class AgentUsageService {
   private providers = new Map<UsageProviderType, BackendUsageProvider>();
+  private cache = new Map<
+    UsageProviderType,
+    { value: UsageResult; cachedAt: number }
+  >();
+  private inFlight = new Map<UsageProviderType, Promise<UsageResult>>();
+
+  private static readonly DEFAULT_CACHE_TTL_MS = 2 * 60 * 1000;
+  private static readonly CLAUDE_CACHE_TTL_MS = 5 * 60 * 1000;
 
   async getUsage(
     providerTypes: UsageProviderType[],
@@ -14,8 +26,7 @@ class AgentUsageService {
 
     const results = await Promise.allSettled(
       providerTypes.map(async (providerType) => {
-        const provider = this.getOrCreateProvider(providerType);
-        const result = await provider.getUsage();
+        const result = await this.getUsageForProvider(providerType);
         return [providerType, result] as const;
       }),
     );
@@ -37,6 +48,48 @@ class AgentUsageService {
       provider.dispose();
     }
     this.providers.clear();
+    this.cache.clear();
+    this.inFlight.clear();
+  }
+
+  private async getUsageForProvider(
+    providerType: UsageProviderType,
+  ): Promise<UsageResult> {
+    const now = Date.now();
+    const cached = this.cache.get(providerType);
+    const cacheTtlMs = this.getCacheTtlMs(providerType);
+
+    if (cached && now - cached.cachedAt < cacheTtlMs) {
+      return cached.value;
+    }
+
+    const existingRequest = this.inFlight.get(providerType);
+    if (existingRequest) {
+      return existingRequest;
+    }
+
+    const request = (async () => {
+      const provider = this.getOrCreateProvider(providerType);
+      const value = await provider.getUsage();
+      this.cache.set(providerType, { value, cachedAt: Date.now() });
+      return value;
+    })();
+
+    this.inFlight.set(providerType, request);
+
+    try {
+      return await request;
+    } finally {
+      this.inFlight.delete(providerType);
+    }
+  }
+
+  private getCacheTtlMs(providerType: UsageProviderType): number {
+    if (providerType === 'claude-code') {
+      return AgentUsageService.CLAUDE_CACHE_TTL_MS;
+    }
+
+    return AgentUsageService.DEFAULT_CACHE_TTL_MS;
   }
 
   private getOrCreateProvider(
