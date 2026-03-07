@@ -487,16 +487,6 @@ button {
   }
 }
 
-@keyframes timeline-working-dot {
-  0%,
-  100% {
-    opacity: 0.3;
-  }
-  45% {
-    opacity: 0.75;
-  }
-}
-
 @utility animate-timeline-working-ping {
   animation: timeline-working-ping 1.8s ease-out infinite;
 }
@@ -505,9 +495,6 @@ button {
   animation: timeline-working-core 1.8s ease-in-out infinite;
 }
 
-@utility animate-timeline-working-dot {
-  animation: timeline-working-dot 1.2s ease-in-out infinite;
-}
 
 /* ── Sidebar: card enter animation (fade + slide from left) ── */
 @keyframes sidebar-card-enter {

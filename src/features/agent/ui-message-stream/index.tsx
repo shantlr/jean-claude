@@ -22,7 +22,6 @@ import type { InteractionMode } from '@shared/types';
 import { PermissionBar } from '../ui-permission-bar';
 import { QuestionOptions } from '../ui-question-options';
 
-import { GameOfLife } from './game-of-life';
 import { mergeSkillMessages } from './message-merger';
 import { QueuedPromptEntry } from './ui-queued-prompt-entry';
 import { SkillEntry } from './ui-skill-entry';
@@ -30,6 +29,7 @@ import { SubagentEntry } from './ui-subagent-entry';
 import { TimelineEntry, CompactingEntry } from './ui-timeline-entry';
 import { TimelinePromptNavigator } from './ui-timeline-prompt-navigator';
 import { computePromptIndexMap } from './use-prompt-navigation';
+import { WorkingIndicator } from './working-indicator';
 
 // Threshold in pixels - if user is within this distance from bottom, auto-scroll
 const SCROLL_THRESHOLD = 10;
@@ -219,21 +219,7 @@ export const MessageStream = memo(function MessageStream({
               <span className="animate-timeline-working-core h-2 w-2 rounded-full bg-sky-400 shadow-[0_0_5px_theme(colors.sky.400/35)]" />
             </div>
             <div className="py-1.5 pr-3">
-              <div className="flex items-center gap-2.5">
-                <GameOfLife />
-                <span className="text-xs font-medium text-neutral-400">
-                  Working
-                </span>
-                <span className="flex items-center gap-0.5" aria-hidden>
-                  {[0, 1, 2].map((i) => (
-                    <span
-                      key={i}
-                      className="animate-timeline-working-dot h-1 w-1 rounded-full bg-sky-300/70"
-                      style={{ animationDelay: `${i * 150}ms` }}
-                    />
-                  ))}
-                </span>
-              </div>
+              <WorkingIndicator />
             </div>
           </div>
         )}
