@@ -2,6 +2,8 @@ import { query } from '@anthropic-ai/claude-agent-sdk';
 
 import { dbg } from '../lib/debug';
 
+const TASK_NAME_TIMEOUT_MS = 10_000;
+
 const TASK_NAME_SCHEMA = {
   type: 'object',
   properties: {
@@ -19,6 +21,11 @@ const TASK_NAME_SCHEMA = {
  * @returns The generated name, or null if generation fails
  */
 export async function generateTaskName(prompt: string): Promise<string | null> {
+  const abortController = new AbortController();
+  const timeout = setTimeout(() => {
+    abortController.abort();
+  }, TASK_NAME_TIMEOUT_MS);
+
   try {
     const generator = query({
       prompt: `Generate a short task name (max 40 characters) that summarizes this task.
@@ -31,6 +38,7 @@ Task: ${prompt}`,
         allowedTools: [],
         permissionMode: 'bypassPermissions',
         model: 'haiku',
+        abortController,
         outputFormat: {
           type: 'json_schema',
           schema: TASK_NAME_SCHEMA,
@@ -45,13 +53,25 @@ Task: ${prompt}`,
         structured_output?: { name: string };
       };
       if (msg.type === 'result' && msg.structured_output?.name) {
-        return msg.structured_output.name.slice(0, 40);
+        const name = msg.structured_output.name.slice(0, 40);
+        dbg.agent('Generated task name: %s', name);
+        return name;
       }
     }
 
     return null;
   } catch (error) {
+    if (abortController.signal.aborted) {
+      dbg.agent(
+        'Task name generation timed out after %dms',
+        TASK_NAME_TIMEOUT_MS,
+      );
+      return null;
+    }
+
     dbg.agent('Failed to generate task name: %O', error);
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
