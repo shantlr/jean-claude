@@ -9,6 +9,15 @@ const turndown = new TurndownService({
   codeBlockStyle: 'fenced',
 });
 
+function escapeXml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');
+}
+
 // Generate initial prompt template from selected work items
 export function generateInitialTemplate(workItemIds: string[]): string {
   const header =
@@ -31,23 +40,21 @@ function expandWorkItem(workItem: AzureDevOpsWorkItem): string {
     : null;
   const markdownReproSteps = reproSteps ? turndown.turndown(reproSteps) : null;
 
-  let content = `## Work Item #${id} "${title}"`;
+  const bodySections: string[] = [`  <title>${escapeXml(title)}</title>`];
 
-  const bodySections: string[] = [];
   if (markdownDescription) {
-    bodySections.push(markdownDescription);
+    bodySections.push('  <description>');
+    bodySections.push(escapeXml(markdownDescription));
+    bodySections.push('  </description>');
   }
+
   if (markdownReproSteps) {
-    bodySections.push(`### Repro Steps\n\n${markdownReproSteps}`);
+    bodySections.push('  <repro_steps>');
+    bodySections.push(escapeXml(markdownReproSteps));
+    bodySections.push('  </repro_steps>');
   }
 
-  if (bodySections.length > 0) {
-    content += `\n\n${bodySections.join('\n\n')}`;
-  }
-
-  content += '\n\n---';
-
-  return content;
+  return [`<work_item id="${id}">`, ...bodySections, '</work_item>'].join('\n');
 }
 
 // Expand all placeholders in template to full content
