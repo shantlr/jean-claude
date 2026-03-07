@@ -11,8 +11,8 @@ export interface ManagedSkill {
   pluginName?: string;
   /** Full path to the skill directory */
   skillPath: string;
-  enabled: boolean;
-  backendType: AgentBackendType;
+  /** Per-backend enabled status. Key present = backend is relevant; value = enabled. */
+  enabledBackends: Partial<Record<AgentBackendType, boolean>>;
   editable: boolean;
 }
 

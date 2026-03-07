@@ -724,11 +724,12 @@ export interface Api {
       backendType: AgentBackendType,
       projectPath?: string,
     ) => Promise<ManagedSkill[]>;
+    getAllUnified: (projectPath?: string) => Promise<ManagedSkill[]>;
     getContent: (
       skillPath: string,
     ) => Promise<{ name: string; description: string; content: string }>;
     create: (params: {
-      backendType: AgentBackendType;
+      enabledBackends: AgentBackendType[];
       scope: SkillScope;
       projectPath?: string;
       name: string;
@@ -1090,14 +1091,14 @@ export const api: Api = hasWindowApi
       },
       skillManagement: {
         getAll: async () => [],
+        getAllUnified: async () => [],
         getContent: async () => ({ name: '', description: '', content: '' }),
         create: async () => ({
           name: '',
           description: '',
           source: 'user' as const,
           skillPath: '',
-          enabled: true,
-          backendType: 'claude-code' as const,
+          enabledBackends: { 'claude-code': true },
           editable: true,
         }),
         update: async () => ({
@@ -1105,8 +1106,7 @@ export const api: Api = hasWindowApi
           description: '',
           source: 'user' as const,
           skillPath: '',
-          enabled: true,
-          backendType: 'claude-code' as const,
+          enabledBackends: { 'claude-code': true },
           editable: true,
         }),
         delete: async () => {},

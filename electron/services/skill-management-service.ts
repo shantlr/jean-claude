@@ -217,11 +217,59 @@ async function discoverNestedSkillDirs(baseDir: string): Promise<string[]> {
 }
 
 /**
- * Scans the JC canonical directory for user skills.
+ * Scans the JC canonical directory for user skills (unified, all backends).
+ * For each skill, checks whether a symlink exists in ALL backends'
+ * expected skills directories to build the enabledBackends map.
+ */
+async function discoverJcManagedUserSkills(): Promise<ManagedSkill[]> {
+  const skills: ManagedSkill[] = [];
+
+  try {
+    const entries = await fs.readdir(JC_USER_SKILLS_DIR, {
+      withFileTypes: true,
+    });
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue;
+      if (!entry.isDirectory()) continue;
+
+      const canonicalPath = path.join(JC_USER_SKILLS_DIR, entry.name);
+      const info = await readSkillDir(canonicalPath);
+      if (!info) continue;
+
+      const enabledBackends: Partial<Record<AgentBackendType, boolean>> = {};
+      for (const [backend, config] of Object.entries(SKILL_PATH_CONFIGS)) {
+        const symlinkPath = path.join(config.userSkillsDir, entry.name);
+        enabledBackends[backend as AgentBackendType] =
+          await isSymlink(symlinkPath);
+      }
+
+      skills.push({
+        ...info,
+        source: 'user',
+        skillPath: canonicalPath,
+        enabledBackends,
+        editable: true,
+      });
+    }
+  } catch (error) {
+    if (!isEnoent(error)) {
+      dbg.skill(
+        'Error reading JC user skills dir %s: %O',
+        JC_USER_SKILLS_DIR,
+        error,
+      );
+    }
+  }
+
+  return skills;
+}
+
+/**
+ * Scans the JC canonical directory for user skills (single backend).
  * For each skill, checks whether a symlink exists in the given backend's
  * expected skills directory to determine enabled/disabled status.
  */
-async function discoverJcManagedUserSkills(
+async function discoverJcManagedUserSkillsForBackend(
   backendType: AgentBackendType,
 ): Promise<ManagedSkill[]> {
   const config = SKILL_PATH_CONFIGS[backendType];
@@ -239,7 +287,6 @@ async function discoverJcManagedUserSkills(
       const info = await readSkillDir(canonicalPath);
       if (!info) continue;
 
-      // Enabled = symlink present in the backend's skills directory
       const symlinkPath = path.join(config.userSkillsDir, entry.name);
       const enabled = await isSymlink(symlinkPath);
 
@@ -247,8 +294,7 @@ async function discoverJcManagedUserSkills(
         ...info,
         source: 'user',
         skillPath: canonicalPath,
-        enabled,
-        backendType,
+        enabledBackends: { [backendType]: enabled },
         editable: true,
       });
     }
@@ -318,8 +364,7 @@ async function discoverLegacyUserSkills(
           ...info,
           source: 'user',
           skillPath: resolvedPath,
-          enabled: true,
-          backendType,
+          enabledBackends: { [backendType]: true },
           editable: false,
         });
         continue;
@@ -343,8 +388,7 @@ async function discoverLegacyUserSkills(
           name: `${entry.name}/${nestedInfo.name}`,
           source: 'user',
           skillPath: nestedSkillDir,
-          enabled: true,
-          backendType,
+          enabledBackends: { [backendType]: true },
           editable: false,
         });
       }
@@ -365,15 +409,13 @@ async function discoverLegacyUserSkills(
 async function discoverSkillsInDir({
   baseDir,
   source,
-  backendType,
-  enabled,
+  enabledBackends,
   editable,
   pluginName,
 }: {
   baseDir: string;
   source: 'user' | 'project' | 'plugin';
-  backendType: AgentBackendType;
-  enabled: boolean;
+  enabledBackends: Partial<Record<AgentBackendType, boolean>>;
   editable: boolean;
   pluginName?: string;
 }): Promise<ManagedSkill[]> {
@@ -399,8 +441,7 @@ async function discoverSkillsInDir({
           source,
           pluginName,
           skillPath: resolvedPath,
-          enabled,
-          backendType,
+          enabledBackends,
           editable,
         });
       }
@@ -600,8 +641,7 @@ async function discoverPluginSkills(
           const pluginSkills = await discoverSkillsInDir({
             baseDir: skillsPath,
             source: 'plugin',
-            backendType,
-            enabled: true,
+            enabledBackends: { [backendType]: true },
             editable: false,
             pluginName: pluginDir.name,
           });
@@ -630,7 +670,7 @@ export async function getAllManagedSkills({
   const results: ManagedSkill[] = [];
 
   // JC-managed user skills: canonical in JC folder, symlinked to backend path
-  results.push(...(await discoverJcManagedUserSkills(backendType)));
+  results.push(...(await discoverJcManagedUserSkillsForBackend(backendType)));
 
   // Legacy user skills: directly in backend path, not JC-managed
   results.push(...(await discoverLegacyUserSkills(backendType)));
@@ -642,8 +682,7 @@ export async function getAllManagedSkills({
       ...(await discoverSkillsInDir({
         baseDir: projectSkillsDir,
         source: 'project',
-        backendType,
-        enabled: true,
+        enabledBackends: { [backendType]: true },
         editable: true,
       })),
     );
@@ -654,6 +693,61 @@ export async function getAllManagedSkills({
     results.push(
       ...(await discoverPluginSkills(config.pluginSkillsDir, backendType)),
     );
+  }
+
+  return results.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function getAllManagedSkillsUnified({
+  projectPath,
+}: {
+  projectPath?: string;
+}): Promise<ManagedSkill[]> {
+  const results: ManagedSkill[] = [];
+  const seenPaths = new Set<string>();
+
+  const jcSkills = await discoverJcManagedUserSkills();
+  for (const skill of jcSkills) {
+    seenPaths.add(skill.skillPath);
+    results.push(skill);
+  }
+
+  for (const [backend, config] of Object.entries(SKILL_PATH_CONFIGS)) {
+    const backendType = backend as AgentBackendType;
+
+    const legacy = await discoverLegacyUserSkills(backendType);
+    for (const skill of legacy) {
+      if (seenPaths.has(skill.skillPath)) continue;
+      seenPaths.add(skill.skillPath);
+      results.push(skill);
+    }
+
+    if (projectPath && config.projectSkillsDir) {
+      const projectSkillsDir = path.join(projectPath, config.projectSkillsDir);
+      const projectSkills = await discoverSkillsInDir({
+        baseDir: projectSkillsDir,
+        source: 'project',
+        enabledBackends: { [backendType]: true },
+        editable: true,
+      });
+      for (const skill of projectSkills) {
+        if (seenPaths.has(skill.skillPath)) continue;
+        seenPaths.add(skill.skillPath);
+        results.push(skill);
+      }
+    }
+
+    if (config.pluginSkillsDir) {
+      const pluginSkills = await discoverPluginSkills(
+        config.pluginSkillsDir,
+        backendType,
+      );
+      for (const skill of pluginSkills) {
+        if (seenPaths.has(skill.skillPath)) continue;
+        seenPaths.add(skill.skillPath);
+        results.push(skill);
+      }
+    }
   }
 
   return results.sort((a, b) => a.name.localeCompare(b.name));
@@ -844,25 +938,26 @@ export async function getSkillContent({
 }
 
 export async function createSkill({
-  backendType,
+  enabledBackends: enabledBackendsList,
   scope,
   projectPath,
   name,
   description,
   content,
 }: {
-  backendType: AgentBackendType;
+  enabledBackends: AgentBackendType[];
   scope: SkillScope;
   projectPath?: string;
   name: string;
   description: string;
   content: string;
 }): Promise<ManagedSkill> {
-  const config = SKILL_PATH_CONFIGS[backendType];
   const dirName = normalizeSkillDirName(name);
 
   if (scope === 'project') {
     // Project skills live directly in the project directory — no JC canonical store
+    const projectBackend = enabledBackendsList[0];
+    const config = SKILL_PATH_CONFIGS[projectBackend];
     if (!projectPath || !config.projectSkillsDir) {
       throw new Error('Project path required for project-scoped skills');
     }
@@ -890,15 +985,13 @@ export async function createSkill({
       description,
       source: 'project',
       skillPath: skillDir,
-      enabled: true,
-      backendType,
+      enabledBackends: { [projectBackend]: true },
       editable: true,
     };
   }
 
-  // User-scope: create in JC canonical dir, then symlink into backend's path
+  // User-scope: create in JC canonical dir, then symlink into each enabled backend's path
   const canonicalPath = path.join(JC_USER_SKILLS_DIR, dirName);
-  const symlinkPath = path.join(config.userSkillsDir, dirName);
 
   // Check for conflicts in the JC canonical store
   try {
@@ -916,26 +1009,44 @@ export async function createSkill({
     'utf-8',
   );
 
-  // Create symlink in backend's expected path (creates dir if needed).
+  // Create symlinks in each enabled backend's expected path (creates dir if needed).
   // Roll back canonical dir if symlink creation fails to avoid orphans.
+  const createdSymlinks: string[] = [];
   try {
-    await fs.mkdir(config.userSkillsDir, { recursive: true });
-    await fs.symlink(canonicalPath, symlinkPath);
+    for (const backend of enabledBackendsList) {
+      const cfg = SKILL_PATH_CONFIGS[backend];
+      const symlinkPath = path.join(cfg.userSkillsDir, dirName);
+      await fs.mkdir(cfg.userSkillsDir, { recursive: true });
+      await fs.symlink(canonicalPath, symlinkPath);
+      createdSymlinks.push(symlinkPath);
+    }
   } catch (symlinkError) {
     dbg.skill(
       'Symlink creation failed for %s, rolling back canonical dir: %O',
       canonicalPath,
       symlinkError,
     );
+    for (const sl of createdSymlinks) {
+      try {
+        await fs.unlink(sl);
+      } catch {
+        /* ignore */
+      }
+    }
     await fs.rm(canonicalPath, { recursive: true, force: true });
     throw symlinkError;
   }
 
+  const enabledBackendsMap: Partial<Record<AgentBackendType, boolean>> = {};
+  for (const backend of enabledBackendsList) {
+    enabledBackendsMap[backend] = true;
+  }
+
   dbg.skill(
-    'Created user skill %s: canonical=%s symlink=%s',
+    'Created user skill %s: canonical=%s backends=%o',
     name,
     canonicalPath,
-    symlinkPath,
+    enabledBackendsList,
   );
 
   return {
@@ -943,8 +1054,7 @@ export async function createSkill({
     description,
     source: 'user',
     skillPath: canonicalPath,
-    enabled: true,
-    backendType,
+    enabledBackends: enabledBackendsMap,
     editable: true,
   };
 }
@@ -978,18 +1088,24 @@ export async function updateSkill({
 
   // Determine source and enabled status from path
   const isJcManaged = skillPath.startsWith(JC_USER_SKILLS_DIR + path.sep);
-  const config = SKILL_PATH_CONFIGS[backendType];
-  const symlinkPath = path.join(config.userSkillsDir, path.basename(skillPath));
-  const enabled = isJcManaged ? await isSymlink(symlinkPath) : true;
   const source = isJcManaged ? 'user' : 'project';
+
+  const enabledBackends: Partial<Record<AgentBackendType, boolean>> = {};
+  if (isJcManaged) {
+    for (const [backend, cfg] of Object.entries(SKILL_PATH_CONFIGS)) {
+      const sl = path.join(cfg.userSkillsDir, path.basename(skillPath));
+      enabledBackends[backend as AgentBackendType] = await isSymlink(sl);
+    }
+  } else {
+    enabledBackends[backendType] = true;
+  }
 
   return {
     name: updatedName,
     description: updatedDesc,
     source,
     skillPath,
-    enabled,
-    backendType,
+    enabledBackends,
     editable: true,
   };
 }

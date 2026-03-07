@@ -1,5 +1,6 @@
 import { Wand2 } from 'lucide-react';
 
+import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { ManagedSkill } from '@shared/skill-types';
 
 function backendLabel(backendType: string): string {
@@ -13,18 +14,60 @@ function backendLabel(backendType: string): string {
   }
 }
 
-function BackendBadge({ backendType }: { backendType: string }) {
+function isEnabledForAnyBackend(
+  enabledBackends: Partial<Record<string, boolean>>,
+): boolean {
+  return Object.values(enabledBackends).some(Boolean);
+}
+
+function BackendToggleChip({
+  backendType,
+  enabled,
+  editable,
+  onClick,
+}: {
+  backendType: AgentBackendType;
+  enabled: boolean;
+  editable: boolean;
+  onClick?: () => void;
+}) {
   const isClaude = backendType === 'claude-code';
+  const label = isClaude ? 'CC' : 'OC';
+
+  if (!editable || !onClick) {
+    return (
+      <span
+        className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+          enabled
+            ? isClaude
+              ? 'bg-orange-900/30 text-orange-400'
+              : 'bg-blue-900/30 text-blue-400'
+            : 'bg-neutral-800 text-neutral-600'
+        }`}
+      >
+        {label}
+      </span>
+    );
+  }
+
   return (
-    <span
-      className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-        isClaude
-          ? 'bg-orange-900/30 text-orange-400'
-          : 'bg-blue-900/30 text-blue-400'
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className={`cursor-pointer rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+        enabled
+          ? isClaude
+            ? 'bg-orange-900/30 text-orange-400 hover:bg-orange-900/50'
+            : 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'
+          : 'bg-neutral-800 text-neutral-600 hover:bg-neutral-700'
       }`}
+      title={`${enabled ? 'Disable' : 'Enable'} for ${backendLabel(backendType)}`}
     >
-      {backendLabel(backendType)}
-    </span>
+      {label}
+    </button>
   );
 }
 
@@ -47,10 +90,15 @@ export function SkillCardGrid({
   skills,
   selectedPath,
   onSelect,
+  onToggleBackend,
 }: {
   skills: ManagedSkill[];
   selectedPath: string | null;
   onSelect: (skillPath: string) => void;
+  onToggleBackend?: (
+    skill: ManagedSkill,
+    backendType: AgentBackendType,
+  ) => void;
 }) {
   if (skills.length === 0) {
     return (
@@ -66,6 +114,7 @@ export function SkillCardGrid({
     <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
       {skills.map((skill) => {
         const isSelected = selectedPath === skill.skillPath;
+        const anyEnabled = isEnabledForAnyBackend(skill.enabledBackends);
 
         return (
           <button
@@ -76,11 +125,11 @@ export function SkillCardGrid({
               isSelected
                 ? 'border-blue-500 bg-blue-500/10'
                 : 'border-neutral-700 bg-neutral-800 hover:border-neutral-600'
-            } ${!skill.enabled ? 'opacity-60' : ''}`}
+            } ${!anyEnabled ? 'opacity-60' : ''}`}
           >
             <div className="flex w-full items-center gap-2">
               <Wand2
-                className={`h-4 w-4 shrink-0 ${skill.enabled ? 'text-purple-400' : 'text-neutral-600'}`}
+                className={`h-4 w-4 shrink-0 ${anyEnabled ? 'text-purple-400' : 'text-neutral-600'}`}
               />
               <span className="truncate text-sm font-medium text-neutral-200">
                 {skill.name}
@@ -94,7 +143,22 @@ export function SkillCardGrid({
             )}
 
             <div className="flex flex-wrap gap-1.5">
-              <BackendBadge backendType={skill.backendType} />
+              {Object.entries(skill.enabledBackends).map(
+                ([backend, enabled]) => (
+                  <BackendToggleChip
+                    key={backend}
+                    backendType={backend as AgentBackendType}
+                    enabled={!!enabled}
+                    editable={skill.editable}
+                    onClick={
+                      skill.editable && onToggleBackend
+                        ? () =>
+                            onToggleBackend(skill, backend as AgentBackendType)
+                        : undefined
+                    }
+                  />
+                ),
+              )}
               <SourceBadge skill={skill} />
             </div>
           </button>

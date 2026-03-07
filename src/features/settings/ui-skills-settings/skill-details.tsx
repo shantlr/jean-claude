@@ -2,6 +2,7 @@ import { Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { useSkillContent } from '@/hooks/use-managed-skills';
+import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { ManagedSkill } from '@shared/skill-types';
 
 function getSourceLabel(skill: ManagedSkill): string {
@@ -24,7 +25,10 @@ export function SkillDetails({
 }: {
   skill: ManagedSkill;
   onClose: () => void;
-  onToggleEnabled?: (skill: ManagedSkill) => void;
+  onToggleEnabled?: (
+    skill: ManagedSkill,
+    backendType: AgentBackendType,
+  ) => void;
   onDelete?: (skillPath: string) => void;
 }) {
   const { data, isLoading, error } = useSkillContent(skill.skillPath);
@@ -80,35 +84,48 @@ export function SkillDetails({
             {skill.description || 'No description provided.'}
           </div>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            <span
-              className={`rounded px-2 py-1 ${
-                skill.backendType === 'claude-code'
-                  ? 'bg-orange-900/30 text-orange-400'
-                  : 'bg-blue-900/30 text-blue-400'
-              }`}
-            >
-              {skill.backendType === 'claude-code' ? 'Claude Code' : 'OpenCode'}
-            </span>
             <span className="rounded bg-neutral-700 px-2 py-1 text-neutral-300">
               {getSourceLabel(skill)}
             </span>
-            {onToggleEnabled ? (
-              <button
-                type="button"
-                onClick={() => onToggleEnabled(skill)}
-                className={`cursor-pointer rounded px-2 py-1 ${
-                  skill.enabled
-                    ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50'
-                    : 'bg-neutral-700 text-neutral-400 hover:bg-neutral-600'
-                }`}
-              >
-                {skill.enabled ? 'Enabled' : 'Disabled'}
-              </button>
-            ) : (
-              <span className="rounded bg-neutral-700 px-2 py-1 text-neutral-300">
-                {skill.enabled ? 'Enabled' : 'Disabled'}
-              </span>
-            )}
+            {onToggleEnabled && skill.editable
+              ? Object.entries(skill.enabledBackends).map(
+                  ([backend, enabled]) => (
+                    <button
+                      key={backend}
+                      type="button"
+                      onClick={() =>
+                        onToggleEnabled(skill, backend as AgentBackendType)
+                      }
+                      className={`cursor-pointer rounded px-2 py-1 ${
+                        enabled
+                          ? backend === 'claude-code'
+                            ? 'bg-orange-900/30 text-orange-400 hover:bg-orange-900/50'
+                            : 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'
+                          : 'bg-neutral-700 text-neutral-400 hover:bg-neutral-600'
+                      }`}
+                    >
+                      {backend === 'claude-code' ? 'Claude Code' : 'OpenCode'}:{' '}
+                      {enabled ? 'On' : 'Off'}
+                    </button>
+                  ),
+                )
+              : Object.entries(skill.enabledBackends).map(
+                  ([backend, enabled]) => (
+                    <span
+                      key={backend}
+                      className={`rounded px-2 py-1 ${
+                        enabled
+                          ? backend === 'claude-code'
+                            ? 'bg-orange-900/30 text-orange-400'
+                            : 'bg-blue-900/30 text-blue-400'
+                          : 'bg-neutral-700 text-neutral-400'
+                      }`}
+                    >
+                      {backend === 'claude-code' ? 'Claude Code' : 'OpenCode'}:{' '}
+                      {enabled ? 'On' : 'Off'}
+                    </span>
+                  ),
+                )}
           </div>
           <div className="mt-3 text-xs break-all text-neutral-500">
             {skill.skillPath}

@@ -114,6 +114,7 @@ import { projectFileIndexService } from '../services/project-file-index-service'
 import { runCommandService } from '../services/run-command-service';
 import {
   getAllManagedSkills,
+  getAllManagedSkillsUnified,
   getSkillContent,
   createSkill,
   updateSkill,
@@ -212,7 +213,7 @@ export function registerIpcHandlers() {
       projectPath: project.path,
     });
     return managed
-      .filter((s) => s.enabled)
+      .filter((s) => s.enabledBackends[backendType] === true)
       .map(({ name, description, source, pluginName, skillPath }) => ({
         name,
         description,
@@ -2034,6 +2035,11 @@ export function registerIpcHandlers() {
     },
   );
 
+  ipcMain.handle('skills:getAllUnified', async (_, projectPath?: string) => {
+    dbg.ipc('skills:getAllUnified project=%s', projectPath);
+    return getAllManagedSkillsUnified({ projectPath });
+  });
+
   ipcMain.handle('skills:getContent', async (_, skillPath: string) => {
     dbg.ipc('skills:getContent path=%s', skillPath);
     return getSkillContent({ skillPath });
@@ -2044,7 +2050,7 @@ export function registerIpcHandlers() {
     async (
       _,
       params: {
-        backendType: AgentBackendType;
+        enabledBackends: AgentBackendType[];
         scope: 'user' | 'project';
         projectPath?: string;
         name: string;

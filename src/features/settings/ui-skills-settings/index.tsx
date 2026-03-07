@@ -7,6 +7,7 @@ import {
   useDisableSkill,
   useEnableSkill,
 } from '@/hooks/use-managed-skills';
+import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { ManagedSkill } from '@shared/skill-types';
 
 import { LegacySkillMigrationDialog } from './legacy-skill-migration-dialog';
@@ -45,23 +46,32 @@ export function SkillsSettings() {
   const handleDelete = async (skillPath: string) => {
     const skill = skills?.find((s) => s.skillPath === skillPath);
     if (!skill) return;
+    // deleteSkill removes symlinks from all backends for JC-managed skills,
+    // so the specific backendType only matters for project-scope skills.
+    const backendType =
+      (Object.keys(skill.enabledBackends)[0] as AgentBackendType) ??
+      'claude-code';
     await deleteSkill.mutateAsync({
       skillPath,
-      backendType: skill.backendType,
+      backendType,
     });
     if (selectedPath === skillPath) setSelectedPath(null);
   };
 
-  const handleToggleEnabled = async (skill: ManagedSkill) => {
-    if (skill.enabled) {
+  const handleToggleEnabled = async (
+    skill: ManagedSkill,
+    backendType: AgentBackendType,
+  ) => {
+    const isEnabled = skill.enabledBackends[backendType];
+    if (isEnabled) {
       await disableSkill.mutateAsync({
         skillPath: skill.skillPath,
-        backendType: skill.backendType,
+        backendType,
       });
     } else {
       await enableSkill.mutateAsync({
         skillPath: skill.skillPath,
-        backendType: skill.backendType,
+        backendType,
       });
     }
   };
@@ -114,6 +124,7 @@ export function SkillsSettings() {
                 skills={mySkills}
                 selectedPath={selectedPath}
                 onSelect={handleSelect}
+                onToggleBackend={handleToggleEnabled}
               />
             </div>
           )}
@@ -144,7 +155,6 @@ export function SkillsSettings() {
         <div className="w-96 flex-shrink-0 rounded-lg border border-neutral-700 bg-neutral-800/50 p-6">
           {isCreating ? (
             <SkillForm
-              backendType="claude-code"
               scope="user"
               onClose={handleClose}
               onSaved={handleSaved}
@@ -152,7 +162,9 @@ export function SkillsSettings() {
           ) : selectedSkill?.editable ? (
             <SkillForm
               skillPath={selectedSkill.skillPath}
-              backendType={selectedSkill.backendType}
+              enabledBackends={Object.entries(selectedSkill.enabledBackends)
+                .filter(([, v]) => v)
+                .map(([k]) => k as AgentBackendType)}
               scope="user"
               onClose={handleClose}
               onSaved={handleSaved}

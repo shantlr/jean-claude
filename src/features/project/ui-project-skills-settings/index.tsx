@@ -40,23 +40,32 @@ export function ProjectSkillsSettings({ projectId }: { projectId: string }) {
   const handleDelete = async (skillPath: string) => {
     const skill = skills?.find((s) => s.skillPath === skillPath);
     if (!skill) return;
+    // deleteSkill removes symlinks from all backends for JC-managed skills,
+    // so the specific backendType only matters for project-scope skills.
+    const bt =
+      (Object.keys(skill.enabledBackends)[0] as AgentBackendType) ??
+      'claude-code';
     await deleteSkill.mutateAsync({
       skillPath,
-      backendType: skill.backendType,
+      backendType: bt,
     });
     if (selectedPath === skillPath) setSelectedPath(null);
   };
 
-  const handleToggleEnabled = async (skill: ManagedSkill) => {
-    if (skill.enabled) {
+  const handleToggleEnabled = async (
+    skill: ManagedSkill,
+    bt: AgentBackendType,
+  ) => {
+    const isEnabled = skill.enabledBackends[bt];
+    if (isEnabled) {
       await disableSkill.mutateAsync({
         skillPath: skill.skillPath,
-        backendType: skill.backendType,
+        backendType: bt,
       });
     } else {
       await enableSkill.mutateAsync({
         skillPath: skill.skillPath,
-        backendType: skill.backendType,
+        backendType: bt,
       });
     }
   };
@@ -120,6 +129,7 @@ export function ProjectSkillsSettings({ projectId }: { projectId: string }) {
                   setIsCreating(false);
                   setSelectedPath(p);
                 }}
+                onToggleBackend={handleToggleEnabled}
               />
             </div>
           )}
@@ -130,7 +140,13 @@ export function ProjectSkillsSettings({ projectId }: { projectId: string }) {
             {isCreating || selectedSkill?.editable ? (
               <SkillForm
                 skillPath={selectedSkill?.skillPath}
-                backendType={backendType}
+                enabledBackends={
+                  selectedSkill
+                    ? Object.entries(selectedSkill.enabledBackends)
+                        .filter(([, v]) => v)
+                        .map(([k]) => k as AgentBackendType)
+                    : [backendType]
+                }
                 scope="project"
                 projectPath={project.path}
                 onClose={() => {

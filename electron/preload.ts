@@ -486,10 +486,12 @@ contextBridge.exposeInMainWorld('api', {
   skillManagement: {
     getAll: (backendType: string, projectPath?: string) =>
       ipcRenderer.invoke('skills:getAll', backendType, projectPath),
+    getAllUnified: (projectPath?: string) =>
+      ipcRenderer.invoke('skills:getAllUnified', projectPath),
     getContent: (skillPath: string) =>
       ipcRenderer.invoke('skills:getContent', skillPath),
     create: (params: {
-      backendType: string;
+      enabledBackends: string[];
       scope: string;
       projectPath?: string;
       name: string;

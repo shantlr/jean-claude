@@ -12,14 +12,14 @@ import type { SkillScope } from '@shared/skill-types';
 
 export function SkillForm({
   skillPath,
-  backendType,
+  enabledBackends,
   scope,
   projectPath,
   onClose,
   onSaved,
 }: {
   skillPath?: string;
-  backendType: AgentBackendType;
+  enabledBackends?: AgentBackendType[];
   scope: SkillScope;
   projectPath?: string;
   onClose: () => void;
@@ -33,7 +33,9 @@ export function SkillForm({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [content, setContent] = useState('');
-  const [formBackendType, setFormBackendType] = useState(backendType);
+  const [formEnabledBackends, setFormEnabledBackends] = useState<
+    AgentBackendType[]
+  >(enabledBackends ?? ['claude-code', 'opencode']);
   const addToast = useToastStore((s) => s.addToast);
 
   useEffect(() => {
@@ -49,18 +51,19 @@ export function SkillForm({
   }, [existing, skillPath]);
 
   const handleSave = async () => {
+    if (!isEditing && formEnabledBackends.length === 0) return;
     try {
       if (isEditing && skillPath) {
         await updateSkill.mutateAsync({
           skillPath,
-          backendType,
+          backendType: enabledBackends?.[0] ?? 'claude-code',
           name,
           description,
           content,
         });
       } else {
         await createSkill.mutateAsync({
-          backendType: formBackendType,
+          enabledBackends: formEnabledBackends,
           scope,
           projectPath,
           name,
@@ -76,7 +79,8 @@ export function SkillForm({
     }
   };
 
-  const isValid = name.trim().length > 0;
+  const isValid =
+    name.trim().length > 0 && (isEditing || formEnabledBackends.length > 0);
   const isPending = createSkill.isPending || updateSkill.isPending;
 
   return (
@@ -126,20 +130,34 @@ export function SkillForm({
         {!isEditing && (
           <div>
             <label className="mb-1 block text-sm font-medium text-neutral-400">
-              Backend
+              Backends
             </label>
-            <select
-              value={formBackendType}
-              onChange={(e) =>
-                setFormBackendType(e.target.value as AgentBackendType)
-              }
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 focus:border-blue-500 focus:outline-none"
-            >
-              <option value="claude-code">Claude Code</option>
-              <option value="opencode">OpenCode</option>
-            </select>
+            <div className="flex gap-3">
+              {(['claude-code', 'opencode'] as AgentBackendType[]).map(
+                (backend) => (
+                  <label
+                    key={backend}
+                    className="flex items-center gap-2 text-sm text-neutral-200"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formEnabledBackends.includes(backend)}
+                      onChange={(e) => {
+                        setFormEnabledBackends((prev) =>
+                          e.target.checked
+                            ? [...prev, backend]
+                            : prev.filter((b) => b !== backend),
+                        );
+                      }}
+                      className="rounded border-neutral-600 bg-neutral-800"
+                    />
+                    {backend === 'claude-code' ? 'Claude Code' : 'OpenCode'}
+                  </label>
+                ),
+              )}
+            </div>
             <p className="mt-1 text-xs text-neutral-500">
-              Which agent backend this skill will be available to
+              Which agent backends this skill will be available to
             </p>
           </div>
         )}

@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo } from 'react';
 
 import { api } from '@/lib/api';
 import type { AgentBackendType } from '@shared/agent-backend-types';
@@ -11,6 +10,8 @@ import type {
 
 export const managedSkillsQueryKeys = {
   all: ['managedSkills'] as const,
+  unified: (projectPath?: string) =>
+    [...managedSkillsQueryKeys.all, 'unified', projectPath ?? ''] as const,
   byBackend: (backendType: AgentBackendType, projectPath?: string) =>
     [...managedSkillsQueryKeys.all, backendType, projectPath ?? ''] as const,
   content: (skillPath: string) =>
@@ -28,6 +29,14 @@ export function useManagedSkills(
   });
 }
 
+export function useAllManagedSkills(projectPath?: string) {
+  return useQuery({
+    queryKey: managedSkillsQueryKeys.unified(projectPath),
+    queryFn: () => api.skillManagement.getAllUnified(projectPath),
+    staleTime: 30_000,
+  });
+}
+
 export function useSkillContent(skillPath: string | null) {
   return useQuery({
     queryKey: managedSkillsQueryKeys.content(skillPath ?? ''),
@@ -40,7 +49,7 @@ export function useCreateSkill() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (params: {
-      backendType: AgentBackendType;
+      enabledBackends: AgentBackendType[];
       scope: SkillScope;
       projectPath?: string;
       name: string;
@@ -147,26 +156,4 @@ export function useLegacySkillMigrationExecute() {
       });
     },
   });
-}
-
-export function useAllManagedSkills(projectPath?: string) {
-  const claude = useManagedSkills('claude-code', projectPath);
-  const opencode = useManagedSkills('opencode', projectPath);
-
-  const skills = useMemo(() => {
-    const all = [...(claude.data ?? []), ...(opencode.data ?? [])];
-    const seen = new Set<string>();
-    return all.filter((s) => {
-      if (seen.has(s.skillPath)) return false;
-      seen.add(s.skillPath);
-      return true;
-    });
-  }, [claude.data, opencode.data]);
-
-  return {
-    data: skills,
-    isLoading: claude.isLoading || opencode.isLoading,
-    isError: claude.isError || opencode.isError,
-    error: claude.error ?? opencode.error,
-  };
 }
