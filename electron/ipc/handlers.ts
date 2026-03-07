@@ -1723,6 +1723,9 @@ export function registerIpcHandlers() {
   ipcMain.handle('project:commands:run:getStatus', (_, taskId: string) =>
     runCommandService.getRunStatus(taskId),
   );
+  ipcMain.handle('project:commands:run:getTaskIdsWithRunningCommands', () =>
+    runCommandService.getTaskIdsWithRunningCommands(),
+  );
   ipcMain.handle(
     'project:commands:run:killPortsForCommand',
     (_, { projectId, commandId }: { projectId: string; commandId: string }) =>

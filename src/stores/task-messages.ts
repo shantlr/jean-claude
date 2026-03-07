@@ -322,16 +322,12 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
 
   clearAllRunCommandLogs: (taskId) => {
     set((state) => {
-      if (!state.runCommandLogs[taskId] && !state.runCommandRunning[taskId])
-        return state;
+      if (!state.runCommandLogs[taskId]) return state;
 
       const { [taskId]: _removedLogs, ...restLogs } = state.runCommandLogs;
       void _removedLogs;
-      const { [taskId]: _removedRunning, ...restRunning } =
-        state.runCommandRunning;
-      void _removedRunning;
 
-      return { runCommandLogs: restLogs, runCommandRunning: restRunning };
+      return { runCommandLogs: restLogs };
     });
   },
 

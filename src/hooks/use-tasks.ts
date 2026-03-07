@@ -117,6 +117,9 @@ export function useDeleteTask() {
   const clearAllRunCommandLogs = useTaskMessagesStore(
     (s) => s.clearAllRunCommandLogs,
   );
+  const setRunCommandRunning = useTaskMessagesStore(
+    (s) => s.setRunCommandRunning,
+  );
   return useMutation({
     mutationFn: ({
       id,
@@ -127,6 +130,7 @@ export function useDeleteTask() {
     }) => api.tasks.delete(id, { deleteWorktree }),
     onSuccess: (_, { id }) => {
       clearAllRunCommandLogs(id);
+      setRunCommandRunning(id, false);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
@@ -183,10 +187,14 @@ export function useToggleTaskUserCompleted() {
   const clearAllRunCommandLogs = useTaskMessagesStore(
     (s) => s.clearAllRunCommandLogs,
   );
+  const setRunCommandRunning = useTaskMessagesStore(
+    (s) => s.setRunCommandRunning,
+  );
   return useMutation({
     mutationFn: (id: string) => api.tasks.toggleUserCompleted(id),
     onSuccess: (task, id) => {
       clearAllRunCommandLogs(id);
+      setRunCommandRunning(id, false);
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
       queryClient.invalidateQueries({
         queryKey: ['tasks', { projectId: task.projectId }],

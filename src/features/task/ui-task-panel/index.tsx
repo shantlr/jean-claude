@@ -139,9 +139,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const allowForProject = useAllowForProject();
   const allowForProjectWorktrees = useAllowForProjectWorktrees();
   const unloadStep = useTaskMessagesStore((state) => state.unloadStep);
-  const clearAllRunCommandLogs = useTaskMessagesStore(
-    (state) => state.clearAllRunCommandLogs,
-  );
   const addRunningJob = useBackgroundJobsStore((state) => state.addRunningJob);
   const markJobSucceeded = useBackgroundJobsStore(
     (state) => state.markJobSucceeded,
@@ -256,12 +253,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
   }, [taskId]);
-
-  useEffect(() => {
-    if (task?.status === 'completed') {
-      clearAllRunCommandLogs(taskId);
-    }
-  }, [task?.status, taskId, clearAllRunCommandLogs]);
 
   // Auto-select an active step when none is selected
   useEffect(() => {

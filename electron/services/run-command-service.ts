@@ -221,6 +221,20 @@ class RunCommandService {
     };
   }
 
+  /** Returns taskIds that currently have at least one running command. */
+  getTaskIdsWithRunningCommands(): string[] {
+    const result: string[] = [];
+    for (const [taskId, tracked] of this.runningProcesses) {
+      const hasRunning = [...tracked.values()].some(
+        (t) => t.status === 'running',
+      );
+      if (hasRunning) {
+        result.push(taskId);
+      }
+    }
+    return result;
+  }
+
   async checkPortInUse(port: number): Promise<string | null> {
     dbg.runCommand('Checking if port %d is in use', port);
     try {

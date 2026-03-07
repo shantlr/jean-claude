@@ -122,10 +122,27 @@ export function TaskMessageManager() {
     return unsub;
   }, [appendRunCommandLine]);
 
+  // Subscribe to run command status changes AND initialize runCommandRunning
+  // from the main process. Both live in the same effect so the listener is
+  // guaranteed to be active before the initialization fetch resolves,
+  // eliminating the race where a command stops between fetch and subscribe.
   useEffect(() => {
     const unsub = api.runCommands.onStatusChange((taskId, status) => {
       setRunCommandRunning(taskId, status.isRunning);
     });
+
+    // Fetch after subscribing so we never miss events that fire between
+    // the IPC round-trip and listener registration.
+    api.runCommands
+      .getTaskIdsWithRunningCommands()
+      .then((taskIds) => {
+        for (const taskId of taskIds) {
+          setRunCommandRunning(taskId, true);
+        }
+      })
+      .catch(() => {
+        // Ignore — can happen during app shutdown
+      });
 
     return unsub;
   }, [setRunCommandRunning]);

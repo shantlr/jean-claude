@@ -621,6 +621,7 @@ export interface Api {
       runCommandId: string;
     }) => Promise<void>;
     getStatus: (taskId: string) => Promise<RunStatus>;
+    getTaskIdsWithRunningCommands: () => Promise<string[]>;
     killPortsForCommand: (
       projectId: string,
       commandId: string,
@@ -1025,6 +1026,7 @@ export const api: Api = hasWindowApi
           isRunning: false,
           commands: [],
         }),
+        getTaskIdsWithRunningCommands: async () => [],
         killPortsForCommand: async () => {},
         getPackageScripts: async () => ({
           scripts: [],

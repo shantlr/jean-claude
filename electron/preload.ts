@@ -359,6 +359,10 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('project:commands:run:stopCommand', params),
     getStatus: (taskId: string) =>
       ipcRenderer.invoke('project:commands:run:getStatus', taskId),
+    getTaskIdsWithRunningCommands: () =>
+      ipcRenderer.invoke(
+        'project:commands:run:getTaskIdsWithRunningCommands',
+      ) as Promise<string[]>,
     killPortsForCommand: (projectId: string, commandId: string) =>
       ipcRenderer.invoke('project:commands:run:killPortsForCommand', {
         projectId,
