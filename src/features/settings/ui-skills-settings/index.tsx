@@ -13,7 +13,7 @@ import type { ManagedSkill } from '@shared/skill-types';
 import { LegacySkillMigrationDialog } from './legacy-skill-migration-dialog';
 import { SkillCardGrid } from './skill-card-grid';
 import { SkillDetails } from './skill-details';
-import { SkillForm } from './skill-form';
+import { SkillEditor } from './skill-editor';
 
 export function SkillsSettings() {
   const { data: skills, isLoading } = useAllManagedSkills();
@@ -22,7 +22,7 @@ export function SkillsSettings() {
   const enableSkill = useEnableSkill();
 
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
+  const [editingPath, setEditingPath] = useState<string | null | 'new'>(null);
   const [showMigrationDialog, setShowMigrationDialog] = useState(false);
 
   const selectedSkill = skills?.find((s) => s.skillPath === selectedPath);
@@ -35,11 +35,10 @@ export function SkillsSettings() {
 
   const handleCreate = () => {
     setSelectedPath(null);
-    setIsCreating(true);
+    setEditingPath('new');
   };
 
   const handleSelect = (skillPath: string) => {
-    setIsCreating(false);
     setSelectedPath(skillPath);
   };
 
@@ -78,16 +77,44 @@ export function SkillsSettings() {
 
   const handleClose = () => {
     setSelectedPath(null);
-    setIsCreating(false);
+    setEditingPath(null);
   };
 
-  const handleSaved = () => {
+  const handleEditorClose = () => {
+    setEditingPath(null);
+  };
+
+  const handleEditorSaved = () => {
+    setEditingPath(null);
     setSelectedPath(null);
-    setIsCreating(false);
   };
 
   if (isLoading) {
     return <p className="text-neutral-500">Loading...</p>;
+  }
+
+  // Full-page editor view when editing or creating
+  if (editingPath !== null) {
+    const editingSkill =
+      editingPath !== 'new'
+        ? skills?.find((s) => s.skillPath === editingPath)
+        : undefined;
+
+    return (
+      <SkillEditor
+        skillPath={editingSkill?.skillPath}
+        enabledBackends={
+          editingSkill
+            ? Object.entries(editingSkill.enabledBackends)
+                .filter(([, v]) => v)
+                .map(([k]) => k as AgentBackendType)
+            : undefined
+        }
+        scope="user"
+        onClose={handleEditorClose}
+        onSaved={handleEditorSaved}
+      />
+    );
   }
 
   return (
@@ -150,33 +177,20 @@ export function SkillsSettings() {
         </div>
       </div>
 
-      {/* Right: Detail/Form pane */}
-      {(isCreating || selectedSkill) && (
+      {/* Right: Detail pane (read-only with Edit button) */}
+      {selectedSkill && (
         <div className="w-96 flex-shrink-0 rounded-lg border border-neutral-700 bg-neutral-800/50 p-6">
-          {isCreating ? (
-            <SkillForm
-              scope="user"
-              onClose={handleClose}
-              onSaved={handleSaved}
-            />
-          ) : selectedSkill?.editable ? (
-            <SkillForm
-              skillPath={selectedSkill.skillPath}
-              enabledBackends={Object.entries(selectedSkill.enabledBackends)
-                .filter(([, v]) => v)
-                .map(([k]) => k as AgentBackendType)}
-              scope="user"
-              onClose={handleClose}
-              onSaved={handleSaved}
-            />
-          ) : selectedSkill ? (
-            <SkillDetails
-              skill={selectedSkill}
-              onClose={handleClose}
-              onToggleEnabled={handleToggleEnabled}
-              onDelete={handleDelete}
-            />
-          ) : null}
+          <SkillDetails
+            skill={selectedSkill}
+            onClose={handleClose}
+            onEdit={
+              selectedSkill.editable
+                ? () => setEditingPath(selectedSkill.skillPath)
+                : undefined
+            }
+            onToggleEnabled={handleToggleEnabled}
+            onDelete={handleDelete}
+          />
         </div>
       )}
 

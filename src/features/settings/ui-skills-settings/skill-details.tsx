@@ -1,6 +1,7 @@
-import { Trash2, X } from 'lucide-react';
+import { Pencil, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
+import { MarkdownContent } from '@/features/agent/ui-markdown-content';
 import { useSkillContent } from '@/hooks/use-managed-skills';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { ManagedSkill } from '@shared/skill-types';
@@ -20,11 +21,13 @@ function getSourceLabel(skill: ManagedSkill): string {
 export function SkillDetails({
   skill,
   onClose,
+  onEdit,
   onToggleEnabled,
   onDelete,
 }: {
   skill: ManagedSkill;
   onClose: () => void;
+  onEdit?: () => void;
   onToggleEnabled?: (
     skill: ManagedSkill,
     backendType: AgentBackendType,
@@ -41,6 +44,16 @@ export function SkillDetails({
           Skill Details
         </h3>
         <div className="flex items-center gap-1">
+          {onEdit && skill.editable && (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="cursor-pointer rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-200"
+              title="Edit skill"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+          )}
           {onDelete &&
             skill.editable &&
             (confirmingDelete ? (
@@ -75,7 +88,7 @@ export function SkillDetails({
         </div>
       </div>
 
-      <div className="space-y-4 overflow-y-auto pb-2">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-2">
         <div className="rounded-lg border border-neutral-700 bg-neutral-800/50 p-3 text-sm">
           <div className="text-base font-medium text-neutral-100">
             {skill.name}
@@ -147,9 +160,9 @@ export function SkillDetails({
             </div>
           )}
           {!isLoading && !error && (
-            <pre className="max-h-[52svh] overflow-auto rounded-lg border border-neutral-700 bg-neutral-900/60 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-neutral-200">
-              {data?.content || 'No content found.'}
-            </pre>
+            <div className="overflow-auto rounded-lg border border-neutral-700 bg-neutral-900/60 p-3 text-sm text-neutral-200">
+              <MarkdownContent content={data?.content || 'No content found.'} />
+            </div>
           )}
         </div>
       </div>
