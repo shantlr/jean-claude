@@ -63,17 +63,14 @@ export function usePromptNavigation({
   );
 
   // Determine which prompt is "current" based on scroll position.
-  // We pick the last prompt whose top edge has scrolled at or above a small
-  // threshold past the viewport top. A small fixed buffer (50px) avoids
-  // sub-pixel jitter after scrollIntoView without being so large that a
-  // nearby prompt gets promoted to "current" prematurely (the old
-  // clientHeight/3 threshold was ~200-350px, causing the index to jump ahead
-  // when two prompts were close together).
+  // We pick the last prompt whose top edge is within the visible viewport,
+  // evaluated from the viewport bottom so "current" reflects what the user is
+  // currently seeing (not just what crossed the top).
   const updateCurrentIndex = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container || totalPrompts === 0) return;
 
-    const threshold = container.scrollTop + 50;
+    const threshold = container.scrollTop + container.clientHeight - 8;
     let best = 0;
 
     for (let i = 0; i < totalPrompts; i++) {
@@ -114,7 +111,12 @@ export function usePromptNavigation({
 
   // Scroll to a specific prompt index
   const scrollToPrompt = useCallback(
-    (index: number) => {
+    (
+      index: number,
+      options?: {
+        behavior?: 'auto' | 'smooth' | 'instant';
+      },
+    ) => {
       const el = findPromptElement(index);
       if (!el) return;
 
@@ -124,14 +126,17 @@ export function usePromptNavigation({
       }
 
       setCurrentIndex(index);
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const behavior = options?.behavior ?? 'smooth';
+      el.scrollIntoView({ behavior, block: 'start' });
 
+      const settleDelay = behavior === 'smooth' ? 500 : 0;
       navigationTimeoutRef.current = setTimeout(() => {
         isNavigatingRef.current = false;
         navigationTimeoutRef.current = null;
-      }, 500);
+        updateCurrentIndex();
+      }, settleDelay);
     },
-    [findPromptElement],
+    [findPromptElement, updateCurrentIndex],
   );
 
   const goToNext = useCallback(() => {
@@ -184,6 +189,7 @@ export function usePromptNavigation({
     currentIndex,
     isAtBottom,
     totalPrompts,
+    goToPrompt: scrollToPrompt,
     goToNext,
     goToPrevious,
     goToLast,
