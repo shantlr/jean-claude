@@ -4,6 +4,7 @@ import type { KeyboardEvent } from 'react';
 import { useCommands } from '@/common/hooks/use-commands';
 import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
+import { Select } from '@/common/ui/select';
 import {
   BackendSelector,
   getModelsForBackend,
@@ -25,6 +26,26 @@ import {
   type ModelPreference,
 } from '@shared/types';
 
+export type AddStepPresetType = 'new-session' | 'continue' | 'review-changes';
+
+const STEP_PRESET_OPTIONS = [
+  {
+    value: 'new-session',
+    label: 'New session',
+    description: 'Start from a fresh context',
+  },
+  {
+    value: 'continue',
+    label: 'Continue',
+    description: 'Continue with summary of previous step',
+  },
+  {
+    value: 'review-changes',
+    label: 'Review changes',
+    description: 'Run a dedicated code review step',
+  },
+] as const;
+
 export function AddStepDialog({
   isOpen,
   onClose,
@@ -36,6 +57,7 @@ export function AddStepDialog({
   onClose: () => void;
   onConfirm: (data: {
     promptTemplate: string;
+    presetType: AddStepPresetType;
     interactionMode: InteractionMode;
     agentBackend: AgentBackendType;
     modelPreference: ModelPreference;
@@ -46,6 +68,8 @@ export function AddStepDialog({
   defaultModel?: ModelPreference;
 }) {
   const [promptTemplate, setPromptTemplate] = useState('');
+  const [presetType, setPresetType] =
+    useState<AddStepPresetType>('new-session');
   const [interactionMode, setInteractionMode] =
     useState<InteractionMode>('ask');
   const [backend, setBackend] = useState<AgentBackendType>(defaultBackend);
@@ -59,6 +83,7 @@ export function AddStepDialog({
   useEffect(() => {
     if (isOpen) {
       setPromptTemplate('');
+      setPresetType('new-session');
       setInteractionMode('ask');
       setBackend(defaultBackend);
       setModel(defaultModel);
@@ -74,12 +99,14 @@ export function AddStepDialog({
     setModel('default');
   };
 
-  const canSubmit = promptTemplate.trim().length > 0;
+  const canSubmit =
+    presetType === 'review-changes' || promptTemplate.trim().length > 0;
 
   const handleSubmit = useCallback(() => {
     if (!canSubmit) return;
     onConfirm({
       promptTemplate: promptTemplate.trim(),
+      presetType,
       interactionMode: normalizeInteractionModeForBackend({
         backend,
         mode: interactionMode,
@@ -93,6 +120,7 @@ export function AddStepDialog({
     canSubmit,
     onConfirm,
     promptTemplate,
+    presetType,
     interactionMode,
     backend,
     model,
@@ -134,12 +162,25 @@ export function AddStepDialog({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Add Step">
       <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-neutral-400">Step type</span>
+          <Select
+            value={presetType}
+            onChange={(value) => setPresetType(value as AddStepPresetType)}
+            options={[...STEP_PRESET_OPTIONS]}
+            side="top"
+          />
+        </div>
         <PromptTextarea
           ref={textareaRef}
           value={promptTemplate}
           onChange={setPromptTemplate}
           onEnterKey={handleEnterKey}
-          placeholder="Describe what this step should do..."
+          placeholder={
+            presetType === 'review-changes'
+              ? 'Optional: add any extra review focus...'
+              : 'Describe what this step should do...'
+          }
           maxHeight={200}
           showCommands={false}
           images={images}

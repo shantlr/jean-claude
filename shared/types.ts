@@ -468,6 +468,10 @@ export interface UsageDisplaySetting {
   enabledProviders: UsageProviderType[];
 }
 
+export interface SummaryModelsSetting {
+  models: Record<AgentBackendType, ModelPreference>;
+}
+
 // Settings validation
 export interface SettingDefinition<T> {
   defaultValue: T;
@@ -528,6 +532,14 @@ function isUsageDisplaySetting(v: unknown): v is UsageDisplaySetting {
   return true;
 }
 
+function isSummaryModelsSetting(v: unknown): v is SummaryModelsSetting {
+  if (!v || typeof v !== 'object') return false;
+  const obj = v as Record<string, unknown>;
+  if (!obj.models || typeof obj.models !== 'object') return false;
+  const models = obj.models as Record<string, unknown>;
+  return VALID_BACKENDS.every((backend) => typeof models[backend] === 'string');
+}
+
 export const SETTINGS_DEFINITIONS = {
   editor: {
     defaultValue: { type: 'preset', id: 'vscode' } as EditorSetting,
@@ -554,6 +566,15 @@ export const SETTINGS_DEFINITIONS = {
       enabledProviders: [],
     } as UsageDisplaySetting,
     validate: isUsageDisplaySetting,
+  },
+  summaryModels: {
+    defaultValue: {
+      models: {
+        'claude-code': 'haiku',
+        opencode: 'default',
+      },
+    } as SummaryModelsSetting,
+    validate: isSummaryModelsSetting,
   },
 } satisfies Record<string, SettingDefinition<unknown>>;
 

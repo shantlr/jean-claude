@@ -5,6 +5,7 @@ import type {
   AppSettings,
   BackendsSetting,
   EditorSetting,
+  SummaryModelsSetting,
   UsageDisplaySetting,
 } from '@shared/types';
 
@@ -82,6 +83,23 @@ export function useUpdateUsageDisplaySetting() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['settings', 'usageDisplay'],
+      });
+    },
+  });
+}
+
+export function useSummaryModelsSetting() {
+  return useSetting('summaryModels');
+}
+
+export function useUpdateSummaryModelsSetting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: SummaryModelsSetting) =>
+      api.settings.set('summaryModels', value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings', 'summaryModels'],
       });
     },
   });

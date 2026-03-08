@@ -95,6 +95,11 @@ export interface AgentTaskContext {
 
 export interface AgentBackend {
   start(config: AgentBackendConfig, parts: PromptPart[]): Promise<AgentSession>;
+  summarizeSession(params: {
+    sessionId: string;
+    cwd: string;
+    model?: string;
+  }): Promise<string>;
   stop(sessionId: string): Promise<void>;
   respondToPermission(
     sessionId: string,

@@ -92,10 +92,11 @@ import {
   getDefaultInteractionModeForBackend,
   type InteractionMode,
   type ModelPreference,
+  type TaskStep,
   type EditorSetting,
 } from '@shared/types';
 
-import { AddStepDialog } from './add-step-dialog';
+import { AddStepDialog, type AddStepPresetType } from './add-step-dialog';
 import { CommandLogsPane } from './command-logs-pane';
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
 import { DebugMessagesPane } from './debug-messages-pane';
@@ -105,6 +106,48 @@ import { TaskPendingNoteInput } from './task-pending-note-input';
 import { TaskSettingsPane } from './task-settings-pane';
 
 const LAST_ASSISTANT_MESSAGE_MAX_LENGTH = 1200;
+
+const REVIEW_CHANGES_PROMPT = [
+  'You are reviewing the current task changes.',
+  'Inspect the git diff and identify potential bugs, regressions, code quality issues, and missing tests.',
+  'Prioritize high-impact findings first, then list medium/low issues.',
+  'When possible, reference concrete files and lines.',
+].join('\n');
+
+function buildContinuePromptTemplate({
+  previousStepId,
+  userPrompt,
+}: {
+  previousStepId: string;
+  userPrompt: string;
+}): string {
+  return [
+    'You are continuing work from the previous step.',
+    'Use the summarized context from the previous step output before continuing.',
+    '',
+    'Previous step summary:',
+    `{{summary(step.${previousStepId})}}`,
+    '',
+    'New instructions for this step:',
+    userPrompt,
+  ].join('\n');
+}
+
+function getReferenceStepForPreset({
+  steps,
+  activeStepId,
+}: {
+  steps: TaskStep[];
+  activeStepId: string | null;
+}): TaskStep | null {
+  if (steps.length === 0) return null;
+  if (!activeStepId) return steps[steps.length - 1] ?? null;
+  return (
+    steps.find((step) => step.id === activeStepId) ??
+    steps[steps.length - 1] ??
+    null
+  );
+}
 
 function getLastAssistantMessage(messages: NormalizedEntry[]): string {
   for (let index = messages.length - 1; index >= 0; index--) {
@@ -507,23 +550,51 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const handleAddStep = useCallback(
     async (data: {
       promptTemplate: string;
+      presetType: AddStepPresetType;
       interactionMode: InteractionMode;
       agentBackend: AgentBackendType;
       modelPreference: ModelPreference;
       images: PromptImagePart[];
       start: boolean;
     }) => {
-      const name = data.promptTemplate.split('\n')[0]?.slice(0, 40) ?? 'Step';
+      const referenceStep = getReferenceStepForPreset({
+        steps: steps ?? [],
+        activeStepId,
+      });
+      const defaultName =
+        data.presetType === 'continue'
+          ? 'Continue'
+          : data.presetType === 'review-changes'
+            ? 'Review Changes'
+            : 'Step';
+      const name =
+        data.promptTemplate.split('\n')[0]?.slice(0, 40).trim() || defaultName;
+
+      const promptTemplate =
+        data.presetType === 'continue' && referenceStep
+          ? buildContinuePromptTemplate({
+              previousStepId: referenceStep.id,
+              userPrompt: data.promptTemplate,
+            })
+          : data.presetType === 'review-changes'
+            ? data.promptTemplate || REVIEW_CHANGES_PROMPT
+            : data.promptTemplate;
+
+      const dependsOn =
+        data.presetType === 'continue' && referenceStep
+          ? [referenceStep.id]
+          : [];
+
       try {
         const step = await createStep.mutateAsync({
           taskId,
           name,
-          promptTemplate: data.promptTemplate,
+          promptTemplate,
           interactionMode: data.interactionMode,
           agentBackend: data.agentBackend,
           modelPreference: data.modelPreference,
           images: data.images.length > 0 ? data.images : null,
-          dependsOn: [],
+          dependsOn,
           start: data.start,
         });
         setIsAddStepDialogOpen(false);
@@ -536,7 +607,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         });
       }
     },
-    [taskId, createStep, setActiveStepId, addToast],
+    [taskId, createStep, setActiveStepId, addToast, steps, activeStepId],
   );
 
   const handleMergeStarted = useCallback(() => {

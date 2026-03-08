@@ -1,7 +1,12 @@
 import { Check, FolderOpen, Search, Star, Trash2, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
-import { AVAILABLE_BACKENDS } from '@/features/agent/ui-backend-selector';
+import {
+  AVAILABLE_BACKENDS,
+  getModelsForBackend,
+} from '@/features/agent/ui-backend-selector';
+import { ModelSelector } from '@/features/agent/ui-model-selector';
+import { useBackendModels } from '@/hooks/use-backend-models';
 import {
   useScanNonExistentProjects,
   useCleanupClaudeProjects,
@@ -9,8 +14,10 @@ import {
 import {
   useBackendsSetting,
   useEditorSetting,
+  useSummaryModelsSetting,
   useUpdateBackendsSetting,
   useUpdateEditorSetting,
+  useUpdateSummaryModelsSetting,
   useAvailableEditors,
   useUsageDisplaySetting,
   useUpdateUsageDisplaySetting,
@@ -159,6 +166,12 @@ export function GeneralSettings() {
 
       {/* Agent Backends */}
       <BackendsSettings />
+
+      {/* Divider */}
+      <div className="my-8 border-t border-neutral-800" />
+
+      {/* Template summary models */}
+      <SummaryModelsSettings />
 
       {/* Divider */}
       <div className="my-8 border-t border-neutral-800" />
@@ -323,6 +336,67 @@ function UsageDisplaySettings() {
             </label>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function SummaryModelsSettings() {
+  const { data: summaryModelsSetting } = useSummaryModelsSetting();
+  const updateSummaryModels = useUpdateSummaryModelsSetting();
+  const { data: claudeDynamicModels } = useBackendModels('claude-code');
+  const { data: opencodeDynamicModels } = useBackendModels('opencode');
+
+  const models = summaryModelsSetting?.models ?? {
+    'claude-code': 'haiku',
+    opencode: 'default',
+  };
+
+  const setModelForBackend = (backend: AgentBackendType, model: string) => {
+    updateSummaryModels.mutate({
+      models: {
+        ...models,
+        [backend]: model,
+      },
+    });
+  };
+
+  return (
+    <div>
+      <h2 className="text-lg font-semibold text-neutral-200">Summary Models</h2>
+      <p className="mt-1 text-sm text-neutral-500">
+        Model used for <code>{'{{summary(step.<id>)}}'}</code> template
+        functions. Summary generation runs on a forked session per backend.
+      </p>
+
+      <div className="mt-4 space-y-3">
+        <div className="flex items-center justify-between rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-3">
+          <div>
+            <div className="text-sm font-medium text-neutral-200">
+              Claude Code
+            </div>
+            <div className="text-xs text-neutral-500">Recommended: Haiku</div>
+          </div>
+          <ModelSelector
+            value={models['claude-code']}
+            onChange={(model) => setModelForBackend('claude-code', model)}
+            models={getModelsForBackend('claude-code', claudeDynamicModels)}
+          />
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-3">
+          <div>
+            <div className="text-sm font-medium text-neutral-200">OpenCode</div>
+            <div className="text-xs text-neutral-500">
+              Use a lightweight provider/model when available
+            </div>
+          </div>
+          <ModelSelector
+            value={models.opencode}
+            onChange={(model) => setModelForBackend('opencode', model)}
+            models={getModelsForBackend('opencode', opencodeDynamicModels)}
+          />
+        </div>
       </div>
     </div>
   );

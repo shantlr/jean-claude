@@ -34,6 +34,7 @@ import type { InteractionMode } from '@shared/types';
 
 import { RawMessageRepository } from '../../../database/repositories';
 import { dbg } from '../../../lib/debug';
+import { SESSION_SUMMARY_PROMPT } from '../../session-summary-service';
 
 import {
   normalizeOpenCodeV2,
@@ -223,6 +224,82 @@ export class OpenCodeBackend implements AgentBackend {
     state.pendingPermissions.clear();
 
     this.sessions.delete(sessionId);
+  }
+
+  async summarizeSession({
+    sessionId,
+    cwd,
+    model,
+  }: {
+    sessionId: string;
+    cwd: string;
+    model?: string;
+  }): Promise<string> {
+    // OpenCode does not currently expose a non-persistent fork option,
+    // so we delete the forked session explicitly after summarization.
+    const { client } = await getOrCreateServer();
+    const forked = await client.session.fork({
+      sessionID: sessionId,
+      directory: cwd,
+    });
+    const forkedSessionId = forked.data?.id;
+
+    if (!forkedSessionId) {
+      throw new Error('OpenCode session fork did not return a session ID');
+    }
+
+    let promptError: unknown;
+    let summary: string | null = null;
+
+    try {
+      const resolvedModel = this.parseModel(model);
+      const response = await client.session.prompt({
+        sessionID: forkedSessionId,
+        directory: cwd,
+        parts: [{ type: 'text', text: SESSION_SUMMARY_PROMPT }],
+        ...(resolvedModel ? { model: resolvedModel } : {}),
+      });
+
+      const textParts = (response.data?.parts ?? [])
+        .filter((part) => part.type === 'text')
+        .map((part) => (part as { text?: string }).text?.trim() ?? '')
+        .filter(Boolean)
+        .join('\n\n')
+        .trim();
+
+      if (!textParts) {
+        throw new Error('OpenCode summary session returned empty text output');
+      }
+
+      summary = textParts;
+    } catch (error) {
+      promptError = error;
+    }
+
+    try {
+      await client.session.delete({
+        sessionID: forkedSessionId,
+        directory: cwd,
+      });
+    } catch (error) {
+      // Delete failure is a minor resource leak — log but don't fail.
+      dbg.agent(
+        'Failed to delete forked summary session %s: %O',
+        forkedSessionId,
+        error,
+      );
+    }
+
+    if (promptError) {
+      throw promptError;
+    }
+    // Delete failure is a minor resource leak, not a user-facing error.
+    // Log it but still return the valid summary.
+    if (!summary) {
+      throw new Error('OpenCode summary session returned no summary output');
+    }
+
+    return summary;
   }
 
   async respondToPermission(

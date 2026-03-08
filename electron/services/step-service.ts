@@ -1,62 +1,178 @@
 import type { TaskStep } from '@shared/types';
 
 import { AgentMessageRepository } from '../database/repositories/agent-messages';
+import { ProjectRepository } from '../database/repositories/projects';
+import { SettingsRepository } from '../database/repositories/settings';
 import { TaskStepRepository } from '../database/repositories/task-steps';
 import { TaskRepository } from '../database/repositories/tasks';
 import { createDebug } from '../lib/debug';
 
+import { summarizeForkedSession } from './session-summary-service';
+
 const debug = createDebug('jc:step-service');
 
 /**
- * Resolve template expressions in a prompt template.
- * Supported: {{task.prompt}}, {{task.name}}, {{step.<id>.output}}
+ * Simple text condensation fallback for `{{summary(...)}}` when the argument
+ * resolves to a raw value rather than a step reference (which uses the
+ * AI-powered `summarizeForkedSession` instead). Collapses whitespace and
+ * truncates to 320 characters.
  */
-function resolvePromptTemplate({
+function condenseText(value: string): string {
+  const normalized = value.replace(/\r\n/g, '\n').trim();
+  if (!normalized) return '';
+
+  const condensed = normalized
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!condensed) return '';
+  if (condensed.length <= 320) return condensed;
+  return `${condensed.slice(0, 317).trim()}...`;
+}
+
+async function resolvePromptTemplate({
   template,
   taskPrompt,
   taskName,
   steps,
+  cwd,
+  summaryModels,
 }: {
   template: string;
   taskPrompt: string;
   taskName: string | null;
   steps: TaskStep[];
-}): { resolvedPrompt: string; warnings: string[] } {
+  cwd: string;
+  summaryModels: Record<
+    import('@shared/agent-backend-types').AgentBackendType,
+    import('@shared/types').ModelPreference
+  >;
+}): Promise<{ resolvedPrompt: string; warnings: string[] }> {
   const warnings: string[] = [];
 
-  const resolved = template.replace(
-    /\{\{(.+?)\}\}/g,
-    (match, expression: string) => {
-      const trimmed = expression.trim();
+  // {{step.<id>}} is an alias for {{step.<id>.output}} — both return step.output.
+  function resolveValueExpression(expression: string): string {
+    if (expression === 'task.prompt') return taskPrompt;
+    if (expression === 'task.name') return taskName ?? '';
 
-      if (trimmed === 'task.prompt') return taskPrompt;
-      if (trimmed === 'task.name') return taskName ?? '';
+    const stepMatch = expression.match(/^step\.([a-zA-Z0-9_-]+)(?:\.output)?$/);
+    if (stepMatch) {
+      const stepId = stepMatch[1];
+      const step = steps.find((s) => s.id === stepId);
+      if (!step) {
+        warnings.push(`Unknown step ID: ${stepId}`);
+        return `{{${expression}}}`;
+      }
+      if (step.status !== 'completed') {
+        warnings.push(`Step "${step.name}" (${stepId}) is not completed`);
+        return `{{${expression}}}`;
+      }
+      if (step.output === null) {
+        warnings.push(`Step "${step.name}" (${stepId}) has no output`);
+        return '';
+      }
+      return step.output;
+    }
 
-      const stepMatch = trimmed.match(/^step\.(.+?)\.output$/);
-      if (stepMatch) {
-        const stepId = stepMatch[1];
-        const step = steps.find((s) => s.id === stepId);
-        if (!step) {
-          warnings.push(`Unknown step ID: ${stepId}`);
-          return match; // Leave expression as-is
-        }
-        if (step.status !== 'completed') {
-          warnings.push(`Step "${step.name}" (${stepId}) is not completed`);
-          return match;
-        }
-        if (step.output === null) {
-          warnings.push(`Step "${step.name}" (${stepId}) has no output`);
-          return '';
-        }
-        return step.output;
+    warnings.push(`Unknown expression: ${expression}`);
+    return `{{${expression}}}`;
+  }
+
+  async function resolveSummaryExpression(
+    argExpression: string,
+  ): Promise<string> {
+    const stepMatch = argExpression.match(
+      /^step\.([a-zA-Z0-9_-]+)(?:\.output)?$/,
+    );
+    if (stepMatch) {
+      const stepId = stepMatch[1];
+      const step = steps.find((s) => s.id === stepId);
+      if (!step) {
+        throw new Error(`Failed to summarize: unknown step ID ${stepId}`);
       }
 
-      warnings.push(`Unknown expression: ${trimmed}`);
-      return match;
-    },
-  );
+      if (step.status !== 'completed') {
+        throw new Error(
+          `Failed to summarize: step "${step.name}" (${stepId}) is not completed (status: ${step.status})`,
+        );
+      }
 
-  return { resolvedPrompt: resolved, warnings };
+      if (step.output === null) {
+        throw new Error(
+          `Failed to summarize: step "${step.name}" (${stepId}) has no output`,
+        );
+      }
+
+      if (!step.sessionId) {
+        throw new Error(
+          `Failed to summarize: step "${step.name}" (${stepId}) has no session ID`,
+        );
+      }
+
+      const backend = step.agentBackend ?? 'claude-code';
+      const model = summaryModels[backend] ?? 'default';
+
+      try {
+        return await summarizeForkedSession({
+          backend,
+          sessionId: step.sessionId,
+          cwd,
+          model,
+        });
+      } catch (error) {
+        debug('Summary generation failed for step %s: %O', step.id, error);
+        throw new Error(
+          `Failed to summarize step "${step.name}" (${stepId}) using backend ${backend}`,
+        );
+      }
+    }
+
+    const rawValue = resolveValueExpression(argExpression);
+    if (rawValue.startsWith('{{') && rawValue.endsWith('}}')) {
+      throw new Error(
+        `Failed to summarize: unresolved expression ${argExpression}`,
+      );
+    }
+    return condenseText(rawValue);
+  }
+
+  async function resolveTemplate(): Promise<string> {
+    const pattern = /\{\{(.+?)\}\}/g;
+    let result = '';
+    let cursor = 0;
+    let match: RegExpExecArray | null = null;
+
+    while ((match = pattern.exec(template)) !== null) {
+      result += template.slice(cursor, match.index);
+
+      const expression = match[1]?.trim() ?? '';
+      const summaryMatch = expression.match(/^summary\((.+)\)$/);
+
+      if (summaryMatch) {
+        const argExpression = summaryMatch[1]?.trim();
+        if (!argExpression) {
+          warnings.push('summary() requires one argument');
+          result += match[0];
+        } else {
+          result += await resolveSummaryExpression(argExpression);
+        }
+      } else {
+        result += resolveValueExpression(expression);
+      }
+
+      cursor = match.index + match[0].length;
+    }
+
+    result += template.slice(cursor);
+    return result;
+  }
+
+  const resolvedPrompt = await resolveTemplate();
+  return { resolvedPrompt, warnings };
 }
 
 /**
@@ -236,6 +352,12 @@ export const StepService = {
     const task = await TaskRepository.findById(step.taskId);
     if (!task) throw new Error(`Task not found for step: ${stepId}`);
 
+    const project = await ProjectRepository.findById(task.projectId);
+    if (!project)
+      throw new Error(`Project not found for task: ${task.projectId}`);
+
+    const summaryModelsSetting = await SettingsRepository.get('summaryModels');
+
     const steps = await TaskStepRepository.findByTaskId(step.taskId);
 
     // Validate all dependencies are completed
@@ -250,11 +372,13 @@ export const StepService = {
     }
 
     // Resolve template
-    const { resolvedPrompt, warnings } = resolvePromptTemplate({
+    const { resolvedPrompt, warnings } = await resolvePromptTemplate({
       template: step.promptTemplate,
       taskPrompt: task.prompt,
       taskName: task.name,
       steps,
+      cwd: task.worktreePath ?? project.path,
+      summaryModels: summaryModelsSetting.models,
     });
 
     // Save resolved prompt

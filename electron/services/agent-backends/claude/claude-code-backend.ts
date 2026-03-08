@@ -43,6 +43,7 @@ import {
   getPromptImages,
   buildPromptMarkdown,
 } from '../../prompt-utils';
+import { SESSION_SUMMARY_PROMPT } from '../../session-summary-service';
 
 import { normalizeClaudeMessageV2 } from './normalize-claude-message-v2';
 import type { NormalizationContext } from './normalize-claude-message-v2';
@@ -51,6 +52,14 @@ const SDK_PERMISSION_MODES = {
   ask: 'default',
   auto: 'bypassPermissions',
   plan: 'plan',
+} as const;
+
+const SESSION_SUMMARY_SCHEMA = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string' },
+  },
+  required: ['summary'],
 } as const;
 
 // --- Async event channel ---
@@ -191,6 +200,49 @@ export class ClaudeCodeBackend implements AgentBackend {
     session.eventChannel.close();
 
     this.sessions.delete(sessionId);
+  }
+
+  async summarizeSession({
+    sessionId,
+    cwd,
+    model,
+  }: {
+    sessionId: string;
+    cwd: string;
+    model?: string;
+  }): Promise<string> {
+    // Claude SDK supports ephemeral forked sessions via persistSession: false.
+    // Safety: `bypassPermissions` is used here because `allowedTools: []`
+    // prevents all tool use — the session can only produce text output.
+    const generator = query({
+      prompt: SESSION_SUMMARY_PROMPT,
+      options: {
+        cwd,
+        allowedTools: [],
+        permissionMode: 'bypassPermissions',
+        model: model && model !== 'default' ? model : undefined,
+        resume: sessionId,
+        forkSession: true,
+        persistSession: false,
+        outputFormat: {
+          type: 'json_schema',
+          schema: SESSION_SUMMARY_SCHEMA,
+        },
+      },
+    });
+
+    for await (const message of generator) {
+      const msg = message as {
+        type: string;
+        structured_output?: { summary?: string };
+      };
+      if (msg.type !== 'result') continue;
+
+      const summary = msg.structured_output?.summary?.trim();
+      if (summary) return summary;
+    }
+
+    throw new Error('Claude summary session returned no summary output');
   }
 
   async respondToPermission(
