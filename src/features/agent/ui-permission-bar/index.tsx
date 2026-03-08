@@ -1,4 +1,11 @@
-import { Shield, X, Check, ChevronDown, ShieldCheck } from 'lucide-react';
+import {
+  Shield,
+  X,
+  Check,
+  ShieldCheck,
+  MessageSquare,
+  Send,
+} from 'lucide-react';
 import { useState } from 'react';
 
 import type { PermissionResponse } from '@shared/agent-types';
@@ -130,30 +137,13 @@ function ExitPlanModeDisplay({
     allowedPrompts?: Array<{ tool: string; prompt: string }>;
   };
 }) {
-  const [isPlanCollapsed, setIsPlanCollapsed] = useState(false);
-
   const { plan, allowedPrompts } = input;
 
   return (
     <div className="space-y-3">
       {plan && (
-        <div>
-          <button
-            onClick={() => setIsPlanCollapsed(!isPlanCollapsed)}
-            className="mb-2 flex items-center gap-1 text-xs text-neutral-400 hover:text-neutral-300"
-            aria-expanded={!isPlanCollapsed}
-          >
-            <ChevronDown
-              className={`h-4 w-4 transition-transform ${isPlanCollapsed ? '-rotate-90' : ''}`}
-              aria-hidden
-            />
-            {isPlanCollapsed ? 'Show plan' : 'Hide plan'}
-          </button>
-          {!isPlanCollapsed && (
-            <div className="rounded border border-neutral-700 bg-neutral-800/50 p-3 text-xs">
-              <MarkdownContent content={plan} />
-            </div>
-          )}
+        <div className="rounded border border-neutral-700 bg-neutral-800/50 p-3 text-xs">
+          <MarkdownContent content={plan} />
         </div>
       )}
       {allowedPrompts?.length ? (
@@ -204,7 +194,8 @@ export function PermissionBar({
   onSetMode?: (mode: InteractionMode) => void;
   worktreePath?: string | null;
 }) {
-  const [instruction, setInstruction] = useState('');
+  const [isOtherOpen, setIsOtherOpen] = useState(false);
+  const [otherMessage, setOtherMessage] = useState('');
 
   const input = request.input;
   const isExitPlanMode = request.toolName === 'ExitPlanMode';
@@ -283,87 +274,142 @@ export function PermissionBar({
   const handleDeny = () => {
     onRespond(request.requestId, {
       behavior: 'deny',
-      message: instruction.trim() || 'User denied this action',
+      message: 'User denied this action',
     });
+  };
+
+  const handleOtherSubmit = () => {
+    if (!otherMessage.trim()) return;
+    onRespond(request.requestId, {
+      behavior: 'deny',
+      message: otherMessage.trim(),
+    });
+    setIsOtherOpen(false);
+    setOtherMessage('');
+  };
+
+  const handleOtherCancel = () => {
+    setIsOtherOpen(false);
+    setOtherMessage('');
   };
 
   return (
     <div className="border border-yellow-700/50 bg-yellow-900/20 px-4 py-3">
       <div className="flex flex-col gap-3">
-        <div>
-          <div className="flex items-start gap-3">
-            <Shield
-              className="mt-0.5 h-5 w-5 shrink-0 text-yellow-500"
-              aria-hidden
+        {/* Header + Content */}
+        <div className="flex items-start gap-3">
+          <Shield
+            className="mt-0.5 h-5 w-5 shrink-0 text-yellow-500"
+            aria-hidden
+          />
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 text-xs font-medium text-yellow-400">
+              Permission Required: {request.toolName}
+            </div>
+            {isExitPlanMode ? (
+              <ExitPlanModeDisplay input={input} />
+            ) : (
+              <ToolInputDisplay
+                toolName={request.toolName}
+                input={input}
+                worktreePath={worktreePath}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Footer actions */}
+        {isOtherOpen ? (
+          <div className="space-y-2">
+            <textarea
+              value={otherMessage}
+              onChange={(e) => setOtherMessage(e.target.value)}
+              placeholder="Tell Claude what to do instead..."
+              className="w-full resize-none rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/50 focus:outline-none"
+              rows={3}
+              autoFocus
+              autoComplete="off"
+              aria-label="Instructions for Claude"
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  handleOtherCancel();
+                }
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  handleOtherSubmit();
+                }
+              }}
             />
-            <div className="min-w-0 flex-1">
-              <div className="mb-1 text-xs font-medium text-yellow-400">
-                Permission Required: {request.toolName}
-              </div>
-              {isExitPlanMode ? (
-                <ExitPlanModeDisplay input={input} />
-              ) : (
-                <ToolInputDisplay
-                  toolName={request.toolName}
-                  input={input}
-                  worktreePath={worktreePath}
-                />
-              )}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={handleOtherCancel}
+                className="rounded-md px-3 py-1.5 text-sm font-medium text-neutral-400 hover:text-neutral-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleOtherSubmit}
+                disabled={!otherMessage.trim()}
+                className="flex items-center gap-1.5 rounded-md bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Send className="h-3.5 w-3.5" aria-hidden />
+                Deny with message
+              </button>
             </div>
           </div>
-          <textarea
-            value={instruction}
-            onChange={(e) => setInstruction(e.target.value)}
-            placeholder="Optional: Tell Claude what to do instead..."
-            className="mt-3 w-full resize-none rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/50 focus:outline-none"
-            rows={2}
-            autoComplete="off"
-            aria-label="Instructions for Claude"
-          />
-        </div>
-        <div className="flex shrink-0 flex-wrap justify-end gap-2">
-          <button
-            onClick={handleDeny}
-            className="flex items-center gap-1.5 rounded-md bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600"
-          >
-            <X className="h-4 w-4" aria-hidden />
-            Deny
-          </button>
-          <button
-            onClick={handleAllow}
-            className="flex items-center gap-1.5 rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-500"
-          >
-            <Check className="h-4 w-4" aria-hidden />
-            Allow
-          </button>
-          {sessionAllowButton && (
+        ) : (
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             <button
-              onClick={handleAllowForSession}
-              className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
+              onClick={() => setIsOtherOpen(true)}
+              className="flex items-center gap-1.5 rounded-md bg-neutral-700/60 px-3 py-1.5 text-sm font-medium text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
             >
-              <ShieldCheck className="h-4 w-4" aria-hidden />
-              {sessionAllowButton.label}
+              <MessageSquare className="h-3.5 w-3.5" aria-hidden />
+              Other
             </button>
-          )}
-          {sessionAllowButton && (
             <button
-              onClick={handleAllowForProject}
-              className="flex items-center gap-1.5 rounded-md bg-purple-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-500"
+              onClick={handleDeny}
+              className="flex items-center gap-1.5 rounded-md bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600"
             >
-              <ShieldCheck className="h-4 w-4" aria-hidden />
-              Allow for Project
+              <X className="h-4 w-4" aria-hidden />
+              Deny
             </button>
-          )}
-          {sessionAllowButton && worktreePath && (
+            <div className="flex-1" />
             <button
-              onClick={handleAllowForProjectWorktrees}
-              className="flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-500"
+              onClick={handleAllow}
+              className="flex items-center gap-1.5 rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-500"
             >
-              <ShieldCheck className="h-4 w-4" aria-hidden />
-              Allow for Project Worktrees
+              <Check className="h-4 w-4" aria-hidden />
+              Allow
             </button>
-          )}
-        </div>
+            {sessionAllowButton && (
+              <button
+                onClick={handleAllowForSession}
+                className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
+              >
+                <ShieldCheck className="h-4 w-4" aria-hidden />
+                {sessionAllowButton.label}
+              </button>
+            )}
+            {sessionAllowButton && (
+              <button
+                onClick={handleAllowForProject}
+                className="flex items-center gap-1.5 rounded-md bg-purple-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-500"
+              >
+                <ShieldCheck className="h-4 w-4" aria-hidden />
+                Allow for Project
+              </button>
+            )}
+            {sessionAllowButton && worktreePath && (
+              <button
+                onClick={handleAllowForProjectWorktrees}
+                className="flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-500"
+              >
+                <ShieldCheck className="h-4 w-4" aria-hidden />
+                Allow for Project Worktrees
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
