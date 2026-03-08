@@ -185,26 +185,28 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                 <button
                   onClick={() => setActiveTab('global')}
                   className={clsx(
-                    'rounded px-3 py-1.5 text-sm font-medium transition-colors',
+                    'flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors',
                     activeTab === 'global'
                       ? 'bg-neutral-700 text-neutral-100'
                       : 'text-neutral-400 hover:bg-neutral-800',
                   )}
                 >
                   Global
+                  <Kbd shortcut="cmd+1" />
                 </button>
 
                 {hasProjectTab && (
                   <button
                     onClick={() => setActiveTab('project')}
                     className={clsx(
-                      'rounded px-3 py-1.5 text-sm font-medium transition-colors',
+                      'flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors',
                       activeTab === 'project'
                         ? 'bg-neutral-700 text-neutral-100'
                         : 'text-neutral-400 hover:bg-neutral-800',
                     )}
                   >
                     Project: {currentProject.name}
+                    <Kbd shortcut="cmd+2" />
                   </button>
                 )}
               </div>
@@ -297,14 +299,6 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
 
             {/* Footer tips */}
             <div className="flex shrink-0 items-center gap-3 border-t border-neutral-700 px-4 py-2 text-xs text-neutral-500">
-              <span className="flex items-center gap-1">
-                <Kbd shortcut="cmd+1" /> global
-              </span>
-              {hasProjectTab && (
-                <span className="flex items-center gap-1">
-                  <Kbd shortcut="cmd+2" /> project
-                </span>
-              )}
               <span className="flex items-center gap-1">
                 <Kbd shortcut="up" /> <Kbd shortcut="down" /> navigate
               </span>
