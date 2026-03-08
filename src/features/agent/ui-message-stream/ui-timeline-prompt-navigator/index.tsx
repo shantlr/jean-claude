@@ -54,49 +54,86 @@ export function TimelinePromptNavigator({
   if (totalPrompts === 0) return null;
 
   const currentPrompt = prompts[currentIndex];
-  const previousPrompts = prompts.slice(
-    Math.max(0, currentIndex - 2),
+  const visibleIndices = new Set<number>([
+    0,
+    totalPrompts - 1,
     currentIndex,
-  );
+    currentIndex - 1,
+    currentIndex - 2,
+  ]);
+
+  const sortedVisibleIndices = [...visibleIndices]
+    .filter((index) => index >= 0 && index < totalPrompts)
+    .sort((a, b) => a - b);
+
+  const items = [] as Array<
+    | { type: 'prompt'; prompt: { index: number; text: string } }
+    | { type: 'ellipsis'; id: string }
+  >;
+
+  for (let i = 0; i < sortedVisibleIndices.length; i++) {
+    const promptIndex = sortedVisibleIndices[i];
+    const previousPromptIndex = sortedVisibleIndices[i - 1];
+
+    if (
+      i > 0 &&
+      previousPromptIndex !== undefined &&
+      promptIndex - previousPromptIndex > 1
+    ) {
+      items.push({
+        type: 'ellipsis',
+        id: `gap-${previousPromptIndex}-${promptIndex}`,
+      });
+    }
+
+    const prompt = prompts[promptIndex];
+    if (prompt) {
+      items.push({ type: 'prompt', prompt });
+    }
+  }
 
   return (
     <>
       <div className="pointer-events-none sticky top-0 z-20 mb-2 ml-6 flex justify-end pt-1 pr-3">
         <div className="pointer-events-auto flex max-w-[min(56rem,calc(100%-2rem))] flex-col items-end gap-1">
-          {previousPrompts.map((prompt) => (
-            <button
-              key={prompt.index}
-              type="button"
-              onClick={() => {
-                goToPrompt(prompt.index, { behavior: 'instant' });
-              }}
-              className="w-full min-w-0 rounded-lg border border-neutral-600 bg-neutral-800 px-3 py-1 text-left text-xs text-neutral-300 opacity-90 transition-colors hover:border-neutral-500 hover:bg-neutral-700 hover:text-neutral-200"
-              title="Jump to previous prompt"
-            >
-              <span className="[display:-webkit-box] overflow-hidden break-words [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
-                {prompt.text}
-              </span>
-            </button>
-          ))}
-          {currentPrompt && (
-            <button
-              type="button"
-              onClick={() => {
-                goToPrompt(currentPrompt.index, { behavior: 'instant' });
-              }}
-              className="w-full min-w-0 rounded-lg border border-neutral-500 bg-neutral-900 px-3 py-1.5 text-left text-xs text-neutral-100 shadow-md"
-              title="Align current prompt"
-            >
-              <span className="inline-flex w-full min-w-0 items-start gap-2">
-                <span className="shrink-0 text-[10px] leading-4 text-neutral-400">
-                  {currentIndex + 1}/{totalPrompts}
+          {items.map((item) => {
+            if (item.type === 'ellipsis') {
+              return (
+                <div
+                  key={item.id}
+                  className="w-full text-center text-xs leading-4 text-neutral-500"
+                >
+                  ...
+                </div>
+              );
+            }
+
+            const isCurrent = item.prompt.index === currentPrompt?.index;
+            return (
+              <button
+                key={item.prompt.index}
+                type="button"
+                onClick={() => {
+                  goToPrompt(item.prompt.index, { behavior: 'instant' });
+                }}
+                className={
+                  isCurrent
+                    ? 'w-full min-w-0 rounded-lg border border-neutral-500 bg-neutral-900 px-3 py-1.5 text-left text-xs text-neutral-100 shadow-md'
+                    : 'w-full min-w-0 rounded-lg border border-neutral-600 bg-neutral-800 px-3 py-1 text-left text-xs text-neutral-300 opacity-90 transition-colors hover:border-neutral-500 hover:bg-neutral-700 hover:text-neutral-200'
+                }
+                title={isCurrent ? 'Align current prompt' : 'Jump to prompt'}
+              >
+                <span className="inline-flex w-full min-w-0 items-start gap-2">
+                  <span className="shrink-0 text-[10px] leading-4 text-neutral-400">
+                    {item.prompt.index + 1}/{totalPrompts}
+                  </span>
+                  <span className="[display:-webkit-box] min-w-0 overflow-hidden leading-4 break-words [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                    {item.prompt.text}
+                  </span>
                 </span>
-                <span className="[display:-webkit-box] min-w-0 overflow-hidden leading-4 break-words [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
-                  {currentPrompt.text}
-                </span>
-              </span>
-            </button>
-          )}
+              </button>
+            );
+          })}
         </div>
       </div>
     </>
