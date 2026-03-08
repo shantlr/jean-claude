@@ -94,7 +94,7 @@ export async function complete({
     });
 
     // Record token usage for daily cost tracking
-    if (result.usage) {
+    if (result.usage && !process.env.JC_DISABLE_USAGE_TRACKING) {
       const today = new Date().toISOString().slice(0, 10);
       CompletionUsageRepository.recordUsage({
         date: today,

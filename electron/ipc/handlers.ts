@@ -1653,9 +1653,10 @@ export function registerIpcHandlers() {
   });
 
   // Usage
-  ipcMain.handle('agent:usage:getAll', (_, providers: string[]) =>
-    agentUsageService.getUsage(providers as UsageProviderType[]),
-  );
+  ipcMain.handle('agent:usage:getAll', (_, providers: string[]) => {
+    if (process.env.JC_DISABLE_USAGE_TRACKING) return {};
+    return agentUsageService.getUsage(providers as UsageProviderType[]);
+  });
 
   // Backend models
   ipcMain.handle('agent:getBackendModels', (_, backend: string) =>
@@ -2243,6 +2244,16 @@ export function registerIpcHandlers() {
   );
 
   ipcMain.handle('completion:getDailyUsage', async () => {
+    if (process.env.JC_DISABLE_USAGE_TRACKING) {
+      return {
+        promptTokens: 0,
+        completionTokens: 0,
+        requests: 0,
+        costUsd: 0,
+        inputCostUsd: 0,
+        outputCostUsd: 0,
+      };
+    }
     dbg.ipc('completion:getDailyUsage');
     return getCompletionDailyUsage();
   });
