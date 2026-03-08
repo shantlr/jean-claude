@@ -96,6 +96,15 @@ function getProviderMeta(providerType: UsageProviderType) {
   );
 }
 
+function formatFetchedAt(fetchedAtMs: number): string {
+  const diffMs = Date.now() - fetchedAtMs;
+  const diffMinutes = Math.floor(diffMs / 60_000);
+
+  if (diffMinutes <= 0) return 'just now';
+  if (diffMinutes === 1) return '1 min ago';
+  return `${diffMinutes} min ago`;
+}
+
 function TooltipRangeRow({
   label,
   range,
@@ -135,15 +144,22 @@ function TooltipRangeRow({
 function TooltipContent({
   providerType,
   data,
+  fetchedAtMs,
 }: {
   providerType: UsageProviderType;
   data: UsageDisplayData;
+  fetchedAtMs: number;
 }) {
   const meta = getProviderMeta(providerType);
+  const fetchedAt = new Date(fetchedAtMs);
 
   return (
     <div className="space-y-1.5">
       <div className="font-medium text-neutral-200">{meta.label}</div>
+      <div className="text-xs text-neutral-500">
+        Last refreshed {formatFetchedAt(fetchedAtMs)} (
+        {fetchedAt.toLocaleTimeString()})
+      </div>
       {data.limits.map((limit) => (
         <TooltipRangeRow
           key={limit.key}
@@ -158,9 +174,11 @@ function TooltipContent({
 function ProviderUsageChip({
   providerType,
   result,
+  fetchedAtMs,
 }: {
   providerType: UsageProviderType;
   result: UsageResult;
+  fetchedAtMs: number;
 }) {
   const meta = getProviderMeta(providerType);
   const Icon = PROVIDER_ICONS[providerType];
@@ -215,7 +233,13 @@ function ProviderUsageChip({
 
   return (
     <Tooltip
-      content={<TooltipContent providerType={providerType} data={data} />}
+      content={
+        <TooltipContent
+          providerType={providerType}
+          data={data}
+          fetchedAtMs={fetchedAtMs}
+        />
+      }
       side="bottom"
     >
       <div
@@ -239,7 +263,8 @@ function ProviderUsageChip({
 }
 
 export function UsageDisplay() {
-  const { data: usageMap, isLoading } = useBackendUsage();
+  const { data: usageMap, isLoading, dataUpdatedAt } = useBackendUsage();
+  const fetchedAtMs = dataUpdatedAt || Date.now();
 
   if (isLoading) {
     return (
@@ -265,6 +290,7 @@ export function UsageDisplay() {
           key={providerType}
           providerType={providerType}
           result={result}
+          fetchedAtMs={fetchedAtMs}
         />
       ))}
     </div>

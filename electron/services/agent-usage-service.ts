@@ -17,7 +17,7 @@ class AgentUsageService {
   private inFlight = new Map<UsageProviderType, Promise<UsageResult>>();
 
   private static readonly DEFAULT_CACHE_TTL_MS = 2 * 60 * 1000;
-  private static readonly CLAUDE_CACHE_TTL_MS = 5 * 60 * 1000;
+  private static readonly CLAUDE_CACHE_TTL_MS = 7 * 60 * 1000;
 
   async getUsage(
     providerTypes: UsageProviderType[],
