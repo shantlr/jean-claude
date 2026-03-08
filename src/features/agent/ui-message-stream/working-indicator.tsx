@@ -36,8 +36,8 @@ const PHRASES = [
 ];
 
 const BRAILLE_INTERVAL_MS = 80;
-const PHRASE_VISIBLE_MS = 3_500;
-const LETTER_STAGGER_MS = 10;
+const PHRASE_VISIBLE_MS = 6_000;
+const LETTER_STAGGER_MS = 24;
 const LETTER_ANIM_MS = 220;
 
 /** Pick a random index that differs from `exclude`. */
@@ -68,7 +68,7 @@ export const WorkingIndicator = memo(function WorkingIndicator() {
     return () => clearInterval(id);
   }, []);
 
-  // Phase state machine: entering → idle → exiting → (swap phrase) → entering …
+  // Phase state machine: entering → idle → exiting → (pause + swap phrase) → entering …
   useEffect(() => {
     const len = PHRASES[phraseIdx].length;
     const waveDuration = len * LETTER_STAGGER_MS + LETTER_ANIM_MS;
@@ -81,7 +81,7 @@ export const WorkingIndicator = memo(function WorkingIndicator() {
         PHRASE_VISIBLE_MS,
       );
     } else {
-      // exiting → swap phrase → entering
+      // exiting → pause → swap phrase → entering
       timeoutRef.current = setTimeout(() => {
         setPhraseIdx((prev) => pickRandom(prev, PHRASES.length));
         setPhase('entering');
@@ -102,26 +102,35 @@ export const WorkingIndicator = memo(function WorkingIndicator() {
         className="inline-flex overflow-hidden text-xs text-neutral-400"
         aria-label={phrase}
       >
-        {phrase.split('').map((char, i) => (
-          <span
-            key={`${phraseIdx}-${i}`}
-            className={`inline-block ${
-              phase === 'exiting'
-                ? 'animate-letter-exit'
-                : phase === 'entering'
-                  ? 'animate-letter-enter'
-                  : ''
-            }`}
-            style={
-              phase !== 'idle'
-                ? { animationDelay: `${i * LETTER_STAGGER_MS}ms` }
-                : undefined
-            }
-            aria-hidden
-          >
-            {char === ' ' ? '\u00A0' : char}
-          </span>
-        ))}
+        {phrase.split('').map((char, i) => {
+          const reverseIndex = phrase.length - 1 - i;
+
+          return (
+            <span
+              key={`${phraseIdx}-${i}`}
+              className={`inline-block ${
+                phase === 'exiting'
+                  ? 'animate-letter-exit'
+                  : phase === 'entering'
+                    ? 'animate-letter-enter'
+                    : ''
+              }`}
+              style={
+                phase !== 'idle'
+                  ? {
+                      animationDelay: `${
+                        (phase === 'exiting' ? reverseIndex : i) *
+                        LETTER_STAGGER_MS
+                      }ms`,
+                    }
+                  : undefined
+              }
+              aria-hidden
+            >
+              {char === ' ' ? '\u00A0' : char}
+            </span>
+          );
+        })}
       </span>
     </span>
   );
