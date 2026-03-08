@@ -1113,20 +1113,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           )}
         </div>
 
-        {/* Error display */}
-        {agentState.error && (
-          <div className="flex items-center justify-between border-t border-red-700/50 bg-red-900/20 px-4 py-3 text-sm text-red-300">
-            <span>Error: {agentState.error}</span>
-            <button
-              onClick={agentState.refetch}
-              className="flex items-center gap-1.5 rounded px-2 py-1 text-red-300 transition-colors hover:bg-red-900/50"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              Retry
-            </button>
-          </div>
-        )}
-
         {/* Message input — floats above content so messages scroll underneath */}
         {(canSendMessage || isWaiting || hasMessages) && (
           <div

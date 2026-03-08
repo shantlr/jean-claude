@@ -662,7 +662,7 @@ function UserEntry({
   );
 }
 
-// Result entry (session complete)
+// Result entry (session complete or error)
 function ResultEntry({
   entry,
   onFilePathClick,
@@ -674,6 +674,18 @@ function ResultEntry({
     lineEnd?: number,
   ) => void;
 }) {
+  if (entry.isError) {
+    const errorText = entry.value || 'Unknown error';
+    return (
+      <DotEntry
+        type="result"
+        isError
+        summary={errorText}
+        defaultExpanded={false}
+      />
+    );
+  }
+
   const cost = entry.cost?.toFixed(2) || '0.00';
   const tokens = formatNumber(
     (entry.usage?.inputTokens ?? 0) + (entry.usage?.outputTokens ?? 0),
