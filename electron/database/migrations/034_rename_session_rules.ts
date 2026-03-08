@@ -1,5 +1,26 @@
 import { Kysely, sql } from 'kysely';
 
+function fkViolationKey(row: {
+  table: string;
+  rowid: number;
+  parent: string;
+  fkid: number;
+}): string {
+  return `${row.table}:${row.rowid}:${row.parent}:${row.fkid}`;
+}
+
+async function loadForeignKeyViolationKeys(
+  db: Kysely<unknown>,
+): Promise<Set<string>> {
+  const result = await sql<{
+    table: string;
+    rowid: number;
+    parent: string;
+    fkid: number;
+  }>`PRAGMA foreign_key_check`.execute(db);
+  return new Set(result.rows.map((row) => fkViolationKey(row)));
+}
+
 function normalizeLegacyPermissionEntry(
   entry: string,
 ): { tool: string; pattern: string | null } | null {
@@ -54,33 +75,33 @@ function normalizeLegacyPermissionEntry(
  * so we must disable FK constraints during the recreation to avoid cascade-deleting child rows.
  */
 export async function up(db: Kysely<unknown>): Promise<void> {
+  const baselineViolations = await loadForeignKeyViolationKeys(db);
+
   // Read all tasks with their old sessionAllowedTools values before recreating the table
   const tasks = await db
     .selectFrom('tasks' as never)
     .select(['id', 'sessionAllowedTools'] as never[])
     .execute();
 
-  await db.transaction().execute(async (trx) => {
-    await sql`PRAGMA foreign_keys = OFF`.execute(trx);
+  await sql`PRAGMA foreign_keys = OFF`.execute(db);
 
-    // Create new tasks table with sessionRules instead of sessionAllowedTools.
-    // We copy the full DDL from migration 030 and swap the column name.
-    await sql`DROP TABLE IF EXISTS tasks_new`.execute(trx);
-    await sql`
+  try {
+    await db.transaction().execute(async (trx) => {
+      // Create new tasks table with sessionRules instead of sessionAllowedTools.
+      // We copy the full DDL from migration 033 and swap the column name.
+      await sql`DROP TABLE IF EXISTS tasks_new`.execute(trx);
+      await sql`
       CREATE TABLE tasks_new (
         id TEXT NOT NULL PRIMARY KEY,
         projectId TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
         name TEXT,
         prompt TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'waiting',
-        sessionId TEXT,
         worktreePath TEXT,
         startCommitHash TEXT,
         sourceBranch TEXT,
         branchName TEXT,
         hasUnread INTEGER NOT NULL DEFAULT 0,
-        interactionMode TEXT NOT NULL DEFAULT 'ask',
-        modelPreference TEXT,
         userCompleted INTEGER NOT NULL DEFAULT 0,
         sessionRules TEXT,
         sortOrder INTEGER NOT NULL DEFAULT 0,
@@ -89,105 +110,112 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         pullRequestId TEXT,
         pullRequestUrl TEXT,
         pendingMessage TEXT,
-        agentBackend TEXT NOT NULL,
         createdAt TEXT NOT NULL DEFAULT (datetime('now')),
         updatedAt TEXT NOT NULL
       )
     `.execute(trx);
 
-    // Copy all columns except sessionAllowedTools; that column is handled separately
-    await sql`
+      // Copy all columns except sessionAllowedTools; that column is handled separately
+      await sql`
       INSERT INTO tasks_new (
-        id, projectId, name, prompt, status, sessionId, worktreePath,
-        startCommitHash, sourceBranch, branchName, hasUnread, interactionMode,
-        modelPreference, userCompleted, sessionRules, sortOrder, workItemIds,
+        id, projectId, name, prompt, status, worktreePath,
+        startCommitHash, sourceBranch, branchName, hasUnread,
+        userCompleted, sessionRules, sortOrder, workItemIds,
         workItemUrls, pullRequestId, pullRequestUrl, pendingMessage,
-        agentBackend, createdAt, updatedAt
+        createdAt, updatedAt
       )
       SELECT
-        id, projectId, name, prompt, status, sessionId, worktreePath,
-        startCommitHash, sourceBranch, branchName, hasUnread, interactionMode,
-        modelPreference, userCompleted, NULL, sortOrder, workItemIds,
+        id, projectId, name, prompt, status, worktreePath,
+        startCommitHash, sourceBranch, branchName, hasUnread,
+        userCompleted, NULL, sortOrder, workItemIds,
         workItemUrls, pullRequestId, pullRequestUrl, pendingMessage,
-        agentBackend, createdAt, updatedAt
+        createdAt, updatedAt
       FROM tasks
     `.execute(trx);
 
-    // Convert old sessionAllowedTools string[] -> sessionRules JSON while both
-    // old/new tables exist, so the full migration remains atomic.
-    for (const task of tasks as Array<{
-      id: string;
-      sessionAllowedTools: string | null;
-    }>) {
-      if (!task.sessionAllowedTools) continue;
+      // Convert old sessionAllowedTools string[] -> sessionRules JSON while both
+      // old/new tables exist, so the full migration remains atomic.
+      for (const task of tasks as Array<{
+        id: string;
+        sessionAllowedTools: string | null;
+      }>) {
+        if (!task.sessionAllowedTools) continue;
 
-      let oldTools: string[];
-      try {
-        oldTools = JSON.parse(task.sessionAllowedTools);
-      } catch {
-        continue;
-      }
-
-      if (!Array.isArray(oldTools) || oldTools.length === 0) continue;
-
-      const scope: Record<string, string | Record<string, string>> = {};
-      for (const entry of oldTools) {
-        const normalized = normalizeLegacyPermissionEntry(entry);
-        if (!normalized) continue;
-
-        if (!normalized.pattern) {
-          scope[normalized.tool] = 'allow';
+        let oldTools: string[];
+        try {
+          oldTools = JSON.parse(task.sessionAllowedTools);
+        } catch {
           continue;
         }
 
-        const existing = scope[normalized.tool];
-        if (typeof existing === 'object' && existing !== null) {
-          existing[normalized.pattern] = 'allow';
-        } else {
-          scope[normalized.tool] = { [normalized.pattern]: 'allow' };
+        if (!Array.isArray(oldTools) || oldTools.length === 0) continue;
+
+        const scope: Record<string, string | Record<string, string>> = {};
+        for (const entry of oldTools) {
+          const normalized = normalizeLegacyPermissionEntry(entry);
+          if (!normalized) continue;
+
+          if (!normalized.pattern) {
+            scope[normalized.tool] = 'allow';
+            continue;
+          }
+
+          const existing = scope[normalized.tool];
+          if (typeof existing === 'object' && existing !== null) {
+            existing[normalized.pattern] = 'allow';
+          } else {
+            scope[normalized.tool] = { [normalized.pattern]: 'allow' };
+          }
         }
+
+        await sql`UPDATE tasks_new SET sessionRules = ${JSON.stringify(scope)} WHERE id = ${task.id}`.execute(
+          trx,
+        );
       }
 
-      await sql`UPDATE tasks_new SET sessionRules = ${JSON.stringify(scope)} WHERE id = ${task.id}`.execute(
-        trx,
-      );
-    }
+      await trx.schema.dropTable('tasks').execute();
+      await sql`ALTER TABLE tasks_new RENAME TO tasks`.execute(trx);
+    });
+  } finally {
+    await sql`PRAGMA foreign_keys = ON`.execute(db);
+  }
 
-    await trx.schema.dropTable('tasks').execute();
-    await sql`ALTER TABLE tasks_new RENAME TO tasks`.execute(trx);
-
-    await sql`PRAGMA foreign_keys = ON`.execute(trx);
-    const fkCheck = await sql<{
-      table: string;
-    }>`PRAGMA foreign_key_check`.execute(trx);
-    if (fkCheck.rows.length > 0) {
-      throw new Error(
-        `Foreign key violation after migration: ${JSON.stringify(fkCheck.rows)}`,
-      );
-    }
-  });
+  const afterViolations = await sql<{
+    table: string;
+    rowid: number;
+    parent: string;
+    fkid: number;
+  }>`PRAGMA foreign_key_check`.execute(db);
+  const newViolations = afterViolations.rows.filter(
+    (row) => !baselineViolations.has(fkViolationKey(row)),
+  );
+  if (newViolations.length > 0) {
+    throw new Error(
+      `Foreign key violation after migration: ${JSON.stringify(newViolations)}`,
+    );
+  }
 }
 
 export async function down(db: Kysely<unknown>): Promise<void> {
-  await db.transaction().execute(async (trx) => {
-    await sql`PRAGMA foreign_keys = OFF`.execute(trx);
+  const baselineViolations = await loadForeignKeyViolationKeys(db);
 
-    await sql`DROP TABLE IF EXISTS tasks_new`.execute(trx);
-    await sql`
+  await sql`PRAGMA foreign_keys = OFF`.execute(db);
+
+  try {
+    await db.transaction().execute(async (trx) => {
+      await sql`DROP TABLE IF EXISTS tasks_new`.execute(trx);
+      await sql`
       CREATE TABLE tasks_new (
         id TEXT NOT NULL PRIMARY KEY,
         projectId TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
         name TEXT,
         prompt TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'waiting',
-        sessionId TEXT,
         worktreePath TEXT,
         startCommitHash TEXT,
         sourceBranch TEXT,
         branchName TEXT,
         hasUnread INTEGER NOT NULL DEFAULT 0,
-        interactionMode TEXT NOT NULL DEFAULT 'ask',
-        modelPreference TEXT,
         userCompleted INTEGER NOT NULL DEFAULT 0,
         sessionAllowedTools TEXT,
         sortOrder INTEGER NOT NULL DEFAULT 0,
@@ -196,40 +224,47 @@ export async function down(db: Kysely<unknown>): Promise<void> {
         pullRequestId TEXT,
         pullRequestUrl TEXT,
         pendingMessage TEXT,
-        agentBackend TEXT NOT NULL,
         createdAt TEXT NOT NULL DEFAULT (datetime('now')),
         updatedAt TEXT NOT NULL
       )
     `.execute(trx);
 
-    await sql`
+      await sql`
       INSERT INTO tasks_new (
-        id, projectId, name, prompt, status, sessionId, worktreePath,
-        startCommitHash, sourceBranch, branchName, hasUnread, interactionMode,
-        modelPreference, userCompleted, sessionAllowedTools, sortOrder, workItemIds,
+        id, projectId, name, prompt, status, worktreePath,
+        startCommitHash, sourceBranch, branchName, hasUnread,
+        userCompleted, sessionAllowedTools, sortOrder, workItemIds,
         workItemUrls, pullRequestId, pullRequestUrl, pendingMessage,
-        agentBackend, createdAt, updatedAt
+        createdAt, updatedAt
       )
       SELECT
-        id, projectId, name, prompt, status, sessionId, worktreePath,
-        startCommitHash, sourceBranch, branchName, hasUnread, interactionMode,
-        modelPreference, userCompleted, NULL, sortOrder, workItemIds,
+        id, projectId, name, prompt, status, worktreePath,
+        startCommitHash, sourceBranch, branchName, hasUnread,
+        userCompleted, NULL, sortOrder, workItemIds,
         workItemUrls, pullRequestId, pullRequestUrl, pendingMessage,
-        agentBackend, createdAt, updatedAt
+        createdAt, updatedAt
       FROM tasks
     `.execute(trx);
 
-    await trx.schema.dropTable('tasks').execute();
-    await sql`ALTER TABLE tasks_new RENAME TO tasks`.execute(trx);
+      await trx.schema.dropTable('tasks').execute();
+      await sql`ALTER TABLE tasks_new RENAME TO tasks`.execute(trx);
+    });
+  } finally {
+    await sql`PRAGMA foreign_keys = ON`.execute(db);
+  }
 
-    await sql`PRAGMA foreign_keys = ON`.execute(trx);
-    const fkCheck = await sql<{
-      table: string;
-    }>`PRAGMA foreign_key_check`.execute(trx);
-    if (fkCheck.rows.length > 0) {
-      throw new Error(
-        `Foreign key violation after migration rollback: ${JSON.stringify(fkCheck.rows)}`,
-      );
-    }
-  });
+  const afterViolations = await sql<{
+    table: string;
+    rowid: number;
+    parent: string;
+    fkid: number;
+  }>`PRAGMA foreign_key_check`.execute(db);
+  const newViolations = afterViolations.rows.filter(
+    (row) => !baselineViolations.has(fkViolationKey(row)),
+  );
+  if (newViolations.length > 0) {
+    throw new Error(
+      `Foreign key violation after migration rollback: ${JSON.stringify(newViolations)}`,
+    );
+  }
 }
