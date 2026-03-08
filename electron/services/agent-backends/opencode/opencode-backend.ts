@@ -67,6 +67,8 @@ async function getOrCreateServer(): Promise<ServerHandle> {
     dbg.agent('Starting OpenCode server...');
     try {
       const instance = await createOpencode({
+        hostname: '127.0.0.1',
+        port: 0,
         timeout: 30_000,
       });
       dbg.agent('OpenCode server started at %s', instance.server.url);
