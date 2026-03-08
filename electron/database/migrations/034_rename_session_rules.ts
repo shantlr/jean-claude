@@ -92,7 +92,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
       await sql`DROP TABLE IF EXISTS tasks_new`.execute(trx);
       await sql`
       CREATE TABLE tasks_new (
-        id TEXT NOT NULL PRIMARY KEY,
+        id TEXT NOT NULL PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
         projectId TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
         name TEXT,
         prompt TEXT NOT NULL,
@@ -206,7 +206,7 @@ export async function down(db: Kysely<unknown>): Promise<void> {
       await sql`DROP TABLE IF EXISTS tasks_new`.execute(trx);
       await sql`
       CREATE TABLE tasks_new (
-        id TEXT NOT NULL PRIMARY KEY,
+        id TEXT NOT NULL PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
         projectId TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
         name TEXT,
         prompt TEXT NOT NULL,

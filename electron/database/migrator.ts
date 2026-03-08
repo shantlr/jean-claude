@@ -33,6 +33,7 @@ import * as m031 from './migrations/031_project_completion_context';
 import * as m032 from './migrations/032_task_steps';
 import * as m033 from './migrations/033_completion_usage';
 import * as m034 from './migrations/034_rename_session_rules';
+import * as m035 from './migrations/035_restore_tasks_id_default';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -68,6 +69,7 @@ const migrations: Record<string, Migration> = {
   '032_task_steps': m032,
   '033_completion_usage': m033,
   '034_rename_session_rules': m034,
+  '035_restore_tasks_id_default': m035,
 };
 
 export const migrationProvider: MigrationProvider = {
