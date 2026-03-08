@@ -15,6 +15,7 @@ import {
 import { useState } from 'react';
 
 import { useSkills } from '@/hooks/use-skills';
+import type { PermissionScope } from '@shared/permission-types';
 import type { Skill } from '@shared/skill-types';
 
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
@@ -152,7 +153,7 @@ function SkillsList({ taskId, stepId }: { taskId: string; stepId?: string }) {
 }
 
 export function TaskSettingsPane({
-  sessionAllowedTools,
+  sessionRules,
   sourceBranch,
   sourceCommit,
   taskId,
@@ -161,12 +162,18 @@ export function TaskSettingsPane({
   onClose,
   onOpenDebugMessages,
 }: {
-  sessionAllowedTools: string[];
+  sessionRules: PermissionScope;
   sourceBranch: string | null;
   sourceCommit: string | null;
   taskId: string;
   stepId?: string;
-  onRemoveTool: (toolName: string) => void;
+  onRemoveTool: ({
+    toolName,
+    pattern,
+  }: {
+    toolName: string;
+    pattern?: string;
+  }) => void;
   onClose: () => void;
   onOpenDebugMessages: () => void;
 }) {
@@ -244,7 +251,7 @@ export function TaskSettingsPane({
           <h4 className="mb-3 text-xs font-medium tracking-wide text-neutral-500 uppercase">
             Session Allowed Tools
           </h4>
-          {sessionAllowedTools.length === 0 ? (
+          {Object.keys(sessionRules).length === 0 ? (
             <p className="text-xs text-neutral-600">
               No tools are currently allowed for this session. Tools will appear
               here when you use &quot;Allow for Session&quot; on a permission
@@ -252,26 +259,41 @@ export function TaskSettingsPane({
             </p>
           ) : (
             <div className="space-y-1">
-              {sessionAllowedTools.map((tool) => (
-                <div
-                  key={tool}
-                  className="flex items-center justify-between rounded-md bg-neutral-800 px-3 py-2"
-                >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <Shield className="h-3.5 w-3.5 shrink-0 text-blue-400" />
-                    <span className="truncate text-sm text-neutral-200">
-                      {tool}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => onRemoveTool(tool)}
-                    className="shrink-0 rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
-                    title={`Remove ${tool}`}
+              {Object.entries(sessionRules).map(([tool, config]) => {
+                const patterns =
+                  typeof config === 'object' && config !== null
+                    ? Object.keys(config as Record<string, string>)
+                    : null;
+                const entries = patterns
+                  ? patterns.map((p) => ({
+                      label: `${tool}: ${p}`,
+                      tool,
+                      pattern: p,
+                    }))
+                  : [{ label: tool, tool, pattern: undefined }];
+                return entries.map(({ label, tool: toolKey, pattern }) => (
+                  <div
+                    key={label}
+                    className="flex items-center justify-between rounded-md bg-neutral-800 px-3 py-2"
                   >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Shield className="h-3.5 w-3.5 shrink-0 text-blue-400" />
+                      <span className="truncate text-sm text-neutral-200">
+                        {label}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() =>
+                        onRemoveTool({ toolName: toolKey, pattern })
+                      }
+                      className="shrink-0 rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
+                      title={`Remove ${label}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ));
+              })}
             </div>
           )}
         </section>

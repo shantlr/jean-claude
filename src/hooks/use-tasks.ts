@@ -245,8 +245,15 @@ export function useAddSessionAllowedTool() {
 export function useRemoveSessionAllowedTool() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, toolName }: { id: string; toolName: string }) =>
-      api.tasks.removeSessionAllowedTool(id, toolName),
+    mutationFn: ({
+      id,
+      toolName,
+      pattern,
+    }: {
+      id: string;
+      toolName: string;
+      pattern?: string;
+    }) => api.tasks.removeSessionAllowedTool(id, toolName, pattern),
     onSuccess: (task, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });

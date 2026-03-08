@@ -35,6 +35,7 @@ import {
 } from '@shared/types';
 import type { UsageProviderType } from '@shared/usage-types';
 
+import type { PermissionScope } from '../../shared/permission-types';
 import {
   ProjectRepository,
   TaskRepository,
@@ -104,10 +105,10 @@ import {
 import { generateTaskName } from '../services/name-generation-service';
 import { notificationService } from '../services/notification-service';
 import {
-  addAllowPermission,
-  buildPermissionString,
-  getSettingsLocalPath,
-  getWorktreeSettingsPath,
+  addProjectPermission,
+  addWorktreePermission,
+  buildAllowedToolConfig,
+  normalizeToolRequest,
 } from '../services/permission-settings-service';
 import { detectProjects } from '../services/project-detection-service';
 import { projectFileIndexService } from '../services/project-file-index-service';
@@ -792,27 +793,44 @@ export function registerIpcHandlers() {
       toolName: string,
       input: Record<string, unknown>,
     ) => {
-      const permission = buildPermissionString(toolName, input);
-      if (!permission) return TaskRepository.findById(taskId);
+      const { tool, matchValue } = normalizeToolRequest(toolName, input);
 
       const task = await TaskRepository.findById(taskId);
-      const currentTools = task?.sessionAllowedTools ?? [];
-      if (!currentTools.includes(permission)) {
-        await TaskRepository.update(taskId, {
-          sessionAllowedTools: [...currentTools, permission],
-        });
-      }
+      const current: PermissionScope = task?.sessionRules ?? {};
+      const updated: PermissionScope = { ...current };
+      updated[tool] = buildAllowedToolConfig({
+        existing: updated[tool],
+        matchValue,
+      });
+
+      await TaskRepository.update(taskId, { sessionRules: updated });
       return TaskRepository.findById(taskId);
     },
   );
   ipcMain.handle(
     'tasks:removeSessionAllowedTool',
-    async (_, taskId: string, toolName: string) => {
+    async (_, taskId: string, toolName: string, pattern?: string) => {
       const task = await TaskRepository.findById(taskId);
-      const currentTools = task?.sessionAllowedTools ?? [];
-      await TaskRepository.update(taskId, {
-        sessionAllowedTools: currentTools.filter((t) => t !== toolName),
-      });
+      const current: PermissionScope = { ...(task?.sessionRules ?? {}) };
+
+      if (pattern) {
+        const existing = current[toolName];
+        if (typeof existing === 'object' && existing !== null) {
+          const updatedPatterns = {
+            ...(existing as Record<string, 'allow'>),
+          };
+          delete updatedPatterns[pattern];
+          if (Object.keys(updatedPatterns).length > 0) {
+            current[toolName] = updatedPatterns;
+          } else {
+            delete current[toolName];
+          }
+        }
+      } else {
+        delete current[toolName];
+      }
+
+      await TaskRepository.update(taskId, { sessionRules: current });
       return TaskRepository.findById(taskId);
     },
   );
@@ -825,32 +843,22 @@ export function registerIpcHandlers() {
       toolName: string,
       input: Record<string, unknown>,
     ) => {
-      const permission = buildPermissionString(toolName, input);
-      if (!permission) return TaskRepository.findById(taskId);
-
       const task = await TaskRepository.findById(taskId);
       if (!task) throw new Error(`Task ${taskId} not found`);
       const project = await ProjectRepository.findById(task.projectId);
       if (!project) throw new Error(`Project ${task.projectId} not found`);
 
-      // Update original repo settings.local.json
-      await addAllowPermission(getSettingsLocalPath(project.path), permission);
+      // Write to .jean-claude/settings.local.json (project scope)
+      await addProjectPermission(project.path, toolName, input);
 
-      // If worktree task, also update worktree settings.local.json
-      if (task.worktreePath) {
-        await addAllowPermission(
-          getSettingsLocalPath(task.worktreePath),
-          permission,
-        );
-      }
-
-      // Also add to session allowed tools
-      const currentTools = task.sessionAllowedTools ?? [];
-      if (!currentTools.includes(permission)) {
-        await TaskRepository.update(taskId, {
-          sessionAllowedTools: [...currentTools, permission],
-        });
-      }
+      // Also add to session rules
+      const { tool, matchValue } = normalizeToolRequest(toolName, input);
+      const current: PermissionScope = { ...(task.sessionRules ?? {}) };
+      current[tool] = buildAllowedToolConfig({
+        existing: current[tool],
+        matchValue,
+      });
+      await TaskRepository.update(taskId, { sessionRules: current });
 
       return TaskRepository.findById(taskId);
     },
@@ -864,35 +872,22 @@ export function registerIpcHandlers() {
       toolName: string,
       input: Record<string, unknown>,
     ) => {
-      const permission = buildPermissionString(toolName, input);
-      if (!permission) return TaskRepository.findById(taskId);
-
       const task = await TaskRepository.findById(taskId);
       if (!task) throw new Error(`Task ${taskId} not found`);
       const project = await ProjectRepository.findById(task.projectId);
       if (!project) throw new Error(`Project ${task.projectId} not found`);
 
-      // Update original repo settings.local.worktrees.json
-      await addAllowPermission(
-        getWorktreeSettingsPath(project.path),
-        permission,
-      );
+      // Write to .jean-claude/settings.local.json (worktrees scope)
+      await addWorktreePermission(project.path, toolName, input);
 
-      // Update worktree settings.local.json (task must be worktree task)
-      if (task.worktreePath) {
-        await addAllowPermission(
-          getSettingsLocalPath(task.worktreePath),
-          permission,
-        );
-      }
-
-      // Also add to session allowed tools
-      const currentTools = task.sessionAllowedTools ?? [];
-      if (!currentTools.includes(permission)) {
-        await TaskRepository.update(taskId, {
-          sessionAllowedTools: [...currentTools, permission],
-        });
-      }
+      // Also add to session rules
+      const { tool, matchValue } = normalizeToolRequest(toolName, input);
+      const current: PermissionScope = { ...(task.sessionRules ?? {}) };
+      current[tool] = buildAllowedToolConfig({
+        existing: current[tool],
+        matchValue,
+      });
+      await TaskRepository.update(taskId, { sessionRules: current });
 
       return TaskRepository.findById(taskId);
     },

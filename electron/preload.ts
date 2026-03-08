@@ -60,8 +60,17 @@ contextBridge.exposeInMainWorld('api', {
       toolName: string,
       input: Record<string, unknown>,
     ) => ipcRenderer.invoke('tasks:addSessionAllowedTool', id, toolName, input),
-    removeSessionAllowedTool: (id: string, toolName: string) =>
-      ipcRenderer.invoke('tasks:removeSessionAllowedTool', id, toolName),
+    removeSessionAllowedTool: (
+      id: string,
+      toolName: string,
+      pattern?: string,
+    ) =>
+      ipcRenderer.invoke(
+        'tasks:removeSessionAllowedTool',
+        id,
+        toolName,
+        pattern,
+      ),
     allowForProject: (
       id: string,
       toolName: string,

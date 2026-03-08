@@ -1,3 +1,4 @@
+import type { PermissionScope } from '@shared/permission-types';
 import { Task, TaskStatus } from '@shared/types';
 
 import { dbg } from '../../lib/debug';
@@ -17,7 +18,7 @@ interface CreateTaskInput {
   branchName?: string | null;
   hasUnread?: boolean;
   userCompleted?: boolean;
-  sessionAllowedTools?: string[];
+  sessionRules?: PermissionScope;
   workItemIds?: string[] | null;
   workItemUrls?: string[] | null;
   pullRequestId?: string | null;
@@ -38,7 +39,7 @@ interface UpdateTaskInput {
   branchName?: string | null;
   hasUnread?: boolean;
   userCompleted?: boolean;
-  sessionAllowedTools?: string[];
+  sessionRules?: PermissionScope;
   workItemIds?: string[] | null;
   workItemUrls?: string[] | null;
   pullRequestId?: string | null;
@@ -47,27 +48,27 @@ interface UpdateTaskInput {
   updatedAt?: string;
 }
 
-// Convert SQLite's 0/1 to boolean for userCompleted, and JSON strings to arrays
+// Convert SQLite's 0/1 to boolean for userCompleted, and JSON strings to typed values
 function toTask<T extends TaskRow>(
   row: T,
 ): Omit<
   T,
   | 'userCompleted'
   | 'hasUnread'
-  | 'sessionAllowedTools'
+  | 'sessionRules'
   | 'workItemIds'
   | 'workItemUrls'
 > & {
   userCompleted: boolean;
   hasUnread: boolean;
-  sessionAllowedTools: string[];
+  sessionRules: PermissionScope;
   workItemIds: string[] | null;
   workItemUrls: string[] | null;
 } {
   const {
     userCompleted,
     hasUnread,
-    sessionAllowedTools,
+    sessionRules,
     workItemIds,
     workItemUrls,
     ...rest
@@ -76,9 +77,9 @@ function toTask<T extends TaskRow>(
     ...rest,
     userCompleted: Boolean(userCompleted),
     hasUnread: Boolean(hasUnread),
-    sessionAllowedTools: sessionAllowedTools
-      ? JSON.parse(sessionAllowedTools)
-      : [],
+    sessionRules: sessionRules
+      ? (JSON.parse(sessionRules) as PermissionScope)
+      : {},
     workItemIds: workItemIds ? JSON.parse(workItemIds) : null,
     workItemUrls: workItemUrls ? JSON.parse(workItemUrls) : null,
   };
@@ -91,13 +92,13 @@ function toTaskOrUndefined<T extends TaskRow>(
       T,
       | 'userCompleted'
       | 'hasUnread'
-      | 'sessionAllowedTools'
+      | 'sessionRules'
       | 'workItemIds'
       | 'workItemUrls'
     > & {
       userCompleted: boolean;
       hasUnread: boolean;
-      sessionAllowedTools: string[];
+      sessionRules: PermissionScope;
       workItemIds: string[] | null;
       workItemUrls: string[] | null;
     })
@@ -105,12 +106,12 @@ function toTaskOrUndefined<T extends TaskRow>(
   return row ? toTask(row) : undefined;
 }
 
-// Convert boolean userCompleted to number and arrays to JSON for database
+// Convert boolean userCompleted to number and structured values to JSON for database
 function toDbValues(data: CreateTaskInput): NewTaskRow {
   const {
     userCompleted,
     hasUnread,
-    sessionAllowedTools,
+    sessionRules,
     workItemIds,
     workItemUrls,
     ...rest
@@ -121,8 +122,8 @@ function toDbValues(data: CreateTaskInput): NewTaskRow {
       userCompleted: userCompleted ? 1 : 0,
     }),
     ...(hasUnread !== undefined && { hasUnread: hasUnread ? 1 : 0 }),
-    ...(sessionAllowedTools !== undefined && {
-      sessionAllowedTools: JSON.stringify(sessionAllowedTools),
+    ...(sessionRules !== undefined && {
+      sessionRules: JSON.stringify(sessionRules),
     }),
     ...(workItemIds !== undefined && {
       workItemIds: workItemIds ? JSON.stringify(workItemIds) : null,
@@ -137,7 +138,7 @@ function toDbUpdateValues(data: UpdateTaskInput): Partial<UpdateTaskRow> {
   const {
     userCompleted,
     hasUnread,
-    sessionAllowedTools,
+    sessionRules,
     workItemIds,
     workItemUrls,
     ...rest
@@ -148,8 +149,8 @@ function toDbUpdateValues(data: UpdateTaskInput): Partial<UpdateTaskRow> {
       userCompleted: userCompleted ? 1 : 0,
     }),
     ...(hasUnread !== undefined && { hasUnread: hasUnread ? 1 : 0 }),
-    ...(sessionAllowedTools !== undefined && {
-      sessionAllowedTools: JSON.stringify(sessionAllowedTools),
+    ...(sessionRules !== undefined && {
+      sessionRules: JSON.stringify(sessionRules),
     }),
     ...(workItemIds !== undefined && {
       workItemIds: workItemIds ? JSON.stringify(workItemIds) : null,

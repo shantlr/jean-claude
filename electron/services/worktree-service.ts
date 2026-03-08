@@ -610,11 +610,11 @@ export async function createWorktree(
     throw new Error(`Failed to create git worktree: ${error}`);
   }
 
-  // Build Claude local settings by merging settings.local.json and settings.local.worktrees.json
+  // Build backend-specific permission settings for the worktree
   try {
     await buildWorktreeSettings(projectPath, worktreePath);
   } catch (error) {
-    dbg.worktree('Failed to build Claude settings for worktree: %O', error);
+    dbg.worktree('Failed to build permission settings for worktree: %O', error);
   }
 
   // Install MCP servers for this worktree

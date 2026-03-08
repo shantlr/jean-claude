@@ -2,6 +2,7 @@
 // These are plain TypeScript types without database-specific dependencies
 
 import type { AgentBackendType, PromptImagePart } from './agent-backend-types';
+import type { PermissionScope } from './permission-types';
 import type { UsageProviderType } from './usage-types';
 
 export type ProviderType = 'azure-devops' | 'github' | 'gitlab';
@@ -245,7 +246,7 @@ export interface Task {
   branchName: string | null;
   hasUnread: boolean;
   userCompleted: boolean;
-  sessionAllowedTools: string[];
+  sessionRules: PermissionScope;
   workItemIds: string[] | null;
   workItemUrls: string[] | null;
   pullRequestId: string | null;
@@ -269,7 +270,7 @@ export interface NewTask {
   branchName?: string | null;
   hasUnread?: boolean;
   userCompleted?: boolean;
-  sessionAllowedTools?: string[];
+  sessionRules?: PermissionScope;
   workItemIds?: string[] | null;
   workItemUrls?: string[] | null;
   pullRequestId?: string | null;
@@ -290,7 +291,7 @@ export interface UpdateTask {
   branchName?: string | null;
   hasUnread?: boolean;
   userCompleted?: boolean;
-  sessionAllowedTools?: string[];
+  sessionRules?: PermissionScope;
   workItemIds?: string[] | null;
   workItemUrls?: string[] | null;
   pullRequestId?: string | null;

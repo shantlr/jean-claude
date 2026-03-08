@@ -74,6 +74,9 @@ importers:
       nanoid:
         specifier: ^5.1.6
         version: 5.1.6
+      picomatch:
+        specifier: ^4.0.3
+        version: 4.0.3
       react:
         specifier: ^19.0.0
         version: 19.2.3
@@ -120,6 +123,9 @@ importers:
       '@types/debug':
         specifier: ^4.1.12
         version: 4.1.12
+      '@types/picomatch':
+        specifier: ^4.0.2
+        version: 4.0.2
       '@types/react':
         specifier: ^19.0.0
         version: 19.2.8
@@ -1579,6 +1585,9 @@ packages:
 
   '@types/node@20.19.30':
     resolution: {integrity: sha512-WJtwWJu7UdlvzEAUm484QNg5eAoq5QR08KDNx7g45Usrs2NtOPiX8ugDqmKdXkyL03rBqU5dYNYVQetEpBHq2g==}
+
+  '@types/picomatch@4.0.2':
+    resolution: {integrity: sha512-qHHxQ+P9PysNEGbALT8f8YOSHW0KJu6l2xU8DYY0fu/EmGxXdVnuTLvFUvBgPJMSqXq29SYHveejeAha+4AYgA==}
 
   '@types/plist@3.0.5':
     resolution: {integrity: sha512-E6OCaRmAe4WDmWNsL/9RMqdkkzDCY1etutkflWk4c+AcjDU07Pcz1fQwTX0TQz+Pxqn9i4L1TU3UFpjnrcDgxA==}
@@ -6063,6 +6072,8 @@ snapshots:
   '@types/node@20.19.30':
     dependencies:
       undici-types: 6.21.0
+
+  '@types/picomatch@4.0.2': {}
 
   '@types/plist@3.0.5':
     dependencies:

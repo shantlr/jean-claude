@@ -103,7 +103,7 @@ export interface TaskTable {
   branchName: string | null;
   hasUnread: number; // SQLite boolean: 0 = read, 1 = unread
   userCompleted: number; // SQLite stores booleans as 0/1
-  sessionAllowedTools: string | null; // JSON array of tool names
+  sessionRules: string | null; // JSON PermissionScope object (e.g. {"bash": {"git status": "allow"}, "read": "allow"})
   sortOrder: number;
   // Provider integration tracking (JSON arrays)
   workItemIds: string | null; // JSON array: ["123", "456"]

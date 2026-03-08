@@ -32,8 +32,14 @@ import type {
 } from '@shared/agent-backend-types';
 import type { InteractionMode } from '@shared/types';
 
+import type { ResolvedPermissionRule } from '../../../../shared/permission-types';
 import { RawMessageRepository } from '../../../database/repositories';
 import { dbg } from '../../../lib/debug';
+import {
+  compileForOpenCode,
+  evaluatePermission,
+  normalizeToolRequest,
+} from '../../permission-settings-service';
 import { SESSION_SUMMARY_PROMPT } from '../../session-summary-service';
 
 import {
@@ -117,6 +123,8 @@ interface OpenCodeSessionState {
   /** Question request IDs already emitted as question AgentEvents (for dedup).
    *  Keyed by the QuestionRequest.id from `question.asked` SSE events. */
   emittedQuestionRequestIds: Set<string>;
+  /** Resolved permission rules for runtime evaluation */
+  permissionRules: ResolvedPermissionRule[];
 }
 
 export class OpenCodeBackend implements AgentBackend {
@@ -188,6 +196,7 @@ export class OpenCodeBackend implements AgentBackend {
       },
       messageIndex: this.taskContext.sessionStartIndex,
       emittedQuestionRequestIds: new Set(),
+      permissionRules: config.permissionRules ?? [],
     };
 
     this.sessions.set(session.id, state);
@@ -410,15 +419,25 @@ export class OpenCodeBackend implements AgentBackend {
     client: OpencodeClient,
     config: AgentBackendConfig,
   ): Promise<OcSession> {
+    // Compile permission rules to OpenCode's PermissionRuleset format
+    const permission = config.permissionRules
+      ? compileForOpenCode(config.permissionRules)
+      : undefined;
+
     const result = await client.session.create({
       directory: config.cwd,
+      ...(permission && permission.length > 0 ? { body: { permission } } : {}),
     });
 
     if (!result.data) {
       throw new Error('Failed to create OpenCode session');
     }
 
-    dbg.agent('Created OpenCode session %s', result.data.id);
+    dbg.agent(
+      'Created OpenCode session %s with %d permission rules',
+      result.data.id,
+      permission?.length ?? 0,
+    );
     return result.data;
   }
 
@@ -585,6 +604,49 @@ export class OpenCodeBackend implements AgentBackend {
           if (agentEvent.type === 'error') {
             emittedError = true;
           }
+
+          // Auto-respond to permission requests that match our rules
+          if (agentEvent.type === 'permission-request') {
+            const req = agentEvent.request;
+            const { tool, matchValue } = normalizeToolRequest(
+              req.toolName,
+              req.input,
+            );
+            const action = evaluatePermission(
+              state.permissionRules,
+              tool,
+              matchValue,
+            );
+
+            if (action === 'allow') {
+              dbg.agentPermission(
+                'Auto-allowing %s (pattern match)',
+                req.toolName,
+              );
+              const { client: ocClient } = await getOrCreateServer();
+              await ocClient.permission.reply({
+                requestID: req.requestId,
+                directory: state.cwd,
+                reply: 'once',
+              });
+              continue; // Don't yield the permission-request event
+            }
+
+            if (action === 'deny') {
+              dbg.agentPermission(
+                'Auto-denying %s (pattern match)',
+                req.toolName,
+              );
+              const { client: ocClient } = await getOrCreateServer();
+              await ocClient.permission.reply({
+                requestID: req.requestId,
+                directory: state.cwd,
+                reply: 'reject',
+              });
+              continue; // Don't yield the permission-request event
+            }
+          }
+
           yield agentEvent;
         }
 

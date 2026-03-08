@@ -258,7 +258,7 @@ export interface TaskWithProject {
   branchName: string | null;
   hasUnread: boolean;
   userCompleted: boolean;
-  sessionAllowedTools: string[];
+  sessionRules: import('@shared/permission-types').PermissionScope;
   workItemId: string | null;
   workItemUrl: string | null;
   pullRequestId: string | null;
@@ -344,7 +344,11 @@ export interface Api {
       toolName: string,
       input: Record<string, unknown>,
     ) => Promise<Task>;
-    removeSessionAllowedTool: (id: string, toolName: string) => Promise<Task>;
+    removeSessionAllowedTool: (
+      id: string,
+      toolName: string,
+      pattern?: string,
+    ) => Promise<Task>;
     allowForProject: (
       id: string,
       toolName: string,

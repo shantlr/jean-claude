@@ -177,6 +177,8 @@ export interface PermissionResponse {
   behavior: 'allow' | 'deny';
   updatedInput?: Record<string, unknown>;
   message?: string;
+  /** Scope for which this allow should persist (used by backends that support it) */
+  allowMode?: 'session' | 'project' | 'worktree';
 }
 
 export interface QuestionResponse {

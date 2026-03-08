@@ -33,10 +33,12 @@ import type {
 import type { AgentMessage, AgentQuestion } from '@shared/agent-types';
 import type { InteractionMode } from '@shared/types';
 
+import type { ResolvedPermissionRule } from '../../../../shared/permission-types';
 import { dbg } from '../../../lib/debug';
 import {
-  buildPermissionString,
-  isToolAllowedByPermissions,
+  flattenScope,
+  normalizeToolRequest,
+  evaluatePermission,
 } from '../../permission-settings-service';
 import {
   getPromptText,
@@ -133,6 +135,8 @@ interface ClaudeSession {
   sessionAllowedTools: string[];
   // Working directory for permission checking
   workingDir?: string;
+  // Backend-agnostic permission rules for runtime evaluation
+  permissionRules: ResolvedPermissionRule[];
   // V2 normalization context (tracks session-id state)
   normalizationCtx: NormalizationContext;
   // Next raw message index for persistence ordering
@@ -158,14 +162,27 @@ export class ClaudeCodeBackend implements AgentBackend {
     const sessionKey = nanoid();
     const abortController = new AbortController();
 
+    // Build initial session-allowed list from persisted task rules.
+    // Keep canonical entries ("tool" | "tool:pattern") because runtime checks
+    // in handleToolRequest use canonical format.
+    const rules = config.permissionRules ?? [];
+    const persistedRules = config.persistedSessionRules ?? {};
+    const persistedAllow = flattenScope(persistedRules)
+      .filter((rule) => rule.action === 'allow')
+      .map((rule) =>
+        rule.pattern === '*' ? rule.tool : `${rule.tool}:${rule.pattern}`,
+      );
+    const initialSessionAllowedTools = [...new Set(persistedAllow)];
+
     const session: ClaudeSession = {
       sessionId: config.sessionId ?? null,
       abortController,
       queryInstance: null,
       pendingResolvers: new Map(),
       eventChannel: new AsyncEventChannel<AgentEvent>(),
-      sessionAllowedTools: config.sessionAllowedTools ?? [],
+      sessionAllowedTools: initialSessionAllowedTools,
       workingDir: config.cwd,
+      permissionRules: rules,
       normalizationCtx: {
         sessionIdEmitted: false,
         pendingToolUses: new Map(),
@@ -514,8 +531,8 @@ export class ClaudeCodeBackend implements AgentBackend {
       };
     }
 
-    const permission = buildPermissionString(toolName, input);
-    if (!permission) return undefined;
+    const { tool, matchValue } = normalizeToolRequest(toolName, input);
+    const permission = matchValue ? `${tool}:${matchValue}` : tool;
 
     return {
       label: `Allow ${toolName} for Session`,
@@ -538,12 +555,28 @@ export class ClaudeCodeBackend implements AgentBackend {
   ): Promise<PermissionResult> {
     dbg.agentPermission('Tool request: %s', toolName, input);
 
-    // Check if tool is in session-allowed list
-    if (
-      isToolAllowedByPermissions(toolName, input, session.sessionAllowedTools, {
-        workingDir: session.workingDir,
-      })
-    ) {
+    // Check against backend-agnostic permission rules
+    const { tool, matchValue } = normalizeToolRequest(toolName, input);
+    const action = evaluatePermission(
+      session.permissionRules,
+      tool,
+      matchValue,
+    );
+    if (action === 'allow') {
+      dbg.agentPermission('Tool %s auto-allowed by permission rules', toolName);
+      return Promise.resolve({ behavior: 'allow', updatedInput: input });
+    }
+    if (action === 'deny') {
+      dbg.agentPermission('Tool %s auto-denied by permission rules', toolName);
+      return Promise.resolve({
+        behavior: 'deny',
+        message: `Tool "${toolName}" is denied by permission rules`,
+      });
+    }
+
+    // Check session-allowed tools (canonical format: "tool:matchValue" or "tool")
+    const canonicalPermission = matchValue ? `${tool}:${matchValue}` : tool;
+    if (session.sessionAllowedTools.includes(canonicalPermission)) {
       dbg.agentPermission('Tool %s is session-allowed', toolName);
       return Promise.resolve({ behavior: 'allow', updatedInput: input });
     }

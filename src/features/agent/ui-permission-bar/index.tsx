@@ -240,6 +240,7 @@ export function PermissionBar({
     onRespond(request.requestId, {
       behavior: 'allow',
       updatedInput: input,
+      allowMode: 'session',
     });
   };
 
@@ -257,6 +258,7 @@ export function PermissionBar({
     onRespond(request.requestId, {
       behavior: 'allow',
       updatedInput: input,
+      allowMode: 'project',
     });
   };
 
@@ -274,6 +276,7 @@ export function PermissionBar({
     onRespond(request.requestId, {
       behavior: 'allow',
       updatedInput: input,
+      allowMode: 'worktree',
     });
   };
 

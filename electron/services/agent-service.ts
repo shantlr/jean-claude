@@ -32,6 +32,7 @@ import {
   normalizeInteractionModeForBackend,
 } from '@shared/types';
 
+import type { PermissionScope } from '../../shared/permission-types';
 import {
   TaskRepository,
   ProjectRepository,
@@ -47,7 +48,12 @@ import { ClaudeCodeBackend } from './agent-backends/claude/claude-code-backend';
 import { OpenCodeBackend } from './agent-backends/opencode/opencode-backend';
 import { generateTaskName } from './name-generation-service';
 import { notificationService } from './notification-service';
-import { getEffectivePermissions } from './permission-settings-service';
+import {
+  buildAllowedToolConfig,
+  readSettings,
+  resolveRules,
+  normalizeToolRequest,
+} from './permission-settings-service';
 import { textPrompt, getPromptText } from './prompt-utils';
 import { StepService } from './step-service';
 
@@ -280,15 +286,10 @@ class AgentService {
       });
     }
 
-    // Load settings file permissions and merge with task's sessionAllowedTools.
-    // This ensures permissions set via "Allow for Project" / "Allow for Worktrees"
-    // are available for auto-allow logic (e.g., Bash commands auto-allowed when
-    // Read/Write is permitted via settings files).
-    const settingsPermissions = await getEffectivePermissions(workingDir);
-    const taskAllowedTools = task.sessionAllowedTools ?? [];
-    const mergedAllowedTools = [
-      ...new Set([...taskAllowedTools, ...settingsPermissions]),
-    ];
+    // Load backend-agnostic permissions and compile for the target backend.
+    const isWorktree = !!task.worktreePath;
+    const settings = await readSettings(project.path);
+    const rules = resolveRules(settings, isWorktree);
 
     // Start the backend
     dbg.agentSession('Starting backend for step %s', stepId);
@@ -308,7 +309,8 @@ class AgentService {
             ? step.modelPreference
             : undefined,
         sessionId: session.sdkSessionId ?? undefined,
-        sessionAllowedTools: mergedAllowedTools,
+        persistedSessionRules: task.sessionRules ?? {},
+        permissionRules: rules,
       },
       parts,
     );
@@ -513,13 +515,24 @@ class AgentService {
           );
           if (tools.length > 0) {
             const currentTask = await TaskRepository.findById(taskId);
-            const existingTools = currentTask?.sessionAllowedTools ?? [];
-            const merged = [...new Set([...existingTools, ...tools])];
-            if (merged.length !== existingTools.length) {
-              await TaskRepository.update(taskId, {
-                sessionAllowedTools: merged,
-              });
+            const existing: PermissionScope = {
+              ...(currentTask?.sessionRules ?? {}),
+            };
+            // Convert accumulated string[] ("tool:matchValue" | "tool") → PermissionScope
+            for (const entry of tools) {
+              const colonIdx = entry.indexOf(':');
+              if (colonIdx !== -1) {
+                const tool = entry.slice(0, colonIdx);
+                const matchValue = entry.slice(colonIdx + 1);
+                existing[tool] = buildAllowedToolConfig({
+                  existing: existing[tool],
+                  matchValue,
+                });
+              } else {
+                existing[entry] = 'allow';
+              }
             }
+            await TaskRepository.update(taskId, { sessionRules: existing });
           }
         }
 
@@ -797,6 +810,16 @@ class AgentService {
     // Forward to the backend
     if (request.type === 'permission') {
       const permResponse = response as PermissionResponse;
+
+      // Compute toolsToAllow from the pending request's tool name and input
+      // so backends can update their in-memory session state.
+      let toolsToAllow: string[] | undefined;
+      if (permResponse.behavior === 'allow' && request.permissionRequest) {
+        const { toolName, input } = request.permissionRequest;
+        const { tool, matchValue } = normalizeToolRequest(toolName, input);
+        toolsToAllow = [matchValue ? `${tool}:${matchValue}` : tool];
+      }
+
       await session.backend.respondToPermission(
         session.backendSessionId!,
         requestId,
@@ -804,6 +827,8 @@ class AgentService {
           behavior: permResponse.behavior,
           updatedInput: permResponse.updatedInput,
           message: permResponse.message,
+          allowMode: permResponse.allowMode,
+          toolsToAllow,
         },
       );
     } else {

@@ -462,8 +462,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   );
 
   const handleRemoveSessionAllowedTool = useCallback(
-    (toolName: string) => {
-      removeSessionAllowedTool.mutate({ id: taskId, toolName });
+    ({ toolName, pattern }: { toolName: string; pattern?: string }) => {
+      removeSessionAllowedTool.mutate({ id: taskId, toolName, pattern });
     },
     [taskId, removeSessionAllowedTool],
   );
@@ -1168,7 +1168,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       {/* Task settings pane */}
       {rightPane?.type === 'settings' && (
         <TaskSettingsPane
-          sessionAllowedTools={task.sessionAllowedTools}
+          sessionRules={task.sessionRules ?? {}}
           sourceBranch={task.sourceBranch}
           sourceCommit={task.startCommitHash}
           taskId={taskId}

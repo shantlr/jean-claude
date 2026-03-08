@@ -3,6 +3,10 @@
 // The rest of the app (IPC, database, UI) only sees these types.
 
 import type { NormalizationEvent } from './normalized-message-v2';
+import type {
+  PermissionScope,
+  ResolvedPermissionRule,
+} from './permission-types';
 import type { InteractionMode } from './types';
 
 // Re-export shared types that live in normalized-message-v2
@@ -49,7 +53,10 @@ export interface AgentBackendConfig {
   interactionMode: InteractionMode;
   model?: string;
   sessionId?: string; // for session resumption
-  sessionAllowedTools?: string[];
+  /** Session-allowed tools persisted from prior runs (PermissionScope format) */
+  persistedSessionRules?: PermissionScope;
+  /** Backend-agnostic permission rules for runtime evaluation */
+  permissionRules?: ResolvedPermissionRule[];
 }
 
 export interface AgentSession {
