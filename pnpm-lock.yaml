@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@anthropic-ai/claude-agent-sdk':
-        specifier: ^0.2.59
-        version: 0.2.59(zod@4.3.5)
+        specifier: ^0.2.71
+        version: 0.2.71(zod@4.3.5)
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -24,8 +24,8 @@ importers:
         specifier: ^1.14.0
         version: 1.14.0
       '@opencode-ai/sdk':
-        specifier: ^1.2.10
-        version: 1.2.10
+        specifier: ^1.2.21
+        version: 1.2.21
       '@tanstack/react-query':
         specifier: ^5.90.19
         version: 5.90.19(react@19.2.3)
@@ -210,8 +210,8 @@ packages:
   7zip-bin@5.2.0:
     resolution: {integrity: sha512-ukTPVhqG4jNzMro2qA9HSCSSVJN3aN7tlb+hfqYCt3ER0yWroeA2VR38MNrOHLQ/cVj+DaIMad0kFCtWWowh/A==}
 
-  '@anthropic-ai/claude-agent-sdk@0.2.59':
-    resolution: {integrity: sha512-xPOUZZimZI5ChaO791olWGXqaRvCwOfj9/1micu42EL9czdcwiDm0WK1OGsqb2mZ7LSCoYWBB0ZHVKOxehemDA==}
+  '@anthropic-ai/claude-agent-sdk@0.2.71':
+    resolution: {integrity: sha512-pIsQJnM7Y+cJHL7aFY6SCCW3FIni218gVEpPqG8XGowfYxboFNBbNssWiUNRwthT8bp9jypcX7q5kx0Xsw14xg==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       zod: ^4.0.0
@@ -1099,8 +1099,8 @@ packages:
     engines: {node: ^12.13.0 || ^14.15.0 || >=16.0.0}
     deprecated: This functionality has been moved to @npmcli/fs
 
-  '@opencode-ai/sdk@1.2.10':
-    resolution: {integrity: sha512-SyXcVqry2hitPVvQtvXOhqsWyFhSycG/+LTLYXrcq8AFmd9FR7dyBSDB3f5Ol6IPkYOegk8P2Eg2kKPNSNiKGw==}
+  '@opencode-ai/sdk@1.2.21':
+    resolution: {integrity: sha512-7XF7QlXDP5iAbGcAsxsrmKlIjRtSzKgbwuDHPPuZbILkhGOfCo05XwPidAZrVWucZ/re44oc/psw2zDECaZOpQ==}
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -4864,7 +4864,7 @@ snapshots:
 
   7zip-bin@5.2.0: {}
 
-  '@anthropic-ai/claude-agent-sdk@0.2.59(zod@4.3.5)':
+  '@anthropic-ai/claude-agent-sdk@0.2.71(zod@4.3.5)':
     dependencies:
       zod: 4.3.5
     optionalDependencies:
@@ -5631,7 +5631,7 @@ snapshots:
       mkdirp: 1.0.4
       rimraf: 3.0.2
 
-  '@opencode-ai/sdk@1.2.10': {}
+  '@opencode-ai/sdk@1.2.21': {}
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
