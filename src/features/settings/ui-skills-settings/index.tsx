@@ -14,8 +14,8 @@ import type { ManagedSkill } from '@shared/skill-types';
 import { LegacySkillMigrationDialog } from './legacy-skill-migration-dialog';
 import { SkillCardGrid } from './skill-card-grid';
 import { SkillDetails } from './skill-details';
-import { SkillRegistryBrowser } from './skill-registry-browser';
 import { SkillEditor } from './skill-editor';
+import { SkillRegistryBrowser } from './skill-registry-browser';
 
 export function SkillsSettings() {
   const { data: skills, isLoading } = useAllManagedSkills();
