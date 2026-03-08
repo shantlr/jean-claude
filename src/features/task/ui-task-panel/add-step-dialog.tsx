@@ -16,6 +16,7 @@ import {
   type PromptTextareaRef,
 } from '@/features/common/ui-prompt-textarea';
 import { useBackendModels } from '@/hooks/use-backend-models';
+import { useSkills } from '@/hooks/use-skills';
 import type {
   AgentBackendType,
   PromptImagePart,
@@ -52,6 +53,10 @@ export function AddStepDialog({
   onConfirm,
   defaultBackend = 'claude-code',
   defaultModel = 'default',
+  taskId,
+  activeStepId,
+  projectRoot,
+  projectId,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -66,6 +71,10 @@ export function AddStepDialog({
   }) => void;
   defaultBackend?: AgentBackendType;
   defaultModel?: ModelPreference;
+  taskId: string;
+  activeStepId?: string;
+  projectRoot?: string | null;
+  projectId?: string;
 }) {
   const [promptTemplate, setPromptTemplate] = useState('');
   const [presetType, setPresetType] =
@@ -79,6 +88,10 @@ export function AddStepDialog({
   const textareaRef = useRef<PromptTextareaRef>(null);
 
   const { data: dynamicModels } = useBackendModels(backend);
+  const { data: skills } = useSkills({
+    taskId,
+    stepId: activeStepId,
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -182,7 +195,11 @@ export function AddStepDialog({
               : 'Describe what this step should do...'
           }
           maxHeight={200}
-          showCommands={false}
+          showCommands
+          skills={skills}
+          enableFilePathAutocomplete={!!projectRoot}
+          projectRoot={projectRoot}
+          projectId={projectId}
           images={images}
           onImageAttach={handleImageAttach}
           onImageRemove={handleImageRemove}

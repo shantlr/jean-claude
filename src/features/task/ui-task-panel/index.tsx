@@ -1211,6 +1211,10 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         onConfirm={(data) => void handleAddStep(data)}
         defaultBackend={activeStep?.agentBackend ?? 'claude-code'}
         defaultModel={activeStep?.modelPreference ?? 'default'}
+        taskId={taskId}
+        activeStepId={activeStepId ?? undefined}
+        projectRoot={taskRootPath}
+        projectId={project.id}
       />
 
       {/* Delete confirmation modal */}
