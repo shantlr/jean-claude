@@ -9,7 +9,10 @@ import {
   type ReactNode,
 } from 'react';
 
-import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import {
+  KeyboardBindingLayer,
+  useRegisterKeyboardBindings,
+} from '@/common/context/keyboard-bindings';
 import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
 
@@ -78,7 +81,9 @@ export function ModalProvider({ children }: { children: ReactNode }) {
     <ModalContext.Provider value={value}>
       {children}
       {currentModal && (
-        <ModalRenderer modal={currentModal} onClose={removeFromQueue} />
+        <KeyboardBindingLayer exclusive>
+          <ModalRenderer modal={currentModal} onClose={removeFromQueue} />
+        </KeyboardBindingLayer>
       )}
     </ModalContext.Provider>
   );
