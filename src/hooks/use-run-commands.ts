@@ -55,12 +55,7 @@ export function useRunCommands({
       setPortsInUseError(null);
       setPendingStartCommandId(runCommandId);
 
-      const wasStartedBefore =
-        status?.commands.some((command) => command.id === runCommandId) ??
-        false;
-      if (wasStartedBefore) {
-        clearRunCommandLogs(taskId, runCommandId);
-      }
+      clearRunCommandLogs(taskId, runCommandId);
 
       try {
         const result = await api.runCommands.startCommand({
@@ -81,7 +76,7 @@ export function useRunCommands({
         setIsStartingCommandId(null);
       }
     },
-    [taskId, projectId, workingDir, clearRunCommandLogs, status],
+    [taskId, projectId, workingDir, clearRunCommandLogs],
   );
 
   const stopCommand = useCallback(
