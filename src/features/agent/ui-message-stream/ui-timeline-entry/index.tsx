@@ -8,8 +8,8 @@ import {
   Loader2,
   PackageOpen,
 } from 'lucide-react';
-import type { MouseEvent, ReactNode } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
 
 import { formatNumber } from '@/lib/number';
@@ -20,7 +20,7 @@ import type {
   ToolUseByName,
 } from '@shared/normalized-message-v2';
 
-import { DiffView } from '../../ui-diff-view';
+import { computeDiff } from '../../ui-diff-view/diff-utils';
 import { getLanguageFromPath } from '../../ui-diff-view/language-utils';
 import { MarkdownContent } from '../../ui-markdown-content';
 import { TodoListEntry } from '../ui-todo-list-entry';
@@ -185,6 +185,7 @@ function DotEntry({
   isPending,
   summary,
   expandedContent,
+  persistentContent,
   codeStyle = 'default',
   defaultExpanded = false,
 }: {
@@ -193,6 +194,7 @@ function DotEntry({
   isPending?: boolean;
   summary: string;
   expandedContent?: ReactNode;
+  persistentContent?: ReactNode;
   codeStyle?: CodeStyle;
   defaultExpanded?: boolean;
 }) {
@@ -264,6 +266,10 @@ function DotEntry({
           </span>
         </div>
 
+        {persistentContent && (
+          <div className="mt-2 ml-5">{persistentContent}</div>
+        )}
+
         {/* Expanded content */}
         {isExpanded && expandedContent && (
           <div className="mt-2 ml-5 border-l border-neutral-700 pl-3">
@@ -331,8 +337,212 @@ function getCodeStyleForTool(toolName: string): CodeStyle {
   }
 }
 
+const DIFF_PREVIEW_MAX_LINES = 10;
+
+function CompactDiffPreview({
+  filePath,
+  oldString,
+  newString,
+  onClick,
+}: {
+  filePath: string;
+  oldString: string;
+  newString: string;
+  onClick?: (filePath: string, oldString: string, newString: string) => void;
+}) {
+  const [oldTokens, setOldTokens] = useState<ThemedToken[][]>([]);
+  const [newTokens, setNewTokens] = useState<ThemedToken[][]>([]);
+  const language = getLanguageFromPath(filePath);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    Promise.all([
+      codeToTokens(oldString || ' ', {
+        lang: language,
+        theme: 'github-dark',
+      }).catch(() =>
+        codeToTokens(oldString || ' ', { lang: 'text', theme: 'github-dark' }),
+      ),
+      codeToTokens(newString || ' ', {
+        lang: language,
+        theme: 'github-dark',
+      }).catch(() =>
+        codeToTokens(newString || ' ', { lang: 'text', theme: 'github-dark' }),
+      ),
+    ])
+      .then(([oldResult, newResult]) => {
+        if (isCancelled) return;
+        setOldTokens(oldResult.tokens);
+        setNewTokens(newResult.tokens);
+      })
+      .catch(() => {
+        if (isCancelled) return;
+        setOldTokens([]);
+        setNewTokens([]);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [language, oldString, newString]);
+
+  const preview = useMemo(() => {
+    const lines = computeDiff(oldString, newString);
+    const firstChangeIndex = lines.findIndex((line) => line.type !== 'context');
+    const startIndex =
+      firstChangeIndex === -1 ? 0 : Math.max(0, firstChangeIndex - 2);
+    const endIndex = Math.min(
+      lines.length,
+      startIndex + DIFF_PREVIEW_MAX_LINES,
+    );
+
+    return {
+      lines: lines.slice(startIndex, endIndex),
+      hasMore: endIndex < lines.length,
+      hiddenCount: lines.length - endIndex,
+    };
+  }, [oldString, newString]);
+
+  const handleClick = useCallback(() => {
+    onClick?.(filePath, oldString, newString);
+  }, [filePath, oldString, newString, onClick]);
+
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        handleClick();
+      }
+    },
+    [handleClick],
+  );
+
+  const getLineTokens = useCallback(
+    (line: {
+      type: 'context' | 'addition' | 'deletion';
+      oldLineNumber?: number;
+      newLineNumber?: number;
+    }) => {
+      if (line.type === 'deletion' && line.oldLineNumber) {
+        return oldTokens[line.oldLineNumber - 1] ?? null;
+      }
+      if (
+        (line.type === 'addition' || line.type === 'context') &&
+        line.newLineNumber
+      ) {
+        return newTokens[line.newLineNumber - 1] ?? null;
+      }
+      return null;
+    },
+    [newTokens, oldTokens],
+  );
+
+  const renderLineContent = useCallback(
+    (line: {
+      type: 'context' | 'addition' | 'deletion';
+      content: string;
+      oldLineNumber?: number;
+      newLineNumber?: number;
+    }) => {
+      const lineTokens = getLineTokens(line);
+      if (!lineTokens || lineTokens.length === 0) {
+        return <span className="text-neutral-300">{line.content || ' '}</span>;
+      }
+      return lineTokens.map((token, tokenIndex) => (
+        <span key={tokenIndex} style={{ color: token.color }}>
+          {token.content}
+        </span>
+      ));
+    },
+    [getLineTokens],
+  );
+
+  return (
+    <div
+      onClick={handleClick}
+      onKeyDown={onClick ? handleKeyDown : undefined}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      className={clsx(
+        'w-full rounded bg-black/30 p-2 text-left font-mono text-xs text-neutral-300',
+        onClick && 'cursor-pointer hover:bg-blue-500/5',
+      )}
+      title={onClick ? `Open full diff for ${filePath}` : undefined}
+    >
+      <table className="w-full border-collapse">
+        <tbody>
+          {preview.lines.map((line, index) => {
+            const prefix =
+              line.type === 'addition'
+                ? '+'
+                : line.type === 'deletion'
+                  ? '-'
+                  : ' ';
+            return (
+              <tr
+                key={`${index}-${line.oldLineNumber ?? 'x'}-${line.newLineNumber ?? 'x'}-${line.content}`}
+                className={clsx(
+                  line.type === 'addition' && 'bg-green-500/20',
+                  line.type === 'deletion' && 'bg-red-500/20',
+                )}
+              >
+                <td
+                  className={clsx(
+                    'w-8 pr-1 text-right align-top text-neutral-600 tabular-nums select-none',
+                    line.type === 'deletion' && 'text-red-400',
+                  )}
+                >
+                  {line.oldLineNumber ?? ''}
+                </td>
+                <td
+                  className={clsx(
+                    'w-8 pr-1 text-right align-top text-neutral-600 tabular-nums select-none',
+                    line.type === 'addition' && 'text-green-400',
+                  )}
+                >
+                  {line.newLineNumber ?? ''}
+                </td>
+                <td
+                  className={clsx(
+                    'w-4 text-center align-top text-neutral-600 select-none',
+                    {
+                      'text-green-400': line.type === 'addition',
+                      'text-red-400': line.type === 'deletion',
+                    },
+                  )}
+                >
+                  {prefix}
+                </td>
+                <td className="pr-2 whitespace-pre-wrap">
+                  {renderLineContent(line)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {preview.hasMore && (
+        <div className="mt-2 text-[11px] text-neutral-500">
+          +{preview.hiddenCount} more lines (click to open full diff)
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Tool entry with expandable input/output
-function ToolEntry({ toolUse }: { toolUse: NormalizedToolUse }) {
+function ToolEntry({
+  toolUse,
+  onToolDiffClick,
+}: {
+  toolUse: NormalizedToolUse;
+  onToolDiffClick?: (
+    filePath: string,
+    oldString: string,
+    newString: string,
+  ) => void;
+}) {
   const summary = getToolSummary(toolUse);
   const hasResult = toolUse.result !== undefined;
   const isError =
@@ -342,12 +552,9 @@ function ToolEntry({ toolUse }: { toolUse: NormalizedToolUse }) {
   const isPending = !hasResult;
   const codeStyle = getCodeStyleForTool(toolUse.name);
 
-  // Check if this is an Edit tool with diff content
+  // Check if this is an Edit or Write tool with diff content
   const isEditTool = toolUse.name === 'edit';
   const isWriteTool = toolUse.name === 'write';
-
-  // Auto-expand Edit and Write tools
-  const shouldAutoExpand = isEditTool || isWriteTool;
 
   // Extract file_path for Read tool syntax highlighting
   const readFilePath =
@@ -355,9 +562,7 @@ function ToolEntry({ toolUse }: { toolUse: NormalizedToolUse }) {
       ? (toolUse as ToolUseByName<'read'>).input.filePath
       : undefined;
 
-  // For Edit tools, use DiffView; for Write tools, just show file info (no diff in V2)
-  const hasDiffView = isEditTool;
-  const formattedInput = hasDiffView ? '' : formatToolInput(toolUse);
+  const formattedInput = formatToolInput(toolUse);
   const formattedResult = formatToolResult(toolUse);
   const [expandContent, setExpandContent] = useState(false);
 
@@ -458,18 +663,36 @@ function ToolEntry({ toolUse }: { toolUse: NormalizedToolUse }) {
     );
   }
 
+  if (isEditTool || isWriteTool) {
+    const editTool = isEditTool ? (toolUse as ToolUseByName<'edit'>) : null;
+    const writeTool = isWriteTool ? (toolUse as ToolUseByName<'write'>) : null;
+    const filePath =
+      editTool?.input.filePath ?? writeTool?.input.filePath ?? '';
+    const oldString = editTool?.input.oldString ?? '';
+    const newString = editTool?.input.newString ?? writeTool?.input.value ?? '';
+
+    return (
+      <DotEntry
+        type="tool"
+        isPending={isPending}
+        summary={summary}
+        codeStyle={codeStyle}
+        persistentContent={
+          <CompactDiffPreview
+            filePath={filePath}
+            oldString={oldString}
+            newString={newString}
+            onClick={onToolDiffClick}
+          />
+        }
+      />
+    );
+  }
+
+  const hasDiffView = false;
+
   // Get diff view content based on tool type
   const getDiffViewContent = () => {
-    if (isEditTool) {
-      const e = toolUse as ToolUseByName<'edit'>;
-      return (
-        <DiffView
-          filePath={e.input.filePath}
-          oldString={e.input.oldString}
-          newString={e.input.newString}
-        />
-      );
-    }
     return <LineNumberedContent content={formattedInput} />;
   };
 
@@ -541,7 +764,6 @@ function ToolEntry({ toolUse }: { toolUse: NormalizedToolUse }) {
       summary={summary}
       expandedContent={expandedContent}
       codeStyle={codeStyle}
-      defaultExpanded={shouldAutoExpand}
     />
   );
 }
@@ -748,12 +970,18 @@ export function CompactingEntry({ isComplete }: { isComplete: boolean }) {
 export function TimelineEntry({
   entry,
   onFilePathClick,
+  onToolDiffClick,
 }: {
   entry: NormalizedEntry;
   onFilePathClick?: (
     filePath: string,
     lineStart?: number,
     lineEnd?: number,
+  ) => void;
+  onToolDiffClick?: (
+    filePath: string,
+    oldString: string,
+    newString: string,
   ) => void;
 }) {
   switch (entry.type) {
@@ -769,7 +997,7 @@ export function TimelineEntry({
     case 'tool-use':
       // Sub-agent tool-use entries are rendered as SubagentEntry in message stream
       if (entry.name === 'sub-agent') return null;
-      return <ToolEntry toolUse={entry} />;
+      return <ToolEntry toolUse={entry} onToolDiffClick={onToolDiffClick} />;
     case 'result':
       return <ResultEntry entry={entry} onFilePathClick={onFilePathClick} />;
     case 'system-status':

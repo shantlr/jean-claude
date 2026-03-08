@@ -67,6 +67,7 @@ export const MessageStream = memo(function MessageStream({
   isRunning,
   queuedPrompts = [],
   onFilePathClick,
+  onToolDiffClick,
   onCancelQueuedPrompt,
   bottomPadding = 0,
   pendingPermission,
@@ -79,6 +80,11 @@ export const MessageStream = memo(function MessageStream({
     filePath: string,
     lineStart?: number,
     lineEnd?: number,
+  ) => void;
+  onToolDiffClick?: (
+    filePath: string,
+    oldString: string,
+    newString: string,
   ) => void;
   onCancelQueuedPrompt?: (promptId: string) => void;
   /** Extra bottom padding (px) so content can scroll behind a floating footer */
@@ -190,6 +196,7 @@ export const MessageStream = memo(function MessageStream({
                 toolUse={displayMessage.toolUse}
                 childEntries={displayMessage.childEntries}
                 onFilePathClick={onFilePathClick}
+                onToolDiffClick={onToolDiffClick}
               />
             );
           }
@@ -200,6 +207,7 @@ export const MessageStream = memo(function MessageStream({
                 <TimelineEntry
                   entry={displayMessage.entry}
                   onFilePathClick={onFilePathClick}
+                  onToolDiffClick={onToolDiffClick}
                 />
               </div>
             );
@@ -209,6 +217,7 @@ export const MessageStream = memo(function MessageStream({
               key={index}
               entry={displayMessage.entry}
               onFilePathClick={onFilePathClick}
+              onToolDiffClick={onToolDiffClick}
             />
           );
         })}

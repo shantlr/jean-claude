@@ -37,6 +37,7 @@ export function SubagentEntry({
   toolUse,
   childEntries,
   onFilePathClick,
+  onToolDiffClick,
 }: {
   toolUse: NormalizedToolUse;
   childEntries: NormalizedEntry[];
@@ -44,6 +45,11 @@ export function SubagentEntry({
     filePath: string,
     lineStart?: number,
     lineEnd?: number,
+  ) => void;
+  onToolDiffClick?: (
+    filePath: string,
+    oldString: string,
+    newString: string,
   ) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -207,6 +213,7 @@ export function SubagentEntry({
               key={index}
               entry={entry}
               onFilePathClick={onFilePathClick}
+              onToolDiffClick={onToolDiffClick}
             />
           ))}
         </div>

@@ -104,6 +104,7 @@ import { DeleteTaskDialog } from './delete-task-dialog';
 import { FileExplorerPane } from './file-explorer-pane';
 import { TaskPendingNoteInput } from './task-pending-note-input';
 import { TaskSettingsPane } from './task-settings-pane';
+import { ToolDiffPreviewPane } from './tool-diff-preview-pane';
 
 const LAST_ASSISTANT_MESSAGE_MAX_LENGTH = 1200;
 
@@ -203,6 +204,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     activeStepId,
     setActiveStepId,
     openFilePreview,
+    openToolDiffPreview,
     openFileExplorer,
     openCommandLogs,
     selectCommandLogsTab,
@@ -333,6 +335,13 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       openFilePreview(filePath, lineStart, lineEnd);
     },
     [openFilePreview],
+  );
+
+  const handleToolDiffClick = useCallback(
+    (filePath: string, oldString: string, newString: string) => {
+      openToolDiffPreview({ filePath, oldString, newString });
+    },
+    [openToolDiffPreview],
   );
 
   const handleStop = async () => {
@@ -1034,6 +1043,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               isRunning={isRunning}
               queuedPrompts={agentState.queuedPrompts}
               onFilePathClick={handleFilePathClick}
+              onToolDiffClick={handleToolDiffClick}
               onCancelQueuedPrompt={cancelQueuedPrompt}
               bottomPadding={footerHeight}
               pendingPermission={permissionProps}
@@ -1147,6 +1157,15 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           projectPath={project.path}
           lineStart={rightPane.lineStart}
           lineEnd={rightPane.lineEnd}
+          onClose={closeRightPane}
+        />
+      )}
+
+      {rightPane?.type === 'toolDiffPreview' && (
+        <ToolDiffPreviewPane
+          filePath={rightPane.filePath}
+          oldString={rightPane.oldString}
+          newString={rightPane.newString}
           onClose={closeRightPane}
         />
       )}

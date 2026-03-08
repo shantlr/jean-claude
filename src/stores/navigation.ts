@@ -12,6 +12,12 @@ export type RightPane =
       lineEnd?: number;
     }
   | {
+      type: 'toolDiffPreview';
+      filePath: string;
+      oldString: string;
+      newString: string;
+    }
+  | {
       type: 'settings';
     }
   | {
@@ -83,6 +89,11 @@ const DEFAULT_COMMAND_LOGS_PANE_WIDTH = 520;
 const MIN_COMMAND_LOGS_PANE_WIDTH = 320;
 const MAX_COMMAND_LOGS_PANE_WIDTH = 1200;
 
+// Constants for tool diff preview pane width
+const DEFAULT_TOOL_DIFF_PREVIEW_PANE_WIDTH = 520;
+const MIN_TOOL_DIFF_PREVIEW_PANE_WIDTH = 360;
+const MAX_TOOL_DIFF_PREVIEW_PANE_WIDTH = 1400;
+
 // Constants for sidebar width
 const DEFAULT_SIDEBAR_WIDTH = 256; // w-64 equivalent
 const MIN_SIDEBAR_WIDTH = 200;
@@ -115,6 +126,9 @@ interface NavigationState {
   // App-level: run command logs pane width (global setting)
   commandLogsPaneWidth: number;
 
+  // App-level: tool diff preview pane width (global setting)
+  toolDiffPreviewPaneWidth: number;
+
   // App-level: sidebar content tab ('tasks' or 'prs')
   sidebarTab: 'tasks' | 'prs';
 
@@ -132,6 +146,7 @@ interface NavigationState {
   setFileExplorerTreeWidth: (width: number) => void;
   setFileExplorerPaneWidth: (width: number) => void;
   setCommandLogsPaneWidth: (width: number) => void;
+  setToolDiffPreviewPaneWidth: (width: number) => void;
   setSidebarTab: (tab: 'tasks' | 'prs') => void;
   setLastTaskForProject: (projectId: string, taskId: string) => void;
   setTaskRightPane: (taskId: string, pane: RightPane | null) => void;
@@ -157,6 +172,7 @@ const useStore = create<NavigationState>()(
       fileExplorerTreeWidth: DEFAULT_FILE_EXPLORER_TREE_WIDTH,
       fileExplorerPaneWidth: DEFAULT_FILE_EXPLORER_PANE_WIDTH,
       commandLogsPaneWidth: DEFAULT_COMMAND_LOGS_PANE_WIDTH,
+      toolDiffPreviewPaneWidth: DEFAULT_TOOL_DIFF_PREVIEW_PANE_WIDTH,
       sidebarTab: 'tasks' as 'tasks' | 'prs',
       lastTaskByProject: {},
       taskState: {},
@@ -197,6 +213,14 @@ const useStore = create<NavigationState>()(
           commandLogsPaneWidth: Math.min(
             Math.max(MIN_COMMAND_LOGS_PANE_WIDTH, width),
             MAX_COMMAND_LOGS_PANE_WIDTH,
+          ),
+        }),
+
+      setToolDiffPreviewPaneWidth: (width) =>
+        set({
+          toolDiffPreviewPaneWidth: Math.min(
+            Math.max(MIN_TOOL_DIFF_PREVIEW_PANE_WIDTH, width),
+            MAX_TOOL_DIFF_PREVIEW_PANE_WIDTH,
           ),
         }),
 
@@ -523,6 +547,25 @@ export function useTaskState(taskId: string) {
     [taskId, setTaskRightPaneAction],
   );
 
+  const openToolDiffPreview = useCallback(
+    ({
+      filePath,
+      oldString,
+      newString,
+    }: {
+      filePath: string;
+      oldString: string;
+      newString: string;
+    }) =>
+      setTaskRightPaneAction(taskId, {
+        type: 'toolDiffPreview',
+        filePath,
+        oldString,
+        newString,
+      }),
+    [taskId, setTaskRightPaneAction],
+  );
+
   const openDebugMessages = useCallback(
     () => setTaskRightPaneAction(taskId, { type: 'debugMessages' }),
     [taskId, setTaskRightPaneAction],
@@ -579,6 +622,7 @@ export function useTaskState(taskId: string) {
     setRightPane,
     setActiveStepId,
     openFilePreview,
+    openToolDiffPreview,
     openSettings,
     openDebugMessages,
     openFileExplorer,
@@ -749,5 +793,17 @@ export function useCommandLogsPaneWidth() {
     setWidth,
     minWidth: MIN_COMMAND_LOGS_PANE_WIDTH,
     maxWidth: MAX_COMMAND_LOGS_PANE_WIDTH,
+  };
+}
+
+// Hook for tool diff preview pane width
+export function useToolDiffPreviewPaneWidth() {
+  const width = useStore((state) => state.toolDiffPreviewPaneWidth);
+  const setWidth = useStore((state) => state.setToolDiffPreviewPaneWidth);
+  return {
+    width,
+    setWidth,
+    minWidth: MIN_TOOL_DIFF_PREVIEW_PANE_WIDTH,
+    maxWidth: MAX_TOOL_DIFF_PREVIEW_PANE_WIDTH,
   };
 }
