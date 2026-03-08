@@ -1,22 +1,29 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
-import type { Skill } from '@shared/skill-types';
 
 export const skillsQueryKeys = {
   all: ['skills'] as const,
-  byTask: (taskId: string) => [...skillsQueryKeys.all, 'task', taskId] as const,
+  byStep: (taskId: string, stepId?: string) =>
+    [...skillsQueryKeys.all, 'step', taskId, stepId ?? ''] as const,
   byProject: (projectId: string) =>
     [...skillsQueryKeys.all, 'project', projectId] as const,
 };
 
-// tasks:getSkills removed — return empty until step-aware skill discovery lands
-export function useSkills(_taskId: string | undefined) {
+/**
+ * Fetches enabled skills for a task step.
+ * The IPC handler resolves the backend type from the step and the project
+ * path from the task's worktree (or its parent project), then returns only
+ * skills that are enabled for that backend.
+ */
+export function useSkills(params: { taskId?: string; stepId?: string }) {
+  const { taskId, stepId } = params;
+
   return useQuery({
-    queryKey: skillsQueryKeys.byTask(''),
-    queryFn: (): Promise<Skill[]> => Promise.resolve([]),
-    initialData: [] as Skill[],
-    staleTime: Infinity,
+    queryKey: skillsQueryKeys.byStep(taskId ?? '', stepId),
+    queryFn: () => api.skillManagement.getForStep({ taskId: taskId!, stepId }),
+    enabled: !!taskId,
+    staleTime: 30_000,
   });
 }
 

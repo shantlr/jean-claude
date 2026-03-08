@@ -492,6 +492,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('project-todos:reorder', projectId, orderedIds),
   },
   skillManagement: {
+    getForStep: (params: { taskId: string; stepId?: string }) =>
+      ipcRenderer.invoke('skills:getForStep', params),
     getAll: (backendType: string, projectPath?: string) =>
       ipcRenderer.invoke('skills:getAll', backendType, projectPath),
     getAllUnified: (projectPath?: string) =>

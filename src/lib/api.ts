@@ -728,6 +728,10 @@ export interface Api {
     reorder: (projectId: string, orderedIds: string[]) => Promise<void>;
   };
   skillManagement: {
+    getForStep: (params: {
+      taskId: string;
+      stepId?: string;
+    }) => Promise<Skill[]>;
     getAll: (
       backendType: AgentBackendType,
       projectPath?: string,
@@ -1115,6 +1119,7 @@ export const api: Api = hasWindowApi
         reorder: async () => {},
       },
       skillManagement: {
+        getForStep: async () => [],
         getAll: async () => [],
         getAllUnified: async () => [],
         getContent: async () => ({ name: '', description: '', content: '' }),

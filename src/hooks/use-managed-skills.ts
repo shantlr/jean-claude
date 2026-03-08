@@ -5,6 +5,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 
+import { skillsQueryKeys } from '@/hooks/use-skills';
 import { api } from '@/lib/api';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type {
@@ -67,6 +68,9 @@ export function useCreateSkill() {
       queryClient.invalidateQueries({
         queryKey: managedSkillsQueryKeys.all,
       });
+      queryClient.invalidateQueries({
+        queryKey: skillsQueryKeys.all,
+      });
     },
   });
 }
@@ -84,6 +88,9 @@ export function useUpdateSkill() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: managedSkillsQueryKeys.all,
+      });
+      queryClient.invalidateQueries({
+        queryKey: skillsQueryKeys.all,
       });
     },
   });
@@ -103,6 +110,9 @@ export function useDeleteSkill() {
       queryClient.invalidateQueries({
         queryKey: managedSkillsQueryKeys.all,
       });
+      queryClient.invalidateQueries({
+        queryKey: skillsQueryKeys.all,
+      });
     },
   });
 }
@@ -121,6 +131,9 @@ export function useDisableSkill() {
       queryClient.invalidateQueries({
         queryKey: managedSkillsQueryKeys.all,
       });
+      queryClient.invalidateQueries({
+        queryKey: skillsQueryKeys.all,
+      });
     },
   });
 }
@@ -138,6 +151,9 @@ export function useEnableSkill() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: managedSkillsQueryKeys.all,
+      });
+      queryClient.invalidateQueries({
+        queryKey: skillsQueryKeys.all,
       });
     },
   });
@@ -160,6 +176,9 @@ export function useLegacySkillMigrationExecute() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: managedSkillsQueryKeys.all,
+      });
+      queryClient.invalidateQueries({
+        queryKey: skillsQueryKeys.all,
       });
     },
   });
@@ -206,6 +225,9 @@ export function useInstallRegistrySkill() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: managedSkillsQueryKeys.all,
+      });
+      queryClient.invalidateQueries({
+        queryKey: skillsQueryKeys.all,
       });
     },
   });

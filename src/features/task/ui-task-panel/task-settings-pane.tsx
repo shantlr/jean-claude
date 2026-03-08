@@ -121,8 +121,8 @@ function SkillGroupSection({ group }: { group: SkillGroup }) {
   );
 }
 
-function SkillsList({ taskId }: { taskId: string }) {
-  const { data: skills, isLoading, error } = useSkills(taskId);
+function SkillsList({ taskId, stepId }: { taskId: string; stepId?: string }) {
+  const { data: skills, isLoading, error } = useSkills({ taskId, stepId });
 
   if (isLoading) {
     return (
@@ -156,6 +156,7 @@ export function TaskSettingsPane({
   sourceBranch,
   sourceCommit,
   taskId,
+  stepId,
   onRemoveTool,
   onClose,
   onOpenDebugMessages,
@@ -164,6 +165,7 @@ export function TaskSettingsPane({
   sourceBranch: string | null;
   sourceCommit: string | null;
   taskId: string;
+  stepId?: string;
   onRemoveTool: (toolName: string) => void;
   onClose: () => void;
   onOpenDebugMessages: () => void;
@@ -279,7 +281,7 @@ export function TaskSettingsPane({
           <h4 className="mb-2 text-xs font-medium tracking-wide text-neutral-500 uppercase">
             Available Skills
           </h4>
-          <SkillsList taskId={taskId} />
+          <SkillsList taskId={taskId} stepId={stepId} />
         </section>
 
         {/* Debug Section */}

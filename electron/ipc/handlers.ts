@@ -2291,6 +2291,51 @@ export function registerIpcHandlers() {
   );
 
   // Skill Management
+
+  // Step-aware skill resolution: look up backend + project path from task/step
+  ipcMain.handle(
+    'skills:getForStep',
+    async (_, params: { taskId: string; stepId?: string }) => {
+      dbg.ipc('skills:getForStep %o', params);
+
+      const { taskId, stepId } = params;
+
+      const task = await TaskRepository.findById(taskId);
+      if (!task) return [];
+
+      const project = await ProjectRepository.findById(task.projectId);
+
+      // Resolve backend from step, falling back to project default, then 'claude-code'.
+      // Only trust step backend when the step belongs to this task.
+      let stepBackend: AgentBackendType | undefined;
+      if (stepId) {
+        const step = await TaskStepRepository.findById(stepId);
+        if (step?.taskId === taskId && step.agentBackend) {
+          stepBackend = step.agentBackend;
+        }
+      }
+
+      const backendType: AgentBackendType =
+        stepBackend ??
+        (project?.defaultAgentBackend as AgentBackendType | null) ??
+        'claude-code';
+
+      // Resolve project path (prefer worktree path, fall back to project path)
+      const projectPath = task.worktreePath ?? project?.path;
+
+      const allSkills = await getAllManagedSkills({ backendType, projectPath });
+      return allSkills
+        .filter((s) => s.enabledBackends[backendType] === true)
+        .map(({ name, description, source, pluginName, skillPath }) => ({
+          name,
+          description,
+          source,
+          pluginName,
+          skillPath,
+        }));
+    },
+  );
+
   ipcMain.handle(
     'skills:getAll',
     async (_, backendType: AgentBackendType, projectPath?: string) => {

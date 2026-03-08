@@ -1172,6 +1172,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           sourceBranch={task.sourceBranch}
           sourceCommit={task.startCommitHash}
           taskId={taskId}
+          stepId={activeStepId ?? undefined}
           onRemoveTool={handleRemoveSessionAllowedTool}
           onClose={closeRightPane}
           onOpenDebugMessages={openDebugMessages}
@@ -1267,7 +1268,10 @@ const TaskInputFooter = memo(function TaskInputFooter({
 }) {
   const { data: task } = useTask(taskId);
   const { data: activeStep } = useStep(activeStepId ?? '');
-  const { data: skills } = useSkills(taskId);
+  const { data: skills } = useSkills({
+    taskId,
+    stepId: activeStepId ?? undefined,
+  });
 
   // Use step values for backend/mode/model (these live on steps now)
   const effectiveBackend = activeStep?.agentBackend ?? 'claude-code';
