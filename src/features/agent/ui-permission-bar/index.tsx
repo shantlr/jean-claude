@@ -49,7 +49,7 @@ function ToolInputDisplay({
     case 'Bash':
       return (
         <pre
-          className="max-h-40 overflow-auto rounded bg-neutral-800 px-2 py-1 text-sm break-all whitespace-pre-wrap text-neutral-200"
+          className="rounded bg-neutral-800 px-2 py-1 text-sm break-all whitespace-pre-wrap text-neutral-200"
           title={String(input.command || '')}
         >
           {String(input.command || '')}
@@ -115,7 +115,7 @@ function ToolInputDisplay({
 
     default:
       return (
-        <pre className="max-h-32 overflow-auto rounded bg-neutral-800 p-2 text-xs text-neutral-400">
+        <pre className="rounded bg-neutral-800 p-2 text-xs break-all whitespace-pre-wrap text-neutral-400">
           {JSON.stringify(input, null, 2)}
         </pre>
       );
@@ -150,7 +150,7 @@ function ExitPlanModeDisplay({
             {isPlanCollapsed ? 'Show plan' : 'Hide plan'}
           </button>
           {!isPlanCollapsed && (
-            <div className="max-h-[80vh] overflow-y-auto rounded border border-neutral-700 bg-neutral-800/50 p-3 text-xs">
+            <div className="rounded border border-neutral-700 bg-neutral-800/50 p-3 text-xs">
               <MarkdownContent content={plan} />
             </div>
           )}
@@ -289,8 +289,8 @@ export function PermissionBar({
 
   return (
     <div className="border border-yellow-700/50 bg-yellow-900/20 px-4 py-3">
-      <div className="flex max-h-[60vh] min-h-0 flex-col gap-3">
-        <div className="min-h-0 overflow-y-auto pr-1">
+      <div className="flex flex-col gap-3">
+        <div>
           <div className="flex items-start gap-3">
             <Shield
               className="mt-0.5 h-5 w-5 shrink-0 text-yellow-500"
