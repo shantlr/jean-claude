@@ -84,7 +84,7 @@ export function AddStepDialog({
   const [backend, setBackend] = useState<AgentBackendType>(defaultBackend);
   const [model, setModel] = useState<ModelPreference>(defaultModel);
   const [images, setImages] = useState<PromptImagePart[]>([]);
-  const [autoStart, setAutoStart] = useState(false);
+  const [autoStart, setAutoStart] = useState(true);
   const textareaRef = useRef<PromptTextareaRef>(null);
 
   const { data: dynamicModels } = useBackendModels(backend);
@@ -101,7 +101,7 @@ export function AddStepDialog({
       setBackend(defaultBackend);
       setModel(defaultModel);
       setImages([]);
-      setAutoStart(false);
+      setAutoStart(true);
       setTimeout(() => textareaRef.current?.focus(), 0);
     }
   }, [isOpen, defaultBackend, defaultModel]);
