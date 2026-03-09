@@ -176,11 +176,11 @@ export function AddStepDialog({
     <Modal isOpen={isOpen} onClose={onClose} title="Add Step">
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-neutral-400">Step type</span>
           <Select
             value={presetType}
             onChange={(value) => setPresetType(value as AddStepPresetType)}
             options={[...STEP_PRESET_OPTIONS]}
+            shortcut="cmd+t"
             side="top"
           />
         </div>
