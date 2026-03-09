@@ -229,14 +229,12 @@ export class ClaudeCodeBackend implements AgentBackend {
     model?: string;
   }): Promise<string> {
     // Claude SDK supports ephemeral forked sessions via persistSession: false.
-    // Safety: `bypassPermissions` is used here because `allowedTools: []`
-    // prevents all tool use — the session can only produce text output.
+    // With allowedTools: [], the session can only produce text output.
     const generator = query({
       prompt: SESSION_SUMMARY_PROMPT,
       options: {
         cwd,
         allowedTools: [],
-        permissionMode: 'bypassPermissions',
         model: model && model !== 'default' ? model : undefined,
         resume: sessionId,
         forkSession: true,
@@ -397,6 +395,10 @@ export class ClaudeCodeBackend implements AgentBackend {
 
     if (config.model && config.model !== 'default') {
       queryOptions.model = config.model;
+    }
+
+    if (config.mcpServers && Object.keys(config.mcpServers).length > 0) {
+      queryOptions.mcpServers = config.mcpServers;
     }
 
     if (session.sessionId) {

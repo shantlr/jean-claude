@@ -167,7 +167,6 @@ Generate the summary now.`;
     prompt,
     options: {
       allowedTools: [],
-      permissionMode: 'bypassPermissions',
       model: 'opus',
       outputFormat: {
         type: 'json_schema',

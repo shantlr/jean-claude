@@ -18,6 +18,10 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'electron/main.ts'),
+          'jean-claude-mcp-server': resolve(
+            __dirname,
+            'electron/mcp/jean-claude-mcp-server.ts',
+          ),
         },
       },
     },

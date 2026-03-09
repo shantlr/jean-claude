@@ -36,7 +36,6 @@ the generated task name should be very consive and very expressive.
 Task: ${prompt}`,
       options: {
         allowedTools: [],
-        permissionMode: 'bypassPermissions',
         model: 'haiku',
         abortController,
         outputFormat: {

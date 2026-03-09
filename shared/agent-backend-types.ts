@@ -57,6 +57,11 @@ export interface AgentBackendConfig {
   persistedSessionRules?: PermissionScope;
   /** Backend-agnostic permission rules for runtime evaluation */
   permissionRules?: ResolvedPermissionRule[];
+  /** Runtime MCP server configurations (stdio-based) passed directly to the agent SDK */
+  mcpServers?: Record<
+    string,
+    { command: string; args?: string[]; env?: Record<string, string> }
+  >;
 }
 
 export interface AgentSession {

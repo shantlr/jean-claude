@@ -312,7 +312,8 @@ export type TaskStepType =
   | 'agent'
   | 'create-pull-request'
   | 'fork'
-  | 'pr-review';
+  | 'pr-review'
+  | 'review';
 
 /** Meta for `create-pull-request` steps — params + result after execution */
 export interface CreatePullRequestStepMeta {
@@ -348,10 +349,24 @@ export interface PrReviewStepMeta {
   submittedCount?: number;
 }
 
+/** Config for a single reviewer in a review step */
+export interface ReviewerConfig {
+  id: string;
+  label: string;
+  focusPrompt: string;
+  backend: AgentBackendType;
+}
+
+/** Meta for `review` steps — single agent session using MCP tools for parallel review */
+export interface ReviewStepMeta {
+  reviewers: ReviewerConfig[];
+}
+
 export type TaskStepMeta =
   | CreatePullRequestStepMeta
   | ForkStepMeta
   | PrReviewStepMeta
+  | ReviewStepMeta
   | Record<string, never>;
 
 export interface TaskStep {

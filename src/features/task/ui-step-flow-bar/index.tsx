@@ -1,5 +1,13 @@
 import clsx from 'clsx';
-import { AlertTriangle, Check, Circle, Loader2, Plus, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  Check,
+  Circle,
+  Loader2,
+  Plus,
+  Search,
+  X,
+} from 'lucide-react';
 import { Fragment, useCallback, useEffect, useRef } from 'react';
 
 import { Kbd } from '@/common/ui/kbd';
@@ -43,6 +51,27 @@ function StatusIcon({ status }: { status: TaskStepStatus }) {
         />
       );
   }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Step type icon (overrides status icon for special step types)       */
+/* ------------------------------------------------------------------ */
+
+function StepTypeIcon({ step }: { step: TaskStep }) {
+  if (step.type === 'review') {
+    const cls = 'h-3 w-3 shrink-0';
+    if (step.status === 'running') {
+      return <Search className={clsx(cls, 'animate-pulse text-blue-400')} />;
+    }
+    if (step.status === 'completed') {
+      return <Search className={clsx(cls, 'text-emerald-400')} />;
+    }
+    if (step.status === 'errored') {
+      return <Search className={clsx(cls, 'text-red-400')} />;
+    }
+    return <Search className={clsx(cls, 'text-neutral-400')} />;
+  }
+  return <StatusIcon status={step.status} />;
 }
 
 /* ------------------------------------------------------------------ */
@@ -102,7 +131,7 @@ function StepChip({
           'shadow-[0_0_6px_0_rgba(59,130,246,0.15)] ring-1 ring-blue-500/40 ring-offset-1 ring-offset-neutral-900',
       )}
     >
-      <StatusIcon status={step.status} />
+      <StepTypeIcon step={step} />
       <span className="flex items-center gap-1.5">
         <span className="text-[10px] opacity-40">{index + 1}</span>
         <span className="max-w-[120px] truncate">{step.name}</span>

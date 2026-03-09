@@ -26,7 +26,7 @@ import {
 } from '@shared/agent-types';
 import type { AgentUIEventPayload } from '@shared/agent-ui-events';
 import type { NormalizedEntry } from '@shared/normalized-message-v2';
-import type { InteractionMode } from '@shared/types';
+import type { InteractionMode, ReviewStepMeta } from '@shared/types';
 import {
   getDefaultInteractionModeForBackend,
   normalizeInteractionModeForBackend,
@@ -46,6 +46,7 @@ import { pathExists } from '../lib/fs';
 import { AGENT_BACKEND_CLASSES } from './agent-backends';
 import { ClaudeCodeBackend } from './agent-backends/claude/claude-code-backend';
 import { OpenCodeBackend } from './agent-backends/opencode/opencode-backend';
+import { getJcMcpServerPath } from './mcp-template-service';
 import { generateTaskName } from './name-generation-service';
 import { notificationService } from './notification-service';
 import {
@@ -61,6 +62,63 @@ import { StepService } from './step-service';
  *  Keeps full PromptPart[] (with image base64) out of the QueuedPrompt.content
  *  field which crosses IPC to the renderer for display. */
 const queuedPromptParts = new Map<string, PromptPart[]>();
+
+/**
+ * Build the runtime MCP servers config for the Jean-Claude Agent Tools server.
+ * Returns a config object that can be passed directly to the agent backend.
+ */
+function buildJcMcpServersConfigForCwd(
+  cwd: string,
+): Record<
+  string,
+  { command: string; args: string[]; env: Record<string, string> }
+> {
+  const serverPath = getJcMcpServerPath();
+  return {
+    'jean-claude-mcp': {
+      command: 'node',
+      args: [serverPath],
+      env: {
+        JC_MCP_WORKDIR: cwd,
+      },
+    },
+  };
+}
+
+/**
+ * Build a review prompt that instructs the agent to use `run_review` MCP
+ * tools in parallel for each configured reviewer focus area.
+ */
+function buildReviewPrompt(
+  basePrompt: string,
+  meta: ReviewStepMeta | undefined,
+): string {
+  const reviewers = meta?.reviewers ?? [];
+  const reviewerList = reviewers
+    .map(
+      (r, i) =>
+        `${i + 1}. **${r.label}** (backend: ${r.backend ?? 'claude-code'}): ${r.focusPrompt}`,
+    )
+    .join('\n');
+
+  const extra = basePrompt.trim()
+    ? `\n\nAdditional instructions:\n${basePrompt}`
+    : '';
+
+  return [
+    'You are a code review coordinator. Review the changes in this worktree by running focused sub-reviews in parallel.',
+    '',
+    'Use the `run_review` MCP tool to spawn the following focused code reviews simultaneously.',
+    'When calling `run_review`, set the `backend` field to the backend listed for each reviewer.',
+    '',
+    reviewerList,
+    '',
+    'After all reviews complete, synthesize the findings into a comprehensive summary organized by severity and category.',
+    '',
+    'IMPORTANT: Do NOT implement any changes. Present your findings and recommendations, then wait for the user to decide on next steps.',
+    extra,
+  ].join('\n');
+}
 
 // --- Active session tracking ---
 
@@ -291,6 +349,12 @@ class AgentService {
     const settings = await readSettings(project.path);
     const rules = resolveRules(settings, isWorktree);
 
+    // For review steps, provide the Jean-Claude MCP server at runtime
+    const mcpServers =
+      step?.type === 'review'
+        ? buildJcMcpServersConfigForCwd(workingDir)
+        : undefined;
+
     // Start the backend
     dbg.agentSession('Starting backend for step %s', stepId);
     const agentSession = await session.backend.start(
@@ -311,6 +375,7 @@ class AgentService {
         sessionId: session.sdkSessionId ?? undefined,
         persistedSessionRules: task.sessionRules ?? {},
         permissionRules: rules,
+        mcpServers,
       },
       parts,
     );
@@ -672,7 +737,13 @@ class AgentService {
     const pendingImages = this.pendingImageAttachments.get(session.taskId);
     this.pendingImageAttachments.delete(session.taskId);
 
-    const parts: PromptPart[] = textPrompt(resolvedPrompt);
+    // For review steps, build the review prompt from reviewer configs
+    const effectivePrompt =
+      step.type === 'review'
+        ? buildReviewPrompt(resolvedPrompt, step.meta as ReviewStepMeta)
+        : resolvedPrompt;
+
+    const parts: PromptPart[] = textPrompt(effectivePrompt);
     // Include images persisted on the step
     if (step.images && step.images.length > 0) {
       parts.push(...step.images);
@@ -716,6 +787,7 @@ class AgentService {
 
   async stop(stepId: string): Promise<void> {
     dbg.agentSession('Stopping step %s', stepId);
+
     const session = this.sessions.get(stepId);
     if (!session) {
       dbg.agentSession('No session found for step %s, nothing to stop', stepId);

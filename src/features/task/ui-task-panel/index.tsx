@@ -108,12 +108,18 @@ import { ToolDiffPreviewPane } from './tool-diff-preview-pane';
 
 const LAST_ASSISTANT_MESSAGE_MAX_LENGTH = 1200;
 
-const REVIEW_CHANGES_PROMPT = [
-  'You are reviewing the current task changes.',
-  'Inspect the git diff and identify potential bugs, regressions, code quality issues, and missing tests.',
-  'Prioritize high-impact findings first, then list medium/low issues.',
-  'When possible, reference concrete files and lines.',
-].join('\n');
+function buildReviewChangesPrompt(sourceBranch?: string | null): string {
+  const diffInstruction = sourceBranch
+    ? `Inspect the git diff against the task source branch (${sourceBranch}) and identify potential bugs, regressions, code quality issues, and missing tests.`
+    : 'Inspect the git diff against the task source branch and identify potential bugs, regressions, code quality issues, and missing tests.';
+
+  return [
+    'You are reviewing the current task changes.',
+    diffInstruction,
+    'Prioritize high-impact findings first, then list medium/low issues.',
+    'When possible, reference concrete files and lines.',
+  ].join('\n');
+}
 
 function buildContinuePromptTemplate({
   previousStepId,
@@ -565,6 +571,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       modelPreference: ModelPreference;
       images: PromptImagePart[];
       start: boolean;
+      reviewers?: import('@shared/types').ReviewerConfig[];
     }) => {
       const referenceStep = getReferenceStepForPreset({
         steps: steps ?? [],
@@ -586,13 +593,17 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               userPrompt: data.promptTemplate,
             })
           : data.presetType === 'review-changes'
-            ? data.promptTemplate || REVIEW_CHANGES_PROMPT
+            ? data.promptTemplate ||
+              buildReviewChangesPrompt(task?.sourceBranch)
             : data.promptTemplate;
 
       const dependsOn =
         data.presetType === 'continue' && referenceStep
           ? [referenceStep.id]
           : [];
+
+      const isReview = data.presetType === 'review-changes';
+      const reviewers = isReview ? data.reviewers : undefined;
 
       try {
         const step = await createStep.mutateAsync({
@@ -605,6 +616,12 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           images: data.images.length > 0 ? data.images : null,
           dependsOn,
           start: data.start,
+          ...(isReview && reviewers
+            ? {
+                type: 'review' as const,
+                meta: { reviewers },
+              }
+            : {}),
         });
         setIsAddStepDialogOpen(false);
         setActiveStepId(step.id);
@@ -616,7 +633,15 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         });
       }
     },
-    [taskId, createStep, setActiveStepId, addToast, steps, activeStepId],
+    [
+      taskId,
+      createStep,
+      setActiveStepId,
+      addToast,
+      steps,
+      activeStepId,
+      task?.sourceBranch,
+    ],
   );
 
   const handleMergeStarted = useCallback(() => {

@@ -55,6 +55,9 @@ interface ServerHandle {
   server: { url: string; close(): void };
 }
 
+type RuntimeMcpServers = NonNullable<AgentBackendConfig['mcpServers']>;
+const RUNTIME_MCP_TIMEOUT_MS = 30 * 60 * 1000;
+
 let serverInstance: ServerHandle | null = null;
 let serverInitPromise: Promise<ServerHandle> | null = null;
 
@@ -91,6 +94,63 @@ async function getOrCreateServer(): Promise<ServerHandle> {
   return (await serverInitPromise)!;
 }
 
+function hasRuntimeMcpServers(config: AgentBackendConfig): boolean {
+  return !!config.mcpServers && Object.keys(config.mcpServers).length > 0;
+}
+
+function toOpenCodeMcpConfig(runtimeMcpServers: RuntimeMcpServers): {
+  [key: string]: {
+    type: 'local';
+    command: string[];
+    environment?: Record<string, string>;
+    enabled: boolean;
+    timeout: number;
+  };
+} {
+  const mcp: {
+    [key: string]: {
+      type: 'local';
+      command: string[];
+      environment?: Record<string, string>;
+      enabled: boolean;
+      timeout: number;
+    };
+  } = {};
+
+  for (const [name, server] of Object.entries(runtimeMcpServers)) {
+    const command = [server.command, ...(server.args ?? [])];
+    if (command.length === 0 || !command[0]) continue;
+    mcp[name] = {
+      type: 'local',
+      command,
+      ...(server.env ? { environment: server.env } : {}),
+      enabled: true,
+      timeout: RUNTIME_MCP_TIMEOUT_MS,
+    };
+  }
+
+  return mcp;
+}
+
+async function createDedicatedServer(
+  config: AgentBackendConfig,
+): Promise<ServerHandle> {
+  const runtimeMcpServers = config.mcpServers ?? {};
+  const mcp = toOpenCodeMcpConfig(runtimeMcpServers);
+  dbg.agent(
+    'Starting dedicated OpenCode server with %d runtime MCP servers',
+    Object.keys(mcp).length,
+  );
+  return createOpencode({
+    hostname: '127.0.0.1',
+    port: 0,
+    timeout: 30_000,
+    config: {
+      mcp,
+    },
+  });
+}
+
 // --- Backend deps (injected by agent-service for raw persistence) ---
 
 // --- Session tracking ---
@@ -125,6 +185,12 @@ interface OpenCodeSessionState {
   emittedQuestionRequestIds: Set<string>;
   /** Resolved permission rules for runtime evaluation */
   permissionRules: ResolvedPermissionRule[];
+  /** Server/client handle used by this session */
+  serverHandle: ServerHandle;
+  /** Whether this session owns a dedicated server instance */
+  ownsServerHandle: boolean;
+  /** Guards against double-close of dedicated servers */
+  serverClosed: boolean;
 }
 
 export class OpenCodeBackend implements AgentBackend {
@@ -143,7 +209,11 @@ export class OpenCodeBackend implements AgentBackend {
     config: AgentBackendConfig,
     parts: PromptPart[],
   ): Promise<AgentSession> {
-    const { client } = await getOrCreateServer();
+    const ownsServerHandle = hasRuntimeMcpServers(config);
+    const serverHandle = ownsServerHandle
+      ? await createDedicatedServer(config)
+      : await getOrCreateServer();
+    const { client } = serverHandle;
 
     // Create or resume an OpenCode session
     let session: OcSession;
@@ -197,6 +267,9 @@ export class OpenCodeBackend implements AgentBackend {
       messageIndex: this.taskContext.sessionStartIndex,
       emittedQuestionRequestIds: new Set(),
       permissionRules: config.permissionRules ?? [],
+      serverHandle,
+      ownsServerHandle,
+      serverClosed: false,
     };
 
     this.sessions.set(session.id, state);
@@ -217,8 +290,7 @@ export class OpenCodeBackend implements AgentBackend {
     state.abortController.abort();
 
     try {
-      const { client } = await getOrCreateServer();
-      await client.session.abort({
+      await state.serverHandle.client.session.abort({
         sessionID: sessionId,
         directory: state.cwd,
       });
@@ -233,6 +305,7 @@ export class OpenCodeBackend implements AgentBackend {
     state.pendingPermissions.clear();
 
     this.sessions.delete(sessionId);
+    this.closeDedicatedServer(state);
   }
 
   async summarizeSession({
@@ -246,7 +319,9 @@ export class OpenCodeBackend implements AgentBackend {
   }): Promise<string> {
     // OpenCode does not currently expose a non-persistent fork option,
     // so we delete the forked session explicitly after summarization.
-    const { client } = await getOrCreateServer();
+    const state = this.sessions.get(sessionId);
+    const client =
+      state?.serverHandle.client ?? (await getOrCreateServer()).client;
     const forked = await client.session.fork({
       sessionID: sessionId,
       directory: cwd,
@@ -321,8 +396,6 @@ export class OpenCodeBackend implements AgentBackend {
       throw new Error(`No OpenCode session: ${sessionId}`);
     }
 
-    const { client } = await getOrCreateServer();
-
     // Map our normalized response to OpenCode's permission response
     let ocResponse: 'once' | 'always' | 'reject';
     if (response.behavior === 'deny') {
@@ -334,7 +407,7 @@ export class OpenCodeBackend implements AgentBackend {
     }
 
     try {
-      await client.permission.reply({
+      await state.serverHandle.client.permission.reply({
         requestID: requestId,
         directory: state.cwd,
         reply: ocResponse,
@@ -366,7 +439,6 @@ export class OpenCodeBackend implements AgentBackend {
       return;
     }
 
-    const { client } = await getOrCreateServer();
     dbg.agent(
       'OpenCodeBackend.respondToQuestion sending reply for %s with answer %O',
       sessionId,
@@ -377,7 +449,7 @@ export class OpenCodeBackend implements AgentBackend {
     // QuestionAnswer = Array<string> — each answer is the selected option(s)
     const answers = Object.values(answer).map((value) => [value]);
 
-    client.question
+    state.serverHandle.client.question
       .reply({
         requestID: requestId,
         directory: state.cwd,
@@ -708,6 +780,19 @@ export class OpenCodeBackend implements AgentBackend {
 
     // Clean up
     this.sessions.delete(sessionId);
+    this.closeDedicatedServer(state);
+  }
+
+  private closeDedicatedServer(state: OpenCodeSessionState): void {
+    if (!state.ownsServerHandle || state.serverClosed) {
+      return;
+    }
+    state.serverHandle.server.close();
+    state.serverClosed = true;
+    dbg.agent(
+      'Closed dedicated OpenCode server for session %s',
+      state.session.id,
+    );
   }
 
   /**

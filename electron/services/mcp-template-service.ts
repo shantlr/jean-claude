@@ -5,6 +5,8 @@ import * as os from 'os';
 import * as path from 'path';
 import { promisify } from 'util';
 
+import { app } from 'electron';
+
 import type {
   ClaudeMcpServer,
   McpPreset,
@@ -49,6 +51,22 @@ git clone https://github.com/oraios/serena
     },
     installOnCreateWorktree: true,
   },
+  {
+    id: 'jean-claude-agent',
+    name: 'Jean-Claude Agent Tools',
+    description: `Spawn sub-agent sessions from within a running agent.
+
+**Tools:**
+- \`run_agent\` — Run a full agent session to complete a task
+- \`run_review\` — Run a read-only code review
+
+**Safety:**
+- Maximum nesting depth of 3 levels
+- Sub-agents cannot access this MCP server (prevents infinite recursion)`,
+    commandTemplate: 'node "{jcMcpServerPath}"',
+    variables: {},
+    installOnCreateWorktree: false,
+  },
 ];
 
 // Auto-provided variable names (reserved, cannot be user-defined)
@@ -57,6 +75,7 @@ const AUTO_PROVIDED_VARIABLES = [
   'projectName',
   'branchName',
   'mainRepoPath',
+  'jcMcpServerPath',
 ];
 
 const CLAUDE_CONFIG_PATH = path.join(os.homedir(), '.claude.json');
@@ -94,6 +113,12 @@ export function substituteVariables(
   result = result.replace(/\{projectName\}/g, context.projectName);
   result = result.replace(/\{branchName\}/g, context.branchName);
   result = result.replace(/\{mainRepoPath\}/g, context.mainRepoPath);
+
+  // Resolve jcMcpServerPath based on whether we're running packaged or in dev
+  const jcMcpServerPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'mcp', 'jean-claude-mcp-server.js')
+    : path.join(__dirname, 'jean-claude-mcp-server.js');
+  result = result.replace(/\{jcMcpServerPath\}/g, jcMcpServerPath);
 
   // Substitute user-defined variables
   for (const [key, value] of Object.entries(userVariables)) {
@@ -393,4 +418,14 @@ export async function deactivateMcpServer(
   });
 
   dbg.mcp('Successfully deactivated MCP server: %s', name);
+}
+
+/**
+ * Returns the resolved path to the Jean-Claude MCP server script.
+ * Handles dev vs packaged mode.
+ */
+export function getJcMcpServerPath(): string {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'mcp', 'jean-claude-mcp-server.js')
+    : path.join(__dirname, 'jean-claude-mcp-server.js');
 }
