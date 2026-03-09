@@ -39,7 +39,7 @@ import {
   type InputMode,
   type WorkItemsViewMode,
 } from '@/stores/new-task-draft';
-import { useUIStore } from '@/stores/ui';
+import { useUISetting, useUIStore } from '@/stores/ui';
 import type {
   AgentBackendType,
   PromptImagePart,
@@ -1148,8 +1148,8 @@ function SearchModeContent({
   }, [filteredWorkItems, highlightedIndex, selectedWorkItemIds, workItems]);
 
   // Resizable panel
-  const panelWidth = useUIStore((s) => s.workItemsPanelWidth);
-  const setPanelWidth = useUIStore((s) => s.setWorkItemsPanelWidth);
+  const panelWidth = useUISetting('workItemsPanelWidth');
+  const setSetting = useUIStore((s) => s.setSetting);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleDragStart = useCallback(
@@ -1163,7 +1163,7 @@ function SearchModeContent({
         const containerWidth = containerRef.current.offsetWidth;
         const deltaX = moveEvent.clientX - startX;
         const deltaPct = (deltaX / containerWidth) * 100;
-        setPanelWidth(startWidth + deltaPct);
+        setSetting('workItemsPanelWidth', startWidth + deltaPct);
       };
 
       const onMouseUp = () => {
@@ -1174,7 +1174,7 @@ function SearchModeContent({
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
     },
-    [panelWidth, setPanelWidth],
+    [panelWidth, setSetting],
   );
 
   // Show appropriate content based on context

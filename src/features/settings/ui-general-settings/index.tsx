@@ -23,6 +23,7 @@ import {
   useUpdateUsageDisplaySetting,
 } from '@/hooks/use-settings';
 import { api, type NonExistentClaudeProject } from '@/lib/api';
+import { useUISetting, useUIStore } from '@/stores/ui';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import { PRESET_EDITORS, type EditorSetting } from '@shared/types';
 import { USAGE_PROVIDERS, type UsageProviderType } from '@shared/usage-types';
@@ -178,6 +179,12 @@ export function GeneralSettings() {
 
       {/* Usage Display */}
       <UsageDisplaySettings />
+
+      {/* Divider */}
+      <div className="my-8 border-t border-neutral-800" />
+
+      {/* Prompt Navigator */}
+      <PromptNavigatorSettings />
 
       {/* Divider */}
       <div className="my-8 border-t border-neutral-800" />
@@ -396,6 +403,87 @@ function SummaryModelsSettings() {
             onChange={(model) => setModelForBackend('opencode', model)}
             models={getModelsForBackend('opencode', opencodeDynamicModels)}
           />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const MAX_WIDTH_OPTIONS = [
+  { value: 30, label: '30%' },
+  { value: 40, label: '40%' },
+  { value: 50, label: '50%' },
+  { value: 60, label: '60%' },
+  { value: 70, label: '70%' },
+  { value: 80, label: '80%' },
+  { value: 100, label: '100% (max 56rem)' },
+];
+
+function PromptNavigatorSettings() {
+  const defaultCollapsed = useUISetting('promptNavigatorDefaultCollapsed');
+  const maxWidth = useUISetting('promptNavigatorMaxWidth');
+  const setSetting = useUIStore((s) => s.setSetting);
+  const toggleSetting = useUIStore((s) => s.toggleSetting);
+
+  return (
+    <div>
+      <h2 className="text-lg font-semibold text-neutral-200">
+        Prompt Navigator
+      </h2>
+      <p className="mt-1 text-sm text-neutral-500">
+        Configure the prompt navigator shown in message streams.
+      </p>
+
+      <div className="mt-4 space-y-4">
+        {/* Default collapsed state */}
+        <label
+          className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 ${
+            defaultCollapsed
+              ? 'border-neutral-700 bg-neutral-800'
+              : 'border-neutral-800 bg-neutral-900'
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={defaultCollapsed}
+            onChange={() => toggleSetting('promptNavigatorDefaultCollapsed')}
+            className="h-4 w-4 rounded border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-neutral-800"
+          />
+          <div>
+            <div
+              className={`text-sm font-medium ${defaultCollapsed ? 'text-neutral-200' : 'text-neutral-500'}`}
+            >
+              Start collapsed
+            </div>
+            <div className="text-xs text-neutral-500">
+              Navigator starts collapsed and can be expanded per session
+            </div>
+          </div>
+        </label>
+
+        {/* Max width */}
+        <div className="flex items-center justify-between rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-3">
+          <div>
+            <div className="text-sm font-medium text-neutral-200">
+              Max width
+            </div>
+            <div className="text-xs text-neutral-500">
+              Maximum width of the prompt navigator panel
+            </div>
+          </div>
+          <select
+            value={maxWidth}
+            onChange={(e) =>
+              setSetting('promptNavigatorMaxWidth', Number(e.target.value))
+            }
+            className="rounded-md border border-neutral-600 bg-neutral-700 px-3 py-1.5 text-sm text-neutral-200 focus:border-blue-500 focus:outline-none"
+          >
+            {MAX_WIDTH_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
     </div>

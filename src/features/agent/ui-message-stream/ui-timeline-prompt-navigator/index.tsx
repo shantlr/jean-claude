@@ -1,5 +1,8 @@
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { RefObject } from 'react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+
+import { useUISetting } from '@/stores/ui';
 
 import type { DisplayMessage } from '../message-merger';
 import { usePromptNavigation } from '../use-prompt-navigation';
@@ -11,6 +14,10 @@ export function TimelinePromptNavigator({
   scrollContainerRef: RefObject<HTMLDivElement | null>;
   displayMessages: DisplayMessage[];
 }) {
+  const defaultCollapsed = useUISetting('promptNavigatorDefaultCollapsed');
+  const maxWidth = useUISetting('promptNavigatorMaxWidth');
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+
   const prompts = useMemo(() => {
     const promptItems: Array<{ index: number; text: string }> = [];
     let promptIndex = 0;
@@ -93,10 +100,40 @@ export function TimelinePromptNavigator({
   }
 
   return (
-    <>
-      <div className="pointer-events-none sticky top-0 z-20 mb-2 ml-6 flex justify-end pt-1 pr-3">
-        <div className="pointer-events-auto flex max-w-[min(56rem,calc(100%-2rem))] flex-col items-end gap-1">
-          {items.map((item) => {
+    <div className="pointer-events-none sticky top-0 z-20 mb-2 ml-6 flex justify-end pt-1 pr-3">
+      <div
+        className="pointer-events-auto flex min-w-[12rem] flex-col items-end gap-1"
+        style={{ maxWidth: `min(${maxWidth}%, 56rem)` }}
+      >
+        {/* Collapse/Expand toggle */}
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          className="flex items-center gap-1 rounded-md border border-neutral-600 bg-neutral-800 px-2 py-0.5 text-[10px] text-neutral-400 opacity-90 transition-colors hover:border-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
+          title={
+            collapsed ? 'Expand prompt navigator' : 'Collapse prompt navigator'
+          }
+        >
+          {collapsed ? (
+            <>
+              <ChevronDown className="h-3 w-3" />
+              <span>
+                {currentPrompt
+                  ? `${currentPrompt.index + 1}/${totalPrompts}`
+                  : `${totalPrompts} prompts`}
+              </span>
+            </>
+          ) : (
+            <>
+              <ChevronUp className="h-3 w-3" />
+              <span>Collapse</span>
+            </>
+          )}
+        </button>
+
+        {/* Prompt pills */}
+        {!collapsed &&
+          items.map((item) => {
             if (item.type === 'ellipsis') {
               return (
                 <div
@@ -134,8 +171,7 @@ export function TimelinePromptNavigator({
               </button>
             );
           })}
-        </div>
       </div>
-    </>
+    </div>
   );
 }
