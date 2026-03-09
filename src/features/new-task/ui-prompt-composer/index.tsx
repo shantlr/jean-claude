@@ -9,6 +9,17 @@ const turndown = new TurndownService({
   codeBlockStyle: 'fenced',
 });
 
+// Strip Azure DevOps attachment images from the markdown output.
+// These images are extracted separately and attached as PromptImagePart[].
+turndown.addRule('strip-azure-images', {
+  filter: (node) => {
+    if (node.nodeName !== 'IMG') return false;
+    const src = node.getAttribute('src') ?? '';
+    return AZURE_ATTACHMENT_URL_TEST.test(src);
+  },
+  replacement: () => '',
+});
+
 function escapeXml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
@@ -16,6 +27,60 @@ function escapeXml(value: string): string {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&apos;');
+}
+
+/**
+ * Azure DevOps attachment URL pattern (global, for matchAll extraction).
+ */
+const AZURE_IMAGE_URL_PATTERN =
+  /https:\/\/(?:dev\.azure\.com|[^\s"'<>]+\.visualstudio\.com)\/[^"'\s<>]*\/_apis\/wit\/attachments\/[^"'\s<>]*/gi;
+
+/**
+ * Non-global version for Turndown filter (avoids lastIndex issues with .test()).
+ */
+const AZURE_ATTACHMENT_URL_TEST =
+  /https:\/\/(?:dev\.azure\.com|[^\s"'<>]+\.visualstudio\.com)\/[^"'\s<>]*\/_apis\/wit\/attachments\//i;
+
+/** File extensions recognized as images in Azure DevOps attachment URLs. */
+const IMAGE_EXTENSIONS = /\.(png|jpe?g|gif|webp|avif|bmp|svg|tiff?)$/i;
+
+/** Check whether an attachment URL points to an image (by fileName param or path). */
+function isImageAttachmentUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const fileName = parsed.searchParams.get('fileName');
+    if (fileName) return IMAGE_EXTENSIONS.test(fileName);
+    // Fall back to checking the pathname
+    return IMAGE_EXTENSIONS.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Extracts unique Azure DevOps image URLs from work item HTML fields.
+ * Looks at both description and reproSteps. Filters out non-image attachments.
+ */
+export function extractWorkItemImageUrls(
+  workItems: AzureDevOpsWorkItem[],
+): string[] {
+  const urls = new Set<string>();
+
+  for (const workItem of workItems) {
+    const { description, reproSteps } = workItem.fields;
+
+    for (const html of [description, reproSteps]) {
+      if (!html) continue;
+      const matches = html.matchAll(AZURE_IMAGE_URL_PATTERN);
+      for (const match of matches) {
+        if (isImageAttachmentUrl(match[0])) {
+          urls.add(match[0]);
+        }
+      }
+    }
+  }
+
+  return [...urls];
 }
 
 // Generate initial prompt template from selected work items

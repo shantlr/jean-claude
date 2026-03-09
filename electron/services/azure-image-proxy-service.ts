@@ -12,14 +12,15 @@ import { dbg } from '../lib/debug';
 import { createAuthHeader } from './azure-devops-service';
 
 /**
- * Fetches an image from Azure DevOps with PAT authentication and returns
- * a streaming Response. This streams the image data directly without
- * buffering the entire image in memory.
+ * Validates URL and resolves provider credentials for an Azure DevOps image fetch.
+ * Returns the authenticated Response on success, or an error string on failure.
  */
-export async function fetchAuthenticatedImageStream(params: {
+async function fetchAuthenticated(params: {
   providerId: string;
   imageUrl: string;
-}): Promise<Response> {
+}): Promise<
+  { response: Response; mimeType: string } | { error: string; status: number }
+> {
   const { providerId, imageUrl } = params;
 
   // Validate the URL is an Azure DevOps URL
@@ -28,7 +29,7 @@ export async function fetchAuthenticatedImageStream(params: {
     url = new URL(imageUrl);
   } catch {
     dbg.azureImageProxy('Invalid URL: %s', imageUrl);
-    return new Response('Invalid image URL', { status: 400 });
+    return { error: 'Invalid image URL', status: 400 };
   }
 
   if (
@@ -36,25 +37,20 @@ export async function fetchAuthenticatedImageStream(params: {
     !url.hostname.endsWith('visualstudio.com')
   ) {
     dbg.azureImageProxy('Rejected non-Azure DevOps URL: %s', imageUrl);
-    return new Response('Only Azure DevOps URLs are allowed', { status: 403 });
+    return { error: 'Only Azure DevOps URLs are allowed', status: 403 };
   }
 
   // Get provider and token
   const provider = await ProviderRepository.findById(providerId);
-  if (!provider) {
-    dbg.azureImageProxy('Provider not found: %s', providerId);
-    return new Response('Provider not found', { status: 404 });
-  }
-
-  if (!provider.tokenId) {
-    dbg.azureImageProxy('Provider has no token: %s', providerId);
-    return new Response('Provider has no token', { status: 401 });
+  if (!provider?.tokenId) {
+    dbg.azureImageProxy('Provider or token not found: %s', providerId);
+    return { error: 'Provider or token not found', status: 401 };
   }
 
   const token = await TokenRepository.getDecryptedToken(provider.tokenId);
   if (!token) {
     dbg.azureImageProxy('Token not found for provider: %s', providerId);
-    return new Response('Token not found', { status: 401 });
+    return { error: 'Token not found', status: 401 };
   }
 
   try {
@@ -70,30 +66,71 @@ export async function fetchAuthenticatedImageStream(params: {
         response.status,
         response.statusText,
       );
-      return new Response('Failed to fetch image from Azure DevOps', {
+      return {
+        error: 'Failed to fetch image from Azure DevOps',
         status: response.status,
-      });
+      };
     }
 
-    // Stream the response body directly
-    const contentType =
+    const mimeType =
       response.headers.get('content-type') || 'application/octet-stream';
-    const contentLength = response.headers.get('content-length');
 
-    const headers: Record<string, string> = {
-      'Content-Type': contentType,
-      'Cache-Control': 'private, max-age=3600',
-    };
-
-    if (contentLength) {
-      headers['Content-Length'] = contentLength;
-    }
-
-    return new Response(response.body, { headers });
+    return { response, mimeType };
   } catch (error) {
     dbg.azureImageProxy('Error fetching image: %O', error);
-    return new Response('Error fetching image', { status: 502 });
+    return { error: 'Error fetching image', status: 502 };
   }
+}
+
+/**
+ * Fetches an image from Azure DevOps with PAT authentication and returns
+ * a streaming Response. This streams the image data directly without
+ * buffering the entire image in memory.
+ */
+export async function fetchAuthenticatedImageStream(params: {
+  providerId: string;
+  imageUrl: string;
+}): Promise<Response> {
+  const result = await fetchAuthenticated(params);
+
+  if ('error' in result) {
+    return new Response(result.error, { status: result.status });
+  }
+
+  const { response, mimeType } = result;
+  const contentLength = response.headers.get('content-length');
+
+  const headers: Record<string, string> = {
+    'Content-Type': mimeType,
+    'Cache-Control': 'private, max-age=3600',
+  };
+
+  if (contentLength) {
+    headers['Content-Length'] = contentLength;
+  }
+
+  return new Response(response.body, { headers });
+}
+
+/**
+ * Fetches an image from Azure DevOps with PAT authentication and returns
+ * it as a base64-encoded string with its MIME type.
+ */
+export async function fetchImageAsBase64(params: {
+  providerId: string;
+  imageUrl: string;
+}): Promise<{ data: string; mimeType: string } | null> {
+  const result = await fetchAuthenticated(params);
+
+  if ('error' in result) {
+    return null;
+  }
+
+  const { response, mimeType } = result;
+  const arrayBuffer = await response.arrayBuffer();
+  const data = Buffer.from(arrayBuffer).toString('base64');
+
+  return { data, mimeType };
 }
 
 /**

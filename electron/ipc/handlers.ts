@@ -83,6 +83,7 @@ import {
   activateWorkItem,
   type CloneRepositoryParams,
 } from '../services/azure-devops-service';
+import { fetchImageAsBase64 } from '../services/azure-image-proxy-service';
 import * as backendModelsService from '../services/backend-models-service';
 import {
   complete as completeText,
@@ -1296,6 +1297,17 @@ export function registerIpcHandlers() {
         content: string;
       },
     ) => addPullRequestFileComment(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:fetchImageAsBase64',
+    (
+      _,
+      params: {
+        providerId: string;
+        imageUrl: string;
+      },
+    ) => fetchImageAsBase64(params),
   );
 
   ipcMain.handle('tasks:worktree:pushBranch', async (_, taskId: string) => {

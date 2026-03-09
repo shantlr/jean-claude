@@ -33,9 +33,11 @@ import { useProjectSkills } from '@/hooks/use-skills';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
 import { useWorkItems, useIterations } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
+import { compressImage } from '@/lib/image-compression';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import {
   useNewTaskDraft,
+  useNewTaskDraftStore,
   type InputMode,
   type WorkItemsViewMode,
 } from '@/stores/new-task-draft';
@@ -53,6 +55,7 @@ import {
   PromptComposer,
   generateInitialTemplate,
   expandTemplate,
+  extractWorkItemImageUrls,
 } from '../ui-prompt-composer';
 import { WorkItemBoard } from '../ui-work-item-board';
 import { WorkItemDetails } from '../ui-work-item-details';
@@ -129,6 +132,10 @@ function getPlaceholder(mode: InputMode): string {
   return mode === 'search' ? 'Search work items...' : 'Describe your task...';
 }
 
+function getImageIdentity(image: PromptImagePart): string {
+  return `${image.filename ?? ''}:${image.storageData ?? image.data}`;
+}
+
 export function NewTaskOverlay({
   onClose,
   onDiscardDraft,
@@ -159,6 +166,7 @@ export function NewTaskOverlay({
   const searchInputRef = useRef<HTMLTextAreaElement>(null);
   const promptInputRef = useRef<PromptTextareaRef>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const workItemImageFetchSessionRef = useRef(0);
   const [highlightedWorkItemId, setHighlightedWorkItemId] = useState<
     string | null
   >(null);
@@ -411,16 +419,145 @@ export function NewTaskOverlay({
     [],
   );
 
-  // Advance to compose step
-  const advanceToCompose = useCallback(() => {
+  // Track whether work item images are being fetched
+  const [isFetchingWorkItemImages, setIsFetchingWorkItemImages] =
+    useState(false);
+
+  // Advance to compose step and extract work item images
+  const advanceToCompose = useCallback(async () => {
     if (!canAdvanceToCompose) return;
     const template = generateInitialTemplate(draft?.workItemIds ?? []);
     setPromptTemplate(template);
     updateDraft({ searchStep: 'compose' });
-  }, [canAdvanceToCompose, draft?.workItemIds, updateDraft]);
+
+    // Extract and fetch images from work item HTML in background
+    const providerId = selectedProject?.workItemProviderId;
+    if (!providerId) return;
+
+    const imageUrls = extractWorkItemImageUrls(selectedWorkItems);
+    if (imageUrls.length === 0) return;
+
+    // Fetch images in parallel (limit to 5 max, matching the prompt textarea limit)
+    const existingImages = draft?.images ?? [];
+    const slotsAvailable = 5 - existingImages.length;
+    if (slotsAvailable <= 0) return;
+
+    const urlsToFetch = imageUrls.slice(0, slotsAvailable);
+    const fetchSessionId = ++workItemImageFetchSessionRef.current;
+    const draftKey = selectedProjectId ?? 'all';
+
+    setIsFetchingWorkItemImages(true);
+    try {
+      const fetchedImages = await Promise.all(
+        urlsToFetch.map(async (imageUrl) => {
+          if (workItemImageFetchSessionRef.current !== fetchSessionId) {
+            return null;
+          }
+
+          try {
+            const result = await window.api.azureDevOps.fetchImageAsBase64({
+              providerId,
+              imageUrl,
+            });
+            if (!result) return null;
+
+            if (workItemImageFetchSessionRef.current !== fetchSessionId) {
+              return null;
+            }
+
+            // Convert base64 to Blob for compression
+            const raw = Uint8Array.from(atob(result.data), (c) =>
+              c.charCodeAt(0),
+            );
+            const blob = new Blob([raw], { type: result.mimeType });
+
+            // Compress using existing image compression utility
+            const compressed = await compressImage(blob);
+
+            // Extract filename from URL
+            const urlObj = new URL(imageUrl);
+            const fileName =
+              urlObj.searchParams.get('fileName') ?? 'work-item-image';
+
+            return {
+              type: 'image' as const,
+              data: compressed.agent.data,
+              mimeType: compressed.agent.mimeType,
+              filename: fileName,
+              storageData: compressed.storage.data,
+              storageMimeType: compressed.storage.mimeType,
+            };
+          } catch (error) {
+            console.error('Failed to fetch work item image:', imageUrl, error);
+            return null;
+          }
+        }),
+      );
+
+      const validImages: PromptImagePart[] = fetchedImages.filter(
+        (img) => img !== null,
+      );
+
+      if (validImages.length > 0) {
+        if (workItemImageFetchSessionRef.current !== fetchSessionId) {
+          return;
+        }
+
+        const state = useNewTaskDraftStore.getState();
+        const latestDraft = state.drafts[draftKey];
+
+        if (!latestDraft || latestDraft.searchStep !== 'compose') {
+          return;
+        }
+
+        const latestImages = latestDraft.images ?? [];
+        const remainingSlots = 5 - latestImages.length;
+        if (remainingSlots <= 0) {
+          return;
+        }
+
+        const existingImageIds = new Set(latestImages.map(getImageIdentity));
+        const imagesToAppend: PromptImagePart[] = [];
+
+        for (const image of validImages) {
+          const identity = getImageIdentity(image);
+          if (existingImageIds.has(identity)) {
+            continue;
+          }
+
+          existingImageIds.add(identity);
+          imagesToAppend.push(image);
+
+          if (imagesToAppend.length >= remainingSlots) {
+            break;
+          }
+        }
+
+        if (imagesToAppend.length > 0) {
+          state.setDraft(draftKey, {
+            images: [...latestImages, ...imagesToAppend],
+          });
+        }
+      }
+    } finally {
+      if (workItemImageFetchSessionRef.current === fetchSessionId) {
+        setIsFetchingWorkItemImages(false);
+      }
+    }
+  }, [
+    canAdvanceToCompose,
+    draft?.workItemIds,
+    draft?.images,
+    selectedProjectId,
+    selectedWorkItems,
+    selectedProject?.workItemProviderId,
+    updateDraft,
+  ]);
 
   // Go back to select step
   const backToSelect = useCallback(() => {
+    workItemImageFetchSessionRef.current += 1;
+    setIsFetchingWorkItemImages(false);
     updateDraft({ searchStep: 'select' });
   }, [updateDraft]);
 
@@ -473,6 +610,8 @@ export function NewTaskOverlay({
 
       // Animate the overlay shrinking toward the Jobs button, then reset
       // the draft so the overlay shows a fresh state for chaining
+      workItemImageFetchSessionRef.current += 1;
+      setIsFetchingWorkItemImages(false);
       void triggerAnimation();
       clearDraft();
 
@@ -818,6 +957,43 @@ export function NewTaskOverlay({
               onTemplateChange={setPromptTemplate}
               onBack={backToSelect}
             />
+            {/* Loading indicator while fetching work item images */}
+            {isFetchingWorkItemImages && (
+              <div className="flex shrink-0 items-center gap-2 px-1 pb-2 text-xs text-neutral-400">
+                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-neutral-500 border-t-neutral-200" />
+                Extracting images from work items…
+              </div>
+            )}
+            {/* Image thumbnails from work item extraction */}
+            {!isFetchingWorkItemImages &&
+              draft?.images &&
+              draft.images.length > 0 && (
+                <div className="flex shrink-0 gap-2 px-1 pb-2">
+                  {draft.images.map((image, index) => {
+                    const thumbData = image.storageData ?? image.data;
+                    const thumbMime = image.storageMimeType ?? image.mimeType;
+                    return (
+                      <div
+                        key={index}
+                        className="group relative h-12 w-12 shrink-0 overflow-hidden rounded border border-neutral-700"
+                      >
+                        <img
+                          src={`data:${thumbMime};base64,${thumbData}`}
+                          alt={image.filename ?? 'Work item image'}
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleImageRemove(index)}
+                          className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100"
+                        >
+                          <span className="text-xs text-white">✕</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
           </div>
         )}
 

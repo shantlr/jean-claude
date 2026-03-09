@@ -531,6 +531,10 @@ export interface Api {
       lineEnd?: number;
       content: string;
     }) => Promise<AzureDevOpsCommentThread>;
+    fetchImageAsBase64: (params: {
+      providerId: string;
+      imageUrl: string;
+    }) => Promise<{ data: string; mimeType: string } | null>;
   };
   dialog: {
     openDirectory: () => Promise<string | null>;
@@ -965,6 +969,7 @@ export const api: Api = hasWindowApi
         addPullRequestFileComment: async () => {
           throw new Error('API not available');
         },
+        fetchImageAsBase64: async () => null,
       },
       dialog: {
         openDirectory: async () => null,

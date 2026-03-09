@@ -269,6 +269,8 @@ contextBridge.exposeInMainWorld('api', {
       lineEnd?: number;
       content: string;
     }) => ipcRenderer.invoke('azureDevOps:addPullRequestFileComment', params),
+    fetchImageAsBase64: (params: { providerId: string; imageUrl: string }) =>
+      ipcRenderer.invoke('azureDevOps:fetchImageAsBase64', params),
   },
   dialog: {
     openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),
