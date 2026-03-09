@@ -117,11 +117,7 @@ export function useAgentControls({
   const queuePrompt = useCallback(
     async (parts: PromptPart[]) => {
       if (!stepId) return { promptId: '' };
-      const prompt = parts
-        .filter((p) => p.type === 'text')
-        .map((p) => (p as { type: 'text'; text: string }).text)
-        .join('');
-      return api.agent.queuePrompt(stepId, prompt);
+      return api.agent.queuePrompt(stepId, parts);
     },
     [stepId],
   );

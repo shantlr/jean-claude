@@ -1550,9 +1550,9 @@ export function registerIpcHandlers() {
 
   ipcMain.handle(
     AGENT_CHANNELS.QUEUE_PROMPT,
-    (_, stepId: string, prompt: string) => {
+    (_, stepId: string, parts: PromptPart[]) => {
       dbg.ipc('agent:queuePrompt %s', stepId);
-      return agentService.queuePrompt(stepId, prompt);
+      return agentService.queuePrompt(stepId, parts);
     },
   );
 

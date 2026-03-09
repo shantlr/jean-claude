@@ -922,15 +922,13 @@ class AgentService {
   /**
    * Queue a prompt to be sent after the current agent work completes.
    */
-  queuePrompt(stepId: string, prompt: string): { promptId: string } {
+  queuePrompt(stepId: string, parts: PromptPart[]): { promptId: string } {
     const session = this.sessions.get(stepId);
     if (!session) {
       throw new Error(`No active session for step ${stepId}`);
     }
 
     const id = nanoid();
-    // Store as text parts; images can be added via setPendingImages before the next send
-    const parts = textPrompt(prompt);
     queuedPromptParts.set(id, parts);
 
     const queuedPrompt: QueuedPrompt = {

@@ -569,7 +569,7 @@ export interface Api {
     sendMessage: (stepId: string, parts: PromptPart[]) => Promise<void>;
     queuePrompt: (
       stepId: string,
-      prompt: string,
+      parts: PromptPart[],
     ) => Promise<{ promptId: string }>;
     cancelQueuedPrompt: (stepId: string, promptId: string) => Promise<void>;
     getBackendModels: (

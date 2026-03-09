@@ -300,8 +300,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke(AGENT_CHANNELS.RESPOND, stepId, requestId, response),
     sendMessage: (stepId: string, parts: unknown[]) =>
       ipcRenderer.invoke(AGENT_CHANNELS.SEND_MESSAGE, stepId, parts),
-    queuePrompt: (stepId: string, prompt: string) =>
-      ipcRenderer.invoke(AGENT_CHANNELS.QUEUE_PROMPT, stepId, prompt),
+    queuePrompt: (stepId: string, parts: unknown[]) =>
+      ipcRenderer.invoke(AGENT_CHANNELS.QUEUE_PROMPT, stepId, parts),
     cancelQueuedPrompt: (stepId: string, promptId: string) =>
       ipcRenderer.invoke(AGENT_CHANNELS.CANCEL_QUEUED_PROMPT, stepId, promptId),
     getBackendModels: (backend: string) =>
