@@ -1,4 +1,8 @@
-import type { TaskStep } from '@shared/types';
+import type {
+  AgentBackendType,
+  PromptImagePart,
+} from '@shared/agent-backend-types';
+import type { InteractionMode, ModelPreference, TaskStep } from '@shared/types';
 
 import { AgentMessageRepository } from '../database/repositories/agent-messages';
 import { ProjectRepository } from '../database/repositories/projects';
@@ -246,12 +250,15 @@ function extractReviewComments(output: string): {
 
 /**
  * After a step completes, check if any dependent steps should transition from pending to ready.
+ * Returns IDs of steps that became ready and have autoStart enabled.
  */
-async function updateDependentStepStatuses(taskId: string): Promise<void> {
+async function updateDependentStepStatuses(taskId: string): Promise<string[]> {
   const steps = await TaskStepRepository.findByTaskId(taskId);
   const completedIds = new Set(
     steps.filter((s) => s.status === 'completed').map((s) => s.id),
   );
+
+  const autoStartStepIds: string[] = [];
 
   for (const step of steps) {
     if (step.status !== 'pending') continue;
@@ -278,8 +285,14 @@ async function updateDependentStepStatuses(taskId: string): Promise<void> {
       } else {
         await TaskStepRepository.update(step.id, { status: 'ready' });
       }
+
+      if (step.autoStart) {
+        autoStartStepIds.push(step.id);
+      }
     }
   }
+
+  return autoStartStepIds;
 }
 
 export const StepService = {
@@ -292,16 +305,27 @@ export const StepService = {
     name: string;
     dependsOn?: string[];
     promptTemplate: string;
-    interactionMode?: string | null;
-    modelPreference?: string | null;
-    agentBackend?: string | null;
-    images?: import('@shared/agent-backend-types').PromptImagePart[] | null;
+    interactionMode?: InteractionMode | null;
+    modelPreference?: ModelPreference | null;
+    agentBackend?: AgentBackendType | null;
+    images?: PromptImagePart[] | null;
+    autoStart?: boolean;
     sortOrder?: number;
   }): Promise<TaskStep> => {
     debug('create step taskId=%s name=%s', data.taskId, data.name);
-    return TaskStepRepository.create(
+    const createdStep = await TaskStepRepository.create(
       data as Parameters<typeof TaskStepRepository.create>[0],
     );
+
+    if ((data.dependsOn?.length ?? 0) > 0) {
+      await updateDependentStepStatuses(data.taskId);
+      const refreshedStep = await TaskStepRepository.findById(createdStep.id);
+      if (refreshedStep) {
+        return refreshedStep;
+      }
+    }
+
+    return createdStep;
   },
 
   update: async (
@@ -415,16 +439,19 @@ export const StepService = {
 
   /**
    * Mark step as completed, capture output, update dependents, sync task status.
+   * Returns IDs of dependent steps that became ready and have autoStart enabled.
    */
-  completeStep: async (stepId: string): Promise<void> => {
+  completeStep: async (stepId: string): Promise<string[]> => {
     const output = await StepService.captureOutput(stepId);
     await TaskStepRepository.update(stepId, { status: 'completed', output });
 
     const step = await TaskStepRepository.findById(stepId);
     if (step) {
-      await updateDependentStepStatuses(step.taskId);
+      const autoStartStepIds = await updateDependentStepStatuses(step.taskId);
       await StepService.syncTaskStatus(step.taskId);
+      return autoStartStepIds;
     }
+    return [];
   },
 
   /**

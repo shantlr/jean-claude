@@ -225,6 +225,37 @@ class AgentService {
     }
   }
 
+  private async handleAutoStartFailure(
+    stepId: string,
+    error: unknown,
+  ): Promise<void> {
+    try {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      dbg.agent(
+        'Error auto-starting dependent step %s: %s',
+        stepId,
+        errorMessage,
+      );
+
+      const step = await TaskStepRepository.findById(stepId);
+      if (!step) return;
+
+      await StepService.errorStep(stepId);
+      this.emitEvent(step.taskId, stepId, {
+        type: 'status',
+        status: 'errored',
+        error: `Auto-start failed: ${errorMessage}`,
+      });
+    } catch (handlerError) {
+      dbg.agent(
+        'Failed to handle auto-start failure for step %s: %O',
+        stepId,
+        handlerError,
+      );
+    }
+  }
+
   // --- Session management ---
 
   private async createSession(stepId: string): Promise<ActiveSession> {
@@ -619,14 +650,27 @@ class AgentService {
         }
 
         // No more queued prompts - finalize
+        let autoStartStepIds: string[] = [];
         if (result.isError) {
           await StepService.errorStep(stepId);
         } else {
-          await StepService.completeStep(stepId);
+          autoStartStepIds = await StepService.completeStep(stepId);
         }
 
         const status = result.isError ? 'errored' : 'completed';
         this.emitEvent(taskId, stepId, { type: 'status', status });
+
+        // Auto-start dependent steps whose dependencies are now satisfied
+        for (const autoStepId of autoStartStepIds) {
+          dbg.agent(
+            'Auto-starting dependent step %s (task %s)',
+            autoStepId,
+            taskId,
+          );
+          this.start(autoStepId).catch((err) => {
+            void this.handleAutoStartFailure(autoStepId, err);
+          });
+        }
 
         // Mark as unread if completed and user isn't viewing this task
         if (status === 'completed') {

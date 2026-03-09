@@ -159,6 +159,7 @@ export interface TaskStepTable {
   output: string | null;
   images: string | null; // JSON stringified PromptImagePart[]
   meta: string | null; // JSON, shape depends on type
+  autoStart: number; // 0 or 1 (boolean stored as integer)
   sortOrder: number;
   createdAt: Generated<string>;
   updatedAt: string;

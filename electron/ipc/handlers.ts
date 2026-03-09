@@ -554,7 +554,9 @@ export function registerIpcHandlers() {
           'Each comment should reference a specific file and line number from the changed files.',
         ].join('\n'),
         interactionMode: 'auto',
-        agentBackend: project.defaultAgentBackend ?? 'claude-code',
+        agentBackend:
+          (project.defaultAgentBackend as AgentBackendType | null) ??
+          'claude-code',
         sortOrder: 0,
       });
 
@@ -1057,9 +1059,17 @@ export function registerIpcHandlers() {
     'steps:create',
     async (event, data: NewTaskStep & { start?: boolean }) => {
       const { start, ...stepData } = data;
+
+      // If auto-start is requested but step has dependencies, defer the start
+      const hasDeps = (stepData.dependsOn?.length ?? 0) > 0;
+      if (start && hasDeps) {
+        stepData.autoStart = true;
+      }
+
       const step = await StepService.create(stepData);
 
-      if (start) {
+      const shouldStartNow = start && (!hasDeps || step.status === 'ready');
+      if (shouldStartNow) {
         dbg.ipc('Auto-starting step %s (task %s)', step.id, step.taskId);
         const window = BrowserWindow.fromWebContents(event.sender);
         if (window) {
@@ -1070,6 +1080,13 @@ export function registerIpcHandlers() {
         }
         agentService.start(step.id).catch((err) => {
           dbg.ipc('Error auto-starting step %s: %O', step.id, err);
+          StepService.errorStep(step.id).catch((stepErr) => {
+            dbg.ipc(
+              'Error marking failed auto-start step %s: %O',
+              step.id,
+              stepErr,
+            );
+          });
         });
       }
 

@@ -385,6 +385,7 @@ export interface TaskStep {
   output: string | null;
   images: PromptImagePart[] | null;
   meta: TaskStepMeta;
+  autoStart: boolean;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -402,6 +403,7 @@ export interface NewTaskStep {
   agentBackend?: AgentBackendType | null;
   images?: PromptImagePart[] | null;
   meta?: TaskStepMeta;
+  autoStart?: boolean;
   sortOrder?: number;
 }
 
@@ -419,6 +421,7 @@ export interface UpdateTaskStep {
   output?: string | null;
   images?: PromptImagePart[] | null;
   meta?: TaskStepMeta;
+  autoStart?: boolean;
   sortOrder?: number;
 }
 

@@ -34,6 +34,7 @@ import * as m032 from './migrations/032_task_steps';
 import * as m033 from './migrations/033_completion_usage';
 import * as m034 from './migrations/034_rename_session_rules';
 import * as m035 from './migrations/035_restore_tasks_id_default';
+import * as m036 from './migrations/036_task_step_auto_start';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -70,6 +71,7 @@ const migrations: Record<string, Migration> = {
   '033_completion_usage': m033,
   '034_rename_session_rules': m034,
   '035_restore_tasks_id_default': m035,
+  '036_task_step_auto_start': m036,
 };
 
 export const migrationProvider: MigrationProvider = {

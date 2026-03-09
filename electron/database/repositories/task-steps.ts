@@ -34,6 +34,7 @@ function toStep(row: TaskStepRow): TaskStep {
     output: row.output,
     images: row.images ? JSON.parse(row.images) : null,
     meta: row.meta ? (JSON.parse(row.meta) as TaskStepMeta) : {},
+    autoStart: row.autoStart === 1,
     sortOrder: row.sortOrder,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -80,6 +81,7 @@ export const TaskStepRepository = {
     agentBackend?: AgentBackendType | null;
     images?: PromptImagePart[] | null;
     meta?: TaskStepMeta;
+    autoStart?: boolean;
     sortOrder?: number;
   }): Promise<TaskStep> => {
     dbg.db('taskSteps.create taskId=%s, name=%s', data.taskId, data.name);
@@ -105,6 +107,7 @@ export const TaskStepRepository = {
         output: null,
         images: data.images ? JSON.stringify(data.images) : null,
         meta: data.meta ? JSON.stringify(data.meta) : null,
+        autoStart: data.autoStart ? 1 : 0,
         sortOrder: data.sortOrder ?? 0,
         updatedAt: now,
       })
@@ -130,11 +133,12 @@ export const TaskStepRepository = {
       agentBackend?: AgentBackendType | null;
       output?: string | null;
       meta?: TaskStepMeta;
+      autoStart?: boolean;
       sortOrder?: number;
     },
   ): Promise<TaskStep> => {
     dbg.db('taskSteps.update id=%s %o', id, Object.keys(data));
-    const { dependsOn, meta, ...rest } = data;
+    const { dependsOn, meta, autoStart, ...rest } = data;
     const values: Record<string, unknown> = {
       ...rest,
       updatedAt: new Date().toISOString(),
@@ -144,6 +148,9 @@ export const TaskStepRepository = {
     }
     if (meta !== undefined) {
       values.meta = JSON.stringify(meta);
+    }
+    if (autoStart !== undefined) {
+      values.autoStart = autoStart ? 1 : 0;
     }
 
     const row = await db
