@@ -143,6 +143,7 @@ interface ActiveSession {
 
 class AgentService {
   private sessions: Map<string, ActiveSession> = new Map(); // key is stepId
+  private startingSteps = new Set<string>();
   private mainWindow: BrowserWindow | null = null;
   private focusedTaskId: string | null = null;
   private pendingImageAttachments = new Map<string, PromptImagePart[]>();
@@ -715,73 +716,87 @@ class AgentService {
   async start(stepId: string): Promise<void> {
     // Check if already running
     if (this.sessions.has(stepId)) {
-      throw new Error(`Agent already running for step ${stepId}`);
+      dbg.agentSession('Ignoring duplicate start for running step %s', stepId);
+      return;
     }
 
-    // Resolve prompt and validate dependencies
-    const { resolvedPrompt, step } =
-      await StepService.resolveAndValidate(stepId);
-
-    // Update step status to running
-    await StepService.update(stepId, { status: 'running' });
-    await StepService.syncTaskStatus(step.taskId);
-
-    // Create session
-    const session = await this.createSession(stepId);
-    this.emitEvent(session.taskId, stepId, {
-      type: 'status',
-      status: 'running',
-    });
-
-    // Build prompt parts from resolved prompt + any pending image attachments
-    const pendingImages = this.pendingImageAttachments.get(session.taskId);
-    this.pendingImageAttachments.delete(session.taskId);
-
-    // For review steps, build the review prompt from reviewer configs
-    const effectivePrompt =
-      step.type === 'review'
-        ? buildReviewPrompt(resolvedPrompt, step.meta as ReviewStepMeta)
-        : resolvedPrompt;
-
-    const parts: PromptPart[] = textPrompt(effectivePrompt);
-    // Include images persisted on the step
-    if (step.images && step.images.length > 0) {
-      parts.push(...step.images);
+    // Prevent concurrent starts for the same step while start() is still
+    // resolving prompt/dependencies and creating the in-memory session.
+    if (this.startingSteps.has(stepId)) {
+      dbg.agentSession('Ignoring duplicate start for pending step %s', stepId);
+      return;
     }
-    // Include transient pending images (from initial task creation)
-    if (pendingImages && pendingImages.length > 0) {
-      parts.push(...pendingImages);
-    }
+
+    this.startingSteps.add(stepId);
 
     try {
-      dbg.agentSession('Starting agent for step %s', stepId);
-      await this.runBackend(stepId, parts, session, {
-        generateNameOnInit: true,
-        initialPrompt: step.promptTemplate,
-      });
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      dbg.agent('Step %s start failed: %s', stepId, errorMessage);
+      // Resolve prompt and validate dependencies
+      const { resolvedPrompt, step } =
+        await StepService.resolveAndValidate(stepId);
 
-      // Emit a synthetic error entry so the user sees the error in the timeline
-      await this.persistAndEmitSyntheticEntry(session.taskId, session, {
-        id: nanoid(),
-        date: new Date().toISOString(),
-        isSynthetic: true,
-        type: 'result',
-        value: errorMessage,
-        isError: true,
-      });
+      // Update step status to running
+      await StepService.update(stepId, { status: 'running' });
+      await StepService.syncTaskStatus(step.taskId);
 
-      await StepService.errorStep(stepId);
+      // Create session
+      const session = await this.createSession(stepId);
       this.emitEvent(session.taskId, stepId, {
         type: 'status',
-        status: 'errored',
-        error: errorMessage,
+        status: 'running',
       });
+
+      // Build prompt parts from resolved prompt + any pending image attachments
+      const pendingImages = this.pendingImageAttachments.get(session.taskId);
+      this.pendingImageAttachments.delete(session.taskId);
+
+      // For review steps, build the review prompt from reviewer configs
+      const effectivePrompt =
+        step.type === 'review'
+          ? buildReviewPrompt(resolvedPrompt, step.meta as ReviewStepMeta)
+          : resolvedPrompt;
+
+      const parts: PromptPart[] = textPrompt(effectivePrompt);
+      // Include images persisted on the step
+      if (step.images && step.images.length > 0) {
+        parts.push(...step.images);
+      }
+      // Include transient pending images (from initial task creation)
+      if (pendingImages && pendingImages.length > 0) {
+        parts.push(...pendingImages);
+      }
+
+      try {
+        dbg.agentSession('Starting agent for step %s', stepId);
+        await this.runBackend(stepId, parts, session, {
+          generateNameOnInit: true,
+          initialPrompt: step.promptTemplate,
+        });
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        dbg.agent('Step %s start failed: %s', stepId, errorMessage);
+
+        // Emit a synthetic error entry so the user sees the error in the timeline
+        await this.persistAndEmitSyntheticEntry(session.taskId, session, {
+          id: nanoid(),
+          date: new Date().toISOString(),
+          isSynthetic: true,
+          type: 'result',
+          value: errorMessage,
+          isError: true,
+        });
+
+        await StepService.errorStep(stepId);
+        this.emitEvent(session.taskId, stepId, {
+          type: 'status',
+          status: 'errored',
+          error: errorMessage,
+        });
+      } finally {
+        this.sessions.delete(stepId);
+      }
     } finally {
-      this.sessions.delete(stepId);
+      this.startingSteps.delete(stepId);
     }
   }
 

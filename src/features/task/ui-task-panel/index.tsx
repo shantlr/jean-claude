@@ -251,6 +251,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     sendMessage,
     queuePrompt,
     cancelQueuedPrompt,
+    isStarting,
     isStopping,
   } = useAgentControls({ taskId, stepId: activeStepId });
 
@@ -1098,10 +1099,11 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                 <div className="mt-6 flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-700 p-8">
                   <button
                     onClick={() => void start()}
-                    className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
+                    disabled={isStarting}
+                    className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Play className="h-4 w-4" />
-                    Start Step
+                    {isStarting ? 'Starting...' : 'Start Step'}
                   </button>
                 </div>
               ) : activeStep?.status === 'pending' ? (

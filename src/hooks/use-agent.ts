@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useTaskMessages } from '@/hooks/use-task-messages';
 import { api } from '@/lib/api';
@@ -42,17 +42,20 @@ export function useAgentControls({
 }) {
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
+  const startInFlightRef = useRef(false);
   const queryClient = useQueryClient();
   const setPermission = useTaskMessagesStore((s) => s.setPermission);
   const setQuestion = useTaskMessagesStore((s) => s.setQuestion);
   const addToast = useToastStore((s) => s.addToast);
 
   const start = useCallback(async () => {
-    if (!stepId) return;
+    if (!stepId || startInFlightRef.current) return;
+    startInFlightRef.current = true;
     setIsStarting(true);
     try {
       await api.agent.start(stepId);
     } finally {
+      startInFlightRef.current = false;
       setIsStarting(false);
     }
   }, [stepId]);
