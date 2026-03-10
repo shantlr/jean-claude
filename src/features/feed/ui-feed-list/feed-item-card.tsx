@@ -63,11 +63,19 @@ function AttentionIcon({ attention }: { attention: FeedItemAttention }) {
 
 function borderClasses({
   attention,
+  hasUnread,
   isSelected,
 }: {
   attention: FeedItemAttention;
+  hasUnread?: boolean;
   isSelected: boolean;
 }): string {
+  if (attention === 'completed' && hasUnread) {
+    return isSelected
+      ? 'completed-unread-border-selected'
+      : 'completed-unread-border';
+  }
+
   if (isSelected) {
     switch (attention) {
       case 'errored':
@@ -222,6 +230,7 @@ export function FeedItemCard({
             'flex cursor-pointer flex-col gap-1 rounded-lg px-3.5 py-2.5 transition-all duration-200 ease-out',
             borderClasses({
               attention: item.attention,
+              hasUnread: item.hasUnread,
               isSelected: isSelected ?? false,
             }),
             !isSelected && 'hover:translate-x-0.5 hover:bg-neutral-800/80',
@@ -240,7 +249,14 @@ export function FeedItemCard({
             <AttentionIcon attention={item.attention} />
             <span className="min-w-0 truncate">{item.projectName}</span>
             {item.source === 'pull-request' && item.ownerName && (
-              <span className="max-w-28 shrink-0 truncate rounded bg-neutral-700/70 px-1.5 py-0.5 text-[10px] text-neutral-300">
+              <span
+                className={clsx(
+                  'max-w-28 shrink-0 truncate rounded px-1.5 py-0.5 text-[10px]',
+                  item.isOwnedByCurrentUser
+                    ? 'bg-blue-500/20 text-blue-200 ring-1 ring-blue-400/40'
+                    : 'bg-neutral-700/70 text-neutral-300',
+                )}
+              >
                 {item.ownerName}
               </span>
             )}

@@ -26,6 +26,8 @@ export interface FeedItem {
   title: string;
   subtitle?: string;
   ownerName?: string;
+  isOwnedByCurrentUser?: boolean;
+  hasUnread?: boolean;
   isDraft?: boolean;
   taskId?: string;
   pullRequestId?: number;

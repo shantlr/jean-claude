@@ -9,7 +9,7 @@ import {
 import { TaskStepRepository } from '../database/repositories/task-steps';
 import { dbg } from '../lib/debug';
 
-import { listPullRequests } from './azure-devops-service';
+import { getCurrentUser, listPullRequests } from './azure-devops-service';
 
 // In-memory cache for PR feed items to avoid hammering Azure DevOps API
 let prCache: { items: FeedItem[]; fetchedAt: number } | null = null;
@@ -133,6 +133,7 @@ export async function getFeedItems(): Promise<FeedItem[]> {
       projectPriority: taskWithProject.projectPriority,
       title: task.name ?? task.prompt.slice(0, 80),
       subtitle,
+      hasUnread: task.hasUnread,
       taskId: task.id,
       pullRequestId: task.pullRequestId
         ? parseInt(task.pullRequestId, 10)
@@ -223,6 +224,28 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
     (p) => p.repoProviderId && p.repoProjectId && p.repoId,
   );
 
+  const providerUserEmailMap = new Map<string, string>();
+  await Promise.all(
+    [...new Set(repoProjects.map((p) => p.repoProviderId).filter(Boolean))].map(
+      async (providerId) => {
+        if (!providerId) return;
+        try {
+          const currentUser = await getCurrentUser(providerId);
+          providerUserEmailMap.set(
+            providerId,
+            currentUser.emailAddress.toLowerCase(),
+          );
+        } catch (err) {
+          dbg.feed(
+            'fetchPrFeedItems: error fetching current user for provider %s: %O',
+            providerId,
+            err,
+          );
+        }
+      },
+    ),
+  );
+
   const projectItems = await Promise.all(
     repoProjects.map(async (project) => {
       try {
@@ -246,6 +269,10 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
             title: pr.title,
             subtitle: pr.createdBy.displayName,
             ownerName: pr.createdBy.displayName,
+            isOwnedByCurrentUser:
+              !!project.repoProviderId &&
+              pr.createdBy.uniqueName.toLowerCase() ===
+                providerUserEmailMap.get(project.repoProviderId),
             isDraft: pr.isDraft,
             pullRequestId: pr.id,
             pullRequestUrl: pr.url,
