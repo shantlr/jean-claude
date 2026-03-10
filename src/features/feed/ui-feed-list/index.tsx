@@ -8,7 +8,7 @@ import {
   Pin,
 } from 'lucide-react';
 import type React from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { useFeed } from '@/hooks/use-feed';
@@ -37,6 +37,63 @@ function FeedCard({
   return <FeedItemCard item={item} {...props} />;
 }
 
+function RunningTasksZone({
+  items,
+  isItemSelected,
+  onDragStart,
+  onDragEnd,
+}: {
+  items: FeedItem[];
+  isItemSelected: (item: FeedItem) => boolean;
+  onDragStart: (id: string) => void;
+  onDragEnd: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const collapseTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const handleEnter = useCallback(() => {
+    clearTimeout(collapseTimer.current);
+    setExpanded(true);
+  }, []);
+
+  const handleLeave = useCallback(() => {
+    collapseTimer.current = setTimeout(() => setExpanded(false), 300);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(collapseTimer.current);
+    };
+  }, []);
+
+  return (
+    <div
+      className="flex flex-col py-0.5"
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+    >
+      {items.map((item, index) => (
+        <div
+          key={item.id}
+          className={clsx(
+            'relative transition-[margin] duration-200 ease-out',
+            index > 0 && (expanded ? 'mt-1.5' : '-mt-7'),
+          )}
+          style={{ zIndex: items.length - index }}
+        >
+          <FeedCard
+            item={item}
+            isSelected={isItemSelected(item)}
+            isDraggable
+            onDragStart={() => onDragStart(item.id)}
+            onDragEnd={onDragEnd}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function FeedList() {
   const navigate = useNavigate();
   const params = useParams({ strict: false });
@@ -44,7 +101,14 @@ export function FeedList() {
   const currentPrId = params.prId as string | undefined;
   const currentProjectId = params.projectId as string | undefined;
 
-  const { pinnedItems, normalItems, lowPriorityItems, isLoading } = useFeed();
+  const {
+    pinnedItems,
+    runningItems,
+    normalItems,
+    lowPriorityItems,
+    allVisibleItems,
+    isLoading,
+  } = useFeed();
   const reorderPinned = useFeedStore((s) => s.reorderPinned);
   const pinned = useFeedStore((s) => s.pinned);
   const pin = useFeedStore((s) => s.pin);
@@ -153,12 +217,6 @@ export function FeedList() {
       return item.projectId === currentProjectId;
     },
     [currentPrId, currentProjectId, currentTaskId],
-  );
-
-  // Combined visible items for list rendering and selection checks.
-  const allVisibleItems = useMemo(
-    () => [...pinnedItems, ...normalItems],
-    [pinnedItems, normalItems],
   );
 
   // Notes are not navigable routes, so exclude them from keyboard navigation.
@@ -357,7 +415,10 @@ export function FeedList() {
   ]);
 
   const totalCount =
-    pinnedItems.length + normalItems.length + lowPriorityItems.length;
+    pinnedItems.length +
+    runningItems.length +
+    normalItems.length +
+    lowPriorityItems.length;
 
   return (
     <div
@@ -417,7 +478,23 @@ export function FeedList() {
       )}
 
       {/* Dashed divider between pinned and auto-sorted */}
-      {pinnedItems.length > 0 && normalItems.length > 0 && (
+      {pinnedItems.length > 0 &&
+        (normalItems.length > 0 || runningItems.length > 0) && (
+          <div className="mx-2 my-1 border-t border-dashed border-neutral-700/50" />
+        )}
+
+      {/* Running tasks zone - stacked, spreads on hover */}
+      {runningItems.length > 0 && (
+        <RunningTasksZone
+          items={runningItems}
+          isItemSelected={isItemSelected}
+          onDragStart={setDraggedId}
+          onDragEnd={handleDragEnd}
+        />
+      )}
+
+      {/* Divider between running and auto-sorted */}
+      {runningItems.length > 0 && normalItems.length > 0 && (
         <div className="mx-2 my-1 border-t border-dashed border-neutral-700/50" />
       )}
 

@@ -86,87 +86,104 @@ export function useFeed() {
     });
   }, [query.data, taskSteps]);
 
-  const { pinnedItems, normalItems, lowPriorityItems, dismissedCount } =
-    useMemo(() => {
-      const items = refinedItems;
+  const {
+    pinnedItems,
+    runningItems,
+    normalItems,
+    lowPriorityItems,
+    dismissedCount,
+  } = useMemo(() => {
+    const items = refinedItems;
 
-      const itemsById = new Map<string, FeedItem>();
-      for (const item of items) {
-        itemsById.set(item.id, item);
+    const itemsById = new Map<string, FeedItem>();
+    for (const item of items) {
+      itemsById.set(item.id, item);
+    }
+
+    const pinnedResult: FeedItem[] = [];
+    for (const p of [...pinned].sort((a, b) => a.order - b.order)) {
+      const item = itemsById.get(p.id);
+      if (item) {
+        pinnedResult.push(item);
       }
+    }
 
-      const pinnedResult: FeedItem[] = [];
-      for (const p of [...pinned].sort((a, b) => a.order - b.order)) {
-        const item = itemsById.get(p.id);
-        if (item) {
-          pinnedResult.push(item);
-        }
+    let dCount = 0;
+    const running: FeedItem[] = [];
+    const rest: FeedItem[] = [];
+    const low: FeedItem[] = [];
+
+    for (const item of items) {
+      if (pinnedIds.has(item.id)) continue;
+      if (dismissedIds.has(item.id)) {
+        dCount++;
+        continue;
       }
-
-      let dCount = 0;
-      const normal: FeedItem[] = [];
-      const low: FeedItem[] = [];
-
-      for (const item of items) {
-        if (pinnedIds.has(item.id)) continue;
-        if (dismissedIds.has(item.id)) {
-          dCount++;
-          continue;
-        }
-        if (lowPriorityIds.has(item.id)) {
-          low.push(item);
-        } else {
-          normal.push(item);
-        }
+      if (lowPriorityIds.has(item.id)) {
+        low.push(item);
+      } else if (item.attention === 'running') {
+        running.push(item);
+      } else {
+        rest.push(item);
       }
+    }
 
-      normal.sort((a, b) => {
-        const scoreA = computeFeedScore({
-          attention: a.attention,
-          projectPriority: a.projectPriority,
-          isLowPriority: false,
-        });
-        const scoreB = computeFeedScore({
-          attention: b.attention,
-          projectPriority: b.projectPriority,
-          isLowPriority: false,
-        });
-        if (scoreB !== scoreA) return scoreB - scoreA;
-        return (
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        );
+    running.sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
+
+    rest.sort((a, b) => {
+      const scoreA = computeFeedScore({
+        attention: a.attention,
+        projectPriority: a.projectPriority,
+        isLowPriority: false,
       });
-
-      low.sort((a, b) => {
-        const scoreA = computeFeedScore({
-          attention: a.attention,
-          projectPriority: a.projectPriority,
-          isLowPriority: true,
-        });
-        const scoreB = computeFeedScore({
-          attention: b.attention,
-          projectPriority: b.projectPriority,
-          isLowPriority: true,
-        });
-        if (scoreB !== scoreA) return scoreB - scoreA;
-        return (
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        );
+      const scoreB = computeFeedScore({
+        attention: b.attention,
+        projectPriority: b.projectPriority,
+        isLowPriority: false,
       });
+      if (scoreB !== scoreA) return scoreB - scoreA;
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    });
 
-      return {
-        pinnedItems: pinnedResult,
-        normalItems: normal,
-        lowPriorityItems: low,
-        dismissedCount: dCount,
-      };
-    }, [refinedItems, pinned, pinnedIds, dismissedIds, lowPriorityIds]);
+    low.sort((a, b) => {
+      const scoreA = computeFeedScore({
+        attention: a.attention,
+        projectPriority: a.projectPriority,
+        isLowPriority: true,
+      });
+      const scoreB = computeFeedScore({
+        attention: b.attention,
+        projectPriority: b.projectPriority,
+        isLowPriority: true,
+      });
+      if (scoreB !== scoreA) return scoreB - scoreA;
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    });
+
+    return {
+      pinnedItems: pinnedResult,
+      runningItems: running,
+      normalItems: rest,
+      lowPriorityItems: low,
+      dismissedCount: dCount,
+    };
+  }, [refinedItems, pinned, pinnedIds, dismissedIds, lowPriorityIds]);
+
+  const allVisibleItems = useMemo(
+    () => [...pinnedItems, ...runningItems, ...normalItems],
+    [pinnedItems, runningItems, normalItems],
+  );
 
   return {
     ...query,
     pinnedItems,
+    runningItems,
     normalItems,
     lowPriorityItems,
     dismissedCount,
+    allVisibleItems,
   };
 }
