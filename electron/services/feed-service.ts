@@ -1,5 +1,5 @@
 import type { FeedItem, FeedItemAttention, FeedNote } from '@shared/feed-types';
-import type { TaskStatus, TaskStepStatus } from '@shared/types';
+import type { TaskStatus, TaskStep, TaskStepStatus } from '@shared/types';
 
 import {
   FeedNoteRepository,
@@ -10,6 +10,7 @@ import { TaskStepRepository } from '../database/repositories/task-steps';
 import { dbg } from '../lib/debug';
 
 import { getCurrentUser, listPullRequests } from './azure-devops-service';
+import { getMostRecentlyUpdatedStep } from './step-service';
 
 // In-memory cache for PR feed items to avoid hammering Azure DevOps API
 let prCache: { items: FeedItem[]; fetchedAt: number } | null = null;
@@ -21,18 +22,23 @@ const PR_CACHE_TTL_MS = 3 * 60 * 1000;
  */
 function deriveTaskAttention({
   taskStatus,
-  stepStatuses,
+  steps,
 }: {
   taskStatus: TaskStatus;
-  stepStatuses: TaskStepStatus[];
+  steps: TaskStep[];
 }): FeedItemAttention {
-  // If the task itself is errored, that takes highest priority
-  if (taskStatus === 'errored' || stepStatuses.some((s) => s === 'errored')) {
+  // Use the most recently updated step's status for errored/interrupted so that
+  // earlier failed steps don't keep the feed item marked as errored once a
+  // newer step has progressed past that state.
+  const mostRecentStep = getMostRecentlyUpdatedStep(steps);
+  if (taskStatus === 'errored' || mostRecentStep?.status === 'errored') {
     return 'errored';
   }
 
-  // If the task is interrupted
-  if (taskStatus === 'interrupted') {
+  if (
+    taskStatus === 'interrupted' ||
+    mostRecentStep?.status === 'interrupted'
+  ) {
     return 'interrupted';
   }
 
@@ -49,7 +55,7 @@ function deriveTaskAttention({
   }
 
   // If any step is actively running
-  if (taskStatus === 'running' || stepStatuses.some((s) => s === 'running')) {
+  if (taskStatus === 'running' || steps.some((s) => s.status === 'running')) {
     return 'running';
   }
 
@@ -109,7 +115,7 @@ export async function getFeedItems(): Promise<FeedItem[]> {
 
     const attention = deriveTaskAttention({
       taskStatus: task.status,
-      stepStatuses,
+      steps,
     });
 
     const subtitle = getSubtitleFromSteps({ stepStatuses, stepNames });

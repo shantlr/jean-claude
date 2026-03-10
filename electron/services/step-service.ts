@@ -180,14 +180,34 @@ async function resolvePromptTemplate({
 }
 
 /**
+ * Returns the step with the most recent `updatedAt` timestamp, or undefined if
+ * the array is empty.  ISO-8601 strings are compared lexicographically which is
+ * equivalent to chronological order.
+ */
+export function getMostRecentlyUpdatedStep(
+  steps: TaskStep[],
+): TaskStep | undefined {
+  return steps.reduce<TaskStep | undefined>(
+    (latest, s) => (!latest || s.updatedAt > latest.updatedAt ? s : latest),
+    undefined,
+  );
+}
+
+/**
  * Compute task status from step statuses.
  */
 function computeTaskStatus(
   steps: TaskStep[],
 ): 'running' | 'errored' | 'interrupted' | 'completed' | 'waiting' {
   if (steps.some((s) => s.status === 'running')) return 'running';
-  if (steps.some((s) => s.status === 'errored')) return 'errored';
-  if (steps.some((s) => s.status === 'interrupted')) return 'interrupted';
+
+  // Use the most recently updated step's status for errored/interrupted rather
+  // than any step, so that earlier failed steps don't keep the task marked as
+  // errored once a newer step has progressed past that state.
+  const mostRecentStep = getMostRecentlyUpdatedStep(steps);
+  if (mostRecentStep?.status === 'errored') return 'errored';
+  if (mostRecentStep?.status === 'interrupted') return 'interrupted';
+
   if (steps.length > 0 && steps.every((s) => s.status === 'completed'))
     return 'completed';
   return 'waiting';
