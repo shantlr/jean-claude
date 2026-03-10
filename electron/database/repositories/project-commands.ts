@@ -11,11 +11,14 @@ function parseRow(row: {
   projectId: string;
   command: string;
   ports: string;
+  confirmBeforeRun: number;
+  confirmMessage: string | null;
   createdAt: string;
 }): ProjectCommand {
   return {
     ...row,
     ports: JSON.parse(row.ports) as number[],
+    confirmBeforeRun: row.confirmBeforeRun === 1,
   };
 }
 
@@ -48,6 +51,8 @@ export const ProjectCommandRepository = {
         projectId: data.projectId,
         command: data.command,
         ports: JSON.stringify(data.ports),
+        confirmBeforeRun: data.confirmBeforeRun ? 1 : 0,
+        confirmMessage: data.confirmMessage ?? null,
         createdAt: new Date().toISOString(),
       })
       .returningAll()
@@ -62,6 +67,10 @@ export const ProjectCommandRepository = {
     const updateData: Record<string, unknown> = {};
     if (data.command !== undefined) updateData.command = data.command;
     if (data.ports !== undefined) updateData.ports = JSON.stringify(data.ports);
+    if (data.confirmBeforeRun !== undefined)
+      updateData.confirmBeforeRun = data.confirmBeforeRun ? 1 : 0;
+    if (data.confirmMessage !== undefined)
+      updateData.confirmMessage = data.confirmMessage;
 
     const row = await db
       .updateTable('project_commands')

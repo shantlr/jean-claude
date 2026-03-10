@@ -37,6 +37,7 @@ import * as m035 from './migrations/035_restore_tasks_id_default';
 import * as m036 from './migrations/036_task_step_auto_start';
 import * as m037 from './migrations/037_project_priority';
 import * as m038 from './migrations/038_feed_notes';
+import * as m039 from './migrations/039_command_confirm_before_run';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -76,6 +77,7 @@ const migrations: Record<string, Migration> = {
   '036_task_step_auto_start': m036,
   '037_project_priority': m037,
   '038_feed_notes': m038,
+  '039_command_confirm_before_run': m039,
 };
 
 export const migrationProvider: MigrationProvider = {

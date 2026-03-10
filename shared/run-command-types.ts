@@ -7,12 +7,17 @@ export interface ProjectCommand {
   projectId: string;
   command: string;
   ports: number[];
+  confirmBeforeRun: boolean;
+  confirmMessage: string | null;
   createdAt: string;
 }
 
 export type NewProjectCommand = Omit<ProjectCommand, 'id' | 'createdAt'>;
 export type UpdateProjectCommand = Partial<
-  Pick<ProjectCommand, 'command' | 'ports'>
+  Pick<
+    ProjectCommand,
+    'command' | 'ports' | 'confirmBeforeRun' | 'confirmMessage'
+  >
 >;
 
 export interface CommandRunStatus {

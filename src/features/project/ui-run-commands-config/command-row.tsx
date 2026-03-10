@@ -20,12 +20,19 @@ export function CommandRow({
   onDelete: () => void;
 }) {
   const [localCommand, setLocalCommand] = useState(command.command);
+  const [localConfirmMessage, setLocalConfirmMessage] = useState(
+    command.confirmMessage ?? '',
+  );
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setLocalCommand(command.command);
   }, [command.command]);
+
+  useEffect(() => {
+    setLocalConfirmMessage(command.confirmMessage ?? '');
+  }, [command.confirmMessage]);
 
   const filteredSuggestions = suggestions.filter(
     (s) =>
@@ -54,6 +61,18 @@ export function CommandRow({
 
   const handlePortsChange = (ports: number[]) => {
     onUpdate({ ports });
+  };
+
+  const handleConfirmToggle = () => {
+    onUpdate({ confirmBeforeRun: !command.confirmBeforeRun });
+  };
+
+  const handleConfirmMessageBlur = () => {
+    const trimmed = localConfirmMessage.trim();
+    const newValue = trimmed || null;
+    if (newValue !== (command.confirmMessage ?? null)) {
+      onUpdate({ confirmMessage: newValue });
+    }
   };
 
   return (
@@ -99,6 +118,30 @@ export function CommandRow({
           Ports to check
         </label>
         <PortChipInput ports={command.ports} onChange={handlePortsChange} />
+      </div>
+      <div className="mt-3">
+        <label className="flex items-center gap-2 text-xs text-neutral-400">
+          <input
+            type="checkbox"
+            checked={command.confirmBeforeRun}
+            onChange={handleConfirmToggle}
+            className="h-3.5 w-3.5 rounded border-neutral-600 bg-neutral-800 accent-blue-500"
+          />
+          Confirm before running
+        </label>
+        {command.confirmBeforeRun && (
+          <input
+            type="text"
+            value={localConfirmMessage}
+            onChange={(e) => setLocalConfirmMessage(e.target.value)}
+            onBlur={handleConfirmMessageBlur}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur();
+            }}
+            placeholder="Custom confirmation message (optional)"
+            className="mt-2 w-full rounded-md border border-neutral-600 bg-neutral-800 px-3 py-1.5 text-sm text-neutral-100 outline-none placeholder:text-neutral-500 focus:border-blue-500"
+          />
+        )}
       </div>
     </div>
   );

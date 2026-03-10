@@ -209,6 +209,8 @@ export interface ProjectCommandTable {
   projectId: string;
   command: string;
   ports: string; // JSON array stored as text
+  confirmBeforeRun: Generated<number>; // 0 or 1
+  confirmMessage: string | null;
   createdAt: Generated<string>;
 }
 

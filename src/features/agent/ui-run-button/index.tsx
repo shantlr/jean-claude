@@ -1,11 +1,13 @@
 import clsx from 'clsx';
 import { FileText, Loader2, Play, Square } from 'lucide-react';
+import { useState } from 'react';
 
 import { Dropdown, DropdownItem, DropdownDivider } from '@/common/ui/dropdown';
 import { useProjectCommands } from '@/hooks/use-project-commands';
 import { useRunCommands } from '@/hooks/use-run-commands';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 
+import { ConfirmRunModal } from './confirm-run-modal';
 import { KillPortsModal } from './kill-ports-modal';
 
 export function RunButton({
@@ -36,6 +38,14 @@ export function RunButton({
     dismissPortsError,
   } = useRunCommands({ taskId, projectId, workingDir });
 
+  const [pendingConfirmCommandId, setPendingConfirmCommandId] = useState<
+    string | null
+  >(null);
+
+  const pendingConfirmCommand = pendingConfirmCommandId
+    ? commands.find((c) => c.id === pendingConfirmCommandId)
+    : null;
+
   const runCommandLogs =
     useTaskMessagesStore((state) => state.runCommandLogs[taskId]) ?? {};
 
@@ -52,6 +62,11 @@ export function RunButton({
     Object.values(runCommandLogs).some((entry) => entry.lines.length > 0) ||
     (status?.commands.length ?? 0) > 0;
 
+  const executeCommand = (runCommandId: string) => {
+    onRunCommand(runCommandId);
+    void startCommand(runCommandId);
+  };
+
   const handleCommandAction = (runCommandId: string) => {
     if (
       isStartingCommandId === runCommandId ||
@@ -66,8 +81,27 @@ export function RunButton({
       return;
     }
 
-    onRunCommand(runCommandId);
-    void startCommand(runCommandId);
+    const cmd = commands.find((c) => c.id === runCommandId);
+    if (cmd?.confirmBeforeRun) {
+      setPendingConfirmCommandId(runCommandId);
+      return;
+    }
+
+    executeCommand(runCommandId);
+  };
+
+  const handleConfirmRun = () => {
+    if (pendingConfirmCommandId) {
+      const id = pendingConfirmCommandId;
+      setPendingConfirmCommandId(null);
+      if (commands.some((c) => c.id === id)) {
+        executeCommand(id);
+      }
+    }
+  };
+
+  const handleCancelConfirm = () => {
+    setPendingConfirmCommandId(null);
   };
 
   return (
@@ -155,6 +189,15 @@ export function RunButton({
           </span>
         )}
       </div>
+
+      {pendingConfirmCommand && (
+        <ConfirmRunModal
+          commandName={pendingConfirmCommand.command}
+          message={pendingConfirmCommand.confirmMessage}
+          onConfirm={handleConfirmRun}
+          onCancel={handleCancelConfirm}
+        />
+      )}
 
       {portsInUseError && (
         <KillPortsModal

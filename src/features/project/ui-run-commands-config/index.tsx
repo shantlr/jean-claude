@@ -33,6 +33,8 @@ export function RunCommandsConfig({
       projectId,
       command: '',
       ports: [],
+      confirmBeforeRun: false,
+      confirmMessage: null,
     });
   };
 
