@@ -25,7 +25,11 @@ export const ProjectRepository = {
 
     const row = await db
       .insertInto('projects')
-      .values({ ...data, sortOrder: data.sortOrder ?? nextSortOrder })
+      .values({
+        ...data,
+        sortOrder: data.sortOrder ?? nextSortOrder,
+        priority: data.priority ?? 'normal',
+      })
       .returningAll()
       .executeTakeFirstOrThrow();
     dbg.db('projects.create created id=%s', row.id);

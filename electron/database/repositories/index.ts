@@ -9,3 +9,4 @@ export { DebugRepository } from './debug';
 export { TaskSummaryRepository } from './task-summaries';
 export { ProjectTodoRepository } from './project-todos';
 export { CompletionUsageRepository } from './completion-usage';
+export { FeedNoteRepository } from './feed-notes';

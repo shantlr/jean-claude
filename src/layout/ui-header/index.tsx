@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Loader2 } from 'lucide-react';
+import { Loader2, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 
 import { Kbd } from '@/common/ui/kbd';
@@ -69,6 +69,19 @@ export function Header() {
       {isMac && !isWindowFullscreen && <div className="w-[70px]" />}
 
       <div className="flex min-w-0 flex-1 px-2">
+        <button
+          type="button"
+          onClick={() => openOverlay('settings')}
+          className="mr-2 flex h-7 shrink-0 items-center gap-1.5 rounded border border-neutral-800 bg-neutral-900 px-2 text-neutral-300 transition-colors hover:border-neutral-700 hover:bg-neutral-800"
+          style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
+          title="Settings"
+          aria-label="Open settings"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          <span className="text-xs">Settings</span>
+          <Kbd shortcut="cmd+," className="text-[9px]" />
+        </button>
+
         <button
           type="button"
           onClick={() => openOverlay('project-switcher')}

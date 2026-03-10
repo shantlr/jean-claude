@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { Fragment, useCallback, useEffect, useRef } from 'react';
 
-import { Kbd } from '@/common/ui/kbd';
 import { useSteps } from '@/hooks/use-steps';
 import { useTaskState } from '@/stores/navigation';
 import type { TaskStep, TaskStepStatus } from '@shared/types';
@@ -232,7 +231,6 @@ export function StepFlowBar({
               className="flex h-5 shrink-0 items-center gap-1.5 rounded-md border border-dashed border-neutral-700/60 px-1.5 text-neutral-600 transition-colors hover:border-neutral-500 hover:text-neutral-400"
             >
               <Plus className="h-3 w-3" />
-              <Kbd shortcut="cmd+shift+n" className="text-[9px]" />
             </button>
           </>
         )}

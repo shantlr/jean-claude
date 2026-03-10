@@ -20,6 +20,7 @@ const ALL_TABLES: Record<TableName, true> = {
   task_summaries: true,
   project_todos: true,
   completion_usage: true,
+  feed_notes: true,
 };
 
 const ALLOWED_TABLES = Object.keys(ALL_TABLES) as TableName[];

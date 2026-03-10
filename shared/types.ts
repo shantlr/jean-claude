@@ -2,6 +2,7 @@
 // These are plain TypeScript types without database-specific dependencies
 
 import type { AgentBackendType, PromptImagePart } from './agent-backend-types';
+import type { ProjectPriority } from './feed-types';
 import type { PermissionScope } from './permission-types';
 import type { UsageProviderType } from './usage-types';
 
@@ -183,6 +184,7 @@ export interface Project {
   workItemProjectName: string | null;
   defaultAgentBackend: AgentBackendType | null; // null = use global default
   completionContext: string | null;
+  priority: ProjectPriority;
   createdAt: string;
   updatedAt: string;
 }
@@ -207,6 +209,7 @@ export interface NewProject {
   workItemProjectName?: string | null;
   defaultAgentBackend?: AgentBackendType | null;
   completionContext?: string | null;
+  priority?: ProjectPriority;
   createdAt?: string;
   updatedAt: string;
 }
@@ -231,6 +234,7 @@ export interface UpdateProject {
   workItemProjectName?: string | null;
   defaultAgentBackend?: AgentBackendType | null;
   completionContext?: string | null;
+  priority?: ProjectPriority;
   updatedAt?: string;
 }
 

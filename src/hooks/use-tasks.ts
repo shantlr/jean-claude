@@ -19,6 +19,10 @@ type CreateTaskPayload = NewTask & {
   agentBackend?: AgentBackendType | null;
 };
 
+function invalidateFeedItems(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+}
+
 export function useTasks() {
   return useQuery({
     queryKey: ['tasks'],
@@ -74,6 +78,7 @@ export function useCreateTask() {
       queryClient.invalidateQueries({
         queryKey: ['tasks', { projectId: task.projectId }],
       });
+      invalidateFeedItems(queryClient);
     },
   });
 }
@@ -93,6 +98,7 @@ export function useCreateTaskWithWorktree() {
       queryClient.invalidateQueries({
         queryKey: ['tasks', { projectId: task.projectId }],
       });
+      invalidateFeedItems(queryClient);
     },
   });
 }
@@ -108,6 +114,7 @@ export function useUpdateTask() {
       queryClient.invalidateQueries({
         queryKey: ['tasks', { projectId: task.projectId }],
       });
+      invalidateFeedItems(queryClient);
     },
   });
 }
@@ -132,6 +139,7 @@ export function useDeleteTask() {
       clearAllRunCommandLogs(id);
       setRunCommandRunning(id, false);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      invalidateFeedItems(queryClient);
     },
   });
 }
@@ -201,6 +209,7 @@ export function useToggleTaskUserCompleted() {
       });
       queryClient.invalidateQueries({ queryKey: ['tasks', 'allActive'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', 'allCompleted'] });
+      invalidateFeedItems(queryClient);
     },
   });
 }
@@ -216,6 +225,7 @@ export function useClearTaskUserCompleted() {
       });
       queryClient.invalidateQueries({ queryKey: ['tasks', 'allActive'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', 'allCompleted'] });
+      invalidateFeedItems(queryClient);
     },
   });
 }
@@ -325,6 +335,7 @@ export function useReorderTasks() {
       queryClient.invalidateQueries({
         queryKey: ['tasks', { projectId }],
       });
+      invalidateFeedItems(queryClient);
     },
   });
 }

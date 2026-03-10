@@ -12,6 +12,7 @@ import type {
   AzureDevOpsFileChange,
   AzureDevOpsCommentThread,
 } from '@shared/azure-devops-types';
+import type { FeedItem, FeedNote, ProjectPriority } from '@shared/feed-types';
 import type {
   GlobalPrompt,
   GlobalPromptResponse,
@@ -250,6 +251,7 @@ export interface TaskWithProject {
   projectId: string;
   projectName: string;
   projectColor: string;
+  projectPriority: ProjectPriority;
   name: string | null;
   prompt: string;
   status: string;
@@ -784,6 +786,16 @@ export interface Api {
       enabledBackends: AgentBackendType[];
     }) => Promise<ManagedSkill>;
   };
+  feed: {
+    getItems: () => Promise<FeedItem[]>;
+    createNote: (params: { content: string }) => Promise<FeedNote>;
+    updateNote: (params: {
+      id: string;
+      content?: string;
+      completedAt?: string | null;
+    }) => Promise<FeedNote>;
+    deleteNote: (params: { id: string }) => Promise<void>;
+  };
 }
 
 declare global {
@@ -1167,5 +1179,25 @@ export const api: Api = hasWindowApi
           enabledBackends: { 'claude-code': true },
           editable: true,
         }),
+      },
+      feed: {
+        getItems: async () => [],
+        createNote: async () => ({
+          id: '',
+          content: '',
+          completedAt: null,
+          sortOrder: 0,
+          createdAt: '',
+          updatedAt: '',
+        }),
+        updateNote: async () => ({
+          id: '',
+          content: '',
+          completedAt: null,
+          sortOrder: 0,
+          createdAt: '',
+          updatedAt: '',
+        }),
+        deleteNote: async () => {},
       },
     } as Api);

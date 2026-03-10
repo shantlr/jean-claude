@@ -50,6 +50,7 @@ export const dbg = {
   skill: createDebug(`${BASE}:skill`),
   mcp: createDebug(`${BASE}:mcp`),
   completion: createDebug(`${BASE}:completion`),
+  feed: createDebug(`${BASE}:feed`),
 };
 
 // Re-export for custom namespace creation

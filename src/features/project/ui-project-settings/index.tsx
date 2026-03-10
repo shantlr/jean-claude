@@ -19,6 +19,7 @@ import { PROJECT_COLORS } from '@/lib/colors';
 import { useNavigationStore } from '@/stores/navigation';
 import { useToastStore } from '@/stores/toasts';
 import type { AgentBackendType } from '@shared/agent-backend-types';
+import type { ProjectPriority } from '@shared/feed-types';
 
 export type ProjectSettingsMenuItem =
   | 'details'
@@ -59,6 +60,7 @@ export function ProjectSettings({
     useState<AgentBackendType | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [completionContext, setCompletionContext] = useState('');
+  const [priority, setPriority] = useState<ProjectPriority>('normal');
   const [isGeneratingContext, setIsGeneratingContext] = useState(false);
 
   // Resolve enabled backends from global settings
@@ -78,6 +80,7 @@ export function ProjectSettings({
       setColor(project.color);
       setDefaultBranch(project.defaultBranch ?? '');
       setDefaultAgentBackend(project.defaultAgentBackend);
+      setPriority(project.priority ?? 'normal');
       setCompletionContext(project.completionContext ?? '');
     }
   }, [project]);
@@ -118,6 +121,7 @@ export function ProjectSettings({
         color,
         defaultBranch: defaultBranch || null,
         defaultAgentBackend,
+        priority,
         completionContext: completionContext || null,
       },
     });
@@ -156,6 +160,7 @@ export function ProjectSettings({
     color !== project.color ||
     defaultBranch !== (project.defaultBranch ?? '') ||
     defaultAgentBackend !== project.defaultAgentBackend ||
+    priority !== (project.priority ?? 'normal') ||
     completionContext !== (project.completionContext ?? '');
 
   let content: ReactElement;
@@ -282,6 +287,28 @@ export function ProjectSettings({
             </select>
             <p className="mt-1 text-xs text-neutral-500">
               The agent backend used for new tasks in this project
+            </p>
+          </div>
+
+          <div>
+            <label
+              htmlFor="priority"
+              className="mb-1 block text-sm font-medium text-neutral-300"
+            >
+              Feed priority
+            </label>
+            <select
+              id="priority"
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as ProjectPriority)}
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white focus:border-neutral-500 focus:outline-none"
+            >
+              <option value="high">High</option>
+              <option value="normal">Normal</option>
+              <option value="low">Low</option>
+            </select>
+            <p className="mt-1 text-xs text-neutral-500">
+              Affects how tasks from this project are ranked in the feed
             </p>
           </div>
         </div>

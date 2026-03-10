@@ -2502,6 +2502,93 @@ export function registerIpcHandlers() {
       return installFromRegistry(params);
     },
   );
+
+  // Feed
+  ipcMain.handle('feed:getItems', async () => {
+    const { getFeedItems } = await import('../services/feed-service');
+    return getFeedItems();
+  });
+
+  ipcMain.handle(
+    'feed:createNote',
+    async (_event, params: { content: string }) => {
+      const content = validateFeedNoteContent(params.content);
+      const { createFeedNote } = await import('../services/feed-service');
+      return createFeedNote({ content });
+    },
+  );
+
+  ipcMain.handle(
+    'feed:updateNote',
+    async (
+      _event,
+      params: { id: string; content?: string; completedAt?: string | null },
+    ) => {
+      const id = validateFeedNoteId(params.id);
+      const content =
+        params.content === undefined
+          ? undefined
+          : validateFeedNoteContent(params.content);
+      const completedAt = validateFeedNoteCompletedAt(params.completedAt);
+      const { updateFeedNote } = await import('../services/feed-service');
+      return updateFeedNote({ id, content, completedAt });
+    },
+  );
+
+  ipcMain.handle('feed:deleteNote', async (_event, params: { id: string }) => {
+    const id = validateFeedNoteId(params.id);
+    const { deleteFeedNote } = await import('../services/feed-service');
+    return deleteFeedNote({ id });
+  });
+}
+
+function validateFeedNoteId(id: string): string {
+  if (typeof id !== 'string') {
+    throw new Error('Invalid note id');
+  }
+
+  const trimmed = id.trim();
+  if (trimmed.length === 0 || trimmed.length > 128) {
+    throw new Error('Invalid note id');
+  }
+
+  return trimmed;
+}
+
+function validateFeedNoteContent(content: string): string {
+  if (typeof content !== 'string') {
+    throw new Error('Invalid note content');
+  }
+
+  const trimmed = content.trim();
+  if (trimmed.length === 0) {
+    throw new Error('Note content cannot be empty');
+  }
+
+  if (trimmed.length > 4000) {
+    throw new Error('Note content is too long');
+  }
+
+  return trimmed;
+}
+
+function validateFeedNoteCompletedAt(
+  completedAt: string | null | undefined,
+): string | null | undefined {
+  if (completedAt === undefined || completedAt === null) {
+    return completedAt;
+  }
+
+  if (typeof completedAt !== 'string') {
+    throw new Error('Invalid completedAt value');
+  }
+
+  const parsed = Date.parse(completedAt);
+  if (Number.isNaN(parsed)) {
+    throw new Error('Invalid completedAt value');
+  }
+
+  return new Date(parsed).toISOString();
 }
 
 // Helper: check if an editor is available

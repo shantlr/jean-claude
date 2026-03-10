@@ -2,12 +2,14 @@ import clsx from 'clsx';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useCallback, useState } from 'react';
 
+import { FeedList } from '@/features/feed/ui-feed-list';
 import { TaskList } from '@/features/task/ui-task-list';
-import { useSidebarWidth } from '@/stores/navigation';
+import { useCurrentVisibleProject, useSidebarWidth } from '@/stores/navigation';
 
 export const MAIN_SIDEBAR_HEADER_HEIGHT = 48;
 
 export function MainSidebar() {
+  const { projectId } = useCurrentVisibleProject();
   const { width, setWidth, minWidth, maxWidth } = useSidebarWidth();
   const [isDragging, setIsDragging] = useState(false);
 
@@ -48,8 +50,8 @@ export function MainSidebar() {
       )}
       style={{ width }}
     >
-      {/* Task list with project filter tabs */}
-      <TaskList />
+      {/* Feed list for "all" view, task list for project view */}
+      {projectId === 'all' ? <FeedList /> : <TaskList />}
 
       {/* Resize handle */}
       <div

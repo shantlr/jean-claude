@@ -52,6 +52,32 @@ export const TaskStepRepository = {
     return rows.map(toStep);
   },
 
+  findByTaskIds: async (
+    taskIds: string[],
+  ): Promise<Record<string, TaskStep[]>> => {
+    if (taskIds.length === 0) {
+      return {};
+    }
+
+    const rows = await db
+      .selectFrom('task_steps')
+      .selectAll()
+      .where('taskId', 'in', taskIds)
+      .orderBy('sortOrder', 'asc')
+      .execute();
+
+    const stepsByTaskId: Record<string, TaskStep[]> = {};
+    for (const row of rows) {
+      const step = toStep(row);
+      if (!stepsByTaskId[step.taskId]) {
+        stepsByTaskId[step.taskId] = [];
+      }
+      stepsByTaskId[step.taskId].push(step);
+    }
+
+    return stepsByTaskId;
+  },
+
   findByStatus: async (status: TaskStepStatus): Promise<TaskStep[]> => {
     const rows = await db
       .selectFrom('task_steps')

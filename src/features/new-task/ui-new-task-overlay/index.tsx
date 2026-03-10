@@ -26,6 +26,7 @@ import {
   type PromptTextareaRef,
 } from '@/features/common/ui-prompt-textarea';
 import { useBackendModels } from '@/hooks/use-backend-models';
+import { useCreateFeedNote } from '@/hooks/use-feed-notes';
 import { useDeleteProjectTodo } from '@/hooks/use-project-todos';
 import { useProjects, useProjectBranches } from '@/hooks/use-projects';
 import { useBackendsSetting, useCompletionSetting } from '@/hooks/use-settings';
@@ -109,13 +110,13 @@ function resolveDefaultBackend({
   return backendsSetting.enabledBackends[0] ?? 'claude-code';
 }
 
-// Auto-detect input mode based on project selection
+// Auto-detect input mode based on selection
 function getAutoInputMode(
   selectedProjectId: string | null,
   projects: Project[],
 ): InputMode {
-  // "All" shows search mode
-  if (selectedProjectId === null) return 'search';
+  // Note mode always uses prompt-style input
+  if (selectedProjectId === null) return 'prompt';
 
   const project = projects.find((p) => p.id === selectedProjectId);
   if (!project) return 'prompt';
@@ -128,7 +129,14 @@ function getAutoInputMode(
 }
 
 // Placeholder text based on input mode
-function getPlaceholder(mode: InputMode): string {
+function getPlaceholder({
+  mode,
+  isNoteMode,
+}: {
+  mode: InputMode;
+  isNoteMode: boolean;
+}): string {
+  if (isNoteMode) return 'Write a note...';
   return mode === 'search' ? 'Search work items...' : 'Describe your task...';
 }
 
@@ -153,6 +161,7 @@ export function NewTaskOverlay({
 
   const { data: projects = [] } = useProjects();
   const createTaskMutation = useCreateTaskWithWorktree();
+  const createNoteMutation = useCreateFeedNote();
   const deleteBacklogTodo = useDeleteProjectTodo();
   const queryClient = useQueryClient();
   const addRunningJob = useBackgroundJobsStore((state) => state.addRunningJob);
@@ -185,7 +194,7 @@ export function NewTaskOverlay({
     [projects],
   );
 
-  // All tab options: null (All) + project IDs
+  // Tab options: null (Note) + project IDs
   const tabOptions = useMemo<(string | null)[]>(
     () => [null, ...sortedProjects.map((p) => p.id)],
     [sortedProjects],
@@ -205,6 +214,7 @@ export function NewTaskOverlay({
   const { data: projectSkills = [] } = useProjectSkills(
     selectedProjectId ?? undefined,
   );
+  const isNoteMode = selectedProjectId === null;
 
   // Fetch work items for the selected project (used for navigation)
   const { data: workItems = [] } = useWorkItems({
@@ -225,8 +235,8 @@ export function NewTaskOverlay({
     return workItems.filter((wi) => ids.includes(wi.id.toString()));
   }, [workItems, draft?.workItemIds]);
 
-  // Input mode from draft, constrained by project capabilities
-  // - "all" selected: force search mode
+  // Input mode from draft, constrained by selection capabilities
+  // - note selected: force prompt mode
   // - project without work items: force prompt mode
   // - project with work items: use draft.inputMode
   const canToggleMode =
@@ -687,8 +697,28 @@ export function NewTaskOverlay({
     triggerAnimation,
   ]);
 
+  const handleCreateNote = useCallback(async () => {
+    const content = (draft?.prompt ?? '').trim();
+    if (!content) return;
+
+    try {
+      await createNoteMutation.mutateAsync({ content });
+      clearDraft();
+      setTimeout(() => {
+        promptInputRef.current?.focus();
+      }, 50);
+    } catch (error) {
+      console.error('Failed to create note:', error);
+    }
+  }, [draft?.prompt, createNoteMutation, clearDraft]);
+
   // Handle Cmd+Enter based on current state
   const handleCmdEnter = useCallback(() => {
+    if (isNoteMode) {
+      void handleCreateNote();
+      return;
+    }
+
     if (inputMode === 'search' && searchStep === 'select') {
       // In select step, advance to compose
       advanceToCompose();
@@ -696,7 +726,14 @@ export function NewTaskOverlay({
       // In compose or prompt mode, start task
       handleStartTask();
     }
-  }, [inputMode, searchStep, advanceToCompose, handleStartTask]);
+  }, [
+    isNoteMode,
+    inputMode,
+    searchStep,
+    handleCreateNote,
+    advanceToCompose,
+    handleStartTask,
+  ]);
 
   // Handle Escape based on current state
   const handleEscape = useCallback(() => {
@@ -711,7 +748,7 @@ export function NewTaskOverlay({
 
   // Show search input only in select step
   const showSearchInput = inputMode === 'search' && searchStep === 'select';
-  const showPromptInput = inputMode === 'prompt';
+  const showPromptInput = isNoteMode || inputMode === 'prompt';
 
   // Focus input on mount
   useEffect(() => {
@@ -795,7 +832,7 @@ export function NewTaskOverlay({
         onDiscardDraft();
       },
     },
-    {
+    !isNoteMode && {
       label: 'Toggle Worktree',
       shortcut: 'cmd+b',
       handler: () => {
@@ -803,7 +840,7 @@ export function NewTaskOverlay({
       },
     },
     {
-      label: 'Next / Start Task',
+      label: 'Next / Submit',
       shortcut: 'cmd+enter',
       handler: () => {
         handleCmdEnter();
@@ -839,7 +876,7 @@ export function NewTaskOverlay({
           openHighlightedWorkItem();
         },
       },
-    {
+    canToggleMode && {
       label: 'Toggle Input Mode',
       shortcut: 'cmd+m',
       handler: () => {
@@ -892,7 +929,7 @@ export function NewTaskOverlay({
                   value={inputValue}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
-                  placeholder={getPlaceholder(inputMode)}
+                  placeholder={getPlaceholder({ mode: inputMode, isNoteMode })}
                   className="field-sizing-content max-h-[40svh] min-h-[60px] flex-1 resize-none bg-transparent text-sm text-neutral-200 placeholder-neutral-500 outline-none"
                 />
               ) : (
@@ -901,7 +938,7 @@ export function NewTaskOverlay({
                   value={inputValue}
                   onChange={handlePromptChange}
                   onKeyDown={handleKeyDown}
-                  placeholder={getPlaceholder(inputMode)}
+                  placeholder={getPlaceholder({ mode: inputMode, isNoteMode })}
                   skills={projectSkills}
                   showCommands={false}
                   maxHeight={320}
@@ -1001,44 +1038,53 @@ export function NewTaskOverlay({
         <div className="flex min-h-[50px] shrink-0 items-center justify-between overflow-hidden px-4 py-2">
           <div className="flex items-center gap-4">
             {/* Interaction mode selector */}
-            <ModeSelector
-              value={currentInteractionMode}
-              onChange={(mode) => updateDraft({ interactionMode: mode })}
-              backend={currentBackend}
-              shortcut="cmd+i"
-              side="top"
-            />
+            {!isNoteMode && (
+              <ModeSelector
+                value={currentInteractionMode}
+                onChange={(mode) => updateDraft({ interactionMode: mode })}
+                backend={currentBackend}
+                shortcut="cmd+i"
+                side="top"
+              />
+            )}
 
             {/* Model selector */}
-            <ModelSelector
-              value={currentModelPreference}
-              onChange={(model) => updateDraft({ modelPreference: model })}
-              models={getModelsForBackend(currentBackend, dynamicModels)}
-              shortcut="cmd+l"
-              side="top"
-            />
+            {!isNoteMode && (
+              <ModelSelector
+                value={currentModelPreference}
+                onChange={(model) => updateDraft({ modelPreference: model })}
+                models={getModelsForBackend(currentBackend, dynamicModels)}
+                shortcut="cmd+l"
+                side="top"
+              />
+            )}
 
             {/* Agent backend selector — only show when multiple backends enabled */}
-            <BackendSelector
-              value={currentBackend}
-              onChange={handleBackendChange}
-              shortcut="cmd+j"
-              side="top"
-            />
-
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={currentCreateWorktree}
-                onChange={toggleWorktree}
-                className="h-4 w-4 rounded border-neutral-600 bg-neutral-700"
+            {!isNoteMode && (
+              <BackendSelector
+                value={currentBackend}
+                onChange={handleBackendChange}
+                shortcut="cmd+j"
+                side="top"
               />
-              <span className="text-neutral-300">Worktree</span>
-              <Kbd shortcut="cmd+b" />
-            </label>
+            )}
+
+            {!isNoteMode && (
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={currentCreateWorktree}
+                  onChange={toggleWorktree}
+                  className="h-4 w-4 rounded border-neutral-600 bg-neutral-700"
+                />
+                <span className="text-neutral-300">Worktree</span>
+                <Kbd shortcut="cmd+b" />
+              </label>
+            )}
 
             {/* Source branch selector - only show when project is selected */}
-            {currentCreateWorktree &&
+            {!isNoteMode &&
+              currentCreateWorktree &&
               selectedProjectId &&
               branches.length > 0 && (
                 <div className="flex items-center gap-2 text-sm">
@@ -1058,12 +1104,12 @@ export function NewTaskOverlay({
           </div>
 
           <div className="flex items-center gap-3 text-xs whitespace-nowrap text-neutral-500">
-            {showSearchInput && (
+            {!isNoteMode && showSearchInput && (
               <span className="flex items-center gap-1">
                 <Kbd shortcut="cmd+right" /> project
               </span>
             )}
-            {canToggleMode && showSearchInput && (
+            {!isNoteMode && canToggleMode && showSearchInput && (
               <span className="flex items-center gap-1">
                 <Kbd shortcut="cmd+m" />{' '}
                 {inputMode === 'search' ? 'prompt' : 'search'}
@@ -1094,7 +1140,12 @@ export function NewTaskOverlay({
                 </span>
               </>
             )}
-            {inputMode === 'prompt' && (
+            {isNoteMode && (
+              <span className="flex items-center gap-1">
+                <Kbd shortcut="cmd+enter" /> create note
+              </span>
+            )}
+            {!isNoteMode && inputMode === 'prompt' && (
               <span className="flex items-center gap-1">
                 <Kbd shortcut="cmd+enter" /> start
               </span>
@@ -1124,7 +1175,7 @@ function ProjectTabs({
     const tabsContainer = projectTabsRef.current;
     if (!tabsContainer) return;
 
-    const selectedValue = selectedProjectId ?? 'all';
+    const selectedValue = selectedProjectId ?? 'note';
     const selector = `[data-project-tab="${selectedValue}"]`;
     const selectedTab =
       tabsContainer.querySelector<HTMLButtonElement>(selector);
@@ -1143,7 +1194,7 @@ function ProjectTabs({
       className="border-border flex shrink-0 items-center gap-1 overflow-x-auto border-b border-neutral-700 px-4 py-2"
     >
       <button
-        data-project-tab="all"
+        data-project-tab="note"
         onClick={() => onSelectProject(null)}
         className={clsx(
           'shrink-0 rounded px-2 py-1 text-xs font-medium transition-colors',
@@ -1152,7 +1203,7 @@ function ProjectTabs({
             : 'text-neutral-400 hover:bg-neutral-800 hover:text-white',
         )}
       >
-        All
+        Note
       </button>
 
       <div className="h-4 w-px shrink-0 bg-neutral-700" />
@@ -1355,7 +1406,7 @@ function SearchModeContent({
 
   // Show appropriate content based on context
   if (projectId === null) {
-    // "All" selected - show placeholder for cross-project work items
+    // Note mode does not show work items
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center text-neutral-400">

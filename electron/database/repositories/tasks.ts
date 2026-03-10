@@ -186,6 +186,7 @@ export const TaskRepository = {
       .select([
         'projects.name as projectName',
         'projects.color as projectColor',
+        'projects.priority as projectPriority',
       ])
       .where('tasks.userCompleted', '=', 0)
       .orderBy('tasks.createdAt', 'desc')
@@ -207,6 +208,7 @@ export const TaskRepository = {
       .select([
         'projects.name as projectName',
         'projects.color as projectColor',
+        'projects.priority as projectPriority',
       ])
       .where('tasks.userCompleted', '=', 1)
       .orderBy('tasks.updatedAt', 'desc')

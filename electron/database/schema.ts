@@ -41,6 +41,7 @@ export interface Database {
   task_summaries: TaskSummaryTable;
   project_todos: ProjectTodoTable;
   completion_usage: CompletionUsageTable;
+  feed_notes: FeedNoteTable;
 }
 
 export interface TokenTable {
@@ -87,6 +88,7 @@ export interface ProjectTable {
   // Agent backend (null = use global default)
   defaultAgentBackend: string | null;
   completionContext: string | null;
+  priority: string;
   createdAt: Generated<string>;
   updatedAt: string;
 }
@@ -271,3 +273,16 @@ export interface CompletionUsageTable {
 }
 
 export type CompletionUsageRow = Selectable<CompletionUsageTable>;
+
+export interface FeedNoteTable {
+  id: Generated<string>;
+  content: string;
+  completedAt: string | null;
+  sortOrder: number;
+  createdAt: Generated<string>;
+  updatedAt: string;
+}
+
+export type FeedNoteRow = Selectable<FeedNoteTable>;
+export type NewFeedNoteRow = Insertable<FeedNoteTable>;
+export type UpdateFeedNoteRow = Updateable<FeedNoteTable>;

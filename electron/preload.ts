@@ -545,5 +545,17 @@ contextBridge.exposeInMainWorld('api', {
       enabledBackends: string[];
     }) => ipcRenderer.invoke('skills:registryInstall', params),
   },
+  feed: {
+    getItems: () => ipcRenderer.invoke('feed:getItems'),
+    createNote: (params: { content: string }) =>
+      ipcRenderer.invoke('feed:createNote', params),
+    updateNote: (params: {
+      id: string;
+      content?: string;
+      completedAt?: string | null;
+    }) => ipcRenderer.invoke('feed:updateNote', params),
+    deleteNote: (params: { id: string }) =>
+      ipcRenderer.invoke('feed:deleteNote', params),
+  },
 });
 console.log('Preload script loaded');
