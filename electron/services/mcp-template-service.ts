@@ -80,6 +80,21 @@ const AUTO_PROVIDED_VARIABLES = [
 
 const CLAUDE_CONFIG_PATH = path.join(os.homedir(), '.claude.json');
 
+function resolveJcMcpServerPath(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'mcp', 'jean-claude-mcp-server.js');
+  }
+
+  const candidates = [
+    path.join(__dirname, 'jean-claude-mcp-server.js'),
+    path.join(__dirname, '..', 'jean-claude-mcp-server.js'),
+    path.join(app.getAppPath(), 'out', 'main', 'jean-claude-mcp-server.js'),
+  ];
+
+  const existing = candidates.find((candidate) => fs.existsSync(candidate));
+  return existing ?? candidates[0];
+}
+
 /**
  * Extracts variable names from a command template.
  * Variables are in the format {variableName}.
@@ -115,9 +130,7 @@ export function substituteVariables(
   result = result.replace(/\{mainRepoPath\}/g, context.mainRepoPath);
 
   // Resolve jcMcpServerPath based on whether we're running packaged or in dev
-  const jcMcpServerPath = app.isPackaged
-    ? path.join(process.resourcesPath, 'mcp', 'jean-claude-mcp-server.js')
-    : path.join(__dirname, 'jean-claude-mcp-server.js');
+  const jcMcpServerPath = resolveJcMcpServerPath();
   result = result.replace(/\{jcMcpServerPath\}/g, jcMcpServerPath);
 
   // Substitute user-defined variables
@@ -425,7 +438,5 @@ export async function deactivateMcpServer(
  * Handles dev vs packaged mode.
  */
 export function getJcMcpServerPath(): string {
-  return app.isPackaged
-    ? path.join(process.resourcesPath, 'mcp', 'jean-claude-mcp-server.js')
-    : path.join(__dirname, 'jean-claude-mcp-server.js');
+  return resolveJcMcpServerPath();
 }
