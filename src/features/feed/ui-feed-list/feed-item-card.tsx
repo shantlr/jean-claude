@@ -104,7 +104,7 @@ function borderClasses({
     case 'has-question':
       return 'border border-amber-500/30 hover:border-amber-500/50';
     case 'running':
-      return 'border border-blue-500/20 hover:border-blue-500/40';
+      return 'border border-blue-500/20 bg-neutral-900 hover:border-blue-500/40';
     default:
       return 'border border-transparent';
   }
