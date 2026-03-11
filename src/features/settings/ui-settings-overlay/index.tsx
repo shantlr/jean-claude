@@ -7,6 +7,7 @@ import { RemoveScroll } from 'react-remove-scroll';
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
 import { Kbd } from '@/common/ui/kbd';
+import { Select } from '@/common/ui/select';
 import {
   ProjectSettings,
   type ProjectSettingsMenuItem,
@@ -70,17 +71,45 @@ function GlobalContent({ menuItem }: { menuItem: GlobalMenuItem }) {
 }
 
 export function SettingsOverlay({ onClose }: { onClose: () => void }) {
-  const { currentProject } = useCurrentSettingsProject();
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    null,
+  );
+  const { currentProject, projects } = useCurrentSettingsProject({
+    overrideProjectId: selectedProjectId,
+  });
+
+  // Auto-select first project when none is inferred (e.g. opening from /all route)
+  const resolvedProject =
+    currentProject ?? (projects.length > 0 ? projects[0] : null);
+  const resolvedProjectId = resolvedProject?.id ?? null;
 
   const [activeTab, setActiveTab] = useState<'global' | 'project'>(
-    currentProject !== null ? 'project' : 'global',
+    resolvedProject !== null ? 'project' : 'global',
   );
   const [globalMenuItem, setGlobalMenuItem] =
     useState<GlobalMenuItem>('general');
   const [projectMenuItem, setProjectMenuItem] =
     useState<ProjectSettingsMenuItem>('details');
 
-  const hasProjectTab = currentProject !== null;
+  const hasProjectTab = projects.length > 0;
+
+  const projectOptions = projects.map((p) => ({
+    value: p.id,
+    label: p.name,
+  }));
+
+  const handleProjectChange = useCallback((projectId: string) => {
+    setSelectedProjectId(projectId);
+    setActiveTab('project');
+  }, []);
+
+  // When switching to project tab, ensure a project is selected
+  const handleProjectTab = useCallback(() => {
+    if (!resolvedProjectId && projects.length > 0) {
+      setSelectedProjectId(projects[0].id);
+    }
+    setActiveTab('project');
+  }, [resolvedProjectId, projects]);
 
   const navigateMenu = useCallback(
     (direction: 'up' | 'down') => {
@@ -124,7 +153,7 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
     'cmd+2': {
       handler: () => {
         if (hasProjectTab) {
-          setActiveTab('project');
+          handleProjectTab();
         }
         return true;
       },
@@ -196,18 +225,30 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                 </button>
 
                 {hasProjectTab && (
-                  <button
-                    onClick={() => setActiveTab('project')}
-                    className={clsx(
-                      'flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors',
-                      activeTab === 'project'
-                        ? 'bg-neutral-700 text-neutral-100'
-                        : 'text-neutral-400 hover:bg-neutral-800',
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={handleProjectTab}
+                      className={clsx(
+                        'flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors',
+                        activeTab === 'project'
+                          ? 'bg-neutral-700 text-neutral-100'
+                          : 'text-neutral-400 hover:bg-neutral-800',
+                      )}
+                    >
+                      Project
+                      <Kbd shortcut="cmd+2" />
+                    </button>
+                    {projectOptions.length > 0 && (
+                      <Select
+                        value={
+                          resolvedProjectId ?? projectOptions[0]?.value ?? ''
+                        }
+                        options={projectOptions}
+                        onChange={handleProjectChange}
+                        label="Select project"
+                      />
                     )}
-                  >
-                    Project: {currentProject.name}
-                    <Kbd shortcut="cmd+2" />
-                  </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -287,9 +328,9 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                   <GlobalContent menuItem={globalMenuItem} />
                 )}
 
-                {activeTab === 'project' && hasProjectTab && (
+                {activeTab === 'project' && resolvedProject && (
                   <ProjectSettings
-                    projectId={currentProject.id}
+                    projectId={resolvedProject.id}
                     menuItem={projectMenuItem}
                     onProjectDeleted={handleProjectDeleted}
                   />

@@ -4,7 +4,9 @@ import { useProjects } from '@/hooks/use-projects';
 import { useTask } from '@/hooks/use-tasks';
 import { useCurrentVisibleProject } from '@/stores/navigation';
 
-export function useCurrentSettingsProject() {
+export function useCurrentSettingsProject({
+  overrideProjectId,
+}: { overrideProjectId?: string | null } = {}) {
   const routeParams = useParams({ strict: false });
   const routeTaskId =
     typeof routeParams.taskId === 'string' ? routeParams.taskId : '';
@@ -12,15 +14,17 @@ export function useCurrentSettingsProject() {
   const { data: currentTask } = useTask(routeTaskId);
   const { data: projects = [] } = useProjects();
 
-  const projectId =
+  const inferredProjectId =
     visibleProjectId === 'all'
       ? (currentTask?.projectId ?? 'all')
       : visibleProjectId;
+
+  const projectId = overrideProjectId ?? inferredProjectId;
 
   const currentProject =
     projectId !== 'all'
       ? (projects.find((project) => project.id === projectId) ?? null)
       : null;
 
-  return { currentProject };
+  return { currentProject, projects };
 }
