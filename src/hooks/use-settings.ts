@@ -8,6 +8,7 @@ import type {
   SummaryModelsSetting,
   UsageDisplaySetting,
 } from '@shared/types';
+import { PRESET_EDITORS } from '@shared/types';
 
 export function useSetting<K extends keyof AppSettings>(key: K) {
   return useQuery({
@@ -25,6 +26,17 @@ export function useUpdateSetting<K extends keyof AppSettings>() {
       queryClient.invalidateQueries({ queryKey: ['settings', key] });
     },
   });
+}
+
+export function getEditorLabel(setting: EditorSetting): string {
+  if (setting.type === 'preset') {
+    const editor = PRESET_EDITORS.find((e) => e.id === setting.id);
+    return editor?.label ?? setting.id;
+  }
+  if (setting.type === 'command') return setting.command;
+  if (setting.type === 'app') return setting.name;
+  const _exhaustive: never = setting;
+  return _exhaustive;
 }
 
 // Convenience hooks for editor setting

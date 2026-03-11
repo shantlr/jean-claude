@@ -12,6 +12,7 @@ import {
   useCleanupClaudeProjects,
 } from '@/hooks/use-claude-projects-cleanup';
 import {
+  getEditorLabel,
   useBackendsSetting,
   useEditorSetting,
   useSummaryModelsSetting,
@@ -25,7 +26,7 @@ import {
 import { api, type NonExistentClaudeProject } from '@/lib/api';
 import { useUISetting, useUIStore } from '@/stores/ui';
 import type { AgentBackendType } from '@shared/agent-backend-types';
-import { PRESET_EDITORS, type EditorSetting } from '@shared/types';
+import { PRESET_EDITORS } from '@shared/types';
 import { USAGE_PROVIDERS, type UsageProviderType } from '@shared/usage-types';
 
 export function GeneralSettings() {
@@ -55,17 +56,6 @@ export function GeneralSettings() {
       });
       setCustomCommand('');
     }
-  };
-
-  const getEditorLabel = (setting: EditorSetting): string => {
-    if (setting.type === 'preset') {
-      const editor = PRESET_EDITORS.find((e) => e.id === setting.id);
-      return editor?.label ?? setting.id;
-    }
-    if (setting.type === 'command') {
-      return setting.command;
-    }
-    return setting.name;
   };
 
   const isPresetSelected = (id: string): boolean => {

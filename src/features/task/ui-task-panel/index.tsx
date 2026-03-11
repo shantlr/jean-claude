@@ -49,7 +49,7 @@ import { useBackendModels } from '@/hooks/use-backend-models';
 import { useContextUsage, type ContextUsage } from '@/hooks/use-context-usage';
 import { useModel, formatModelName } from '@/hooks/use-model';
 import { useProject } from '@/hooks/use-projects';
-import { useEditorSetting } from '@/hooks/use-settings';
+import { getEditorLabel, useEditorSetting } from '@/hooks/use-settings';
 import { useSkills } from '@/hooks/use-skills';
 import {
   useCreateStep,
@@ -88,12 +88,10 @@ import type {
 } from '@shared/agent-backend-types';
 import type { NormalizedEntry } from '@shared/normalized-message-v2';
 import {
-  PRESET_EDITORS,
   getDefaultInteractionModeForBackend,
   type InteractionMode,
   type ModelPreference,
   type TaskStep,
-  type EditorSetting,
 } from '@shared/types';
 
 import { AddStepDialog, type AddStepPresetType } from './add-step-dialog';
@@ -535,17 +533,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       onRespond: respondToQuestion,
     };
   }, [agentState.pendingQuestion, respondToQuestion]);
-
-  const getEditorLabel = (setting: EditorSetting): string => {
-    if (setting.type === 'preset') {
-      const editor = PRESET_EDITORS.find((e) => e.id === setting.id);
-      return editor?.label ?? setting.id;
-    }
-    if (setting.type === 'command') {
-      return setting.command;
-    }
-    return setting.name;
-  };
 
   const handleToggleSettingsPane = useCallback(() => {
     if (rightPane?.type === 'settings') {

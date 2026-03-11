@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 import {
   ExternalLink,
   Eye,
+  FolderOpen,
   GitPullRequest,
   GitMerge,
   Loader2,
@@ -9,6 +10,8 @@ import {
 import { useCallback, useState } from 'react';
 
 import { UserAvatar, getVoteLabel } from '@/common/ui/user-avatar';
+import { useProject } from '@/hooks/use-projects';
+import { getEditorLabel, useEditorSetting } from '@/hooks/use-settings';
 import { api } from '@/lib/api';
 import type { AzureDevOpsPullRequestDetails } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/time';
@@ -63,10 +66,18 @@ export function PrHeader({
   projectId: string;
 }) {
   const navigate = useNavigate();
+  const { data: project } = useProject(projectId);
   const addRunningJob = useBackgroundJobsStore((s) => s.addRunningJob);
   const markJobSucceeded = useBackgroundJobsStore((s) => s.markJobSucceeded);
   const markJobFailed = useBackgroundJobsStore((s) => s.markJobFailed);
+  const { data: editorSetting } = useEditorSetting();
   const [isCreating, setIsCreating] = useState(false);
+
+  const handleOpenInEditor = useCallback(() => {
+    if (project?.path) {
+      api.shell.openInEditor(project.path);
+    }
+  }, [project?.path]);
 
   const handleReview = useCallback(async () => {
     setIsCreating(true);
@@ -126,6 +137,16 @@ export function PrHeader({
                   <Eye className="h-4 w-4" />
                 )}
                 Review
+              </button>
+            )}
+            {project?.path && (
+              <button
+                onClick={handleOpenInEditor}
+                className="flex items-center gap-1 rounded-lg bg-neutral-700 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-neutral-600"
+              >
+                <FolderOpen className="h-4 w-4" />
+                Open in{' '}
+                {editorSetting ? getEditorLabel(editorSetting) : 'Editor'}
               </button>
             )}
             <a
