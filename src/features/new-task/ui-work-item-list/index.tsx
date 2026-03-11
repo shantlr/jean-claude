@@ -101,17 +101,13 @@ export function WorkItemList({
 
   // Flat list navigation: all directions move linearly
   const navigate = useCallback(
-    (direction: 'up' | 'down' | 'left' | 'right' | 'first' | 'last') => {
+    (direction: 'up' | 'down' | 'left' | 'right') => {
       if (groupedItems.length === 0) return;
 
       const cur = highlightedIndex;
       let next: number;
 
-      if (direction === 'first') {
-        next = 0;
-      } else if (direction === 'last') {
-        next = groupedItems.length - 1;
-      } else if (cur === -1) {
+      if (cur === -1) {
         next =
           direction === 'up' || direction === 'left'
             ? groupedItems.length - 1
@@ -152,18 +148,6 @@ export function WorkItemList({
       label: 'Navigate Right',
       shortcut: 'right',
       handler: () => navigate('right'),
-      hideInCommandPalette: true,
-    },
-    {
-      label: 'Navigate to First',
-      shortcut: 'cmd+up',
-      handler: () => navigate('first'),
-      hideInCommandPalette: true,
-    },
-    {
-      label: 'Navigate to Last',
-      shortcut: 'cmd+down',
-      handler: () => navigate('last'),
       hideInCommandPalette: true,
     },
   ]);

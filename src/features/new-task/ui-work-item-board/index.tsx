@@ -84,7 +84,7 @@ export function WorkItemBoard({
 
   // Board navigation: up/down within column, left/right across columns
   const navigate = useCallback(
-    (direction: 'up' | 'down' | 'left' | 'right' | 'first' | 'last') => {
+    (direction: 'up' | 'down' | 'left' | 'right') => {
       if (columns.length === 0) return;
 
       // Find current position [col, row]
@@ -106,20 +106,6 @@ export function WorkItemBoard({
       // Find first/last non-empty column
       const firstCol = columns.findIndex((c) => c.items.length > 0);
       if (firstCol === -1) return; // all empty
-
-      if (direction === 'first') {
-        onHighlight(columns[firstCol].items[0]);
-        return;
-      }
-      if (direction === 'last') {
-        for (let c = columns.length - 1; c >= 0; c--) {
-          if (columns[c].items.length > 0) {
-            onHighlight(columns[c].items[columns[c].items.length - 1]);
-            return;
-          }
-        }
-        return;
-      }
 
       // No current highlight — start at first item
       if (curCol === -1) {
@@ -179,18 +165,6 @@ export function WorkItemBoard({
       label: 'Navigate Right',
       shortcut: 'right',
       handler: () => navigate('right'),
-      hideInCommandPalette: true,
-    },
-    {
-      label: 'Navigate to First',
-      shortcut: 'cmd+up',
-      handler: () => navigate('first'),
-      hideInCommandPalette: true,
-    },
-    {
-      label: 'Navigate to Last',
-      shortcut: 'cmd+down',
-      handler: () => navigate('last'),
       hideInCommandPalette: true,
     },
   ]);

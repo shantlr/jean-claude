@@ -144,6 +144,13 @@ function getImageIdentity(image: PromptImagePart): string {
   return `${image.filename ?? ''}:${image.storageData ?? image.data}`;
 }
 
+function getProjectGridColumns(): number {
+  if (typeof window === 'undefined') return 8;
+  if (window.innerWidth >= 1024) return 10;
+  if (window.innerWidth >= 640) return 8;
+  return 7;
+}
+
 export function NewTaskOverlay({
   onClose,
   onDiscardDraft,
@@ -294,6 +301,21 @@ export function NewTaskOverlay({
         direction === 'next'
           ? (currentTabIndex + 1) % tabOptions.length
           : (currentTabIndex - 1 + tabOptions.length) % tabOptions.length;
+      setSelectedProjectId(tabOptions[newIndex]);
+    },
+    [currentTabIndex, tabOptions, setSelectedProjectId],
+  );
+
+  const navigateTabRow = useCallback(
+    (direction: 'up' | 'down') => {
+      if (currentTabIndex < 0) return;
+
+      const columns = getProjectGridColumns();
+      const newIndex =
+        direction === 'up'
+          ? Math.max(0, currentTabIndex - columns)
+          : Math.min(tabOptions.length - 1, currentTabIndex + columns);
+
       setSelectedProjectId(tabOptions[newIndex]);
     },
     [currentTabIndex, tabOptions, setSelectedProjectId],
@@ -860,6 +882,20 @@ export function NewTaskOverlay({
         navigateTab('prev');
       },
     },
+    {
+      label: 'Navigate to Previous Project Grid Item',
+      shortcut: 'cmd+up',
+      handler: () => {
+        navigateTabRow('up');
+      },
+    },
+    {
+      label: 'Navigate to Next Project Grid Item',
+      shortcut: 'cmd+down',
+      handler: () => {
+        navigateTabRow('down');
+      },
+    },
     inputMode === 'search' &&
       searchStep === 'select' && {
         label: 'Toggle Work Item Selection',
@@ -956,9 +992,9 @@ export function NewTaskOverlay({
           </div>
         )}
 
-        {/* Project tabs - only show in select or prompt mode */}
+        {/* Project grid - only show in select or prompt mode */}
         {(showSearchInput || showPromptInput) && (
-          <ProjectTabs
+          <ProjectGrid
             sortedProjects={sortedProjects}
             selectedProjectId={selectedProjectId}
             onSelectProject={setSelectedProjectId}
@@ -1160,7 +1196,7 @@ export function NewTaskOverlay({
   );
 }
 
-function ProjectTabs({
+function ProjectGrid({
   sortedProjects,
   selectedProjectId,
   onSelectProject,
@@ -1169,35 +1205,35 @@ function ProjectTabs({
   selectedProjectId: string | null;
   onSelectProject: (projectId: string | null) => void;
 }) {
-  const projectTabsRef = useRef<HTMLDivElement>(null);
+  const projectGridRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const tabsContainer = projectTabsRef.current;
-    if (!tabsContainer) return;
+    const gridContainer = projectGridRef.current;
+    if (!gridContainer) return;
 
     const selectedValue = selectedProjectId ?? 'note';
     const selector = `[data-project-tab="${selectedValue}"]`;
-    const selectedTab =
-      tabsContainer.querySelector<HTMLButtonElement>(selector);
-    if (!selectedTab) return;
+    const selectedCard =
+      gridContainer.querySelector<HTMLButtonElement>(selector);
+    if (!selectedCard) return;
 
-    selectedTab.scrollIntoView({
+    selectedCard.scrollIntoView({
       behavior: 'smooth',
       block: 'nearest',
-      inline: 'center',
+      inline: 'nearest',
     });
   }, [selectedProjectId, sortedProjects.length]);
 
   return (
     <div
-      ref={projectTabsRef}
-      className="border-border flex shrink-0 items-center gap-1 overflow-x-auto border-b border-neutral-700 px-4 py-2"
+      ref={projectGridRef}
+      className="grid max-h-[180px] shrink-0 grid-cols-7 gap-1.5 overflow-y-auto border-b border-neutral-700 px-4 py-2 sm:grid-cols-8 lg:grid-cols-10"
     >
       <button
         data-project-tab="note"
         onClick={() => onSelectProject(null)}
         className={clsx(
-          'shrink-0 rounded px-2 py-1 text-xs font-medium transition-colors',
+          'flex min-w-0 items-center justify-center rounded px-2 py-1 text-xs font-medium transition-colors',
           selectedProjectId === null
             ? 'bg-neutral-700 text-white'
             : 'text-neutral-400 hover:bg-neutral-800 hover:text-white',
@@ -1206,25 +1242,23 @@ function ProjectTabs({
         Note
       </button>
 
-      <div className="h-4 w-px shrink-0 bg-neutral-700" />
-
       {sortedProjects.map((project) => (
         <button
           key={project.id}
           data-project-tab={project.id}
           onClick={() => onSelectProject(project.id)}
           className={clsx(
-            'flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-colors',
+            'flex min-w-0 items-center gap-1.5 rounded px-2 py-1 text-left text-xs font-medium transition-colors',
             selectedProjectId === project.id
               ? 'bg-neutral-700 text-white'
               : 'text-neutral-400 hover:bg-neutral-800 hover:text-white',
           )}
         >
           <span
-            className="h-2 w-2 rounded-full"
+            className="h-2 w-2 shrink-0 rounded-full"
             style={{ backgroundColor: project.color }}
           />
-          <span className="max-w-20 truncate">{project.name}</span>
+          <span className="truncate">{project.name}</span>
         </button>
       ))}
     </div>
