@@ -79,7 +79,7 @@ function RunningTasksZone({
             'relative transition-[margin] duration-200 ease-out',
             index > 0 && (expanded ? 'mt-1.5' : '-mt-7'),
           )}
-          style={{ zIndex: items.length - index }}
+          style={{ zIndex: index + 1 }}
         >
           <FeedCard
             item={item}

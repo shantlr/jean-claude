@@ -262,7 +262,11 @@ export const TaskRepository = {
 
   update: async (id: string, data: UpdateTaskInput) => {
     dbg.db('tasks.update id=%s %o', id, Object.keys(data));
-    console.trace('[DEBUG] TaskRepository.update called', id, Object.keys(data));
+    console.trace(
+      '[DEBUG] TaskRepository.update called',
+      id,
+      Object.keys(data),
+    );
     const row = await db
       .updateTable('tasks')
       .set({ ...toDbUpdateValues(data), updatedAt: new Date().toISOString() })
