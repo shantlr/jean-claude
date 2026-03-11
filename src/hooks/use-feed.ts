@@ -65,10 +65,19 @@ export function useFeed() {
     }
 
     return raw.map((item) => {
-      if (
-        !item.taskId ||
-        (item.attention !== 'waiting' && item.attention !== 'needs-permission')
-      ) {
+      if (!item.taskId) {
+        return item;
+      }
+
+      // Refine attention for task items based on in-memory pending request
+      // state. A running task can ask for permission or a question, so we
+      // need to check running items too, not just waiting/needs-permission.
+      const refinable =
+        item.attention === 'waiting' ||
+        item.attention === 'needs-permission' ||
+        item.attention === 'running';
+
+      if (!refinable) {
         return item;
       }
 
@@ -80,9 +89,13 @@ export function useFeed() {
         return { ...item, attention: 'needs-permission' as const };
       }
 
-      return item.attention === 'waiting'
-        ? item
-        : { ...item, attention: 'waiting' as const };
+      // If neither question nor permission is pending, restore the original
+      // attention for items that were previously refined but are now cleared.
+      if (item.attention === 'needs-permission') {
+        return { ...item, attention: 'waiting' as const };
+      }
+
+      return item;
     });
   }, [query.data, taskSteps]);
 

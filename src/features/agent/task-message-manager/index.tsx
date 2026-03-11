@@ -85,11 +85,19 @@ export function TaskMessageManager() {
           if (isLoaded(stepId)) {
             setPermission(stepId, event);
           }
+          // Invalidate feed so attention changes to needs-permission
+          queryClient.invalidateQueries({
+            queryKey: ['feed', 'items'],
+          });
           break;
         case 'question':
           if (isLoaded(stepId)) {
             setQuestion(stepId, event);
           }
+          // Invalidate feed so attention changes to has-question
+          queryClient.invalidateQueries({
+            queryKey: ['feed', 'items'],
+          });
           break;
         case 'name-updated':
           queryClient.invalidateQueries({ queryKey: ['tasks'] });
