@@ -1,5 +1,13 @@
 import clsx from 'clsx';
-import { File, Loader2, Wand2, ImageIcon, X } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  File,
+  ImageIcon,
+  Loader2,
+  Wand2,
+  X,
+} from 'lucide-react';
 import {
   useState,
   useRef,
@@ -842,28 +850,149 @@ export const PromptTextarea = forwardRef<
 
       {/* Image previews — below the textarea in normal flow */}
       {images && images.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-2">
-          {images.map((img, index) => (
-            <div
-              key={`${img.filename ?? 'img'}-${index}`}
-              className="group relative"
-            >
-              <img
-                src={`data:${img.storageMimeType ?? img.mimeType};base64,${img.storageData ?? img.data}`}
-                alt={img.filename || 'Attached image'}
-                className="h-16 w-16 rounded border border-neutral-600 object-cover"
-              />
-              <button
-                type="button"
-                onClick={() => onImageRemove?.(index)}
-                className="absolute -top-1.5 -right-1.5 hidden h-4 w-4 items-center justify-center rounded-full bg-neutral-700 text-xs text-neutral-300 group-hover:flex hover:bg-red-600"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          ))}
-        </div>
+        <ImageThumbnails images={images} onImageRemove={onImageRemove} />
       )}
     </div>
   );
 });
+
+function ImageThumbnails({
+  images,
+  onImageRemove,
+}: {
+  images: PromptImagePart[];
+  onImageRemove?: (index: number) => void;
+}) {
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+
+  return (
+    <>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {images.map((img, index) => (
+          <div
+            key={`${img.filename ?? 'img'}-${index}`}
+            className="group relative"
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewIndex(index)}
+              className="block cursor-pointer overflow-hidden rounded border border-neutral-600 hover:border-neutral-400"
+            >
+              <img
+                src={`data:${img.storageMimeType ?? img.mimeType};base64,${img.storageData ?? img.data}`}
+                alt={img.filename || 'Attached image'}
+                className="h-16 w-16 object-cover"
+              />
+            </button>
+            <button
+              type="button"
+              onClick={() => onImageRemove?.(index)}
+              className="absolute -top-1.5 -right-1.5 hidden h-4 w-4 items-center justify-center rounded-full bg-neutral-700 text-xs text-neutral-300 group-hover:flex hover:bg-red-600"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {previewIndex !== null && (
+        <ImagePreviewDialog
+          images={images}
+          initialIndex={previewIndex}
+          onClose={() => setPreviewIndex(null)}
+        />
+      )}
+    </>
+  );
+}
+
+function ImagePreviewDialog({
+  images,
+  initialIndex,
+  onClose,
+}: {
+  images: PromptImagePart[];
+  initialIndex: number;
+  onClose: () => void;
+}) {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const img = images[currentIndex];
+
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onCloseRef.current();
+      } else if (e.key === 'ArrowLeft') {
+        setCurrentIndex((i) => Math.max(0, i - 1));
+      } else if (e.key === 'ArrowRight') {
+        setCurrentIndex((i) => Math.min(images.length - 1, i + 1));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [images.length]);
+
+  if (!img) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+      onClick={onClose}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute top-4 right-4 rounded-full bg-neutral-800/80 p-2 text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100"
+        aria-label="Close preview"
+      >
+        <X className="h-5 w-5" />
+      </button>
+
+      {images.length > 1 && currentIndex > 0 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setCurrentIndex((i) => i - 1);
+          }}
+          className="absolute left-4 rounded-full bg-neutral-800/80 p-2 text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100"
+          aria-label="Previous image"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+      )}
+
+      <img
+        src={`data:${img.mimeType};base64,${img.data}`}
+        alt={img.filename || 'Image preview'}
+        className="max-h-[85vh] max-w-[85vw] rounded-lg object-contain"
+        onClick={(e) => e.stopPropagation()}
+      />
+
+      {images.length > 1 && currentIndex < images.length - 1 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setCurrentIndex((i) => i + 1);
+          }}
+          className="absolute right-4 rounded-full bg-neutral-800/80 p-2 text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100"
+          aria-label="Next image"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      )}
+
+      {images.length > 1 && (
+        <div className="absolute bottom-4 text-sm text-neutral-400">
+          {currentIndex + 1} / {images.length}
+        </div>
+      )}
+    </div>,
+    document.body,
+  );
+}
