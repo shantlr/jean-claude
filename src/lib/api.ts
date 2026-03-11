@@ -585,6 +585,7 @@ export interface Api {
     getMessageCount: (stepId: string) => Promise<number>;
     getMessagesWithRawData: (
       taskId: string,
+      stepId: string,
     ) => Promise<DebugMessageWithRawData[]>;
     compactRawMessages: (taskId: string) => Promise<void>;
     reprocessNormalization: (taskId: string) => Promise<number>;

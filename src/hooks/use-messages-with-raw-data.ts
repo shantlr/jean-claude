@@ -2,10 +2,16 @@ import { useQuery } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
 
-export function useMessagesWithRawData(taskId: string | undefined) {
+export function useMessagesWithRawData({
+  taskId,
+  stepId,
+}: {
+  taskId: string | undefined;
+  stepId: string | null;
+}) {
   return useQuery({
-    queryKey: ['messagesWithRawData', taskId],
-    queryFn: () => api.agent.getMessagesWithRawData(taskId!),
-    enabled: !!taskId,
+    queryKey: ['messagesWithRawData', taskId, stepId],
+    queryFn: () => api.agent.getMessagesWithRawData(taskId!, stepId!),
+    enabled: !!taskId && !!stepId,
   });
 }

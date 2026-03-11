@@ -314,8 +314,12 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke(AGENT_CHANNELS.GET_MESSAGE_COUNT, stepId),
     getPendingRequest: (stepId: string) =>
       ipcRenderer.invoke(AGENT_CHANNELS.GET_PENDING_REQUEST, stepId),
-    getMessagesWithRawData: (taskId: string) =>
-      ipcRenderer.invoke(AGENT_CHANNELS.GET_MESSAGES_WITH_RAW_DATA, taskId),
+    getMessagesWithRawData: (taskId: string, stepId: string) =>
+      ipcRenderer.invoke(
+        AGENT_CHANNELS.GET_MESSAGES_WITH_RAW_DATA,
+        taskId,
+        stepId,
+      ),
     compactRawMessages: (taskId: string) =>
       ipcRenderer.invoke(AGENT_CHANNELS.COMPACT_RAW_MESSAGES, taskId),
     reprocessNormalization: (taskId: string) =>

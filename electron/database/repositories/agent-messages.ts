@@ -191,14 +191,19 @@ export const AgentMessageRepository = {
   },
 
   /**
-   * Find all messages with raw data for a task, joining agent_messages with raw_messages.
+   * Find all messages with raw data for a task (optionally scoped to a step),
+   * joining agent_messages with raw_messages.
    * Returns every raw message (even those with no normalized counterpart) alongside
    * any normalized message linked via rawMessageId, plus synthetic normalized messages
    * that have no raw counterpart. Used by the debug comparison view.
    */
-  findWithRawDataByTaskId: async (
-    taskId: string,
-  ): Promise<
+  findWithRawDataByTaskId: async ({
+    taskId,
+    stepId,
+  }: {
+    taskId: string;
+    stepId?: string;
+  }): Promise<
     {
       messageIndex: number;
       rawData: string | null;
@@ -209,7 +214,7 @@ export const AgentMessageRepository = {
     }[]
   > => {
     // Fetch all raw messages for the task
-    const rawRows = await db
+    const rawQuery = db
       .selectFrom('raw_messages')
       .select([
         'raw_messages.id as rawId',
@@ -220,11 +225,13 @@ export const AgentMessageRepository = {
         'raw_messages.createdAt',
       ])
       .where('raw_messages.taskId', '=', taskId)
-      .orderBy('raw_messages.messageIndex', 'asc')
-      .execute();
+      .orderBy('raw_messages.messageIndex', 'asc');
+    const rawRows = await (
+      stepId ? rawQuery.where('raw_messages.stepId', '=', stepId) : rawQuery
+    ).execute();
 
     // Fetch all agent_messages (normalized) that link to raw messages
-    const normalizedRows = await db
+    const normalizedQuery = db
       .selectFrom('agent_messages')
       .select([
         'agent_messages.messageIndex',
@@ -232,8 +239,12 @@ export const AgentMessageRepository = {
         'agent_messages.rawMessageId',
       ])
       .where('agent_messages.taskId', '=', taskId)
-      .orderBy('agent_messages.messageIndex', 'asc')
-      .execute();
+      .orderBy('agent_messages.messageIndex', 'asc');
+    const normalizedRows = await (
+      stepId
+        ? normalizedQuery.where('agent_messages.stepId', '=', stepId)
+        : normalizedQuery
+    ).execute();
 
     // Index normalized messages by rawMessageId for O(1) lookups
     const normalizedByRawId = new Map<string, string>();

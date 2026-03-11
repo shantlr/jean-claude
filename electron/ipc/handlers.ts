@@ -1607,8 +1607,8 @@ export function registerIpcHandlers() {
 
   ipcMain.handle(
     AGENT_CHANNELS.GET_MESSAGES_WITH_RAW_DATA,
-    async (_, taskId: string) => {
-      return await agentService.getMessagesWithRawData(taskId);
+    async (_, taskId: string, stepId: string) => {
+      return await agentService.getMessagesWithRawData(taskId, stepId);
     },
   );
 

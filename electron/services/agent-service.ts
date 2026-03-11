@@ -1233,8 +1233,11 @@ class AgentService {
     }
   }
 
-  async getMessagesWithRawData(taskId: string) {
-    const rows = await AgentMessageRepository.findWithRawDataByTaskId(taskId);
+  async getMessagesWithRawData(taskId: string, stepId: string) {
+    const rows = await AgentMessageRepository.findWithRawDataByTaskId({
+      taskId,
+      stepId,
+    });
     return rows.map((row) => ({
       messageIndex: row.messageIndex,
       rawData: row.rawData ? JSON.parse(row.rawData) : null,

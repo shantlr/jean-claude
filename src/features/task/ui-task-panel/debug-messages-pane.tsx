@@ -360,7 +360,7 @@ export function DebugMessagesPane({
     isLoading,
     error,
     refetch,
-  } = useMessagesWithRawData(taskId);
+  } = useMessagesWithRawData({ taskId, stepId });
 
   const [searchFilter, setSearchFilter] = useState('');
   const unloadStep = useTaskMessagesStore((s) => s.unloadStep);
