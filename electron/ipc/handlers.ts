@@ -1404,13 +1404,21 @@ export function registerIpcHandlers() {
         );
       }
 
-      // Step 1: Push branch to remote
+      // Step 1: Check for uncommitted changes
+      const status = await getWorktreeStatus(task.worktreePath);
+      if (status.hasUncommittedChanges) {
+        throw new Error(
+          'You have uncommitted changes. Please commit your changes before creating a pull request.',
+        );
+      }
+
+      // Step 2: Push branch to remote
       await pushBranch({
         worktreePath: task.worktreePath,
         branchName: task.branchName,
       });
 
-      // Step 2: Create PR via Azure DevOps
+      // Step 3: Create PR via Azure DevOps
       const targetBranch = task.sourceBranch ?? project.defaultBranch ?? 'main';
       const pr = await createPullRequest({
         providerId: project.repoProviderId,
@@ -1423,13 +1431,13 @@ export function registerIpcHandlers() {
         isDraft: params.isDraft,
       });
 
-      // Step 3: Save PR info to task
+      // Step 4: Save PR info to task
       await TaskRepository.update(params.taskId, {
         pullRequestId: String(pr.id),
         pullRequestUrl: pr.url,
       });
 
-      // Step 4: Optionally delete worktree (keep branch)
+      // Step 5: Optionally delete worktree (keep branch)
       if (params.deleteWorktree) {
         await cleanupWorktree({
           worktreePath: task.worktreePath,

@@ -529,8 +529,19 @@ export async function createPullRequest(params: {
   );
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Failed to create pull request: ${error}`);
+    const errorText = await response.text();
+    let errorMessage = '';
+    if (errorText) {
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.message || errorJson.Message || errorText;
+      } catch {
+        errorMessage = errorText;
+      }
+    }
+    throw new Error(
+      `Failed to create pull request (HTTP ${response.status}): ${errorMessage || response.statusText}`,
+    );
   }
 
   const pr = await response.json();
