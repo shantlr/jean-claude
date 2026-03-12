@@ -432,7 +432,7 @@ export const PromptTextarea = forwardRef<
         setSelectedIndex((prev) => (prev > 0 ? prev - 1 : prev));
         return;
       }
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === 'Enter' && !e.shiftKey && !e.altKey) {
         e.preventDefault();
         selectItem(filteredItems[selectedIndex]);
         return;
@@ -444,8 +444,30 @@ export const PromptTextarea = forwardRef<
       }
     }
 
+    // Option+Enter inserts a newline (same as Shift+Enter)
+    if (e.key === 'Enter' && e.altKey) {
+      e.preventDefault();
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const newValue = value.slice(0, start) + '\n' + value.slice(end);
+        onChange(newValue);
+        const newCursorPos = start + 1;
+        setCursorPosition(newCursorPos);
+        requestAnimationFrame(() => {
+          if (textareaRef.current) {
+            textareaRef.current.selectionStart = newCursorPos;
+            textareaRef.current.selectionEnd = newCursorPos;
+          }
+          adjustHeight();
+        });
+      }
+      return;
+    }
+
     // Handle Enter key for submit
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.altKey) {
       const handled = onEnterKey?.(e);
       if (handled) {
         e.preventDefault();
