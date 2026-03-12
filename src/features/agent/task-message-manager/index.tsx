@@ -33,6 +33,12 @@ export function TaskMessageManager() {
   const setQuestion = useTaskMessagesStore((s) => s.setQuestion);
   const setQueuedPrompts = useTaskMessagesStore((s) => s.setQueuedPrompts);
   const isLoaded = useTaskMessagesStore((s) => s.isLoaded);
+  const setPendingRequestForTask = useTaskMessagesStore(
+    (s) => s.setPendingRequestForTask,
+  );
+  const clearPendingRequestForTask = useTaskMessagesStore(
+    (s) => s.clearPendingRequestForTask,
+  );
   const appendRunCommandLine = useTaskMessagesStore(
     (s) => s.appendRunCommandLine,
   );
@@ -72,6 +78,10 @@ export function TaskMessageManager() {
           if (isLoaded(stepId)) {
             setStatus(stepId, event.status, event.error);
           }
+          // When task moves away from waiting, clear any tracked pending request
+          if (event.status !== 'waiting') {
+            clearPendingRequestForTask(taskId);
+          }
           // Also invalidate task queries so task-level status updates
           queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
           queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -85,6 +95,12 @@ export function TaskMessageManager() {
           if (isLoaded(stepId)) {
             setPermission(stepId, event);
           }
+          // Always track at task level so the feed can refine attention
+          // even when the step isn't loaded (task panel never opened).
+          setPendingRequestForTask(taskId, {
+            type: 'permission',
+            permission: event,
+          });
           // Invalidate feed so attention changes to needs-permission
           queryClient.invalidateQueries({
             queryKey: ['feed', 'items'],
@@ -94,6 +110,12 @@ export function TaskMessageManager() {
           if (isLoaded(stepId)) {
             setQuestion(stepId, event);
           }
+          // Always track at task level so the feed can refine attention
+          // even when the step isn't loaded (task panel never opened).
+          setPendingRequestForTask(taskId, {
+            type: 'question',
+            question: event,
+          });
           // Invalidate feed so attention changes to has-question
           queryClient.invalidateQueries({
             queryKey: ['feed', 'items'],
@@ -122,6 +144,8 @@ export function TaskMessageManager() {
     setQuestion,
     setQueuedPrompts,
     isLoaded,
+    setPendingRequestForTask,
+    clearPendingRequestForTask,
   ]);
 
   useEffect(() => {

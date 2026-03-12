@@ -37,9 +37,27 @@ export interface TaskState {
   lastAccessedAt: number;
 }
 
+/**
+ * Lightweight pending-request tracking keyed by taskId.
+ * Always populated on permission/question IPC events regardless of whether the
+ * step is fully loaded, so the feed can refine attention even for tasks whose
+ * panel has never been opened.
+ */
+export interface PendingRequest {
+  type: 'permission' | 'question';
+  permission?: NormalizedPermissionRequest & { taskId: string };
+  question?: {
+    taskId: string;
+    requestId: string;
+    questions: AgentQuestion[];
+  };
+}
+
 interface TaskMessagesStore {
   /** Keyed by stepId — each step has its own message/state entry */
   steps: Record<string, TaskState>;
+  /** Keyed by taskId — lightweight pending request tracking (always populated) */
+  pendingRequestsByTaskId: Record<string, PendingRequest>;
   /** Keyed by taskId — run command logs are task-level, not step-level */
   runCommandLogs: Record<string, RunCommandLogs>;
   /** Keyed by taskId — running command status with command details */
@@ -81,6 +99,8 @@ interface TaskMessagesStore {
   clearRunCommandLogs: (taskId: string, runCommandId: string) => void;
   clearAllRunCommandLogs: (taskId: string) => void;
   setRunCommandRunning: (taskId: string, status: RunStatus | false) => void;
+  setPendingRequestForTask: (taskId: string, request: PendingRequest) => void;
+  clearPendingRequestForTask: (taskId: string) => void;
   touchStep: (stepId: string) => void;
   unloadStep: (stepId: string) => void;
 
@@ -122,6 +142,7 @@ function evictIfNeeded(
 
 export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
   steps: {},
+  pendingRequestsByTaskId: {},
   runCommandLogs: {},
   runCommandRunning: {},
   cacheLimit: DEFAULT_CACHE_LIMIT,
@@ -361,6 +382,24 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
           [taskId]: status,
         },
       };
+    });
+  },
+
+  setPendingRequestForTask: (taskId, request) => {
+    set((state) => ({
+      pendingRequestsByTaskId: {
+        ...state.pendingRequestsByTaskId,
+        [taskId]: request,
+      },
+    }));
+  },
+
+  clearPendingRequestForTask: (taskId) => {
+    set((state) => {
+      if (!state.pendingRequestsByTaskId[taskId]) return state;
+      const { [taskId]: _removed, ...rest } = state.pendingRequestsByTaskId;
+      void _removed;
+      return { pendingRequestsByTaskId: rest };
     });
   },
 

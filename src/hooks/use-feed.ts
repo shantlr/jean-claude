@@ -5,7 +5,13 @@ import { computeFeedScore } from '@/features/feed/utils-feed-scoring';
 import { api } from '@/lib/api';
 import { useFeedStore } from '@/stores/feed';
 import { useTaskMessagesStore } from '@/stores/task-messages';
-import type { FeedItem } from '@shared/feed-types';
+import type { FeedItem, FeedItemAttention } from '@shared/feed-types';
+
+const ACTION_NEEDED_ATTENTIONS: Set<FeedItemAttention> = new Set([
+  'needs-permission',
+  'has-question',
+  'errored',
+]);
 
 export function useFeed() {
   const pinned = useFeedStore((s) => s.pinned);
@@ -14,6 +20,9 @@ export function useFeed() {
   const reconcile = useFeedStore((s) => s.reconcile);
   const lastAttention = useFeedStore((s) => s.lastAttention);
   const taskSteps = useTaskMessagesStore((s) => s.steps);
+  const pendingRequestsByTaskId = useTaskMessagesStore(
+    (s) => s.pendingRequestsByTaskId,
+  );
 
   const pinnedIds = useMemo(() => new Set(pinned.map((p) => p.id)), [pinned]);
   const dismissedIds = useMemo(() => new Set(dismissed), [dismissed]);
@@ -52,6 +61,8 @@ export function useFeed() {
 
     const taskIdsWithQuestions = new Set<string>();
     const taskIdsWithPermissions = new Set<string>();
+
+    // Check loaded steps (for tasks whose panel has been opened)
     for (const step of steps) {
       const questionTaskId = step.pendingQuestion?.taskId;
       if (questionTaskId) {
@@ -61,6 +72,16 @@ export function useFeed() {
       const permissionTaskId = step.pendingPermission?.taskId;
       if (permissionTaskId) {
         taskIdsWithPermissions.add(permissionTaskId);
+      }
+    }
+
+    // Also check the lightweight task-level pending request map, which is
+    // always populated regardless of whether the step is loaded.
+    for (const [taskId, req] of Object.entries(pendingRequestsByTaskId)) {
+      if (req.type === 'question') {
+        taskIdsWithQuestions.add(taskId);
+      } else if (req.type === 'permission') {
+        taskIdsWithPermissions.add(taskId);
       }
     }
 
@@ -89,18 +110,18 @@ export function useFeed() {
         return { ...item, attention: 'needs-permission' as const };
       }
 
-      // If neither question nor permission is pending, restore the original
-      // attention for items that were previously refined but are now cleared.
-      if (item.attention === 'needs-permission') {
-        return { ...item, attention: 'waiting' as const };
-      }
-
+      // If neither in-memory source has a pending request, trust the
+      // server-reported attention. Don't downgrade needs-permission to
+      // waiting — the server may be correct and the IPC event just hasn't
+      // arrived yet. When the permission is actually cleared, the status
+      // event triggers a feed query refetch which updates the server state.
       return item;
     });
-  }, [query.data, taskSteps]);
+  }, [query.data, taskSteps, pendingRequestsByTaskId]);
 
   const {
     pinnedItems,
+    actionNeededItems,
     runningItems,
     normalItems,
     lowPriorityItems,
@@ -122,6 +143,7 @@ export function useFeed() {
     }
 
     let dCount = 0;
+    const actionNeeded: FeedItem[] = [];
     const running: FeedItem[] = [];
     const rest: FeedItem[] = [];
     const low: FeedItem[] = [];
@@ -132,7 +154,11 @@ export function useFeed() {
         dCount++;
         continue;
       }
-      if (lowPriorityIds.has(item.id)) {
+      if (ACTION_NEEDED_ATTENTIONS.has(item.attention)) {
+        // Action-needed items always surface to the top, even if marked
+        // low-priority — a permission request or error needs attention.
+        actionNeeded.push(item);
+      } else if (lowPriorityIds.has(item.id)) {
         low.push(item);
       } else if (item.attention === 'running') {
         running.push(item);
@@ -140,6 +166,21 @@ export function useFeed() {
         rest.push(item);
       }
     }
+
+    actionNeeded.sort((a, b) => {
+      const scoreA = computeFeedScore({
+        attention: a.attention,
+        projectPriority: a.projectPriority,
+        isLowPriority: false,
+      });
+      const scoreB = computeFeedScore({
+        attention: b.attention,
+        projectPriority: b.projectPriority,
+        isLowPriority: false,
+      });
+      if (scoreB !== scoreA) return scoreB - scoreA;
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    });
 
     running.sort(
       (a, b) =>
@@ -178,6 +219,7 @@ export function useFeed() {
 
     return {
       pinnedItems: pinnedResult,
+      actionNeededItems: actionNeeded,
       runningItems: running,
       normalItems: rest,
       lowPriorityItems: low,
@@ -186,13 +228,19 @@ export function useFeed() {
   }, [refinedItems, pinned, pinnedIds, dismissedIds, lowPriorityIds]);
 
   const allVisibleItems = useMemo(
-    () => [...pinnedItems, ...runningItems, ...normalItems],
-    [pinnedItems, runningItems, normalItems],
+    () => [
+      ...pinnedItems,
+      ...actionNeededItems,
+      ...runningItems,
+      ...normalItems,
+    ],
+    [pinnedItems, actionNeededItems, runningItems, normalItems],
   );
 
   return {
     ...query,
     pinnedItems,
+    actionNeededItems,
     runningItems,
     normalItems,
     lowPriorityItems,

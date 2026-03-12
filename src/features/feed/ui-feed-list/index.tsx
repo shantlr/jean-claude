@@ -103,6 +103,7 @@ export function FeedList() {
 
   const {
     pinnedItems,
+    actionNeededItems,
     runningItems,
     normalItems,
     lowPriorityItems,
@@ -416,6 +417,7 @@ export function FeedList() {
 
   const totalCount =
     pinnedItems.length +
+    actionNeededItems.length +
     runningItems.length +
     normalItems.length +
     lowPriorityItems.length;
@@ -479,9 +481,27 @@ export function FeedList() {
 
       {/* Dashed divider between pinned and auto-sorted */}
       {pinnedItems.length > 0 &&
-        (normalItems.length > 0 || runningItems.length > 0) && (
+        (actionNeededItems.length > 0 ||
+          normalItems.length > 0 ||
+          runningItems.length > 0) && (
           <div className="mx-2 my-1 border-t border-dashed border-neutral-700/50" />
         )}
+
+      {/* Action needed zone - permissions, questions, errors (above running) */}
+      {actionNeededItems.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {actionNeededItems.map((item) => (
+            <FeedCard
+              key={item.id}
+              item={item}
+              isSelected={isItemSelected(item)}
+              isDraggable
+              onDragStart={() => setDraggedId(item.id)}
+              onDragEnd={handleDragEnd}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Running tasks zone - stacked, spreads on hover */}
       {runningItems.length > 0 && (
