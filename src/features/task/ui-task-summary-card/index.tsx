@@ -14,10 +14,28 @@ import { Kbd } from '@/common/ui/kbd';
 import { StatusIndicator } from '@/features/task/ui-status-indicator';
 import type { TaskWithProject } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/time';
-import { useBackgroundJobsStore } from '@/stores/background-jobs';
+import {
+  type BackgroundJobType,
+  useRunningBackgroundJobsForTask,
+} from '@/stores/background-jobs';
 import { useCurrentVisibleProject } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { TaskStatus } from '@shared/types';
+
+function bgJobLabel(type: BackgroundJobType): string {
+  switch (type) {
+    case 'task-deletion':
+      return 'Deleting…';
+    case 'merge':
+      return 'Merging…';
+    case 'summary-generation':
+      return 'Generating summary…';
+    case 'task-creation':
+      return 'Creating…';
+    case 'pr-review-creation':
+      return 'Creating PR review…';
+  }
+}
 
 export function TaskSummaryCard({
   task,
@@ -31,14 +49,9 @@ export function TaskSummaryCard({
   isSelected?: boolean;
 }) {
   const router = useRouter();
-  const isDeleting = useBackgroundJobsStore((state) =>
-    state.jobs.some(
-      (job) =>
-        job.status === 'running' &&
-        job.type === 'task-deletion' &&
-        job.taskId === task.id,
-    ),
-  );
+  const runningBgJobs = useRunningBackgroundJobsForTask(task.id);
+  const isDeleting = runningBgJobs.some((j) => j.type === 'task-deletion');
+  const hasBgJob = runningBgJobs.length > 0;
   const { projectId } = useCurrentVisibleProject();
 
   // Check if any loaded step for this task has a pending permission or question
@@ -161,6 +174,16 @@ export function TaskSummaryCard({
           {formatRelativeTime(task.updatedAt)}
         </span>
       </div>
+
+      {/* Background job indicator */}
+      {hasBgJob && !isDeleting && (
+        <div className="flex items-center gap-1.5 rounded-md bg-violet-500/10 px-2 py-1 ring-1 ring-violet-500/20">
+          <Loader2 className="h-3 w-3 shrink-0 animate-spin text-violet-400" />
+          <span className="truncate text-[11px] text-violet-300">
+            {runningBgJobs.map((j) => bgJobLabel(j.type)).join(', ')}
+          </span>
+        </div>
+      )}
 
       {/* Pending message row */}
       {task.pendingMessage && (

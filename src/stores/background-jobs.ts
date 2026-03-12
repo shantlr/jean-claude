@@ -232,6 +232,17 @@ export function getRunningJobsCount(jobs: BackgroundJob[]) {
   return jobs.filter((job) => job.status === 'running').length;
 }
 
+/** Returns running background jobs linked to a given task. */
+export function useRunningBackgroundJobsForTask(taskId: string | null) {
+  return useBackgroundJobsStore((state) =>
+    taskId
+      ? state.jobs.filter(
+          (job) => job.status === 'running' && job.taskId === taskId,
+        )
+      : [],
+  );
+}
+
 /** Returns true when a running task-creation job is linked to the given backlog item. */
 export function useBackgroundNewTaskJobForBacklogItem({
   itemId,

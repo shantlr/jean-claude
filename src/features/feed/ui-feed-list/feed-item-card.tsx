@@ -25,6 +25,10 @@ import {
   DropdownItem,
 } from '@/common/ui/dropdown';
 import { formatRelativeTime } from '@/lib/time';
+import {
+  type BackgroundJobType,
+  useRunningBackgroundJobsForTask,
+} from '@/stores/background-jobs';
 import { useFeedStore } from '@/stores/feed';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { FeedItem, FeedItemAttention } from '@shared/feed-types';
@@ -60,6 +64,21 @@ function AttentionIcon({ attention }: { attention: FeedItemAttention }) {
           <span className="h-1.5 w-1.5 rounded-full bg-neutral-500" />
         </span>
       );
+  }
+}
+
+function bgJobLabel(type: BackgroundJobType): string {
+  switch (type) {
+    case 'task-deletion':
+      return 'Deleting…';
+    case 'merge':
+      return 'Merging…';
+    case 'summary-generation':
+      return 'Generating summary…';
+    case 'task-creation':
+      return 'Creating…';
+    case 'pr-review-creation':
+      return 'Creating PR review…';
   }
 }
 
@@ -146,6 +165,11 @@ export function FeedItemCard({
       runCommandStatus?.commands.filter((c) => c.status === 'running') ?? [],
     [runCommandStatus],
   );
+  const runningBgJobs = useRunningBackgroundJobsForTask(item.taskId ?? null);
+  const isDeleting = runningBgJobs.some((j) => j.type === 'task-deletion');
+  const hasNonDeleteBgJob =
+    runningBgJobs.length > 0 &&
+    runningBgJobs.some((j) => j.type !== 'task-deletion');
   const menuRef = useRef<{ toggle: () => void } | null>(null);
 
   const handleClick = useCallback(() => {
@@ -243,6 +267,7 @@ export function FeedItemCard({
               hasUnread: item.hasUnread,
               isSelected: isSelected ?? false,
             }),
+            isDeleting && 'opacity-50',
             !isSelected && 'hover:translate-x-0.5 hover:bg-neutral-800/80',
           )}
         >
@@ -284,6 +309,18 @@ export function FeedItemCard({
               </span>
               <span className="min-w-0 truncate text-[11px] text-green-300">
                 {runningCommands.map((c) => c.command).join(', ')}
+              </span>
+            </div>
+          )}
+
+          {hasNonDeleteBgJob && (
+            <div className="flex items-center gap-1.5 rounded-md bg-violet-500/10 px-2 py-1 ring-1 ring-violet-500/20">
+              <Loader2 className="h-3 w-3 shrink-0 animate-spin text-violet-400" />
+              <span className="min-w-0 truncate text-[11px] text-violet-300">
+                {runningBgJobs
+                  .filter((j) => j.type !== 'task-deletion')
+                  .map((j) => bgJobLabel(j.type))
+                  .join(', ')}
               </span>
             </div>
           )}
