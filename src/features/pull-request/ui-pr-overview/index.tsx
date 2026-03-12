@@ -15,7 +15,7 @@ export function PrOverview({
       className="h-full overflow-y-auto p-4"
       style={bottomPadding > 0 ? { paddingBottom: bottomPadding } : undefined}
     >
-      <div className="max-w-3xl">
+      <div className="max-w-3xl min-w-0">
         <h2 className="mb-4 text-sm font-medium text-neutral-400">
           Description
         </h2>

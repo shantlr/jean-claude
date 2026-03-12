@@ -190,120 +190,122 @@ export function MarkdownContent({
   ) => void;
 }) {
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      urlTransform={customUrlTransform}
-      components={{
-        p: ({ children }) => (
-          <p className="mb-3 whitespace-pre-line last:mb-0">
-            {typeof children === 'string' ? (
-              <TextWithFilePaths
-                text={children}
-                onFilePathClick={onFilePathClick}
-              />
-            ) : (
-              children
-            )}
-          </p>
-        ),
-        code: ({ className, children, ...props }) => {
-          const matchLang = /language-(\w+)/.exec(className || '');
-          const isInline =
-            !matchLang &&
-            (typeof children !== 'string' || !children.includes('\n'));
+    <div className="break-words">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        urlTransform={customUrlTransform}
+        components={{
+          p: ({ children }) => (
+            <p className="mb-3 whitespace-pre-line last:mb-0">
+              {typeof children === 'string' ? (
+                <TextWithFilePaths
+                  text={children}
+                  onFilePathClick={onFilePathClick}
+                />
+              ) : (
+                children
+              )}
+            </p>
+          ),
+          code: ({ className, children, ...props }) => {
+            const matchLang = /language-(\w+)/.exec(className || '');
+            const isInline =
+              !matchLang &&
+              (typeof children !== 'string' || !children.includes('\n'));
 
-          if (isInline) {
+            if (isInline) {
+              return (
+                <code
+                  className="rounded border border-neutral-600 bg-neutral-800 px-1 py-0.5"
+                  {...props}
+                >
+                  {children}
+                </code>
+              );
+            }
+
             return (
-              <code
-                className="rounded border border-neutral-600 bg-neutral-800 px-1 py-0.5"
-                {...props}
-              >
-                {children}
-              </code>
+              <CodeBlock
+                language={matchLang ? matchLang[1] : 'text'}
+                code={String(children).replace(/\n$/, '')}
+              />
             );
-          }
-
-          return (
-            <CodeBlock
-              language={matchLang ? matchLang[1] : 'text'}
-              code={String(children).replace(/\n$/, '')}
-            />
-          );
-        },
-        pre: ({ children }) => <>{children}</>,
-        a: ({ href, children }) => (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-400 underline hover:text-blue-300"
-          >
-            {children}
-          </a>
-        ),
-        ul: ({ children }) => (
-          <ul className="mb-3 list-inside list-disc space-y-1">{children}</ul>
-        ),
-        ol: ({ children }) => (
-          <ol className="mb-3 list-inside list-decimal space-y-1">
-            {children}
-          </ol>
-        ),
-        li: ({ children }) => (
-          <li className="ml-2 [&>*:first-child]:inline">{children}</li>
-        ),
-        h1: ({ children }) => (
-          <h1 className="mb-3 font-bold" style={{ fontSize: '1.5em' }}>
-            {children}
-          </h1>
-        ),
-        h2: ({ children }) => (
-          <h2 className="mb-3 font-bold" style={{ fontSize: '1.25em' }}>
-            {children}
-          </h2>
-        ),
-        h3: ({ children }) => (
-          <h3 className="mb-2 font-semibold" style={{ fontSize: '1.1em' }}>
-            {children}
-          </h3>
-        ),
-        blockquote: ({ children }) => (
-          <blockquote className="mb-3 border-l-4 border-neutral-600 pl-4 text-neutral-400 italic">
-            {children}
-          </blockquote>
-        ),
-        table: ({ children }) => (
-          <div className="mb-3 overflow-x-auto">
-            <table className="min-w-full border-collapse">{children}</table>
-          </div>
-        ),
-        th: ({ children }) => (
-          <th className="border border-neutral-700 bg-neutral-800 px-3 py-2 text-left font-semibold">
-            {children}
-          </th>
-        ),
-        td: ({ children }) => (
-          <td className="border border-neutral-700 px-3 py-2">{children}</td>
-        ),
-        hr: () => <hr className="my-4 border-neutral-700" />,
-        img: ({ src, alt, ...props }) => {
-          // Don't render if src is empty or undefined
-          if (!src) {
-            console.log('[MarkdownContent] Skipping img with empty src');
-            return null;
-          }
-          return (
-            <img
-              src={src}
-              alt={alt || ''}
-              className="my-2 max-w-full rounded"
-              {...props}
-            />
-          );
-        },
-      }}
-    >
-      {content}
-    </ReactMarkdown>
+          },
+          pre: ({ children }) => <>{children}</>,
+          a: ({ href, children }) => (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 underline hover:text-blue-300"
+            >
+              {children}
+            </a>
+          ),
+          ul: ({ children }) => (
+            <ul className="mb-3 list-inside list-disc space-y-1">{children}</ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="mb-3 list-inside list-decimal space-y-1">
+              {children}
+            </ol>
+          ),
+          li: ({ children }) => (
+            <li className="ml-2 [&>*:first-child]:inline">{children}</li>
+          ),
+          h1: ({ children }) => (
+            <h1 className="mb-3 font-bold" style={{ fontSize: '1.5em' }}>
+              {children}
+            </h1>
+          ),
+          h2: ({ children }) => (
+            <h2 className="mb-3 font-bold" style={{ fontSize: '1.25em' }}>
+              {children}
+            </h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="mb-2 font-semibold" style={{ fontSize: '1.1em' }}>
+              {children}
+            </h3>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="mb-3 border-l-4 border-neutral-600 pl-4 text-neutral-400 italic">
+              {children}
+            </blockquote>
+          ),
+          table: ({ children }) => (
+            <div className="mb-3 overflow-x-auto">
+              <table className="min-w-full border-collapse">{children}</table>
+            </div>
+          ),
+          th: ({ children }) => (
+            <th className="border border-neutral-700 bg-neutral-800 px-3 py-2 text-left font-semibold">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td className="border border-neutral-700 px-3 py-2">{children}</td>
+          ),
+          hr: () => <hr className="my-4 border-neutral-700" />,
+          img: ({ src, alt, ...props }) => {
+            // Don't render if src is empty or undefined
+            if (!src) {
+              console.log('[MarkdownContent] Skipping img with empty src');
+              return null;
+            }
+            return (
+              <img
+                src={src}
+                alt={alt || ''}
+                className="my-2 block max-w-full rounded"
+                {...props}
+              />
+            );
+          },
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
   );
 }

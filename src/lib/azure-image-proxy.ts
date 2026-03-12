@@ -26,7 +26,7 @@ export function encodeProxyUrl(providerId: string, imageUrl: string): string {
  *   https://dev.azure.com/Org/ProjectGuid/_apis/git/repositories/RepoGuid/pullRequests/123/attachments/image.png
  */
 const AZURE_IMAGE_URL_PATTERN =
-  /https:\/\/(?:dev\.azure\.com|[^/\s"']+\.visualstudio\.com)\/[^"'\s<>]*\/_apis\/(?:wit\/attachments|git\/repositories\/[^"'\s<>]*\/pullRequests\/\d+\/attachments)\/[^"'\s<>]*/gi;
+  /https:\/\/(?:dev\.azure\.com|[^/\s"']+\.visualstudio\.com)\/[^"'\s<>()]*\/_apis\/(?:wit\/attachments|git\/repositories\/[^"'\s<>()]*\/pullRequests\/\d+\/attachments)\/[^"'\s<>()]*/gi;
 
 /**
  * Rewrites Azure DevOps image URLs in HTML/Markdown content to use the proxy protocol.
