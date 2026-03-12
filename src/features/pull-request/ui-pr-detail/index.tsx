@@ -9,6 +9,7 @@ import {
 import type { ReactNode } from 'react';
 import { useState, useCallback, useMemo } from 'react';
 
+import { useCommands } from '@/common/hooks/use-commands';
 import {
   DiffFileTree,
   normalizeAzureChangeType,
@@ -34,6 +35,8 @@ import { PrOverview } from '../ui-pr-overview';
 
 type Tab = 'overview' | 'files' | 'commits' | 'comments';
 
+const PR_DETAIL_TABS: Tab[] = ['overview', 'files', 'commits', 'comments'];
+
 export function PrDetail({
   projectId,
   prId,
@@ -46,6 +49,57 @@ export function PrDetail({
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileTreeWidth, setFileTreeWidth] = useState(250);
+
+  const navigateTab = useCallback(
+    (direction: 'next' | 'prev') => {
+      const currentIndex = PR_DETAIL_TABS.indexOf(activeTab);
+      const newIndex =
+        direction === 'next'
+          ? (currentIndex + 1) % PR_DETAIL_TABS.length
+          : (currentIndex - 1 + PR_DETAIL_TABS.length) % PR_DETAIL_TABS.length;
+      setActiveTab(PR_DETAIL_TABS[newIndex]);
+    },
+    [activeTab],
+  );
+
+  useCommands('pr-detail-tab-navigation', [
+    {
+      label: 'Next PR Detail Tab',
+      shortcut: 'shift+]',
+      handler: () => navigateTab('next'),
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Previous PR Detail Tab',
+      shortcut: 'shift+[',
+      handler: () => navigateTab('prev'),
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'PR Detail Overview Tab',
+      shortcut: 'cmd+shift+1',
+      handler: () => setActiveTab('overview'),
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'PR Detail Files Tab',
+      shortcut: 'cmd+shift+2',
+      handler: () => setActiveTab('files'),
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'PR Detail Commits Tab',
+      shortcut: 'cmd+shift+3',
+      handler: () => setActiveTab('commits'),
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'PR Detail Comments Tab',
+      shortcut: 'cmd+shift+4',
+      handler: () => setActiveTab('comments'),
+      hideInCommandPalette: true,
+    },
+  ]);
 
   const { data: project } = useProject(projectId);
   const { data: pr, isLoading: isPrLoading } = usePullRequest(projectId, prId);
