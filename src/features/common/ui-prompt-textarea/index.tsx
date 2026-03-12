@@ -632,6 +632,7 @@ export const PromptTextarea = forwardRef<
   const fileItems = filteredItems.filter((item) => item.type === 'file');
   const commandItems = filteredItems.filter((item) => item.type === 'command');
   const skillItems = filteredItems.filter((item) => item.type === 'skill');
+  const needsTrailingPadding = !!onImageAttach;
 
   // Get the flat index for an item (used for selection highlighting)
   const getItemIndex = (
@@ -813,6 +814,7 @@ export const PromptTextarea = forwardRef<
             // Chrome classes (border, bg, padding, rounding) — replaced when className is provided
             className ??
               'rounded-lg border border-neutral-700/50 bg-neutral-900/50 px-3 py-2 focus:border-neutral-600 focus:ring-1 focus:ring-white/10',
+            needsTrailingPadding && 'pr-11',
             isDragOver && 'border-blue-500 bg-blue-500/10',
           )}
           {...textareaProps}
@@ -824,6 +826,7 @@ export const PromptTextarea = forwardRef<
             className={clsx(
               'pointer-events-none absolute inset-0 overflow-hidden text-sm leading-[20px] break-words whitespace-pre-wrap',
               className ? className : 'border border-transparent px-3 py-2',
+              needsTrailingPadding && 'pr-11',
             )}
             style={{ maxHeight: `${maxHeight}px` }}
           >

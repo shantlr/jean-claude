@@ -127,7 +127,7 @@ function StepChip({
         'flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] leading-none font-medium transition-all duration-300 ease-out',
         CHIP_STYLES[step.status],
         isActive &&
-          'ring-[1.5px] ring-blue-400/70 ring-offset-[1.5px] ring-offset-neutral-900 shadow-[0_0_10px_0_rgba(59,130,246,0.3),0_0_3px_0_rgba(59,130,246,0.2)] brightness-125',
+          'shadow-[0_0_10px_0_rgba(59,130,246,0.3),0_0_3px_0_rgba(59,130,246,0.2)] ring-[1.5px] ring-blue-400/70 ring-offset-[1.5px] ring-offset-neutral-900 brightness-125',
       )}
     >
       <StepTypeIcon step={step} />
