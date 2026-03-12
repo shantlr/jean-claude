@@ -48,6 +48,24 @@ const { getDraft } = useStore();
 const draft = getDraft(id);
 ```
 
+Avoid selectors that create a new object/array on every call. In React 19, unstable selector outputs can cause re-render loops and "Maximum update depth exceeded" errors.
+
+```ts
+// Bad - returns a new array each time selector runs
+const runningJobs = useBackgroundJobsStore((state) =>
+  state.jobs.filter((job) => job.status === 'running'),
+);
+
+// Good - select stable source, derive with useMemo
+const jobs = useBackgroundJobsStore((state) => state.jobs);
+const runningJobs = useMemo(
+  () => jobs.filter((job) => job.status === 'running'),
+  [jobs],
+);
+```
+
+If no data exists, prefer shared constants (for example `EMPTY_ARRAY`) over returning `[]` from selectors.
+
 For stores keyed by ID, expose a custom hook that takes the ID and returns bound actions:
 
 ```ts
@@ -130,9 +148,8 @@ import { Kysely, sql } from 'kysely';
 
 export async function up(db: Kysely<unknown>): Promise<void> {
   // 1. Disable FK constraints to prevent cascade deletes
-    await sql`PRAGMA foreign_keys = OFF`.execute(trx);
+  await sql`PRAGMA foreign_keys = OFF`.execute(trx);
   await db.transaction().execute(async (trx) => {
-
     // 2. Create new table with desired schema
     await sql`DROP TABLE IF EXISTS tablename_new`.execute(trx);
     await trx.schema
@@ -626,25 +643,25 @@ docs/plans/            # Design and implementation documents
 
 ### Pages
 
-| Route                                | Purpose                                                                                                |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| `/`                                  | Redirects to last visited project/task (persisted in navigation store)                                 |
-| `/all`                               | Cross-project view showing all active tasks                                                            |
-| `/all/:taskId`                       | Task view from cross-project context                                                                   |
-| `/all/prs/:projectId`                | Pull requests list from cross-project context                                                          |
-| `/all/prs/:projectId/:prId`          | PR detail from cross-project context                                                                   |
-| `/settings`                          | Settings overlay with tabbed navigation                                                                |
-| `/settings/general`                  | Configure editor preferences                                                                           |
-| `/settings/azure-devops`             | Manage Azure DevOps organizations and PAT tokens                                                       |
-| `/settings/tokens`                   | Manage tokens for different providers                                                                  |
-| `/settings/mcp-servers`              | Manage MCP server templates and presets                                                                |
-| `/settings/debug`                    | Debug database viewer with DB size display                                                             |
-| `/projects/new`                      | Wizard to add project: local folder, clone repo, or link Azure DevOps repo                             |
-| `/projects/:projectId`               | Project layout with sidebar listing tasks and PRs                                                      |
-| `/projects/:projectId/tasks/new`     | Form to create a task with prompt, mode, backend, model, worktree options, work item linking           |
+| Route                                | Purpose                                                                                                               |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `/`                                  | Redirects to last visited project/task (persisted in navigation store)                                                |
+| `/all`                               | Cross-project view showing all active tasks                                                                           |
+| `/all/:taskId`                       | Task view from cross-project context                                                                                  |
+| `/all/prs/:projectId`                | Pull requests list from cross-project context                                                                         |
+| `/all/prs/:projectId/:prId`          | PR detail from cross-project context                                                                                  |
+| `/settings`                          | Settings overlay with tabbed navigation                                                                               |
+| `/settings/general`                  | Configure editor preferences                                                                                          |
+| `/settings/azure-devops`             | Manage Azure DevOps organizations and PAT tokens                                                                      |
+| `/settings/tokens`                   | Manage tokens for different providers                                                                                 |
+| `/settings/mcp-servers`              | Manage MCP server templates and presets                                                                               |
+| `/settings/debug`                    | Debug database viewer with DB size display                                                                            |
+| `/projects/new`                      | Wizard to add project: local folder, clone repo, or link Azure DevOps repo                                            |
+| `/projects/:projectId`               | Project layout with sidebar listing tasks and PRs                                                                     |
+| `/projects/:projectId/tasks/new`     | Form to create a task with prompt, mode, backend, model, worktree options, work item linking                          |
 | `/projects/:projectId/tasks/:taskId` | Main agent UI: step flow bar, message stream, file preview, diff view, file explorer, debug panel, permissions, input |
-| `/projects/:projectId/prs`           | Project pull requests list                                                                             |
-| `/projects/:projectId/prs/:prId`     | Pull request viewer with overview, files, commits, comments tabs                                       |
+| `/projects/:projectId/prs`           | Project pull requests list                                                                                            |
+| `/projects/:projectId/prs/:prId`     | Pull request viewer with overview, files, commits, comments tabs                                                      |
 
 ## Development Notes
 

@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+import { useMemo } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -232,14 +233,20 @@ export function getRunningJobsCount(jobs: BackgroundJob[]) {
   return jobs.filter((job) => job.status === 'running').length;
 }
 
+const EMPTY_RUNNING_JOBS: BackgroundJob[] = [];
+
 /** Returns running background jobs linked to a given task. */
 export function useRunningBackgroundJobsForTask(taskId: string | null) {
-  return useBackgroundJobsStore((state) =>
-    taskId
-      ? state.jobs.filter(
-          (job) => job.status === 'running' && job.taskId === taskId,
-        )
-      : [],
+  const jobs = useBackgroundJobsStore((state) => state.jobs);
+
+  return useMemo(
+    () =>
+      taskId
+        ? jobs.filter(
+            (job) => job.status === 'running' && job.taskId === taskId,
+          )
+        : EMPTY_RUNNING_JOBS,
+    [jobs, taskId],
   );
 }
 
