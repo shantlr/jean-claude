@@ -100,11 +100,13 @@ function StepChip({
   index,
   isActive,
   onClick,
+  onAddAfter,
 }: {
   step: TaskStep;
   index: number;
   isActive: boolean;
   onClick: () => void;
+  onAddAfter?: (stepId: string) => void;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
 
@@ -119,23 +121,38 @@ function StepChip({
   }, [isActive]);
 
   return (
-    <button
-      ref={ref}
-      onClick={onClick}
-      disabled={step.status === 'pending'}
-      className={clsx(
-        'flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] leading-none font-medium transition-all duration-300 ease-out',
-        CHIP_STYLES[step.status],
-        isActive &&
-          'shadow-[0_0_10px_0_rgba(59,130,246,0.3),0_0_3px_0_rgba(59,130,246,0.2)] ring-[1.5px] ring-blue-400/70 ring-offset-[1.5px] ring-offset-neutral-900 brightness-125',
+    <div className="group/step relative flex items-center">
+      <button
+        ref={ref}
+        onClick={onClick}
+        disabled={step.status === 'pending'}
+        className={clsx(
+          'flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] leading-none font-medium transition-all duration-300 ease-out',
+          CHIP_STYLES[step.status],
+          isActive &&
+            'shadow-[0_0_10px_0_rgba(59,130,246,0.3),0_0_3px_0_rgba(59,130,246,0.2)] ring-[1.5px] ring-blue-400/70 ring-offset-[1.5px] ring-offset-neutral-900 brightness-125',
+        )}
+      >
+        <StepTypeIcon step={step} />
+        <span className="flex items-center gap-1.5">
+          <span className="text-[10px] opacity-40">{index + 1}</span>
+          <span className="max-w-[120px] truncate">{step.name}</span>
+        </span>
+      </button>
+      {onAddAfter && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onAddAfter(step.id);
+          }}
+          className="absolute top-1/2 -right-2 z-10 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded-full border border-neutral-600 bg-neutral-800 text-neutral-400 opacity-0 transition-all group-hover/step:opacity-100 hover:border-neutral-400 hover:text-neutral-200 focus-visible:opacity-100"
+          title="Add step after this step"
+        >
+          <Plus className="h-2.5 w-2.5" />
+        </button>
       )}
-    >
-      <StepTypeIcon step={step} />
-      <span className="flex items-center gap-1.5">
-        <span className="text-[10px] opacity-40">{index + 1}</span>
-        <span className="max-w-[120px] truncate">{step.name}</span>
-      </span>
-    </button>
+    </div>
   );
 }
 
@@ -184,10 +201,12 @@ function Connector({
 
 export function StepFlowBar({
   taskId,
-  onAddStep,
+  onAddStepAtEnd,
+  onAddStepAfter,
 }: {
   taskId: string;
-  onAddStep?: () => void;
+  onAddStepAtEnd?: () => void;
+  onAddStepAfter?: (afterStepId: string) => void;
 }) {
   const { data: steps } = useSteps(taskId);
   const { activeStepId, setActiveStepId } = useTaskState(taskId);
@@ -215,19 +234,21 @@ export function StepFlowBar({
               index={index}
               isActive={activeStepId === step.id}
               onClick={() => handleStepClick(step.id)}
+              onAddAfter={onAddStepAfter}
             />
           </Fragment>
         ))}
 
         {/* add step */}
-        {onAddStep && (
+        {onAddStepAtEnd && (
           <>
             <div className="mx-1 flex items-center gap-[3px]">
               <div className="h-[2px] w-[5px] shrink-0 rounded-full bg-neutral-700/25" />
               <div className="h-[3px] w-[3px] shrink-0 rounded-full bg-neutral-700/35" />
             </div>
             <button
-              onClick={onAddStep}
+              onClick={onAddStepAtEnd}
+              title="Add step at end"
               className="flex h-5 shrink-0 items-center gap-1.5 rounded-md border border-dashed border-neutral-700/60 px-1.5 text-neutral-600 transition-colors hover:border-neutral-500 hover:text-neutral-400"
             >
               <Plus className="h-3 w-3" />

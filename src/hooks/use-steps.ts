@@ -31,7 +31,17 @@ export function useCreateStep() {
       // refetch completes).
       queryClient.setQueryData(
         ['steps', { taskId: step.taskId }],
-        (old: TaskStep[] | undefined) => (old ? [...old, step] : [step]),
+        (old: TaskStep[] | undefined) => {
+          if (!old) return [step];
+
+          const shifted = old.map((existingStep) =>
+            existingStep.sortOrder >= step.sortOrder
+              ? { ...existingStep, sortOrder: existingStep.sortOrder + 1 }
+              : existingStep,
+          );
+
+          return [...shifted, step].sort((a, b) => a.sortOrder - b.sortOrder);
+        },
       );
       queryClient.invalidateQueries({
         queryKey: ['steps', { taskId: step.taskId }],

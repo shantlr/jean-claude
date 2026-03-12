@@ -114,31 +114,52 @@ export const TaskStepRepository = {
     const now = new Date().toISOString();
     const deps = data.dependsOn ?? [];
     const status: TaskStepStatus = deps.length === 0 ? 'ready' : 'pending';
+    const row = await db.transaction().execute(async (trx) => {
+      const existingSteps = await trx
+        .selectFrom('task_steps')
+        .select('id')
+        .where('taskId', '=', data.taskId)
+        .execute();
 
-    const row = await db
-      .insertInto('task_steps')
-      .values({
-        id: nanoid(),
-        taskId: data.taskId,
-        name: data.name,
-        type: data.type ?? 'agent',
-        dependsOn: JSON.stringify(deps),
-        promptTemplate: data.promptTemplate,
-        resolvedPrompt: null,
-        status,
-        sessionId: null,
-        interactionMode: data.interactionMode ?? null,
-        modelPreference: data.modelPreference ?? null,
-        agentBackend: data.agentBackend ?? null,
-        output: null,
-        images: data.images ? JSON.stringify(data.images) : null,
-        meta: data.meta ? JSON.stringify(data.meta) : null,
-        autoStart: data.autoStart ? 1 : 0,
-        sortOrder: data.sortOrder ?? 0,
-        updatedAt: now,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
+      const normalizedSortOrder = Math.max(
+        0,
+        Math.min(data.sortOrder ?? existingSteps.length, existingSteps.length),
+      );
+
+      await trx
+        .updateTable('task_steps')
+        .set((eb) => ({
+          sortOrder: eb('sortOrder', '+', 1),
+        }))
+        .where('taskId', '=', data.taskId)
+        .where('sortOrder', '>=', normalizedSortOrder)
+        .execute();
+
+      return trx
+        .insertInto('task_steps')
+        .values({
+          id: nanoid(),
+          taskId: data.taskId,
+          name: data.name,
+          type: data.type ?? 'agent',
+          dependsOn: JSON.stringify(deps),
+          promptTemplate: data.promptTemplate,
+          resolvedPrompt: null,
+          status,
+          sessionId: null,
+          interactionMode: data.interactionMode ?? null,
+          modelPreference: data.modelPreference ?? null,
+          agentBackend: data.agentBackend ?? null,
+          output: null,
+          images: data.images ? JSON.stringify(data.images) : null,
+          meta: data.meta ? JSON.stringify(data.meta) : null,
+          autoStart: data.autoStart ? 1 : 0,
+          sortOrder: normalizedSortOrder,
+          updatedAt: now,
+        })
+        .returningAll()
+        .executeTakeFirstOrThrow();
+    });
 
     dbg.db('taskSteps.create created id=%s', row.id);
     return toStep(row);

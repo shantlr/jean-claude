@@ -141,11 +141,17 @@ function buildContinuePromptTemplate({
 function getReferenceStepForPreset({
   steps,
   activeStepId,
+  preferredStepId,
 }: {
   steps: TaskStep[];
   activeStepId: string | null;
+  preferredStepId?: string | null;
 }): TaskStep | null {
   if (steps.length === 0) return null;
+  if (preferredStepId) {
+    const preferredStep = steps.find((step) => step.id === preferredStepId);
+    if (preferredStep) return preferredStep;
+  }
   if (!activeStepId) return steps[steps.length - 1] ?? null;
   return (
     steps.find((step) => step.id === activeStepId) ??
@@ -256,6 +262,10 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const addToast = useToastStore((s) => s.addToast);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isAddStepDialogOpen, setIsAddStepDialogOpen] = useState(false);
+  const [addStepAfterStepId, setAddStepAfterStepId] = useState<string | null>(
+    null,
+  );
+  const [addStepAtEnd, setAddStepAtEnd] = useState(false);
   const createStep = useCreateStep();
   // Ref for the task panel container (used by shrink-to-target animation)
   const taskPanelRef = useRef<HTMLDivElement>(null);
@@ -562,10 +572,25 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       start: boolean;
       reviewers?: import('@shared/types').ReviewerConfig[];
     }) => {
+      const stepList = steps ?? [];
+      const preferredStepId = addStepAtEnd
+        ? (stepList[stepList.length - 1]?.id ?? null)
+        : addStepAfterStepId;
       const referenceStep = getReferenceStepForPreset({
-        steps: steps ?? [],
+        steps: stepList,
         activeStepId,
+        preferredStepId,
       });
+      const insertionSortOrder = (() => {
+        if (addStepAtEnd) return stepList.length;
+        if (stepList.length === 0) return 0;
+        if (!referenceStep) return stepList.length;
+        const index = stepList.findIndex(
+          (step) => step.id === referenceStep.id,
+        );
+        if (index === -1) return stepList.length;
+        return index + 1;
+      })();
       const defaultName =
         data.presetType === 'continue'
           ? 'Continue'
@@ -604,6 +629,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           modelPreference: data.modelPreference,
           images: data.images.length > 0 ? data.images : null,
           dependsOn,
+          sortOrder: insertionSortOrder,
           start: data.start,
           ...(isReview && reviewers
             ? {
@@ -613,6 +639,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             : {}),
         });
         setIsAddStepDialogOpen(false);
+        setAddStepAfterStepId(null);
+        setAddStepAtEnd(false);
         setActiveStepId(step.id);
       } catch (error) {
         addToast({
@@ -629,6 +657,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       addToast,
       steps,
       activeStepId,
+      addStepAfterStepId,
+      addStepAtEnd,
       task?.sourceBranch,
     ],
   );
@@ -1017,7 +1047,16 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         {/* Step flow bar */}
         <StepFlowBar
           taskId={taskId}
-          onAddStep={() => setIsAddStepDialogOpen(true)}
+          onAddStepAtEnd={() => {
+            setAddStepAtEnd(true);
+            setAddStepAfterStepId(null);
+            setIsAddStepDialogOpen(true);
+          }}
+          onAddStepAfter={(afterStepId) => {
+            setAddStepAtEnd(false);
+            setAddStepAfterStepId(afterStepId);
+            setIsAddStepDialogOpen(true);
+          }}
         />
 
         {/* Main content area: PR view OR Diff view OR Message stream */}
@@ -1228,7 +1267,11 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       {/* Add step modal */}
       <AddStepDialog
         isOpen={isAddStepDialogOpen}
-        onClose={() => setIsAddStepDialogOpen(false)}
+        onClose={() => {
+          setIsAddStepDialogOpen(false);
+          setAddStepAfterStepId(null);
+          setAddStepAtEnd(false);
+        }}
         onConfirm={(data) => void handleAddStep(data)}
         defaultBackend={activeStep?.agentBackend ?? 'claude-code'}
         defaultModel={activeStep?.modelPreference ?? 'default'}
