@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { FileText, Loader2, Play, Square } from 'lucide-react';
-import { useState } from 'react';
+import { type MutableRefObject, useState } from 'react';
 
 import { Dropdown, DropdownItem, DropdownDivider } from '@/common/ui/dropdown';
 import { useProjectCommands } from '@/hooks/use-project-commands';
@@ -17,6 +17,7 @@ export function RunButton({
   onToggleLogs,
   onRunCommand,
   isLogsPaneOpen,
+  dropdownRef,
 }: {
   taskId: string;
   projectId: string;
@@ -24,6 +25,7 @@ export function RunButton({
   onToggleLogs: () => void;
   onRunCommand: (runCommandId: string) => void;
   isLogsPaneOpen: boolean;
+  dropdownRef?: MutableRefObject<{ toggle: () => void } | null>;
 }) {
   const { data: commands = [] } = useProjectCommands(projectId);
   const {
@@ -109,6 +111,7 @@ export function RunButton({
       <div className="flex items-center gap-2">
         <Dropdown
           align="right"
+          dropdownRef={dropdownRef}
           trigger={
             <button
               className={clsx(

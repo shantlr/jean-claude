@@ -260,6 +260,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   // Ref for the task panel container (used by shrink-to-target animation)
   const taskPanelRef = useRef<HTMLDivElement>(null);
   const overflowMenuRef = useRef<{ toggle: () => void } | null>(null);
+  const runButtonRef = useRef<{ toggle: () => void } | null>(null);
 
   // Track floating footer height so scroll containers can add matching bottom padding
   const [footerHeight, setFooterHeight] = useState(0);
@@ -650,6 +651,14 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       },
     },
     {
+      label: 'Run Command',
+      shortcut: 'cmd+u',
+      section: 'Task',
+      handler: () => {
+        runButtonRef.current?.toggle();
+      },
+    },
+    {
       label:
         rightPane?.type === 'fileExplorer'
           ? 'Close File Explorer'
@@ -866,6 +875,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               taskId={taskId}
               projectId={project.id}
               workingDir={taskRootPath}
+              dropdownRef={runButtonRef}
               onToggleLogs={() => {
                 if (rightPane?.type === 'commandLogs') {
                   closeRightPane();
