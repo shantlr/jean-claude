@@ -140,16 +140,23 @@ export function TaskMessageManager() {
   // eliminating the race where a command stops between fetch and subscribe.
   useEffect(() => {
     const unsub = api.runCommands.onStatusChange((taskId, status) => {
-      setRunCommandRunning(taskId, status.isRunning);
+      setRunCommandRunning(taskId, status.isRunning ? status : false);
     });
 
     // Fetch after subscribing so we never miss events that fire between
     // the IPC round-trip and listener registration.
     api.runCommands
       .getTaskIdsWithRunningCommands()
-      .then((taskIds) => {
-        for (const taskId of taskIds) {
-          setRunCommandRunning(taskId, true);
+      .then(async (taskIds) => {
+        const results = await Promise.all(
+          taskIds.map((taskId) =>
+            api.runCommands
+              .getStatus(taskId)
+              .then((status) => ({ taskId, status })),
+          ),
+        );
+        for (const { taskId, status } of results) {
+          setRunCommandRunning(taskId, status.isRunning ? status : false);
         }
       })
       .catch(() => {

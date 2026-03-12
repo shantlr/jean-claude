@@ -5,7 +5,7 @@ import type {
   NormalizedEntry,
   NormalizedPermissionRequest,
 } from '@shared/normalized-message-v2';
-import type { RunCommandLogStream } from '@shared/run-command-types';
+import type { RunCommandLogStream, RunStatus } from '@shared/run-command-types';
 import type { TaskStatus } from '@shared/types';
 
 const MAX_RUN_COMMAND_LOG_LINES = 5000;
@@ -42,8 +42,8 @@ interface TaskMessagesStore {
   steps: Record<string, TaskState>;
   /** Keyed by taskId — run command logs are task-level, not step-level */
   runCommandLogs: Record<string, RunCommandLogs>;
-  /** Keyed by taskId — whether the task has any running commands */
-  runCommandRunning: Record<string, boolean>;
+  /** Keyed by taskId — running command status with command details */
+  runCommandRunning: Record<string, RunStatus>;
   cacheLimit: number;
 
   // Actions (all keyed by stepId)
@@ -80,7 +80,7 @@ interface TaskMessagesStore {
   ) => void;
   clearRunCommandLogs: (taskId: string, runCommandId: string) => void;
   clearAllRunCommandLogs: (taskId: string) => void;
-  setRunCommandRunning: (taskId: string, isRunning: boolean) => void;
+  setRunCommandRunning: (taskId: string, status: RunStatus | false) => void;
   touchStep: (stepId: string) => void;
   unloadStep: (stepId: string) => void;
 
@@ -331,21 +331,35 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
     });
   },
 
-  setRunCommandRunning: (taskId, isRunning) => {
+  setRunCommandRunning: (taskId, status) => {
     set((state) => {
-      if (!isRunning && !state.runCommandRunning[taskId]) {
+      if (!status && !state.runCommandRunning[taskId]) {
         return state;
       }
-      if (isRunning && state.runCommandRunning[taskId]) {
-        return state;
-      }
-      if (!isRunning) {
+      if (!status) {
         const { [taskId]: _removed, ...rest } = state.runCommandRunning;
         void _removed;
         return { runCommandRunning: rest };
       }
+      // Skip update if command list is unchanged
+      const existing = state.runCommandRunning[taskId];
+      if (existing) {
+        const prev = existing.commands;
+        const next = status.commands;
+        if (
+          prev.length === next.length &&
+          prev.every(
+            (c, i) => c.id === next[i].id && c.status === next[i].status,
+          )
+        ) {
+          return state;
+        }
+      }
       return {
-        runCommandRunning: { ...state.runCommandRunning, [taskId]: true },
+        runCommandRunning: {
+          ...state.runCommandRunning,
+          [taskId]: status,
+        },
       };
     });
   },

@@ -56,7 +56,7 @@ export function TaskSummaryCard({
   );
   const needsAttention = hasPendingPermission || hasPendingQuestion;
   const hasRunningCommand = useTaskMessagesStore(
-    (s) => s.runCommandRunning[task.id] ?? false,
+    (s) => !!s.runCommandRunning[task.id],
   );
 
   const displayNumber = index !== undefined ? index + 1 : undefined;

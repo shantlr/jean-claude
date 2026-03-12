@@ -12,10 +12,11 @@ import {
   PinOff,
   ShieldQuestion,
   StickyNote,
+  Terminal,
   XCircle,
 } from 'lucide-react';
 import type React from 'react';
-import { useCallback, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 
 import {
   Dropdown,
@@ -25,6 +26,7 @@ import {
 } from '@/common/ui/dropdown';
 import { formatRelativeTime } from '@/lib/time';
 import { useFeedStore } from '@/stores/feed';
+import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { FeedItem, FeedItemAttention } from '@shared/feed-types';
 
 function AttentionIcon({ attention }: { attention: FeedItemAttention }) {
@@ -136,6 +138,14 @@ export function FeedItemCard({
   const toggleLowPriority = useFeedStore((s) => s.toggleLowPriority);
   const isPinned = useFeedStore((s) => s.pinned.some((p) => p.id === item.id));
   const isLowPriority = useFeedStore((s) => s.lowPriority.includes(item.id));
+  const runCommandStatus = useTaskMessagesStore((s) =>
+    item.taskId ? s.runCommandRunning[item.taskId] : undefined,
+  );
+  const runningCommands = useMemo(
+    () =>
+      runCommandStatus?.commands.filter((c) => c.status === 'running') ?? [],
+    [runCommandStatus],
+  );
   const menuRef = useRef<{ toggle: () => void } | null>(null);
 
   const handleClick = useCallback(() => {
@@ -266,6 +276,17 @@ export function FeedItemCard({
               </span>
             )}
           </div>
+
+          {runningCommands.length > 0 && (
+            <div className="flex items-center gap-1.5 rounded-md bg-green-500/10 px-2 py-1 ring-1 ring-green-500/20">
+              <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-green-400">
+                <Terminal className="animate-command-running h-3 w-3" />
+              </span>
+              <span className="min-w-0 truncate text-[11px] text-green-300">
+                {runningCommands.map((c) => c.command).join(', ')}
+              </span>
+            </div>
+          )}
         </div>
       )}
       dropdownRef={menuRef}
