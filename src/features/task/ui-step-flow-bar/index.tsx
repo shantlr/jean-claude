@@ -127,7 +127,7 @@ function StepChip({
         'flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] leading-none font-medium transition-all duration-300 ease-out',
         CHIP_STYLES[step.status],
         isActive &&
-          'shadow-[0_0_6px_0_rgba(59,130,246,0.15)] ring-1 ring-blue-500/40 ring-offset-1 ring-offset-neutral-900',
+          'ring-[1.5px] ring-blue-400/70 ring-offset-[1.5px] ring-offset-neutral-900 shadow-[0_0_10px_0_rgba(59,130,246,0.3),0_0_3px_0_rgba(59,130,246,0.2)] brightness-125',
       )}
     >
       <StepTypeIcon step={step} />
@@ -200,8 +200,8 @@ export function StepFlowBar({
   if (!steps || steps.length === 0) return null;
 
   return (
-    <div className="border-b border-white/[0.06] bg-neutral-900/60 px-4 py-2 backdrop-blur-sm">
-      <div className="no-scrollbar flex items-center overflow-x-auto">
+    <div className="border-b border-white/[0.06] bg-neutral-900/60 px-4 py-0.5 backdrop-blur-sm">
+      <div className="no-scrollbar flex items-center overflow-x-auto px-1 py-1.5">
         {steps.map((step, index) => (
           <Fragment key={step.id}>
             {index > 0 && (
