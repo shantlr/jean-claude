@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
+import { invalidateFeedItems } from '@/hooks/use-tasks';
 import {
   api,
   type WorktreeDiffResult,
@@ -147,6 +148,8 @@ export function useMergeWorktree() {
         queryKey: ['worktree-file-content', taskId],
       });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
+      invalidateFeedItems(queryClient);
     },
   });
 }

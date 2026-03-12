@@ -19,7 +19,9 @@ type CreateTaskPayload = NewTask & {
   agentBackend?: AgentBackendType | null;
 };
 
-function invalidateFeedItems(queryClient: ReturnType<typeof useQueryClient>) {
+export function invalidateFeedItems(
+  queryClient: ReturnType<typeof useQueryClient>,
+) {
   queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
 }
 
