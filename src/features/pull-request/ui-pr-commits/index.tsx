@@ -38,7 +38,7 @@ export function PrCommits({
               style={isLast ? undefined : { marginBottom: '4px' }}
             >
               {/* Dot */}
-              <div className="absolute top-[11px] left-[-16px] z-10 flex items-center justify-center">
+              <div className="absolute top-[11px] left-[-16px] z-10 flex -translate-x-1/2 items-center justify-center">
                 {isFirst ? (
                   /* HEAD indicator — larger dot with ring */
                   <div className="h-3.5 w-3.5 rounded-full border-2 border-blue-400 bg-blue-400/30" />
