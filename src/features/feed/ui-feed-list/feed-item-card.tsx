@@ -86,7 +86,7 @@ function borderClasses({
       case 'running':
         return 'border border-blue-500/60 bg-neutral-800 shadow-sm';
       case 'completed':
-        return 'border border-green-500/40 bg-neutral-800 shadow-sm';
+        return 'border border-neutral-500/60 bg-neutral-700/80 shadow-sm';
       case 'interrupted':
         return 'border border-yellow-500/40 bg-neutral-800 shadow-sm';
       case 'review-requested':
