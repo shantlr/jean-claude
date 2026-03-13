@@ -3,6 +3,7 @@ import { FileText, Loader2, Play, Square } from 'lucide-react';
 import { type MutableRefObject, useState } from 'react';
 
 import { Dropdown, DropdownItem, DropdownDivider } from '@/common/ui/dropdown';
+import { Kbd } from '@/common/ui/kbd';
 import { useProjectCommands } from '@/hooks/use-project-commands';
 import { useRunCommands } from '@/hooks/use-run-commands';
 import { useTaskMessagesStore } from '@/stores/task-messages';
@@ -130,6 +131,10 @@ export function RunButton({
               ) : (
                 <Play className="h-4 w-4" aria-hidden />
               )}
+              <Kbd
+                shortcut="cmd+u"
+                className="border-white/25 bg-white/10 text-white/90"
+              />
             </button>
           }
         >
