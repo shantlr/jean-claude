@@ -15,6 +15,7 @@ import { useProject } from '@/hooks/use-projects';
 import { getEditorLabel, useEditorSetting } from '@/hooks/use-settings';
 import { api } from '@/lib/api';
 import type { AzureDevOpsPullRequestDetails } from '@/lib/api';
+import { encodeProxyUrl } from '@/lib/azure-image-proxy';
 import { formatRelativeTime } from '@/lib/time';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 
@@ -186,16 +187,26 @@ export function PrHeader({
               <div className="grow">{formatRelativeTime(pr.creationDate)}</div>
 
               <div className="flex justify-end -space-x-1">
-                {reviewers.map((reviewer) => (
-                  <UserAvatar
-                    key={reviewer.uniqueName}
-                    name={reviewer.displayName}
-                    title={`${reviewer.displayName} - ${getVoteLabel(reviewer.voteStatus)}`}
-                    size="md"
-                    vote={reviewer.voteStatus}
-                    variant="border"
-                  />
-                ))}
+                {reviewers.map((reviewer) => {
+                  const avatarUrl =
+                    reviewer.imageUrl && project?.repoProviderId
+                      ? encodeProxyUrl(
+                          project.repoProviderId,
+                          reviewer.imageUrl,
+                        )
+                      : reviewer.imageUrl;
+                  return (
+                    <UserAvatar
+                      key={reviewer.uniqueName}
+                      name={reviewer.displayName}
+                      imageUrl={avatarUrl}
+                      title={`${reviewer.displayName} - ${getVoteLabel(reviewer.voteStatus)}`}
+                      size="md"
+                      vote={reviewer.voteStatus}
+                      variant="border"
+                    />
+                  );
+                })}
               </div>
             </div>
           </div>

@@ -290,6 +290,7 @@ export function PrDetail({
         {activeTab === 'comments' && (
           <PrComments
             threads={threads}
+            providerId={project?.repoProviderId ?? undefined}
             onAddComment={handleAddComment}
             isAddingComment={addComment.isPending}
             bottomPadding={bottomPadding}

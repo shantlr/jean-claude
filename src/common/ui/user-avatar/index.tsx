@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import { Check, X } from 'lucide-react';
+import { useRef, useState } from 'react';
 
 import type { ReviewerVoteStatus } from '@shared/azure-devops-types';
 
@@ -52,6 +53,7 @@ const VOTE_LABELS: Record<ReviewerVoteStatus, string> = {
 export function UserAvatar({
   name,
   title,
+  imageUrl,
   size = 'sm',
   vote,
   variant = 'badge',
@@ -61,6 +63,8 @@ export function UserAvatar({
   name: string;
   /** Tooltip text. Defaults to name if not provided */
   title?: string;
+  /** Optional avatar image URL */
+  imageUrl?: string;
   size?: AvatarSize;
   vote?: ReviewerVoteStatus;
   /** 'badge' shows checkmark/X overlay, 'border' shows colored border */
@@ -68,27 +72,45 @@ export function UserAvatar({
   highlight?: boolean;
   className?: string;
 }) {
+  const [imgError, setImgError] = useState(false);
+  const prevImageUrl = useRef(imageUrl);
+  if (prevImageUrl.current !== imageUrl) {
+    prevImageUrl.current = imageUrl;
+    setImgError(false);
+  }
+
   const isApproved =
     vote === 'approved' || vote === 'approved-with-suggestions';
   const isRejected = vote === 'rejected';
 
   const showBadge = variant === 'badge' && (isApproved || isRejected);
   const showBorder = variant === 'border' && vote;
+  const showImage = imageUrl && !imgError;
 
   return (
     <div
       className={clsx(
-        'relative flex items-center justify-center rounded-full font-medium',
+        'relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-medium',
         SIZE_CLASSES[size],
-        highlight
-          ? 'bg-blue-600 text-white'
-          : 'bg-neutral-700 text-neutral-300',
+        !showImage &&
+          (highlight
+            ? 'bg-blue-600 text-white'
+            : 'bg-neutral-700 text-neutral-300'),
         showBorder && ['border-2', VOTE_BORDER_CLASSES[vote]],
         className,
       )}
       title={title ?? name}
     >
-      {getInitials(name)}
+      {showImage ? (
+        <img
+          src={imageUrl}
+          alt={name}
+          className="h-full w-full object-cover"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        getInitials(name)
+      )}
 
       {/* Vote indicator badge (for 'badge' variant) */}
       {showBadge && isApproved && (

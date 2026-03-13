@@ -2,8 +2,10 @@ import clsx from 'clsx';
 import { MessageSquare, FileCode } from 'lucide-react';
 
 import { Separator } from '@/common/ui/separator';
-import { MarkdownContent } from '@/features/agent/ui-markdown-content';
+import { UserAvatar } from '@/common/ui/user-avatar';
+import { AzureMarkdownContent } from '@/features/common/ui-azure-html-content';
 import type { AzureDevOpsCommentThread } from '@/lib/api';
+import { encodeProxyUrl } from '@/lib/azure-image-proxy';
 import { formatRelativeTime } from '@/lib/time';
 
 import { PrCommentForm } from '../ui-pr-comment-form';
@@ -43,11 +45,13 @@ function getStatusBadge(status: AzureDevOpsCommentThread['status']) {
 
 export function PrComments({
   threads,
+  providerId,
   onAddComment,
   isAddingComment,
   bottomPadding = 0,
 }: {
   threads: AzureDevOpsCommentThread[];
+  providerId?: string;
   onAddComment: (content: string) => void;
   isAddingComment?: boolean;
   bottomPadding?: number;
@@ -81,7 +85,11 @@ export function PrComments({
                   General Comments
                 </div>
                 {prComments.map((thread) => (
-                  <CommentThread key={thread.id} thread={thread} />
+                  <CommentThread
+                    key={thread.id}
+                    thread={thread}
+                    providerId={providerId}
+                  />
                 ))}
               </div>
             )}
@@ -94,7 +102,11 @@ export function PrComments({
                   File Comments
                 </div>
                 {fileComments.map((thread) => (
-                  <CommentThread key={thread.id} thread={thread} />
+                  <CommentThread
+                    key={thread.id}
+                    thread={thread}
+                    providerId={providerId}
+                  />
                 ))}
               </div>
             )}
@@ -111,7 +123,13 @@ export function PrComments({
   );
 }
 
-function CommentThread({ thread }: { thread: AzureDevOpsCommentThread }) {
+function CommentThread({
+  thread,
+  providerId,
+}: {
+  thread: AzureDevOpsCommentThread;
+  providerId?: string;
+}) {
   return (
     <div className="rounded-lg bg-neutral-800/50 p-3">
       {/* File context if present */}
@@ -127,29 +145,38 @@ function CommentThread({ thread }: { thread: AzureDevOpsCommentThread }) {
 
       {/* Comments in thread */}
       <div className="flex flex-col gap-3">
-        {thread.comments.map((comment, index) => (
-          <div key={comment.id}>
-            {index > 0 && <Separator className="mb-3" />}
-            <div className="mb-1 flex items-center gap-2">
-              {comment.author.imageUrl && (
-                <img
-                  src={comment.author.imageUrl}
-                  alt={comment.author.displayName}
-                  className="h-5 w-5 rounded-full"
+        {thread.comments.map((comment, index) => {
+          // Proxy avatar URL through authenticated image proxy when provider is available
+          const avatarUrl =
+            comment.author.imageUrl && providerId
+              ? encodeProxyUrl(providerId, comment.author.imageUrl)
+              : comment.author.imageUrl;
+
+          return (
+            <div key={comment.id}>
+              {index > 0 && <Separator className="mb-3" />}
+              <div className="mb-1 flex items-center gap-2">
+                <UserAvatar
+                  name={comment.author.displayName}
+                  imageUrl={avatarUrl}
+                  size="sm"
                 />
-              )}
-              <span className="text-sm font-medium text-neutral-200">
-                {comment.author.displayName}
-              </span>
-              <span className="text-xs text-neutral-500">
-                {formatRelativeTime(comment.publishedDate)}
-              </span>
+                <span className="text-sm font-medium text-neutral-200">
+                  {comment.author.displayName}
+                </span>
+                <span className="text-xs text-neutral-500">
+                  {formatRelativeTime(comment.publishedDate)}
+                </span>
+              </div>
+              <div className="text-sm text-neutral-300">
+                <AzureMarkdownContent
+                  markdown={comment.content}
+                  providerId={providerId}
+                />
+              </div>
             </div>
-            <div className="text-sm text-neutral-300">
-              <MarkdownContent content={comment.content} />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
