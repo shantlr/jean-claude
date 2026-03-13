@@ -8,6 +8,7 @@ import {
 } from 'react';
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import { Button } from '@/common/ui/button';
 import { MarkdownContent } from '@/features/agent/ui-markdown-content';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import {
@@ -188,34 +189,34 @@ export function SkillEditor({
       {/* Top bar */}
       <div className="flex shrink-0 items-center justify-between border-b border-neutral-700 px-4 py-3">
         <div className="flex items-center gap-3">
-          <button
+          <Button
             type="button"
             onClick={handleBack}
             className="cursor-pointer rounded p-1 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
             title="Back"
           >
             <ArrowLeft className="h-5 w-5" />
-          </button>
+          </Button>
           <h2 className="text-lg font-semibold text-neutral-200">
             {isEditing ? 'Edit Skill' : 'New Skill'}
           </h2>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <Button
             type="button"
             onClick={handleBack}
             className="cursor-pointer rounded-lg bg-neutral-700 px-4 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={handleSave}
             disabled={!isValid || isPending}
             className="cursor-pointer rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isPending ? 'Saving...' : 'Save'}
-          </button>
+          </Button>
         </div>
       </div>
 

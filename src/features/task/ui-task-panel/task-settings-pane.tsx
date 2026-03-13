@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import { Button } from '@/common/ui/button';
 import { Separator } from '@/common/ui/separator';
 import { useSkills } from '@/hooks/use-skills';
 import type { PermissionScope } from '@shared/permission-types';
@@ -198,13 +199,13 @@ export function TaskSettingsPane({
         )}
       >
         <h3 className="text-sm font-medium text-neutral-200">Task Settings</h3>
-        <button
+        <Button
           onClick={onClose}
           className="cursor-pointer rounded p-1.5 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
           title="Close"
         >
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
       <Separator />
 
@@ -231,7 +232,7 @@ export function TaskSettingsPane({
                   <span className="flex-1 truncate font-mono text-sm text-neutral-200">
                     {sourceCommit.slice(0, 8)}
                   </span>
-                  <button
+                  <Button
                     onClick={handleCopyCommit}
                     className="rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
                     title="Copy full commit hash"
@@ -241,7 +242,7 @@ export function TaskSettingsPane({
                     ) : (
                       <Copy className="h-3.5 w-3.5" />
                     )}
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -284,7 +285,7 @@ export function TaskSettingsPane({
                         {label}
                       </span>
                     </div>
-                    <button
+                    <Button
                       onClick={() =>
                         onRemoveTool({ toolName: toolKey, pattern })
                       }
@@ -292,7 +293,7 @@ export function TaskSettingsPane({
                       title={`Remove ${label}`}
                     >
                       <X className="h-3.5 w-3.5" />
-                    </button>
+                    </Button>
                   </div>
                 ));
               })}
@@ -313,13 +314,13 @@ export function TaskSettingsPane({
           <h4 className="mb-3 text-xs font-medium tracking-wide text-neutral-500 uppercase">
             Debug
           </h4>
-          <button
+          <Button
             onClick={onOpenDebugMessages}
             className="flex w-full cursor-pointer items-center gap-2 rounded-md bg-neutral-800 px-3 py-2.5 text-sm text-neutral-300 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
           >
             <Bug className="h-4 w-4 shrink-0 text-yellow-500" />
             Raw Messages
-          </button>
+          </Button>
         </section>
       </div>
     </div>

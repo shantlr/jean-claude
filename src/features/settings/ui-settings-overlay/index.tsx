@@ -6,6 +6,7 @@ import FocusLock from 'react-focus-lock';
 import { RemoveScroll } from 'react-remove-scroll';
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
 import { Select } from '@/common/ui/select';
 import {
@@ -202,16 +203,16 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
           >
             {/* Top bar with back arrow and tabs */}
             <div className="flex shrink-0 items-center gap-2 border-b border-neutral-700 px-4 py-3">
-              <button
+              <Button
                 onClick={onClose}
                 className="rounded p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
                 aria-label="Close settings"
               >
                 <ArrowLeft className="h-5 w-5" />
-              </button>
+              </Button>
 
               <div className="flex items-center gap-1">
-                <button
+                <Button
                   onClick={() => setActiveTab('global')}
                   className={clsx(
                     'flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors',
@@ -222,11 +223,11 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                 >
                   Global
                   <Kbd shortcut="cmd+1" />
-                </button>
+                </Button>
 
                 {hasProjectTab && (
                   <div className="flex items-center gap-1.5">
-                    <button
+                    <Button
                       onClick={handleProjectTab}
                       className={clsx(
                         'flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors',
@@ -237,7 +238,7 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                     >
                       Project
                       <Kbd shortcut="cmd+2" />
-                    </button>
+                    </Button>
                     {projectOptions.length > 0 && (
                       <Select
                         value={
@@ -260,7 +261,7 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                 {activeTab === 'global' && (
                   <nav className="flex flex-col gap-1">
                     {GLOBAL_MENU_ITEMS.map((item) => (
-                      <button
+                      <Button
                         key={item.id}
                         onClick={() => setGlobalMenuItem(item.id)}
                         className={clsx(
@@ -271,7 +272,7 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                         )}
                       >
                         {item.label}
-                      </button>
+                      </Button>
                     ))}
                   </nav>
                 )}
@@ -283,7 +284,7 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                     aria-label="Project settings sections"
                   >
                     {PROJECT_MENU_ITEMS.map((item) => (
-                      <button
+                      <Button
                         key={item.id}
                         id={`project-settings-tab-${item.id}`}
                         role="tab"
@@ -299,7 +300,7 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                         )}
                       >
                         {item.label}
-                      </button>
+                      </Button>
                     ))}
                   </nav>
                 )}

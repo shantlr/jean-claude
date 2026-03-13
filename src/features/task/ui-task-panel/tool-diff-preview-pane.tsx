@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { X } from 'lucide-react';
 
+import { Button } from '@/common/ui/button';
 import { Separator } from '@/common/ui/separator';
 import { DiffView } from '@/features/agent/ui-diff-view';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
@@ -57,13 +58,13 @@ export function ToolDiffPreviewPane({
           </div>
           <div className="text-xs text-neutral-500">Tool diff preview</div>
         </div>
-        <button
+        <Button
           onClick={onClose}
           className="rounded p-1.5 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
           title="Close"
         >
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
       <Separator />
 

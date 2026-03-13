@@ -1,6 +1,7 @@
 import { Pencil, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
+import { Button } from '@/common/ui/button';
 import { MarkdownContent } from '@/features/agent/ui-markdown-content';
 import { useSkillContent } from '@/hooks/use-managed-skills';
 import type { AgentBackendType } from '@shared/agent-backend-types';
@@ -45,19 +46,19 @@ export function SkillDetails({
         </h3>
         <div className="flex items-center gap-1">
           {onEdit && skill.editable && (
-            <button
+            <Button
               type="button"
               onClick={onEdit}
               className="cursor-pointer rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-200"
               title="Edit skill"
             >
               <Pencil className="h-4 w-4" />
-            </button>
+            </Button>
           )}
           {onDelete &&
             skill.editable &&
             (confirmingDelete ? (
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   onDelete(skill.skillPath);
@@ -68,23 +69,23 @@ export function SkillDetails({
                 autoFocus
               >
                 Delete?
-              </button>
+              </Button>
             ) : (
-              <button
+              <Button
                 type="button"
                 onClick={() => setConfirmingDelete(true)}
                 className="cursor-pointer rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-red-400"
                 title="Delete skill"
               >
                 <Trash2 className="h-4 w-4" />
-              </button>
+              </Button>
             ))}
-          <button
+          <Button
             onClick={onClose}
             className="cursor-pointer rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-200"
           >
             <X className="h-5 w-5" />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -103,7 +104,7 @@ export function SkillDetails({
             {onToggleEnabled && skill.editable
               ? Object.entries(skill.enabledBackends).map(
                   ([backend, enabled]) => (
-                    <button
+                    <Button
                       key={backend}
                       type="button"
                       onClick={() =>
@@ -119,7 +120,7 @@ export function SkillDetails({
                     >
                       {backend === 'claude-code' ? 'Claude Code' : 'OpenCode'}:{' '}
                       {enabled ? 'On' : 'Off'}
-                    </button>
+                    </Button>
                   ),
                 )
               : Object.entries(skill.enabledBackends).map(

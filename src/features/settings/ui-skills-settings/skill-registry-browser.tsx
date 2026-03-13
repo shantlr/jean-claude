@@ -10,6 +10,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import { Button } from '@/common/ui/button';
 import {
   useAllManagedSkills,
   useInstallRegistrySkill,
@@ -66,7 +67,7 @@ function RegistrySkillCard({
   onSelect: () => void;
 }) {
   return (
-    <button
+    <Button
       type="button"
       onClick={onSelect}
       className={`flex cursor-pointer flex-col items-start gap-1.5 rounded-lg border p-3 text-left transition-colors ${
@@ -104,7 +105,7 @@ function RegistrySkillCard({
           <ExternalLink className="h-3 w-3" />
         </a>
       </div>
-    </button>
+    </Button>
   );
 }
 
@@ -232,7 +233,7 @@ function RegistrySkillPreview({
             }
           />
         </div>
-        <button
+        <Button
           type="button"
           onClick={handleInstall}
           disabled={
@@ -264,7 +265,7 @@ function RegistrySkillPreview({
               Install
             </>
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -323,13 +324,13 @@ export function SkillRegistryBrowser({ onClose }: { onClose: () => void }) {
           <h2 className="text-lg font-semibold text-neutral-200">
             Browse Skills
           </h2>
-          <button
+          <Button
             type="button"
             onClick={onClose}
             className="cursor-pointer rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-200"
           >
             <X className="h-5 w-5" />
-          </button>
+          </Button>
         </div>
 
         {/* Search */}
@@ -345,7 +346,7 @@ export function SkillRegistryBrowser({ onClose }: { onClose: () => void }) {
               autoFocus
             />
             {searchInput && (
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   setSearchInput('');
@@ -354,7 +355,7 @@ export function SkillRegistryBrowser({ onClose }: { onClose: () => void }) {
                 className="cursor-pointer text-neutral-500 hover:text-neutral-300"
               >
                 <X className="h-3.5 w-3.5" />
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -433,13 +434,13 @@ export function SkillRegistryBrowser({ onClose }: { onClose: () => void }) {
           <span className="text-xs text-neutral-500">
             Powered by <span className="text-neutral-400">skills.sh</span>
           </span>
-          <button
+          <Button
             type="button"
             onClick={onClose}
             className="cursor-pointer rounded-lg border border-neutral-600 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800"
           >
             Close
-          </button>
+          </Button>
         </div>
       </div>
     </div>

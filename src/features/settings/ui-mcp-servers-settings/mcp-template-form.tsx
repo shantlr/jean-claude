@@ -1,6 +1,7 @@
 import { FolderOpen, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { Button } from '@/common/ui/button';
 import { MarkdownContent } from '@/features/agent/ui-markdown-content';
 import {
   useMcpPresets,
@@ -161,12 +162,12 @@ export function McpTemplateForm({
         <h3 className="text-lg font-semibold text-neutral-200">
           {template ? 'Edit MCP Server' : 'Add MCP Server'}
         </h3>
-        <button
+        <Button
           onClick={onClose}
           className="cursor-pointer rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-200"
         >
           <X className="h-5 w-5" />
-        </button>
+        </Button>
       </div>
 
       <div className="flex-1 space-y-4 overflow-auto">
@@ -178,7 +179,7 @@ export function McpTemplateForm({
             </label>
             <div className="flex flex-wrap gap-2">
               {presets.map((preset) => (
-                <button
+                <Button
                   key={preset.id}
                   onClick={() => handleApplyPreset(preset)}
                   className={`cursor-pointer rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -188,7 +189,7 @@ export function McpTemplateForm({
                   }`}
                 >
                   Use {preset.name} Preset
-                </button>
+                </Button>
               ))}
             </div>
             {/* Preset description */}
@@ -262,12 +263,12 @@ export function McpTemplateForm({
                         className="flex-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
                       />
                       {presetVar?.inputType === 'folder' && (
-                        <button
+                        <Button
                           onClick={() => handleBrowseFolder(varName)}
                           className="cursor-pointer rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
                         >
                           <FolderOpen className="h-4 w-4" />
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -300,13 +301,13 @@ export function McpTemplateForm({
 
       {/* Save button */}
       <div className="mt-4 flex justify-end gap-2 border-t border-neutral-700 pt-4">
-        <button
+        <Button
           onClick={onClose}
           className="cursor-pointer rounded-lg bg-neutral-700 px-4 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-600"
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={handleSave}
           disabled={
             !isValid || createTemplate.isPending || updateTemplate.isPending
@@ -316,7 +317,7 @@ export function McpTemplateForm({
           {createTemplate.isPending || updateTemplate.isPending
             ? 'Saving...'
             : 'Save'}
-        </button>
+        </Button>
       </div>
     </div>
   );

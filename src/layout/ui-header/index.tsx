@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { ClipboardList, Loader2, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 
+import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
 import { useProjectTodoCount } from '@/hooks/use-project-todos';
 import { useProjects } from '@/hooks/use-projects';
@@ -72,7 +73,7 @@ export function Header() {
       {isMac && !isWindowFullscreen && <div className="w-[70px]" />}
 
       <div className="flex min-w-0 flex-1 px-2">
-        <button
+        <Button
           type="button"
           onClick={() => openOverlay('settings')}
           className="mr-2 flex h-7 shrink-0 items-center gap-1.5 rounded border border-neutral-800 bg-neutral-900 px-2 text-neutral-300 transition-colors hover:border-neutral-700 hover:bg-neutral-800"
@@ -83,9 +84,9 @@ export function Header() {
           <SlidersHorizontal className="h-3.5 w-3.5" />
           <span className="text-xs">Settings</span>
           <Kbd shortcut="cmd+," className="text-[9px]" />
-        </button>
+        </Button>
 
-        <button
+        <Button
           type="button"
           onClick={() => openOverlay('project-switcher')}
           className="flex max-w-[320px] cursor-pointer items-center gap-1.5 truncate rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-left text-xs text-neutral-300 transition-colors hover:border-neutral-700 hover:bg-neutral-800"
@@ -94,10 +95,10 @@ export function Header() {
         >
           <span className="truncate">{selectedProjectLabel}</span>
           <Kbd shortcut="cmd+o" className="text-[9px]" />
-        </button>
+        </Button>
 
         {backlogProjectId && (
-          <button
+          <Button
             type="button"
             onClick={() => openOverlay('project-backlog')}
             className="ml-2 flex h-7 shrink-0 items-center gap-1.5 rounded border border-neutral-800 bg-neutral-900 px-2 text-neutral-300 transition-colors hover:border-neutral-700 hover:bg-neutral-800"
@@ -113,7 +114,7 @@ export function Header() {
               </span>
             )}
             <Kbd shortcut="cmd+b" className="text-[9px]" />
-          </button>
+          </Button>
         )}
       </div>
 
@@ -131,7 +132,7 @@ export function Header() {
         className="pr-2"
         style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
       >
-        <button
+        <Button
           type="button"
           data-animation-target="jobs-button"
           onClick={() => openOverlay('background-jobs')}
@@ -153,7 +154,7 @@ export function Header() {
               {runningJobsCount}
             </span>
           )}
-        </button>
+        </Button>
       </div>
     </header>
   );

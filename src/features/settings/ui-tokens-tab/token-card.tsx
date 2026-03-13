@@ -1,5 +1,6 @@
 import { AlertCircle, CheckCircle, Clock, Key } from 'lucide-react';
 
+import { Button } from '@/common/ui/button';
 import type { Token } from '@shared/types';
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -60,7 +61,7 @@ export function TokenCard({
   const ExpirationIcon = expiration.icon;
 
   return (
-    <button
+    <Button
       onClick={onSelect}
       className={`flex cursor-pointer flex-col gap-2 rounded-lg border p-4 text-left transition-colors ${
         isSelected
@@ -82,6 +83,6 @@ export function TokenCard({
         <ExpirationIcon className="h-3.5 w-3.5" />
         {expiration.label}
       </div>
-    </button>
+    </Button>
   );
 }

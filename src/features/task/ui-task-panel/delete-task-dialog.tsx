@@ -1,7 +1,7 @@
-import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
+import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
 
@@ -92,27 +92,27 @@ export function DeleteTaskDialog({
       )}
 
       <div className="flex justify-end gap-3">
-        <button
+        <Button
           type="button"
           onClick={onClose}
           disabled={isPending}
           className="rounded-md px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={handleConfirm}
+          loading={isPending}
           disabled={isPending}
           className="flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
           Delete
           <span className="inline-flex items-center gap-1">
             <Kbd shortcut="cmd+enter" />
             <Kbd shortcut="cmd+backspace" />
           </span>
-        </button>
+        </Button>
       </div>
     </Modal>
   );

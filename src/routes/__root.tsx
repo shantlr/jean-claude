@@ -7,6 +7,7 @@ import {
 import { useCallback, useEffect } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
+import { Button } from '@/common/ui/button';
 import { GlobalPromptFromBackModal } from '@/common/ui/global-prompt-from-back-modal';
 import { TaskMessageManager } from '@/features/agent/task-message-manager';
 import { BackgroundJobsOverlay } from '@/features/background-jobs/ui-background-jobs-overlay';
@@ -42,18 +43,18 @@ function RootErrorBoundary({ error }: { error: Error }) {
           <p className="font-mono text-sm text-neutral-300">{error.message}</p>
         </div>
         <div className="flex justify-center gap-3">
-          <button
+          <Button
             onClick={() => router.invalidate()}
             className="rounded-md bg-neutral-700 px-4 py-2 text-sm hover:bg-neutral-600"
           >
             Try again
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => router.navigate({ to: '/' })}
             className="rounded-md bg-blue-600 px-4 py-2 text-sm hover:bg-blue-500"
           >
             Go home
-          </button>
+          </Button>
         </div>
         {process.env.NODE_ENV === 'development' && error.stack && (
           <details className="mt-4 text-left">

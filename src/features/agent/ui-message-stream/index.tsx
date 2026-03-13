@@ -37,7 +37,10 @@ const SCROLL_THRESHOLD = 10;
 
 export interface PermissionBannerProps {
   request: NormalizedPermissionRequest & { taskId: string };
-  onRespond: (requestId: string, response: PermissionResponse) => void;
+  onRespond: (
+    requestId: string,
+    response: PermissionResponse,
+  ) => void | Promise<void>;
   onAllowForSession?: (
     toolName: string,
     input: Record<string, unknown>,
@@ -60,7 +63,10 @@ export interface QuestionBannerProps {
     requestId: string;
     questions: AgentQuestion[];
   };
-  onRespond: (requestId: string, response: QuestionResponse) => void;
+  onRespond: (
+    requestId: string,
+    response: QuestionResponse,
+  ) => void | Promise<void>;
 }
 
 export const MessageStream = memo(function MessageStream({

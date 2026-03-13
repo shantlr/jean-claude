@@ -8,6 +8,7 @@ import {
   Loader2,
 } from 'lucide-react';
 
+import { Button } from '@/common/ui/button';
 import { useDirectoryListing } from '@/hooks/use-directory-listing';
 
 export function FileTree({
@@ -85,7 +86,7 @@ function FileTreeNode({
   if (entry.isDirectory) {
     return (
       <div>
-        <button
+        <Button
           onClick={() => onToggleDir(entry.path)}
           className={clsx(
             'flex w-full items-center gap-1 py-0.5 text-left text-sm hover:bg-neutral-700/50',
@@ -103,7 +104,7 @@ function FileTreeNode({
             <Folder className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
           )}
           <span className="truncate text-neutral-300">{entry.name}</span>
-        </button>
+        </Button>
         {isExpanded && (
           <DirectoryChildren
             dirPath={entry.path}
@@ -120,7 +121,7 @@ function FileTreeNode({
   }
 
   return (
-    <button
+    <Button
       onClick={() => onSelectFile(entry.path)}
       className={clsx(
         'flex w-full items-center gap-1 py-0.5 text-left text-sm',
@@ -132,7 +133,7 @@ function FileTreeNode({
     >
       <File className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
       <span className="truncate">{entry.name}</span>
-    </button>
+    </Button>
   );
 }
 

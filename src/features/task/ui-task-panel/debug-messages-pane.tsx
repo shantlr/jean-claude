@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useState, useCallback, useEffect } from 'react';
 
+import { Button } from '@/common/ui/button';
 import { Separator } from '@/common/ui/separator';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useMessagesWithRawData } from '@/hooks/use-messages-with-raw-data';
@@ -58,7 +59,7 @@ function CopyJsonButton({
   const { copy, copied } = useCopyToClipboard();
 
   return (
-    <button
+    <Button
       onClick={(e) => {
         e.stopPropagation();
         copy(typeof value === 'function' ? value() : value);
@@ -74,7 +75,7 @@ function CopyJsonButton({
     >
       {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
       {label && <span>{label}</span>}
-    </button>
+    </Button>
   );
 }
 
@@ -244,7 +245,7 @@ function DebugMessageCard({ message }: { message: DebugMessageWithRawData }) {
   return (
     <div className="flex w-full flex-col overflow-hidden rounded-md border border-white/[0.06] bg-neutral-800/30">
       {/* Card header */}
-      <button
+      <Button
         onClick={() => setExpanded(!expanded)}
         className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-neutral-800"
       >
@@ -295,7 +296,7 @@ function DebugMessageCard({ message }: { message: DebugMessageWithRawData }) {
             ? new Date(message.createdAt).toLocaleTimeString()
             : '\u00A0'}
         </span>
-      </button>
+      </Button>
 
       {/* Card body — Side-by-side JSON */}
       {expanded && (
@@ -444,7 +445,7 @@ export function DebugMessagesPane({
           )}
         </h3>
         <div className="flex items-center gap-1">
-          <button
+          <Button
             onClick={() => compactMutation.mutate()}
             disabled={compactMutation.isPending}
             className={clsx(
@@ -461,8 +462,8 @@ export function DebugMessagesPane({
                 compactMutation.isPending && 'animate-pulse',
               )}
             />
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => reprocessMutation.mutate()}
             disabled={reprocessMutation.isPending}
             className={clsx(
@@ -479,21 +480,21 @@ export function DebugMessagesPane({
                 reprocessMutation.isPending && 'animate-spin',
               )}
             />
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleRefresh}
             className="cursor-pointer rounded p-1.5 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
             title="Refresh"
           >
             <RefreshCw className="h-3.5 w-3.5" />
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onClose}
             className="cursor-pointer rounded p-1.5 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
             title="Close"
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </div>
       <Separator />

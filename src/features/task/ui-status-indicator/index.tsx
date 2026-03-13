@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { CheckCircle2 } from 'lucide-react';
 import { ComponentProps, MouseEvent } from 'react';
 
+import { Button } from '@/common/ui/button';
 import type { TaskStatus } from '@shared/types';
 
 const STATUS_COLORS: Record<TaskStatus, string> = {
@@ -50,7 +51,7 @@ export const ToggleableStatusIndicator = ({
 }) => {
   const disabled = status === 'running' || status === 'waiting';
   return (
-    <button
+    <Button
       disabled={disabled}
       className={clsx(
         'flex h-4 w-3 items-center justify-center',
@@ -76,6 +77,6 @@ export const ToggleableStatusIndicator = ({
           status={status}
         />
       )}
-    </button>
+    </Button>
   );
 };

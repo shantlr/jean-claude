@@ -4,6 +4,7 @@ import { ArrowLeft, Folder, FolderOpen, Search } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 
+import { Button } from '@/common/ui/button';
 import {
   AddProjectForm,
   type ProjectFormData,
@@ -173,14 +174,14 @@ function AddProjectPage() {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <div className="w-full max-w-md">
-          <button
+          <Button
             type="button"
             onClick={handleBack}
             className="mb-6 flex cursor-pointer items-center gap-2 text-neutral-400 transition-colors hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
-          </button>
+          </Button>
           <h1 className="mb-6 text-2xl font-bold">
             {isFromClone ? 'Configure Cloned Project' : 'Add Local Project'}
           </h1>
@@ -205,15 +206,15 @@ function AddProjectPage() {
         <div className="mb-4 flex shrink-0 items-center justify-between">
           <h1 className="text-2xl font-bold">Add Project</h1>
           <div className="flex gap-2">
-            <button
+            <Button
               type="button"
               onClick={handleSelectLocalFolder}
               className="flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2 text-sm font-medium transition-colors hover:border-neutral-600 hover:bg-neutral-800"
             >
               <Folder className="h-4 w-4 shrink-0 text-neutral-400" />
               Local Folder
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={handleShowClonePane}
               className="flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2 text-sm font-medium transition-colors hover:border-neutral-600 hover:bg-neutral-800"
@@ -226,7 +227,7 @@ function AddProjectPage() {
                 <path d="M0 8.877L2.247 5.91l8.405-3.416V.022l7.37 5.393L2.966 8.338v8.225L0 15.707zm24-4.45v14.651l-5.753 4.9-9.303-3.057v3.056l-5.978-7.416 15.057 1.798V5.415z" />
               </svg>
               Clone from Azure DevOps
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -261,7 +262,7 @@ function AddProjectPage() {
               {/* Project cards */}
               {!isLoadingDetected &&
                 filteredProjects.map((project) => (
-                  <button
+                  <Button
                     key={project.path}
                     type="button"
                     aria-label={`Add project: ${project.name}`}
@@ -290,7 +291,7 @@ function AddProjectPage() {
                     <div className="mt-auto truncate text-xs text-neutral-500">
                       {project.displayPath}
                     </div>
-                  </button>
+                  </Button>
                 ))}
 
               {/* Empty filter state */}

@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 
+import { Button } from '@/common/ui/button';
 import { BackendSelector } from '@/features/agent/ui-backend-selector';
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
 import { ModelSelector } from '@/features/agent/ui-model-selector';
@@ -134,7 +135,7 @@ function NewTask() {
   return (
     <div className="h-full overflow-auto p-6">
       <div className="mx-auto max-w-xl">
-        <button
+        <Button
           type="button"
           onClick={() =>
             navigate({ to: '/projects/$projectId', params: { projectId } })
@@ -143,7 +144,7 @@ function NewTask() {
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Back
-        </button>
+        </Button>
 
         <h1 className="mb-6 text-2xl font-bold">New Task</h1>
 
@@ -266,7 +267,7 @@ function NewTask() {
                   onClose={() => setShowWorkItems(false)}
                 />
               ) : (
-                <button
+                <Button
                   type="button"
                   onClick={() => setShowWorkItems(true)}
                   className="flex cursor-pointer items-center gap-2 text-sm text-neutral-400 transition-colors hover:text-white"
@@ -275,7 +276,7 @@ function NewTask() {
                   {workItemIds?.length
                     ? `From AB#${workItemIds[0]}`
                     : 'From Work Item'}
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -295,21 +296,23 @@ function NewTask() {
               value={effectiveAgentBackend}
               onChange={handleBackendChange}
             />
-            <button
+            <Button
               type="button"
               onClick={handleCreateOnly}
+              loading={createTask.isPending}
               disabled={createTask.isPending || !prompt.trim()}
               className="cursor-pointer rounded-lg border border-neutral-600 px-4 py-2 font-medium text-neutral-300 transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Create
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
+              loading={createTask.isPending}
               disabled={createTask.isPending || !prompt.trim()}
               className="cursor-pointer rounded-lg bg-white px-4 py-2 font-medium text-black transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {createTask.isPending ? 'Creating…' : 'Start'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

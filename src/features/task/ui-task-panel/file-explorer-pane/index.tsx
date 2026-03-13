@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { FolderTree, RefreshCw, X } from 'lucide-react';
 import { useCallback } from 'react';
 
+import { Button } from '@/common/ui/button';
 import { Separator } from '@/common/ui/separator';
 import { useInvalidateDirectoryListings } from '@/hooks/use-directory-listing';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
@@ -98,7 +99,7 @@ export function FileExplorerPane({
             : 'Files'}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <button
+          <Button
             onClick={() => {
               if (!rootPath) {
                 return;
@@ -110,13 +111,13 @@ export function FileExplorerPane({
             disabled={!rootPath}
           >
             <RefreshCw className="h-3.5 w-3.5" />
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onClose}
             className="rounded p-1 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </div>
       <Separator />

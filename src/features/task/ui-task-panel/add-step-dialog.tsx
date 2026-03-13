@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
+import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
 import { Select } from '@/common/ui/select';
@@ -273,7 +274,7 @@ export function AddStepDialog({
               <span className="text-xs font-medium text-neutral-300">
                 Reviewers
               </span>
-              <button
+              <Button
                 type="button"
                 onClick={() =>
                   setReviewers((prev) => [
@@ -290,7 +291,7 @@ export function AddStepDialog({
               >
                 <Plus className="h-3 w-3" />
                 Add reviewer
-              </button>
+              </Button>
             </div>
             <div className="max-h-[240px] space-y-2 overflow-y-auto">
               {reviewers.map((reviewer, idx) => (
@@ -327,7 +328,7 @@ export function AddStepDialog({
                       side="top"
                       className="w-[170px]"
                     />
-                    <button
+                    <Button
                       type="button"
                       onClick={() =>
                         setReviewers((prev) => prev.filter((_, i) => i !== idx))
@@ -335,7 +336,7 @@ export function AddStepDialog({
                       className="rounded p-1 text-neutral-500 transition-colors hover:bg-neutral-700 hover:text-red-400"
                     >
                       <Trash2 className="h-3 w-3" />
-                    </button>
+                    </Button>
                   </div>
                   <textarea
                     value={reviewer.focusPrompt}
@@ -394,14 +395,14 @@ export function AddStepDialog({
             <Kbd shortcut="cmd+shift+s" />
           </label>
           <div className="flex gap-3">
-            <button
+            <Button
               type="button"
               onClick={onClose}
               className="rounded-md px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-700"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={handleSubmit}
               disabled={!canSubmit}
@@ -409,7 +410,7 @@ export function AddStepDialog({
             >
               Add Step
               <Kbd shortcut="cmd+enter" className="ml-1" />
-            </button>
+            </Button>
           </div>
         </div>
       </div>

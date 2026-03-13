@@ -2,6 +2,7 @@ import { Loader2, RefreshCw, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { useModal } from '@/common/context/modal';
+import { Button } from '@/common/ui/button';
 import { useGetAzureDevOpsTokenExpiration } from '@/hooks/use-azure-devops';
 import { useDeleteToken, useUpdateToken } from '@/hooks/use-tokens';
 import type { Token } from '@shared/types';
@@ -82,12 +83,12 @@ export function EditTokenPane({
       <div className="w-80 shrink-0 rounded-lg border border-neutral-700 bg-neutral-800/50 p-4">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="font-medium text-neutral-200">Edit Token</h3>
-          <button
+          <Button
             onClick={onClose}
             className="cursor-pointer rounded-lg p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
         <div className="flex flex-col gap-4">
@@ -122,7 +123,7 @@ export function EditTokenPane({
                 Expiration Date
               </label>
               {token.providerType === 'azure-devops' && (
-                <button
+                <Button
                   onClick={handleRefreshExpiration}
                   disabled={getExpiration.isPending}
                   className="flex cursor-pointer items-center gap-1 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50"
@@ -133,7 +134,7 @@ export function EditTokenPane({
                     <RefreshCw className="h-3 w-3" />
                   )}
                   Fetch from API
-                </button>
+                </Button>
               )}
             </div>
             <input
@@ -151,13 +152,13 @@ export function EditTokenPane({
           )}
 
           <div className="flex gap-2">
-            <button
+            <Button
               onClick={handleDeleteClick}
               className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-red-500/50 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20"
             >
               <Trash2 className="h-4 w-4" />
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleSave}
               disabled={!hasChanges || updateToken.isPending}
               className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600"
@@ -167,7 +168,7 @@ export function EditTokenPane({
               ) : (
                 'Save Changes'
               )}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

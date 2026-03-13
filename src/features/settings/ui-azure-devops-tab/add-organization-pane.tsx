@@ -1,6 +1,7 @@
 import { Loader2, X } from 'lucide-react';
 import { useState } from 'react';
 
+import { Button } from '@/common/ui/button';
 import { useGetAzureDevOpsOrganizations } from '@/hooks/use-azure-devops';
 import { useCreateProvider, useProviders } from '@/hooks/use-providers';
 import { useTokensByProviderType } from '@/hooks/use-tokens';
@@ -85,13 +86,13 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
     <div className="w-80 shrink-0 rounded-lg border border-neutral-700 bg-neutral-800/50 p-4">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="font-medium text-neutral-200">Add Organization</h3>
-        <button
+        <Button
           onClick={onClose}
           aria-label="Close pane"
           className="cursor-pointer rounded-lg p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
         >
           <X className="h-4 w-4" aria-hidden />
-        </button>
+        </Button>
       </div>
 
       {step === 'selectToken' && (
@@ -120,7 +121,7 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
           ) : (
             <div className="flex flex-col gap-2">
               {tokens.map((token) => (
-                <button
+                <Button
                   key={token.id}
                   onClick={() => handleSelectToken(token.id)}
                   disabled={getOrganizations.isPending}
@@ -136,7 +137,7 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
                         aria-hidden
                       />
                     )}
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -178,13 +179,13 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
           </div>
 
           <div className="flex gap-2">
-            <button
+            <Button
               onClick={() => setStep('selectToken')}
               className="flex-1 cursor-pointer rounded-lg border border-neutral-600 bg-neutral-700 px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-600"
             >
               Back
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleAddSelected}
               disabled={selectedOrgs.size === 0 || createProvider.isPending}
               className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600"
@@ -194,7 +195,7 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
               ) : (
                 `Add ${selectedOrgs.size > 0 ? `(${selectedOrgs.size})` : ''}`
               )}
-            </button>
+            </Button>
           </div>
         </div>
       )}

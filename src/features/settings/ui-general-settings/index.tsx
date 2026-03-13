@@ -1,6 +1,7 @@
 import { Check, FolderOpen, Search, Star, Trash2, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
+import { Button } from '@/common/ui/button';
 import {
   AVAILABLE_BACKENDS,
   getModelsForBackend,
@@ -84,7 +85,7 @@ export function GeneralSettings() {
           const selected = isPresetSelected(editor.id);
 
           return (
-            <button
+            <Button
               key={editor.id}
               onClick={() => handleSelectPreset(editor.id)}
               className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
@@ -97,7 +98,7 @@ export function GeneralSettings() {
             >
               {editor.label}
               {available && <Check className="h-3 w-3 text-green-500" />}
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -116,25 +117,25 @@ export function GeneralSettings() {
             placeholder="e.g., vim, emacs, nano"
             className="flex-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
           />
-          <button
+          <Button
             onClick={handleSetCustomCommand}
             disabled={!customCommand.trim()}
             className="cursor-pointer rounded-lg bg-neutral-700 px-4 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-neutral-700"
           >
             Set
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Browse for app */}
       <div className="mt-4">
-        <button
+        <Button
           onClick={handleBrowseApp}
           className="flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-300 hover:border-neutral-600 hover:bg-neutral-700"
         >
           <FolderOpen className="h-4 w-4" />
           Browse for application...
-        </button>
+        </Button>
       </div>
 
       {/* Current selection */}
@@ -260,7 +261,7 @@ function BackendsSettings() {
               </label>
 
               {enabled && (
-                <button
+                <Button
                   onClick={() => handleSetDefault(backend.value)}
                   className={`flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
                     dflt
@@ -270,7 +271,7 @@ function BackendsSettings() {
                 >
                   <Star className={`h-3 w-3 ${dflt ? 'fill-blue-400' : ''}`} />
                   {dflt ? 'Default' : 'Set as default'}
-                </button>
+                </Button>
               )}
             </div>
           );
@@ -560,7 +561,7 @@ function ClaudeProjectsCleanup() {
 
       {/* Scan button */}
       <div className="mt-4">
-        <button
+        <Button
           onClick={handleScan}
           disabled={scanMutation.isPending}
           className="flex cursor-pointer items-center gap-2 rounded-lg bg-neutral-700 px-4 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
@@ -571,7 +572,7 @@ function ClaudeProjectsCleanup() {
             <Search className="h-4 w-4" />
           )}
           Scan for Non-Existent Projects
-        </button>
+        </Button>
       </div>
 
       {/* Results */}
@@ -583,19 +584,19 @@ function ClaudeProjectsCleanup() {
               {scannedProjects.length === 1 ? '' : 's'} with non-existent paths
             </span>
             <div className="flex gap-2">
-              <button
+              <Button
                 onClick={handleSelectAll}
                 className="cursor-pointer text-xs text-blue-400 hover:text-blue-300"
               >
                 Select all
-              </button>
+              </Button>
               <span className="text-neutral-600">|</span>
-              <button
+              <Button
                 onClick={handleSelectNone}
                 className="cursor-pointer text-xs text-blue-400 hover:text-blue-300"
               >
                 Select none
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -623,7 +624,7 @@ function ClaudeProjectsCleanup() {
 
           {/* Cleanup button */}
           <div className="mt-4">
-            <button
+            <Button
               onClick={handleCleanup}
               disabled={selectedPaths.size === 0 || cleanupMutation.isPending}
               className="flex cursor-pointer items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
@@ -634,7 +635,7 @@ function ClaudeProjectsCleanup() {
                 <Trash2 className="h-4 w-4" />
               )}
               Remove Selected ({selectedPaths.size})
-            </button>
+            </Button>
           </div>
         </div>
       )}

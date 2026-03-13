@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useMemo, useState, useEffect } from 'react';
 
+import { Button } from '@/common/ui/button';
 import {
   FileDiffContent,
   normalizeAzureChangeType,
@@ -222,12 +223,12 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
         <p className="max-w-md text-center text-xs text-neutral-500">
           {meta.parseError}
         </p>
-        <button
+        <Button
           onClick={handleDiscard}
           className="rounded-md bg-neutral-700 px-4 py-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-600"
         >
           Skip Review
-        </button>
+        </Button>
       </div>
     );
   }
@@ -247,12 +248,12 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <Button
             onClick={() => toggleAll(enabledCount < comments.length)}
             className="text-xs text-neutral-400 transition-colors hover:text-neutral-200"
           >
             {enabledCount === comments.length ? 'Deselect All' : 'Select All'}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -281,7 +282,7 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
                 >
                   {/* Top row: checkbox, file path, line number */}
                   <div className="flex items-center gap-2">
-                    <button
+                    <Button
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleComment(index);
@@ -293,7 +294,7 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
                       ) : (
                         <Square className="h-4 w-4" />
                       )}
-                    </button>
+                    </Button>
                     <span className="rounded bg-neutral-700 px-1.5 py-0.5 font-mono text-[11px] text-neutral-300">
                       {comment.filePath}
                     </span>
@@ -362,15 +363,15 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
 
       {/* Footer actions */}
       <div className="flex items-center justify-between border-t border-neutral-700 px-4 py-3">
-        <button
+        <Button
           onClick={handleDiscard}
           disabled={submitReview.isPending}
           className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-200"
         >
           <X className="h-4 w-4" />
           Discard
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={handleSubmit}
           disabled={enabledCount === 0 || submitReview.isPending}
           className="flex items-center gap-1.5 rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
@@ -381,7 +382,7 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
             <Check className="h-4 w-4" />
           )}
           Submit {enabledCount} Comment{enabledCount !== 1 ? 's' : ''}
-        </button>
+        </Button>
       </div>
     </div>
   );

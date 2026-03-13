@@ -2,6 +2,7 @@ import { HelpCircle, Send } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
+import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
 import type { QuestionResponse, AgentQuestion } from '@shared/agent-types';
 
@@ -41,7 +42,7 @@ function QuestionInput({
         <div className="flex flex-wrap gap-2">
           {question.options.map((option, index) => {
             return (
-              <button
+              <Button
                 key={option.label}
                 onFocus={() => {
                   onActivate({ questionIndex, optionIndex: index });
@@ -65,7 +66,7 @@ function QuestionInput({
                     {option.description}
                   </div>
                 ) : null}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -77,7 +78,7 @@ function QuestionInput({
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
         {question.options.map((option, index) => (
-          <button
+          <Button
             key={option.label}
             onFocus={() => {
               onActivate({ questionIndex, optionIndex: index });
@@ -101,9 +102,9 @@ function QuestionInput({
                 {option.description}
               </div>
             ) : null}
-          </button>
+          </Button>
         ))}
-        <button
+        <Button
           onFocus={() => {
             onActivate({ questionIndex, optionIndex: optionCount - 1 });
           }}
@@ -123,7 +124,7 @@ function QuestionInput({
           <div className="mt-0.5 text-xs leading-tight text-current/80">
             Enter a custom answer
           </div>
-        </button>
+        </Button>
       </div>
       {isOtherOpen && (
         <textarea
@@ -153,7 +154,10 @@ export function QuestionOptions({
     requestId: string;
     questions: AgentQuestion[];
   };
-  onRespond: (requestId: string, response: QuestionResponse) => void;
+  onRespond: (
+    requestId: string,
+    response: QuestionResponse,
+  ) => void | Promise<void>;
 }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
@@ -299,10 +303,16 @@ export function QuestionOptions({
     answers[q.question]?.trim(),
   );
 
-  const handleSubmit = useCallback(() => {
+  const submitAnswers = useCallback(() => {
     if (!allAnswered) return;
-    onRespond(request.requestId, { answers });
+    return onRespond(request.requestId, { answers });
   }, [allAnswered, onRespond, request.requestId, answers]);
+
+  const handleSubmit = useCallback(() => {
+    if (!allAnswered) return false;
+    void submitAnswers();
+    return true;
+  }, [allAnswered, submitAnswers]);
 
   useCommands('question-options', [
     {
@@ -365,15 +375,15 @@ export function QuestionOptions({
         ))}
       </div>
       <div className="mt-4 flex justify-end">
-        <button
-          onClick={handleSubmit}
+        <Button
+          onClick={submitAnswers}
           disabled={!allAnswered}
           className="flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Send className="h-4 w-4" />
           Submit
           <Kbd shortcut="cmd+enter" />
-        </button>
+        </Button>
       </div>
     </div>
   );

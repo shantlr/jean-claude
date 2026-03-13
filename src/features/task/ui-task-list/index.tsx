@@ -3,6 +3,7 @@ import { ChevronDown, ListTodo } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
+import { Button } from '@/common/ui/button';
 import { SidebarContentTabs } from '@/features/project/ui-sidebar-content-tabs';
 import { PrSidebarList } from '@/features/pull-request/ui-pr-sidebar-list';
 import { TaskSummaryCard } from '@/features/task/ui-task-summary-card';
@@ -292,7 +293,7 @@ export function TaskList() {
                   />
                 ))}
                 {hasNextPage && (
-                  <button
+                  <Button
                     onClick={() => fetchNextPage()}
                     disabled={isFetchingNextPage}
                     className="flex w-full items-center justify-center gap-1 rounded px-2 py-1.5 text-xs text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-300 disabled:opacity-50"
@@ -305,7 +306,7 @@ export function TaskList() {
                         <span>Load more</span>
                       </>
                     )}
-                  </button>
+                  </Button>
                 )}
               </>
             )}

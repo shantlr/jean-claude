@@ -19,6 +19,7 @@ import { useEffect, useState, useCallback, useMemo, useRef, memo } from 'react';
 import { useModal } from '@/common/context/modal';
 import { useCommands } from '@/common/hooks/use-commands';
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
+import { Button } from '@/common/ui/button';
 import {
   Dropdown,
   DropdownItem,
@@ -844,7 +845,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
 
             {/* Branch chip */}
             {task.worktreePath ? (
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   void handleOpenWorktreeInEditor();
@@ -857,7 +858,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                   {task.branchName ??
                     getBranchFromWorktreePath(task.worktreePath)}
                 </span>
-              </button>
+              </Button>
             ) : task.branchName ? (
               <span className="flex max-w-48 min-w-0 items-center gap-1 rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-400">
                 <GitBranch className="h-3 w-3 shrink-0" />
@@ -879,7 +880,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               task.workItemIds.map((workItemId, index) => {
                 const workItemUrl = task.workItemUrls?.[index];
                 return (
-                  <button
+                  <Button
                     key={workItemId}
                     onClick={() => {
                       if (workItemUrl) {
@@ -895,7 +896,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                     }
                   >
                     #{workItemId}
-                  </button>
+                  </Button>
                 );
               })}
           </div>
@@ -923,13 +924,13 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             {/* Overflow menu */}
             <Dropdown
               trigger={
-                <button
+                <Button
                   className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
                   title="Task menu (\u2318M)"
                 >
                   <MoreHorizontal className="h-4 w-4" />
                   <Kbd shortcut="cmd+m" />
-                </button>
+                </Button>
               }
               align="right"
               dropdownRef={overflowMenuRef}
@@ -1127,14 +1128,14 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                 </div>
               ) : activeStep?.status === 'ready' ? (
                 <div className="mt-6 flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-700 p-8">
-                  <button
+                  <Button
                     onClick={() => void start()}
                     disabled={isStarting}
                     className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Play className="h-4 w-4" />
                     {isStarting ? 'Starting...' : 'Start Step'}
-                  </button>
+                  </Button>
                 </div>
               ) : activeStep?.status === 'pending' ? (
                 <div className="mt-6 flex items-center justify-center rounded-lg border border-dashed border-neutral-700 p-8">
@@ -1145,13 +1146,13 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               ) : (
                 <div className="mt-6 flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-700 p-8">
                   <p className="text-neutral-400">No messages loaded</p>
-                  <button
+                  <Button
                     onClick={agentState.refetch}
                     className="flex items-center gap-2 rounded-md bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-600"
                   >
                     <RefreshCw className="h-4 w-4" />
                     Reload messages
-                  </button>
+                  </Button>
                 </div>
               )}
               {/* Fallback banners when no messages yet */}

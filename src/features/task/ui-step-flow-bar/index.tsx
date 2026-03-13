@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Fragment, useCallback, useEffect, useRef } from 'react';
 
+import { Button } from '@/common/ui/button';
 import { Separator } from '@/common/ui/separator';
 import { useSteps } from '@/hooks/use-steps';
 import { useTaskState } from '@/stores/navigation';
@@ -123,7 +124,7 @@ function StepChip({
 
   return (
     <div className="group/step relative flex items-center">
-      <button
+      <Button
         ref={ref}
         onClick={onClick}
         disabled={step.status === 'pending'}
@@ -139,9 +140,9 @@ function StepChip({
           <span className="text-[10px] opacity-40">{index + 1}</span>
           <span className="max-w-[120px] truncate">{step.name}</span>
         </span>
-      </button>
+      </Button>
       {onAddAfter && (
-        <button
+        <Button
           type="button"
           onClick={(event) => {
             event.stopPropagation();
@@ -151,7 +152,7 @@ function StepChip({
           title="Add step after this step"
         >
           <Plus className="h-2.5 w-2.5" />
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -247,13 +248,13 @@ export function StepFlowBar({
               <div className="h-[2px] w-[5px] shrink-0 rounded-full bg-neutral-700/25" />
               <div className="h-[3px] w-[3px] shrink-0 rounded-full bg-neutral-700/35" />
             </div>
-            <button
+            <Button
               onClick={onAddStepAtEnd}
               title="Add step at end"
               className="flex h-5 shrink-0 items-center gap-1.5 rounded-md border border-dashed border-neutral-700/60 px-1.5 text-neutral-600 transition-colors hover:border-neutral-500 hover:text-neutral-400"
             >
               <Plus className="h-3 w-3" />
-            </button>
+            </Button>
           </>
         )}
       </div>

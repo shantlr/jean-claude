@@ -2,6 +2,7 @@ import { Plus, Search } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
+import { Button } from '@/common/ui/button';
 import {
   useAllManagedSkills,
   useDeleteSkill,
@@ -141,29 +142,29 @@ export function SkillsSettings() {
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-neutral-200">Skills</h2>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               type="button"
               onClick={() => setShowMigrationDialog(true)}
               className="cursor-pointer rounded-lg border border-neutral-600 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:border-neutral-500 hover:bg-neutral-800"
             >
               Migrate Legacy Skills
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => setShowRegistryBrowser(true)}
               className="flex cursor-pointer items-center gap-1 rounded-lg border border-neutral-600 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:border-neutral-500 hover:bg-neutral-800"
             >
               <Search className="h-4 w-4" />
               Browse
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={handleCreate}
               className="flex cursor-pointer items-center gap-1 rounded-lg bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600"
             >
               <Plus className="h-4 w-4" />
               Add
-            </button>
+            </Button>
           </div>
         </div>
 

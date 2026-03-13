@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 
+import { Button } from '@/common/ui/button';
 import { Separator } from '@/common/ui/separator';
 import { PrDetail } from '@/features/pull-request/ui-pr-detail';
 import { useProject } from '@/hooks/use-projects';
@@ -37,13 +38,13 @@ export function TaskPrView({
     return (
       <div className="flex h-full flex-col">
         <div className="flex items-center gap-2 px-3 py-2">
-          <button
+          <Button
             onClick={onClose}
             className="flex items-center gap-1 rounded px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
-          </button>
+          </Button>
           <span className="text-sm font-medium text-neutral-300">
             Pull Request #{task.pullRequestId}
           </span>
@@ -139,13 +140,13 @@ function PrLinkingView({
     return (
       <div className="flex h-full flex-col">
         <div className="flex items-center gap-2 px-3 py-2">
-          <button
+          <Button
             onClick={onClose}
             className="flex items-center gap-1 rounded px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
-          </button>
+          </Button>
           <span className="text-sm font-medium text-neutral-300">
             Pull Request
           </span>
@@ -168,13 +169,13 @@ function PrLinkingView({
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 px-3 py-2">
-        <button
+        <Button
           onClick={onClose}
           className="flex items-center gap-1 rounded px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
         >
           <ArrowLeft className="h-4 w-4" />
           Back
-        </button>
+        </Button>
         <span className="text-sm font-medium text-neutral-300">
           Link Pull Request
         </span>
@@ -224,13 +225,13 @@ function PrLinkingView({
               project?.repoProviderId &&
               project?.repoProjectId &&
               project?.repoId ? (
-                <button
+                <Button
                   onClick={() => setShowCreateForm(true)}
                   className="mt-2 flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
                 >
                   <Plus className="h-4 w-4" />
                   Create Pull Request
-                </button>
+                </Button>
               ) : (
                 <p className="text-sm text-neutral-500">
                   Create a pull request from the diff view or your git provider.
@@ -329,7 +330,7 @@ function PrSuggestionItem({
         >
           <ExternalLink className="h-4 w-4" />
         </a>
-        <button
+        <Button
           onClick={onLink}
           disabled={isLinking}
           className="flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
@@ -340,7 +341,7 @@ function PrSuggestionItem({
             <Link className="h-4 w-4" />
           )}
           Link
-        </button>
+        </Button>
       </div>
     </div>
   );

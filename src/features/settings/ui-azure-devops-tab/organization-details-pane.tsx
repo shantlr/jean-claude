@@ -13,6 +13,7 @@ import {
 import { useState } from 'react';
 
 import { useModal } from '@/common/context/modal';
+import { Button } from '@/common/ui/button';
 import { useCreateProject } from '@/hooks/use-projects';
 import { useDeleteProvider, useProviderDetails } from '@/hooks/use-providers';
 import { api, type ProviderProject, type ProviderRepo } from '@/lib/api';
@@ -111,12 +112,12 @@ function RepoRow({
               {repo.name}
             </span>
           </div>
-          <button
+          <Button
             onClick={() => setShowCloneConfig(false)}
             className="cursor-pointer rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
         <div className="space-y-3">
@@ -125,7 +126,7 @@ function RepoRow({
               Clone to folder
             </label>
             <div className="flex gap-2">
-              <button
+              <Button
                 onClick={handleSelectFolder}
                 className="flex flex-1 cursor-pointer items-center gap-2 rounded-lg border border-neutral-600 bg-neutral-700/50 px-3 py-2 text-left text-sm hover:border-neutral-500"
               >
@@ -133,7 +134,7 @@ function RepoRow({
                 <span className="flex-1 truncate text-neutral-300">
                   {cloneConfig.parentPath || 'Select parent folder...'}
                 </span>
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -161,7 +162,7 @@ function RepoRow({
             </div>
           )}
 
-          <button
+          <Button
             onClick={handleClone}
             disabled={
               isCloning || !cloneConfig.parentPath || !cloneConfig.folderName
@@ -179,7 +180,7 @@ function RepoRow({
                 Clone & Create Project
               </>
             )}
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -191,13 +192,13 @@ function RepoRow({
       <span className="flex-1 truncate text-sm text-neutral-400">
         {repo.name}
       </span>
-      <button
+      <Button
         onClick={() => setShowCloneConfig(true)}
         className="shrink-0 cursor-pointer rounded px-2 py-1 text-xs font-medium text-blue-400 hover:bg-blue-500/20"
         title="Clone repository"
       >
         Clone
-      </button>
+      </Button>
       <a
         href={repo.url}
         target="_blank"
@@ -224,7 +225,7 @@ function ProjectAccordion({
 
   return (
     <div className="rounded-lg border border-neutral-700 bg-neutral-800/30">
-      <button
+      <Button
         onClick={() => setIsExpanded(!isExpanded)}
         className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left hover:bg-neutral-700/50"
       >
@@ -246,7 +247,7 @@ function ProjectAccordion({
         >
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
-      </button>
+      </Button>
 
       {isExpanded && (
         <div className="border-t border-neutral-700 px-3 py-2">
@@ -329,12 +330,12 @@ export function OrganizationDetailsPane({
           >
             <ExternalLink className="h-4 w-4" />
           </a>
-          <button
+          <Button
             onClick={onClose}
             className="cursor-pointer rounded-lg p-2 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -375,13 +376,13 @@ export function OrganizationDetailsPane({
 
       {/* Footer with delete button */}
       <div className="border-t border-neutral-700 px-4 py-3">
-        <button
+        <Button
           onClick={handleDeleteClick}
           className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-red-500/50 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20"
         >
           <Trash2 className="h-4 w-4" />
           Delete Organization
-        </button>
+        </Button>
       </div>
     </div>
   );

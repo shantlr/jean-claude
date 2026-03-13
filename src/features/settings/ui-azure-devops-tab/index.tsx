@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
+import { Button } from '@/common/ui/button';
 import { Provider } from '@shared/types';
 
 import { AddOrganizationPane } from './add-organization-pane';
@@ -43,13 +44,13 @@ export function AzureDevOpsTab() {
               Connect your Azure DevOps organizations
             </p>
           </div>
-          <button
+          <Button
             onClick={handleShowAddPane}
             className="flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
           >
             <Plus className="h-4 w-4" />
             Add Organization
-          </button>
+          </Button>
         </div>
 
         <OrganizationList

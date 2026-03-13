@@ -1,5 +1,6 @@
 import { Wand2 } from 'lucide-react';
 
+import { Button } from '@/common/ui/button';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { ManagedSkill } from '@shared/skill-types';
 
@@ -51,7 +52,7 @@ function BackendToggleChip({
   }
 
   return (
-    <button
+    <Button
       type="button"
       onClick={(e) => {
         e.stopPropagation();
@@ -67,7 +68,7 @@ function BackendToggleChip({
       title={`${enabled ? 'Disable' : 'Enable'} for ${backendLabel(backendType)}`}
     >
       {label}
-    </button>
+    </Button>
   );
 }
 
@@ -117,7 +118,7 @@ export function SkillCardGrid({
         const anyEnabled = isEnabledForAnyBackend(skill.enabledBackends);
 
         return (
-          <button
+          <Button
             key={skill.skillPath}
             type="button"
             onClick={() => onSelect(skill.skillPath)}
@@ -161,7 +162,7 @@ export function SkillCardGrid({
               )}
               <SourceBadge skill={skill} />
             </div>
-          </button>
+          </Button>
         );
       })}
     </div>

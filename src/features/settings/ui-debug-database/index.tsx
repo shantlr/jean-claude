@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
+import { Button } from '@/common/ui/button';
 import {
   useDeleteOldCompletedTasks,
   useDebugDatabaseSize,
@@ -94,7 +95,7 @@ export function DebugDatabase() {
               Completed tasks older than 7 days: {staleCompletedTasksCount}
             </p>
           </div>
-          <button
+          <Button
             onClick={handleDeleteOldCompletedTasks}
             disabled={
               staleCompletedTasksCount === 0 ||
@@ -105,14 +106,14 @@ export function DebugDatabase() {
             {deleteOldCompletedTasks.isPending
               ? 'Deleting...'
               : 'Delete old completed tasks'}
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Table selector */}
       <div className="flex flex-wrap gap-2">
         {tableNames.map((table) => (
-          <button
+          <Button
             key={table}
             onClick={() => handleTableChange(table)}
             className={`cursor-pointer rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -122,7 +123,7 @@ export function DebugDatabase() {
             }`}
           >
             {table}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -203,22 +204,22 @@ export function DebugDatabase() {
             Showing {showingFrom}-{showingTo} of {data.total} rows
           </span>
           <div className="flex gap-2">
-            <button
+            <Button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
               className="flex cursor-pointer items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-neutral-300 hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-neutral-800"
             >
               <ChevronLeft className="h-4 w-4" />
               Prev
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
               className="flex cursor-pointer items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-neutral-300 hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-neutral-800"
             >
               Next
               <ChevronRight className="h-4 w-4" />
-            </button>
+            </Button>
           </div>
         </div>
       )}

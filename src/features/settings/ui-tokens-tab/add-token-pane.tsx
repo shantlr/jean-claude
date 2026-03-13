@@ -1,6 +1,7 @@
 import { ExternalLink, Loader2, X } from 'lucide-react';
 import { useState } from 'react';
 
+import { Button } from '@/common/ui/button';
 import { useValidateAzureDevOpsToken } from '@/hooks/use-azure-devops';
 import { useCreateToken } from '@/hooks/use-tokens';
 import type { ProviderType } from '@shared/types';
@@ -57,13 +58,13 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
     <div className="w-80 shrink-0 rounded-lg border border-neutral-700 bg-neutral-800/50 p-4">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="font-medium text-neutral-200">Add Token</h3>
-        <button
+        <Button
           onClick={onClose}
           aria-label="Close pane"
           className="cursor-pointer rounded-lg p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
         >
           <X className="h-4 w-4" aria-hidden />
-        </button>
+        </Button>
       </div>
 
       <div className="flex flex-col gap-4">
@@ -151,7 +152,7 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-        <button
+        <Button
           onClick={handleSubmit}
           disabled={!isValid || step === 'validating'}
           className="flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600"
@@ -164,7 +165,7 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
           ) : (
             'Add Token'
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );

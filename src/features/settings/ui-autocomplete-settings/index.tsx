@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ExternalLink, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { Button } from '@/common/ui/button';
 import { useCompletionSetting } from '@/hooks/use-settings';
 import { api } from '@/lib/api';
 
@@ -151,7 +152,7 @@ export function AutocompleteSettings() {
 
       {/* Enable toggle */}
       <div className="mt-6 flex items-center gap-3">
-        <button
+        <Button
           onClick={() => setEnabled(!enabled)}
           className={`relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors ${
             enabled ? 'bg-blue-600' : 'bg-neutral-600'
@@ -162,7 +163,7 @@ export function AutocompleteSettings() {
               enabled ? 'translate-x-6' : 'translate-x-1'
             }`}
           />
-        </button>
+        </Button>
         <span className="text-sm font-medium text-neutral-200">
           Enable autocomplete
         </span>
@@ -238,14 +239,14 @@ export function AutocompleteSettings() {
 
       {/* Save button */}
       <div className="mt-6 flex items-center gap-3">
-        <button
+        <Button
           onClick={handleSave}
           disabled={isSaving}
           className="flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
           Save
-        </button>
+        </Button>
         {hasChanges && (
           <span className="text-xs text-neutral-500">Unsaved changes</span>
         )}

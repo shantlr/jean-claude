@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import { Button } from '@/common/ui/button';
 import type { PermissionResponse } from '@shared/agent-types';
 import type { NormalizedPermissionRequest } from '@shared/normalized-message-v2';
 import type { InteractionMode } from '@shared/types';
@@ -178,7 +179,10 @@ export function PermissionBar({
   worktreePath,
 }: {
   request: NormalizedPermissionRequest & { taskId: string };
-  onRespond: (requestId: string, response: PermissionResponse) => void;
+  onRespond: (
+    requestId: string,
+    response: PermissionResponse,
+  ) => void | Promise<void>;
   onAllowForSession?: (
     toolName: string,
     input: Record<string, unknown>,
@@ -205,7 +209,7 @@ export function PermissionBar({
     if (sessionAllowButton?.setModeOnAllow) {
       onSetMode?.(sessionAllowButton.setModeOnAllow);
     }
-    onRespond(request.requestId, {
+    return onRespond(request.requestId, {
       behavior: 'allow',
       updatedInput: input,
     });
@@ -228,7 +232,7 @@ export function PermissionBar({
       onSetMode?.(sessionAllowButton.setModeOnAllow);
     }
     allowForSession();
-    onRespond(request.requestId, {
+    return onRespond(request.requestId, {
       behavior: 'allow',
       updatedInput: input,
       allowMode: 'session',
@@ -246,7 +250,7 @@ export function PermissionBar({
     } else {
       onAllowForProject?.(request.toolName, input);
     }
-    onRespond(request.requestId, {
+    return onRespond(request.requestId, {
       behavior: 'allow',
       updatedInput: input,
       allowMode: 'project',
@@ -264,7 +268,7 @@ export function PermissionBar({
     } else {
       onAllowForProjectWorktrees?.(request.toolName, input);
     }
-    onRespond(request.requestId, {
+    return onRespond(request.requestId, {
       behavior: 'allow',
       updatedInput: input,
       allowMode: 'worktree',
@@ -272,7 +276,7 @@ export function PermissionBar({
   };
 
   const handleDeny = () => {
-    onRespond(request.requestId, {
+    return onRespond(request.requestId, {
       behavior: 'deny',
       message: 'User denied this action',
     });
@@ -280,12 +284,13 @@ export function PermissionBar({
 
   const handleOtherSubmit = () => {
     if (!otherMessage.trim()) return;
-    onRespond(request.requestId, {
+    const response = onRespond(request.requestId, {
       behavior: 'deny',
       message: otherMessage.trim(),
     });
     setIsOtherOpen(false);
     setOtherMessage('');
+    return response;
   };
 
   const handleOtherCancel = () => {
@@ -341,72 +346,72 @@ export function PermissionBar({
               }}
             />
             <div className="flex justify-end gap-2">
-              <button
+              <Button
                 onClick={handleOtherCancel}
                 className="rounded-md px-3 py-1.5 text-sm font-medium text-neutral-400 hover:text-neutral-200"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleOtherSubmit}
                 disabled={!otherMessage.trim()}
                 className="flex items-center gap-1.5 rounded-md bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Send className="h-3.5 w-3.5" aria-hidden />
                 Deny with message
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
           <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <button
+            <Button
               onClick={() => setIsOtherOpen(true)}
               className="flex items-center gap-1.5 rounded-md bg-neutral-700/60 px-3 py-1.5 text-sm font-medium text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
             >
               <MessageSquare className="h-3.5 w-3.5" aria-hidden />
               Other
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleDeny}
               className="flex items-center gap-1.5 rounded-md bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600"
             >
               <X className="h-4 w-4" aria-hidden />
               Deny
-            </button>
+            </Button>
             <div className="flex-1" />
-            <button
+            <Button
               onClick={handleAllow}
               className="flex items-center gap-1.5 rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-500"
             >
               <Check className="h-4 w-4" aria-hidden />
               Allow
-            </button>
+            </Button>
             {sessionAllowButton && (
-              <button
+              <Button
                 onClick={handleAllowForSession}
                 className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
               >
                 <ShieldCheck className="h-4 w-4" aria-hidden />
                 {sessionAllowButton.label}
-              </button>
+              </Button>
             )}
             {sessionAllowButton && (
-              <button
+              <Button
                 onClick={handleAllowForProject}
                 className="flex items-center gap-1.5 rounded-md bg-purple-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-500"
               >
                 <ShieldCheck className="h-4 w-4" aria-hidden />
                 Allow for Project
-              </button>
+              </Button>
             )}
             {sessionAllowButton && worktreePath && (
-              <button
+              <Button
                 onClick={handleAllowForProjectWorktrees}
                 className="flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-500"
               >
                 <ShieldCheck className="h-4 w-4" aria-hidden />
                 Allow for Project Worktrees
-              </button>
+              </Button>
             )}
           </div>
         )}

@@ -1,6 +1,7 @@
 import { Loader2, Sparkles, Plus } from 'lucide-react';
 import { useState } from 'react';
 
+import { Button } from '@/common/ui/button';
 import { Separator } from '@/common/ui/separator';
 import {
   useCreatePullRequest,
@@ -197,7 +198,7 @@ export function PrCreationForm({
               >
                 Description
               </label>
-              <button
+              <Button
                 type="button"
                 onClick={handleFillFromSummary}
                 disabled={generateSummary.isPending || formFilledFromSummary}
@@ -209,7 +210,7 @@ export function PrCreationForm({
                   <Sparkles className="h-3.5 w-3.5" aria-hidden />
                 )}
                 {getSummaryButtonLabel()}
-              </button>
+              </Button>
             </div>
             <textarea
               id="pr-description"
@@ -297,15 +298,15 @@ export function PrCreationForm({
       {/* Footer with buttons */}
       <Separator />
       <div className="flex gap-2 p-4">
-        <button
+        <Button
           type="button"
           onClick={onCancel}
           disabled={isPending}
           className="flex-1 cursor-pointer rounded-md bg-neutral-700 px-3 py-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-600 disabled:opacity-50"
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={handleCreate}
           disabled={isPending || !title.trim()}
@@ -315,7 +316,7 @@ export function PrCreationForm({
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
           )}
           {isPending ? 'Creating...' : 'Create PR'}
-        </button>
+        </Button>
       </div>
     </div>
   );

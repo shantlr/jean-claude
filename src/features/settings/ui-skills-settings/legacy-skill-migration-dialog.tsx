@@ -1,6 +1,7 @@
 import { RefreshCw, TriangleAlert, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { Button } from '@/common/ui/button';
 import {
   useLegacySkillMigrationExecute,
   useLegacySkillMigrationPreview,
@@ -174,13 +175,13 @@ export function LegacySkillMigrationDialog({
               Move manually installed skills into Jean-Claude canonical storage.
             </p>
           </div>
-          <button
+          <Button
             type="button"
             onClick={onClose}
             className="rounded p-1 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200"
           >
             <X className="h-5 w-5" />
-          </button>
+          </Button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
@@ -230,7 +231,7 @@ export function LegacySkillMigrationDialog({
                   {counts.conflict} · Invalid: {counts.invalid}
                 </span>
                 {migratableIds.length > 0 && (
-                  <button
+                  <Button
                     type="button"
                     onClick={toggleAll}
                     className="text-xs text-blue-400 hover:text-blue-300"
@@ -238,7 +239,7 @@ export function LegacySkillMigrationDialog({
                     {selectedIds.size === migratableIds.length
                       ? 'Deselect all'
                       : 'Select all'}
-                  </button>
+                  </Button>
                 )}
               </div>
 
@@ -303,15 +304,15 @@ export function LegacySkillMigrationDialog({
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-neutral-700 px-4 py-3">
-          <button
+          <Button
             type="button"
             onClick={onClose}
             className="rounded-lg bg-neutral-700 px-3 py-1.5 text-sm text-neutral-200 hover:bg-neutral-600"
           >
             {result ? 'Close' : 'Cancel'}
-          </button>
+          </Button>
           {!result && (
-            <button
+            <Button
               type="button"
               onClick={handleExecute}
               disabled={selectedIds.size === 0 || executeMutation.isPending}
@@ -320,7 +321,7 @@ export function LegacySkillMigrationDialog({
               {executeMutation.isPending
                 ? 'Migrating...'
                 : `Migrate ${selectedIds.size} skill${selectedIds.size !== 1 ? 's' : ''}`}
-            </button>
+            </Button>
           )}
         </div>
       </div>
