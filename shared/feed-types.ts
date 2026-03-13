@@ -9,6 +9,7 @@ export type FeedItemAttention =
   | 'running'
   | 'review-requested'
   | 'pr-comments'
+  | 'pr-approved-by-me'
   | 'waiting'
   | 'note';
 
@@ -34,6 +35,16 @@ export interface FeedItem {
   pullRequestUrl?: string;
   noteId?: string;
   isCompleted?: boolean;
+
+  // PR activity tracking (only present when source === 'pull-request')
+  hasNewActivity?: boolean;
+  activeThreadCount?: number;
+  approvedBy?: Array<{
+    displayName: string;
+    uniqueName: string;
+    imageUrl?: string;
+  }>;
+  isApprovedByMe?: boolean;
 }
 
 export interface FeedNote {

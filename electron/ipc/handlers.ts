@@ -2548,6 +2548,40 @@ export function registerIpcHandlers() {
     const { deleteFeedNote } = await import('../services/feed-service');
     return deleteFeedNote({ id });
   });
+
+  ipcMain.handle(
+    'pr-snapshots:record',
+    async (
+      _event,
+      params: {
+        projectId: string;
+        pullRequestId: number;
+        providerId: string;
+        repoProjectId: string;
+        repoId: string;
+      },
+    ) => {
+      const { getPullRequestActivityMetadata } =
+        await import('../services/azure-devops-service');
+      const { PrViewSnapshotRepository } =
+        await import('../database/repositories/pr-view-snapshots');
+
+      const metadata = await getPullRequestActivityMetadata({
+        providerId: params.providerId,
+        projectId: params.repoProjectId,
+        repoId: params.repoId,
+        pullRequestId: params.pullRequestId,
+      });
+
+      await PrViewSnapshotRepository.upsert({
+        projectId: params.projectId,
+        pullRequestId: String(params.pullRequestId),
+        lastCommitDate: metadata.lastCommitDate,
+        lastThreadActivityDate: metadata.lastThreadActivityDate,
+        activeThreadCount: metadata.activeThreadCount,
+      });
+    },
+  );
 }
 
 function validateFeedNoteId(id: string): string {

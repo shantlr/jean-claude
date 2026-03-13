@@ -8,6 +8,7 @@ import {
   GitPullRequest,
   Loader2,
   MessageCircleQuestion,
+  MessageSquare,
   Pin,
   PinOff,
   ShieldQuestion,
@@ -33,6 +34,19 @@ import { useFeedStore } from '@/stores/feed';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { FeedItem, FeedItemAttention } from '@shared/feed-types';
 
+function getInitials(name: string): string {
+  if (!name) return '?';
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join('')
+      .toUpperCase() || '?'
+  );
+}
+
 function AttentionIcon({ attention }: { attention: FeedItemAttention }) {
   switch (attention) {
     case 'errored':
@@ -53,6 +67,7 @@ function AttentionIcon({ attention }: { attention: FeedItemAttention }) {
       );
     case 'review-requested':
     case 'pr-comments':
+    case 'pr-approved-by-me':
       return (
         <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-purple-400" />
       );
@@ -113,6 +128,8 @@ function borderClasses({
       case 'review-requested':
       case 'pr-comments':
         return 'border border-purple-500/40 bg-neutral-800 shadow-sm';
+      case 'pr-approved-by-me':
+        return 'border border-neutral-600 bg-neutral-800 shadow-sm';
       default:
         return 'border border-blue-500 bg-neutral-800 shadow-sm';
     }
@@ -261,7 +278,7 @@ export function FeedItemCard({
             }
           }}
           className={clsx(
-            'flex cursor-pointer flex-col gap-1 rounded-lg px-3.5 py-2.5 transition-all duration-200 ease-out',
+            'relative flex cursor-pointer flex-col gap-1 rounded-lg px-3.5 py-2.5 transition-all duration-200 ease-out',
             borderClasses({
               attention: item.attention,
               hasUnread: item.hasUnread,
@@ -271,10 +288,21 @@ export function FeedItemCard({
             !isSelected && 'hover:translate-x-0.5 hover:bg-neutral-800/80',
           )}
         >
+          {/* New activity accent bar */}
+          {item.hasNewActivity && (
+            <span className="absolute top-2 bottom-2 left-0 w-[3px] rounded-full bg-blue-400" />
+          )}
           <div className="flex items-center gap-2">
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-100">
               {item.title}
             </span>
+            {item.source === 'pull-request' &&
+              (item.activeThreadCount ?? 0) > 0 && (
+                <span className="flex shrink-0 items-center gap-0.5 text-purple-400">
+                  <MessageSquare className="h-3 w-3" />
+                  <span className="text-[10px]">{item.activeThreadCount}</span>
+                </span>
+              )}
             <span className="shrink-0 text-[11px] text-neutral-500 tabular-nums">
               {formatRelativeTime(item.timestamp)}
             </span>
@@ -299,6 +327,19 @@ export function FeedItemCard({
               <span className="shrink-0 rounded border border-neutral-600 px-1.5 py-0.5 text-[10px] text-neutral-400">
                 Draft
               </span>
+            )}
+            {item.approvedBy && item.approvedBy.length > 0 && (
+              <div className="flex shrink-0 -space-x-1.5">
+                {item.approvedBy.map((reviewer) => (
+                  <span
+                    key={reviewer.uniqueName}
+                    className="flex h-4 w-4 items-center justify-center rounded-full bg-green-900/50 text-[8px] font-medium text-green-300 ring-1 ring-green-500/50"
+                    title={`${reviewer.displayName} approved`}
+                  >
+                    {getInitials(reviewer.displayName)}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
 

@@ -38,6 +38,7 @@ import * as m036 from './migrations/036_task_step_auto_start';
 import * as m037 from './migrations/037_project_priority';
 import * as m038 from './migrations/038_feed_notes';
 import * as m039 from './migrations/039_command_confirm_before_run';
+import * as m040 from './migrations/040_pr_view_snapshots';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -78,6 +79,7 @@ const migrations: Record<string, Migration> = {
   '037_project_priority': m037,
   '038_feed_notes': m038,
   '039_command_confirm_before_run': m039,
+  '040_pr_view_snapshots': m040,
 };
 
 export const migrationProvider: MigrationProvider = {

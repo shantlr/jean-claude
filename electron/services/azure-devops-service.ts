@@ -1427,6 +1427,50 @@ export async function activateWorkItem(params: {
   }
 }
 
+export async function getPullRequestActivityMetadata(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+}): Promise<{
+  lastCommitDate: string | null;
+  lastThreadActivityDate: string | null;
+  activeThreadCount: number;
+}> {
+  const [commits, threads] = await Promise.all([
+    getPullRequestCommits(params),
+    getPullRequestThreads(params),
+  ]);
+
+  // Latest commit date (commits are returned newest-first by Azure DevOps)
+  const lastCommitDate = commits.length > 0 ? commits[0].author.date : null;
+
+  // Filter out deleted and system threads
+  const realThreads = threads.filter(
+    (t) => !t.isDeleted && t.comments.some((c) => c.commentType !== 'system'),
+  );
+
+  // Find max lastUpdatedDate across all comments in all threads
+  let lastThreadActivityDate: string | null = null;
+  let activeThreadCount = 0;
+
+  for (const thread of realThreads) {
+    if (thread.status === 'active') {
+      activeThreadCount++;
+    }
+    for (const comment of thread.comments) {
+      if (
+        !lastThreadActivityDate ||
+        comment.lastUpdatedDate > lastThreadActivityDate
+      ) {
+        lastThreadActivityDate = comment.lastUpdatedDate;
+      }
+    }
+  }
+
+  return { lastCommitDate, lastThreadActivityDate, activeThreadCount };
+}
+
 export async function addPullRequestFileComment(params: {
   providerId: string;
   projectId: string;

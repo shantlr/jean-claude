@@ -42,6 +42,7 @@ export interface Database {
   project_todos: ProjectTodoTable;
   completion_usage: CompletionUsageTable;
   feed_notes: FeedNoteTable;
+  pr_view_snapshots: PrViewSnapshotTable;
 }
 
 export interface TokenTable {
@@ -288,3 +289,15 @@ export interface FeedNoteTable {
 export type FeedNoteRow = Selectable<FeedNoteTable>;
 export type NewFeedNoteRow = Insertable<FeedNoteTable>;
 export type UpdateFeedNoteRow = Updateable<FeedNoteTable>;
+
+export interface PrViewSnapshotTable {
+  id: Generated<string>;
+  projectId: string;
+  pullRequestId: string;
+  lastViewedAt: string;
+  lastCommitDate: string | null;
+  lastThreadActivityDate: string | null;
+  activeThreadCount: number;
+}
+
+export type PrViewSnapshotRow = Selectable<PrViewSnapshotTable>;

@@ -6,15 +6,57 @@ import {
   ProjectRepository,
   TaskRepository,
 } from '../database/repositories';
+import { PrViewSnapshotRepository } from '../database/repositories/pr-view-snapshots';
 import { TaskStepRepository } from '../database/repositories/task-steps';
 import { dbg } from '../lib/debug';
 
-import { getCurrentUser, listPullRequests } from './azure-devops-service';
+import {
+  getCurrentUser,
+  getPullRequestActivityMetadata,
+  listPullRequests,
+} from './azure-devops-service';
 import { getMostRecentlyUpdatedStep } from './step-service';
 
 // In-memory cache for PR feed items to avoid hammering Azure DevOps API
 let prCache: { items: FeedItem[]; fetchedAt: number } | null = null;
 const PR_CACHE_TTL_MS = 3 * 60 * 1000;
+
+let activityCache: {
+  metadata: Map<
+    string,
+    {
+      lastCommitDate: string | null;
+      lastThreadActivityDate: string | null;
+      activeThreadCount: number;
+    }
+  >;
+  fetchedAt: number;
+} | null = null;
+
+const PR_ACTIVITY_CHUNK_SIZE = 10;
+
+async function runInChunks<T>(
+  items: T[],
+  chunkSize: number,
+  fn: (item: T) => Promise<void>,
+): Promise<void> {
+  for (let i = 0; i < items.length; i += chunkSize) {
+    const chunk = items.slice(i, i + chunkSize);
+    await Promise.all(chunk.map(fn));
+  }
+}
+
+function isNewerActivity({
+  latest,
+  viewed,
+}: {
+  latest: string | null;
+  viewed: string | null;
+}): boolean {
+  if (!latest) return false;
+  if (!viewed) return true;
+  return latest > viewed;
+}
 
 /**
  * Derives the attention level for a task based on its own status and its steps' statuses.
@@ -282,6 +324,28 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
             isDraft: pr.isDraft,
             pullRequestId: pr.id,
             pullRequestUrl: pr.url,
+            approvedBy: pr.reviewers
+              .filter(
+                (r) =>
+                  !r.isContainer &&
+                  (r.voteStatus === 'approved' ||
+                    r.voteStatus === 'approved-with-suggestions'),
+              )
+              .map((r) => ({
+                displayName: r.displayName,
+                uniqueName: r.uniqueName,
+                imageUrl: r.imageUrl,
+              })),
+            isApprovedByMe:
+              !!project.repoProviderId &&
+              pr.reviewers.some(
+                (r) =>
+                  !r.isContainer &&
+                  (r.voteStatus === 'approved' ||
+                    r.voteStatus === 'approved-with-suggestions') &&
+                  r.uniqueName.toLowerCase() ===
+                    providerUserEmailMap.get(project.repoProviderId!),
+              ),
           }),
         );
       } catch (err) {
@@ -297,8 +361,131 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
   );
 
   const prItems = projectItems.flat();
+  const repoProjectsById = new Map(
+    repoProjects.map((project) => [project.id, project]),
+  );
 
-  prCache = { items: prItems, fetchedAt: Date.now() };
-  dbg.feed('fetchPrFeedItems: cached %d PR items', prItems.length);
-  return prItems;
+  // Fetch activity metadata for each PR (cached separately)
+  const shouldRefreshActivity =
+    !activityCache || Date.now() - activityCache.fetchedAt > PR_CACHE_TTL_MS;
+
+  if (shouldRefreshActivity) {
+    const metadataMap = new Map<
+      string,
+      {
+        lastCommitDate: string | null;
+        lastThreadActivityDate: string | null;
+        activeThreadCount: number;
+      }
+    >();
+
+    await runInChunks(prItems, PR_ACTIVITY_CHUNK_SIZE, async (item) => {
+      if (!item.pullRequestId) return;
+      const project = repoProjectsById.get(item.projectId);
+      if (!project?.repoProviderId || !project.repoProjectId || !project.repoId)
+        return;
+
+      try {
+        const metadata = await getPullRequestActivityMetadata({
+          providerId: project.repoProviderId,
+          projectId: project.repoProjectId,
+          repoId: project.repoId,
+          pullRequestId: item.pullRequestId,
+        });
+        metadataMap.set(item.id, metadata);
+      } catch (err) {
+        dbg.feed(
+          'fetchPrFeedItems: error fetching activity for %s: %O',
+          item.id,
+          err,
+        );
+      }
+    });
+
+    activityCache = { metadata: metadataMap, fetchedAt: Date.now() };
+  }
+
+  // Load all snapshots for comparison
+  const snapshotsByProject = new Map<
+    string,
+    Map<
+      string,
+      { lastCommitDate: string | null; lastThreadActivityDate: string | null }
+    >
+  >();
+  const projectIds = [...new Set(prItems.map((item) => item.projectId))];
+  await Promise.all(
+    projectIds.map(async (projectId) => {
+      const snapshots = await PrViewSnapshotRepository.findByProject(projectId);
+      const map = new Map<
+        string,
+        {
+          lastCommitDate: string | null;
+          lastThreadActivityDate: string | null;
+        }
+      >();
+      for (const s of snapshots) {
+        map.set(s.pullRequestId, {
+          lastCommitDate: s.lastCommitDate,
+          lastThreadActivityDate: s.lastThreadActivityDate,
+        });
+      }
+      snapshotsByProject.set(projectId, map);
+    }),
+  );
+
+  // Enrich each PR item with activity data
+  const enrichedItems = prItems.map((item) => {
+    if (!item.pullRequestId) return item;
+
+    const metadata = activityCache?.metadata.get(item.id);
+    const snapshot = snapshotsByProject
+      .get(item.projectId)
+      ?.get(String(item.pullRequestId));
+
+    // Determine hasNewActivity by comparing timestamps.
+    // If the user has never viewed this PR (no snapshot), any existing activity
+    // counts as new so the blue dot appears.
+    let hasNewActivity = false;
+    if (metadata) {
+      if (!snapshot) {
+        // Never viewed — any activity at all means new
+        hasNewActivity =
+          !!metadata.lastCommitDate || !!metadata.lastThreadActivityDate;
+      } else {
+        const newCommits = isNewerActivity({
+          latest: metadata.lastCommitDate,
+          viewed: snapshot.lastCommitDate,
+        });
+        const newThreads = isNewerActivity({
+          latest: metadata.lastThreadActivityDate,
+          viewed: snapshot.lastThreadActivityDate,
+        });
+        hasNewActivity = newCommits || newThreads;
+      }
+    }
+
+    const activeThreadCount = metadata?.activeThreadCount ?? 0;
+
+    // Determine attention level
+    let attention = item.attention;
+    if (item.isApprovedByMe && !hasNewActivity) {
+      attention = 'pr-approved-by-me' as const;
+    } else if (hasNewActivity) {
+      attention = 'review-requested' as const;
+    } else if (activeThreadCount > 0) {
+      attention = 'pr-comments' as const;
+    }
+
+    return {
+      ...item,
+      attention,
+      hasNewActivity,
+      activeThreadCount,
+    };
+  });
+
+  prCache = { items: enrichedItems, fetchedAt: Date.now() };
+  dbg.feed('fetchPrFeedItems: cached %d PR items', enrichedItems.length);
+  return enrichedItems;
 }

@@ -787,6 +787,15 @@ export interface Api {
       enabledBackends: AgentBackendType[];
     }) => Promise<ManagedSkill>;
   };
+  prSnapshots: {
+    record: (params: {
+      projectId: string;
+      pullRequestId: number;
+      providerId: string;
+      repoProjectId: string;
+      repoId: string;
+    }) => Promise<void>;
+  };
   feed: {
     getItems: () => Promise<FeedItem[]>;
     createNote: (params: { content: string }) => Promise<FeedNote>;
@@ -1180,6 +1189,9 @@ export const api: Api = hasWindowApi
           enabledBackends: { 'claude-code': true },
           editable: true,
         }),
+      },
+      prSnapshots: {
+        record: async () => {},
       },
       feed: {
         getItems: async () => [],

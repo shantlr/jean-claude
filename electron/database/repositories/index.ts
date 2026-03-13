@@ -10,3 +10,4 @@ export { TaskSummaryRepository } from './task-summaries';
 export { ProjectTodoRepository } from './project-todos';
 export { CompletionUsageRepository } from './completion-usage';
 export { FeedNoteRepository } from './feed-notes';
+export { PrViewSnapshotRepository } from './pr-view-snapshots';

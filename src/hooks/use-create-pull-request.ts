@@ -15,6 +15,11 @@ export function useCreatePullRequest() {
     onSuccess: (_, params) => {
       queryClient.invalidateQueries({ queryKey: ['tasks', params.taskId] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+      queryClient.invalidateQueries({ queryKey: ['pull-requests'] });
+      queryClient.invalidateQueries({
+        queryKey: ['all-projects-pull-requests'],
+      });
     },
   });
 }

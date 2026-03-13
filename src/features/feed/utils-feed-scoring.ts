@@ -9,6 +9,7 @@ const BASE_URGENCY: Record<FeedItemAttention, number> = {
   'review-requested': 50,
   'pr-comments': 45,
   running: 30,
+  'pr-approved-by-me': 15,
   note: 105,
   waiting: 10,
 };

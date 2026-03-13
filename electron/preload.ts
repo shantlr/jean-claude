@@ -549,6 +549,15 @@ contextBridge.exposeInMainWorld('api', {
       enabledBackends: string[];
     }) => ipcRenderer.invoke('skills:registryInstall', params),
   },
+  prSnapshots: {
+    record: (params: {
+      projectId: string;
+      pullRequestId: number;
+      providerId: string;
+      repoProjectId: string;
+      repoId: string;
+    }) => ipcRenderer.invoke('pr-snapshots:record', params),
+  },
   feed: {
     getItems: () => ipcRenderer.invoke('feed:getItems'),
     createNote: (params: { content: string }) =>

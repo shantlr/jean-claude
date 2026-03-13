@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
   Loader2,
@@ -7,7 +8,7 @@ import {
   FileText,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { Separator } from '@/common/ui/separator';
@@ -17,6 +18,7 @@ import {
 } from '@/features/common/ui-file-diff';
 import type { DiffFile } from '@/features/common/ui-file-diff';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
+import { useRecordPrView } from '@/hooks/use-pr-view-snapshot';
 import { useProject } from '@/hooks/use-projects';
 import {
   usePullRequest,
@@ -27,6 +29,7 @@ import {
   useAddPullRequestComment,
   useAddPullRequestFileComment,
 } from '@/hooks/use-pull-requests';
+import type { FeedItem } from '@shared/feed-types';
 
 import { PrComments } from '../ui-pr-comments';
 import { PrCommits } from '../ui-pr-commits';
@@ -50,6 +53,7 @@ export function PrDetail({
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileTreeWidth, setFileTreeWidth] = useState(250);
+  const queryClient = useQueryClient();
 
   const navigateTab = useCallback(
     (direction: 'next' | 'prev') => {
@@ -103,6 +107,45 @@ export function PrDetail({
   ]);
 
   const { data: project } = useProject(projectId);
+
+  const { mutate: recordPrView } = useRecordPrView();
+  const recordPrViewRef = useRef(recordPrView);
+  recordPrViewRef.current = recordPrView;
+
+  // Record PR view for activity tracking.
+  // Optimistically clear hasNewActivity in the feed cache so the blue dot
+  // disappears immediately, then persist the snapshot in the background.
+  useEffect(() => {
+    if (!project?.repoProviderId || !project?.repoProjectId || !project?.repoId)
+      return;
+
+    const prFeedItemId = `pr:${projectId}:${prId}`;
+
+    // Optimistically update feed cache to clear the blue dot right away
+    queryClient.setQueryData<FeedItem[]>(['feed', 'items'], (old) => {
+      if (!old) return old;
+      return old.map((item) =>
+        item.id === prFeedItemId ? { ...item, hasNewActivity: false } : item,
+      );
+    });
+
+    // Persist the view snapshot in the background
+    recordPrViewRef.current({
+      projectId,
+      pullRequestId: prId,
+      providerId: project.repoProviderId,
+      repoProjectId: project.repoProjectId,
+      repoId: project.repoId,
+    });
+  }, [
+    prId,
+    project?.repoId,
+    project?.repoProjectId,
+    project?.repoProviderId,
+    projectId,
+    queryClient,
+  ]);
+
   const { data: pr, isLoading: isPrLoading } = usePullRequest(projectId, prId);
   const { data: commits = [], isLoading: isCommitsLoading } =
     usePullRequestCommits(projectId, prId);
