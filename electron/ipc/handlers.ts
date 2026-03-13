@@ -1172,6 +1172,15 @@ export function registerIpcHandlers() {
   );
 
   ipcMain.handle(
+    'azureDevOps:getWorkItemById',
+    async (_event, params: { providerId: string; workItemId: number }) => {
+      const { getWorkItemById } =
+        await import('../services/azure-devops-service');
+      return getWorkItemById(params);
+    },
+  );
+
+  ipcMain.handle(
     'azureDevOps:getIterations',
     (
       _,

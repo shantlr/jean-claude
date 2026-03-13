@@ -4,6 +4,7 @@ import {
   AlertCircle,
   ArrowDownNarrowWide,
   CirclePause,
+  ClipboardList,
   FolderOpen,
   GitPullRequest,
   Loader2,
@@ -71,6 +72,8 @@ function AttentionIcon({ attention }: { attention: FeedItemAttention }) {
       return (
         <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-purple-400" />
       );
+    case 'assigned-work-item':
+      return <ClipboardList className="h-3.5 w-3.5 shrink-0 text-teal-400" />;
     case 'note':
       return <StickyNote className="h-3.5 w-3.5 shrink-0 text-yellow-500/70" />;
     case 'waiting':
@@ -130,6 +133,8 @@ function borderClasses({
         return 'border border-purple-500/40 bg-neutral-800 shadow-sm';
       case 'pr-approved-by-me':
         return 'border border-neutral-600 bg-neutral-800 shadow-sm';
+      case 'assigned-work-item':
+        return 'border border-teal-500/60 bg-neutral-800 shadow-sm';
       default:
         return 'border border-blue-500 bg-neutral-800 shadow-sm';
     }
@@ -190,7 +195,15 @@ export function FeedItemCard({
   const menuRef = useRef<{ toggle: () => void } | null>(null);
 
   const handleClick = useCallback(() => {
-    if (item.source === 'pull-request' && item.pullRequestId) {
+    if (item.source === 'work-item' && item.workItemId) {
+      navigate({
+        to: '/all/work-items/$projectId/$workItemId',
+        params: {
+          projectId: item.projectId,
+          workItemId: String(item.workItemId),
+        },
+      });
+    } else if (item.source === 'pull-request' && item.pullRequestId) {
       navigate({
         to: '/all/prs/$projectId/$prId',
         params: {

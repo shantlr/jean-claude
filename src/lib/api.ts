@@ -184,6 +184,7 @@ export interface AzureDevOpsWorkItem {
     assignedTo?: string;
     description?: string;
     reproSteps?: string;
+    changedDate?: string;
   };
   parentId?: number;
 }
@@ -461,6 +462,10 @@ export interface Api {
         iterationPath?: string;
       };
     }) => Promise<AzureDevOpsWorkItem[]>;
+    getWorkItemById: (params: {
+      providerId: string;
+      workItemId: number;
+    }) => Promise<AzureDevOpsWorkItem | null>;
     getIterations: (params: {
       providerId: string;
       projectName: string;
@@ -970,6 +975,7 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         queryWorkItems: async () => [],
+        getWorkItemById: async () => null,
         getIterations: async () => [],
         createPullRequest: async () => {
           throw new Error('API not available');

@@ -100,6 +100,7 @@ export function FeedList() {
   const currentTaskId = params.taskId as string | undefined;
   const currentPrId = params.prId as string | undefined;
   const currentProjectId = params.projectId as string | undefined;
+  const currentWorkItemId = params.workItemId as string | undefined;
 
   const {
     pinnedItems,
@@ -201,9 +202,20 @@ export function FeedList() {
   }, []);
 
   const isItemSelected = useCallback(
-    (item: { taskId?: string; pullRequestId?: number; projectId: string }) => {
+    (item: {
+      taskId?: string;
+      pullRequestId?: number;
+      workItemId?: number;
+      projectId: string;
+    }) => {
       if (item.taskId) {
         return item.taskId === currentTaskId;
+      }
+      if (item.workItemId && currentWorkItemId) {
+        return (
+          String(item.workItemId) === currentWorkItemId &&
+          item.projectId === (currentProjectId ?? item.projectId)
+        );
       }
       if (!item.pullRequestId || !currentPrId) {
         return false;
@@ -217,7 +229,7 @@ export function FeedList() {
       }
       return item.projectId === currentProjectId;
     },
-    [currentPrId, currentProjectId, currentTaskId],
+    [currentPrId, currentProjectId, currentTaskId, currentWorkItemId],
   );
 
   // Notes are not navigable routes, so exclude them from keyboard navigation.
@@ -230,7 +242,15 @@ export function FeedList() {
     (index: number) => {
       const item = navigableItems[index];
       if (!item) return;
-      if (item.source === 'pull-request' && item.pullRequestId) {
+      if (item.source === 'work-item' && item.workItemId) {
+        navigate({
+          to: '/all/work-items/$projectId/$workItemId',
+          params: {
+            projectId: item.projectId,
+            workItemId: String(item.workItemId),
+          },
+        });
+      } else if (item.source === 'pull-request' && item.pullRequestId) {
         navigate({
           to: '/all/prs/$projectId/$prId',
           params: {
@@ -254,8 +274,10 @@ export function FeedList() {
       projectId: string;
       taskId?: string;
       pullRequestId?: number;
+      workItemId?: number;
     }) => {
-      if (item.source === 'note') return;
+      // Notes have no route; work items only exist in the cross-project (/all) context
+      if (item.source === 'note' || item.source === 'work-item') return;
       if (item.source === 'pull-request' && item.pullRequestId) {
         navigate({
           to: '/projects/$projectId/prs/$prId',

@@ -14,6 +14,7 @@ import {
   getCurrentUser,
   getPullRequestActivityMetadata,
   listPullRequests,
+  queryAssignedWorkItems,
 } from './azure-devops-service';
 import { getMostRecentlyUpdatedStep } from './step-service';
 
@@ -32,6 +33,11 @@ let activityCache: {
   >;
   fetchedAt: number;
 } | null = null;
+
+// Simple TTL cache — not invalidated on project mutations. Stale data may
+// persist for up to WORK_ITEM_CACHE_TTL_MS after provider/project changes.
+let workItemCache: { items: FeedItem[]; fetchedAt: number } | null = null;
+const WORK_ITEM_CACHE_TTL_MS = 3 * 60 * 1000;
 
 const PR_ACTIVITY_CHUNK_SIZE = 10;
 
@@ -196,14 +202,17 @@ export async function getFeedItems(): Promise<FeedItem[]> {
   // Fetch note items
   const noteItems = await fetchNoteFeedItems();
 
-  const allItems = [...feedItems, ...prItems, ...noteItems];
+  const workItemItems = await fetchWorkItemFeedItems();
+
+  const allItems = [...feedItems, ...prItems, ...noteItems, ...workItemItems];
 
   dbg.feed(
-    'getFeedItems: returning %d items (%d tasks, %d PRs, %d notes)',
+    'getFeedItems: returning %d items (%d tasks, %d PRs, %d notes, %d work items)',
     allItems.length,
     feedItems.length,
     prItems.length,
     noteItems.length,
+    workItemItems.length,
   );
   return allItems;
 }
@@ -488,4 +497,77 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
   prCache = { items: enrichedItems, fetchedAt: Date.now() };
   dbg.feed('fetchPrFeedItems: cached %d PR items', enrichedItems.length);
   return enrichedItems;
+}
+
+async function fetchWorkItemFeedItems(): Promise<FeedItem[]> {
+  if (
+    workItemCache &&
+    Date.now() - workItemCache.fetchedAt < WORK_ITEM_CACHE_TTL_MS
+  ) {
+    dbg.feed(
+      'fetchWorkItemFeedItems: using cache (%d items)',
+      workItemCache.items.length,
+    );
+    return workItemCache.items;
+  }
+
+  dbg.feed('fetchWorkItemFeedItems: fetching from Azure DevOps');
+  const projects = await ProjectRepository.findAll();
+  const wiProjects = projects.filter(
+    (p) => p.workItemProviderId && p.workItemProjectName,
+  );
+
+  if (wiProjects.length === 0) {
+    workItemCache = { items: [], fetchedAt: Date.now() };
+    return [];
+  }
+
+  const feedItems: FeedItem[] = [];
+  const seen = new Set<string>();
+
+  for (const project of wiProjects) {
+    const key = `${project.workItemProviderId}:${project.workItemProjectName}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    try {
+      const workItems = await queryAssignedWorkItems({
+        providerId: project.workItemProviderId!,
+        projectName: project.workItemProjectName!,
+      });
+
+      for (const wi of workItems) {
+        feedItems.push({
+          id: `work-item:${project.id}:${wi.id}`,
+          source: 'work-item',
+          attention: 'assigned-work-item',
+          timestamp: wi.fields.changedDate ?? new Date().toISOString(),
+          projectId: project.id,
+          projectName: project.name,
+          projectColor: project.color,
+          projectPriority:
+            (project.priority as 'high' | 'normal' | 'low') ?? 'normal',
+          title: wi.fields.title,
+          subtitle: `${wi.fields.workItemType} #${wi.id}`,
+          workItemId: wi.id,
+          workItemUrl: wi.url,
+          workItemType: wi.fields.workItemType,
+          workItemState: wi.fields.state,
+        });
+      }
+    } catch (err) {
+      dbg.feed(
+        'fetchWorkItemFeedItems: error fetching work items for project %s: %O',
+        project.id,
+        err,
+      );
+    }
+  }
+
+  workItemCache = { items: feedItems, fetchedAt: Date.now() };
+  dbg.feed(
+    'fetchWorkItemFeedItems: cached %d work item items',
+    feedItems.length,
+  );
+  return feedItems;
 }

@@ -44,6 +44,22 @@ export function useIterations(params: {
   });
 }
 
+export function useWorkItemById(params: {
+  providerId: string | null;
+  workItemId: number | null;
+}) {
+  return useQuery({
+    queryKey: ['work-item', params.providerId, params.workItemId],
+    queryFn: () =>
+      api.azureDevOps.getWorkItemById({
+        providerId: params.providerId!,
+        workItemId: params.workItemId!,
+      }),
+    enabled: !!params.providerId && !!params.workItemId,
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function useCurrentAzureUser(providerId: string | null) {
   return useQuery<AzureDevOpsUser>({
     queryKey: ['azure-current-user', providerId],

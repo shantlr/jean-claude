@@ -4,6 +4,7 @@ const BASE_URGENCY: Record<FeedItemAttention, number> = {
   errored: 100,
   'needs-permission': 90,
   'has-question': 85,
+  'assigned-work-item': 55,
   completed: 70,
   interrupted: 60,
   'review-requested': 50,

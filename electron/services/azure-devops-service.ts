@@ -68,6 +68,7 @@ export interface AzureDevOpsWorkItem {
     assignedTo?: string;
     description?: string;
     reproSteps?: string;
+    changedDate?: string;
   };
   parentId?: number;
 }
@@ -106,6 +107,7 @@ interface WorkItemsBatchResponse {
       'System.AssignedTo'?: { displayName: string };
       'System.Description'?: string;
       'Microsoft.VSTS.TCM.ReproSteps'?: string;
+      'System.ChangedDate'?: string;
     };
     relations?: WorkItemRelation[];
   }>;
@@ -273,6 +275,22 @@ export async function getTokenExpiration(
   }
 }
 
+/** Escape single quotes for WIQL query string interpolation. */
+function escapeWiql(value: string): string {
+  return value.replace(/'/g, "''");
+}
+
+/** Extract parent work item ID from a work item's relations array. */
+function extractParentId(relations?: WorkItemRelation[]): number | undefined {
+  if (!relations) return undefined;
+  const parentRelation = relations.find(
+    (r) => r.rel === 'System.LinkTypes.Hierarchy-Reverse',
+  );
+  if (!parentRelation) return undefined;
+  const match = parentRelation.url.match(/\/workItems\/(\d+)$/i);
+  return match ? parseInt(match[1], 10) : undefined;
+}
+
 export async function queryWorkItems(params: {
   providerId: string;
   projectId: string;
@@ -309,17 +327,19 @@ export async function queryWorkItems(params: {
   // Build WIQL query conditions
   // Note: [System.TeamProject] requires the project name, not the GUID
   const conditions: string[] = [
-    `[System.TeamProject] = '${params.projectName}'`,
+    `[System.TeamProject] = '${escapeWiql(params.projectName)}'`,
   ];
 
   if (params.filters.states && params.filters.states.length > 0) {
-    const statesList = params.filters.states.map((s) => `'${s}'`).join(', ');
+    const statesList = params.filters.states
+      .map((s) => `'${escapeWiql(s)}'`)
+      .join(', ');
     conditions.push(`[System.State] IN (${statesList})`);
   }
 
   if (params.filters.workItemTypes && params.filters.workItemTypes.length > 0) {
     const typesList = params.filters.workItemTypes
-      .map((t) => `'${t}'`)
+      .map((t) => `'${escapeWiql(t)}'`)
       .join(', ');
     conditions.push(`[System.WorkItemType] IN (${typesList})`);
   }
@@ -330,15 +350,14 @@ export async function queryWorkItems(params: {
     params.filters.excludeWorkItemTypes.length > 0
   ) {
     for (const excludeType of params.filters.excludeWorkItemTypes) {
-      conditions.push(`[System.WorkItemType] <> '${excludeType}'`);
+      conditions.push(`[System.WorkItemType] <> '${escapeWiql(excludeType)}'`);
     }
   }
 
   // Add search text filter - search ID (exact match) OR title (contains)
   if (params.filters.searchText && params.filters.searchText.trim()) {
     const searchText = params.filters.searchText.trim();
-    // Escape single quotes in search text to prevent WIQL injection
-    const escapedSearch = searchText.replace(/'/g, "''");
+    const escapedSearch = escapeWiql(searchText);
 
     // System.Id is an integer field, so we can only do exact match on it
     // If search text is numeric, search both ID (exact) and title; otherwise just title
@@ -353,8 +372,9 @@ export async function queryWorkItems(params: {
 
   // Filter by iteration path
   if (params.filters.iterationPath) {
-    const escapedPath = params.filters.iterationPath.replace(/'/g, "''");
-    conditions.push(`[System.IterationPath] = '${escapedPath}'`);
+    conditions.push(
+      `[System.IterationPath] = '${escapeWiql(params.filters.iterationPath)}'`,
+    );
   }
 
   const wiqlQuery = `SELECT [System.Id] FROM WorkItems WHERE ${conditions.join(' AND ')} ORDER BY [System.ChangedDate] DESC`;
@@ -400,19 +420,6 @@ export async function queryWorkItems(params: {
 
   const batchData: WorkItemsBatchResponse = await batchResponse.json();
 
-  // Helper to extract parent ID from relations
-  const getParentId = (relations?: WorkItemRelation[]): number | undefined => {
-    if (!relations) return undefined;
-    // Parent relation type is System.LinkTypes.Hierarchy-Reverse
-    const parentRelation = relations.find(
-      (r) => r.rel === 'System.LinkTypes.Hierarchy-Reverse',
-    );
-    if (!parentRelation) return undefined;
-    // URL format: https://dev.azure.com/{org}/_apis/wit/workItems/{id}
-    const match = parentRelation.url.match(/\/workItems\/(\d+)$/i);
-    return match ? parseInt(match[1], 10) : undefined;
-  };
-
   // Map to AzureDevOpsWorkItem[]
   return batchData.value.map((wi) => ({
     id: wi.id,
@@ -424,9 +431,119 @@ export async function queryWorkItems(params: {
       assignedTo: wi.fields['System.AssignedTo']?.displayName,
       description: wi.fields['System.Description'],
       reproSteps: wi.fields['Microsoft.VSTS.TCM.ReproSteps'],
+      changedDate: wi.fields['System.ChangedDate'],
     },
-    parentId: getParentId(wi.relations),
+    parentId: extractParentId(wi.relations),
   }));
+}
+
+export async function queryAssignedWorkItems(params: {
+  providerId: string;
+  projectName: string;
+}): Promise<AzureDevOpsWorkItem[]> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const conditions: string[] = [
+    `[System.TeamProject] = '${escapeWiql(params.projectName)}'`,
+    `[System.AssignedTo] = @Me`,
+    `[System.State] IN ('New', 'Active')`,
+    `[System.WorkItemType] <> 'Test Suite'`,
+    `[System.WorkItemType] <> 'Test Plan'`,
+  ];
+
+  const wiqlQuery = `SELECT [System.Id] FROM WorkItems WHERE ${conditions.join(' AND ')} ORDER BY [System.ChangedDate] DESC`;
+
+  const wiqlResponse = await fetch(
+    `https://dev.azure.com/${orgName}/${encodeURIComponent(params.projectName)}/_apis/wit/wiql?api-version=7.0&$top=50`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: authHeader,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query: wiqlQuery }),
+    },
+  );
+
+  if (!wiqlResponse.ok) {
+    const error = await wiqlResponse.text();
+    throw new Error(`Failed to query assigned work items: ${error}`);
+  }
+
+  const wiqlData: WiqlResponse = await wiqlResponse.json();
+
+  if (wiqlData.workItems.length === 0) {
+    return [];
+  }
+
+  const ids = wiqlData.workItems.map((wi) => wi.id);
+  const batchResponse = await fetch(
+    `https://dev.azure.com/${orgName}/_apis/wit/workitems?ids=${ids.join(',')}&$expand=relations&api-version=7.0`,
+    {
+      headers: { Authorization: authHeader },
+    },
+  );
+
+  if (!batchResponse.ok) {
+    const error = await batchResponse.text();
+    throw new Error(`Failed to fetch assigned work item details: ${error}`);
+  }
+
+  const batchData: WorkItemsBatchResponse = await batchResponse.json();
+
+  return batchData.value.map((wi) => ({
+    id: wi.id,
+    url: `https://dev.azure.com/${orgName}/${encodeURIComponent(params.projectName)}/_workitems/edit/${wi.id}`,
+    fields: {
+      title: wi.fields['System.Title'],
+      workItemType: wi.fields['System.WorkItemType'],
+      state: wi.fields['System.State'],
+      assignedTo: wi.fields['System.AssignedTo']?.displayName,
+      description: wi.fields['System.Description'],
+      reproSteps: wi.fields['Microsoft.VSTS.TCM.ReproSteps'],
+      changedDate: wi.fields['System.ChangedDate'],
+    },
+    parentId: extractParentId(wi.relations),
+  }));
+}
+
+export async function getWorkItemById(params: {
+  providerId: string;
+  workItemId: number;
+}): Promise<AzureDevOpsWorkItem | null> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const response = await fetch(
+    `https://dev.azure.com/${orgName}/_apis/wit/workitems/${params.workItemId}?$expand=relations&api-version=7.0`,
+    {
+      headers: { Authorization: authHeader },
+    },
+  );
+
+  if (!response.ok) {
+    if (response.status === 404) return null;
+    const error = await response.text();
+    throw new Error(`Failed to fetch work item ${params.workItemId}: ${error}`);
+  }
+
+  const wi = await response.json();
+
+  return {
+    id: wi.id,
+    url:
+      wi._links?.html?.href ??
+      `https://dev.azure.com/${orgName}/_workitems/edit/${wi.id}`,
+    fields: {
+      title: wi.fields['System.Title'],
+      workItemType: wi.fields['System.WorkItemType'],
+      state: wi.fields['System.State'],
+      assignedTo: wi.fields['System.AssignedTo']?.displayName,
+      description: wi.fields['System.Description'],
+      reproSteps: wi.fields['Microsoft.VSTS.TCM.ReproSteps'],
+      changedDate: wi.fields['System.ChangedDate'],
+    },
+    parentId: extractParentId(wi.relations),
+  };
 }
 
 export async function getIterations(params: {

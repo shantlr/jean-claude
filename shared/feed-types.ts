@@ -1,4 +1,4 @@
-export type FeedItemSource = 'task' | 'pull-request' | 'note';
+export type FeedItemSource = 'task' | 'pull-request' | 'note' | 'work-item';
 
 export type FeedItemAttention =
   | 'needs-permission'
@@ -11,6 +11,7 @@ export type FeedItemAttention =
   | 'pr-comments'
   | 'pr-approved-by-me'
   | 'waiting'
+  | 'assigned-work-item'
   | 'note';
 
 export type ProjectPriority = 'high' | 'normal' | 'low';
@@ -35,6 +36,12 @@ export interface FeedItem {
   pullRequestUrl?: string;
   noteId?: string;
   isCompleted?: boolean;
+
+  // Work item tracking (only present when source === 'work-item')
+  workItemId?: number;
+  workItemUrl?: string;
+  workItemType?: string;
+  workItemState?: string;
 
   // PR activity tracking (only present when source === 'pull-request')
   hasNewActivity?: boolean;
