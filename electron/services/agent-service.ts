@@ -809,10 +809,14 @@ class AgentService {
         parts.push(...pendingImages);
       }
 
+      // Only generate the task name on the first step (sortOrder 0).
+      // Subsequent steps should not overwrite an already-generated name.
+      const isFirstStep = step.sortOrder === 0;
+
       try {
         dbg.agentSession('Starting agent for step %s', stepId);
         await this.runBackend(stepId, parts, session, {
-          generateNameOnInit: true,
+          generateNameOnInit: isFirstStep,
           initialPrompt: step.promptTemplate,
         });
       } catch (error) {
