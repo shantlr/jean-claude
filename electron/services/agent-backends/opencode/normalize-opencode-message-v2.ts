@@ -20,6 +20,7 @@ import type {
   TextPart,
   ReasoningPart,
   ToolPart,
+  FilePart,
   CompactionPart,
   ToolStateCompleted,
   ToolStateError,
@@ -301,25 +302,43 @@ function buildUserEntries(
   const date = new Date(info.time.created * 1000).toISOString();
   const model = `${info.model.providerID}/${info.model.modelID}`;
 
+  // Collect text and image sections, then emit a single user-prompt entry.
+  // Images are embedded as markdown data URIs so they render in the timeline.
+  const sections: string[] = [];
+  // Use the first part ID for the entry ID (stable across updates).
+  let firstPartId: string | undefined;
+
   for (const part of parts) {
     if (part.type === 'text') {
       const textPart = part as TextPart;
       if (textPart.text) {
-        const entryId = `${info.id}:${part.id}`;
-        const isUpdate = ctx.emittedEntryIds.has(entryId);
-        events.push({
-          type: isUpdate ? 'entry-update' : 'entry',
-          entry: {
-            id: entryId,
-            date,
-            model,
-            type: 'user-prompt',
-            value: textPart.text,
-          },
-        });
+        if (!firstPartId) firstPartId = part.id;
+        sections.push(textPart.text);
       }
+    } else if (part.type === 'file') {
+      const filePart = part as FilePart;
+      if (!firstPartId) firstPartId = part.id;
+      const filename = (filePart.filename || 'image').replace(
+        /[[\]()\\]/g,
+        '_',
+      );
+      sections.push(`![${filename}](${filePart.url})`);
     }
-    // Skip other part types in user messages (file attachments, etc.)
+  }
+
+  if (sections.length > 0 && firstPartId) {
+    const entryId = `${info.id}:${firstPartId}`;
+    const isUpdate = ctx.emittedEntryIds.has(entryId);
+    events.push({
+      type: isUpdate ? 'entry-update' : 'entry',
+      entry: {
+        id: entryId,
+        date,
+        model,
+        type: 'user-prompt',
+        value: sections.join('\n\n'),
+      },
+    });
   }
 
   return events;
