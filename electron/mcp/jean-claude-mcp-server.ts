@@ -137,7 +137,7 @@ async function runClaudeSubAgent({
   }
 
   if (readOnly) {
-    options.allowedTools = ['Read', 'Glob', 'Grep'];
+    options.allowedTools = ['Read', 'Glob', 'Grep', 'Bash'];
   } else {
     options.permissionMode = 'acceptEdits';
   }
