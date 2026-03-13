@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { MessageSquare, FileCode } from 'lucide-react';
 
+import { Separator } from '@/common/ui/separator';
 import { MarkdownContent } from '@/features/agent/ui-markdown-content';
 import type { AzureDevOpsCommentThread } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/time';
@@ -102,7 +103,8 @@ export function PrComments({
       </div>
 
       {/* Add comment form */}
-      <div className="border-t border-neutral-700 p-4">
+      <Separator />
+      <div className="p-4">
         <PrCommentForm onSubmit={onAddComment} isSubmitting={isAddingComment} />
       </div>
     </div>
@@ -126,10 +128,8 @@ function CommentThread({ thread }: { thread: AzureDevOpsCommentThread }) {
       {/* Comments in thread */}
       <div className="flex flex-col gap-3">
         {thread.comments.map((comment, index) => (
-          <div
-            key={comment.id}
-            className={clsx(index > 0 && 'border-t border-neutral-700 pt-3')}
-          >
+          <div key={comment.id}>
+            {index > 0 && <Separator className="mb-3" />}
             <div className="mb-1 flex items-center gap-2">
               {comment.author.imageUrl && (
                 <img

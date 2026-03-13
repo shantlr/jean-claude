@@ -26,6 +26,7 @@ import {
   DropdownInfo,
 } from '@/common/ui/dropdown';
 import { Kbd } from '@/common/ui/kbd';
+import { Separator } from '@/common/ui/separator';
 import {
   AVAILABLE_BACKENDS,
   getModelsForBackend,
@@ -819,7 +820,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         {/* Header */}
         <div
           className={clsx(
-            'flex items-center gap-3 border-b border-neutral-700 px-3',
+            'flex items-center gap-3 px-3',
             TASK_PANEL_HEADER_HEIGHT_CLS,
           )}
         >
@@ -1043,6 +1044,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             </Dropdown>
           </div>
         </div>
+        <Separator />
 
         {/* Step flow bar */}
         <StepFlowBar

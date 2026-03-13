@@ -60,7 +60,8 @@ export function SkillEntry({
 
       {/* Expanded content */}
       {isExpanded && promptText && (
-        <div className="mb-2 ml-5 border-l border-neutral-700 pr-3 pl-3">
+        <div className="relative mb-2 ml-5 pr-3 pl-4">
+          <div className="absolute top-1 bottom-1 left-1.5 w-px rounded-full bg-white/[0.06]" />
           <div className="max-h-96 overflow-auto rounded bg-black/30 p-3 text-xs text-neutral-300">
             <MarkdownContent
               content={promptText}

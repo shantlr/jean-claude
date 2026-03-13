@@ -4,6 +4,7 @@ import { FileX, FolderX, Loader2, RefreshCw } from 'lucide-react';
 import { useMemo, useCallback } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
+import { Separator } from '@/common/ui/separator';
 import { getFilesWithAnnotations } from '@/features/agent/ui-diff-annotation';
 import { SummaryPanel } from '@/features/agent/ui-summary-panel';
 import { WorktreeActions } from '@/features/agent/ui-worktree-actions';
@@ -218,12 +219,12 @@ export function WorktreeDiffView({
     >
       {/* File tree sidebar */}
       <div
-        className="relative flex shrink-0 flex-col border-r border-neutral-700"
+        className="panel-edge-shadow-r relative flex shrink-0 flex-col"
         style={{ width: fileTreeWidth }}
       >
         <div
           className={clsx(
-            'flex items-center justify-between border-b border-neutral-700 px-3 py-2',
+            'flex items-center justify-between px-3 py-2',
             HEADER_HEIGHT_CLS,
           )}
         >
@@ -238,6 +239,7 @@ export function WorktreeDiffView({
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
         </div>
+        <Separator />
         <div
           className="flex min-h-0 flex-1 flex-col overflow-y-auto"
           style={

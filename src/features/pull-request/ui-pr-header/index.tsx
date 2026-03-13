@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
+import { Separator } from '@/common/ui/separator';
 import { UserAvatar, getVoteLabel } from '@/common/ui/user-avatar';
 import { useProject } from '@/hooks/use-projects';
 import { getEditorLabel, useEditorSetting } from '@/hooks/use-settings';
@@ -118,82 +119,89 @@ export function PrHeader({
   const reviewers = pr.reviewers.filter((r) => !r.isContainer);
 
   return (
-    <div className="border-b border-neutral-700 p-2">
-      <div className="flex items-start justify-between">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-neutral-500">#{pr.id}</span>
-            <div className="flex">{getStatusBadge(pr.status, pr.isDraft)}</div>
-            <div className="grow" />
-            {pr.status === 'active' && (
-              <button
-                onClick={handleReview}
-                disabled={isCreating}
-                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
-              >
-                {isCreating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-                Review
-              </button>
-            )}
-            {project?.path && (
-              <button
-                onClick={handleOpenInEditor}
+    <>
+      <div className="p-2">
+        <div className="flex items-start justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-neutral-500">#{pr.id}</span>
+              <div className="flex">
+                {getStatusBadge(pr.status, pr.isDraft)}
+              </div>
+              <div className="grow" />
+              {pr.status === 'active' && (
+                <button
+                  onClick={handleReview}
+                  disabled={isCreating}
+                  className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
+                >
+                  {isCreating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                  Review
+                </button>
+              )}
+              {project?.path && (
+                <button
+                  onClick={handleOpenInEditor}
+                  className="flex items-center gap-1 rounded-lg bg-neutral-700 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-neutral-600"
+                >
+                  <FolderOpen className="h-4 w-4" />
+                  Open in{' '}
+                  {editorSetting ? getEditorLabel(editorSetting) : 'Editor'}
+                </button>
+              )}
+              <a
+                href={pr.url}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex items-center gap-1 rounded-lg bg-neutral-700 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-neutral-600"
               >
-                <FolderOpen className="h-4 w-4" />
-                Open in{' '}
-                {editorSetting ? getEditorLabel(editorSetting) : 'Editor'}
-              </button>
-            )}
-            <a
-              href={pr.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 rounded-lg bg-neutral-700 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-neutral-600"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Open in Azure DevOps
-            </a>
-          </div>
-
-          {/* TITLE */}
-          <h1 className="text-lg font-semibold text-neutral-100">{pr.title}</h1>
-
-          <div className="flex w-full items-center gap-x-4 text-neutral-400">
-            <div className="flex items-center gap-1">
-              <span className="text-neutral-500">by</span>
-              <span>{pr.createdBy.displayName}</span>
+                <ExternalLink className="h-4 w-4" />
+                Open in Azure DevOps
+              </a>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="font-mono text-blue-400">
-                {getBranchName(pr.sourceRefName)}
-              </span>
-              <span className="text-neutral-500">→</span>
-              <span className="font-mono text-green-400">
-                {getBranchName(pr.targetRefName)}
-              </span>
-            </div>
-            <div className="grow">{formatRelativeTime(pr.creationDate)}</div>
 
-            <div className="flex justify-end -space-x-1">
-              {reviewers.map((reviewer) => (
-                <UserAvatar
-                  key={reviewer.uniqueName}
-                  name={reviewer.displayName}
-                  title={`${reviewer.displayName} - ${getVoteLabel(reviewer.voteStatus)}`}
-                  size="md"
-                  vote={reviewer.voteStatus}
-                  variant="border"
-                />
-              ))}
+            {/* TITLE */}
+            <h1 className="text-lg font-semibold text-neutral-100">
+              {pr.title}
+            </h1>
+
+            <div className="flex w-full items-center gap-x-4 text-neutral-400">
+              <div className="flex items-center gap-1">
+                <span className="text-neutral-500">by</span>
+                <span>{pr.createdBy.displayName}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="font-mono text-blue-400">
+                  {getBranchName(pr.sourceRefName)}
+                </span>
+                <span className="text-neutral-500">→</span>
+                <span className="font-mono text-green-400">
+                  {getBranchName(pr.targetRefName)}
+                </span>
+              </div>
+              <div className="grow">{formatRelativeTime(pr.creationDate)}</div>
+
+              <div className="flex justify-end -space-x-1">
+                {reviewers.map((reviewer) => (
+                  <UserAvatar
+                    key={reviewer.uniqueName}
+                    name={reviewer.displayName}
+                    title={`${reviewer.displayName} - ${getVoteLabel(reviewer.voteStatus)}`}
+                    size="md"
+                    vote={reviewer.voteStatus}
+                    variant="border"
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+      <Separator />
+    </>
   );
 }

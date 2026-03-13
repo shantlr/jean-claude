@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import { Loader2, GitPullRequest, ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 
+import { Separator } from '@/common/ui/separator';
 import { useProject } from '@/hooks/use-projects';
 import { usePullRequests } from '@/hooks/use-pull-requests';
 import { useOverlaysStore } from '@/stores/overlays';
@@ -60,7 +61,7 @@ export function PrListPage({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-neutral-700 px-4 py-3">
+      <div className="flex items-center gap-3 px-4 py-3">
         <Link
           {...backLink}
           className="flex items-center gap-1 text-sm text-neutral-400 transition-colors hover:text-white"
@@ -74,9 +75,10 @@ export function PrListPage({
           <span className="text-sm text-neutral-500">{project.repoName}</span>
         )}
       </div>
+      <Separator />
 
       {/* Status filter tabs */}
-      <div className="flex gap-1 border-b border-neutral-700 px-4 py-2">
+      <div className="flex gap-1 px-4 py-2">
         {(['active', 'completed', 'abandoned', 'all'] as const).map((s) => (
           <button
             key={s}
@@ -92,6 +94,7 @@ export function PrListPage({
           </button>
         ))}
       </div>
+      <Separator />
 
       {/* PR list */}
       <div className="flex-1 overflow-y-auto p-2">

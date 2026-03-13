@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Fragment, useCallback, useEffect, useRef } from 'react';
 
+import { Separator } from '@/common/ui/separator';
 import { useSteps } from '@/hooks/use-steps';
 import { useTaskState } from '@/stores/navigation';
 import type { TaskStep, TaskStepStatus } from '@shared/types';
@@ -219,7 +220,7 @@ export function StepFlowBar({
   if (!steps || steps.length === 0) return null;
 
   return (
-    <div className="border-b border-white/[0.06] bg-neutral-900/60 px-4 py-0.5 backdrop-blur-sm">
+    <div className="relative bg-neutral-900/60 px-4 py-0.5 backdrop-blur-sm">
       <div className="no-scrollbar flex items-center overflow-x-auto px-1 py-1.5">
         {steps.map((step, index) => (
           <Fragment key={step.id}>
@@ -256,6 +257,7 @@ export function StepFlowBar({
           </>
         )}
       </div>
+      <Separator className="absolute right-0 bottom-0 left-0" />
     </div>
   );
 }

@@ -542,3 +542,21 @@ button {
 @utility sidebar-card-enter {
   animation: sidebar-card-enter 200ms ease-out both;
 }
+
+@utility separator-h {
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.06), transparent);
+}
+
+@utility separator-v {
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.06), transparent);
+}
+
+@utility panel-edge-shadow {
+  box-shadow: inset 1px 0 0 0 rgba(255, 255, 255, 0.04);
+}
+
+@utility panel-edge-shadow-r {
+  box-shadow: inset -1px 0 0 0 rgba(255, 255, 255, 0.04);
+}

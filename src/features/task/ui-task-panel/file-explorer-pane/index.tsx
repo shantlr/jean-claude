@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { FolderTree, RefreshCw, X } from 'lucide-react';
 import { useCallback } from 'react';
 
+import { Separator } from '@/common/ui/separator';
 import { useInvalidateDirectoryListings } from '@/hooks/use-directory-listing';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useTaskRootPath } from '@/hooks/use-task-root-path';
@@ -74,7 +75,7 @@ export function FileExplorerPane({
   return (
     <div
       className={clsx(
-        'relative flex h-full shrink-0 flex-col border-l border-neutral-700 bg-neutral-900',
+        'panel-edge-shadow relative flex h-full shrink-0 flex-col bg-neutral-900',
         'max-w-[70vw]',
         (isDragging || isOuterDragging) && 'select-none',
       )}
@@ -87,7 +88,7 @@ export function FileExplorerPane({
       />
 
       {/* Header */}
-      <div className="flex h-[40px] shrink-0 items-center justify-between gap-1 border-b border-neutral-700 px-3">
+      <div className="flex h-[40px] shrink-0 items-center justify-between gap-1 px-3">
         <div className="flex shrink items-center gap-2 overflow-hidden text-xs font-medium text-ellipsis whitespace-nowrap text-neutral-300">
           <FolderTree className="h-4 w-4 shrink-0" />
           {selectedFilePath
@@ -118,6 +119,7 @@ export function FileExplorerPane({
           </button>
         </div>
       </div>
+      <Separator />
 
       {/* Content area */}
       <div
@@ -158,7 +160,7 @@ export function FileExplorerPane({
               className="h-full w-1 shrink-0 cursor-col-resize hover:bg-blue-500/30"
             />
             {/* File content panel */}
-            <div className="flex min-w-0 flex-1 flex-col overflow-hidden border-l border-neutral-700">
+            <div className="panel-edge-shadow flex min-w-0 flex-1 flex-col overflow-hidden">
               <FileContentViewer filePath={selectedFilePath} />
             </div>
           </>

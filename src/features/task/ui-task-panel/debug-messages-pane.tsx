@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useState, useCallback, useEffect } from 'react';
 
+import { Separator } from '@/common/ui/separator';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useMessagesWithRawData } from '@/hooks/use-messages-with-raw-data';
 import { api } from '@/lib/api';
@@ -158,7 +159,8 @@ function JsonArray({
       >
         <ChevronDown className="mr-0.5 inline h-3 w-3" />[
       </span>
-      <div className="ml-4 border-l border-neutral-700 pl-2">
+      <div className="relative ml-4 pl-3">
+        <div className="absolute top-1 bottom-1 left-0.5 w-px rounded-full bg-white/[0.06]" />
         {items.map((item, index) => (
           <div key={index} className="py-0.5">
             <span className="mr-1 text-neutral-600">{index}:</span>
@@ -213,7 +215,8 @@ function JsonObject({
         <ChevronDown className="mr-0.5 inline h-3 w-3" />
         {'{'}
       </span>
-      <div className="ml-4 border-l border-neutral-700 pl-2">
+      <div className="relative ml-4 pl-3">
+        <div className="absolute top-1 bottom-1 left-0.5 w-px rounded-full bg-white/[0.06]" />
         {keys.map((key, index) => (
           <div key={key} className="py-0.5">
             <span className="text-purple-300">&quot;{key}&quot;</span>
@@ -239,14 +242,11 @@ function DebugMessageCard({ message }: { message: DebugMessageWithRawData }) {
   const hasNormalized = message.normalizedData !== null;
 
   return (
-    <div className="bg-neutral-850 flex w-full flex-col overflow-hidden rounded-md border border-neutral-700">
+    <div className="flex w-full flex-col overflow-hidden rounded-md border border-white/[0.06] bg-neutral-800/30">
       {/* Card header */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className={clsx(
-          'flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-neutral-800',
-          expanded && 'border-b border-neutral-700',
-        )}
+        className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-neutral-800"
       >
         {expanded ? (
           <ChevronDown className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
@@ -299,46 +299,50 @@ function DebugMessageCard({ message }: { message: DebugMessageWithRawData }) {
 
       {/* Card body — Side-by-side JSON */}
       {expanded && (
-        <div className="flex min-h-0 w-full">
-          {/* Raw side */}
-          <div className="flex w-full flex-col overflow-hidden border-r border-neutral-700">
-            <div className="flex items-center justify-between border-b border-neutral-700/50 px-3 py-1.5">
-              <span className="text-[10px] font-semibold tracking-wider text-blue-400 uppercase">
-                Raw
-              </span>
-              {hasRaw && <CopyJsonButton value={message.rawData} />}
-            </div>
-            <div className="max-h-[500px] overflow-auto p-3 font-mono text-xs leading-relaxed">
-              {hasRaw ? (
-                <JsonValue value={message.rawData} defaultExpanded />
-              ) : (
-                <span className="text-neutral-600 italic">
-                  No raw message (synthetic)
+        <>
+          <Separator />
+          <div className="flex min-h-0 w-full">
+            {/* Raw side */}
+            <div className="flex w-full flex-col overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-1.5">
+                <span className="text-[10px] font-semibold tracking-wider text-blue-400 uppercase">
+                  Raw
                 </span>
-              )}
+                {hasRaw && <CopyJsonButton value={message.rawData} />}
+              </div>
+              <div className="max-h-[500px] overflow-auto p-3 font-mono text-xs leading-relaxed">
+                {hasRaw ? (
+                  <JsonValue value={message.rawData} defaultExpanded />
+                ) : (
+                  <span className="text-neutral-600 italic">
+                    No raw message (synthetic)
+                  </span>
+                )}
+              </div>
+            </div>
+            <Separator orientation="vertical" />
+            {/* Normalized side */}
+            <div className="flex w-full flex-col overflow-hidden">
+              <div className="flex w-full items-center justify-between px-3 py-1.5">
+                <span className="text-[10px] font-semibold tracking-wider text-green-400 uppercase">
+                  Normalized
+                </span>
+                {hasNormalized && (
+                  <CopyJsonButton value={message.normalizedData} />
+                )}
+              </div>
+              <div className="max-h-[500px] overflow-auto p-3 font-mono text-xs leading-relaxed">
+                {hasNormalized ? (
+                  <JsonValue value={message.normalizedData} defaultExpanded />
+                ) : (
+                  <span className="text-neutral-600 italic">
+                    No normalized message (filtered)
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-          {/* Normalized side */}
-          <div className="flex w-full flex-col overflow-hidden">
-            <div className="flex w-full items-center justify-between border-b border-neutral-700/50 px-3 py-1.5">
-              <span className="text-[10px] font-semibold tracking-wider text-green-400 uppercase">
-                Normalized
-              </span>
-              {hasNormalized && (
-                <CopyJsonButton value={message.normalizedData} />
-              )}
-            </div>
-            <div className="max-h-[500px] overflow-auto p-3 font-mono text-xs leading-relaxed">
-              {hasNormalized ? (
-                <JsonValue value={message.normalizedData} defaultExpanded />
-              ) : (
-                <span className="text-neutral-600 italic">
-                  No normalized message (filtered)
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+        </>
       )}
     </div>
   );
@@ -414,7 +418,7 @@ export function DebugMessagesPane({
   return (
     <div
       style={{ width }}
-      className="relative flex h-full flex-col border-l border-neutral-700 bg-neutral-900"
+      className="panel-edge-shadow relative flex h-full flex-col bg-neutral-900"
     >
       {/* Resize handle */}
       <div
@@ -427,7 +431,7 @@ export function DebugMessagesPane({
       {/* Header */}
       <div
         className={clsx(
-          'flex shrink-0 items-center justify-between border-b border-neutral-700 px-4 py-2',
+          'flex shrink-0 items-center justify-between px-4 py-2',
           TASK_PANEL_HEADER_HEIGHT_CLS,
         )}
       >
@@ -492,9 +496,10 @@ export function DebugMessagesPane({
           </button>
         </div>
       </div>
+      <Separator />
 
       {/* Search filter */}
-      <div className="shrink-0 border-b border-neutral-700 px-4 py-2">
+      <div className="shrink-0 px-4 py-2">
         <input
           type="text"
           value={searchFilter}
@@ -504,8 +509,10 @@ export function DebugMessagesPane({
         />
       </div>
 
+      <Separator />
+
       {/* Legend + Copy All buttons */}
-      <div className="flex shrink-0 items-center gap-3 border-b border-neutral-700 px-4 py-1.5">
+      <div className="flex shrink-0 items-center gap-3 px-4 py-1.5">
         <span className="flex items-center gap-1.5 text-[10px] text-neutral-500">
           <span className="inline-block h-2 w-2 rounded-full bg-blue-400" />
           Raw (SDK)
@@ -549,6 +556,7 @@ export function DebugMessagesPane({
           </div>
         )}
       </div>
+      <Separator />
 
       {/* Content */}
       <div className="flex-1 space-y-2 overflow-auto p-3">

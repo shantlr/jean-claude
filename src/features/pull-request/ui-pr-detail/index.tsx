@@ -10,6 +10,7 @@ import type { ReactNode } from 'react';
 import { useState, useCallback, useMemo } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
+import { Separator } from '@/common/ui/separator';
 import {
   DiffFileTree,
   normalizeAzureChangeType,
@@ -179,7 +180,7 @@ export function PrDetail({
       <PrHeader pr={pr} projectId={projectId} />
 
       {/* Tabs */}
-      <div className="flex border-b border-neutral-700">
+      <div className="flex">
         <TabButton
           active={activeTab === 'overview'}
           onClick={() => setActiveTab('overview')}
@@ -210,6 +211,7 @@ export function PrDetail({
           }
         />
       </div>
+      <Separator />
 
       {/* Tab content */}
       <div className="min-h-0 flex-1 overflow-hidden">
@@ -231,7 +233,7 @@ export function PrDetail({
           >
             {/* File tree */}
             <div
-              className="relative flex shrink-0 flex-col border-r border-neutral-700"
+              className="panel-edge-shadow-r relative flex shrink-0 flex-col"
               style={{ width: fileTreeWidth }}
             >
               {isFilesLoading ? (

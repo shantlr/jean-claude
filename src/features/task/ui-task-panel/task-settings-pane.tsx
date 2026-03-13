@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import { Separator } from '@/common/ui/separator';
 import { useSkills } from '@/hooks/use-skills';
 import type { PermissionScope } from '@shared/permission-types';
 import type { Skill } from '@shared/skill-types';
@@ -188,11 +189,11 @@ export function TaskSettingsPane({
   };
 
   return (
-    <div className="flex h-full w-80 flex-col border-l border-neutral-700 bg-neutral-900">
+    <div className="panel-edge-shadow flex h-full w-80 flex-col bg-neutral-900">
       {/* Header */}
       <div
         className={clsx(
-          'flex shrink-0 items-center justify-between border-b border-neutral-700 px-4 py-2',
+          'flex shrink-0 items-center justify-between px-4 py-2',
           TASK_PANEL_HEADER_HEIGHT_CLS,
         )}
       >
@@ -205,6 +206,7 @@ export function TaskSettingsPane({
           <X className="h-4 w-4" />
         </button>
       </div>
+      <Separator />
 
       {/* Content */}
       <div className="flex-1 space-y-6 overflow-auto p-4">

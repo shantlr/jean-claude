@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { X } from 'lucide-react';
 
+import { Separator } from '@/common/ui/separator';
 import { DiffView } from '@/features/agent/ui-diff-view';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useToolDiffPreviewPaneWidth } from '@/stores/navigation';
@@ -31,7 +32,7 @@ export function ToolDiffPreviewPane({
   return (
     <div
       style={{ width }}
-      className="relative flex h-full flex-col border-l border-neutral-700 bg-neutral-900"
+      className="panel-edge-shadow relative flex h-full flex-col bg-neutral-900"
     >
       <div
         onMouseDown={handleMouseDown}
@@ -43,7 +44,7 @@ export function ToolDiffPreviewPane({
 
       <div
         className={clsx(
-          'flex items-center gap-2 border-b border-neutral-700 px-4 py-2',
+          'flex items-center gap-2 px-4 py-2',
           TASK_PANEL_HEADER_HEIGHT_CLS,
         )}
       >
@@ -64,6 +65,7 @@ export function ToolDiffPreviewPane({
           <X className="h-4 w-4" />
         </button>
       </div>
+      <Separator />
 
       <div className="min-h-0 flex-1 overflow-hidden">
         <DiffView

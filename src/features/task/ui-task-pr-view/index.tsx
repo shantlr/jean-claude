@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 
+import { Separator } from '@/common/ui/separator';
 import { PrDetail } from '@/features/pull-request/ui-pr-detail';
 import { useProject } from '@/hooks/use-projects';
 import { usePullRequests } from '@/hooks/use-pull-requests';
@@ -35,7 +36,7 @@ export function TaskPrView({
   if (task?.pullRequestId) {
     return (
       <div className="flex h-full flex-col">
-        <div className="flex items-center gap-2 border-b border-neutral-700 px-3 py-2">
+        <div className="flex items-center gap-2 px-3 py-2">
           <button
             onClick={onClose}
             className="flex items-center gap-1 rounded px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
@@ -47,6 +48,7 @@ export function TaskPrView({
             Pull Request #{task.pullRequestId}
           </span>
         </div>
+        <Separator />
         <div className="min-h-0 flex-1">
           <PrDetail
             projectId={projectId}
@@ -136,7 +138,7 @@ function PrLinkingView({
   if (!hasRepoLinked) {
     return (
       <div className="flex h-full flex-col">
-        <div className="flex items-center gap-2 border-b border-neutral-700 px-3 py-2">
+        <div className="flex items-center gap-2 px-3 py-2">
           <button
             onClick={onClose}
             className="flex items-center gap-1 rounded px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
@@ -148,6 +150,7 @@ function PrLinkingView({
             Pull Request
           </span>
         </div>
+        <Separator />
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <GitPullRequest className="h-12 w-12 text-neutral-600" />
           <p className="text-neutral-400">
@@ -164,7 +167,7 @@ function PrLinkingView({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-neutral-700 px-3 py-2">
+      <div className="flex items-center gap-2 px-3 py-2">
         <button
           onClick={onClose}
           className="flex items-center gap-1 rounded px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
@@ -176,6 +179,7 @@ function PrLinkingView({
           Link Pull Request
         </span>
       </div>
+      <Separator />
 
       <div
         className="min-h-0 flex-1 overflow-y-auto p-4"

@@ -519,7 +519,7 @@ function DiffLineRow({
       {inlineComments && inlineComments.length > 0 && (
         <tr>
           <td colSpan={4} className="p-0">
-            <div className="border-y border-neutral-700 bg-neutral-800/80 px-4 py-2">
+            <div className="border-y border-white/[0.06] bg-neutral-800/80 px-4 py-2">
               {inlineComments.map((comment, i) => (
                 <div key={i}>{comment.content}</div>
               ))}

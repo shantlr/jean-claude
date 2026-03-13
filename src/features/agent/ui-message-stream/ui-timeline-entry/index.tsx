@@ -272,7 +272,8 @@ function DotEntry({
 
         {/* Expanded content */}
         {isExpanded && expandedContent && (
-          <div className="mt-2 ml-5 border-l border-neutral-700 pl-3">
+          <div className="relative mt-2 ml-5 pl-4">
+            <div className="absolute top-1 bottom-1 left-1.5 w-px rounded-full bg-white/[0.06]" />
             {expandedContent}
           </div>
         )}

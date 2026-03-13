@@ -194,7 +194,8 @@ export function SubagentEntry({
 
       {/* Expanded nested timeline */}
       {isExpanded && (resultOutput || displayEntries.length > 0) && (
-        <div className="mb-2 ml-5 border-l border-neutral-700 pl-0">
+        <div className="relative mb-2 ml-5 pl-1">
+          <div className="absolute top-1 bottom-1 left-0 w-px rounded-full bg-white/[0.06]" />
           {resultOutput && (
             <div className="px-3 pb-3">
               <div className="mb-1 text-[11px] font-medium tracking-wide text-cyan-300 uppercase">
@@ -221,7 +222,8 @@ export function SubagentEntry({
 
       {/* Empty state when expanded but no entries and no result yet */}
       {isExpanded && displayEntries.length === 0 && !resultOutput && (
-        <div className="mb-2 ml-5 border-l border-neutral-700 pl-3 text-xs text-neutral-500">
+        <div className="relative mb-2 ml-5 pl-4 text-xs text-neutral-500">
+          <div className="absolute top-1 bottom-1 left-1.5 w-px rounded-full bg-white/[0.06]" />
           Waiting for sub-agent activity...
         </div>
       )}

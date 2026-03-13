@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react';
 
+import { Separator } from '@/common/ui/separator';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useProjectCommands } from '@/hooks/use-project-commands';
 import { api } from '@/lib/api';
@@ -105,7 +106,7 @@ export function CommandLogsPane({
   return (
     <div
       style={{ width }}
-      className="relative flex h-full flex-col border-l border-neutral-700 bg-neutral-900"
+      className="panel-edge-shadow relative flex h-full flex-col bg-neutral-900"
     >
       <div
         onMouseDown={handleMouseDown}
@@ -117,7 +118,7 @@ export function CommandLogsPane({
 
       <div
         className={clsx(
-          'flex shrink-0 items-center justify-between border-b border-neutral-700 px-4 py-2',
+          'flex shrink-0 items-center justify-between px-4 py-2',
           TASK_PANEL_HEADER_HEIGHT_CLS,
         )}
       >
@@ -130,10 +131,11 @@ export function CommandLogsPane({
           <X className="h-4 w-4" />
         </button>
       </div>
+      <Separator />
 
       {tabs.length > 0 ? (
         <>
-          <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-neutral-700 px-2 py-2">
+          <div className="flex shrink-0 gap-1 overflow-x-auto px-2 py-2">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -151,6 +153,7 @@ export function CommandLogsPane({
               </button>
             ))}
           </div>
+          <Separator />
 
           <div
             ref={scrollRef}

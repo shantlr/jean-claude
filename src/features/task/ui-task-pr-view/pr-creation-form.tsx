@@ -1,6 +1,7 @@
 import { Loader2, Sparkles, Plus } from 'lucide-react';
 import { useState } from 'react';
 
+import { Separator } from '@/common/ui/separator';
 import {
   useCreatePullRequest,
   useAddPrFileComments,
@@ -157,12 +158,13 @@ export function PrCreationForm({
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-2 border-b border-neutral-700 px-4 py-3">
+      <div className="flex items-center gap-2 px-4 py-3">
         <Plus className="h-5 w-5 text-neutral-400" />
         <span className="text-sm font-medium text-neutral-200">
           Create Pull Request
         </span>
       </div>
+      <Separator />
 
       {/* Scrollable form content */}
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -293,7 +295,8 @@ export function PrCreationForm({
       </div>
 
       {/* Footer with buttons */}
-      <div className="flex gap-2 border-t border-neutral-700 p-4">
+      <Separator />
+      <div className="flex gap-2 p-4">
         <button
           type="button"
           onClick={onCancel}
