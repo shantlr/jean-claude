@@ -1,18 +1,11 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
-import {
-  ChevronDown,
-  ClipboardList,
-  ListTodo,
-  SlidersHorizontal,
-} from 'lucide-react';
+import { ChevronDown, ListTodo } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
-import { Kbd } from '@/common/ui/kbd';
 import { SidebarContentTabs } from '@/features/project/ui-sidebar-content-tabs';
 import { PrSidebarList } from '@/features/pull-request/ui-pr-sidebar-list';
 import { TaskSummaryCard } from '@/features/task/ui-task-summary-card';
-import { useProjectTodoCount } from '@/hooks/use-project-todos';
 import { useProjects } from '@/hooks/use-projects';
 import { useAllActiveTasks, useAllCompletedTasks } from '@/hooks/use-tasks';
 import { useCurrentVisibleProject, useSidebarTab } from '@/stores/navigation';
@@ -110,19 +103,7 @@ export function TaskList() {
     );
   }, [activeTasks, completedTasks, currentTaskId]);
 
-  const backlogProjectId =
-    projectId !== 'all' ? projectId : selectedTask?.projectId;
-  const { data: todoCount } = useProjectTodoCount(backlogProjectId);
-
-  const openBacklog = useCallback(() => {
-    if (!backlogProjectId) {
-      return;
-    }
-
-    toggleOverlay('project-backlog');
-  }, [backlogProjectId, toggleOverlay]);
-
-  // Get selected project for settings button
+  // Get selected project for project settings command
   // Show project settings based on:
   // 1. If a specific project filter is active, use that project
   // 2. If "all" filter is active and a task is selected, use that task's project
@@ -328,33 +309,6 @@ export function TaskList() {
                 )}
               </>
             )}
-          </div>
-
-          {/* Footer buttons */}
-          <div className="flex items-center gap-1 p-2">
-            {backlogProjectId && (
-              <button
-                onClick={openBacklog}
-                className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-neutral-400 transition-colors hover:bg-neutral-800/60 hover:text-white"
-              >
-                <ClipboardList size={14} />
-                <span>Backlog</span>
-                {typeof todoCount === 'number' && todoCount > 0 && (
-                  <span className="rounded-full bg-neutral-700/60 px-1.5 py-0.5 text-xs leading-none text-neutral-400">
-                    {todoCount}
-                  </span>
-                )}
-                <Kbd shortcut="cmd+b" className="ml-auto" />
-              </button>
-            )}
-            <button
-              onClick={() => toggleOverlay('settings')}
-              className="flex grow items-center gap-2 rounded-md px-2 py-2 text-sm text-neutral-400 transition-colors hover:bg-neutral-800/60 hover:text-white"
-            >
-              <SlidersHorizontal size={14} />
-              <span>Settings</span>
-              <Kbd shortcut="cmd+," className="ml-auto" />
-            </button>
           </div>
         </>
       )}

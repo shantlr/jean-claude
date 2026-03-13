@@ -1,8 +1,9 @@
 import clsx from 'clsx';
-import { Loader2, SlidersHorizontal } from 'lucide-react';
+import { ClipboardList, Loader2, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 
 import { Kbd } from '@/common/ui/kbd';
+import { useProjectTodoCount } from '@/hooks/use-project-todos';
 import { useProjects } from '@/hooks/use-projects';
 import { api } from '@/lib/api';
 import {
@@ -22,6 +23,8 @@ export function Header() {
   const { data: projects = [] } = useProjects();
   const openOverlay = useOverlaysStore((state) => state.open);
   const jobs = useBackgroundJobsStore((state) => state.jobs);
+  const backlogProjectId = projectId !== 'all' ? projectId : undefined;
+  const { data: todoCount } = useProjectTodoCount(backlogProjectId);
 
   const runningJobsCount = useMemo(() => getRunningJobsCount(jobs), [jobs]);
 
@@ -92,6 +95,26 @@ export function Header() {
           <span className="truncate">{selectedProjectLabel}</span>
           <Kbd shortcut="cmd+o" className="text-[9px]" />
         </button>
+
+        {backlogProjectId && (
+          <button
+            type="button"
+            onClick={() => openOverlay('project-backlog')}
+            className="ml-2 flex h-7 shrink-0 items-center gap-1.5 rounded border border-neutral-800 bg-neutral-900 px-2 text-neutral-300 transition-colors hover:border-neutral-700 hover:bg-neutral-800"
+            style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
+            title="Backlog"
+            aria-label="Open backlog"
+          >
+            <ClipboardList className="h-3.5 w-3.5" />
+            <span className="text-xs">Backlog</span>
+            {typeof todoCount === 'number' && todoCount > 0 && (
+              <span className="rounded-full bg-neutral-700/60 px-1.5 py-0.5 text-[10px] leading-none text-neutral-400">
+                {todoCount}
+              </span>
+            )}
+            <Kbd shortcut="cmd+b" className="text-[9px]" />
+          </button>
+        )}
       </div>
 
       {/* Usage display */}
