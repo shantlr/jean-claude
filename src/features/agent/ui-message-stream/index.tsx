@@ -23,6 +23,7 @@ import { PermissionBar } from '../ui-permission-bar';
 import { QuestionOptions } from '../ui-question-options';
 
 import { mergeSkillMessages } from './message-merger';
+import { computePromptAndResultDurations } from './prompt-duration';
 import { QueuedPromptEntry } from './ui-queued-prompt-entry';
 import { SkillEntry } from './ui-skill-entry';
 import { SubagentEntry } from './ui-subagent-entry';
@@ -110,6 +111,11 @@ export const MessageStream = memo(function MessageStream({
     [displayMessages],
   );
 
+  const { promptDurationMsByPromptIndex, resultDurationMsByEntryId } = useMemo(
+    () => computePromptAndResultDurations(displayMessages),
+    [displayMessages],
+  );
+
   // Check if scroll position is near bottom
   const checkIfNearBottom = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -160,6 +166,7 @@ export const MessageStream = memo(function MessageStream({
       <TimelinePromptNavigator
         scrollContainerRef={scrollContainerRef}
         displayMessages={displayMessages}
+        promptDurationMsByPromptIndex={promptDurationMsByPromptIndex}
       />
       {/* Timeline vertical line */}
       <div className="timeline-gradient-line relative ml-3">
@@ -206,6 +213,9 @@ export const MessageStream = memo(function MessageStream({
               <div key={index} data-prompt-index={promptIdx}>
                 <TimelineEntry
                   entry={displayMessage.entry}
+                  resultDurationMs={resultDurationMsByEntryId.get(
+                    displayMessage.entry.id,
+                  )}
                   onFilePathClick={onFilePathClick}
                   onToolDiffClick={onToolDiffClick}
                 />
@@ -216,6 +226,9 @@ export const MessageStream = memo(function MessageStream({
             <TimelineEntry
               key={index}
               entry={displayMessage.entry}
+              resultDurationMs={resultDurationMsByEntryId.get(
+                displayMessage.entry.id,
+              )}
               onFilePathClick={onFilePathClick}
               onToolDiffClick={onToolDiffClick}
             />

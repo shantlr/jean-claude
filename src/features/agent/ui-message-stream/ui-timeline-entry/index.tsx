@@ -888,9 +888,11 @@ function UserEntry({
 // Result entry (session complete or error)
 function ResultEntry({
   entry,
+  durationMs,
   onFilePathClick,
 }: {
   entry: Extract<NormalizedEntry, { type: 'result' }>;
+  durationMs?: number;
   onFilePathClick?: (
     filePath: string,
     lineStart?: number,
@@ -913,7 +915,17 @@ function ResultEntry({
   const tokens = formatNumber(
     (entry.usage?.inputTokens ?? 0) + (entry.usage?.outputTokens ?? 0),
   );
-  const summary = `--- ${tokens} tokens, ${formatDuration(entry.durationMs ?? 0)}, $${cost}`;
+  const resolvedDurationMs =
+    typeof durationMs === 'number' &&
+    Number.isFinite(durationMs) &&
+    durationMs >= 0
+      ? durationMs
+      : typeof entry.durationMs === 'number' &&
+          Number.isFinite(entry.durationMs) &&
+          entry.durationMs >= 0
+        ? entry.durationMs
+        : 0;
+  const summary = `--- ${tokens} tokens, ${formatDuration(resolvedDurationMs)}, $${cost}`;
 
   const expandedContent = entry.value ? (
     <div className="text-xs text-neutral-300">
@@ -970,10 +982,12 @@ export function CompactingEntry({ isComplete }: { isComplete: boolean }) {
 
 export function TimelineEntry({
   entry,
+  resultDurationMs,
   onFilePathClick,
   onToolDiffClick,
 }: {
   entry: NormalizedEntry;
+  resultDurationMs?: number;
   onFilePathClick?: (
     filePath: string,
     lineStart?: number,
@@ -1000,7 +1014,13 @@ export function TimelineEntry({
       if (entry.name === 'sub-agent') return null;
       return <ToolEntry toolUse={entry} onToolDiffClick={onToolDiffClick} />;
     case 'result':
-      return <ResultEntry entry={entry} onFilePathClick={onFilePathClick} />;
+      return (
+        <ResultEntry
+          entry={entry}
+          durationMs={resultDurationMs}
+          onFilePathClick={onFilePathClick}
+        />
+      );
     case 'system-status':
       // Handled by CompactingEntry in merger
       return null;

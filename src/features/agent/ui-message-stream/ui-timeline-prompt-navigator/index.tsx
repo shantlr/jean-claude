@@ -2,6 +2,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { RefObject } from 'react';
 import { useMemo, useState } from 'react';
 
+import { formatDuration } from '@/lib/time';
 import { useUISetting } from '@/stores/ui';
 
 import type { DisplayMessage } from '../message-merger';
@@ -10,9 +11,11 @@ import { usePromptNavigation } from '../use-prompt-navigation';
 export function TimelinePromptNavigator({
   scrollContainerRef,
   displayMessages,
+  promptDurationMsByPromptIndex,
 }: {
   scrollContainerRef: RefObject<HTMLDivElement | null>;
   displayMessages: DisplayMessage[];
+  promptDurationMsByPromptIndex: Map<number, number>;
 }) {
   const defaultCollapsed = useUISetting('promptNavigatorDefaultCollapsed');
   const maxWidth = useUISetting('promptNavigatorMaxWidth');
@@ -146,6 +149,9 @@ export function TimelinePromptNavigator({
             }
 
             const isCurrent = item.prompt.index === currentPrompt?.index;
+            const promptDurationMs = promptDurationMsByPromptIndex.get(
+              item.prompt.index,
+            );
             return (
               <button
                 key={item.prompt.index}
@@ -164,6 +170,11 @@ export function TimelinePromptNavigator({
                   <span className="shrink-0 text-[10px] leading-4 text-neutral-400">
                     {item.prompt.index + 1}/{totalPrompts}
                   </span>
+                  {promptDurationMs !== undefined && (
+                    <span className="shrink-0 text-[10px] leading-4 text-neutral-500">
+                      {formatDuration(promptDurationMs)}
+                    </span>
+                  )}
                   <span className="[display:-webkit-box] min-w-0 overflow-hidden leading-4 break-words [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
                     {item.prompt.text}
                   </span>
