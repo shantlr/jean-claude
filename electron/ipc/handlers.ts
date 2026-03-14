@@ -183,10 +183,19 @@ export function registerIpcHandlers() {
     dbg.ipc('projects:create %o', { name: data.name, path: data.path });
     return ProjectRepository.create(data);
   });
-  ipcMain.handle('projects:update', (_, id: string, data: UpdateProject) => {
-    dbg.ipc('projects:update %s %o', id, data);
-    return ProjectRepository.update(id, data);
-  });
+  ipcMain.handle(
+    'projects:update',
+    async (_, id: string, data: UpdateProject) => {
+      dbg.ipc('projects:update %s %o', id, data);
+      const result = await ProjectRepository.update(id, data);
+      if (data.showWorkItemsInFeed !== undefined) {
+        const { invalidateWorkItemCache } =
+          await import('../services/feed-service');
+        invalidateWorkItemCache();
+      }
+      return result;
+    },
+  );
   ipcMain.handle('projects:delete', (_, id: string) => {
     dbg.ipc('projects:delete %s', id);
     return ProjectRepository.delete(id);

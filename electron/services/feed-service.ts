@@ -34,10 +34,12 @@ let activityCache: {
   fetchedAt: number;
 } | null = null;
 
-// Simple TTL cache — not invalidated on project mutations. Stale data may
-// persist for up to WORK_ITEM_CACHE_TTL_MS after provider/project changes.
 let workItemCache: { items: FeedItem[]; fetchedAt: number } | null = null;
 const WORK_ITEM_CACHE_TTL_MS = 3 * 60 * 1000;
+
+export function invalidateWorkItemCache(): void {
+  workItemCache = null;
+}
 
 const PR_ACTIVITY_CHUNK_SIZE = 10;
 
@@ -514,7 +516,8 @@ async function fetchWorkItemFeedItems(): Promise<FeedItem[]> {
   dbg.feed('fetchWorkItemFeedItems: fetching from Azure DevOps');
   const projects = await ProjectRepository.findAll();
   const wiProjects = projects.filter(
-    (p) => p.workItemProviderId && p.workItemProjectName,
+    (p) =>
+      p.workItemProviderId && p.workItemProjectName && p.showWorkItemsInFeed,
   );
 
   if (wiProjects.length === 0) {

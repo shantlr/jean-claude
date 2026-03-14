@@ -92,6 +92,7 @@ export interface ProjectTable {
   defaultAgentBackend: string | null;
   completionContext: string | null;
   priority: string;
+  showWorkItemsInFeed: number; // SQLite boolean: 1 = show (default), 0 = hide
   createdAt: Generated<string>;
   updatedAt: string;
 }

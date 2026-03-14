@@ -41,6 +41,7 @@ import * as m039 from './migrations/039_command_confirm_before_run';
 import * as m040 from './migrations/040_pr_view_snapshots';
 import * as m041 from './migrations/041_notifications';
 import * as m042 from './migrations/042_tracked_pipelines';
+import * as m043 from './migrations/043_project_show_work_items_in_feed';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -84,6 +85,7 @@ const migrations: Record<string, Migration> = {
   '040_pr_view_snapshots': m040,
   '041_notifications': m041,
   '042_tracked_pipelines': m042,
+  '043_project_show_work_items_in_feed': m043,
 };
 
 export const migrationProvider: MigrationProvider = {

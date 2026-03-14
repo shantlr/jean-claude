@@ -3,11 +3,13 @@ import { useMemo, useState } from 'react';
 
 import { useUpdateProject } from '@/hooks/use-projects';
 import { useProviders, useProviderDetails } from '@/hooks/use-providers';
+import { useToastStore } from '@/stores/toasts';
 import type { Project } from '@shared/types';
 
 export function WorkItemsLink({ project }: { project: Project }) {
   const { data: providers } = useProviders();
   const updateProject = useUpdateProject();
+  const addToast = useToastStore((s) => s.addToast);
 
   const azureProviders = useMemo(
     () => (providers ?? []).filter((p) => p.type === 'azure-devops'),
@@ -74,6 +76,20 @@ export function WorkItemsLink({ project }: { project: Project }) {
     );
   }
 
+  async function handleToggleShowInFeed(checked: boolean) {
+    try {
+      await updateProject.mutateAsync({
+        id: project.id,
+        data: { showWorkItemsInFeed: checked },
+      });
+    } catch {
+      addToast({
+        message: 'Failed to update feed visibility setting',
+        type: 'error',
+      });
+    }
+  }
+
   if (isLinked) {
     return (
       <div className="rounded-lg border border-neutral-700 bg-neutral-900 p-4">
@@ -102,6 +118,25 @@ export function WorkItemsLink({ project }: { project: Project }) {
             )}
             Unlink
           </button>
+        </div>
+        <div className="mt-3 border-t border-neutral-800 pt-3">
+          <label className="flex cursor-pointer items-center gap-3">
+            <input
+              type="checkbox"
+              checked={!!project.showWorkItemsInFeed}
+              onChange={(e) => handleToggleShowInFeed(e.target.checked)}
+              disabled={updateProject.isPending}
+              className="h-4 w-4 cursor-pointer rounded border-neutral-600 bg-neutral-800 accent-blue-500 disabled:opacity-50"
+            />
+            <div>
+              <p className="text-sm font-medium text-neutral-200">
+                Show in feed
+              </p>
+              <p className="text-xs text-neutral-500">
+                Display assigned work items from this project in the feed list
+              </p>
+            </div>
+          </label>
         </div>
       </div>
     );

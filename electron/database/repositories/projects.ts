@@ -23,12 +23,14 @@ export const ProjectRepository = {
 
     const nextSortOrder = ((result?.maxOrder as number | null) ?? -1) + 1;
 
+    const { showWorkItemsInFeed, ...rest } = data;
     const row = await db
       .insertInto('projects')
       .values({
-        ...data,
+        ...rest,
         sortOrder: data.sortOrder ?? nextSortOrder,
         priority: data.priority ?? 'normal',
+        showWorkItemsInFeed: showWorkItemsInFeed === false ? 0 : 1,
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -38,9 +40,16 @@ export const ProjectRepository = {
 
   update: (id: string, data: UpdateProject) => {
     dbg.db('projects.update id=%s %o', id, Object.keys(data));
+    const { showWorkItemsInFeed, ...rest } = data;
     return db
       .updateTable('projects')
-      .set({ ...data, updatedAt: new Date().toISOString() })
+      .set({
+        ...rest,
+        ...(showWorkItemsInFeed !== undefined && {
+          showWorkItemsInFeed: showWorkItemsInFeed ? 1 : 0,
+        }),
+        updatedAt: new Date().toISOString(),
+      })
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirstOrThrow();
