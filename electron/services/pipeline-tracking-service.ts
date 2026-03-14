@@ -196,7 +196,10 @@ class PipelineTrackingService {
     let maxProcessedId = pipeline.lastCheckedRunId ?? 0;
 
     for (const release of releases) {
-      const activeEnvs = release.environments.filter(
+      const releaseEnvironments = Array.isArray(release.environments)
+        ? release.environments
+        : [];
+      const activeEnvs = releaseEnvironments.filter(
         (e) => e.status === 'inProgress' || e.status === 'queued',
       );
       if (activeEnvs.length > 0) {
@@ -264,12 +267,15 @@ class PipelineTrackingService {
     pipeline: TrackedPipelineRow,
     projectId: string,
   ) {
-    const failedEnvs = release.environments.filter(
+    const releaseEnvironments = Array.isArray(release.environments)
+      ? release.environments
+      : [];
+    const failedEnvs = releaseEnvironments.filter(
       (e) => e.status === 'rejected',
     );
     const isSuccess = failedEnvs.length === 0;
     const type = isSuccess ? 'release-completed' : 'release-failed';
-    const envSummary = release.environments
+    const envSummary = releaseEnvironments
       .map((e) => `${e.name}: ${e.status}`)
       .join(', ');
     const title = `${pipeline.name} ${release.name} ${isSuccess ? 'succeeded' : 'failed'}`;
@@ -287,7 +293,7 @@ class PipelineTrackingService {
         pipelineId: pipeline.azurePipelineId,
         releaseId: release.id,
         releaseName: release.name,
-        environments: release.environments.map((e) => ({
+        environments: releaseEnvironments.map((e) => ({
           name: e.name,
           status: e.status,
         })),
