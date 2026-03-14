@@ -156,7 +156,7 @@ export function ProjectMcpSettings({ projectId }: { projectId: string }) {
               {/* Toggles row */}
               <div className="flex flex-col gap-3">
                 {/* Active now toggle */}
-                <label className="flex cursor-pointer items-center justify-between">
+                <label className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1.5 transition-colors hover:bg-neutral-700/50">
                   <div>
                     <div className="text-sm font-medium text-neutral-300">
                       Active now
@@ -185,7 +185,7 @@ export function ProjectMcpSettings({ projectId }: { projectId: string }) {
 
                 {/* Auto-install on new worktrees toggle (only for templates) */}
                 {server.template && (
-                  <label className="flex cursor-pointer items-center justify-between">
+                  <label className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1.5 transition-colors hover:bg-neutral-700/50">
                     <div>
                       <div className="text-sm font-medium text-neutral-300">
                         Auto-install on new worktrees
