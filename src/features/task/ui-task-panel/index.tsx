@@ -1418,7 +1418,6 @@ const TaskInputFooter = memo(function TaskInputFooter({
       <ModelSelector
         value={effectiveModel}
         onChange={handleModelChange}
-        disabled={isRunning}
         models={getModelsForBackend(effectiveBackend, dynamicModels)}
       />
       <MessageInput
