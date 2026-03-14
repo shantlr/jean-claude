@@ -78,7 +78,7 @@ export function LegacySkillMigrationDialog({
         const message =
           error instanceof Error
             ? error.message
-            : 'Failed to preview legacy skills migration';
+            : 'Failed to preview manually installed skills migration';
         addToast({ message, type: 'error' });
       });
   }, [addToast, previewMutateAsync]);
@@ -169,7 +169,7 @@ export function LegacySkillMigrationDialog({
         <div className="flex items-center justify-between border-b border-neutral-700 px-4 py-3">
           <div>
             <h3 className="text-base font-semibold text-neutral-100">
-              Migrate Legacy Skills
+              Migrate Manually Installed Skills
             </h3>
             <p className="text-xs text-neutral-400">
               Move manually installed skills into Jean-Claude canonical storage.

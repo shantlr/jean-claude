@@ -165,6 +165,16 @@ export function useLegacySkillMigrationPreview() {
   });
 }
 
+export function useHasLegacySkills() {
+  return useQuery<boolean>({
+    queryKey: [...managedSkillsQueryKeys.all, 'hasLegacy'] as const,
+    queryFn: async () => {
+      const result = await api.skillManagement.migrationPreview();
+      return result.items.length > 0;
+    },
+  });
+}
+
 export function useLegacySkillMigrationExecute() {
   const queryClient = useQueryClient();
   return useMutation<

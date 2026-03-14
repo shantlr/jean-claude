@@ -8,6 +8,7 @@ import {
   useDeleteSkill,
   useDisableSkill,
   useEnableSkill,
+  useHasLegacySkills,
 } from '@/hooks/use-managed-skills';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { ManagedSkill } from '@shared/skill-types';
@@ -23,6 +24,7 @@ export function SkillsSettings() {
   const deleteSkill = useDeleteSkill();
   const disableSkill = useDisableSkill();
   const enableSkill = useEnableSkill();
+  const { data: hasLegacySkills } = useHasLegacySkills();
 
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [editingPath, setEditingPath] = useState<string | null | 'new'>(null);
@@ -142,13 +144,15 @@ export function SkillsSettings() {
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-neutral-200">Skills</h2>
           <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              onClick={() => setShowMigrationDialog(true)}
-              className="cursor-pointer rounded-lg border border-neutral-600 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:border-neutral-500 hover:bg-neutral-800"
-            >
-              Migrate Legacy Skills
-            </Button>
+            {hasLegacySkills && (
+              <Button
+                type="button"
+                onClick={() => setShowMigrationDialog(true)}
+                className="cursor-pointer rounded-lg border border-neutral-600 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:border-neutral-500 hover:bg-neutral-800"
+              >
+                Migrate Manually Installed Skills
+              </Button>
+            )}
             <Button
               type="button"
               onClick={() => setShowRegistryBrowser(true)}
