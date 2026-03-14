@@ -1588,6 +1588,93 @@ export async function getPullRequestActivityMetadata(params: {
   return { lastCommitDate, lastThreadActivityDate, activeThreadCount };
 }
 
+export async function addThreadReply(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+  threadId: number;
+  content: string;
+}): Promise<AzureDevOpsComment> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}/threads/${params.threadId}/comments?api-version=7.0`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: authHeader,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      content: params.content,
+      parentCommentId: 1,
+      commentType: 1,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to add thread reply: ${error}`);
+  }
+
+  const comment: CommentResponse = await response.json();
+
+  return {
+    id: comment.id,
+    parentCommentId: comment.parentCommentId,
+    content: comment.content,
+    commentType: mapCommentType(comment.commentType),
+    author: {
+      displayName: comment.author.displayName,
+      uniqueName: comment.author.uniqueName,
+      imageUrl: comment.author.imageUrl,
+    },
+    publishedDate: comment.publishedDate,
+    lastUpdatedDate: comment.lastUpdatedDate,
+  };
+}
+
+const THREAD_STATUS_MAP: Record<string, number> = {
+  active: 1,
+  fixed: 2,
+  wontFix: 3,
+  closed: 4,
+  byDesign: 5,
+  pending: 6,
+};
+
+export async function updateThreadStatus(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+  threadId: number;
+  status: string;
+}): Promise<void> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}/threads/${params.threadId}?api-version=7.0`;
+
+  const statusValue = THREAD_STATUS_MAP[params.status] ?? 1;
+
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Authorization: authHeader,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      status: statusValue,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to update thread status: ${error}`);
+  }
+}
+
 export async function addPullRequestFileComment(params: {
   providerId: string;
   projectId: string;

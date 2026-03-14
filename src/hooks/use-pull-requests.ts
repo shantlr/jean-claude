@@ -7,6 +7,7 @@ import {
   type AzureDevOpsCommit,
   type AzureDevOpsFileChange,
   type AzureDevOpsCommentThread,
+  type AzureDevOpsComment,
 } from '@/lib/api';
 
 import { useProject } from './use-projects';
@@ -236,6 +237,52 @@ export function useAddPullRequestFileComment(projectId: string, prId: number) {
       content: string;
     }) =>
       api.azureDevOps.addPullRequestFileComment({
+        providerId: repoInfo!.providerId,
+        projectId: repoInfo!.projectId,
+        repoId: repoInfo!.repoId,
+        pullRequestId: prId,
+        ...params,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['pull-request-threads', projectId, prId],
+      });
+    },
+  });
+}
+
+export function useAddThreadReply(projectId: string, prId: number) {
+  const queryClient = useQueryClient();
+  const repoInfo = useProjectRepoInfo(projectId);
+
+  return useMutation<
+    AzureDevOpsComment,
+    Error,
+    { threadId: number; content: string }
+  >({
+    mutationFn: (params) =>
+      api.azureDevOps.addThreadReply({
+        providerId: repoInfo!.providerId,
+        projectId: repoInfo!.projectId,
+        repoId: repoInfo!.repoId,
+        pullRequestId: prId,
+        ...params,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['pull-request-threads', projectId, prId],
+      });
+    },
+  });
+}
+
+export function useUpdateThreadStatus(projectId: string, prId: number) {
+  const queryClient = useQueryClient();
+  const repoInfo = useProjectRepoInfo(projectId);
+
+  return useMutation<void, Error, { threadId: number; status: string }>({
+    mutationFn: (params) =>
+      api.azureDevOps.updateThreadStatus({
         providerId: repoInfo!.providerId,
         projectId: repoInfo!.projectId,
         repoId: repoInfo!.repoId,

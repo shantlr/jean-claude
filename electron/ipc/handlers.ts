@@ -79,6 +79,8 @@ import {
   getPullRequestThreads,
   addPullRequestComment,
   addPullRequestFileComment,
+  addThreadReply,
+  updateThreadStatus,
   getCurrentUser,
   activateWorkItem,
   type CloneRepositoryParams,
@@ -1323,6 +1325,36 @@ export function registerIpcHandlers() {
         content: string;
       },
     ) => addPullRequestFileComment(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:addThreadReply',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        pullRequestId: number;
+        threadId: number;
+        content: string;
+      },
+    ) => addThreadReply(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:updateThreadStatus',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        pullRequestId: number;
+        threadId: number;
+        status: string;
+      },
+    ) => updateThreadStatus(params),
   );
 
   ipcMain.handle(

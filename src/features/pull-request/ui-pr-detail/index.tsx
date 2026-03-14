@@ -1,12 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import {
-  Loader2,
-  FileCode,
-  GitCommit,
-  MessageSquare,
-  FileText,
-} from 'lucide-react';
+import { Loader2, FileCode, GitCommit, FileText } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 
@@ -31,15 +25,14 @@ import {
 } from '@/hooks/use-pull-requests';
 import type { FeedItem } from '@shared/feed-types';
 
-import { PrComments } from '../ui-pr-comments';
 import { PrCommits } from '../ui-pr-commits';
 import { PrDiffView } from '../ui-pr-diff-view';
 import { PrHeader } from '../ui-pr-header';
 import { PrOverview } from '../ui-pr-overview';
 
-type Tab = 'overview' | 'files' | 'commits' | 'comments';
+type Tab = 'overview' | 'files' | 'commits';
 
-const PR_DETAIL_TABS: Tab[] = ['overview', 'files', 'commits', 'comments'];
+const PR_DETAIL_TABS: Tab[] = ['overview', 'files', 'commits'];
 
 export function PrDetail({
   projectId,
@@ -96,12 +89,6 @@ export function PrDetail({
       label: 'PR Detail Commits Tab',
       shortcut: 'cmd+shift+3',
       handler: () => setActiveTab('commits'),
-      hideInCommandPalette: true,
-    },
-    {
-      label: 'PR Detail Comments Tab',
-      shortcut: 'cmd+shift+4',
-      handler: () => setActiveTab('comments'),
       hideInCommandPalette: true,
     },
   ]);
@@ -244,15 +231,6 @@ export function PrDetail({
           label="Commits"
           count={commits.length}
         />
-        <TabButton
-          active={activeTab === 'comments'}
-          onClick={() => setActiveTab('comments')}
-          icon={<MessageSquare className="h-4 w-4" />}
-          label="Comments"
-          count={
-            threads.filter((t) => !t.isDeleted && t.comments.length > 0).length
-          }
-        />
       </div>
       <Separator />
 
@@ -261,7 +239,12 @@ export function PrDetail({
         {activeTab === 'overview' && (
           <PrOverview
             pr={pr}
+            projectId={projectId}
+            prId={prId}
             providerId={project?.repoProviderId ?? undefined}
+            threads={threads}
+            onAddComment={handleAddComment}
+            isAddingComment={addComment.isPending}
             bottomPadding={bottomPadding}
           />
         )}
@@ -329,16 +312,6 @@ export function PrDetail({
           ) : (
             <PrCommits commits={commits} bottomPadding={bottomPadding} />
           ))}
-
-        {activeTab === 'comments' && (
-          <PrComments
-            threads={threads}
-            providerId={project?.repoProviderId ?? undefined}
-            onAddComment={handleAddComment}
-            isAddingComment={addComment.isPending}
-            bottomPadding={bottomPadding}
-          />
-        )}
       </div>
     </div>
   );

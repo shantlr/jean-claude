@@ -271,6 +271,22 @@ contextBridge.exposeInMainWorld('api', {
       lineEnd?: number;
       content: string;
     }) => ipcRenderer.invoke('azureDevOps:addPullRequestFileComment', params),
+    addThreadReply: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      threadId: number;
+      content: string;
+    }) => ipcRenderer.invoke('azureDevOps:addThreadReply', params),
+    updateThreadStatus: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      threadId: number;
+      status: string;
+    }) => ipcRenderer.invoke('azureDevOps:updateThreadStatus', params),
     fetchImageAsBase64: (params: { providerId: string; imageUrl: string }) =>
       ipcRenderer.invoke('azureDevOps:fetchImageAsBase64', params),
   },

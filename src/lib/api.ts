@@ -11,6 +11,7 @@ import type {
   AzureDevOpsCommit,
   AzureDevOpsFileChange,
   AzureDevOpsCommentThread,
+  AzureDevOpsComment,
 } from '@shared/azure-devops-types';
 import type { FeedItem, FeedNote, ProjectPriority } from '@shared/feed-types';
 import type {
@@ -75,6 +76,7 @@ export type {
   AzureDevOpsCommit,
   AzureDevOpsFileChange,
   AzureDevOpsCommentThread,
+  AzureDevOpsComment,
 };
 
 export interface PackageJson {
@@ -538,6 +540,22 @@ export interface Api {
       lineEnd?: number;
       content: string;
     }) => Promise<AzureDevOpsCommentThread>;
+    addThreadReply: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      threadId: number;
+      content: string;
+    }) => Promise<AzureDevOpsComment>;
+    updateThreadStatus: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      threadId: number;
+      status: string;
+    }) => Promise<void>;
     fetchImageAsBase64: (params: {
       providerId: string;
       imageUrl: string;
@@ -995,6 +1013,12 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         addPullRequestFileComment: async () => {
+          throw new Error('API not available');
+        },
+        addThreadReply: async () => {
+          throw new Error('API not available');
+        },
+        updateThreadStatus: async () => {
           throw new Error('API not available');
         },
         fetchImageAsBase64: async () => null,
