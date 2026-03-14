@@ -154,6 +154,7 @@ export function Header() {
             <Loader2 className="h-3.5 w-3.5" />
           )}
           <span>Jobs</span>
+          <Kbd shortcut="cmd+j" className="text-[9px]" />
           {runningJobsCount > 0 && (
             <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] leading-none text-white shadow-[0_0_6px_rgba(59,130,246,0.4)]">
               {runningJobsCount}

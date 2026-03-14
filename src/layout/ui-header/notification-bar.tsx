@@ -2,6 +2,7 @@ import { Bell } from 'lucide-react';
 import { useEffect } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { Kbd } from '@/common/ui/kbd';
 import {
   initNotificationsStore,
   useNotificationsStore,
@@ -34,6 +35,7 @@ export function NotificationBar() {
       {latestNotification && (
         <span className="truncate text-xs">{latestNotification.title}</span>
       )}
+      <Kbd shortcut="cmd+shift+j" className="shrink-0 text-[9px]" />
     </Button>
   );
 }

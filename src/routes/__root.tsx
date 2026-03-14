@@ -222,7 +222,19 @@ function NotificationCenterContainer() {
   const isOpen = useOverlaysStore(
     (s) => s.activeOverlay === 'notification-center',
   );
+  const toggle = useOverlaysStore((s) => s.toggle);
   const close = useOverlaysStore((s) => s.close);
+
+  useCommands('notification-center-trigger', [
+    {
+      shortcut: 'cmd+shift+j',
+      label: 'Open Notification Center',
+      section: 'General',
+      handler: () => {
+        toggle('notification-center');
+      },
+    },
+  ]);
 
   if (!isOpen) return null;
   return (
