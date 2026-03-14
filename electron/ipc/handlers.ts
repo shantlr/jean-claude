@@ -2674,6 +2674,16 @@ export function registerIpcHandlers() {
       enabled: row.enabled === 1,
     }));
   });
+
+  // ─── System ───────────────────────────────────────────────────────
+
+  ipcMain.handle('system:getMemoryUsage', async () => {
+    const mem = process.memoryUsage();
+    return {
+      heapUsedBytes: mem.heapUsed,
+      rssBytes: mem.rss,
+    };
+  });
 }
 
 function safeJsonParse(value: string | null): Record<string, unknown> | null {

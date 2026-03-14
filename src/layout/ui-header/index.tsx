@@ -17,6 +17,7 @@ import { useOverlaysStore } from '@/stores/overlays';
 
 import { CompletionCostDisplay } from './completion-cost-display';
 import { NotificationBar } from './notification-bar';
+import { RamUsageDisplay } from './ram-usage-display';
 import { UsageDisplay } from './usage-display';
 
 export function Header() {
@@ -126,6 +127,7 @@ export function Header() {
         style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
       >
         <NotificationBar />
+        <RamUsageDisplay />
         <CompletionCostDisplay />
         <UsageDisplay />
       </div>

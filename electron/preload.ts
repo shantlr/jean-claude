@@ -609,5 +609,8 @@ contextBridge.exposeInMainWorld('api', {
     deleteNote: (params: { id: string }) =>
       ipcRenderer.invoke('feed:deleteNote', params),
   },
+  system: {
+    getMemoryUsage: () => ipcRenderer.invoke('system:getMemoryUsage'),
+  },
 });
 console.log('Preload script loaded');

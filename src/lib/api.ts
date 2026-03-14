@@ -842,6 +842,9 @@ export interface Api {
     }) => Promise<FeedNote>;
     deleteNote: (params: { id: string }) => Promise<void>;
   };
+  system: {
+    getMemoryUsage: () => Promise<{ heapUsedBytes: number; rssBytes: number }>;
+  };
 }
 
 declare global {
@@ -1266,5 +1269,8 @@ export const api: Api = hasWindowApi
           updatedAt: '',
         }),
         deleteNote: async () => {},
+      },
+      system: {
+        getMemoryUsage: async () => ({ heapUsedBytes: 0, rssBytes: 0 }),
       },
     } as Api);
