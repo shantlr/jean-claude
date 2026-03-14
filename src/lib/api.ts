@@ -31,6 +31,8 @@ import type {
   NormalizedEntry,
   NormalizedPermissionRequest,
 } from '@shared/normalized-message-v2';
+import type { AppNotification } from '@shared/notification-types';
+import type { TrackedPipeline } from '@shared/pipeline-types';
 import type {
   ProjectCommand,
   NewProjectCommand,
@@ -819,6 +821,17 @@ export interface Api {
       repoId: string;
     }) => Promise<void>;
   };
+  notifications: {
+    list: () => Promise<AppNotification[]>;
+    markRead: (id: string | 'all') => Promise<void>;
+    delete: (id: string) => Promise<void>;
+    onNew: (callback: (notification: AppNotification) => void) => () => void;
+  };
+  trackedPipelines: {
+    list: (projectId: string) => Promise<TrackedPipeline[]>;
+    toggle: (id: string, enabled: boolean) => Promise<void>;
+    discover: (projectId: string) => Promise<TrackedPipeline[]>;
+  };
   feed: {
     getItems: () => Promise<FeedItem[]>;
     createNote: (params: { content: string }) => Promise<FeedNote>;
@@ -1222,6 +1235,17 @@ export const api: Api = hasWindowApi
       },
       prSnapshots: {
         record: async () => {},
+      },
+      notifications: {
+        list: async () => [],
+        markRead: async () => {},
+        delete: async () => {},
+        onNew: () => () => {},
+      },
+      trackedPipelines: {
+        list: async () => [],
+        toggle: async () => {},
+        discover: async () => [],
       },
       feed: {
         getItems: async () => [],

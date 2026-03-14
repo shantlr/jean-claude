@@ -15,6 +15,7 @@ import { useCurrentVisibleProject } from '@/stores/navigation';
 import { useOverlaysStore } from '@/stores/overlays';
 
 import { CompletionCostDisplay } from './completion-cost-display';
+import { NotificationBar } from './notification-bar';
 import { UsageDisplay } from './usage-display';
 
 export function Header() {
@@ -118,11 +119,12 @@ export function Header() {
         )}
       </div>
 
-      {/* Usage display */}
+      {/* Notification bar + Usage display */}
       <div
         className="flex items-center gap-1 px-4"
         style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
       >
+        <NotificationBar />
         <CompletionCostDisplay />
         <UsageDisplay />
       </div>

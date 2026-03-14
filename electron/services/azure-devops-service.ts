@@ -11,6 +11,12 @@ import type {
   AzureDevOpsComment,
   ReviewerVoteStatus,
 } from '@shared/azure-devops-types';
+import type {
+  AzureBuildDefinition,
+  AzureReleaseDefinition,
+  AzureBuildRun,
+  AzureRelease,
+} from '@shared/pipeline-types';
 
 import { ProviderRepository } from '../database/repositories/providers';
 import { TokenRepository } from '../database/repositories/tokens';
@@ -1742,4 +1748,102 @@ export async function addPullRequestFileComment(params: {
     })),
     isDeleted: thread.isDeleted,
   };
+}
+
+// ─── Pipeline & Release Tracking APIs ────────────────────────────────
+
+const PIPELINE_API_TIMEOUT_MS = 15_000;
+
+export async function listBuildDefinitions(params: {
+  providerId: string;
+  projectId: string;
+}): Promise<AzureBuildDefinition[]> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/build/definitions?api-version=7.0`;
+
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader },
+    signal: AbortSignal.timeout(PIPELINE_API_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to list build definitions: ${error}`);
+  }
+
+  const data: { value: AzureBuildDefinition[] } = await response.json();
+  return data.value;
+}
+
+export async function listReleaseDefinitions(params: {
+  providerId: string;
+  projectId: string;
+}): Promise<AzureReleaseDefinition[]> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+  const url = `https://vsrm.dev.azure.com/${orgName}/${params.projectId}/_apis/release/definitions?api-version=7.0`;
+
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader },
+    signal: AbortSignal.timeout(PIPELINE_API_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to list release definitions: ${error}`);
+  }
+
+  const data: { value: AzureReleaseDefinition[] } = await response.json();
+  return data.value;
+}
+
+export async function listBuilds(params: {
+  providerId: string;
+  projectId: string;
+  definitionId: number;
+  minId?: number;
+}): Promise<AzureBuildRun[]> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+  let url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/build/builds?definitions=${params.definitionId}&$top=50&api-version=7.0`;
+  if (params.minId) {
+    url += `&minId=${params.minId}`;
+  }
+
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader },
+    signal: AbortSignal.timeout(PIPELINE_API_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to list builds: ${error}`);
+  }
+
+  const data: { value: AzureBuildRun[] } = await response.json();
+  return data.value;
+}
+
+export async function listReleases(params: {
+  providerId: string;
+  projectId: string;
+  definitionId: number;
+  minCreatedTime?: string;
+}): Promise<AzureRelease[]> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+  let url = `https://vsrm.dev.azure.com/${orgName}/${params.projectId}/_apis/release/releases?definitionId=${params.definitionId}&$top=50&api-version=7.0`;
+  if (params.minCreatedTime) {
+    url += `&minCreatedTime=${encodeURIComponent(params.minCreatedTime)}`;
+  }
+
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader },
+    signal: AbortSignal.timeout(PIPELINE_API_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to list releases: ${error}`);
+  }
+
+  const data: { value: AzureRelease[] } = await response.json();
+  return data.value;
 }

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, type ReactElement } from 'react';
 
 import { AVAILABLE_BACKENDS } from '@/features/agent/ui-backend-selector';
 import { ProjectMcpSettings } from '@/features/project/ui-project-mcp-settings';
+import { ProjectPipelineSettings } from '@/features/project/ui-project-pipeline-settings';
 import { ProjectSkillsSettings } from '@/features/project/ui-project-skills-settings';
 import { RepoLink } from '@/features/project/ui-repo-link';
 import { RunCommandsConfig } from '@/features/project/ui-run-commands-config';
@@ -25,6 +26,7 @@ export type ProjectSettingsMenuItem =
   | 'details'
   | 'autocomplete'
   | 'integrations'
+  | 'pipelines'
   | 'run-commands'
   | 'skills'
   | 'mcp-overrides'
@@ -357,6 +359,9 @@ export function ProjectSettings({
           <WorkItemsLink project={project} />
         </div>
       );
+      break;
+    case 'pipelines':
+      content = <ProjectPipelineSettings projectId={projectId} />;
       break;
     case 'run-commands':
       content = (

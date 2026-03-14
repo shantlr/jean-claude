@@ -13,6 +13,7 @@ import { TaskMessageManager } from '@/features/agent/task-message-manager';
 import { BackgroundJobsOverlay } from '@/features/background-jobs/ui-background-jobs-overlay';
 import { CommandPaletteOverlay } from '@/features/command-palette/ui-command-palette-overlay';
 import { NewTaskOverlay } from '@/features/new-task/ui-new-task-overlay';
+import { NotificationCenterOverlay } from '@/features/notifications/ui-notification-center';
 import { BacklogOverlay } from '@/features/project/ui-backlog-overlay';
 import { ProjectOverlay } from '@/features/project/ui-project-overlay';
 import { SettingsOverlay } from '@/features/settings/ui-settings-overlay';
@@ -219,6 +220,18 @@ function ProjectBacklogContainer() {
   );
 }
 
+function NotificationCenterContainer() {
+  const isOpen = useOverlaysStore(
+    (s) => s.activeOverlay === 'notification-center',
+  );
+  const close = useOverlaysStore((s) => s.close);
+
+  if (!isOpen) return null;
+  return (
+    <NotificationCenterOverlay onClose={() => close('notification-center')} />
+  );
+}
+
 function RootLayout() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-neutral-900 text-white">
@@ -234,6 +247,7 @@ function RootLayout() {
       <ProjectBacklogContainer />
       <BackgroundJobsContainer />
       <SettingsContainer />
+      <NotificationCenterContainer />
 
       <div className="flex h-full w-full flex-1 flex-col overflow-hidden">
         <Header />

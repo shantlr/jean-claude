@@ -10,7 +10,8 @@ export type OverlayType =
   | 'keyboard-help'
   | 'background-jobs'
   | 'settings'
-  | 'project-backlog';
+  | 'project-backlog'
+  | 'notification-center';
 
 interface OverlaysState {
   // Current active overlay (null = none open)

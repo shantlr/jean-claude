@@ -46,6 +46,7 @@ const PROJECT_MENU_ITEMS: { id: ProjectSettingsMenuItem; label: string }[] = [
   { id: 'details', label: 'Details' },
   { id: 'autocomplete', label: 'Autocomplete' },
   { id: 'integrations', label: 'Integrations' },
+  { id: 'pipelines', label: 'Pipelines' },
   { id: 'run-commands', label: 'Run Commands' },
   { id: 'skills', label: 'Skills' },
   { id: 'mcp-overrides', label: 'MCP Overrides' },

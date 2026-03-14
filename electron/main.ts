@@ -11,6 +11,7 @@ import {
   decodeProxyUrl,
   fetchAuthenticatedImageStream,
 } from './services/azure-image-proxy-service';
+import { pipelineTrackingService } from './services/pipeline-tracking-service';
 import { runCommandService } from './services/run-command-service';
 
 // Register custom protocol scheme before app is ready
@@ -116,6 +117,8 @@ app.whenReady().then(async () => {
   await migrateDatabase();
   dbg.main('Database migrations complete');
 
+  pipelineTrackingService.start();
+
   dbg.main('Registering IPC handlers...');
   registerIpcHandlers();
   dbg.main('IPC handlers registered');
@@ -138,6 +141,7 @@ app.whenReady().then(async () => {
 
 app.on('before-quit', async () => {
   dbg.main('App quitting, stopping all commands...');
+  pipelineTrackingService.stop();
   await runCommandService.stopAllCommands();
   dbg.main('All commands stopped');
 });

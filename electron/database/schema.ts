@@ -43,6 +43,8 @@ export interface Database {
   completion_usage: CompletionUsageTable;
   feed_notes: FeedNoteTable;
   pr_view_snapshots: PrViewSnapshotTable;
+  notifications: NotificationTable;
+  tracked_pipelines: TrackedPipelineTable;
 }
 
 export interface TokenTable {
@@ -301,3 +303,34 @@ export interface PrViewSnapshotTable {
 }
 
 export type PrViewSnapshotRow = Selectable<PrViewSnapshotTable>;
+
+export interface NotificationTable {
+  id: Generated<string>;
+  projectId: string | null;
+  type: string;
+  title: string;
+  body: string;
+  sourceUrl: string | null;
+  read: number;
+  meta: string | null;
+  createdAt: Generated<string>;
+}
+
+export type NotificationRow = Selectable<NotificationTable>;
+export type NewNotificationRow = Insertable<NotificationTable>;
+export type UpdateNotificationRow = Updateable<NotificationTable>;
+
+export interface TrackedPipelineTable {
+  id: Generated<string>;
+  projectId: string;
+  azurePipelineId: number;
+  kind: string;
+  name: string;
+  enabled: number;
+  lastCheckedRunId: number | null;
+  createdAt: Generated<string>;
+}
+
+export type TrackedPipelineRow = Selectable<TrackedPipelineTable>;
+export type NewTrackedPipelineRow = Insertable<TrackedPipelineTable>;
+export type UpdateTrackedPipelineRow = Updateable<TrackedPipelineTable>;

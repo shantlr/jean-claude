@@ -22,6 +22,8 @@ const ALL_TABLES: Record<TableName, true> = {
   completion_usage: true,
   feed_notes: true,
   pr_view_snapshots: true,
+  notifications: true,
+  tracked_pipelines: true,
 };
 
 const ALLOWED_TABLES = Object.keys(ALL_TABLES) as TableName[];

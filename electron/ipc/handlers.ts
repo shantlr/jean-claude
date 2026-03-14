@@ -47,9 +47,11 @@ import {
   ProjectTodoRepository,
 } from '../database/repositories';
 import { McpTemplateRepository } from '../database/repositories/mcp-templates';
+import { NotificationRepository } from '../database/repositories/notifications';
 import { ProjectCommandRepository } from '../database/repositories/project-commands';
 import { ProjectMcpOverrideRepository } from '../database/repositories/project-mcp-overrides';
 import { TaskStepRepository } from '../database/repositories/task-steps';
+import { TrackedPipelineRepository } from '../database/repositories/tracked-pipelines';
 import {
   NewProject,
   NewTask,
@@ -113,6 +115,7 @@ import {
   buildAllowedToolConfig,
   normalizeToolRequest,
 } from '../services/permission-settings-service';
+import { pipelineTrackingService } from '../services/pipeline-tracking-service';
 import { detectProjects } from '../services/project-detection-service';
 import { projectFileIndexService } from '../services/project-file-index-service';
 import { runCommandService } from '../services/run-command-service';
@@ -2623,6 +2626,63 @@ export function registerIpcHandlers() {
       });
     },
   );
+
+  // ─── Notifications ────────────────────────────────────────────────
+
+  ipcMain.handle('notifications:list', async () => {
+    const rows = await NotificationRepository.findAll();
+    return rows.map((row) => ({
+      ...row,
+      read: row.read === 1,
+      meta: safeJsonParse(row.meta),
+    }));
+  });
+
+  ipcMain.handle('notifications:markRead', async (_, id: string | 'all') => {
+    if (id === 'all') {
+      await NotificationRepository.markAllAsRead();
+    } else {
+      await NotificationRepository.markAsRead(id);
+    }
+  });
+
+  ipcMain.handle('notifications:delete', async (_, id: string) => {
+    await NotificationRepository.deleteById(id);
+  });
+
+  // ─── Tracked Pipelines ────────────────────────────────────────────
+
+  ipcMain.handle('tracked-pipelines:list', async (_, projectId: string) => {
+    const rows = await TrackedPipelineRepository.findByProject(projectId);
+    return rows.map((row) => ({
+      ...row,
+      enabled: row.enabled === 1,
+    }));
+  });
+
+  ipcMain.handle(
+    'tracked-pipelines:toggle',
+    async (_, id: string, enabled: boolean) => {
+      await TrackedPipelineRepository.toggleEnabled(id, enabled);
+    },
+  );
+
+  ipcMain.handle('tracked-pipelines:discover', async (_, projectId: string) => {
+    const rows = await pipelineTrackingService.discoverPipelines(projectId);
+    return rows.map((row) => ({
+      ...row,
+      enabled: row.enabled === 1,
+    }));
+  });
+}
+
+function safeJsonParse(value: string | null): Record<string, unknown> | null {
+  if (!value) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
 }
 
 function validateFeedNoteId(id: string): string {

@@ -5,6 +5,7 @@ import type {
   GlobalPrompt,
   GlobalPromptResponse,
 } from '@shared/global-prompt-types';
+import type { AppNotification } from '@shared/notification-types';
 
 contextBridge.exposeInMainWorld('api', {
   platform: process.platform,
@@ -575,6 +576,26 @@ contextBridge.exposeInMainWorld('api', {
       repoProjectId: string;
       repoId: string;
     }) => ipcRenderer.invoke('pr-snapshots:record', params),
+  },
+  notifications: {
+    list: () => ipcRenderer.invoke('notifications:list'),
+    markRead: (id: string | 'all') =>
+      ipcRenderer.invoke('notifications:markRead', id),
+    delete: (id: string) => ipcRenderer.invoke('notifications:delete', id),
+    onNew: (callback: (notification: AppNotification) => void) => {
+      const handler = (_: unknown, notification: AppNotification) =>
+        callback(notification);
+      ipcRenderer.on('notifications:new', handler);
+      return () => ipcRenderer.removeListener('notifications:new', handler);
+    },
+  },
+  trackedPipelines: {
+    list: (projectId: string) =>
+      ipcRenderer.invoke('tracked-pipelines:list', projectId),
+    toggle: (id: string, enabled: boolean) =>
+      ipcRenderer.invoke('tracked-pipelines:toggle', id, enabled),
+    discover: (projectId: string) =>
+      ipcRenderer.invoke('tracked-pipelines:discover', projectId),
   },
   feed: {
     getItems: () => ipcRenderer.invoke('feed:getItems'),
