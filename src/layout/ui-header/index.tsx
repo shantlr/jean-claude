@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 
 import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
+import { useBacklogProjectId } from '@/hooks/use-backlog-project-id';
 import { useProjectTodoCount } from '@/hooks/use-project-todos';
 import { useProjects } from '@/hooks/use-projects';
 import { api } from '@/lib/api';
@@ -25,7 +26,7 @@ export function Header() {
   const { data: projects = [] } = useProjects();
   const openOverlay = useOverlaysStore((state) => state.open);
   const jobs = useBackgroundJobsStore((state) => state.jobs);
-  const backlogProjectId = projectId !== 'all' ? projectId : undefined;
+  const backlogProjectId = useBacklogProjectId();
   const { data: todoCount } = useProjectTodoCount(backlogProjectId);
 
   const runningJobsCount = useMemo(() => getRunningJobsCount(jobs), [jobs]);

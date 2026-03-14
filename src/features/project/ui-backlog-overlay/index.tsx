@@ -7,13 +7,20 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
 import { useModal } from '@/common/context/modal';
 import { useCommands } from '@/common/hooks/use-commands';
 import { Dropdown, DropdownItem } from '@/common/ui/dropdown';
 import { Kbd } from '@/common/ui/kbd';
+import { Select } from '@/common/ui/select';
 import {
   useProjectTodos,
   useCreateProjectTodo,
@@ -21,6 +28,7 @@ import {
   useDeleteProjectTodo,
   useReorderProjectTodos,
 } from '@/hooks/use-project-todos';
+import { useProjects } from '@/hooks/use-projects';
 import { useBackgroundNewTaskJobForBacklogItem } from '@/stores/background-jobs';
 import { useNewTaskDraftStore } from '@/stores/new-task-draft';
 import { useOverlaysStore } from '@/stores/overlays';
@@ -169,12 +177,33 @@ function BacklogTodoRow({
 }
 
 export function BacklogOverlay({
-  projectId,
+  initialProjectId,
   onClose,
 }: {
-  projectId: string;
+  initialProjectId: string;
   onClose: () => void;
 }) {
+  const [projectId, setProjectId] = useState(initialProjectId);
+  const { data: projects = [] } = useProjects();
+
+  const projectOptions = useMemo(
+    () => projects.map((p) => ({ value: p.id, label: p.name })),
+    [projects],
+  );
+
+  const handleProjectChange = useCallback(
+    (nextProjectId: string) => {
+      setProjectId(nextProjectId);
+      setSelectedIndex(-1);
+      setInputValue('');
+      // Re-focus input after project switch
+      requestAnimationFrame(() => inputRef.current?.focus());
+    },
+    // setSelectedIndex and setInputValue are stable setState dispatchers
+
+    [],
+  );
+
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
@@ -500,6 +529,17 @@ export function BacklogOverlay({
         className="flex max-h-[60svh] w-[90svw] max-w-[720px] flex-col overflow-hidden rounded-lg border border-neutral-700 bg-neutral-800 shadow-2xl"
         onClick={handleModalClick}
       >
+        {/* Project selector header */}
+        <div className="flex items-center border-b border-neutral-700 px-4 py-2">
+          <Select
+            value={projectId}
+            options={projectOptions}
+            onChange={handleProjectChange}
+            label="Project"
+            className="border-none bg-transparent px-1 py-0.5 text-neutral-300 hover:border-none hover:bg-neutral-700"
+          />
+        </div>
+
         {/* Quick-add input */}
         <div className="flex items-center border-b border-neutral-700 px-4 py-3">
           <textarea

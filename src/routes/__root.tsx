@@ -17,10 +17,10 @@ import { NotificationCenterOverlay } from '@/features/notifications/ui-notificat
 import { BacklogOverlay } from '@/features/project/ui-backlog-overlay';
 import { ProjectOverlay } from '@/features/project/ui-project-overlay';
 import { SettingsOverlay } from '@/features/settings/ui-settings-overlay';
+import { useBacklogProjectId } from '@/hooks/use-backlog-project-id';
 import { Header } from '@/layout/ui-header';
 import { MainSidebar } from '@/layout/ui-main-sidebar';
 import { resolveLastLocationRedirect } from '@/lib/navigation';
-import { useNavigationStore } from '@/stores/navigation';
 import { useCurrentVisibleProject } from '@/stores/navigation';
 import { useNewTaskDraft } from '@/stores/new-task-draft';
 import { useOverlaysStore } from '@/stores/overlays';
@@ -194,9 +194,7 @@ function ProjectBacklogContainer() {
   const isOpen = useOverlaysStore((s) => s.activeOverlay === 'project-backlog');
   const toggle = useOverlaysStore((s) => s.toggle);
   const close = useOverlaysStore((s) => s.close);
-  const lastLocation = useNavigationStore((s) => s.lastLocation);
-  const projectId =
-    lastLocation.type === 'project' ? lastLocation.projectId : undefined;
+  const projectId = useBacklogProjectId();
 
   useCommands('project-backlog-trigger', [
     {
@@ -214,7 +212,7 @@ function ProjectBacklogContainer() {
   if (!isOpen || !projectId) return null;
   return (
     <BacklogOverlay
-      projectId={projectId}
+      initialProjectId={projectId}
       onClose={() => close('project-backlog')}
     />
   );
