@@ -6,6 +6,7 @@ import {
   GitPullRequest,
   GitMerge,
   Loader2,
+  Plus,
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
@@ -18,6 +19,7 @@ import type { AzureDevOpsPullRequestDetails } from '@/lib/api';
 import { encodeProxyUrl } from '@/lib/azure-image-proxy';
 import { formatRelativeTime } from '@/lib/time';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
+import { useNewTaskFormStore } from '@/stores/new-task-form';
 
 function getStatusBadge(
   status: AzureDevOpsPullRequestDetails['status'],
@@ -72,8 +74,11 @@ export function PrHeader({
   const addRunningJob = useBackgroundJobsStore((s) => s.addRunningJob);
   const markJobSucceeded = useBackgroundJobsStore((s) => s.markJobSucceeded);
   const markJobFailed = useBackgroundJobsStore((s) => s.markJobFailed);
+  const { setDraft: setNewTaskDraft } = useNewTaskFormStore(projectId);
   const { data: editorSetting } = useEditorSetting();
   const [isCreating, setIsCreating] = useState(false);
+  const sourceBranch = getBranchName(pr.sourceRefName);
+  const targetBranch = getBranchName(pr.targetRefName);
 
   const handleOpenInEditor = useCallback(() => {
     if (project?.path) {
@@ -116,6 +121,19 @@ export function PrHeader({
     markJobFailed,
   ]);
 
+  const handleCreateTaskFromPrBranch = useCallback(() => {
+    setNewTaskDraft({
+      useWorktree: true,
+      sourceBranch,
+      prompt: `Review PR #${pr.id}: ${pr.title}`,
+    });
+
+    void navigate({
+      to: '/projects/$projectId/tasks/new',
+      params: { projectId },
+    });
+  }, [navigate, pr.id, pr.title, projectId, setNewTaskDraft, sourceBranch]);
+
   // Filter out group reviewers (isContainer) - only show individual users
   const reviewers = pr.reviewers.filter((r) => !r.isContainer);
 
@@ -151,6 +169,13 @@ export function PrHeader({
                 {getStatusBadge(pr.status, pr.isDraft)}
               </div>
               <div className="grow" />
+              <button
+                onClick={handleCreateTaskFromPrBranch}
+                className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-500"
+              >
+                <Plus className="h-4 w-4" />
+                New Task
+              </button>
               {pr.status === 'active' && (
                 <button
                   onClick={handleReview}
@@ -197,13 +222,9 @@ export function PrHeader({
                 <span>{pr.createdBy.displayName}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="font-mono text-blue-400">
-                  {getBranchName(pr.sourceRefName)}
-                </span>
+                <span className="font-mono text-blue-400">{sourceBranch}</span>
                 <span className="text-neutral-500">→</span>
-                <span className="font-mono text-green-400">
-                  {getBranchName(pr.targetRefName)}
-                </span>
+                <span className="font-mono text-green-400">{targetBranch}</span>
               </div>
               <div className="grow">{formatRelativeTime(pr.creationDate)}</div>
 
