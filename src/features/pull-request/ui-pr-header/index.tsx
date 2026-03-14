@@ -124,6 +124,27 @@ export function PrHeader({
       <div className="p-2">
         <div className="flex items-start justify-between">
           <div className="min-w-0 flex-1">
+            {project && (
+              <div className="mb-1 flex items-center gap-1.5 text-xs text-neutral-500">
+                <span className="font-medium text-neutral-400">
+                  {project.name}
+                </span>
+                {project.repoProjectName && (
+                  <>
+                    <span>·</span>
+                    <span>
+                      {project.repoProjectName}
+                      {project.repoName && (
+                        <span className="text-neutral-600">
+                          {' / '}
+                          {project.repoName}
+                        </span>
+                      )}
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <span className="text-neutral-500">#{pr.id}</span>
               <div className="flex">
