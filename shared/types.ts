@@ -183,6 +183,7 @@ export interface Project {
   workItemProjectId: string | null;
   workItemProjectName: string | null;
   showWorkItemsInFeed: boolean;
+  showPrsInFeed: boolean;
   defaultAgentBackend: AgentBackendType | null; // null = use global default
   completionContext: string | null;
   priority: ProjectPriority;
@@ -209,6 +210,7 @@ export interface NewProject {
   workItemProjectId?: string | null;
   workItemProjectName?: string | null;
   showWorkItemsInFeed?: boolean;
+  showPrsInFeed?: boolean;
   defaultAgentBackend?: AgentBackendType | null;
   completionContext?: string | null;
   priority?: ProjectPriority;
@@ -235,6 +237,7 @@ export interface UpdateProject {
   workItemProjectId?: string | null;
   workItemProjectName?: string | null;
   showWorkItemsInFeed?: boolean;
+  showPrsInFeed?: boolean;
   defaultAgentBackend?: AgentBackendType | null;
   completionContext?: string | null;
   priority?: ProjectPriority;

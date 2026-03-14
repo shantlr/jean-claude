@@ -96,6 +96,14 @@ import {
   getDailyUsage as getCompletionDailyUsage,
 } from '../services/completion-service';
 import {
+  createFeedNote,
+  deleteFeedNote,
+  getFeedItems,
+  invalidatePrCache,
+  invalidateWorkItemCache,
+  updateFeedNote,
+} from '../services/feed-service';
+import {
   handlePromptResponse,
   sendGlobalPromptToWindow,
 } from '../services/global-prompt-service';
@@ -189,9 +197,10 @@ export function registerIpcHandlers() {
       dbg.ipc('projects:update %s %o', id, data);
       const result = await ProjectRepository.update(id, data);
       if (data.showWorkItemsInFeed !== undefined) {
-        const { invalidateWorkItemCache } =
-          await import('../services/feed-service');
         invalidateWorkItemCache();
+      }
+      if (data.showPrsInFeed !== undefined) {
+        invalidatePrCache();
       }
       return result;
     },
@@ -2566,7 +2575,6 @@ export function registerIpcHandlers() {
 
   // Feed
   ipcMain.handle('feed:getItems', async () => {
-    const { getFeedItems } = await import('../services/feed-service');
     return getFeedItems();
   });
 
@@ -2574,7 +2582,6 @@ export function registerIpcHandlers() {
     'feed:createNote',
     async (_event, params: { content: string }) => {
       const content = validateFeedNoteContent(params.content);
-      const { createFeedNote } = await import('../services/feed-service');
       return createFeedNote({ content });
     },
   );
@@ -2591,14 +2598,12 @@ export function registerIpcHandlers() {
           ? undefined
           : validateFeedNoteContent(params.content);
       const completedAt = validateFeedNoteCompletedAt(params.completedAt);
-      const { updateFeedNote } = await import('../services/feed-service');
       return updateFeedNote({ id, content, completedAt });
     },
   );
 
   ipcMain.handle('feed:deleteNote', async (_event, params: { id: string }) => {
     const id = validateFeedNoteId(params.id);
-    const { deleteFeedNote } = await import('../services/feed-service');
     return deleteFeedNote({ id });
   });
 

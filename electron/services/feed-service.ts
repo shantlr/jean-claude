@@ -37,6 +37,11 @@ let activityCache: {
 let workItemCache: { items: FeedItem[]; fetchedAt: number } | null = null;
 const WORK_ITEM_CACHE_TTL_MS = 3 * 60 * 1000;
 
+export function invalidatePrCache(): void {
+  prCache = null;
+  activityCache = null;
+}
+
 export function invalidateWorkItemCache(): void {
   workItemCache = null;
 }
@@ -280,7 +285,7 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
   dbg.feed('fetchPrFeedItems: fetching from Azure DevOps');
   const projects = await ProjectRepository.findAll();
   const repoProjects = projects.filter(
-    (p) => p.repoProviderId && p.repoProjectId && p.repoId,
+    (p) => p.repoProviderId && p.repoProjectId && p.repoId && p.showPrsInFeed,
   );
 
   const providerUserEmailMap = new Map<string, string>();

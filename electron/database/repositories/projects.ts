@@ -23,7 +23,7 @@ export const ProjectRepository = {
 
     const nextSortOrder = ((result?.maxOrder as number | null) ?? -1) + 1;
 
-    const { showWorkItemsInFeed, ...rest } = data;
+    const { showWorkItemsInFeed, showPrsInFeed, ...rest } = data;
     const row = await db
       .insertInto('projects')
       .values({
@@ -31,6 +31,7 @@ export const ProjectRepository = {
         sortOrder: data.sortOrder ?? nextSortOrder,
         priority: data.priority ?? 'normal',
         showWorkItemsInFeed: showWorkItemsInFeed === false ? 0 : 1,
+        showPrsInFeed: showPrsInFeed === false ? 0 : 1,
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -40,13 +41,16 @@ export const ProjectRepository = {
 
   update: (id: string, data: UpdateProject) => {
     dbg.db('projects.update id=%s %o', id, Object.keys(data));
-    const { showWorkItemsInFeed, ...rest } = data;
+    const { showWorkItemsInFeed, showPrsInFeed, ...rest } = data;
     return db
       .updateTable('projects')
       .set({
         ...rest,
         ...(showWorkItemsInFeed !== undefined && {
           showWorkItemsInFeed: showWorkItemsInFeed ? 1 : 0,
+        }),
+        ...(showPrsInFeed !== undefined && {
+          showPrsInFeed: showPrsInFeed ? 1 : 0,
         }),
         updatedAt: new Date().toISOString(),
       })
