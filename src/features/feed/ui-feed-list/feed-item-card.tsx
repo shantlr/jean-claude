@@ -123,7 +123,7 @@ function borderClasses({
       case 'has-question':
         return 'border border-amber-500/60 bg-neutral-800 shadow-sm';
       case 'running':
-        return 'border border-blue-500/60 bg-neutral-800 shadow-sm';
+        return 'running-border-selected';
       case 'completed':
         return 'border border-neutral-500/60 bg-neutral-700/80 shadow-sm';
       case 'interrupted':
@@ -147,7 +147,7 @@ function borderClasses({
     case 'has-question':
       return 'border border-amber-500/30 hover:border-amber-500/50';
     case 'running':
-      return 'border border-blue-500/20 bg-neutral-900 hover:border-blue-500/40';
+      return 'running-border';
     default:
       return 'border border-transparent';
   }
