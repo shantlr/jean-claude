@@ -1,5 +1,11 @@
 import clsx from 'clsx';
-import { MessageSquare, FileCode, ChevronDown, Send } from 'lucide-react';
+import {
+  ChevronDown,
+  Send,
+  MessageCircle,
+  CheckCircle2,
+  ChevronRight,
+} from 'lucide-react';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
 
@@ -17,6 +23,8 @@ import { encodeProxyUrl } from '@/lib/azure-image-proxy';
 import { formatRelativeTime } from '@/lib/time';
 
 type ThreadStatus = AzureDevOpsCommentThread['status'];
+
+const ACTIVE_STATUSES = new Set<ThreadStatus>(['active', 'pending', 'unknown']);
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   active: { label: 'Active', color: 'bg-blue-900/50 text-blue-400' },
@@ -51,14 +59,30 @@ export function PrComments({
   projectId: string;
   prId: number;
 }) {
+  const [showResolved, setShowResolved] = useState(false);
+
   // Filter out deleted threads and system-generated threads
-  const visibleThreads = threads.filter(
-    (t) => !t.isDeleted && t.comments.length > 0 && t.comments[0].content,
+  const visibleThreads = useMemo(
+    () =>
+      threads.filter(
+        (t) => !t.isDeleted && t.comments.length > 0 && t.comments[0].content,
+      ),
+    [threads],
   );
 
-  // Separate PR-level comments from file-level comments
-  const prComments = visibleThreads.filter((t) => !t.threadContext);
-  const fileComments = visibleThreads.filter((t) => t.threadContext);
+  // Split into active vs resolved/closed
+  const { activeThreads, resolvedThreads } = useMemo(() => {
+    const active: AzureDevOpsCommentThread[] = [];
+    const resolved: AzureDevOpsCommentThread[] = [];
+    for (const t of visibleThreads) {
+      if (ACTIVE_STATUSES.has(t.status)) {
+        active.push(t);
+      } else {
+        resolved.push(t);
+      }
+    }
+    return { activeThreads: active, resolvedThreads: resolved };
+  }, [visibleThreads]);
 
   if (visibleThreads.length === 0) {
     return (
@@ -70,14 +94,17 @@ export function PrComments({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* PR-level comments */}
-      {prComments.length > 0 && (
+      {/* Active threads */}
+      {activeThreads.length > 0 && (
         <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2 text-xs font-medium text-neutral-500">
-            <MessageSquare className="h-3 w-3" />
-            General Comments
+          <div className="flex items-center gap-2 text-xs font-medium text-blue-400">
+            <MessageCircle className="h-3.5 w-3.5" />
+            Active
+            <span className="rounded-full bg-blue-900/50 px-1.5 py-0.5 text-[10px] text-blue-400">
+              {activeThreads.length}
+            </span>
           </div>
-          {prComments.map((thread) => (
+          {activeThreads.map((thread) => (
             <CommentThread
               key={thread.id}
               thread={thread}
@@ -89,22 +116,36 @@ export function PrComments({
         </div>
       )}
 
-      {/* File-level comments */}
-      {fileComments.length > 0 && (
+      {/* Resolved threads */}
+      {resolvedThreads.length > 0 && (
         <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2 text-xs font-medium text-neutral-500">
-            <FileCode className="h-3 w-3" />
-            File Comments
-          </div>
-          {fileComments.map((thread) => (
-            <CommentThread
-              key={thread.id}
-              thread={thread}
-              providerId={providerId}
-              projectId={projectId}
-              prId={prId}
+          <button
+            onClick={() => setShowResolved((v) => !v)}
+            className="flex items-center gap-2 text-xs font-medium text-neutral-500 transition-colors hover:text-neutral-400"
+          >
+            <ChevronRight
+              className={clsx(
+                'h-3.5 w-3.5 transition-transform',
+                showResolved && 'rotate-90',
+              )}
             />
-          ))}
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Resolved
+            <span className="rounded-full bg-neutral-700 px-1.5 py-0.5 text-[10px] text-neutral-400">
+              {resolvedThreads.length}
+            </span>
+          </button>
+          {showResolved &&
+            resolvedThreads.map((thread) => (
+              <CommentThread
+                key={thread.id}
+                thread={thread}
+                providerId={providerId}
+                projectId={projectId}
+                prId={prId}
+                dimmed
+              />
+            ))}
         </div>
       )}
     </div>
@@ -360,14 +401,21 @@ function CommentThread({
   providerId,
   projectId,
   prId,
+  dimmed,
 }: {
   thread: AzureDevOpsCommentThread;
   providerId?: string;
   projectId: string;
   prId: number;
+  dimmed?: boolean;
 }) {
   return (
-    <div className="relative rounded-lg bg-neutral-800/50 p-3">
+    <div
+      className={clsx(
+        'relative rounded-lg p-3',
+        dimmed ? 'bg-neutral-800/30 opacity-70' : 'bg-neutral-800/50',
+      )}
+    >
       {/* Thread status dropdown - top right */}
       <div className="absolute top-3 right-3">
         <StatusDropdown
