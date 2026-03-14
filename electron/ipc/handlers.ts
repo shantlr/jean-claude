@@ -5,7 +5,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { promisify } from 'util';
 
-import { BrowserWindow, ipcMain, dialog } from 'electron';
+import { BrowserWindow, app, ipcMain, dialog } from 'electron';
 
 import type { AgentBackendType, PromptPart } from '@shared/agent-backend-types';
 import {
@@ -2691,11 +2691,27 @@ export function registerIpcHandlers() {
 
   // ─── System ───────────────────────────────────────────────────────
 
-  ipcMain.handle('system:getMemoryUsage', async () => {
-    const mem = process.memoryUsage();
+  ipcMain.handle('system:getMemoryUsage', async (event) => {
+    const mainMem = process.memoryUsage();
+    const rendererPid = event.sender.getOSProcessId();
+    const rendererMetric = app
+      .getAppMetrics()
+      .find((metric) => metric.pid === rendererPid);
+    const rendererRssBytes =
+      (rendererMetric?.memory?.workingSetSize ?? 0) * 1024;
+    const rendererPrivateBytes =
+      (rendererMetric?.memory?.privateBytes ?? 0) * 1024;
+
     return {
-      heapUsedBytes: mem.heapUsed,
-      rssBytes: mem.rss,
+      totalRssBytes: mainMem.rss + rendererRssBytes,
+      mainProcess: {
+        heapUsedBytes: mainMem.heapUsed,
+        rssBytes: mainMem.rss,
+      },
+      rendererProcess: {
+        rssBytes: rendererRssBytes,
+        privateBytes: rendererPrivateBytes,
+      },
     };
   });
 }

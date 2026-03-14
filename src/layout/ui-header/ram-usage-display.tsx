@@ -20,10 +20,16 @@ export function RamUsageDisplay() {
         <div className="space-y-1">
           <div className="font-medium text-neutral-200">Jean-Claude Memory</div>
           <div className="text-neutral-400">
-            RSS: {formatBytes(data.rssBytes)}
+            Total RSS: {formatBytes(data.totalRssBytes)}
           </div>
           <div className="text-neutral-400">
-            Heap: {formatBytes(data.heapUsedBytes)}
+            Main RSS: {formatBytes(data.mainProcess.rssBytes)}
+          </div>
+          <div className="text-neutral-400">
+            Main Heap: {formatBytes(data.mainProcess.heapUsedBytes)}
+          </div>
+          <div className="text-neutral-400">
+            Renderer RSS: {formatBytes(data.rendererProcess.rssBytes)}
           </div>
         </div>
       }
@@ -31,7 +37,7 @@ export function RamUsageDisplay() {
     >
       <div className="flex cursor-default items-center gap-1.5 rounded px-1.5 py-0.5 text-neutral-400">
         <MemoryStick size={14} />
-        <span className="text-xs">{formatBytes(data.rssBytes)}</span>
+        <span className="text-xs">{formatBytes(data.totalRssBytes)}</span>
       </div>
     </Tooltip>
   );
