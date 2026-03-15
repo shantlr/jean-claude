@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 
+import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
 import { Separator } from '@/common/ui/separator';
 import { useSteps } from '@/hooks/use-steps';
@@ -429,6 +430,17 @@ export function StepFlowBar({
     [setActiveStepId],
   );
 
+  useCommands('step-flow-bar', [
+    !!onAddStepAtEnd && {
+      label: 'Add Step',
+      shortcut: 'cmd+shift+n',
+      section: 'Task',
+      handler: () => {
+        onAddStepAtEnd();
+      },
+    },
+  ]);
+
   if (!steps || steps.length === 0) return null;
 
   return (
@@ -516,7 +528,7 @@ export function StepFlowBar({
             >
               <Button
                 onClick={onAddStepAtEnd}
-                title="Add step at end"
+                title="Add step at end (⌘⇧N)"
                 className="flex h-4 shrink-0 items-center gap-1 rounded-md border border-dashed border-neutral-700/60 px-1 text-neutral-600 transition-colors hover:border-neutral-500 hover:text-neutral-400"
               >
                 <Plus className="h-2.5 w-2.5" />
