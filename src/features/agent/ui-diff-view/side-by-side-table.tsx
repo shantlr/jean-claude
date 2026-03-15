@@ -1,3 +1,4 @@
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useMemo } from 'react';
 import type { ThemedToken } from 'shiki';
 
@@ -8,6 +9,7 @@ import {
   type SideBySideRow,
 } from './diff-utils';
 import type { SearchMatch } from './use-diff-search';
+import { useDividerResize } from './use-divider-resize';
 import {
   renderTokensWithHighlights,
   renderWithHighlights,
@@ -98,8 +100,30 @@ export function SideBySideDiffTable({
 
   const currentMatch = searchMatches[currentMatchIndex] ?? null;
 
+  const { tableRef, leftFraction, isDragging, handleDividerMouseDown } =
+    useDividerResize();
+
+  // Calculate percentage widths for left and right content columns
+  const leftPct = `${leftFraction * 100}%`;
+  const rightPct = `${(1 - leftFraction) * 100}%`;
+
   return (
-    <table className="w-full border-collapse">
+    <table
+      ref={tableRef}
+      className={`w-full border-collapse ${isDragging ? 'select-none' : ''}`}
+    >
+      <colgroup>
+        {/* Left line number */}
+        <col style={{ width: 32 }} />
+        {/* Left content */}
+        <col style={{ width: leftPct }} />
+        {/* Divider */}
+        <col style={{ width: 4 }} />
+        {/* Right line number */}
+        <col style={{ width: 32 }} />
+        {/* Right content */}
+        <col style={{ width: rightPct }} />
+      </colgroup>
       <tbody>
         {rows.map((row, rowIndex) => (
           <SideBySideRowComponent
@@ -111,6 +135,8 @@ export function SideBySideDiffTable({
             leftMatches={matchesByRowAndSide.get(`${rowIndex}-left`) ?? []}
             rightMatches={matchesByRowAndSide.get(`${rowIndex}-right`) ?? []}
             currentMatch={currentMatch}
+            onDividerMouseDown={handleDividerMouseDown}
+            isDragging={isDragging}
           />
         ))}
       </tbody>
@@ -126,6 +152,8 @@ function SideBySideRowComponent({
   leftMatches,
   rightMatches,
   currentMatch,
+  onDividerMouseDown,
+  isDragging,
 }: {
   row: SideBySideRow;
   rowIndex: number;
@@ -134,6 +162,8 @@ function SideBySideRowComponent({
   leftMatches: SearchMatch[];
   rightMatches: SearchMatch[];
   currentMatch: SearchMatch | null;
+  onDividerMouseDown: (e: ReactMouseEvent) => void;
+  isDragging: boolean;
 }) {
   return (
     <tr data-line-index={rowIndex}>
@@ -145,8 +175,11 @@ function SideBySideRowComponent({
         searchMatches={leftMatches}
         currentMatch={currentMatch}
       />
-      {/* Divider */}
-      <td className="w-px bg-neutral-700" />
+      {/* Divider / drag handle */}
+      <td
+        className={`cursor-col-resize bg-neutral-700 transition-colors hover:bg-blue-500/50 ${isDragging ? 'bg-blue-500/50' : ''}`}
+        onMouseDown={onDividerMouseDown}
+      />
       {/* Right side (new/additions) */}
       <SideBySideCell
         line={row.right}
@@ -176,8 +209,8 @@ function SideBySideCell({
   if (!line) {
     return (
       <>
-        <td className="w-8 bg-neutral-800/50 pr-1 text-right align-top text-neutral-600 select-none" />
-        <td className="w-full bg-neutral-800/50 pr-2 whitespace-pre-wrap" />
+        <td className="bg-neutral-800/50 pr-1 text-right align-top text-neutral-600 select-none" />
+        <td className="overflow-hidden bg-neutral-800/50 pr-2 whitespace-pre-wrap" />
       </>
     );
   }
@@ -227,12 +260,12 @@ function SideBySideCell({
     <>
       {/* Line number */}
       <td
-        className={`w-8 pr-1 text-right align-top select-none ${lineNumClass} ${bgClass}`}
+        className={`pr-1 text-right align-top select-none ${lineNumClass} ${bgClass}`}
       >
         {lineNumber ?? ''}
       </td>
       {/* Content */}
-      <td className={`w-1/2 pr-2 whitespace-pre-wrap ${bgClass}`}>
+      <td className={`overflow-hidden pr-2 whitespace-pre-wrap ${bgClass}`}>
         {renderedContent}
       </td>
     </>
