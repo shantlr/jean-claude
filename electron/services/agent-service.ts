@@ -227,6 +227,36 @@ class AgentService {
     this.emitEvent(taskId, session.stepId, { type: 'entry', entry });
   }
 
+  /**
+   * Resolve the task display name for notifications.
+   * Uses task name, falling back to truncated prompt from the task or step.
+   */
+  private async resolveTaskDisplayName(
+    taskId: string,
+    stepId: string,
+  ): Promise<string> {
+    const task = await TaskRepository.findById(taskId);
+    if (task?.name) {
+      return task.name;
+    }
+
+    // Fall back to task prompt (truncated)
+    if (task?.prompt) {
+      const firstLine = task.prompt.split('\n')[0].trim();
+      return firstLine.length > 60 ? firstLine.slice(0, 57) + '...' : firstLine;
+    }
+
+    // Fall back to step prompt (truncated)
+    const step = await TaskStepRepository.findById(stepId);
+    const prompt = step?.promptTemplate;
+    if (prompt) {
+      const firstLine = prompt.split('\n')[0].trim();
+      return firstLine.length > 60 ? firstLine.slice(0, 57) + '...' : firstLine;
+    }
+
+    return 'Untitled task';
+  }
+
   private async generateAndPersistTaskName(
     taskId: string,
     stepId: string,
@@ -553,11 +583,11 @@ class AgentService {
 
         // Send desktop notification if window not focused
         if (this.mainWindow && !this.mainWindow.isFocused()) {
-          const task = await TaskRepository.findById(taskId);
+          const displayName = await this.resolveTaskDisplayName(taskId, stepId);
           notificationService.notify({
             id: `${taskId}:permission`,
             title: 'Permission Required',
-            body: `Task "${task?.name || 'Unknown'}" needs approval for ${request.toolName}`,
+            body: `Task "${displayName}" needs approval for ${request.toolName}`,
             onClick: () => {
               this.mainWindow?.focus();
             },
@@ -599,11 +629,11 @@ class AgentService {
 
         // Send desktop notification if window not focused
         if (this.mainWindow && !this.mainWindow.isFocused()) {
-          const task = await TaskRepository.findById(taskId);
+          const displayName = await this.resolveTaskDisplayName(taskId, stepId);
           notificationService.notify({
             id: `${taskId}:question`,
             title: 'Question from Agent',
-            body: `Task "${task?.name || 'Unknown'}" has a question`,
+            body: `Task "${displayName}" has a question`,
             onClick: () => {
               this.mainWindow?.focus();
             },
@@ -702,11 +732,11 @@ class AgentService {
 
         // Notify on completion
         if (this.mainWindow && !this.mainWindow.isFocused()) {
-          const updatedTask = await TaskRepository.findById(taskId);
+          const displayName = await this.resolveTaskDisplayName(taskId, stepId);
           notificationService.notify({
             id: `${taskId}:complete`,
             title: status === 'completed' ? 'Task Completed' : 'Task Failed',
-            body: `Task "${updatedTask?.name || 'Unknown'}" ${status === 'completed' ? 'finished successfully' : 'encountered an error'}`,
+            body: `Task "${displayName}" ${status === 'completed' ? 'finished successfully' : 'encountered an error'}`,
             onClick: () => {
               this.mainWindow?.focus();
             },
