@@ -304,8 +304,12 @@ async function main(): Promise<void> {
       backend: BACKEND_ENUM.optional().describe(
         'Backend to run the review with',
       ),
+      model: z
+        .string()
+        .optional()
+        .describe('Model to use for the review (e.g. opus, sonnet, haiku)'),
     },
-    async ({ prompt, backend }) => {
+    async ({ prompt, backend, model }) => {
       const currentDepth = getCurrentDepth();
 
       if (currentDepth >= MAX_DEPTH) {
@@ -325,12 +329,13 @@ async function main(): Promise<void> {
 
       try {
         console.error(
-          `[jean-claude-mcp] run_review: depth=${currentDepth}, backend=${backend ?? 'claude-code'}, prompt="${prompt.slice(0, 100)}..."`,
+          `[jean-claude-mcp] run_review: depth=${currentDepth}, backend=${backend ?? 'claude-code'}, model=${model ?? 'default'}, prompt="${prompt.slice(0, 100)}..."`,
         );
 
         const result = await runSubAgent({
           backend: backend ?? 'claude-code',
           prompt,
+          model,
           currentDepth,
           readOnly: true,
         });

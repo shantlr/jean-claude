@@ -89,31 +89,50 @@ function buildJcMcpServersConfigForCwd(
  * Build a review prompt that instructs the agent to use `run_review` MCP
  * tools in parallel for each configured reviewer focus area.
  */
-function buildReviewPrompt(
-  basePrompt: string,
-  meta: ReviewStepMeta | undefined,
-): string {
+function buildReviewPrompt({
+  basePrompt,
+  meta,
+  startCommitHash,
+}: {
+  basePrompt: string;
+  meta: ReviewStepMeta | undefined;
+  startCommitHash: string | null;
+}): string {
   const reviewers = meta?.reviewers ?? [];
   const reviewerList = reviewers
     .map(
       (r, i) =>
-        `${i + 1}. **${r.label}** (backend: ${r.backend ?? 'claude-code'}): ${r.focusPrompt}`,
+        `${i + 1}. **${r.label}** (backend: ${r.backend ?? 'claude-code'}${r.model && r.model !== 'default' ? `, model: ${r.model}` : ''}): ${r.focusPrompt}`,
     )
     .join('\n');
 
   const extra = basePrompt.trim()
-    ? `\n\nAdditional instructions:\n${basePrompt}`
+    ? `\n\nAdditional instructions from the user:\n${basePrompt}`
     : '';
 
+  const diffHint = startCommitHash
+    ? `To see only the changes introduced by this task, each reviewer should run: git diff ${startCommitHash}\nThis covers all committed, staged, and unstaged changes since the task started. Do NOT diff against the source branch directly as that may include unrelated upstream changes.`
+    : 'Each reviewer should use git diff HEAD to inspect recent changes, combined with git status for untracked files.';
+
   return [
-    'You are a code review coordinator. Review the changes in this worktree by running focused sub-reviews in parallel.',
+    'You are a code review coordinator.',
     '',
-    'Use the `run_review` MCP tool to spawn the following focused code reviews simultaneously.',
-    'When calling `run_review`, set the `backend` field to the backend listed for each reviewer.',
+    'IMPORTANT: Do NOT investigate the code yourself. Do NOT run git diff, read files, or do any exploration.',
+    'Your ONLY job is to:',
+    '1. Immediately dispatch all reviewers in parallel using the `run_review` MCP tool.',
+    '2. Wait for all reviews to complete.',
+    '3. Synthesize the findings into a comprehensive summary organized by severity and category.',
+    '',
+    'When calling `run_review`, set the `backend` field to the backend listed for each reviewer. If a model is specified, set the `model` field accordingly.',
+    "Include the diff instructions below in each reviewer's prompt so they know how to find the changes.",
+    '',
+    '## Diff instructions (include in each reviewer prompt)',
+    '',
+    diffHint,
+    '',
+    '## Reviewers',
     '',
     reviewerList,
-    '',
-    'After all reviews complete, synthesize the findings into a comprehensive summary organized by severity and category.',
     '',
     'IMPORTANT: Do NOT implement any changes. Present your findings and recommendations, then wait for the user to decide on next steps.',
     extra,
@@ -794,10 +813,15 @@ class AgentService {
       this.pendingImageAttachments.delete(session.taskId);
 
       // For review steps, build the review prompt from reviewer configs
-      const effectivePrompt =
-        step.type === 'review'
-          ? buildReviewPrompt(resolvedPrompt, step.meta as ReviewStepMeta)
-          : resolvedPrompt;
+      let effectivePrompt = resolvedPrompt;
+      if (step.type === 'review') {
+        const task = await TaskRepository.findById(step.taskId);
+        effectivePrompt = buildReviewPrompt({
+          basePrompt: resolvedPrompt,
+          meta: step.meta as ReviewStepMeta,
+          startCommitHash: task?.startCommitHash ?? null,
+        });
+      }
 
       const parts: PromptPart[] = textPrompt(effectivePrompt);
       // Include images persisted on the step

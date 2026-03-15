@@ -108,14 +108,9 @@ import { ToolDiffPreviewPane } from './tool-diff-preview-pane';
 
 const LAST_ASSISTANT_MESSAGE_MAX_LENGTH = 1200;
 
-function buildReviewChangesPrompt(sourceBranch?: string | null): string {
-  const diffInstruction = sourceBranch
-    ? `Inspect the git diff against the task source branch (${sourceBranch}) and identify potential bugs, regressions, code quality issues, and missing tests.`
-    : 'Inspect the git diff against the task source branch and identify potential bugs, regressions, code quality issues, and missing tests.';
-
+function buildReviewChangesPrompt(): string {
   return [
-    'You are reviewing the current task changes.',
-    diffInstruction,
+    'Review the current task changes.',
     'Prioritize high-impact findings first, then list medium/low issues.',
     'When possible, reference concrete files and lines.',
   ].join('\n');
@@ -609,8 +604,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               userPrompt: data.promptTemplate,
             })
           : data.presetType === 'review-changes'
-            ? data.promptTemplate ||
-              buildReviewChangesPrompt(task?.sourceBranch)
+            ? data.promptTemplate || buildReviewChangesPrompt()
             : data.promptTemplate;
 
       const dependsOn =
@@ -661,7 +655,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       activeStepId,
       addStepAfterStepId,
       addStepAtEnd,
-      task?.sourceBranch,
     ],
   );
 

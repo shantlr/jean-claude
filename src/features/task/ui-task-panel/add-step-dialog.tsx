@@ -1,13 +1,13 @@
 import { Trash2, Plus } from 'lucide-react';
 import { nanoid } from 'nanoid';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
-import { Select } from '@/common/ui/select';
+import { Select, type SelectOption } from '@/common/ui/select';
 import {
   AVAILABLE_BACKENDS,
   BackendSelector,
@@ -41,6 +41,7 @@ function createDefaultReviewers(backend: AgentBackendType): ReviewerConfig[] {
       focusPrompt:
         'Focus on potential bugs, edge cases, error handling, and logic errors.',
       backend,
+      model: 'default',
     },
     {
       id: nanoid(),
@@ -48,6 +49,7 @@ function createDefaultReviewers(backend: AgentBackendType): ReviewerConfig[] {
       focusPrompt:
         'Focus on code quality, readability, naming conventions, and maintainability.',
       backend,
+      model: 'default',
     },
     {
       id: nanoid(),
@@ -55,8 +57,40 @@ function createDefaultReviewers(backend: AgentBackendType): ReviewerConfig[] {
       focusPrompt:
         'Focus on security vulnerabilities, performance bottlenecks, and resource management.',
       backend,
+      model: 'default',
     },
   ];
+}
+
+function ReviewerModelSelect({
+  reviewer,
+  onChange,
+}: {
+  reviewer: ReviewerConfig;
+  onChange: (model: ModelPreference) => void;
+}) {
+  const { data: dynamicModels } = useBackendModels(reviewer.backend);
+  const modelOptions = useMemo(
+    () =>
+      getModelsForBackend(reviewer.backend, dynamicModels).map(
+        (m): SelectOption<string> => ({
+          value: m.value,
+          label: m.label,
+          description: m.description,
+        }),
+      ),
+    [reviewer.backend, dynamicModels],
+  );
+
+  return (
+    <Select
+      value={reviewer.model ?? 'default'}
+      onChange={(value) => onChange(value as ModelPreference)}
+      options={modelOptions}
+      side="top"
+      className="w-[130px]"
+    />
+  );
 }
 
 export type AddStepPresetType = 'new-session' | 'continue' | 'review-changes';
@@ -284,6 +318,7 @@ export function AddStepDialog({
                       label: '',
                       focusPrompt: '',
                       backend,
+                      model: 'default',
                     },
                   ])
                 }
@@ -319,14 +354,26 @@ export function AddStepDialog({
                         setReviewers((prev) =>
                           prev.map((r, i) =>
                             i === idx
-                              ? { ...r, backend: value as AgentBackendType }
+                              ? {
+                                  ...r,
+                                  backend: value as AgentBackendType,
+                                  model: 'default',
+                                }
                               : r,
                           ),
                         )
                       }
                       options={reviewerBackendOptions}
                       side="top"
-                      className="w-[170px]"
+                      className="w-[130px]"
+                    />
+                    <ReviewerModelSelect
+                      reviewer={reviewer}
+                      onChange={(model) =>
+                        setReviewers((prev) =>
+                          prev.map((r, i) => (i === idx ? { ...r, model } : r)),
+                        )
+                      }
                     />
                     <Button
                       type="button"
