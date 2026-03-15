@@ -1,6 +1,7 @@
 import { Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 
+import { Select } from '@/common/ui/select';
 import { AVAILABLE_BACKENDS } from '@/features/agent/ui-backend-selector';
 import { ProjectMcpSettings } from '@/features/project/ui-project-mcp-settings';
 import { ProjectPipelineSettings } from '@/features/project/ui-project-pipeline-settings';
@@ -227,88 +228,74 @@ export function ProjectSettings({
           </div>
 
           <div>
-            <label
-              htmlFor="defaultBranch"
-              className="mb-1 block text-sm font-medium text-neutral-300"
-            >
+            <label className="mb-1 block text-sm font-medium text-neutral-300">
               Default merge branch
             </label>
-            <select
-              id="defaultBranch"
-              value={defaultBranch}
-              onChange={(e) => setDefaultBranch(e.target.value)}
+            <Select
+              value={
+                branchesLoading ? '' : defaultBranch || branches?.[0] || ''
+              }
+              options={
+                branchesLoading
+                  ? [{ value: '', label: 'Loading…' }]
+                  : branches?.length === 0
+                    ? [{ value: '', label: 'No branches found' }]
+                    : (branches ?? []).map((branch) => ({
+                        value: branch,
+                        label: branch,
+                      }))
+              }
+              onChange={setDefaultBranch}
               disabled={branchesLoading || !branches?.length}
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white focus:border-neutral-500 focus:outline-none disabled:opacity-50"
-            >
-              {branchesLoading ? (
-                <option>Loading...</option>
-              ) : branches?.length === 0 ? (
-                <option>No branches found</option>
-              ) : (
-                branches?.map((branch) => (
-                  <option key={branch} value={branch}>
-                    {branch}
-                  </option>
-                ))
-              )}
-            </select>
+              className="w-full justify-between"
+            />
             <p className="mt-1 text-xs text-neutral-500">
               The branch that worktrees will merge into
             </p>
           </div>
 
           <div>
-            <label
-              htmlFor="defaultAgentBackend"
-              className="mb-1 block text-sm font-medium text-neutral-300"
-            >
+            <label className="mb-1 block text-sm font-medium text-neutral-300">
               Default agent backend
             </label>
-            <select
-              id="defaultAgentBackend"
+            <Select
               value={defaultAgentBackend ?? ''}
-              onChange={(e) => {
-                const val = e.target.value;
+              options={[
+                {
+                  value: '',
+                  label: `Use global default${backendsSetting?.defaultBackend ? ` (${AVAILABLE_BACKENDS.find((b) => b.value === backendsSetting.defaultBackend)?.label ?? backendsSetting.defaultBackend})` : ''}`,
+                },
+                ...enabledBackends.map((b) => ({
+                  value: b.value,
+                  label: b.label,
+                })),
+              ]}
+              onChange={(value) =>
                 setDefaultAgentBackend(
-                  val === '' ? null : (val as AgentBackendType),
-                );
-              }}
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white focus:border-neutral-500 focus:outline-none"
-            >
-              <option value="">
-                Use global default
-                {backendsSetting?.defaultBackend
-                  ? ` (${AVAILABLE_BACKENDS.find((b) => b.value === backendsSetting.defaultBackend)?.label ?? backendsSetting.defaultBackend})`
-                  : ''}
-              </option>
-              {enabledBackends.map((b) => (
-                <option key={b.value} value={b.value}>
-                  {b.label}
-                </option>
-              ))}
-            </select>
+                  value === '' ? null : (value as AgentBackendType),
+                )
+              }
+              className="w-full justify-between"
+            />
             <p className="mt-1 text-xs text-neutral-500">
               The agent backend used for new tasks in this project
             </p>
           </div>
 
           <div>
-            <label
-              htmlFor="priority"
-              className="mb-1 block text-sm font-medium text-neutral-300"
-            >
+            <label className="mb-1 block text-sm font-medium text-neutral-300">
               Feed priority
             </label>
-            <select
-              id="priority"
+            <Select
               value={priority}
-              onChange={(e) => setPriority(e.target.value as ProjectPriority)}
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white focus:border-neutral-500 focus:outline-none"
-            >
-              <option value="high">High</option>
-              <option value="normal">Normal</option>
-              <option value="low">Low</option>
-            </select>
+              options={[
+                { value: 'high', label: 'High' },
+                { value: 'normal', label: 'Normal' },
+                { value: 'low', label: 'Low' },
+              ]}
+              onChange={(value) => setPriority(value as ProjectPriority)}
+              className="w-full justify-between"
+            />
             <p className="mt-1 text-xs text-neutral-500">
               Affects how tasks from this project are ranked in the feed
             </p>

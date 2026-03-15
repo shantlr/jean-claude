@@ -1,6 +1,7 @@
 import { ListTodo, Link2Off, Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { Select } from '@/common/ui/select';
 import { useUpdateProject } from '@/hooks/use-projects';
 import { useProviders, useProviderDetails } from '@/hooks/use-providers';
 import { useToastStore } from '@/stores/toasts';
@@ -151,35 +152,36 @@ export function WorkItemsLink({ project }: { project: Project }) {
 
       <div className="space-y-3">
         {/* Organization (Provider) */}
-        <select
+        <Select
           value={selectedProviderId}
-          onChange={(e) => handleProviderChange(e.target.value)}
-          className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
-        >
-          <option value="">Select organization...</option>
-          {azureProviders.map((provider) => (
-            <option key={provider.id} value={provider.id}>
-              {provider.label}
-            </option>
-          ))}
-        </select>
+          options={[
+            { value: '', label: 'Select organization...' },
+            ...azureProviders.map((provider) => ({
+              value: provider.id,
+              label: provider.label,
+            })),
+          ]}
+          onChange={handleProviderChange}
+          className="w-full justify-between"
+        />
 
         {/* Project */}
-        <select
+        <Select
           value={selectedProjectId}
-          onChange={(e) => setSelectedProjectId(e.target.value)}
+          options={[
+            {
+              value: '',
+              label: detailsLoading ? 'Loading projects…' : 'Select project...',
+            },
+            ...projects.map((p) => ({
+              value: p.project.id,
+              label: p.project.name,
+            })),
+          ]}
+          onChange={setSelectedProjectId}
           disabled={!selectedProviderId || detailsLoading}
-          className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none disabled:opacity-50"
-        >
-          <option value="">
-            {detailsLoading ? 'Loading projects...' : 'Select project...'}
-          </option>
-          {projects.map((p) => (
-            <option key={p.project.id} value={p.project.id}>
-              {p.project.name}
-            </option>
-          ))}
-        </select>
+          className="w-full justify-between"
+        />
 
         {/* Link button */}
         <button

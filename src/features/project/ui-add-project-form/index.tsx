@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
+import { Select } from '@/common/ui/select';
 import { useProviders, useProviderDetails } from '@/hooks/use-providers';
 import { PROJECT_COLORS } from '@/lib/colors';
 import type { Provider } from '@shared/types';
@@ -78,27 +79,26 @@ function RepoSection({
             <label className="mb-1 block text-xs font-medium text-neutral-400">
               Organization
             </label>
-            <select
+            <Select
               value={formData.repoProviderId || ''}
-              onChange={(e) =>
+              options={[
+                { value: '', label: 'None' },
+                ...azureProviders.map((provider) => ({
+                  value: provider.id,
+                  label: provider.label,
+                })),
+              ]}
+              onChange={(value) =>
                 onChange({
-                  repoProviderId: e.target.value || null,
-                  // Clear dependent fields when provider changes
+                  repoProviderId: value || null,
                   repoProjectId: null,
                   repoProjectName: null,
                   repoId: null,
                   repoName: null,
                 })
               }
-              className="w-full rounded-lg border border-neutral-600 bg-neutral-700/50 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
-            >
-              <option value="">None</option>
-              {azureProviders.map((provider) => (
-                <option key={provider.id} value={provider.id}>
-                  {provider.label}
-                </option>
-              ))}
-            </select>
+              className="w-full justify-between"
+            />
           </div>
 
           {/* Project and Repo selectors */}
@@ -151,29 +151,26 @@ function RepoProjectSelector({
         <label className="mb-1 block text-xs font-medium text-neutral-400">
           Project
         </label>
-        <select
+        <Select
           value={formData.repoProjectId || ''}
-          onChange={(e) => {
-            const project = projects.find(
-              (p) => p.project.id === e.target.value,
-            );
+          options={[
+            { value: '', label: 'Select project...' },
+            ...projects.map(({ project }) => ({
+              value: project.id,
+              label: project.name,
+            })),
+          ]}
+          onChange={(value) => {
+            const project = projects.find((p) => p.project.id === value);
             onChange({
-              repoProjectId: e.target.value || null,
+              repoProjectId: value || null,
               repoProjectName: project?.project.name || null,
-              // Clear repo when project changes
               repoId: null,
               repoName: null,
             });
           }}
-          className="w-full rounded-lg border border-neutral-600 bg-neutral-700/50 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
-        >
-          <option value="">Select project...</option>
-          {projects.map(({ project }) => (
-            <option key={project.id} value={project.id}>
-              {project.name}
-            </option>
-          ))}
-        </select>
+          className="w-full justify-between"
+        />
       </div>
 
       {/* Repository */}
@@ -182,24 +179,21 @@ function RepoProjectSelector({
           <label className="mb-1 block text-xs font-medium text-neutral-400">
             Repository
           </label>
-          <select
+          <Select
             value={formData.repoId || ''}
-            onChange={(e) => {
-              const repo = repos.find((r) => r.id === e.target.value);
+            options={[
+              { value: '', label: 'Select repository...' },
+              ...repos.map((repo) => ({ value: repo.id, label: repo.name })),
+            ]}
+            onChange={(value) => {
+              const repo = repos.find((r) => r.id === value);
               onChange({
-                repoId: e.target.value || null,
+                repoId: value || null,
                 repoName: repo?.name || null,
               });
             }}
-            className="w-full rounded-lg border border-neutral-600 bg-neutral-700/50 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
-          >
-            <option value="">Select repository...</option>
-            {repos.map((repo) => (
-              <option key={repo.id} value={repo.id}>
-                {repo.name}
-              </option>
-            ))}
-          </select>
+            className="w-full justify-between"
+          />
         </div>
       )}
     </>
@@ -262,25 +256,24 @@ function WorkItemSection({
             <label className="mb-1 block text-xs font-medium text-neutral-400">
               Organization
             </label>
-            <select
+            <Select
               value={formData.workItemProviderId || ''}
-              onChange={(e) =>
+              options={[
+                { value: '', label: 'None' },
+                ...azureProviders.map((provider) => ({
+                  value: provider.id,
+                  label: provider.label,
+                })),
+              ]}
+              onChange={(value) =>
                 onChange({
-                  workItemProviderId: e.target.value || null,
-                  // Clear dependent fields when provider changes
+                  workItemProviderId: value || null,
                   workItemProjectId: null,
                   workItemProjectName: null,
                 })
               }
-              className="w-full rounded-lg border border-neutral-600 bg-neutral-700/50 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
-            >
-              <option value="">None</option>
-              {azureProviders.map((provider) => (
-                <option key={provider.id} value={provider.id}>
-                  {provider.label}
-                </option>
-              ))}
-            </select>
+              className="w-full justify-between"
+            />
           </div>
 
           {/* Project selector */}
@@ -327,24 +320,24 @@ function WorkItemProjectSelector({
       <label className="mb-1 block text-xs font-medium text-neutral-400">
         Project
       </label>
-      <select
+      <Select
         value={formData.workItemProjectId || ''}
-        onChange={(e) => {
-          const project = projects.find((p) => p.project.id === e.target.value);
+        options={[
+          { value: '', label: 'Select project...' },
+          ...projects.map(({ project }) => ({
+            value: project.id,
+            label: project.name,
+          })),
+        ]}
+        onChange={(value) => {
+          const project = projects.find((p) => p.project.id === value);
           onChange({
-            workItemProjectId: e.target.value || null,
+            workItemProjectId: value || null,
             workItemProjectName: project?.project.name || null,
           });
         }}
-        className="w-full rounded-lg border border-neutral-600 bg-neutral-700/50 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
-      >
-        <option value="">Select project...</option>
-        {projects.map(({ project }) => (
-          <option key={project.id} value={project.id}>
-            {project.name}
-          </option>
-        ))}
-      </select>
+        className="w-full justify-between"
+      />
     </div>
   );
 }

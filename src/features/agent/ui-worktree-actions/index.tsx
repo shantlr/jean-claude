@@ -2,6 +2,7 @@ import { GitCommit, GitMerge, GitPullRequest, Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
+import { Select } from '@/common/ui/select';
 import {
   useWorktreeStatus,
   useWorktreeBranches,
@@ -162,18 +163,20 @@ export function WorktreeActions({
         <label className="text-xs font-medium text-neutral-400">
           Merge into
         </label>
-        <select
-          value={selectedBranch}
-          onChange={(e) => setSelectedBranch(e.target.value)}
+        <Select
+          value={isBranchesLoading ? '' : selectedBranch}
+          options={
+            isBranchesLoading
+              ? [{ value: '', label: 'Loading…' }]
+              : (branches ?? []).map((branch) => ({
+                  value: branch,
+                  label: branch,
+                }))
+          }
+          onChange={setSelectedBranch}
           disabled={isBranchesLoading || !branches?.length}
-          className="w-full rounded-md border border-neutral-600 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-200 focus:border-blue-500 focus:outline-none"
-        >
-          {branches?.map((branch) => (
-            <option key={branch} value={branch}>
-              {branch}
-            </option>
-          ))}
-        </select>
+          className="w-full justify-between"
+        />
         <button
           type="button"
           onClick={() => setIsMergeConfirmOpen(true)}

@@ -2,6 +2,7 @@ import { ExternalLink, Loader2, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { Select } from '@/common/ui/select';
 import { useValidateAzureDevOpsToken } from '@/hooks/use-azure-devops';
 import { useCreateToken } from '@/hooks/use-tokens';
 import type { ProviderType } from '@shared/types';
@@ -72,17 +73,12 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
           <label className="mb-2 block text-sm font-medium text-neutral-400">
             Provider Type
           </label>
-          <select
+          <Select
             value={providerType}
-            onChange={(e) => setProviderType(e.target.value as ProviderType)}
-            className="w-full rounded-lg border border-neutral-600 bg-neutral-700 px-3 py-2 text-sm text-neutral-200 focus:border-blue-500 focus:outline-none"
-          >
-            {PROVIDER_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            options={PROVIDER_OPTIONS}
+            onChange={(value) => setProviderType(value as ProviderType)}
+            className="w-full justify-between"
+          />
         </div>
 
         <div>

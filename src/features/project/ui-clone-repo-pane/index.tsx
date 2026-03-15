@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import { Select } from '@/common/ui/select';
 import { useProviders, useProviderDetails } from '@/hooks/use-providers';
 import { api, ProviderProject, ProviderRepo } from '@/lib/api';
 import type { Provider } from '@shared/types';
@@ -405,20 +406,18 @@ export function CloneRepoPane({
                 <label className="mb-1 block text-xs font-medium text-neutral-400">
                   Organization
                 </label>
-                <select
+                <Select
                   value={effectiveProviderId || ''}
-                  onChange={(e) =>
-                    setSelectedProviderId(e.target.value || null)
-                  }
-                  className="w-full rounded-lg border border-neutral-600 bg-neutral-700/50 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
-                >
-                  <option value="">Select organization...</option>
-                  {azureProviders.map((provider) => (
-                    <option key={provider.id} value={provider.id}>
-                      {provider.label}
-                    </option>
-                  ))}
-                </select>
+                  options={[
+                    { value: '', label: 'Select organization...' },
+                    ...azureProviders.map((provider) => ({
+                      value: provider.id,
+                      label: provider.label,
+                    })),
+                  ]}
+                  onChange={(value) => setSelectedProviderId(value || null)}
+                  className="w-full justify-between"
+                />
               </div>
             )}
 

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { Select } from '@/common/ui/select';
 import { BackendSelector } from '@/features/agent/ui-backend-selector';
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
 import { ModelSelector } from '@/features/agent/ui-model-selector';
@@ -213,34 +214,35 @@ function NewTask() {
             {/* Source branch selector - shown when worktree is checked */}
             {useWorktree && (
               <div className="ml-6">
-                <label
-                  htmlFor="sourceBranch"
-                  className="mb-1 block text-sm font-medium text-neutral-400"
-                >
+                <label className="mb-1 block text-sm font-medium text-neutral-400">
                   Base branch
                 </label>
-                <select
-                  id="sourceBranch"
-                  value={effectiveSourceBranch ?? ''}
-                  onChange={(e) =>
-                    setDraft({ sourceBranch: e.target.value || null })
+                <Select
+                  value={
+                    branchesLoading
+                      ? ''
+                      : (effectiveSourceBranch ?? branches[0] ?? '')
+                  }
+                  options={
+                    branchesLoading
+                      ? [{ value: '', label: 'Loading branches…' }]
+                      : branches.length === 0
+                        ? [{ value: '', label: 'No branches found' }]
+                        : branches.map((branch) => ({
+                            value: branch,
+                            label:
+                              branch +
+                              (branch === project?.defaultBranch
+                                ? ' (default)'
+                                : ''),
+                          }))
+                  }
+                  onChange={(value) =>
+                    setDraft({ sourceBranch: value || null })
                   }
                   disabled={branchesLoading}
-                  className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none disabled:opacity-50"
-                >
-                  {branchesLoading ? (
-                    <option value="">Loading branches…</option>
-                  ) : branches.length === 0 ? (
-                    <option value="">No branches found</option>
-                  ) : (
-                    branches.map((branch) => (
-                      <option key={branch} value={branch}>
-                        {branch}
-                        {branch === project?.defaultBranch ? ' (default)' : ''}
-                      </option>
-                    ))
-                  )}
-                </select>
+                  className="w-full justify-between"
+                />
               </div>
             )}
           </div>

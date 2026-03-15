@@ -2,6 +2,7 @@ import { Check, FolderOpen, Search, Star, Trash2, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { Select } from '@/common/ui/select';
 import {
   AVAILABLE_BACKENDS,
   getModelsForBackend,
@@ -462,19 +463,16 @@ function PromptNavigatorSettings() {
               Maximum width of the prompt navigator panel
             </div>
           </div>
-          <select
-            value={maxWidth}
-            onChange={(e) =>
-              setSetting('promptNavigatorMaxWidth', Number(e.target.value))
+          <Select
+            value={String(maxWidth)}
+            options={MAX_WIDTH_OPTIONS.map((opt) => ({
+              value: String(opt.value),
+              label: opt.label,
+            }))}
+            onChange={(value) =>
+              setSetting('promptNavigatorMaxWidth', Number(value))
             }
-            className="rounded-md border border-neutral-600 bg-neutral-700 px-3 py-1.5 text-sm text-neutral-200 focus:border-blue-500 focus:outline-none"
-          >
-            {MAX_WIDTH_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          />
         </div>
       </div>
     </div>
