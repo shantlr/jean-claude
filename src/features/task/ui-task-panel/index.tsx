@@ -799,7 +799,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   }
 
   const isRunning =
-    agentState.status === 'running' || task.status === 'running';
+    agentState.status === 'running' || activeStep?.status === 'running';
   const isWaiting =
     agentState.status === 'waiting' || task.status === 'waiting';
   const taskRootPath = task.worktreePath ?? project.path;
