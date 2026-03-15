@@ -159,6 +159,8 @@
 
 ## Mcp usage
 
+### JSON result
+
 ```json
 [
   {
@@ -196,6 +198,62 @@
     "parentToolUseId": "toolu_01Gu57JcfqGDRE8iRMTKGm6S",
     "metadata": {
       "session_id": "9d9f07e1-2696-40b4-87af-eab2d03b4e01"
+    }
+  }
+]
+```
+
+### Text result (non-JSON)
+
+MCP tools can return plain text content (not JSON). The `tool_use_result` field
+may be an array of content blocks, and `content` inside the `tool_result` block
+can also be an array of text blocks.
+
+```json
+[
+  {
+    "id": "mcp-text-tool-use-1",
+    "role": "assistant",
+    "parts": [
+      {
+        "type": "tool-use",
+        "toolId": "toolu_01XB4UufNez1nDBtJqktzVG6",
+        "toolName": "mcp__review__bug_review",
+        "input": {
+          "diff": "..."
+        }
+      }
+    ],
+    "timestamp": "2026-03-15T10:00:00.000Z",
+    "model": "claude-opus-4-6",
+    "metadata": {
+      "session_id": "5f91d804-43fe-4428-acd5-f8b404ef6ee6"
+    }
+  },
+  {
+    "id": "mcp-text-tool-result-1",
+    "role": "user",
+    "parts": [
+      {
+        "type": "tool-result",
+        "toolId": "toolu_01XB4UufNez1nDBtJqktzVG6",
+        "content": [
+          {
+            "type": "text",
+            "text": "## Bug Review\n\n### High Impact\n\n1. **Removed defensive guard** — potential runtime crash\n\n### Medium Impact\n\n2. **Select fallback** — shows wrong option when value doesn't match"
+          }
+        ]
+      }
+    ],
+    "timestamp": "2026-03-15T10:00:01.000Z",
+    "metadata": {
+      "session_id": "5f91d804-43fe-4428-acd5-f8b404ef6ee6",
+      "tool_use_result": [
+        {
+          "type": "text",
+          "text": "## Bug Review\n\n### High Impact\n\n1. **Removed defensive guard** — potential runtime crash\n\n### Medium Impact\n\n2. **Select fallback** — shows wrong option when value doesn't match"
+        }
+      ]
     }
   }
 ]

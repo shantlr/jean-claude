@@ -212,7 +212,13 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
       if (idx === -1) return state;
       const entry = step.messages[idx] as NormalizedEntry;
       if (entry.type !== 'tool-use') return state;
-      const patched = { ...entry, result } as NormalizedEntry;
+      // MCP results should be objects — wrap plain text in { content } to stay
+      // consistent with the primary entry-update path in the normalizer.
+      const patchedResult =
+        entry.name === 'mcp' && typeof result === 'string'
+          ? (tryParseJsonObject(result) ?? { content: result })
+          : result;
+      const patched = { ...entry, result: patchedResult } as NormalizedEntry;
       const updatedMessages = [...step.messages];
       updatedMessages[idx] = patched;
       return {
@@ -434,3 +440,14 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
       .filter(([, state]) => state.status === 'running')
       .map(([id]) => id),
 }));
+
+function tryParseJsonObject(content: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(content);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed))
+      return parsed as Record<string, unknown>;
+  } catch {
+    // not JSON
+  }
+  return null;
+}

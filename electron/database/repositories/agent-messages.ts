@@ -170,8 +170,16 @@ export const AgentMessageRepository = {
     const entry = JSON.parse(row.data) as NormalizedEntry;
     if (entry.type !== 'tool-use') return 0;
 
-    // Patch the result onto the tool-use entry
-    const patched = { ...entry, result } as NormalizedEntry;
+    // Patch the result onto the tool-use entry.
+    // MCP results should be objects — wrap plain text in { content } to stay
+    // consistent with the primary entry-update path in the normalizer.
+    const patchedResult =
+      entry.name === 'mcp' && typeof result === 'string'
+        ? ((tryParseJson(result) as Record<string, unknown> | null) ?? {
+            content: result,
+          })
+        : result;
+    const patched = { ...entry, result: patchedResult } as NormalizedEntry;
 
     const updateResult = await db
       .updateTable('agent_messages')
@@ -585,4 +593,14 @@ function replayOpenCodeContextUpdate(
     default:
       break;
   }
+}
+
+function tryParseJson(content: string): unknown | null {
+  try {
+    const parsed = JSON.parse(content);
+    if (parsed && typeof parsed === 'object') return parsed;
+  } catch {
+    // not JSON
+  }
+  return null;
 }

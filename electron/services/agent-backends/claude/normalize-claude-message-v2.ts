@@ -538,9 +538,9 @@ export function addResultToToolUse(
     case 'mcp':
       return {
         ...part,
-        result:
-          (tryParseJson(content) as Record<string, unknown> | null) ??
-          ({} as Record<string, unknown>),
+        result: (tryParseJson(content) as Record<string, unknown> | null) ?? {
+          content,
+        },
       };
 
     default:
