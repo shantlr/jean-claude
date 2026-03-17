@@ -309,6 +309,9 @@ export function FeedItemCard({
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-100">
               {item.title}
             </span>
+            {item.source === 'task' && item.pullRequestId && (
+              <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-green-500" />
+            )}
             {item.source === 'pull-request' &&
               (item.activeThreadCount ?? 0) > 0 && (
                 <span className="flex shrink-0 items-center gap-0.5 text-purple-400">
