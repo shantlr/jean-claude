@@ -773,13 +773,33 @@ export function registerIpcHandlers() {
       await agentService.compactRawMessages(id);
     }
 
-    // Only check for missing worktree when completing (not uncompleting)
+    // Prompt to clean up worktree when completing a task that has one
     if (isCompleting && taskBefore.worktreePath && taskBefore.branchName) {
-      const worktreeExists = await pathExists(taskBefore.worktreePath);
-      if (!worktreeExists) {
-        const project = await ProjectRepository.findById(taskBefore.projectId);
-        if (project) {
-          const accepted = await sendGlobalPromptToWindow({
+      const project = await ProjectRepository.findById(taskBefore.projectId);
+      if (project) {
+        const worktreeExists = await pathExists(taskBefore.worktreePath);
+        let accepted = false;
+
+        if (worktreeExists) {
+          accepted = await sendGlobalPromptToWindow({
+            title: 'Delete Worktree?',
+            message:
+              'This task has an associated worktree. Would you like to delete the worktree and its branch?',
+            details: `Path: ${taskBefore.worktreePath}\nBranch: ${taskBefore.branchName}`,
+            acceptLabel: 'Delete Worktree',
+            rejectLabel: 'Keep',
+          });
+
+          if (accepted) {
+            await cleanupWorktree({
+              worktreePath: taskBefore.worktreePath,
+              projectPath: project.path,
+              branchName: taskBefore.branchName,
+              force: true,
+            });
+          }
+        } else {
+          accepted = await sendGlobalPromptToWindow({
             title: 'Worktree Directory Missing',
             message:
               'The worktree directory for this task no longer exists on disk. Would you like to clean up the orphaned git branch and worktree references?',
@@ -793,15 +813,16 @@ export function registerIpcHandlers() {
               projectPath: project.path,
               branchName: taskBefore.branchName,
             });
-
-            // Clear worktree fields on the task
-            return TaskRepository.update(id, {
-              worktreePath: null,
-              branchName: null,
-              startCommitHash: null,
-              sourceBranch: null,
-            });
           }
+        }
+
+        if (accepted) {
+          return TaskRepository.update(id, {
+            worktreePath: null,
+            branchName: null,
+            startCommitHash: null,
+            sourceBranch: null,
+          });
         }
       }
     }
