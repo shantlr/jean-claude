@@ -210,13 +210,19 @@ export function FeedList() {
     setDragOverPinZone(false);
   }, []);
 
+  const currentNoteId = params.noteId as string | undefined;
+
   const isItemSelected = useCallback(
     (item: {
       taskId?: string;
       pullRequestId?: number;
       workItemId?: number;
+      noteId?: string;
       projectId: string;
     }) => {
+      if (item.noteId && currentNoteId) {
+        return item.noteId === currentNoteId;
+      }
       if (item.taskId) {
         return item.taskId === currentTaskId;
       }
@@ -238,20 +244,25 @@ export function FeedList() {
       }
       return item.projectId === currentProjectId;
     },
-    [currentPrId, currentProjectId, currentTaskId, currentWorkItemId],
-  );
-
-  // Notes are not navigable routes, so exclude them from keyboard navigation.
-  const navigableItems = useMemo(
-    () => allVisibleItems.filter((item) => item.source !== 'note'),
-    [allVisibleItems],
+    [
+      currentNoteId,
+      currentPrId,
+      currentProjectId,
+      currentTaskId,
+      currentWorkItemId,
+    ],
   );
 
   const navigateToItem = useCallback(
     (index: number) => {
-      const item = navigableItems[index];
+      const item = allVisibleItems[index];
       if (!item) return;
-      if (item.source === 'work-item' && item.workItemId) {
+      if (item.source === 'note' && item.noteId) {
+        navigate({
+          to: '/all/notes/$noteId',
+          params: { noteId: item.noteId },
+        });
+      } else if (item.source === 'work-item' && item.workItemId) {
         navigate({
           to: '/all/work-items/$projectId/$workItemId',
           params: {
@@ -274,7 +285,7 @@ export function FeedList() {
         });
       }
     },
-    [navigableItems, navigate],
+    [allVisibleItems, navigate],
   );
 
   const openInProject = useCallback(
@@ -285,8 +296,10 @@ export function FeedList() {
       pullRequestId?: number;
       workItemId?: number;
     }) => {
-      // Notes have no route; work items only exist in the cross-project (/all) context
-      if (item.source === 'note' || item.source === 'work-item') return;
+      // Work items only exist in the cross-project (/all) context
+      if (item.source === 'work-item') return;
+      // Notes are global, not per-project
+      if (item.source === 'note') return;
       if (item.source === 'pull-request' && item.pullRequestId) {
         navigate({
           to: '/projects/$projectId/prs/$prId',
@@ -313,23 +326,23 @@ export function FeedList() {
 
   const navigateRelative = useCallback(
     (direction: 'prev' | 'next') => {
-      if (allVisibleItems.length === 0 || navigableItems.length === 0) return;
-      const currentIndex = navigableItems.findIndex((item) =>
+      if (allVisibleItems.length === 0) return;
+      const currentIndex = allVisibleItems.findIndex((item) =>
         isItemSelected(item),
       );
       let newIndex: number;
       if (currentIndex === -1) {
-        newIndex = direction === 'next' ? 0 : navigableItems.length - 1;
+        newIndex = direction === 'next' ? 0 : allVisibleItems.length - 1;
       } else {
         newIndex =
           direction === 'next'
-            ? (currentIndex + 1) % navigableItems.length
-            : (currentIndex - 1 + navigableItems.length) %
-              navigableItems.length;
+            ? (currentIndex + 1) % allVisibleItems.length
+            : (currentIndex - 1 + allVisibleItems.length) %
+              allVisibleItems.length;
       }
       navigateToItem(newIndex);
     },
-    [allVisibleItems.length, navigableItems, isItemSelected, navigateToItem],
+    [allVisibleItems, isItemSelected, navigateToItem],
   );
 
   // Find the currently selected item for dismiss/low-priority shortcuts

@@ -1,0 +1,137 @@
+import { useNavigate } from '@tanstack/react-router';
+import { X } from 'lucide-react';
+import type { ChangeEvent } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import {
+  useDeleteFeedNote,
+  useFeedNoteById,
+  useUpdateFeedNote,
+} from '@/hooks/use-feed-notes';
+
+export function FeedNoteEditor({ noteId }: { noteId: string }) {
+  const navigate = useNavigate();
+  const { note, isLoading } = useFeedNoteById(noteId);
+  const updateNote = useUpdateFeedNote();
+  const deleteNote = useDeleteFeedNote();
+
+  const [value, setValue] = useState('');
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const lastSavedRef = useRef('');
+  const isDeletedRef = useRef(false);
+
+  // Stable ref for mutate so cleanup effect doesn't re-fire every render
+  const mutateRef = useRef(updateNote.mutate);
+  mutateRef.current = updateNote.mutate;
+
+  // Initialize value from note content
+  useEffect(() => {
+    if (note && !hasInitialized) {
+      setValue(note.title);
+      lastSavedRef.current = note.title;
+      setHasInitialized(true);
+    }
+  }, [note, hasInitialized]);
+
+  // Auto-save via debounced value
+  const debouncedValue = useDebouncedValue(value, 500);
+
+  useEffect(() => {
+    if (!hasInitialized || isDeletedRef.current) return;
+    const trimmed = debouncedValue.trim();
+    if (trimmed && trimmed !== lastSavedRef.current) {
+      lastSavedRef.current = trimmed;
+      mutateRef.current({ id: noteId, content: trimmed });
+    }
+  }, [debouncedValue, hasInitialized, noteId]);
+
+  // Keep refs for unmount flush
+  const valueRef = useRef(value);
+  valueRef.current = value;
+
+  const noteIdRef = useRef(noteId);
+  noteIdRef.current = noteId;
+
+  // Flush pending save on unmount only
+  useEffect(() => {
+    return () => {
+      if (isDeletedRef.current) return;
+      const trimmed = valueRef.current.trim();
+      if (trimmed && trimmed !== lastSavedRef.current) {
+        lastSavedRef.current = trimmed;
+        mutateRef.current({ id: noteIdRef.current, content: trimmed });
+      }
+    };
+  }, []);
+
+  const handleChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
+    setValue(e.target.value);
+  }, []);
+
+  const handleDelete = useCallback(() => {
+    isDeletedRef.current = true;
+    deleteNote.mutate(
+      { id: noteId },
+      {
+        onSuccess: () => {
+          navigate({ to: '/all' });
+        },
+      },
+    );
+  }, [noteId, deleteNote, navigate]);
+
+  const handleClose = useCallback(() => {
+    navigate({ to: '/all' });
+  }, [navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full w-full flex-1 items-center justify-center text-neutral-500">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!note) {
+    return (
+      <div className="flex h-full w-full flex-1 items-center justify-center text-neutral-500">
+        Note not found
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full w-full flex-1 flex-col overflow-hidden">
+      {/* Header */}
+      <div className="flex shrink-0 items-center justify-between border-b border-neutral-800 px-4 py-3">
+        <span className="text-sm font-medium text-neutral-300">Note</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleDelete}
+            className="rounded px-2 py-1 text-xs text-red-400 transition-colors hover:bg-red-500/10"
+          >
+            Delete
+          </button>
+          <button
+            onClick={handleClose}
+            className="rounded p-1 text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-300"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Editor */}
+      <div className="flex-1 overflow-y-auto p-4">
+        <textarea
+          value={value}
+          onChange={handleChange}
+          placeholder="Write your note..."
+          autoFocus
+          className="h-full w-full resize-none bg-transparent font-mono text-sm leading-relaxed text-neutral-200 placeholder-neutral-600 outline-none"
+        />
+      </div>
+    </div>
+  );
+}

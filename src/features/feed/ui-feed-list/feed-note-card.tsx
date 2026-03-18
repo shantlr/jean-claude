@@ -1,7 +1,8 @@
+import { useNavigate } from '@tanstack/react-router';
 import clsx from 'clsx';
-import { ArrowRight, Check, Pencil, StickyNote, Trash2, X } from 'lucide-react';
+import { ArrowRight, Check, Pencil, StickyNote, Trash2 } from 'lucide-react';
 import type React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { Dropdown, DropdownDivider, DropdownItem } from '@/common/ui/dropdown';
 import { useDeleteFeedNote, useUpdateFeedNote } from '@/hooks/use-feed-notes';
@@ -10,6 +11,11 @@ import { formatRelativeTime } from '@/lib/time';
 import { useNewTaskDraftStore } from '@/stores/new-task-draft';
 import { useOverlaysStore } from '@/stores/overlays';
 import type { FeedItem } from '@shared/feed-types';
+
+function getFirstLine(text: string): string {
+  const firstLine = text.split('\n')[0]?.trim() ?? '';
+  return firstLine || text.trim().slice(0, 100);
+}
 
 export function FeedNoteCard({
   item,
@@ -30,13 +36,11 @@ export function FeedNoteCard({
   onDrop?: (e: React.DragEvent) => void;
   onDragEnd?: () => void;
 }) {
+  const navigate = useNavigate();
   const updateNote = useUpdateFeedNote();
   const deleteNote = useDeleteFeedNote();
   const menuRef = useRef<{ toggle: () => void } | null>(null);
-  const editInputRef = useRef<HTMLTextAreaElement>(null);
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(item.title);
   const [showProjectPicker, setShowProjectPicker] = useState(false);
 
   const { data: projects } = useProjects();
@@ -46,37 +50,22 @@ export function FeedNoteCard({
   );
   const openOverlay = useOverlaysStore((s) => s.open);
 
-  useEffect(() => {
-    if (isEditing && editInputRef.current) {
-      editInputRef.current.focus();
-      editInputRef.current.select();
+  const firstLine = useMemo(() => getFirstLine(item.title), [item.title]);
+
+  const openNote = useCallback(() => {
+    if (item.noteId) {
+      navigate({
+        to: '/all/notes/$noteId',
+        params: { noteId: item.noteId },
+      });
     }
-  }, [isEditing]);
+  }, [item.noteId, navigate]);
 
   const openMenu = useCallback((e: React.MouseEvent | React.KeyboardEvent) => {
     e.preventDefault();
     e.stopPropagation();
     menuRef.current?.toggle();
   }, []);
-
-  const startEdit = useCallback(() => {
-    setEditValue(item.title);
-    setIsEditing(true);
-    menuRef.current?.toggle();
-  }, [item.title]);
-
-  const saveEdit = useCallback(() => {
-    const trimmed = editValue.trim();
-    if (trimmed && trimmed !== item.title && item.noteId) {
-      updateNote.mutate({ id: item.noteId, content: trimmed });
-    }
-    setIsEditing(false);
-  }, [editValue, item.title, item.noteId, updateNote]);
-
-  const cancelEdit = useCallback(() => {
-    setEditValue(item.title);
-    setIsEditing(false);
-  }, [item.title]);
 
   const handleDelete = useCallback(() => {
     if (item.noteId) {
@@ -109,55 +98,6 @@ export function FeedNoteCard({
     [item.title, setSelectedProjectId, setDraft, openOverlay],
   );
 
-  const handleEditKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        saveEdit();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        cancelEdit();
-      }
-    },
-    [saveEdit, cancelEdit],
-  );
-
-  if (isEditing) {
-    return (
-      <div
-        className={clsx(
-          'flex flex-col gap-1 rounded-lg border border-yellow-500/30 bg-neutral-800 px-3.5 py-2.5',
-        )}
-      >
-        <textarea
-          ref={editInputRef}
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          onKeyDown={handleEditKeyDown}
-          onBlur={saveEdit}
-          rows={2}
-          className="w-full resize-none bg-transparent text-sm text-neutral-100 placeholder-neutral-500 outline-none"
-        />
-        <div className="flex items-center justify-end gap-1">
-          <button
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={cancelEdit}
-            className="rounded p-0.5 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
-          >
-            <X size={12} />
-          </button>
-          <button
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={saveEdit}
-            className="rounded p-0.5 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
-          >
-            <Check size={12} />
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <Dropdown
       trigger={({ triggerRef }) => (
@@ -170,12 +110,12 @@ export function FeedNoteCard({
           onDragLeave={onDragLeave}
           onDrop={onDrop}
           onDragEnd={onDragEnd}
-          onClick={startEdit}
+          onClick={openNote}
           onContextMenu={openMenu}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              startEdit();
+              openNote();
               return;
             }
             if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
@@ -191,8 +131,8 @@ export function FeedNoteCard({
         >
           <div className="flex items-center gap-2">
             <StickyNote className="h-3.5 w-3.5 shrink-0 text-yellow-500/70" />
-            <span className="min-w-0 flex-1 text-sm text-neutral-200">
-              {item.title}
+            <span className="min-w-0 flex-1 truncate text-sm text-neutral-200">
+              {firstLine}
             </span>
             <span className="shrink-0 text-[11px] text-neutral-500 tabular-nums">
               {formatRelativeTime(item.timestamp)}
@@ -204,7 +144,7 @@ export function FeedNoteCard({
       className="min-w-[180px]"
     >
       <DropdownItem
-        onClick={startEdit}
+        onClick={openNote}
         icon={<Pencil className="text-neutral-400" />}
       >
         Edit
