@@ -37,16 +37,21 @@ function FeedCard({
   return <FeedItemCard item={item} {...props} />;
 }
 
-function RunningTasksZone({
+function StackableZone({
   items,
   isItemSelected,
   onDragStart,
   onDragEnd,
+  sticky,
+  collapsedOverlap = 28,
 }: {
   items: FeedItem[];
   isItemSelected: (item: FeedItem) => boolean;
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
+  sticky?: boolean;
+  /** Pixel amount stacked cards overlap when collapsed (default 28 ≈ Tailwind mt-7). */
+  collapsedOverlap?: number;
 }) {
   const [expanded, setExpanded] = useState(false);
   const collapseTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -68,18 +73,22 @@ function RunningTasksZone({
 
   return (
     <div
-      className="flex flex-col py-0.5"
+      className={clsx(
+        'flex flex-col py-0.5',
+        sticky && 'sticky top-0 z-30 bg-neutral-900/95 backdrop-blur-sm',
+      )}
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
     >
       {items.map((item, index) => (
         <div
           key={item.id}
-          className={clsx(
-            'relative transition-[margin] duration-200 ease-out',
-            index > 0 && (expanded ? 'mt-1.5' : '-mt-7'),
-          )}
-          style={{ zIndex: index + 1 }}
+          className="relative transition-[margin] duration-200 ease-out"
+          style={{
+            zIndex: index + 1,
+            marginTop:
+              index > 0 ? (expanded ? 6 : -collapsedOverlap) : undefined,
+          }}
         >
           <FeedCard
             item={item}
@@ -509,25 +518,21 @@ export function FeedList() {
           <div className="mx-2 my-1 border-t border-dashed border-neutral-700/50" />
         )}
 
-      {/* Action needed zone - permissions, questions, errors (above running) */}
+      {/* Action needed zone - permissions, questions, errors (sticky + stacked) */}
       {actionNeededItems.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          {actionNeededItems.map((item) => (
-            <FeedCard
-              key={item.id}
-              item={item}
-              isSelected={isItemSelected(item)}
-              isDraggable
-              onDragStart={() => setDraggedId(item.id)}
-              onDragEnd={handleDragEnd}
-            />
-          ))}
-        </div>
+        <StackableZone
+          items={actionNeededItems}
+          isItemSelected={isItemSelected}
+          onDragStart={setDraggedId}
+          onDragEnd={handleDragEnd}
+          sticky
+          collapsedOverlap={32}
+        />
       )}
 
       {/* Running tasks zone - stacked, spreads on hover */}
       {runningItems.length > 0 && (
-        <RunningTasksZone
+        <StackableZone
           items={runningItems}
           isItemSelected={isItemSelected}
           onDragStart={setDraggedId}
