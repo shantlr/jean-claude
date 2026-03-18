@@ -26,6 +26,8 @@ contextBridge.exposeInMainWorld('api', {
     update: (id: string, data: unknown) =>
       ipcRenderer.invoke('projects:update', id, data),
     delete: (id: string) => ipcRenderer.invoke('projects:delete', id),
+    deleteWorktreesFolder: (projectId: string) =>
+      ipcRenderer.invoke('projects:deleteWorktreesFolder', projectId),
     reorder: (orderedIds: string[]) =>
       ipcRenderer.invoke('projects:reorder', orderedIds),
     getBranches: (projectId: string) =>

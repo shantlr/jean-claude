@@ -50,6 +50,18 @@ export function useDeleteProject() {
   });
 }
 
+export function useDeleteProjectWorktreesFolder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (projectId: string) =>
+      api.projects.deleteWorktreesFolder(projectId),
+    onSuccess: (_, projectId) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
+    },
+  });
+}
+
 export function useReorderProjects() {
   const queryClient = useQueryClient();
   return useMutation({

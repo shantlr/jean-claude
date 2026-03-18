@@ -131,6 +131,27 @@ export async function getOrCreateProjectWorktreesPath(
 }
 
 /**
+ * Deletes the worktrees folder for a project and clears the stored path.
+ */
+export async function deleteProjectWorktreesFolder(
+  projectId: string,
+): Promise<void> {
+  const project = await ProjectRepository.findById(projectId);
+  if (!project) {
+    throw new Error(`Project ${projectId} not found`);
+  }
+
+  if (project.worktreesPath && (await pathExists(project.worktreesPath))) {
+    await fs.rm(project.worktreesPath, { recursive: true, force: true });
+  }
+
+  await ProjectRepository.update(projectId, {
+    worktreesPath: null,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+/**
  * Gets the current HEAD commit hash for a git repository.
  */
 export async function getCurrentCommitHash(repoPath: string): Promise<string> {
@@ -572,6 +593,8 @@ export async function createWorktree(
   if (!(await isGitRepository(projectPath))) {
     throw new Error(`Project path is not a git repository: ${projectPath}`);
   }
+
+  console.log('AZERAZERAEZREAZRAEZEAZR');
 
   // Get or create the project's worktrees directory
   const projectWorktreesPath = await getOrCreateProjectWorktreesPath(

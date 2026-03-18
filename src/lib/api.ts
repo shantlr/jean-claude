@@ -306,6 +306,7 @@ export interface Api {
     create: (data: NewProject) => Promise<Project>;
     update: (id: string, data: UpdateProject) => Promise<Project>;
     delete: (id: string) => Promise<void>;
+    deleteWorktreesFolder: (projectId: string) => Promise<void>;
     reorder: (orderedIds: string[]) => Promise<Project[]>;
     getBranches: (projectId: string) => Promise<string[]>;
     getCurrentBranch: (projectId: string) => Promise<string>;
@@ -884,6 +885,7 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         delete: async () => {},
+        deleteWorktreesFolder: async () => {},
         reorder: async () => [],
         getBranches: async () => [],
         getCurrentBranch: async () => '',

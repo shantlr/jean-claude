@@ -12,6 +12,7 @@ import {
   GitPullRequest,
   MoreHorizontal,
   FolderTree,
+  FolderSymlink,
   Bug,
 } from 'lucide-react';
 import { useEffect, useState, useCallback, useMemo, useRef, memo } from 'react';
@@ -64,6 +65,7 @@ import {
   useDeleteTask,
   useDeleteWorktree,
   useSetTaskMode,
+  useUpdateTask,
   useClearTaskUserCompleted,
   useAddSessionAllowedTool,
   useRemoveSessionAllowedTool,
@@ -97,6 +99,7 @@ import {
 } from '@shared/types';
 
 import { AddStepDialog, type AddStepPresetType } from './add-step-dialog';
+import { ChangeWorktreePathDialog } from './change-worktree-path-dialog';
 import { CommandLogsPane } from './command-logs-pane';
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
 import { DebugMessagesPane } from './debug-messages-pane';
@@ -184,6 +187,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const { data: editorSetting } = useEditorSetting();
   const deleteTask = useDeleteTask();
   const deleteWorktree = useDeleteWorktree();
+  const updateTask = useUpdateTask();
   const setTaskMode = useSetTaskMode();
   const addSessionAllowedTool = useAddSessionAllowedTool();
   const removeSessionAllowedTool = useRemoveSessionAllowedTool();
@@ -258,6 +262,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
 
   const addToast = useToastStore((s) => s.addToast);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isChangeWorktreePathDialogOpen, setIsChangeWorktreePathDialogOpen] =
+    useState(false);
   const [isAddStepDialogOpen, setIsAddStepDialogOpen] = useState(false);
   const [addStepAfterStepId, setAddStepAfterStepId] = useState<string | null>(
     null,
@@ -475,6 +481,26 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       },
     });
   }, [task?.worktreePath, task?.branchName, taskId, deleteWorktree, modal]);
+
+  const handleChangeWorktreePath = useCallback(
+    (newPath: string) => {
+      updateTask.mutate(
+        { id: taskId, data: { worktreePath: newPath } },
+        {
+          onSuccess: () => {
+            setIsChangeWorktreePathDialogOpen(false);
+          },
+          onError: () => {
+            modal.error({
+              title: 'Failed to Update Worktree Path',
+              content: 'An error occurred while updating the worktree path.',
+            });
+          },
+        },
+      );
+    },
+    [taskId, updateTask, modal],
+  );
 
   const handleAllowToolsForSession = useCallback(
     (toolName: string, input: Record<string, unknown>) => {
@@ -748,6 +774,14 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           handleDeleteWorktree();
         },
       },
+    !!task?.worktreePath && {
+      label: 'Change Worktree Path',
+      section: 'Task',
+      keywords: ['worktree', 'move', 'relocate', 'path'],
+      handler: () => {
+        setIsChangeWorktreePathDialogOpen(true);
+      },
+    },
     !!task?.pullRequestUrl && {
       label: 'Open Pull Request in Browser',
       section: 'Task',
@@ -997,6 +1031,14 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               >
                 Raw Messages
               </DropdownItem>
+              {task.worktreePath && (
+                <DropdownItem
+                  icon={<FolderSymlink />}
+                  onClick={() => setIsChangeWorktreePathDialogOpen(true)}
+                >
+                  Change Worktree Path
+                </DropdownItem>
+              )}
               {task.worktreePath && !isRunning && (
                 <DropdownItem
                   icon={<Trash2 />}
@@ -1276,6 +1318,17 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         projectRoot={taskRootPath}
         projectId={project.id}
       />
+
+      {/* Change worktree path dialog */}
+      {task.worktreePath && (
+        <ChangeWorktreePathDialog
+          isOpen={isChangeWorktreePathDialogOpen}
+          onClose={() => setIsChangeWorktreePathDialogOpen(false)}
+          onConfirm={handleChangeWorktreePath}
+          currentPath={task.worktreePath}
+          isPending={updateTask.isPending}
+        />
+      )}
 
       {/* Delete confirmation modal */}
       <DeleteTaskDialog

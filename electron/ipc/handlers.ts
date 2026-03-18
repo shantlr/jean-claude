@@ -161,6 +161,7 @@ import {
   cleanupMissingWorktree,
   mergeWorktree,
   pushBranch,
+  deleteProjectWorktreesFolder,
 } from '../services/worktree-service';
 
 const execAsync = promisify(exec);
@@ -208,6 +209,10 @@ export function registerIpcHandlers() {
   ipcMain.handle('projects:delete', (_, id: string) => {
     dbg.ipc('projects:delete %s', id);
     return ProjectRepository.delete(id);
+  });
+  ipcMain.handle('projects:deleteWorktreesFolder', (_, projectId: string) => {
+    dbg.ipc('projects:deleteWorktreesFolder %s', projectId);
+    return deleteProjectWorktreesFolder(projectId);
   });
   ipcMain.handle('projects:reorder', (_, orderedIds: string[]) =>
     ProjectRepository.reorder(orderedIds),

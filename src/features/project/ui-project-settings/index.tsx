@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react';
+import { FolderOpen, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 
 import { Select } from '@/common/ui/select';
@@ -14,6 +14,7 @@ import {
   useProjectBranches,
   useUpdateProject,
   useDeleteProject,
+  useDeleteProjectWorktreesFolder,
 } from '@/hooks/use-projects';
 import { useBackendsSetting } from '@/hooks/use-settings';
 import { api } from '@/lib/api';
@@ -51,16 +52,19 @@ export function ProjectSettings({
     useProjectBranches(projectId);
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
+  const deleteWorktreesFolder = useDeleteProjectWorktreesFolder();
   const clearProjectNavHistoryState = useNavigationStore(
     (s) => s.clearProjectNavHistoryState,
   );
   const addToast = useToastStore((s) => s.addToast);
 
   const [name, setName] = useState('');
+  const [path, setPath] = useState('');
   const [color, setColor] = useState('');
   const [defaultBranch, setDefaultBranch] = useState('');
   const [defaultAgentBackend, setDefaultAgentBackend] =
     useState<AgentBackendType | null>(null);
+  const [worktreesPath, setWorktreesPath] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [completionContext, setCompletionContext] = useState('');
   const [priority, setPriority] = useState<ProjectPriority>('normal');
@@ -80,11 +84,13 @@ export function ProjectSettings({
   useEffect(() => {
     if (project) {
       setName(project.name);
+      setPath(project.path);
       setColor(project.color);
       setDefaultBranch(project.defaultBranch ?? '');
       setDefaultAgentBackend(project.defaultAgentBackend);
       setPriority(project.priority ?? 'normal');
       setCompletionContext(project.completionContext ?? '');
+      setWorktreesPath(project.worktreesPath ?? '');
     }
   }, [project]);
 
@@ -116,16 +122,23 @@ export function ProjectSettings({
     );
   }
 
+  async function handlePickFolder() {
+    const selected = await api.dialog.openDirectory();
+    if (selected) setPath(selected);
+  }
+
   async function handleSave() {
     await updateProject.mutateAsync({
       id: projectId,
       data: {
         name,
+        path,
         color,
         defaultBranch: defaultBranch || null,
         defaultAgentBackend,
         priority,
         completionContext: completionContext || null,
+        worktreesPath: worktreesPath || null,
       },
     });
   }
@@ -160,11 +173,13 @@ export function ProjectSettings({
 
   const hasChanges =
     name !== project.name ||
+    path !== project.path ||
     color !== project.color ||
     defaultBranch !== (project.defaultBranch ?? '') ||
     defaultAgentBackend !== project.defaultAgentBackend ||
     priority !== (project.priority ?? 'normal') ||
-    completionContext !== (project.completionContext ?? '');
+    completionContext !== (project.completionContext ?? '') ||
+    worktreesPath !== (project.worktreesPath ?? '');
 
   let content: ReactElement;
 
@@ -192,8 +207,20 @@ export function ProjectSettings({
             <label className="mb-1 block text-sm font-medium text-neutral-300">
               Path
             </label>
-            <div className="rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2">
-              <span className="text-sm text-neutral-400">{project.path}</span>
+            <div className="flex gap-2">
+              <div className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2">
+                <span className="truncate text-sm text-neutral-400">
+                  {path}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handlePickFolder}
+                className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-300 transition-colors hover:bg-neutral-700"
+              >
+                <FolderOpen className="h-4 w-4" />
+                Browse
+              </button>
             </div>
           </div>
 
@@ -251,6 +278,46 @@ export function ProjectSettings({
             />
             <p className="mt-1 text-xs text-neutral-500">
               The branch that worktrees will merge into
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-neutral-300">
+              Worktrees folder
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={worktreesPath}
+                onChange={(e) => setWorktreesPath(e.target.value)}
+                placeholder="Auto-created on first use"
+                className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={async () => {
+                  const selected = await api.dialog.openDirectory();
+                  if (selected) setWorktreesPath(selected);
+                }}
+                className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-300 transition-colors hover:bg-neutral-700"
+              >
+                <FolderOpen className="h-4 w-4" />
+                Browse
+              </button>
+              {project.worktreesPath && (
+                <button
+                  type="button"
+                  onClick={() => deleteWorktreesFolder.mutate(projectId)}
+                  disabled={deleteWorktreesFolder.isPending}
+                  className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-red-900 bg-red-950/50 px-3 py-2 text-sm text-red-400 transition-colors hover:bg-red-950 disabled:opacity-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </button>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-neutral-500">
+              Where worktrees for this project are stored
             </p>
           </div>
 
