@@ -209,11 +209,25 @@ export class OpenCodeBackend implements AgentBackend {
     config: AgentBackendConfig,
     parts: PromptPart[],
   ): Promise<AgentSession> {
+    dbg.agent(
+      'OpenCodeBackend.start() — cwd: %s, sessionId: %s, model: %s, mode: %s, hasMcpServers: %s',
+      config.cwd,
+      config.sessionId ?? '(new)',
+      config.model ?? '(default)',
+      config.interactionMode,
+      hasRuntimeMcpServers(config),
+    );
+
     const ownsServerHandle = hasRuntimeMcpServers(config);
     const serverHandle = ownsServerHandle
       ? await createDedicatedServer(config)
       : await getOrCreateServer();
     const { client } = serverHandle;
+
+    dbg.agent(
+      'OpenCodeBackend.start() — server ready at %s',
+      serverHandle.server.url,
+    );
 
     // Create or resume an OpenCode session
     let session: OcSession;
@@ -496,13 +510,39 @@ export class OpenCodeBackend implements AgentBackend {
       ? compileForOpenCode(config.permissionRules)
       : undefined;
 
-    const result = await client.session.create({
-      directory: config.cwd,
-      ...(permission && permission.length > 0 ? { body: { permission } } : {}),
-    });
+    dbg.agent(
+      'Creating OpenCode session in directory %s with %d permission rules',
+      config.cwd,
+      permission?.length ?? 0,
+    );
+
+    let result;
+    try {
+      result = await client.session.create({
+        directory: config.cwd,
+        ...(permission && permission.length > 0
+          ? { body: { permission } }
+          : {}),
+      });
+    } catch (error) {
+      dbg.agent(
+        'OpenCode session.create() threw: %O (directory: %s)',
+        error,
+        config.cwd,
+      );
+      throw new Error(
+        `Failed to create OpenCode session: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
 
     if (!result.data) {
-      throw new Error('Failed to create OpenCode session');
+      dbg.agent(
+        'OpenCode session.create() returned no data. Full result: %O',
+        result,
+      );
+      throw new Error(
+        `Failed to create OpenCode session: result.data is ${String(result.data)}`,
+      );
     }
 
     dbg.agent(
