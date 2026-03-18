@@ -1,11 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
 
-import { computeFeedScore } from '@/features/feed/utils-feed-scoring';
 import { api } from '@/lib/api';
 import { useFeedStore } from '@/stores/feed';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { FeedItem, FeedItemAttention } from '@shared/feed-types';
+
+const SOURCE_ORDER: Record<FeedItem['source'], number> = {
+  note: 0,
+  task: 1,
+  'work-item': 2,
+  'pull-request': 2,
+};
+
+const bySourceThenTimestamp = (a: FeedItem, b: FeedItem) => {
+  const so = SOURCE_ORDER[a.source] - SOURCE_ORDER[b.source];
+  if (so !== 0) return so;
+  return b.timestamp < a.timestamp ? -1 : b.timestamp > a.timestamp ? 1 : 0;
+};
 
 const ACTION_NEEDED_ATTENTIONS: Set<FeedItemAttention> = new Set([
   'needs-permission',
@@ -167,55 +179,10 @@ export function useFeed() {
       }
     }
 
-    actionNeeded.sort((a, b) => {
-      const scoreA = computeFeedScore({
-        attention: a.attention,
-        projectPriority: a.projectPriority,
-        isLowPriority: false,
-      });
-      const scoreB = computeFeedScore({
-        attention: b.attention,
-        projectPriority: b.projectPriority,
-        isLowPriority: false,
-      });
-      if (scoreB !== scoreA) return scoreB - scoreA;
-      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-    });
-
-    running.sort(
-      (a, b) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-    );
-
-    rest.sort((a, b) => {
-      const scoreA = computeFeedScore({
-        attention: a.attention,
-        projectPriority: a.projectPriority,
-        isLowPriority: false,
-      });
-      const scoreB = computeFeedScore({
-        attention: b.attention,
-        projectPriority: b.projectPriority,
-        isLowPriority: false,
-      });
-      if (scoreB !== scoreA) return scoreB - scoreA;
-      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-    });
-
-    low.sort((a, b) => {
-      const scoreA = computeFeedScore({
-        attention: a.attention,
-        projectPriority: a.projectPriority,
-        isLowPriority: true,
-      });
-      const scoreB = computeFeedScore({
-        attention: b.attention,
-        projectPriority: b.projectPriority,
-        isLowPriority: true,
-      });
-      if (scoreB !== scoreA) return scoreB - scoreA;
-      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-    });
+    actionNeeded.sort(bySourceThenTimestamp);
+    running.sort(bySourceThenTimestamp);
+    rest.sort(bySourceThenTimestamp);
+    low.sort(bySourceThenTimestamp);
 
     return {
       pinnedItems: pinnedResult,

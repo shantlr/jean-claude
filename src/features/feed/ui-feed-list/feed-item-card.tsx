@@ -357,6 +357,11 @@ export function FeedItemCard({
                 ))}
               </div>
             )}
+            {item.source === 'work-item' && item.workItemState && (
+              <span className="ml-auto shrink-0 rounded bg-teal-500/15 px-1.5 py-0.5 text-[10px] font-medium text-teal-300 ring-1 ring-teal-500/30">
+                {item.workItemState}
+              </span>
+            )}
           </div>
 
           {runningCommands.length > 0 && (

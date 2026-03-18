@@ -211,15 +211,30 @@ export async function getFeedItems(): Promise<FeedItem[]> {
 
   const workItemItems = await fetchWorkItemFeedItems();
 
-  const allItems = [...feedItems, ...prItems, ...noteItems, ...workItemItems];
+  // Filter out work items that already have an associated task
+  const taskWorkItemIds = new Set(
+    activeTasks.flatMap((t) => (t.workItemIds ?? []).map(Number)),
+  );
+
+  const filteredWorkItems = workItemItems.filter(
+    (wi) => wi.workItemId === undefined || !taskWorkItemIds.has(wi.workItemId),
+  );
+
+  const allItems = [
+    ...feedItems,
+    ...prItems,
+    ...noteItems,
+    ...filteredWorkItems,
+  ];
 
   dbg.feed(
-    'getFeedItems: returning %d items (%d tasks, %d PRs, %d notes, %d work items)',
+    'getFeedItems: returning %d items (%d tasks, %d PRs, %d notes, %d work items [%d filtered])',
     allItems.length,
     feedItems.length,
     prItems.length,
     noteItems.length,
-    workItemItems.length,
+    filteredWorkItems.length,
+    workItemItems.length - filteredWorkItems.length,
   );
   return allItems;
 }
