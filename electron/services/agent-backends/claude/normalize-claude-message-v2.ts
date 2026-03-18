@@ -397,6 +397,7 @@ export function mapToolUseBlock(
       return { ...base, name: 'grep', input: { pattern: str(input.pattern) } };
 
     case 'Task':
+    case 'Agent':
       return {
         ...base,
         name: 'sub-agent',
