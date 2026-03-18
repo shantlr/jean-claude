@@ -1,13 +1,47 @@
-import { RefreshCw } from 'lucide-react';
+import { Bell, Eye, RefreshCw } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
 
+import { Tooltip } from '@/common/ui/tooltip';
 import { useProject } from '@/hooks/use-projects';
 import {
   useTrackedPipelines,
   useToggleTrackedPipeline,
+  useToggleTrackedPipelineVisible,
   useDiscoverPipelines,
 } from '@/hooks/use-tracked-pipelines';
 import type { TrackedPipeline } from '@shared/pipeline-types';
+
+function Toggle({
+  checked,
+  disabled,
+  onChange,
+  ariaLabel,
+}: {
+  checked: boolean;
+  disabled: boolean;
+  onChange: () => void;
+  ariaLabel: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      onClick={onChange}
+      disabled={disabled}
+      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+        checked ? 'bg-blue-600' : 'bg-neutral-700'
+      } disabled:opacity-50`}
+    >
+      <span
+        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+          checked ? 'translate-x-4' : 'translate-x-0.5'
+        }`}
+      />
+    </button>
+  );
+}
 
 function PipelineRow({
   pipeline,
@@ -17,33 +51,68 @@ function PipelineRow({
   projectId: string;
 }) {
   const toggleMutation = useToggleTrackedPipeline(projectId);
+  const toggleVisibleMutation = useToggleTrackedPipelineVisible(projectId);
 
   return (
     <div className="flex items-center justify-between rounded-lg border border-neutral-800 px-3 py-2">
       <div className="min-w-0 flex-1">
         <span className="text-sm text-neutral-200">{pipeline.name}</span>
       </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={pipeline.enabled}
-        onClick={() =>
-          toggleMutation.mutate({
-            id: pipeline.id,
-            enabled: !pipeline.enabled,
-          })
-        }
-        disabled={toggleMutation.isPending}
-        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-          pipeline.enabled ? 'bg-blue-600' : 'bg-neutral-700'
-        } disabled:opacity-50`}
-      >
-        <span
-          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-            pipeline.enabled ? 'translate-x-4' : 'translate-x-0.5'
-          }`}
-        />
-      </button>
+      <div className="flex items-center gap-4">
+        <Tooltip content="Show in the Pipelines overlay">
+          <span>
+            <Toggle
+              checked={pipeline.visible}
+              disabled={toggleVisibleMutation.isPending}
+              onChange={() =>
+                toggleVisibleMutation.mutate({
+                  id: pipeline.id,
+                  visible: !pipeline.visible,
+                })
+              }
+              ariaLabel={`Show ${pipeline.name} in overlay`}
+            />
+          </span>
+        </Tooltip>
+        <Tooltip content="Desktop notifications on completion or failure">
+          <span>
+            <Toggle
+              checked={pipeline.enabled}
+              disabled={toggleMutation.isPending}
+              onChange={() =>
+                toggleMutation.mutate({
+                  id: pipeline.id,
+                  enabled: !pipeline.enabled,
+                })
+              }
+              ariaLabel={`Enable notifications for ${pipeline.name}`}
+            />
+          </span>
+        </Tooltip>
+      </div>
+    </div>
+  );
+}
+
+function PipelineSection({
+  title,
+  pipelines,
+  projectId,
+}: {
+  title: string;
+  pipelines: TrackedPipeline[];
+  projectId: string;
+}) {
+  if (pipelines.length === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      <h3 className="text-sm font-medium text-neutral-400">{title}</h3>
+      <div className="space-y-1">
+        {pipelines.map((p) => (
+          <PipelineRow key={p.id} pipeline={p} projectId={projectId} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -69,7 +138,7 @@ export function ProjectPipelineSettings({ projectId }: { projectId: string }) {
     [pipelines],
   );
 
-  // Task 16: Auto-discover on first visit
+  // Auto-discover on first visit
   const hasAutoDiscovered = useRef(false);
   const discoverMutateRef = useRef(discoverMutation.mutate);
   discoverMutateRef.current = discoverMutation.mutate;
@@ -121,6 +190,11 @@ export function ProjectPipelineSettings({ projectId }: { projectId: string }) {
         </button>
       </div>
 
+      <p className="text-xs leading-relaxed text-neutral-500">
+        Configure which pipelines appear in the Pipelines overlay and which ones
+        send desktop notifications when runs complete or fail.
+      </p>
+
       {isLoading ? (
         <p className="text-sm text-neutral-500">Loading pipelines...</p>
       ) : !hasPipelines ? (
@@ -139,31 +213,30 @@ export function ProjectPipelineSettings({ projectId }: { projectId: string }) {
         </div>
       ) : (
         <>
-          {buildPipelines.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-neutral-400">
-                Build Pipelines
-              </h3>
-              <div className="space-y-1">
-                {buildPipelines.map((p) => (
-                  <PipelineRow key={p.id} pipeline={p} projectId={projectId} />
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Column headers */}
+          <div className="flex items-center justify-end gap-4 pr-3 text-[10px] tracking-wider text-neutral-500 uppercase">
+            <Tooltip content="Show in the Pipelines overlay">
+              <span className="flex w-9 cursor-default items-center justify-center">
+                <Eye className="h-3 w-3" />
+              </span>
+            </Tooltip>
+            <Tooltip content="Desktop notifications on completion or failure">
+              <span className="flex w-9 cursor-default items-center justify-center">
+                <Bell className="h-3 w-3" />
+              </span>
+            </Tooltip>
+          </div>
 
-          {releasePipelines.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-neutral-400">
-                Release Pipelines
-              </h3>
-              <div className="space-y-1">
-                {releasePipelines.map((p) => (
-                  <PipelineRow key={p.id} pipeline={p} projectId={projectId} />
-                ))}
-              </div>
-            </div>
-          )}
+          <PipelineSection
+            title="Build Pipelines"
+            pipelines={buildPipelines}
+            projectId={projectId}
+          />
+          <PipelineSection
+            title="Release Pipelines"
+            pipelines={releasePipelines}
+            projectId={projectId}
+          />
         </>
       )}
     </div>

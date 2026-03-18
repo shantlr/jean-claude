@@ -32,7 +32,16 @@ import type {
   NormalizedPermissionRequest,
 } from '@shared/normalized-message-v2';
 import type { AppNotification } from '@shared/notification-types';
-import type { TrackedPipeline } from '@shared/pipeline-types';
+import type {
+  TrackedPipeline,
+  AzureBuildRun,
+  AzureRelease,
+  AzureBuildDetail,
+  AzureBuildTimeline,
+  AzureReleaseDetail,
+  AzureGitRef,
+  AzureBuildDefinitionDetail,
+} from '@shared/pipeline-types';
 import type {
   ProjectCommand,
   NewProjectCommand,
@@ -830,8 +839,67 @@ export interface Api {
   };
   trackedPipelines: {
     list: (projectId: string) => Promise<TrackedPipeline[]>;
+    listAll: () => Promise<TrackedPipeline[]>;
     toggle: (id: string, enabled: boolean) => Promise<void>;
+    toggleVisible: (id: string, visible: boolean) => Promise<void>;
     discover: (projectId: string) => Promise<TrackedPipeline[]>;
+  };
+  pipelines: {
+    listRuns: (params: {
+      providerId: string;
+      azureProjectId: string;
+      definitionId: number;
+      kind: 'build' | 'release';
+    }) => Promise<AzureBuildRun[] | AzureRelease[]>;
+    getBuild: (params: {
+      providerId: string;
+      azureProjectId: string;
+      buildId: number;
+    }) => Promise<AzureBuildDetail>;
+    getBuildTimeline: (params: {
+      providerId: string;
+      azureProjectId: string;
+      buildId: number;
+    }) => Promise<AzureBuildTimeline>;
+    getBuildLog: (params: {
+      providerId: string;
+      azureProjectId: string;
+      buildId: number;
+      logId: number;
+    }) => Promise<string>;
+    getRelease: (params: {
+      providerId: string;
+      azureProjectId: string;
+      releaseId: number;
+    }) => Promise<AzureReleaseDetail>;
+    listBranches: (params: {
+      providerId: string;
+      azureProjectId: string;
+      repoId: string;
+    }) => Promise<AzureGitRef[]>;
+    getDefinitionParams: (params: {
+      providerId: string;
+      azureProjectId: string;
+      definitionId: number;
+    }) => Promise<AzureBuildDefinitionDetail>;
+    queueBuild: (params: {
+      providerId: string;
+      azureProjectId: string;
+      definitionId: number;
+      sourceBranch: string;
+      parameters?: Record<string, string>;
+    }) => Promise<AzureBuildRun>;
+    createRelease: (params: {
+      providerId: string;
+      azureProjectId: string;
+      definitionId: number;
+      description?: string;
+    }) => Promise<AzureRelease>;
+    cancelBuild: (params: {
+      providerId: string;
+      azureProjectId: string;
+      buildId: number;
+    }) => Promise<void>;
   };
   feed: {
     getItems: () => Promise<FeedItem[]>;
@@ -1259,8 +1327,22 @@ export const api: Api = hasWindowApi
       },
       trackedPipelines: {
         list: async () => [],
+        listAll: async () => [],
         toggle: async () => {},
+        toggleVisible: async () => {},
         discover: async () => [],
+      },
+      pipelines: {
+        listRuns: async () => [],
+        getBuild: async () => ({}) as AzureBuildDetail,
+        getBuildTimeline: async () => ({}) as AzureBuildTimeline,
+        getBuildLog: async () => '',
+        getRelease: async () => ({}) as AzureReleaseDetail,
+        listBranches: async () => [],
+        getDefinitionParams: async () => ({}) as AzureBuildDefinitionDetail,
+        queueBuild: async () => ({}) as AzureBuildRun,
+        createRelease: async () => ({}) as AzureRelease,
+        cancelBuild: async () => {},
       },
       feed: {
         getItems: async () => [],

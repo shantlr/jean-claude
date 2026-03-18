@@ -85,6 +85,17 @@ import {
   updateThreadStatus,
   getCurrentUser,
   activateWorkItem,
+  listBuilds,
+  listReleases,
+  getBuild,
+  getBuildTimeline,
+  getBuildLog,
+  getRelease,
+  listBranches,
+  getBuildDefinitionDetail,
+  queueBuild,
+  createRelease as createAzureRelease,
+  cancelBuild,
   type CloneRepositoryParams,
 } from '../services/azure-devops-service';
 import { fetchImageAsBase64 } from '../services/azure-image-proxy-service';
@@ -2697,6 +2708,16 @@ export function registerIpcHandlers() {
     return rows.map((row) => ({
       ...row,
       enabled: row.enabled === 1,
+      visible: row.visible === 1,
+    }));
+  });
+
+  ipcMain.handle('tracked-pipelines:listAll', async () => {
+    const rows = await TrackedPipelineRepository.findAll();
+    return rows.map((row) => ({
+      ...row,
+      enabled: row.enabled === 1,
+      visible: row.visible === 1,
     }));
   });
 
@@ -2707,11 +2728,19 @@ export function registerIpcHandlers() {
     },
   );
 
+  ipcMain.handle(
+    'tracked-pipelines:toggleVisible',
+    async (_, id: string, visible: boolean) => {
+      await TrackedPipelineRepository.toggleVisible(id, visible);
+    },
+  );
+
   ipcMain.handle('tracked-pipelines:discover', async (_, projectId: string) => {
     const rows = await pipelineTrackingService.discoverPipelines(projectId);
     return rows.map((row) => ({
       ...row,
       enabled: row.enabled === 1,
+      visible: row.visible === 1,
     }));
   });
 
@@ -2740,6 +2769,204 @@ export function registerIpcHandlers() {
       },
     };
   });
+
+  // --- Pipeline detail & trigger handlers ---
+
+  ipcMain.handle(
+    'pipelines:listRuns',
+    async (
+      _,
+      params: {
+        providerId: string;
+        azureProjectId: string;
+        definitionId: number;
+        kind: 'build' | 'release';
+      },
+    ) => {
+      if (params.kind === 'build') {
+        return listBuilds({
+          providerId: params.providerId,
+          projectId: params.azureProjectId,
+          definitionId: params.definitionId,
+        });
+      }
+      return listReleases({
+        providerId: params.providerId,
+        projectId: params.azureProjectId,
+        definitionId: params.definitionId,
+      });
+    },
+  );
+
+  ipcMain.handle(
+    'pipelines:getBuild',
+    async (
+      _,
+      params: {
+        providerId: string;
+        azureProjectId: string;
+        buildId: number;
+      },
+    ) => {
+      return getBuild({
+        providerId: params.providerId,
+        projectId: params.azureProjectId,
+        buildId: params.buildId,
+      });
+    },
+  );
+
+  ipcMain.handle(
+    'pipelines:getBuildTimeline',
+    async (
+      _,
+      params: {
+        providerId: string;
+        azureProjectId: string;
+        buildId: number;
+      },
+    ) => {
+      return getBuildTimeline({
+        providerId: params.providerId,
+        projectId: params.azureProjectId,
+        buildId: params.buildId,
+      });
+    },
+  );
+
+  ipcMain.handle(
+    'pipelines:getBuildLog',
+    async (
+      _,
+      params: {
+        providerId: string;
+        azureProjectId: string;
+        buildId: number;
+        logId: number;
+      },
+    ) => {
+      return getBuildLog({
+        providerId: params.providerId,
+        projectId: params.azureProjectId,
+        buildId: params.buildId,
+        logId: params.logId,
+      });
+    },
+  );
+
+  ipcMain.handle(
+    'pipelines:getRelease',
+    async (
+      _,
+      params: {
+        providerId: string;
+        azureProjectId: string;
+        releaseId: number;
+      },
+    ) => {
+      return getRelease({
+        providerId: params.providerId,
+        projectId: params.azureProjectId,
+        releaseId: params.releaseId,
+      });
+    },
+  );
+
+  ipcMain.handle(
+    'pipelines:listBranches',
+    async (
+      _,
+      params: {
+        providerId: string;
+        azureProjectId: string;
+        repoId: string;
+      },
+    ) => {
+      return listBranches({
+        providerId: params.providerId,
+        projectId: params.azureProjectId,
+        repoId: params.repoId,
+      });
+    },
+  );
+
+  ipcMain.handle(
+    'pipelines:getDefinitionParams',
+    async (
+      _,
+      params: {
+        providerId: string;
+        azureProjectId: string;
+        definitionId: number;
+      },
+    ) => {
+      return getBuildDefinitionDetail({
+        providerId: params.providerId,
+        projectId: params.azureProjectId,
+        definitionId: params.definitionId,
+      });
+    },
+  );
+
+  ipcMain.handle(
+    'pipelines:queueBuild',
+    async (
+      _,
+      params: {
+        providerId: string;
+        azureProjectId: string;
+        definitionId: number;
+        sourceBranch: string;
+        parameters?: Record<string, string>;
+      },
+    ) => {
+      return queueBuild({
+        providerId: params.providerId,
+        projectId: params.azureProjectId,
+        definitionId: params.definitionId,
+        sourceBranch: params.sourceBranch,
+        parameters: params.parameters,
+      });
+    },
+  );
+
+  ipcMain.handle(
+    'pipelines:createRelease',
+    async (
+      _,
+      params: {
+        providerId: string;
+        azureProjectId: string;
+        definitionId: number;
+        description?: string;
+      },
+    ) => {
+      return createAzureRelease({
+        providerId: params.providerId,
+        projectId: params.azureProjectId,
+        definitionId: params.definitionId,
+        description: params.description,
+      });
+    },
+  );
+
+  ipcMain.handle(
+    'pipelines:cancelBuild',
+    async (
+      _,
+      params: {
+        providerId: string;
+        azureProjectId: string;
+        buildId: number;
+      },
+    ) => {
+      return cancelBuild({
+        providerId: params.providerId,
+        projectId: params.azureProjectId,
+        buildId: params.buildId,
+      });
+    },
+  );
 }
 
 function safeJsonParse(value: string | null): Record<string, unknown> | null {

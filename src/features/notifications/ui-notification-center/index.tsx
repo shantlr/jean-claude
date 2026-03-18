@@ -7,11 +7,12 @@ import { RemoveScroll } from 'react-remove-scroll';
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
 import { Button } from '@/common/ui/button';
+import { ensureUtc } from '@/lib/time';
 import { useNotificationsStore } from '@/stores/notifications';
 import type { AppNotification } from '@shared/notification-types';
 
 function getRelativeTime(dateStr: string): string {
-  const date = new Date(dateStr);
+  const date = new Date(ensureUtc(dateStr));
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMin = Math.floor(diffMs / 60_000);
@@ -35,7 +36,7 @@ function groupByDay(notifications: AppNotification[]) {
   const olderItems: AppNotification[] = [];
 
   for (const n of notifications) {
-    const date = new Date(n.createdAt);
+    const date = new Date(ensureUtc(n.createdAt));
     date.setHours(0, 0, 0, 0);
     if (date.getTime() === today.getTime()) todayItems.push(n);
     else if (date.getTime() === yesterday.getTime()) yesterdayItems.push(n);

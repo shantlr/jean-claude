@@ -354,14 +354,27 @@ class PipelineTrackingService {
           providerId: project.repoProviderId,
           projectId: project.repoProjectId,
         })
-        .catch(() => []),
+        .catch((err) => {
+          dbg.main('Failed to list build definitions: %O', err);
+          return [];
+        }),
       azureDevOps
         .listReleaseDefinitions({
           providerId: project.repoProviderId,
           projectId: project.repoProjectId,
         })
-        .catch(() => []),
+        .catch((err) => {
+          dbg.main('Failed to list release definitions: %O', err);
+          return [];
+        }),
     ]);
+
+    dbg.main(
+      'Discovered %d build and %d release definitions for project %s',
+      buildDefs.length,
+      releaseDefs.length,
+      projectId,
+    );
 
     const rows = [
       ...buildDefs.map((d) => ({

@@ -12,6 +12,16 @@ export const TrackedPipelineRepository = {
       .execute();
   },
 
+  async findAll() {
+    return db
+      .selectFrom('tracked_pipelines')
+      .selectAll()
+      .orderBy('projectId', 'asc')
+      .orderBy('kind', 'asc')
+      .orderBy('name', 'asc')
+      .execute();
+  },
+
   async findAllEnabled() {
     return db
       .selectFrom('tracked_pipelines')
@@ -39,6 +49,14 @@ export const TrackedPipelineRepository = {
     await db
       .updateTable('tracked_pipelines')
       .set({ enabled: enabled ? 1 : 0 })
+      .where('id', '=', id)
+      .execute();
+  },
+
+  async toggleVisible(id: string, visible: boolean) {
+    await db
+      .updateTable('tracked_pipelines')
+      .set({ visible: visible ? 1 : 0 })
       .where('id', '=', id)
       .execute();
   },

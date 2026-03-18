@@ -11,7 +11,8 @@ export type OverlayType =
   | 'background-jobs'
   | 'settings'
   | 'project-backlog'
-  | 'notification-center';
+  | 'notification-center'
+  | 'pipelines';
 
 interface OverlaysState {
   // Current active overlay (null = none open)

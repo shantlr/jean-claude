@@ -329,6 +329,7 @@ export interface TrackedPipelineTable {
   kind: string;
   name: string;
   enabled: number;
+  visible: Generated<number>;
   lastCheckedRunId: number | null;
   createdAt: Generated<string>;
 }

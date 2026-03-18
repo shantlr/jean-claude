@@ -14,6 +14,7 @@ import { BackgroundJobsOverlay } from '@/features/background-jobs/ui-background-
 import { CommandPaletteOverlay } from '@/features/command-palette/ui-command-palette-overlay';
 import { NewTaskOverlay } from '@/features/new-task/ui-new-task-overlay';
 import { NotificationCenterOverlay } from '@/features/notifications/ui-notification-center';
+import { PipelinesOverlay } from '@/features/pipelines/ui-pipelines-overlay';
 import { BacklogOverlay } from '@/features/project/ui-backlog-overlay';
 import { ProjectOverlay } from '@/features/project/ui-project-overlay';
 import { SettingsOverlay } from '@/features/settings/ui-settings-overlay';
@@ -218,6 +219,26 @@ function ProjectBacklogContainer() {
   );
 }
 
+function PipelinesOverlayContainer() {
+  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'pipelines');
+  const toggle = useOverlaysStore((s) => s.toggle);
+  const close = useOverlaysStore((s) => s.close);
+
+  useCommands('pipelines-trigger', [
+    {
+      shortcut: 'cmd+shift+y',
+      label: 'Open Pipelines',
+      section: 'Navigation',
+      handler: () => {
+        toggle('pipelines');
+      },
+    },
+  ]);
+
+  if (!isOpen) return null;
+  return <PipelinesOverlay onClose={() => close('pipelines')} />;
+}
+
 function NotificationCenterContainer() {
   const isOpen = useOverlaysStore(
     (s) => s.activeOverlay === 'notification-center',
@@ -258,6 +279,7 @@ function RootLayout() {
       <BackgroundJobsContainer />
       <SettingsContainer />
       <NotificationCenterContainer />
+      <PipelinesOverlayContainer />
 
       <div className="flex h-full w-full flex-1 flex-col overflow-hidden">
         <Header />

@@ -13,9 +13,14 @@ import type {
 } from '@shared/azure-devops-types';
 import type {
   AzureBuildDefinition,
-  AzureReleaseDefinition,
+  AzureBuildDefinitionDetail,
+  AzureBuildDetail,
   AzureBuildRun,
+  AzureBuildTimeline,
+  AzureGitRef,
   AzureRelease,
+  AzureReleaseDefinition,
+  AzureReleaseDetail,
 } from '@shared/pipeline-types';
 
 import { ProviderRepository } from '../database/repositories/providers';
@@ -1846,4 +1851,230 @@ export async function listReleases(params: {
 
   const data: { value: AzureRelease[] } = await response.json();
   return data.value;
+}
+
+export async function getBuild(params: {
+  providerId: string;
+  projectId: string;
+  buildId: number;
+}): Promise<AzureBuildDetail> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/build/builds/${params.buildId}?api-version=7.0`;
+
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader },
+    signal: AbortSignal.timeout(PIPELINE_API_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to get build: ${error}`);
+  }
+
+  return response.json();
+}
+
+export async function getBuildTimeline(params: {
+  providerId: string;
+  projectId: string;
+  buildId: number;
+}): Promise<AzureBuildTimeline> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/build/builds/${params.buildId}/timeline?api-version=7.0`;
+
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader },
+    signal: AbortSignal.timeout(PIPELINE_API_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to get build timeline: ${error}`);
+  }
+
+  return response.json();
+}
+
+export async function getBuildLog(params: {
+  providerId: string;
+  projectId: string;
+  buildId: number;
+  logId: number;
+}): Promise<string> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/build/builds/${params.buildId}/logs/${params.logId}?api-version=7.0`;
+
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader, Accept: 'text/plain' },
+    signal: AbortSignal.timeout(PIPELINE_API_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to get build log: ${error}`);
+  }
+
+  return response.text();
+}
+
+export async function getRelease(params: {
+  providerId: string;
+  projectId: string;
+  releaseId: number;
+}): Promise<AzureReleaseDetail> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+  const url = `https://vsrm.dev.azure.com/${orgName}/${params.projectId}/_apis/release/releases/${params.releaseId}?api-version=7.0`;
+
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader },
+    signal: AbortSignal.timeout(PIPELINE_API_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to get release: ${error}`);
+  }
+
+  return response.json();
+}
+
+export async function listBranches(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+}): Promise<AzureGitRef[]> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/refs?filter=heads/&api-version=7.0`;
+
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader },
+    signal: AbortSignal.timeout(PIPELINE_API_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to list branches: ${error}`);
+  }
+
+  const data: { value: AzureGitRef[] } = await response.json();
+  return data.value;
+}
+
+export async function getBuildDefinitionDetail(params: {
+  providerId: string;
+  projectId: string;
+  definitionId: number;
+}): Promise<AzureBuildDefinitionDetail> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/build/definitions/${params.definitionId}?api-version=7.0`;
+
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader },
+    signal: AbortSignal.timeout(PIPELINE_API_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to get build definition: ${error}`);
+  }
+
+  return response.json();
+}
+
+export async function queueBuild(params: {
+  providerId: string;
+  projectId: string;
+  definitionId: number;
+  sourceBranch: string;
+  parameters?: Record<string, string>;
+}): Promise<AzureBuildRun> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/build/builds?api-version=7.0`;
+
+  const sourceBranch = params.sourceBranch.startsWith('refs/heads/')
+    ? params.sourceBranch
+    : `refs/heads/${params.sourceBranch}`;
+
+  const body: Record<string, unknown> = {
+    definition: { id: params.definitionId },
+    sourceBranch,
+  };
+  if (params.parameters) {
+    body.parameters = JSON.stringify(params.parameters);
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: authHeader,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(PIPELINE_API_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to queue build: ${error}`);
+  }
+
+  return response.json();
+}
+
+export async function createRelease(params: {
+  providerId: string;
+  projectId: string;
+  definitionId: number;
+  description?: string;
+}): Promise<AzureRelease> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+  const url = `https://vsrm.dev.azure.com/${orgName}/${params.projectId}/_apis/release/releases?api-version=7.0`;
+
+  const body: Record<string, unknown> = {
+    definitionId: params.definitionId,
+  };
+  if (params.description) {
+    body.description = params.description;
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: authHeader,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(PIPELINE_API_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to create release: ${error}`);
+  }
+
+  return response.json();
+}
+
+export async function cancelBuild(params: {
+  providerId: string;
+  projectId: string;
+  buildId: number;
+}): Promise<void> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/build/builds/${params.buildId}?api-version=7.0`;
+
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Authorization: authHeader,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ status: 'cancelling' }),
+    signal: AbortSignal.timeout(PIPELINE_API_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to cancel build: ${error}`);
+  }
 }

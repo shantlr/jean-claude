@@ -1,5 +1,10 @@
 import clsx from 'clsx';
-import { ClipboardList, Loader2, SlidersHorizontal } from 'lucide-react';
+import {
+  ClipboardList,
+  Loader2,
+  SlidersHorizontal,
+  Workflow,
+} from 'lucide-react';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 
 import { Button } from '@/common/ui/button';
@@ -119,6 +124,19 @@ export function Header() {
             <Kbd shortcut="cmd+b" className="text-[9px]" />
           </Button>
         )}
+
+        <Button
+          type="button"
+          onClick={() => openOverlay('pipelines')}
+          className="ml-2 flex h-7 shrink-0 items-center gap-1.5 rounded border border-neutral-800 bg-neutral-900 px-2 text-neutral-300 transition-colors hover:border-neutral-700 hover:bg-neutral-800"
+          style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
+          title="Pipelines"
+          aria-label="Open pipelines"
+        >
+          <Workflow className="h-3.5 w-3.5" />
+          <span className="text-xs">Pipelines</span>
+          <Kbd shortcut="cmd+shift+y" className="text-[9px]" />
+        </Button>
       </div>
 
       {/* Notification bar + Usage display */}

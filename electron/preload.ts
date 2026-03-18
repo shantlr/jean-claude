@@ -594,10 +594,70 @@ contextBridge.exposeInMainWorld('api', {
   trackedPipelines: {
     list: (projectId: string) =>
       ipcRenderer.invoke('tracked-pipelines:list', projectId),
+    listAll: () => ipcRenderer.invoke('tracked-pipelines:listAll'),
     toggle: (id: string, enabled: boolean) =>
       ipcRenderer.invoke('tracked-pipelines:toggle', id, enabled),
+    toggleVisible: (id: string, visible: boolean) =>
+      ipcRenderer.invoke('tracked-pipelines:toggleVisible', id, visible),
     discover: (projectId: string) =>
       ipcRenderer.invoke('tracked-pipelines:discover', projectId),
+  },
+  pipelines: {
+    listRuns: (params: {
+      providerId: string;
+      azureProjectId: string;
+      definitionId: number;
+      kind: 'build' | 'release';
+    }) => ipcRenderer.invoke('pipelines:listRuns', params),
+    getBuild: (params: {
+      providerId: string;
+      azureProjectId: string;
+      buildId: number;
+    }) => ipcRenderer.invoke('pipelines:getBuild', params),
+    getBuildTimeline: (params: {
+      providerId: string;
+      azureProjectId: string;
+      buildId: number;
+    }) => ipcRenderer.invoke('pipelines:getBuildTimeline', params),
+    getBuildLog: (params: {
+      providerId: string;
+      azureProjectId: string;
+      buildId: number;
+      logId: number;
+    }) => ipcRenderer.invoke('pipelines:getBuildLog', params),
+    getRelease: (params: {
+      providerId: string;
+      azureProjectId: string;
+      releaseId: number;
+    }) => ipcRenderer.invoke('pipelines:getRelease', params),
+    listBranches: (params: {
+      providerId: string;
+      azureProjectId: string;
+      repoId: string;
+    }) => ipcRenderer.invoke('pipelines:listBranches', params),
+    getDefinitionParams: (params: {
+      providerId: string;
+      azureProjectId: string;
+      definitionId: number;
+    }) => ipcRenderer.invoke('pipelines:getDefinitionParams', params),
+    queueBuild: (params: {
+      providerId: string;
+      azureProjectId: string;
+      definitionId: number;
+      sourceBranch: string;
+      parameters?: Record<string, string>;
+    }) => ipcRenderer.invoke('pipelines:queueBuild', params),
+    createRelease: (params: {
+      providerId: string;
+      azureProjectId: string;
+      definitionId: number;
+      description?: string;
+    }) => ipcRenderer.invoke('pipelines:createRelease', params),
+    cancelBuild: (params: {
+      providerId: string;
+      azureProjectId: string;
+      buildId: number;
+    }) => ipcRenderer.invoke('pipelines:cancelBuild', params),
   },
   feed: {
     getItems: () => ipcRenderer.invoke('feed:getItems'),
