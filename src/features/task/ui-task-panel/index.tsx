@@ -1119,6 +1119,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               defaultBranch={project.defaultBranch}
               taskName={task.name}
               hasRepoLink={hasRepoLink}
+              pullRequestUrl={task.pullRequestUrl}
               onMergeStarted={handleMergeStarted}
               onOpenPrView={openPrView}
               bottomPadding={footerHeight}

@@ -1,4 +1,10 @@
-import { GitCommit, GitMerge, GitPullRequest, Loader2 } from 'lucide-react';
+import {
+  ExternalLink,
+  GitCommit,
+  GitMerge,
+  GitPullRequest,
+  Loader2,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
@@ -23,6 +29,7 @@ export function WorktreeActions({
   defaultBranch,
   taskName,
   hasRepoLink,
+  pullRequestUrl,
   onMergeStarted,
   onOpenPrView,
 }: {
@@ -33,6 +40,7 @@ export function WorktreeActions({
   defaultBranch: string | null;
   taskName: string | null;
   hasRepoLink: boolean;
+  pullRequestUrl: string | null;
   onMergeStarted: () => void;
   onOpenPrView: () => void;
 }) {
@@ -193,19 +201,31 @@ export function WorktreeActions({
         </button>
       </div>
 
-      {/* Create PR */}
-      {hasRepoLink && (
-        <button
-          type="button"
-          onClick={onOpenPrView}
-          disabled={!canCreatePr}
-          className="flex w-full items-center justify-center gap-2 rounded-md bg-green-700 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
-          title={canCreatePr ? 'Create pull request' : 'Commit changes first'}
-        >
-          <GitPullRequest className="h-4 w-4" />
-          Create PR
-        </button>
-      )}
+      {/* Create PR / See PR */}
+      {hasRepoLink &&
+        (pullRequestUrl ? (
+          <a
+            href={pullRequestUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full items-center justify-center gap-2 rounded-md bg-green-700 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600"
+            title="View pull request"
+          >
+            <ExternalLink className="h-4 w-4" />
+            See PR
+          </a>
+        ) : (
+          <button
+            type="button"
+            onClick={onOpenPrView}
+            disabled={!canCreatePr}
+            className="flex w-full items-center justify-center gap-2 rounded-md bg-green-700 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
+            title={canCreatePr ? 'Create pull request' : 'Commit changes first'}
+          >
+            <GitPullRequest className="h-4 w-4" />
+            Create PR
+          </button>
+        ))}
 
       {/* Modals */}
       <CommitModal

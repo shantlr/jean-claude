@@ -36,6 +36,7 @@ export function WorktreeDiffView({
   defaultBranch,
   taskName,
   hasRepoLink,
+  pullRequestUrl,
   onMergeStarted,
   onOpenPrView,
   bottomPadding = 0,
@@ -49,6 +50,7 @@ export function WorktreeDiffView({
   defaultBranch: string | null;
   taskName: string | null;
   hasRepoLink: boolean;
+  pullRequestUrl: string | null;
   onMergeStarted: () => void;
   onOpenPrView: () => void;
   bottomPadding?: number;
@@ -260,6 +262,7 @@ export function WorktreeDiffView({
             defaultBranch={defaultBranch}
             taskName={taskName}
             hasRepoLink={hasRepoLink}
+            pullRequestUrl={pullRequestUrl}
             onMergeStarted={onMergeStarted}
             onOpenPrView={onOpenPrView}
           />
