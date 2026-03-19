@@ -231,9 +231,19 @@ class PipelineTrackingService {
     pipeline: TrackedPipelineRow,
     projectId: string,
   ) {
+    const isCancelled = build.result === 'canceled';
     const isSuccess = build.result === 'succeeded';
-    const type = isSuccess ? 'pipeline-completed' : 'pipeline-failed';
-    const title = `${pipeline.name} #${build.buildNumber} ${isSuccess ? 'succeeded' : 'failed'}`;
+    const type = isCancelled
+      ? 'pipeline-cancelled'
+      : isSuccess
+        ? 'pipeline-completed'
+        : 'pipeline-failed';
+    const statusLabel = isCancelled
+      ? 'cancelled'
+      : isSuccess
+        ? 'succeeded'
+        : 'failed';
+    const title = `${pipeline.name} #${build.buildNumber} ${statusLabel}`;
     const body = `Branch: ${build.sourceBranch.replace('refs/heads/', '')}`;
     const sourceUrl = build._links?.web?.href ?? null;
 
@@ -273,12 +283,25 @@ class PipelineTrackingService {
     const failedEnvs = releaseEnvironments.filter(
       (e) => e.status === 'rejected',
     );
-    const isSuccess = failedEnvs.length === 0;
-    const type = isSuccess ? 'release-completed' : 'release-failed';
+    const cancelledEnvs = releaseEnvironments.filter(
+      (e) => e.status === 'canceled',
+    );
+    const isCancelled = cancelledEnvs.length > 0 && failedEnvs.length === 0;
+    const isSuccess = failedEnvs.length === 0 && cancelledEnvs.length === 0;
+    const type = isCancelled
+      ? 'release-cancelled'
+      : isSuccess
+        ? 'release-completed'
+        : 'release-failed';
     const envSummary = releaseEnvironments
       .map((e) => `${e.name}: ${e.status}`)
       .join(', ');
-    const title = `${pipeline.name} ${release.name} ${isSuccess ? 'succeeded' : 'failed'}`;
+    const statusLabel = isCancelled
+      ? 'cancelled'
+      : isSuccess
+        ? 'succeeded'
+        : 'failed';
+    const title = `${pipeline.name} ${release.name} ${statusLabel}`;
     const body = envSummary;
     const sourceUrl = release._links?.web?.href ?? null;
 

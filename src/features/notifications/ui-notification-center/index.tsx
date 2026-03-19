@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { CheckCircle, XCircle, Bell, ExternalLink } from 'lucide-react';
+import { CheckCircle, XCircle, Ban, Bell, ExternalLink } from 'lucide-react';
 import { useCallback, useMemo, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
@@ -52,6 +52,9 @@ function groupByDay(notifications: AppNotification[]) {
 }
 
 function NotificationIcon({ type }: { type: string }) {
+  if (type.includes('cancelled')) {
+    return <Ban className="h-4 w-4 shrink-0 text-neutral-400" />;
+  }
   if (type.includes('failed')) {
     return <XCircle className="h-4 w-4 shrink-0 text-red-400" />;
   }

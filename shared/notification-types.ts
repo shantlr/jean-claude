@@ -1,8 +1,10 @@
 export type NotificationType =
   | 'pipeline-completed'
   | 'pipeline-failed'
+  | 'pipeline-cancelled'
   | 'release-completed'
-  | 'release-failed';
+  | 'release-failed'
+  | 'release-cancelled';
 
 export interface AppNotification {
   id: string;
