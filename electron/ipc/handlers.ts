@@ -1622,6 +1622,7 @@ export function registerIpcHandlers() {
         title: params.title,
         description: params.description,
         isDraft: params.isDraft,
+        workItemIds: task.workItemIds ?? undefined,
       });
 
       // Step 4: Save PR info to task

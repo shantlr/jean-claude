@@ -619,6 +619,7 @@ export async function createPullRequest(params: {
   title: string;
   description: string;
   isDraft: boolean;
+  workItemIds?: string[];
 }): Promise<{ id: number; url: string }> {
   const provider = await ProviderRepository.findById(params.providerId);
   if (!provider) {
@@ -652,6 +653,12 @@ export async function createPullRequest(params: {
         title: params.title,
         description: params.description,
         isDraft: params.isDraft,
+        ...(params.workItemIds &&
+          params.workItemIds.length > 0 && {
+            workItemRefs: params.workItemIds.map((id) => ({
+              id,
+            })),
+          }),
       }),
     },
   );
