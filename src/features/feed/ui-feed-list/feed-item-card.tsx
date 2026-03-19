@@ -326,7 +326,14 @@ export function FeedItemCard({
 
           <div className="flex items-center gap-1.5 text-xs text-neutral-400">
             <AttentionIcon attention={item.attention} />
-            <span className="min-w-0 truncate">{item.projectName}</span>
+            <span className="min-w-0 truncate">
+              {item.projectName}
+              {item.workItemIds && item.workItemIds.length > 0
+                ? ` #${item.workItemIds.join(', #')}`
+                : item.workItemId
+                  ? ` #${item.workItemId}`
+                  : null}
+            </span>
             {item.source === 'pull-request' && item.ownerName && (
               <span
                 className={clsx(

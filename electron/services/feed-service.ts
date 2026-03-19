@@ -200,6 +200,7 @@ export async function getFeedItems(): Promise<FeedItem[]> {
         ? parseInt(task.pullRequestId, 10)
         : undefined,
       pullRequestUrl: task.pullRequestUrl ?? undefined,
+      workItemIds: task.workItemIds ?? undefined,
     });
   }
 

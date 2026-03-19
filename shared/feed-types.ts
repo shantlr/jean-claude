@@ -37,8 +37,9 @@ export interface FeedItem {
   noteId?: string;
   isCompleted?: boolean;
 
-  // Work item tracking (only present when source === 'work-item')
+  // Work item tracking
   workItemId?: number;
+  workItemIds?: string[];
   workItemUrl?: string;
   workItemType?: string;
   workItemState?: string;
