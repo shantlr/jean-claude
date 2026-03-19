@@ -1,4 +1,4 @@
-import { Loader2, Sparkles, Plus } from 'lucide-react';
+import { Sparkles, Plus } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/common/ui/button';
@@ -204,9 +204,7 @@ export function PrCreationForm({
                 disabled={generateSummary.isPending || formFilledFromSummary}
                 className="flex items-center gap-1.5 rounded-md border border-neutral-600 bg-neutral-700 px-2.5 py-1 text-xs font-medium text-neutral-300 transition-colors hover:border-neutral-500 hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {generateSummary.isPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                ) : (
+                {!generateSummary.isPending && (
                   <Sparkles className="h-3.5 w-3.5" aria-hidden />
                 )}
                 {getSummaryButtonLabel()}
@@ -312,9 +310,6 @@ export function PrCreationForm({
           disabled={isPending || !title.trim()}
           className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isPending && (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          )}
           {isPending ? 'Creating...' : 'Create PR'}
         </Button>
       </div>
