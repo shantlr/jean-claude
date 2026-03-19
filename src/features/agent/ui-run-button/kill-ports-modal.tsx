@@ -32,7 +32,7 @@ export function KillPortsModal({
         </p>
       </div>
 
-      <div className="mb-4 rounded-md border border-neutral-700 bg-neutral-900 p-3">
+      <div className="mb-4 max-h-48 overflow-y-auto rounded-md border border-neutral-700 bg-neutral-900 p-3">
         {error.portsInUse.map((portInfo, idx) => (
           <div
             key={idx}

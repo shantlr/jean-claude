@@ -54,7 +54,7 @@ export function Modal({
         >
           <div
             ref={contentRef}
-            className="w-full max-w-md rounded-lg bg-neutral-800 shadow-xl"
+            className="flex max-h-[85vh] w-full max-w-md flex-col rounded-lg bg-neutral-800 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-neutral-700 px-4 py-3">
@@ -73,7 +73,7 @@ export function Modal({
                 <X className="h-5 w-5" aria-hidden />
               </button>
             </div>
-            <div className="p-4">{children}</div>
+            <div className="min-h-0 overflow-y-auto p-4">{children}</div>
           </div>
         </div>
       </RemoveScroll>
