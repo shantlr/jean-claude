@@ -2,6 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 
 import picomatch from 'picomatch';
+import { parse as shellParse } from 'shell-quote';
 
 import type {
   JeanClaudeSettings,
@@ -300,27 +301,72 @@ function matchPattern(pattern: string, value: string): boolean {
 }
 
 /**
+ * Parse a compound shell command into individual sub-commands.
+ *
+ * Splits on `&&`, `||`, `;`, and `|` operators using `shell-quote`,
+ * which correctly handles quoting (single, double), escape sequences,
+ * command substitutions, and other shell syntax.
+ *
+ * Returns an array of trimmed, non-empty sub-command strings.
+ * If the command has no compound operators, returns a single-element array.
+ */
+export function parseCompoundCommand(command: string): string[] {
+  const parsed = shellParse(command);
+  const commands: string[] = [];
+  let currentTokens: string[] = [];
+
+  for (const token of parsed) {
+    if (typeof token === 'object' && token !== null && 'op' in token) {
+      // Operator token — flush current command
+      if (currentTokens.length > 0) {
+        commands.push(currentTokens.join(' '));
+        currentTokens = [];
+      }
+    } else if (typeof token === 'string') {
+      currentTokens.push(token);
+    }
+    // Skip other token types (glob patterns, etc.)
+  }
+
+  // Push the last segment
+  if (currentTokens.length > 0) {
+    commands.push(currentTokens.join(' '));
+  }
+
+  return commands.length > 0 ? commands : [command.trim()];
+}
+
+/**
  * Evaluate a tool request against resolved permission rules.
+ *
+ * For bash commands, parses compound operators (&&, ||, ;, |) and evaluates
+ * each sub-command independently. All sub-commands must be allowed for the
+ * compound command to be allowed. If any sub-command is denied, the whole
+ * command is denied. If any sub-command requires asking, the result is ask.
  *
  * @param rules - Ordered list of resolved rules (last match wins)
  * @param toolKey - The tool key (e.g., "bash", "read", "edit", "webfetch")
- * @param matchValue - The value to match against patterns:
- *   - For bash: the command string
- *   - For read/edit/write: the file path
- *   - For webfetch: the URL
- *   - For tools with no pattern: empty string (matches `*`)
+ * @param matchValue - The value to match against patterns
  *
  * @returns The action of the last matching rule, or `'ask'` if no rule matches.
- *
- * Matching logic (last-match-wins):
- * 1. Iterate all rules in order
- * 2. For each rule where `rule.tool` matches the toolKey (or is `*`):
- *    - If `rule.pattern` is `*`, it matches anything
- *    - Otherwise, test `rule.pattern` against `matchValue` via glob
- * 3. The action of the *last* matching rule wins
- * 4. If no rule matches, return `'ask'`
  */
 export function evaluatePermission(
+  rules: ResolvedPermissionRule[],
+  toolKey: string,
+  matchValue: string,
+): PermissionEvalResult {
+  // For bash commands, parse compound operators and evaluate each sub-command
+  if (toolKey === 'bash' && matchValue) {
+    const subCommands = parseCompoundCommand(matchValue);
+    if (subCommands.length > 1) {
+      return evaluateCompoundPermission(rules, subCommands);
+    }
+  }
+
+  return evaluateSinglePermission(rules, toolKey, matchValue);
+}
+
+function evaluateSinglePermission(
   rules: ResolvedPermissionRule[],
   toolKey: string,
   matchValue: string,
@@ -328,16 +374,28 @@ export function evaluatePermission(
   let result: PermissionEvalResult = 'ask';
 
   for (const rule of rules) {
-    // Tool must match exactly or be wildcard
     if (rule.tool !== toolKey && rule.tool !== '*') continue;
-
-    // Pattern matching
     if (matchPattern(rule.pattern, matchValue)) {
       result = rule.action;
     }
   }
 
   return result;
+}
+
+function evaluateCompoundPermission(
+  rules: ResolvedPermissionRule[],
+  subCommands: string[],
+): PermissionEvalResult {
+  let combined: PermissionEvalResult = 'allow';
+
+  for (const subCommand of subCommands) {
+    const result = evaluateSinglePermission(rules, 'bash', subCommand);
+    if (result === 'deny') return 'deny';
+    if (result === 'ask') combined = 'ask';
+  }
+
+  return combined;
 }
 
 // ---------------------------------------------------------------------------
