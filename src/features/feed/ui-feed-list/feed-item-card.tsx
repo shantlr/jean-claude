@@ -291,7 +291,7 @@ export function FeedItemCard({
             }
           }}
           className={clsx(
-            'relative flex cursor-pointer flex-col gap-1 rounded-lg px-3.5 py-2.5 transition-all duration-200 ease-out',
+            'relative flex cursor-pointer flex-col gap-1 rounded-lg bg-neutral-900 px-3.5 py-2.5 transition-all duration-200 ease-out',
             borderClasses({
               attention: item.attention,
               hasUnread: item.hasUnread,

@@ -123,7 +123,7 @@ export function FeedNoteCard({
             }
           }}
           className={clsx(
-            'flex cursor-pointer flex-col gap-1 rounded-lg px-3.5 py-2.5 transition-all duration-200 ease-out',
+            'flex cursor-pointer flex-col gap-1 rounded-lg bg-neutral-900 px-3.5 py-2.5 transition-all duration-200 ease-out',
             isSelected
               ? 'border border-yellow-500/40 bg-neutral-800 shadow-sm'
               : 'border border-transparent hover:translate-x-0.5 hover:bg-neutral-800/80',
