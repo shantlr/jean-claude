@@ -371,6 +371,8 @@ export interface ReviewerConfig {
 /** Meta for `review` steps — single agent session using MCP tools for parallel review */
 export interface ReviewStepMeta {
   reviewers: ReviewerConfig[];
+  /** Work item context injected into reviewer prompts (e.g. from PR-linked work items) */
+  workItemContext?: string;
 }
 
 export type TaskStepMeta =

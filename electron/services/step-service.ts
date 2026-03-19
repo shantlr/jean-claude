@@ -2,7 +2,13 @@ import type {
   AgentBackendType,
   PromptImagePart,
 } from '@shared/agent-backend-types';
-import type { InteractionMode, ModelPreference, TaskStep } from '@shared/types';
+import type {
+  InteractionMode,
+  ModelPreference,
+  TaskStep,
+  TaskStepMeta,
+  TaskStepType,
+} from '@shared/types';
 
 import { AgentMessageRepository } from '../database/repositories/agent-messages';
 import { ProjectRepository } from '../database/repositories/projects';
@@ -323,12 +329,14 @@ export const StepService = {
   create: async (data: {
     taskId: string;
     name: string;
+    type?: TaskStepType;
     dependsOn?: string[];
     promptTemplate: string;
     interactionMode?: InteractionMode | null;
     modelPreference?: ModelPreference | null;
     agentBackend?: AgentBackendType | null;
     images?: PromptImagePart[] | null;
+    meta?: TaskStepMeta;
     autoStart?: boolean;
     sortOrder?: number;
   }): Promise<TaskStep> => {

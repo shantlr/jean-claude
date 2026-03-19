@@ -1229,6 +1229,63 @@ export async function getPullRequest(params: {
   };
 }
 
+export async function getPullRequestWorkItems(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+}): Promise<AzureDevOpsWorkItem[]> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const refsUrl = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}/workitems?api-version=7.0`;
+
+  const refsResponse = await fetch(refsUrl, {
+    headers: { Authorization: authHeader },
+  });
+
+  if (!refsResponse.ok) {
+    const error = await refsResponse.text();
+    throw new Error(`Failed to fetch PR work items: ${error}`);
+  }
+
+  const refsData: { value: Array<{ id: string; url: string }> } =
+    await refsResponse.json();
+
+  if (refsData.value.length === 0) {
+    return [];
+  }
+
+  const ids = refsData.value.map((ref) => ref.id);
+  const batchResponse = await fetch(
+    `https://dev.azure.com/${orgName}/_apis/wit/workitems?ids=${ids.join(',')}&$expand=relations&api-version=7.0`,
+    {
+      headers: { Authorization: authHeader },
+    },
+  );
+
+  if (!batchResponse.ok) {
+    const error = await batchResponse.text();
+    throw new Error(`Failed to fetch PR work item details: ${error}`);
+  }
+
+  const batchData: WorkItemsBatchResponse = await batchResponse.json();
+
+  return batchData.value.map((wi) => ({
+    id: wi.id,
+    url: `https://dev.azure.com/${orgName}/_workitems/edit/${wi.id}`,
+    fields: {
+      title: wi.fields['System.Title'],
+      workItemType: wi.fields['System.WorkItemType'],
+      state: wi.fields['System.State'],
+      assignedTo: wi.fields['System.AssignedTo']?.displayName,
+      description: wi.fields['System.Description'],
+      reproSteps: wi.fields['Microsoft.VSTS.TCM.ReproSteps'],
+      changedDate: wi.fields['System.ChangedDate'],
+    },
+    parentId: extractParentId(wi.relations),
+  }));
+}
+
 export async function getPullRequestCommits(params: {
   providerId: string;
   projectId: string;

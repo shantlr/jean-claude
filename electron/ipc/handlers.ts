@@ -32,6 +32,8 @@ import {
   type UpdateToken,
   type NewTaskStep,
   type UpdateTaskStep,
+  type ReviewerConfig,
+  type ReviewStepMeta,
 } from '@shared/types';
 import type { UsageProviderType } from '@shared/usage-types';
 
@@ -75,6 +77,7 @@ import {
   cloneRepository,
   listPullRequests,
   getPullRequest,
+  getPullRequestWorkItems,
   getPullRequestCommits,
   getPullRequestChanges,
   getPullRequestFileContent,
@@ -176,6 +179,22 @@ import {
 } from '../services/worktree-service';
 
 const execAsync = promisify(exec);
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 
 export function registerIpcHandlers() {
   dbg.ipc('Registering IPC handlers');
@@ -504,7 +523,6 @@ export function registerIpcHandlers() {
 
       // 2. Extract branch names
       const sourceBranch = pr.sourceRefName.replace('refs/heads/', '');
-      const targetBranch = pr.targetRefName.replace('refs/heads/', '');
 
       // 3. Generate task name
       const rawName = `Review: ${pr.title}`;
@@ -578,28 +596,104 @@ export function registerIpcHandlers() {
         updatedAt: new Date().toISOString(),
       });
 
-      // 6. Create Step 1: Review Changes (agent)
+      // 6. Fetch work items linked to the PR (best-effort)
+      let workItemContext = '';
+      try {
+        const workItems = await getPullRequestWorkItems({
+          providerId: project.repoProviderId,
+          projectId: project.repoProjectId,
+          repoId: project.repoId,
+          pullRequestId,
+        });
+
+        if (workItems.length > 0) {
+          workItemContext = workItems
+            .map((wi) => {
+              const desc = wi.fields.description
+                ? stripHtml(wi.fields.description)
+                : '';
+              const repro = wi.fields.reproSteps
+                ? `\nRepro Steps: ${stripHtml(wi.fields.reproSteps)}`
+                : '';
+              return `- **#${wi.id} [${wi.fields.workItemType}] ${wi.fields.title}** (${wi.fields.state})${desc ? `\n  ${desc}` : ''}${repro}`;
+            })
+            .join('\n');
+
+          // Store work item IDs on the task
+          await TaskRepository.update(task.id, {
+            workItemIds: workItems.map((wi) => String(wi.id)),
+            workItemUrls: workItems.map((wi) => wi.url),
+          });
+        }
+      } catch (wiError) {
+        dbg.ipc('Failed to fetch PR work items (non-fatal): %O', wiError);
+      }
+
+      // 7. Build reviewer configs
+      const defaultBackend =
+        (project.defaultAgentBackend as AgentBackendType | null) ??
+        'claude-code';
+
+      const reviewers: ReviewerConfig[] = [
+        {
+          id: crypto.randomUUID(),
+          label: 'Bug Detection',
+          focusPrompt:
+            'Look for potential bugs, logic errors, race conditions, off-by-one errors, null/undefined issues, and unhandled edge cases in the changed code.',
+          backend: defaultBackend,
+        },
+        {
+          id: crypto.randomUUID(),
+          label: 'Code Quality',
+          focusPrompt:
+            'Evaluate code quality: naming, readability, DRY violations, overly complex logic, missing error handling, and adherence to project conventions.',
+          backend: defaultBackend,
+        },
+        {
+          id: crypto.randomUUID(),
+          label: 'Security & Performance',
+          focusPrompt:
+            'Check for security vulnerabilities (injection, XSS, auth issues, secrets exposure) and performance concerns (N+1 queries, unnecessary re-renders, memory leaks, large allocations).',
+          backend: defaultBackend,
+        },
+      ];
+
+      if (workItemContext) {
+        reviewers.push({
+          id: crypto.randomUUID(),
+          label: 'Requirements Alignment',
+          focusPrompt:
+            'Verify that the code changes fulfill the requirements described in the associated work items. Check for missing acceptance criteria, incomplete implementations, and deviations from the specification.',
+          backend: defaultBackend,
+        });
+      }
+
+      // 8. Create Step 1: Review Changes (review type with multi-reviewer)
+      const reviewMeta: ReviewStepMeta = {
+        reviewers,
+        ...(workItemContext ? { workItemContext } : {}),
+      };
+
       const reviewStep = await StepService.create({
         taskId: task.id,
         name: 'Review Changes',
+        type: 'review',
         promptTemplate: [
-          'You are reviewing a pull request.',
-          `Review the changes between \`origin/${targetBranch}\` and the current branch.`,
-          'Analyze code quality, potential bugs, design issues, and suggest improvements.',
+          `Reviewing PR #${pullRequestId}: ${pr.title}`,
           '',
-          'At the end of your review, output a JSON block fenced with ```json containing an array of review comments with this shape:',
+          'At the end of your synthesized summary, output a JSON block fenced with ```json containing an array of review comments with this shape:',
           '`[{ "filePath": "path/to/file", "lineNumber": 42, "comment": "Your review comment" }]`',
           '',
           'Each comment should reference a specific file and line number from the changed files.',
+          'Only include actionable comments that warrant posting on the PR.',
         ].join('\n'),
         interactionMode: 'auto',
-        agentBackend:
-          (project.defaultAgentBackend as AgentBackendType | null) ??
-          'claude-code',
+        agentBackend: defaultBackend,
+        meta: reviewMeta,
         sortOrder: 0,
       });
 
-      // 7. Create Step 2: Submit Review (pr-review)
+      // 9. Create Step 2: Submit Review (pr-review)
       await TaskStepRepository.create({
         taskId: task.id,
         name: 'Submit Review',
@@ -614,7 +708,7 @@ export function registerIpcHandlers() {
         } as import('@shared/types').PrReviewStepMeta,
       });
 
-      // 8. Auto-start the review step
+      // 10. Auto-start the review step
       const window = BrowserWindow.fromWebContents(event.sender);
       if (window) {
         agentService.setMainWindow(window);

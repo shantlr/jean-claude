@@ -93,10 +93,12 @@ function buildReviewPrompt({
   basePrompt,
   meta,
   startCommitHash,
+  workItemContext,
 }: {
   basePrompt: string;
   meta: ReviewStepMeta | undefined;
   startCommitHash: string | null;
+  workItemContext?: string;
 }): string {
   const reviewers = meta?.reviewers ?? [];
   const reviewerList = reviewers
@@ -113,6 +115,18 @@ function buildReviewPrompt({
   const diffHint = startCommitHash
     ? `To see only the changes introduced by this task, each reviewer should run: git diff ${startCommitHash}\nThis covers all committed, staged, and unstaged changes since the task started. Do NOT diff against the source branch directly as that may include unrelated upstream changes.`
     : 'Each reviewer should use git diff HEAD to inspect recent changes, combined with git status for untracked files.';
+
+  const workItemSection = workItemContext
+    ? [
+        '',
+        '## Associated Work Items',
+        '',
+        'The following work items are linked to this PR. Include these in each reviewer prompt.',
+        'The "Requirements Alignment" reviewer should specifically verify that the code changes fulfill these requirements.',
+        '',
+        workItemContext,
+      ].join('\n')
+    : '';
 
   return [
     'You are a code review coordinator.',
@@ -135,6 +149,7 @@ function buildReviewPrompt({
     reviewerList,
     '',
     'IMPORTANT: Do NOT implement any changes. Present your findings and recommendations, then wait for the user to decide on next steps.',
+    workItemSection,
     extra,
   ].join('\n');
 }
@@ -846,10 +861,12 @@ class AgentService {
       let effectivePrompt = resolvedPrompt;
       if (step.type === 'review') {
         const task = await TaskRepository.findById(step.taskId);
+        const meta = step.meta as ReviewStepMeta;
         effectivePrompt = buildReviewPrompt({
           basePrompt: resolvedPrompt,
-          meta: step.meta as ReviewStepMeta,
+          meta,
           startCommitHash: task?.startCommitHash ?? null,
+          workItemContext: meta.workItemContext,
         });
       }
 
