@@ -6,7 +6,9 @@ import type {
   NormalizedPermissionRequest,
 } from '@shared/normalized-message-v2';
 import type { RunCommandLogStream, RunStatus } from '@shared/run-command-types';
-import type { TaskStatus } from '@shared/types';
+import type { TaskStatus, TaskStepStatus } from '@shared/types';
+
+type StepExecutionStatus = TaskStatus | TaskStepStatus;
 
 const MAX_RUN_COMMAND_LOG_LINES = 5000;
 
@@ -25,7 +27,7 @@ export type RunCommandLogs = Record<string, RunCommandLogState>;
 
 export interface TaskState {
   messages: NormalizedEntry[];
-  status: TaskStatus;
+  status: StepExecutionStatus;
   error: string | null;
   pendingPermission: (NormalizedPermissionRequest & { taskId: string }) | null;
   pendingQuestion: {
@@ -68,7 +70,7 @@ interface TaskMessagesStore {
   loadStep: (
     stepId: string,
     messages: NormalizedEntry[],
-    status: TaskStatus,
+    status: StepExecutionStatus,
   ) => void;
   addEntry: (stepId: string, entry: NormalizedEntry) => void;
   updateEntry: (stepId: string, entry: NormalizedEntry) => void;

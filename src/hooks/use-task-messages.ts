@@ -15,7 +15,6 @@ const DEFAULT_TASK_STATE: TaskState = {
 };
 
 export function useTaskMessages({
-  taskId,
   stepId,
 }: {
   taskId: string;
@@ -52,10 +51,10 @@ export function useTaskMessages({
     fetchingRef.current = stepId;
     Promise.all([
       api.agent.getMessages(stepId),
-      api.tasks.findById(taskId),
-    ]).then(([messages, task]) => {
-      if (task) {
-        loadStep(stepId, messages, task.status);
+      api.steps.findById(stepId),
+    ]).then(([messages, step]) => {
+      if (step) {
+        loadStep(stepId, messages, step.status);
         // Also fetch pending request after loading step
         fetchPendingRequest();
       }
@@ -64,7 +63,7 @@ export function useTaskMessages({
         fetchingRef.current = null;
       }
     });
-  }, [taskId, stepId, loadStep, fetchPendingRequest]);
+  }, [stepId, loadStep, fetchPendingRequest]);
 
   const refetch = useCallback(() => {
     if (!stepId) return;

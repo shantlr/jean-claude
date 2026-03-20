@@ -86,6 +86,7 @@ export function TaskMessageManager() {
           queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
           queryClient.invalidateQueries({ queryKey: ['tasks'] });
           queryClient.invalidateQueries({ queryKey: ['steps', { taskId }] });
+          queryClient.invalidateQueries({ queryKey: ['steps', stepId] });
           // Invalidate feed so status changes appear instantly
           queryClient.invalidateQueries({
             queryKey: ['feed', 'items'],
