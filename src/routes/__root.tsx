@@ -24,6 +24,7 @@ import { MainSidebar } from '@/layout/ui-main-sidebar';
 import { resolveLastLocationRedirect } from '@/lib/navigation';
 import { useCurrentVisibleProject } from '@/stores/navigation';
 import { useNewTaskDraft } from '@/stores/new-task-draft';
+import { useNotificationsStore } from '@/stores/notifications';
 import { useOverlaysStore } from '@/stores/overlays';
 
 export const Route = createRootRoute({
@@ -245,6 +246,12 @@ function NotificationCenterContainer() {
   );
   const toggle = useOverlaysStore((s) => s.toggle);
   const close = useOverlaysStore((s) => s.close);
+  const markAllAsRead = useNotificationsStore((s) => s.markAllAsRead);
+
+  const handleClose = useCallback(() => {
+    markAllAsRead();
+    close('notification-center');
+  }, [markAllAsRead, close]);
 
   useCommands('notification-center-trigger', [
     {
@@ -252,15 +259,16 @@ function NotificationCenterContainer() {
       label: 'Open Notification Center',
       section: 'General',
       handler: () => {
+        if (isOpen) {
+          markAllAsRead();
+        }
         toggle('notification-center');
       },
     },
   ]);
 
   if (!isOpen) return null;
-  return (
-    <NotificationCenterOverlay onClose={() => close('notification-center')} />
-  );
+  return <NotificationCenterOverlay onClose={handleClose} />;
 }
 
 function RootLayout() {
