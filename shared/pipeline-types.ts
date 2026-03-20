@@ -147,6 +147,23 @@ export interface AzureBuildDefinitionParameter {
   allowedValues?: string[];
 }
 
+export type YamlPipelineParameterType =
+  | 'string'
+  | 'boolean'
+  | 'number'
+  | 'object'
+  | 'step'
+  | 'stepList'
+  | 'job'
+  | 'jobList';
+
+export interface YamlPipelineParameter {
+  name: string;
+  type: YamlPipelineParameterType;
+  default?: string;
+  values?: string[];
+}
+
 export interface AzureBuildDefinitionDetail {
   id: number;
   name: string;
@@ -168,6 +185,14 @@ export interface AzureBuildDefinitionDetail {
       helpMarkDown?: string;
     }>;
   };
+  process?: {
+    type: number; // 1 = classic, 2 = YAML
+    yamlFilename?: string;
+  };
+  repository?: {
+    id: string;
+    defaultBranch?: string;
+  };
 }
 
 // --- Trigger Params ---
@@ -178,6 +203,7 @@ export interface QueueBuildParams {
   definitionId: number;
   sourceBranch: string;
   parameters?: Record<string, string>;
+  templateParameters?: Record<string, string>;
 }
 
 export interface CreateReleaseParams {
@@ -185,4 +211,23 @@ export interface CreateReleaseParams {
   projectId: string;
   definitionId: number;
   description?: string;
+}
+
+// --- IPC Params (shared between preload, api, and handlers) ---
+
+export interface GetYamlParametersIpcParams {
+  providerId: string;
+  azureProjectId: string;
+  repoId: string;
+  yamlFilename: string;
+  branch: string;
+}
+
+export interface QueueBuildIpcParams {
+  providerId: string;
+  azureProjectId: string;
+  definitionId: number;
+  sourceBranch: string;
+  parameters?: Record<string, string>;
+  templateParameters?: Record<string, string>;
 }

@@ -41,6 +41,9 @@ import type {
   AzureReleaseDetail,
   AzureGitRef,
   AzureBuildDefinitionDetail,
+  YamlPipelineParameter,
+  GetYamlParametersIpcParams,
+  QueueBuildIpcParams,
 } from '@shared/pipeline-types';
 import type {
   ProjectCommand,
@@ -882,13 +885,10 @@ export interface Api {
       azureProjectId: string;
       definitionId: number;
     }) => Promise<AzureBuildDefinitionDetail>;
-    queueBuild: (params: {
-      providerId: string;
-      azureProjectId: string;
-      definitionId: number;
-      sourceBranch: string;
-      parameters?: Record<string, string>;
-    }) => Promise<AzureBuildRun>;
+    getYamlParameters: (
+      params: GetYamlParametersIpcParams,
+    ) => Promise<YamlPipelineParameter[]>;
+    queueBuild: (params: QueueBuildIpcParams) => Promise<AzureBuildRun>;
     createRelease: (params: {
       providerId: string;
       azureProjectId: string;
@@ -1340,6 +1340,7 @@ export const api: Api = hasWindowApi
         getRelease: async () => ({}) as AzureReleaseDetail,
         listBranches: async () => [],
         getDefinitionParams: async () => ({}) as AzureBuildDefinitionDetail,
+        getYamlParameters: async () => [],
         queueBuild: async () => ({}) as AzureBuildRun,
         createRelease: async () => ({}) as AzureRelease,
         cancelBuild: async () => {},

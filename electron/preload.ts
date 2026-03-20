@@ -6,6 +6,10 @@ import type {
   GlobalPromptResponse,
 } from '@shared/global-prompt-types';
 import type { AppNotification } from '@shared/notification-types';
+import type {
+  GetYamlParametersIpcParams,
+  QueueBuildIpcParams,
+} from '@shared/pipeline-types';
 
 contextBridge.exposeInMainWorld('api', {
   platform: process.platform,
@@ -640,13 +644,10 @@ contextBridge.exposeInMainWorld('api', {
       azureProjectId: string;
       definitionId: number;
     }) => ipcRenderer.invoke('pipelines:getDefinitionParams', params),
-    queueBuild: (params: {
-      providerId: string;
-      azureProjectId: string;
-      definitionId: number;
-      sourceBranch: string;
-      parameters?: Record<string, string>;
-    }) => ipcRenderer.invoke('pipelines:queueBuild', params),
+    getYamlParameters: (params: GetYamlParametersIpcParams) =>
+      ipcRenderer.invoke('pipelines:getYamlParameters', params),
+    queueBuild: (params: QueueBuildIpcParams) =>
+      ipcRenderer.invoke('pipelines:queueBuild', params),
     createRelease: (params: {
       providerId: string;
       azureProjectId: string;

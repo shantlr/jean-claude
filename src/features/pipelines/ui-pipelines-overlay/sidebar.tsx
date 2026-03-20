@@ -207,8 +207,8 @@ export function Sidebar({
   onTriggerRun: (project: Project, pipeline: TrackedPipeline) => void;
 }) {
   return (
-    <div className="flex w-56 shrink-0 flex-col border-r border-neutral-700 p-3">
-      <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
+    <div className="flex w-56 shrink-0 flex-col border-r border-neutral-700">
+      <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-3">
         <Button
           data-nav-id="nav-all"
           onClick={() => onFilterChange({ type: 'all' })}

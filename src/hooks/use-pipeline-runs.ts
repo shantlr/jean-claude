@@ -9,6 +9,7 @@ import type {
   AzureReleaseDetail,
   AzureGitRef,
   AzureBuildDefinitionDetail,
+  YamlPipelineParameter,
 } from '@shared/pipeline-types';
 
 export function usePipelineRuns(params: {
@@ -214,6 +215,46 @@ export function useBuildDefinitionParams(params: {
   });
 }
 
+export function useYamlPipelineParameters(params: {
+  providerId: string;
+  azureProjectId: string;
+  repoId: string;
+  yamlFilename: string;
+  branch: string;
+  enabled?: boolean;
+}) {
+  const {
+    providerId,
+    azureProjectId,
+    repoId,
+    yamlFilename,
+    branch,
+    enabled = true,
+  } = params;
+
+  return useQuery<YamlPipelineParameter[]>({
+    queryKey: [
+      'yaml-pipeline-parameters',
+      providerId,
+      azureProjectId,
+      repoId,
+      yamlFilename,
+      branch,
+    ],
+    queryFn: () =>
+      api.pipelines.getYamlParameters({
+        providerId,
+        azureProjectId,
+        repoId,
+        yamlFilename,
+        branch,
+      }),
+    enabled: enabled && !!yamlFilename && !!repoId,
+    staleTime: 60_000, // 1-minute cache (branch content can change)
+    placeholderData: (prev) => prev, // keep previous data while refetching on branch change
+  });
+}
+
 export function useQueueBuild() {
   const queryClient = useQueryClient();
 
@@ -224,6 +265,7 @@ export function useQueueBuild() {
       definitionId: number;
       sourceBranch: string;
       parameters?: Record<string, string>;
+      templateParameters?: Record<string, string>;
     }) => api.pipelines.queueBuild(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pipeline-runs'] });

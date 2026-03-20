@@ -20,6 +20,10 @@ import type {
   NewProjectMcpOverride,
 } from '@shared/mcp-types';
 import type {
+  GetYamlParametersIpcParams,
+  QueueBuildIpcParams,
+} from '@shared/pipeline-types';
+import type {
   NewProjectCommand,
   UpdateProjectCommand,
 } from '@shared/run-command-types';
@@ -96,6 +100,7 @@ import {
   getRelease,
   listBranches,
   getBuildDefinitionDetail,
+  getYamlPipelineParameters,
   queueBuild,
   createRelease as createAzureRelease,
   cancelBuild,
@@ -3004,23 +3009,64 @@ export function registerIpcHandlers() {
   );
 
   ipcMain.handle(
+    'pipelines:getYamlParameters',
+    async (_, params: GetYamlParametersIpcParams) => {
+      const { providerId, azureProjectId, repoId, yamlFilename, branch } =
+        params;
+      for (const [key, val] of Object.entries({
+        providerId,
+        azureProjectId,
+        repoId,
+        yamlFilename,
+        branch,
+      })) {
+        if (!val || typeof val !== 'string') {
+          throw new Error(`pipelines:getYamlParameters: ${key} is required`);
+        }
+      }
+      return getYamlPipelineParameters({
+        providerId,
+        projectId: azureProjectId,
+        repoId,
+        yamlFilename,
+        branch,
+      });
+    },
+  );
+
+  ipcMain.handle(
     'pipelines:queueBuild',
-    async (
-      _,
-      params: {
-        providerId: string;
-        azureProjectId: string;
-        definitionId: number;
-        sourceBranch: string;
-        parameters?: Record<string, string>;
-      },
-    ) => {
+    async (_, params: QueueBuildIpcParams) => {
+      // Validate templateParameters keys/values to prevent injection
+      if (params.templateParameters) {
+        for (const [key, val] of Object.entries(params.templateParameters)) {
+          if (typeof key !== 'string' || typeof val !== 'string') {
+            throw new Error(
+              'templateParameters must be Record<string, string>',
+            );
+          }
+          if (!/^[\w\-.]+$/.test(key)) {
+            throw new Error(
+              `templateParameters key "${key}" contains invalid characters`,
+            );
+          }
+        }
+      }
+      if (params.parameters) {
+        for (const [key, val] of Object.entries(params.parameters)) {
+          if (typeof key !== 'string' || typeof val !== 'string') {
+            throw new Error('parameters must be Record<string, string>');
+          }
+        }
+      }
+
       return queueBuild({
         providerId: params.providerId,
         projectId: params.azureProjectId,
         definitionId: params.definitionId,
         sourceBranch: params.sourceBranch,
         parameters: params.parameters,
+        templateParameters: params.templateParameters,
       });
     },
   );

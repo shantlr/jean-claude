@@ -21,12 +21,17 @@ import type {
   AzureRelease,
   AzureReleaseDefinition,
   AzureReleaseDetail,
+  YamlPipelineParameter,
 } from '@shared/pipeline-types';
 
 import { ProviderRepository } from '../database/repositories/providers';
 import { TokenRepository } from '../database/repositories/tokens';
 
 import { sendGlobalPromptToWindow } from './global-prompt-service';
+import {
+  parseYamlParameters,
+  validateYamlFilename,
+} from './yaml-pipeline-parser';
 
 export type {
   AzureDevOpsPullRequest,
@@ -2024,6 +2029,9 @@ export async function listBranches(params: {
   return data.value;
 }
 
+/** Maximum YAML response size to accept (1 MB). */
+const MAX_YAML_CONTENT_LENGTH = 1_048_576;
+
 export async function getBuildDefinitionDetail(params: {
   providerId: string;
   projectId: string;
@@ -2045,12 +2053,72 @@ export async function getBuildDefinitionDetail(params: {
   return response.json();
 }
 
+export async function getYamlPipelineParameters(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  yamlFilename: string;
+  branch: string;
+}): Promise<YamlPipelineParameter[]> {
+  validateYamlFilename(params.yamlFilename);
+
+  if (
+    !params.providerId ||
+    !params.projectId ||
+    !params.repoId ||
+    !params.branch
+  ) {
+    throw new Error(
+      'All parameters (providerId, projectId, repoId, branch) are required',
+    );
+  }
+
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+  const yamlPath = params.yamlFilename.startsWith('/')
+    ? params.yamlFilename
+    : `/${params.yamlFilename}`;
+  const branch = params.branch.replace('refs/heads/', '');
+
+  const yamlUrl = new URL(
+    `https://dev.azure.com/${encodeURIComponent(orgName)}/${encodeURIComponent(params.projectId)}/_apis/git/repositories/${encodeURIComponent(params.repoId)}/items`,
+  );
+  yamlUrl.searchParams.set('path', yamlPath);
+  yamlUrl.searchParams.set('versionDescriptor.version', branch);
+  yamlUrl.searchParams.set('versionDescriptor.versionType', 'branch');
+  yamlUrl.searchParams.set('api-version', '7.0');
+
+  const yamlResponse = await fetch(yamlUrl.toString(), {
+    headers: { Authorization: authHeader },
+    signal: AbortSignal.timeout(PIPELINE_API_TIMEOUT_MS),
+  });
+
+  if (!yamlResponse.ok) {
+    console.warn(
+      `[pipelines] Failed to fetch YAML file ${params.yamlFilename} on branch ${branch}: ${yamlResponse.status} ${yamlResponse.statusText}`,
+    );
+    return [];
+  }
+
+  // Check Content-Length before buffering the entire response into memory
+  // to avoid exhausting memory on unexpectedly large files.
+  const contentLength = yamlResponse.headers.get('content-length');
+  if (contentLength && parseInt(contentLength, 10) > MAX_YAML_CONTENT_LENGTH) {
+    console.warn(
+      `[pipelines] YAML response too large (${contentLength} bytes), skipping`,
+    );
+    return [];
+  }
+
+  return parseYamlParameters(await yamlResponse.text());
+}
+
 export async function queueBuild(params: {
   providerId: string;
   projectId: string;
   definitionId: number;
   sourceBranch: string;
   parameters?: Record<string, string>;
+  templateParameters?: Record<string, string>;
 }): Promise<AzureBuildRun> {
   const { authHeader, orgName } = await getProviderAuth(params.providerId);
   const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/build/builds?api-version=7.0`;
@@ -2065,6 +2133,9 @@ export async function queueBuild(params: {
   };
   if (params.parameters) {
     body.parameters = JSON.stringify(params.parameters);
+  }
+  if (params.templateParameters) {
+    body.templateParameters = params.templateParameters;
   }
 
   const response = await fetch(url, {
