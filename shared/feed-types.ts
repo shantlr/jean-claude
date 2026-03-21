@@ -32,6 +32,7 @@ export interface FeedItem {
   hasUnread?: boolean;
   isDraft?: boolean;
   taskId?: string;
+  pendingMessage?: string;
   pullRequestId?: number;
   pullRequestUrl?: string;
   noteId?: string;

@@ -371,6 +371,13 @@ export function FeedItemCard({
             )}
           </div>
 
+          {item.source === 'task' && item.pendingMessage && (
+            <div className="flex items-center gap-1 text-xs text-amber-400">
+              <MessageSquare className="h-3 w-3 shrink-0" />
+              <span className="min-w-0 truncate">{item.pendingMessage}</span>
+            </div>
+          )}
+
           {runningCommands.length > 0 && (
             <div className="flex items-center gap-1.5 rounded-md bg-green-500/10 px-2 py-1 ring-1 ring-green-500/20">
               <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-green-400">

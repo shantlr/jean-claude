@@ -196,6 +196,7 @@ export async function getFeedItems(): Promise<FeedItem[]> {
       subtitle,
       hasUnread: task.hasUnread,
       taskId: task.id,
+      pendingMessage: task.pendingMessage ?? undefined,
       pullRequestId: task.pullRequestId
         ? parseInt(task.pullRequestId, 10)
         : undefined,
