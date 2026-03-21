@@ -91,6 +91,7 @@ export interface ProjectTable {
   // Agent backend (null = use global default)
   defaultAgentBackend: string | null;
   completionContext: string | null;
+  aiSkillSlots: string | null; // JSON text
   priority: string;
   showWorkItemsInFeed: number; // SQLite boolean: 1 = show (default), 0 = hide
   showPrsInFeed: number; // SQLite boolean: 1 = show (default), 0 = hide

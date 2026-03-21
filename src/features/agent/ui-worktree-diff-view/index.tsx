@@ -260,7 +260,6 @@ export function WorktreeDiffView({
             branchName={branchName}
             sourceBranch={sourceBranch}
             defaultBranch={defaultBranch}
-            taskName={taskName}
             hasRepoLink={hasRepoLink}
             pullRequestUrl={pullRequestUrl}
             onMergeStarted={onMergeStarted}

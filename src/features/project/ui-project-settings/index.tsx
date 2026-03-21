@@ -1,14 +1,28 @@
-import { FolderOpen, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactElement } from 'react';
+import isEqual from 'lodash-es/isEqual';
+import { ChevronDown, ChevronRight, FolderOpen, Trash2 } from 'lucide-react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactElement,
+} from 'react';
 
 import { Select } from '@/common/ui/select';
-import { AVAILABLE_BACKENDS } from '@/features/agent/ui-backend-selector';
+import {
+  AVAILABLE_BACKENDS,
+  getModelsForBackend,
+} from '@/features/agent/ui-backend-selector';
+import { SLOT_DEFINITIONS } from '@/features/common/ui-ai-skill-slot';
 import { ProjectMcpSettings } from '@/features/project/ui-project-mcp-settings';
 import { ProjectPipelineSettings } from '@/features/project/ui-project-pipeline-settings';
 import { ProjectSkillsSettings } from '@/features/project/ui-project-skills-settings';
 import { RepoLink } from '@/features/project/ui-repo-link';
 import { RunCommandsConfig } from '@/features/project/ui-run-commands-config';
 import { WorkItemsLink } from '@/features/project/ui-work-items-link';
+import { useBackendModels } from '@/hooks/use-backend-models';
+import { useEnabledBackends } from '@/hooks/use-enabled-backends';
+import { useAllManagedSkills } from '@/hooks/use-managed-skills';
 import {
   useProject,
   useProjectBranches,
@@ -23,6 +37,12 @@ import { useNavigationStore } from '@/stores/navigation';
 import { useToastStore } from '@/stores/toasts';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { ProjectPriority } from '@shared/feed-types';
+import type { ManagedSkill } from '@shared/skill-types';
+import type {
+  AiSkillSlotConfig,
+  AiSkillSlotKey,
+  AiSkillSlotsSetting,
+} from '@shared/types';
 
 export type ProjectSettingsMenuItem =
   | 'details'
@@ -32,6 +52,7 @@ export type ProjectSettingsMenuItem =
   | 'run-commands'
   | 'skills'
   | 'mcp-overrides'
+  | 'ai-generation'
   | 'danger-zone';
 
 function assertNever(value: never): never {
@@ -68,17 +89,13 @@ export function ProjectSettings({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [completionContext, setCompletionContext] = useState('');
   const [priority, setPriority] = useState<ProjectPriority>('normal');
+  const [aiSkillSlots, setAiSkillSlots] = useState<AiSkillSlotsSetting | null>(
+    null,
+  );
   const [isGeneratingContext, setIsGeneratingContext] = useState(false);
 
-  // Resolve enabled backends from global settings
   const { data: backendsSetting } = useBackendsSetting();
-  const enabledBackends = useMemo(
-    () =>
-      AVAILABLE_BACKENDS.filter((b) =>
-        (backendsSetting?.enabledBackends ?? ['claude-code']).includes(b.value),
-      ),
-    [backendsSetting],
-  );
+  const enabledBackends = useEnabledBackends();
 
   // Sync local state when project loads or changes
   useEffect(() => {
@@ -91,6 +108,7 @@ export function ProjectSettings({
       setPriority(project.priority ?? 'normal');
       setCompletionContext(project.completionContext ?? '');
       setWorktreesPath(project.worktreesPath ?? '');
+      setAiSkillSlots(project.aiSkillSlots);
     }
   }, [project]);
 
@@ -139,6 +157,7 @@ export function ProjectSettings({
         priority,
         completionContext: completionContext || null,
         worktreesPath: worktreesPath || null,
+        aiSkillSlots,
       },
     });
   }
@@ -179,7 +198,8 @@ export function ProjectSettings({
     defaultAgentBackend !== project.defaultAgentBackend ||
     priority !== (project.priority ?? 'normal') ||
     completionContext !== (project.completionContext ?? '') ||
-    worktreesPath !== (project.worktreesPath ?? '');
+    worktreesPath !== (project.worktreesPath ?? '') ||
+    !isEqual(aiSkillSlots, project.aiSkillSlots ?? null);
 
   let content: ReactElement;
 
@@ -428,6 +448,15 @@ export function ProjectSettings({
     case 'mcp-overrides':
       content = <ProjectMcpSettings projectId={projectId} />;
       break;
+    case 'ai-generation':
+      content = (
+        <ProjectAiGenerationSettings
+          aiSkillSlots={aiSkillSlots}
+          projectPath={project.path}
+          onUpdate={setAiSkillSlots}
+        />
+      );
+      break;
     case 'danger-zone':
       content = (
         <div>
@@ -487,6 +516,224 @@ export function ProjectSettings({
         >
           {updateProject.isPending ? 'Saving...' : 'Save Changes'}
         </button>
+      )}
+    </div>
+  );
+}
+
+// --- AI Generation Settings (project-level overrides) ---
+
+function ProjectAiGenerationSettings({
+  aiSkillSlots,
+  projectPath,
+  onUpdate,
+}: {
+  aiSkillSlots: AiSkillSlotsSetting | null;
+  projectPath: string;
+  onUpdate: (slots: AiSkillSlotsSetting | null) => void;
+}) {
+  const enabledBackends = useEnabledBackends();
+  const { data: allSkills } = useAllManagedSkills(projectPath);
+
+  const handleSlotUpdate = useCallback(
+    (slotKey: AiSkillSlotKey, config: AiSkillSlotConfig | null) => {
+      const current = aiSkillSlots ?? {};
+      if (config === null) {
+        const { [slotKey]: _, ...rest } = current;
+        const hasKeys = Object.keys(rest).length > 0;
+        onUpdate(hasKeys ? rest : null);
+      } else {
+        onUpdate({ ...current, [slotKey]: config });
+      }
+    },
+    [aiSkillSlots, onUpdate],
+  );
+
+  return (
+    <div>
+      <h2 className="text-lg font-semibold text-neutral-200">AI Generation</h2>
+      <p className="mt-1 text-sm text-neutral-500">
+        Override AI generation settings for this project. Remove a slot to use
+        the global default.
+      </p>
+      <div className="mt-4 space-y-2">
+        {SLOT_DEFINITIONS.map((slot) => {
+          const config = aiSkillSlots?.[slot.key] ?? null;
+          return (
+            <ProjectSlotRow
+              key={slot.key}
+              label={slot.label}
+              description={slot.description}
+              config={config}
+              enabledBackends={enabledBackends}
+              allSkills={allSkills ?? []}
+              onUpdate={(cfg) => handleSlotUpdate(slot.key, cfg)}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ProjectSlotRow({
+  label,
+  description,
+  config,
+  enabledBackends,
+  allSkills,
+  onUpdate,
+}: {
+  label: string;
+  description: string;
+  config: AiSkillSlotConfig | null;
+  enabledBackends: { value: AgentBackendType; label: string }[];
+  allSkills: ManagedSkill[];
+  onUpdate: (config: AiSkillSlotConfig | null) => void;
+}) {
+  const [expanded, setExpanded] = useState(config !== null);
+
+  // Keep expanded state in sync when config is removed externally
+  useEffect(() => {
+    if (config === null) {
+      setExpanded(false);
+    }
+  }, [config]);
+
+  const selectedBackend =
+    config?.backend ?? enabledBackends[0]?.value ?? 'claude-code';
+  const { data: dynamicModels } = useBackendModels(selectedBackend);
+  const modelOptions = useMemo(
+    () => getModelsForBackend(selectedBackend, dynamicModels),
+    [selectedBackend, dynamicModels],
+  );
+
+  const skillOptions = useMemo(() => {
+    return allSkills
+      .filter((s) => s.enabledBackends[selectedBackend])
+      .map((s) => ({ value: s.name, label: s.name }));
+  }, [allSkills, selectedBackend]);
+
+  const handleConfigure = () => {
+    const defaultBackend = enabledBackends[0]?.value ?? 'claude-code';
+    onUpdate({
+      backend: defaultBackend,
+      model: 'default',
+      skillName: null,
+    });
+    setExpanded(true);
+  };
+
+  const handleRemove = () => {
+    onUpdate(null);
+    setExpanded(false);
+  };
+
+  return (
+    <div className="rounded-lg border border-neutral-700 bg-neutral-800/50 p-3">
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => config !== null && setExpanded(!expanded)}
+          className="flex cursor-pointer items-center gap-2 text-left"
+        >
+          {config !== null && expanded ? (
+            <ChevronDown className="h-4 w-4 text-neutral-400" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-neutral-400" />
+          )}
+          <div>
+            <span className="text-sm font-medium text-neutral-200">
+              {label}
+            </span>
+            <p className="text-xs text-neutral-500">{description}</p>
+          </div>
+        </button>
+        {config === null ? (
+          <button
+            type="button"
+            onClick={handleConfigure}
+            className="cursor-pointer rounded-md border border-neutral-600 px-2 py-1 text-xs text-neutral-300 transition-colors hover:bg-neutral-700"
+          >
+            Configure override
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleRemove}
+            className="flex cursor-pointer items-center gap-1 rounded-md border border-red-900/50 px-2 py-1 text-xs text-red-400 transition-colors hover:bg-red-950/50"
+          >
+            <Trash2 className="h-3 w-3" />
+            Remove override
+          </button>
+        )}
+      </div>
+
+      {config === null && (
+        <p className="mt-2 text-xs text-neutral-500 italic">
+          Using global default
+        </p>
+      )}
+
+      {config !== null && expanded && (
+        <div className="mt-3 space-y-3 border-t border-neutral-700 pt-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-neutral-400">
+              Backend
+            </label>
+            <Select
+              value={config.backend}
+              options={enabledBackends.map((b) => ({
+                value: b.value,
+                label: b.label,
+              }))}
+              onChange={(value) =>
+                onUpdate({
+                  ...config,
+                  backend: value as AgentBackendType,
+                  model: 'default',
+                  skillName: null,
+                })
+              }
+              className="w-full justify-between"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-neutral-400">
+              Model
+            </label>
+            <Select
+              value={config.model}
+              options={modelOptions.map((m) => ({
+                value: m.value,
+                label: m.label,
+              }))}
+              onChange={(value) => onUpdate({ ...config, model: value })}
+              className="w-full justify-between"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-neutral-400">
+              Skill (optional)
+            </label>
+            <Select
+              value={config.skillName ?? ''}
+              options={[
+                { value: '', label: 'Built-in default' },
+                ...skillOptions,
+              ]}
+              onChange={(value) =>
+                onUpdate({ ...config, skillName: value || null })
+              }
+              className="w-full justify-between"
+            />
+            <p className="mt-1 text-xs text-neutral-600">
+              Override the prompt used for generation
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );

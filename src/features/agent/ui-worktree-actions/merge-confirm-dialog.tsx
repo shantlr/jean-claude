@@ -18,7 +18,7 @@ export function MergeConfirmDialog({
   targetBranch,
   isPending,
   hasUnstagedChanges,
-  defaultCommitMessage,
+  canAutoGenerateCommitMessage,
   contentRef,
 }: {
   isOpen: boolean;
@@ -33,7 +33,7 @@ export function MergeConfirmDialog({
   targetBranch: string;
   isPending: boolean;
   hasUnstagedChanges: boolean;
-  defaultCommitMessage?: string;
+  canAutoGenerateCommitMessage: boolean;
   contentRef?: RefObject<HTMLDivElement | null>;
 }) {
   const [squash, setSquash] = useState(true);
@@ -41,6 +41,7 @@ export function MergeConfirmDialog({
   const [commitAllUnstaged, setCommitAllUnstaged] =
     useState(hasUnstagedChanges);
   const commitMessageRef = useRef<HTMLTextAreaElement>(null);
+  const hasUnstagedChangesRef = useRef(hasUnstagedChanges);
   const submitLockRef = useRef(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,17 +52,22 @@ export function MergeConfirmDialog({
   const { mutateAsync: checkMergeConflicts, isPending: isCheckingConflicts } =
     checkMergeConflictsMutation;
 
+  // Keep ref in sync
+  useEffect(() => {
+    hasUnstagedChangesRef.current = hasUnstagedChanges;
+  }, [hasUnstagedChanges]);
+
   // Reset state when dialog opens/closes
   useEffect(() => {
-    if (isOpen) {
-      setSquash(true);
-      setCommitMessage(defaultCommitMessage ?? '');
-      setCommitAllUnstaged(hasUnstagedChanges);
-      setSubmitError(null);
-      setHasConflicts(false);
-      setCheckError(null);
-    }
-  }, [isOpen, defaultCommitMessage, hasUnstagedChanges]);
+    if (!isOpen) return;
+
+    setSquash(true);
+    setCommitMessage('');
+    setCommitAllUnstaged(hasUnstagedChangesRef.current);
+    setSubmitError(null);
+    setHasConflicts(false);
+    setCheckError(null);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -108,10 +114,13 @@ export function MergeConfirmDialog({
     });
   }, [isOpen, squash]);
 
+  // When squash is enabled and auto-generate is not available, require a commit message
+  const needsCommitMessage =
+    squash && !canAutoGenerateCommitMessage && !commitMessage.trim();
   const canConfirm =
     !isPending &&
     !isSubmitting &&
-    (!squash || !!commitMessage.trim()) &&
+    !needsCommitMessage &&
     (!hasUnstagedChanges || commitAllUnstaged);
 
   const handleConfirm = async () => {
@@ -145,7 +154,7 @@ export function MergeConfirmDialog({
 
       await onConfirm({
         squash,
-        commitMessage: squash ? commitMessage : undefined,
+        commitMessage: squash ? commitMessage || undefined : undefined,
         commitAllUnstaged: false,
       });
     } catch (error) {
@@ -249,7 +258,11 @@ export function MergeConfirmDialog({
             ref={commitMessageRef}
             value={commitMessage}
             onChange={(e) => setCommitMessage(e.target.value)}
-            placeholder="Enter commit message..."
+            placeholder={
+              canAutoGenerateCommitMessage
+                ? 'Leave empty to auto-generate from changes'
+                : 'Enter commit message...'
+            }
             rows={3}
             className="w-full resize-none rounded-md border border-neutral-600 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
           />

@@ -9,6 +9,8 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { Select } from '@/common/ui/select';
+import { useProject } from '@/hooks/use-projects';
+import { useAiSkillSlotsSetting } from '@/hooks/use-settings';
 import {
   useWorktreeStatus,
   useWorktreeBranches,
@@ -27,7 +29,6 @@ export function WorktreeActions({
   branchName,
   sourceBranch,
   defaultBranch,
-  taskName,
   hasRepoLink,
   pullRequestUrl,
   onMergeStarted,
@@ -38,7 +39,6 @@ export function WorktreeActions({
   branchName: string;
   sourceBranch: string | null;
   defaultBranch: string | null;
-  taskName: string | null;
   hasRepoLink: boolean;
   pullRequestUrl: string | null;
   onMergeStarted: () => void;
@@ -57,6 +57,19 @@ export function WorktreeActions({
     useWorktreeBranches(taskId);
   const commitMutation = useCommitWorktree();
   const mergeMutation = useMergeWorktree();
+  const { data: project } = useProject(projectId);
+  const { data: globalSlots } = useAiSkillSlotsSetting();
+
+  // Check if the merge-commit-message AI slot is configured (project or global)
+  const canAutoGenerateMergeMessage = !!(
+    project?.aiSkillSlots?.['merge-commit-message'] ||
+    globalSlots?.['merge-commit-message']
+  );
+
+  // Check if the commit-message AI slot is configured (project or global)
+  const canAutoGenerateCommitMessage = !!(
+    project?.aiSkillSlots?.['commit-message'] || globalSlots?.['commit-message']
+  );
 
   const mergeDialogRef = useRef<HTMLDivElement>(null);
   const { triggerAnimation } = useShrinkToTarget({
@@ -234,6 +247,8 @@ export function WorktreeActions({
         onCommit={handleCommit}
         isPending={commitMutation.isPending}
         error={commitMutation.error?.message}
+        taskId={taskId}
+        canAutoGenerate={canAutoGenerateCommitMessage}
       />
 
       <MergeConfirmDialog
@@ -245,7 +260,7 @@ export function WorktreeActions({
         targetBranch={selectedBranch}
         isPending={mergeMutation.isPending}
         hasUnstagedChanges={status?.hasUnstagedChanges ?? false}
-        defaultCommitMessage={taskName ?? undefined}
+        canAutoGenerateCommitMessage={canAutoGenerateMergeMessage}
         contentRef={mergeDialogRef}
       />
     </div>

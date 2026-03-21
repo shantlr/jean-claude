@@ -1,17 +1,43 @@
+import { isAiSkillSlotsSetting } from '@shared/types';
+
 import { dbg } from '../../lib/debug';
 import { db } from '../index';
-import { NewProject, UpdateProject } from '../schema';
+import { NewProject, ProjectRow, UpdateProject } from '../schema';
+
+function parseProjectRow(row: ProjectRow) {
+  let aiSkillSlots = null;
+  if (row.aiSkillSlots) {
+    try {
+      const parsed: unknown = JSON.parse(row.aiSkillSlots);
+      aiSkillSlots = isAiSkillSlotsSetting(parsed) ? parsed : null;
+    } catch {
+      // Malformed JSON — fall back to null
+    }
+  }
+  return {
+    ...row,
+    aiSkillSlots,
+  };
+}
 
 export const ProjectRepository = {
-  findAll: () =>
-    db.selectFrom('projects').selectAll().orderBy('sortOrder', 'asc').execute(),
+  findAll: async () => {
+    const rows = await db
+      .selectFrom('projects')
+      .selectAll()
+      .orderBy('sortOrder', 'asc')
+      .execute();
+    return rows.map(parseProjectRow);
+  },
 
-  findById: (id: string) =>
-    db
+  findById: async (id: string) => {
+    const row = await db
       .selectFrom('projects')
       .selectAll()
       .where('id', '=', id)
-      .executeTakeFirst(),
+      .executeTakeFirst();
+    return row ? parseProjectRow(row) : undefined;
+  },
 
   create: async (data: NewProject) => {
     dbg.db('projects.create name=%s, path=%s', data.name, data.path);
@@ -23,7 +49,7 @@ export const ProjectRepository = {
 
     const nextSortOrder = ((result?.maxOrder as number | null) ?? -1) + 1;
 
-    const { showWorkItemsInFeed, showPrsInFeed, ...rest } = data;
+    const { showWorkItemsInFeed, showPrsInFeed, aiSkillSlots, ...rest } = data;
     const row = await db
       .insertInto('projects')
       .values({
@@ -32,17 +58,18 @@ export const ProjectRepository = {
         priority: data.priority ?? 'normal',
         showWorkItemsInFeed: showWorkItemsInFeed === false ? 0 : 1,
         showPrsInFeed: showPrsInFeed === false ? 0 : 1,
+        aiSkillSlots: aiSkillSlots ? JSON.stringify(aiSkillSlots) : null,
       })
       .returningAll()
       .executeTakeFirstOrThrow();
     dbg.db('projects.create created id=%s', row.id);
-    return row;
+    return parseProjectRow(row);
   },
 
-  update: (id: string, data: UpdateProject) => {
+  update: async (id: string, data: UpdateProject) => {
     dbg.db('projects.update id=%s %o', id, Object.keys(data));
-    const { showWorkItemsInFeed, showPrsInFeed, ...rest } = data;
-    return db
+    const { showWorkItemsInFeed, showPrsInFeed, aiSkillSlots, ...rest } = data;
+    const row = await db
       .updateTable('projects')
       .set({
         ...rest,
@@ -52,11 +79,15 @@ export const ProjectRepository = {
         ...(showPrsInFeed !== undefined && {
           showPrsInFeed: showPrsInFeed ? 1 : 0,
         }),
+        ...(aiSkillSlots !== undefined && {
+          aiSkillSlots: aiSkillSlots ? JSON.stringify(aiSkillSlots) : null,
+        }),
         updatedAt: new Date().toISOString(),
       })
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirstOrThrow();
+    return parseProjectRow(row);
   },
 
   delete: (id: string) => {
@@ -78,10 +109,11 @@ export const ProjectRepository = {
     }
 
     // Return all projects in new order
-    return db
+    const rows = await db
       .selectFrom('projects')
       .selectAll()
       .orderBy('sortOrder', 'asc')
       .execute();
+    return rows.map(parseProjectRow);
   },
 };

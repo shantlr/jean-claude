@@ -186,6 +186,7 @@ export interface Project {
   showPrsInFeed: boolean;
   defaultAgentBackend: AgentBackendType | null; // null = use global default
   completionContext: string | null;
+  aiSkillSlots: AiSkillSlotsSetting | null;
   priority: ProjectPriority;
   createdAt: string;
   updatedAt: string;
@@ -213,6 +214,7 @@ export interface NewProject {
   showPrsInFeed?: boolean;
   defaultAgentBackend?: AgentBackendType | null;
   completionContext?: string | null;
+  aiSkillSlots?: AiSkillSlotsSetting | null;
   priority?: ProjectPriority;
   createdAt?: string;
   updatedAt: string;
@@ -240,6 +242,7 @@ export interface UpdateProject {
   showPrsInFeed?: boolean;
   defaultAgentBackend?: AgentBackendType | null;
   completionContext?: string | null;
+  aiSkillSlots?: AiSkillSlotsSetting | null;
   priority?: ProjectPriority;
   updatedAt?: string;
 }
@@ -504,6 +507,17 @@ export interface SummaryModelsSetting {
   models: Record<AgentBackendType, ModelPreference>;
 }
 
+export interface AiSkillSlotConfig {
+  backend: AgentBackendType;
+  model: string;
+  skillName: string | null; // null = built-in default prompt
+}
+
+export type AiSkillSlotKey = 'merge-commit-message' | 'commit-message';
+export type AiSkillSlotsSetting = Partial<
+  Record<AiSkillSlotKey, AiSkillSlotConfig>
+>;
+
 // Settings validation
 export interface SettingDefinition<T> {
   defaultValue: T;
@@ -572,6 +586,27 @@ function isSummaryModelsSetting(v: unknown): v is SummaryModelsSetting {
   return VALID_BACKENDS.every((backend) => typeof models[backend] === 'string');
 }
 
+const VALID_SLOT_KEYS: AiSkillSlotKey[] = [
+  'merge-commit-message',
+  'commit-message',
+];
+
+/** Note: returns true for `{}` (empty object) — this is intentional as it represents "no slots configured". */
+export function isAiSkillSlotsSetting(v: unknown): v is AiSkillSlotsSetting {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
+  const obj = v as Record<string, unknown>;
+  return Object.entries(obj).every(([key, slot]) => {
+    if (!VALID_SLOT_KEYS.includes(key as AiSkillSlotKey)) return false;
+    if (!slot || typeof slot !== 'object') return false;
+    const s = slot as Record<string, unknown>;
+    if (typeof s.backend !== 'string') return false;
+    if (!VALID_BACKENDS.includes(s.backend as AgentBackendType)) return false;
+    if (typeof s.model !== 'string') return false;
+    if (s.skillName !== null && typeof s.skillName !== 'string') return false;
+    return true;
+  });
+}
+
 export const SETTINGS_DEFINITIONS = {
   editor: {
     defaultValue: { type: 'preset', id: 'vscode' } as EditorSetting,
@@ -607,6 +642,10 @@ export const SETTINGS_DEFINITIONS = {
       },
     } as SummaryModelsSetting,
     validate: isSummaryModelsSetting,
+  },
+  aiSkillSlots: {
+    defaultValue: {} as AiSkillSlotsSetting,
+    validate: isAiSkillSlotsSetting,
   },
 } satisfies Record<string, SettingDefinition<unknown>>;
 

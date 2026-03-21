@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
 import type {
+  AiSkillSlotsSetting,
   AppSettings,
   BackendsSetting,
   EditorSetting,
@@ -112,6 +113,24 @@ export function useUpdateSummaryModelsSetting() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['settings', 'summaryModels'],
+      });
+    },
+  });
+}
+
+// Convenience hooks for AI skill slots setting
+export function useAiSkillSlotsSetting() {
+  return useSetting('aiSkillSlots');
+}
+
+export function useUpdateAiSkillSlotsSetting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: AiSkillSlotsSetting) =>
+      api.settings.set('aiSkillSlots', value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings', 'aiSkillSlots'],
       });
     },
   });

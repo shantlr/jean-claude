@@ -65,7 +65,7 @@ let serverInitPromise: Promise<ServerHandle> | null = null;
  * Get or create the shared OpenCode server + client.
  * Singleton — only one server per app instance.
  */
-async function getOrCreateServer(): Promise<ServerHandle> {
+export async function getOrCreateServer(): Promise<ServerHandle> {
   if (serverInstance) return serverInstance;
 
   if (serverInitPromise) {

@@ -162,3 +162,10 @@ export function useCheckMergeConflicts() {
       }),
   });
 }
+
+export function useGenerateCommitMessage() {
+  return useMutation({
+    mutationFn: ({ taskId, stageAll }: { taskId: string; stageAll: boolean }) =>
+      api.tasks.worktree.generateCommitMessage(taskId, { stageAll }),
+  });
+}

@@ -401,6 +401,10 @@ export interface Api {
         taskId: string,
         params: { message: string; stageAll: boolean },
       ) => Promise<void>;
+      generateCommitMessage: (
+        taskId: string,
+        params: { stageAll: boolean },
+      ) => Promise<string | undefined>;
       checkMergeConflicts: (
         taskId: string,
         params: { targetBranch: string },
@@ -1038,6 +1042,7 @@ export const api: Api = hasWindowApi
             hasUnstagedChanges: false,
           }),
           commit: async () => {},
+          generateCommitMessage: async () => undefined,
           checkMergeConflicts: async () => ({ hasConflicts: false }),
           merge: async () =>
             ({

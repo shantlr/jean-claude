@@ -1183,3 +1183,27 @@ export async function getWorktreeUnifiedDiff(
     return '';
   }
 }
+
+/**
+ * Returns the git log (one-line format) for commits since startCommitHash.
+ */
+export async function getWorktreeCommitLog(
+  worktreePath: string,
+  startCommitHash: string,
+): Promise<string> {
+  // Validate commit hash to prevent shell injection
+  if (!/^[0-9a-f]{7,40}$/i.test(startCommitHash)) {
+    dbg.worktree('Invalid commit hash for log: %s', startCommitHash);
+    return '';
+  }
+
+  try {
+    const { stdout } = await execAsync(
+      `git log --oneline ${startCommitHash}..HEAD --`,
+      { cwd: worktreePath, encoding: 'utf-8', maxBuffer: 1024 * 1024 },
+    );
+    return stdout.trim();
+  } catch {
+    return '';
+  }
+}

@@ -13,6 +13,7 @@ import {
   ProjectSettings,
   type ProjectSettingsMenuItem,
 } from '@/features/project/ui-project-settings';
+import { AiGenerationSettings } from '@/features/settings/ui-ai-generation-settings';
 import { AutocompleteSettings } from '@/features/settings/ui-autocomplete-settings';
 import { AzureDevOpsTab } from '@/features/settings/ui-azure-devops-tab';
 import { DebugDatabase } from '@/features/settings/ui-debug-database';
@@ -26,6 +27,7 @@ import { useCurrentSettingsProject } from './use-current-settings-project';
 
 type GlobalMenuItem =
   | 'general'
+  | 'ai-generation'
   | 'permissions'
   | 'skills'
   | 'mcp-servers'
@@ -36,6 +38,7 @@ type GlobalMenuItem =
 
 const GLOBAL_MENU_ITEMS: { id: GlobalMenuItem; label: string }[] = [
   { id: 'general', label: 'General' },
+  { id: 'ai-generation', label: 'AI Generation' },
   { id: 'permissions', label: 'Permissions' },
   { id: 'skills', label: 'Skills' },
   { id: 'mcp-servers', label: 'MCP Servers' },
@@ -53,6 +56,7 @@ const PROJECT_MENU_ITEMS: { id: ProjectSettingsMenuItem; label: string }[] = [
   { id: 'run-commands', label: 'Run Commands' },
   { id: 'skills', label: 'Skills' },
   { id: 'mcp-overrides', label: 'MCP Overrides' },
+  { id: 'ai-generation', label: 'AI Generation' },
   { id: 'danger-zone', label: 'Danger Zone' },
 ];
 
@@ -60,6 +64,8 @@ function GlobalContent({ menuItem }: { menuItem: GlobalMenuItem }) {
   switch (menuItem) {
     case 'general':
       return <GeneralSettings />;
+    case 'ai-generation':
+      return <AiGenerationSettings />;
     case 'permissions':
       return <GlobalPermissionsSettings />;
     case 'skills':

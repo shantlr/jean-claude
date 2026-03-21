@@ -109,6 +109,10 @@ import {
 import { fetchImageAsBase64 } from '../services/azure-image-proxy-service';
 import * as backendModelsService from '../services/backend-models-service';
 import {
+  generateCommitMessageForTask,
+  generateMergeMessageForTask,
+} from '../services/commit-message-generation-service';
+import {
   complete as completeText,
   testCompletion,
   resetClient as resetCompletionClient,
@@ -1248,6 +1252,21 @@ export function registerIpcHandlers() {
   );
 
   ipcMain.handle(
+    'tasks:worktree:generateCommitMessage',
+    async (_, taskId: string, params: { stageAll: boolean }) => {
+      const task = await TaskRepository.findById(taskId);
+      if (!task?.worktreePath) {
+        throw new Error(`Task ${taskId} does not have a worktree`);
+      }
+      const project = await ProjectRepository.findById(task.projectId);
+      if (!project) {
+        throw new Error(`Project ${task.projectId} not found`);
+      }
+      return generateCommitMessageForTask(task, project, params.stageAll);
+    },
+  );
+
+  ipcMain.handle(
     'tasks:worktree:checkMergeConflicts',
     async (_, taskId: string, params: { targetBranch: string }) => {
       const task = await TaskRepository.findById(taskId);
@@ -1299,12 +1318,23 @@ export function registerIpcHandlers() {
       if (!project) {
         throw new Error(`Project ${task.projectId} not found`);
       }
+
+      // Auto-generate commit message if squash merge with no user-provided message
+      let commitMessage = params.commitMessage;
+      if (params.squash && !commitMessage?.trim()) {
+        commitMessage = await generateMergeMessageForTask(
+          task,
+          project,
+          params.targetBranch,
+        );
+      }
+
       const result = await mergeWorktree({
         worktreePath: task.worktreePath,
         projectPath: project.path,
         targetBranch: params.targetBranch,
         squash: params.squash,
-        commitMessage: params.commitMessage,
+        commitMessage,
       });
 
       // On successful merge, clear worktree fields and mark the task as
