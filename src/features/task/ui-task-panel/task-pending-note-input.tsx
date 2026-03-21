@@ -34,6 +34,10 @@ export function TaskPendingNoteInput({
 
   useEffect(() => {
     const currentPendingMessage = pendingMessage ?? '';
+    if (debouncedValue !== value) {
+      return;
+    }
+
     if (debouncedValue === currentPendingMessage) {
       lastSubmittedValueRef.current = debouncedValue;
       return;
@@ -50,7 +54,7 @@ export function TaskPendingNoteInput({
         pendingMessage: debouncedValue.length > 0 ? debouncedValue : null,
       },
     });
-  }, [debouncedValue, pendingMessage, taskId, updatePendingMessage]);
+  }, [debouncedValue, pendingMessage, taskId, updatePendingMessage, value]);
 
   return (
     <input
