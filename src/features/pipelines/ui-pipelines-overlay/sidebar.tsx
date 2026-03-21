@@ -2,15 +2,30 @@ import clsx from 'clsx';
 import {
   ChevronDown,
   ChevronRight,
+  Eye,
   EyeOff,
   Hammer,
   Play,
   Rocket,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import type React from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { createPortal } from 'react-dom';
 
+import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import { useRegisterOverlay } from '@/common/context/overlay';
 import { Button } from '@/common/ui/button';
-import { useTrackedPipelines } from '@/hooks/use-tracked-pipelines';
+import {
+  useToggleTrackedPipelineVisible,
+  useTrackedPipelines,
+} from '@/hooks/use-tracked-pipelines';
 import type { TrackedPipeline } from '@shared/pipeline-types';
 import type { Project } from '@shared/types';
 
@@ -38,12 +53,113 @@ function usePipelineGroups(projectId: string) {
   }, [pipelines]);
 }
 
+type ContextMenuState = {
+  x: number;
+  y: number;
+  pipeline: TrackedPipeline;
+  projectId: string;
+} | null;
+
+function useClampedPosition(x: number, y: number) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ x, y });
+
+  useEffect(() => {
+    if (!menuRef.current) return;
+    const rect = menuRef.current.getBoundingClientRect();
+    setPos({
+      x: Math.min(x, window.innerWidth - rect.width - 8),
+      y: Math.min(y, window.innerHeight - rect.height - 8),
+    });
+  }, [x, y]);
+
+  return { menuRef, pos };
+}
+
+function PipelineContextMenu({
+  state,
+  onClose,
+}: {
+  state: NonNullable<ContextMenuState>;
+  onClose: () => void;
+}) {
+  const id = useId();
+  const { menuRef, pos } = useClampedPosition(state.x, state.y);
+  const toggleVisible = useToggleTrackedPipelineVisible(state.projectId);
+
+  // Use the app's keyboard binding system so Escape is consumed
+  // before reaching the parent overlay's handler (LIFO priority)
+  useRegisterKeyboardBindings(`pipeline-ctx-menu-${id}`, {
+    escape: () => {
+      onClose();
+      return true;
+    },
+    enter: () => {
+      handleToggleVisible();
+      return true;
+    },
+  });
+
+  // Use the app's overlay system for click-outside detection
+  useRegisterOverlay({
+    id: `pipeline-ctx-menu-${id}`,
+    refs: [menuRef],
+    onClose,
+  });
+
+  // Auto-focus the first menu item on mount
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const item =
+        menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]');
+      item?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [menuRef]);
+
+  const handleToggleVisible = useCallback(() => {
+    toggleVisible.mutate({
+      id: state.pipeline.id,
+      visible: !state.pipeline.visible,
+    });
+    onClose();
+  }, [toggleVisible, state.pipeline, onClose]);
+
+  const isHidden = !state.pipeline.visible;
+
+  return createPortal(
+    <div
+      ref={menuRef}
+      className="fixed z-50 min-w-[160px] rounded-md border border-neutral-700 bg-neutral-800 py-1 shadow-lg"
+      style={{ top: pos.y, left: pos.x }}
+      role="menu"
+      aria-label="Pipeline actions"
+    >
+      <button
+        role="menuitem"
+        tabIndex={-1}
+        onClick={handleToggleVisible}
+        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-neutral-300 transition-colors hover:bg-neutral-700 focus:bg-neutral-700 focus:outline-none"
+      >
+        {isHidden ? (
+          <Eye className="h-3.5 w-3.5 shrink-0" />
+        ) : (
+          <EyeOff className="h-3.5 w-3.5 shrink-0" />
+        )}
+        {isHidden ? 'Show pipeline' : 'Hide pipeline'}
+      </button>
+    </div>,
+    document.body,
+  );
+}
+
 function PipelineItem({
   pipeline,
   project,
   filter,
   onFilterChange,
   onTriggerRun,
+  onContextMenu,
   dimmed,
 }: {
   pipeline: TrackedPipeline;
@@ -51,6 +167,7 @@ function PipelineItem({
   filter: SidebarFilter;
   onFilterChange: (filter: SidebarFilter) => void;
   onTriggerRun: (project: Project, pipeline: TrackedPipeline) => void;
+  onContextMenu: (e: React.MouseEvent, pipeline: TrackedPipeline) => void;
   dimmed?: boolean;
 }) {
   const isSelected =
@@ -60,8 +177,8 @@ function PipelineItem({
 
   return (
     <div
-      key={pipeline.id}
       className={clsx('group flex items-center', dimmed && 'opacity-50')}
+      onContextMenu={(e) => onContextMenu(e, pipeline)}
     >
       <Button
         data-nav-id={getNavId({
@@ -108,6 +225,7 @@ function ProjectGroup({
   filter,
   onFilterChange,
   onTriggerRun,
+  onPipelineContextMenu,
 }: {
   project: Project;
   expanded: boolean;
@@ -115,9 +233,21 @@ function ProjectGroup({
   filter: SidebarFilter;
   onFilterChange: (filter: SidebarFilter) => void;
   onTriggerRun: (project: Project, pipeline: TrackedPipeline) => void;
+  onPipelineContextMenu: (
+    e: React.MouseEvent,
+    pipeline: TrackedPipeline,
+    projectId: string,
+  ) => void;
 }) {
   const { visible, hidden } = usePipelineGroups(project.id);
   const [showHidden, setShowHidden] = useState(false);
+
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, pipeline: TrackedPipeline) => {
+      onPipelineContextMenu(e, pipeline, project.id);
+    },
+    [onPipelineContextMenu, project.id],
+  );
 
   const isProjectSelected =
     filter.type === 'project' && filter.projectId === project.id;
@@ -157,6 +287,7 @@ function ProjectGroup({
               filter={filter}
               onFilterChange={onFilterChange}
               onTriggerRun={onTriggerRun}
+              onContextMenu={handleContextMenu}
             />
           ))}
 
@@ -180,6 +311,7 @@ function ProjectGroup({
                     filter={filter}
                     onFilterChange={onFilterChange}
                     onTriggerRun={onTriggerRun}
+                    onContextMenu={handleContextMenu}
                     dimmed
                   />
                 ))}
@@ -206,6 +338,21 @@ export function Sidebar({
   onFilterChange: (filter: SidebarFilter) => void;
   onTriggerRun: (project: Project, pipeline: TrackedPipeline) => void;
 }) {
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
+
+  const handlePipelineContextMenu = useCallback(
+    (e: React.MouseEvent, pipeline: TrackedPipeline, projectId: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setContextMenu({ x: e.clientX, y: e.clientY, pipeline, projectId });
+    },
+    [],
+  );
+
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
   return (
     <div className="flex w-56 shrink-0 flex-col border-r border-neutral-700">
       <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-3">
@@ -233,9 +380,17 @@ export function Sidebar({
             filter={filter}
             onFilterChange={onFilterChange}
             onTriggerRun={onTriggerRun}
+            onPipelineContextMenu={handlePipelineContextMenu}
           />
         ))}
       </div>
+
+      {contextMenu && (
+        <PipelineContextMenu
+          state={contextMenu}
+          onClose={handleCloseContextMenu}
+        />
+      )}
     </div>
   );
 }
