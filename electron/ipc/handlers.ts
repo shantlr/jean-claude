@@ -128,6 +128,7 @@ import {
   validatePermissionScope,
   addGlobalPermission,
   removeGlobalPermission,
+  editGlobalPermission,
 } from '../services/global-permissions-service';
 import {
   handlePromptResponse,
@@ -146,7 +147,7 @@ import { notificationService } from '../services/notification-service';
 import {
   addProjectPermission,
   addWorktreePermission,
-  buildAllowedToolConfig,
+  buildToolPermissionConfig,
   normalizeToolRequest,
 } from '../services/permission-settings-service';
 import { pipelineTrackingService } from '../services/pipeline-tracking-service';
@@ -967,7 +968,7 @@ export function registerIpcHandlers() {
       const task = await TaskRepository.findById(taskId);
       const current: PermissionScope = task?.sessionRules ?? {};
       const updated: PermissionScope = { ...current };
-      updated[tool] = buildAllowedToolConfig({
+      updated[tool] = buildToolPermissionConfig({
         existing: updated[tool],
         matchValue,
       });
@@ -1023,7 +1024,7 @@ export function registerIpcHandlers() {
       // Also add to session rules
       const { tool, matchValue } = normalizeToolRequest(toolName, input);
       const current: PermissionScope = { ...(task.sessionRules ?? {}) };
-      current[tool] = buildAllowedToolConfig({
+      current[tool] = buildToolPermissionConfig({
         existing: current[tool],
         matchValue,
       });
@@ -1052,7 +1053,7 @@ export function registerIpcHandlers() {
       // Also add to session rules
       const { tool, matchValue } = normalizeToolRequest(toolName, input);
       const current: PermissionScope = { ...(task.sessionRules ?? {}) };
-      current[tool] = buildAllowedToolConfig({
+      current[tool] = buildToolPermissionConfig({
         existing: current[tool],
         matchValue,
       });
@@ -1078,14 +1079,29 @@ export function registerIpcHandlers() {
 
   ipcMain.handle(
     'globalPermissions:addRule',
-    async (_, toolName: string, input: Record<string, unknown>) => {
+    async (
+      _,
+      toolName: string,
+      input: Record<string, unknown>,
+      action?: import('@shared/permission-types').PermissionAction,
+    ) => {
       if (typeof toolName !== 'string' || !toolName.trim()) {
         throw new Error('Invalid toolName: must be a non-empty string');
       }
       if (typeof input !== 'object' || input === null || Array.isArray(input)) {
         throw new Error('Invalid input: must be a plain object');
       }
-      const added = await addGlobalPermission({ toolName, input });
+      if (
+        action !== undefined &&
+        action !== 'allow' &&
+        action !== 'ask' &&
+        action !== 'deny'
+      ) {
+        throw new Error(
+          'Invalid action: must be one of "allow", "ask", or "deny"',
+        );
+      }
+      const added = await addGlobalPermission({ toolName, input, action });
       if (!added) {
         throw new Error(
           'Bare "bash" without a command pattern is not allowed globally',
@@ -1105,6 +1121,28 @@ export function registerIpcHandlers() {
         throw new Error('Invalid pattern: must be a string if provided');
       }
       await removeGlobalPermission({ tool, pattern });
+      return readGlobalPermissions();
+    },
+  );
+
+  ipcMain.handle(
+    'globalPermissions:editRule',
+    async (
+      _,
+      tool: string,
+      oldPattern: string | undefined,
+      newPattern: string | undefined,
+      action: import('@shared/permission-types').PermissionAction,
+    ) => {
+      if (typeof tool !== 'string' || !tool.trim()) {
+        throw new Error('Invalid tool: must be a non-empty string');
+      }
+      if (action !== 'allow' && action !== 'ask' && action !== 'deny') {
+        throw new Error(
+          'Invalid action: must be one of "allow", "ask", or "deny"',
+        );
+      }
+      await editGlobalPermission({ tool, oldPattern, newPattern, action });
       return readGlobalPermissions();
     },
   );
@@ -1138,7 +1176,7 @@ export function registerIpcHandlers() {
       if (!task) throw new Error(`Task ${taskId} not found`);
       const { tool, matchValue } = normalizeToolRequest(toolName, input);
       const current: PermissionScope = { ...(task.sessionRules ?? {}) };
-      current[tool] = buildAllowedToolConfig({
+      current[tool] = buildToolPermissionConfig({
         existing: current[tool],
         matchValue,
       });

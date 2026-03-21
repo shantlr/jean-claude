@@ -315,10 +315,27 @@ contextBridge.exposeInMainWorld('api', {
     get: () => ipcRenderer.invoke('globalPermissions:get'),
     set: (permissions: import('@shared/permission-types').PermissionScope) =>
       ipcRenderer.invoke('globalPermissions:set', permissions),
-    addRule: (toolName: string, input: Record<string, unknown>) =>
-      ipcRenderer.invoke('globalPermissions:addRule', toolName, input),
+    addRule: (
+      toolName: string,
+      input: Record<string, unknown>,
+      action?: import('@shared/permission-types').PermissionAction,
+    ) =>
+      ipcRenderer.invoke('globalPermissions:addRule', toolName, input, action),
     removeRule: (tool: string, pattern?: string) =>
       ipcRenderer.invoke('globalPermissions:removeRule', tool, pattern),
+    editRule: (
+      tool: string,
+      oldPattern: string | undefined,
+      newPattern: string | undefined,
+      action: import('@shared/permission-types').PermissionAction,
+    ) =>
+      ipcRenderer.invoke(
+        'globalPermissions:editRule',
+        tool,
+        oldPattern,
+        newPattern,
+        action,
+      ),
   },
   fs: {
     readPackageJson: (dirPath: string) =>

@@ -17,10 +17,12 @@ export function useAddGlobalPermissionRule() {
     mutationFn: ({
       toolName,
       input,
+      action,
     }: {
       toolName: string;
       input: Record<string, unknown>;
-    }) => api.globalPermissions.addRule(toolName, input),
+      action?: import('@shared/permission-types').PermissionAction;
+    }) => api.globalPermissions.addRule(toolName, input, action),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
     },
@@ -32,6 +34,26 @@ export function useRemoveGlobalPermissionRule() {
   return useMutation({
     mutationFn: ({ tool, pattern }: { tool: string; pattern?: string }) =>
       api.globalPermissions.removeRule(tool, pattern),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+    },
+  });
+}
+
+export function useEditGlobalPermissionRule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      tool,
+      oldPattern,
+      newPattern,
+      action,
+    }: {
+      tool: string;
+      oldPattern: string | undefined;
+      newPattern: string | undefined;
+      action: import('@shared/permission-types').PermissionAction;
+    }) => api.globalPermissions.editRule(tool, oldPattern, newPattern, action),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
     },

@@ -509,36 +509,38 @@ export function normalizeToolRequest(
   }
 }
 
-export function buildAllowedToolConfig({
+export function buildToolPermissionConfig({
   existing,
   matchValue,
+  action = 'allow',
 }: {
   existing: ToolPermissionConfig | undefined;
   matchValue: string;
+  action?: PermissionAction;
 }): ToolPermissionConfig {
   if (!matchValue) {
-    return 'allow';
+    return action;
   }
 
-  if (existing === 'allow') {
-    return 'allow';
+  if (existing === action) {
+    return existing;
   }
 
   if (typeof existing === 'object' && existing !== null) {
     return {
       ...existing,
-      [matchValue]: 'allow',
+      [matchValue]: action,
     };
   }
 
   if (typeof existing === 'string') {
     return {
       '*': existing,
-      [matchValue]: 'allow',
+      [matchValue]: action,
     };
   }
 
-  return { [matchValue]: 'allow' };
+  return { [matchValue]: action };
 }
 
 /**
@@ -562,7 +564,7 @@ export async function addProjectPermission(
   }
 
   const settings = await readSettings(projectPath);
-  settings.permissions.project[tool] = buildAllowedToolConfig({
+  settings.permissions.project[tool] = buildToolPermissionConfig({
     existing: settings.permissions.project[tool],
     matchValue,
   });
@@ -597,7 +599,7 @@ export async function addWorktreePermission(
   }
 
   const existing = settings.permissions.worktrees[tool];
-  settings.permissions.worktrees[tool] = buildAllowedToolConfig({
+  settings.permissions.worktrees[tool] = buildToolPermissionConfig({
     existing:
       existing === 'project' || existing === undefined
         ? undefined

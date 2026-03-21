@@ -611,10 +611,17 @@ export interface Api {
     addRule: (
       toolName: string,
       input: Record<string, unknown>,
+      action?: import('@shared/permission-types').PermissionAction,
     ) => Promise<import('@shared/permission-types').PermissionScope>;
     removeRule: (
       tool: string,
       pattern?: string,
+    ) => Promise<import('@shared/permission-types').PermissionScope>;
+    editRule: (
+      tool: string,
+      oldPattern: string | undefined,
+      newPattern: string | undefined,
+      action: import('@shared/permission-types').PermissionAction,
     ) => Promise<import('@shared/permission-types').PermissionScope>;
   };
   shell: {
@@ -1164,6 +1171,7 @@ export const api: Api = hasWindowApi
         set: async () => {},
         addRule: async () => ({}),
         removeRule: async () => ({}),
+        editRule: async () => ({}),
       },
       shell: {
         openInEditor: async () => {},

@@ -51,7 +51,7 @@ import { getJcMcpServerPath } from './mcp-template-service';
 import { generateTaskName } from './name-generation-service';
 import { notificationService } from './notification-service';
 import {
-  buildAllowedToolConfig,
+  buildToolPermissionConfig,
   readSettings,
   resolveRules,
   normalizeToolRequest,
@@ -687,7 +687,7 @@ class AgentService {
               if (colonIdx !== -1) {
                 const tool = entry.slice(0, colonIdx);
                 const matchValue = entry.slice(colonIdx + 1);
-                existing[tool] = buildAllowedToolConfig({
+                existing[tool] = buildToolPermissionConfig({
                   existing: existing[tool],
                   matchValue,
                 });

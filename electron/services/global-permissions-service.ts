@@ -13,7 +13,7 @@ import type {
 import { dbg } from '../lib/debug';
 
 import {
-  buildAllowedToolConfig,
+  buildToolPermissionConfig,
   flattenScope,
   normalizeToolRequest,
 } from './permission-settings-service';
@@ -102,8 +102,8 @@ export function validatePermissionScope(scope: unknown): PermissionScope {
           `Invalid action "${config}" for tool "${tool}". Must be one of: allow, ask, deny`,
         );
       }
-      // Scalar config — check for bare bash
-      if (isBareBash(tool, '*')) {
+      // Scalar config — check for bare bash (only block "allow")
+      if (isBareBash(tool, '*') && config === 'allow') {
         throw new Error(
           'Bare "bash" without a command pattern is not allowed globally',
         );
@@ -206,13 +206,15 @@ export async function writeGlobalPermissions(
 export async function addGlobalPermission({
   toolName,
   input,
+  action = 'allow',
 }: {
   toolName: string;
   input: Record<string, unknown>;
+  action?: PermissionAction;
 }): Promise<boolean> {
   const { tool, matchValue } = normalizeToolRequest(toolName, input);
 
-  if (isBareBash(tool, matchValue || '*')) {
+  if (isBareBash(tool, matchValue || '*') && action === 'allow') {
     dbg.agentPermission(
       'Refusing to allow bare "bash" globally — a specific command pattern is required',
     );
@@ -221,9 +223,10 @@ export async function addGlobalPermission({
 
   return withWriteLock(async () => {
     const permissions = await readGlobalPermissions();
-    permissions[tool] = buildAllowedToolConfig({
+    permissions[tool] = buildToolPermissionConfig({
       existing: permissions[tool],
       matchValue,
+      action,
     });
 
     await writeGlobalPermissions(permissions);
@@ -273,6 +276,63 @@ export async function removeGlobalPermission({
         }
       }
     }
+
+    await writeGlobalPermissions(permissions);
+  });
+}
+
+/**
+ * Atomically edit a permission rule: remove the old pattern, then add the new
+ * one in a single write-lock so no data is lost if validation fails.
+ */
+export async function editGlobalPermission({
+  tool,
+  oldPattern,
+  newPattern,
+  action,
+}: {
+  tool: string;
+  oldPattern: string | undefined;
+  newPattern: string | undefined;
+  action: PermissionAction;
+}): Promise<void> {
+  const newMatchValue = newPattern?.trim() || '';
+
+  if (isBareBash(tool, newMatchValue || '*') && action === 'allow') {
+    throw new Error(
+      'Bare "bash" without a command pattern is not allowed globally',
+    );
+  }
+
+  return withWriteLock(async () => {
+    const permissions = await readGlobalPermissions();
+
+    // 1. Remove old entry (inline logic from removeGlobalPermission)
+    const patternChanged = oldPattern !== newPattern;
+    if (patternChanged && oldPattern !== undefined) {
+      const existing = permissions[tool];
+      if (typeof existing === 'object' && existing !== null) {
+        const config = { ...existing } as Record<string, PermissionAction>;
+        delete config[oldPattern];
+        const remaining = Object.keys(config);
+        if (remaining.length === 0) {
+          delete permissions[tool];
+        } else if (remaining.length === 1 && remaining[0] === '*') {
+          permissions[tool] = config['*'] as ToolPermissionConfig;
+        } else {
+          permissions[tool] = config;
+        }
+      } else if (oldPattern === '*') {
+        delete permissions[tool];
+      }
+    }
+
+    // 2. Add new entry
+    permissions[tool] = buildToolPermissionConfig({
+      existing: permissions[tool],
+      matchValue: newMatchValue,
+      action,
+    });
 
     await writeGlobalPermissions(permissions);
   });
