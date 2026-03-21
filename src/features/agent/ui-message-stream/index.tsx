@@ -53,6 +53,7 @@ export interface PermissionBannerProps {
     toolName: string,
     input: Record<string, unknown>,
   ) => void;
+  onAllowGlobally?: (toolName: string, input: Record<string, unknown>) => void;
   onSetMode?: (mode: InteractionMode) => void;
   worktreePath?: string | null;
 }
@@ -270,6 +271,7 @@ export const MessageStream = memo(function MessageStream({
               onAllowForProjectWorktrees={
                 pendingPermission.onAllowForProjectWorktrees
               }
+              onAllowGlobally={pendingPermission.onAllowGlobally}
               onSetMode={pendingPermission.onSetMode}
               worktreePath={pendingPermission.worktreePath}
             />

@@ -123,6 +123,13 @@ import {
   updateFeedNote,
 } from '../services/feed-service';
 import {
+  readGlobalPermissions,
+  writeGlobalPermissions,
+  validatePermissionScope,
+  addGlobalPermission,
+  removeGlobalPermission,
+} from '../services/global-permissions-service';
+import {
   handlePromptResponse,
   sendGlobalPromptToWindow,
 } from '../services/global-prompt-service';
@@ -1043,6 +1050,92 @@ export function registerIpcHandlers() {
       await addWorktreePermission(project.path, toolName, input);
 
       // Also add to session rules
+      const { tool, matchValue } = normalizeToolRequest(toolName, input);
+      const current: PermissionScope = { ...(task.sessionRules ?? {}) };
+      current[tool] = buildAllowedToolConfig({
+        existing: current[tool],
+        matchValue,
+      });
+      await TaskRepository.update(taskId, { sessionRules: current });
+
+      return TaskRepository.findById(taskId);
+    },
+  );
+
+  // Global permissions
+  ipcMain.handle('globalPermissions:get', async () => {
+    return readGlobalPermissions();
+  });
+
+  ipcMain.handle(
+    'globalPermissions:set',
+    async (_, permissions: PermissionScope) => {
+      // Validate at the IPC boundary (TypeScript types are erased at runtime)
+      validatePermissionScope(permissions);
+      await writeGlobalPermissions(permissions);
+    },
+  );
+
+  ipcMain.handle(
+    'globalPermissions:addRule',
+    async (_, toolName: string, input: Record<string, unknown>) => {
+      if (typeof toolName !== 'string' || !toolName.trim()) {
+        throw new Error('Invalid toolName: must be a non-empty string');
+      }
+      if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+        throw new Error('Invalid input: must be a plain object');
+      }
+      const added = await addGlobalPermission({ toolName, input });
+      if (!added) {
+        throw new Error(
+          'Bare "bash" without a command pattern is not allowed globally',
+        );
+      }
+      return readGlobalPermissions();
+    },
+  );
+
+  ipcMain.handle(
+    'globalPermissions:removeRule',
+    async (_, tool: string, pattern?: string) => {
+      if (typeof tool !== 'string' || !tool.trim()) {
+        throw new Error('Invalid tool: must be a non-empty string');
+      }
+      if (pattern !== undefined && typeof pattern !== 'string') {
+        throw new Error('Invalid pattern: must be a string if provided');
+      }
+      await removeGlobalPermission({ tool, pattern });
+      return readGlobalPermissions();
+    },
+  );
+
+  ipcMain.handle(
+    'tasks:allowGlobally',
+    async (
+      _,
+      taskId: string,
+      toolName: string,
+      input: Record<string, unknown>,
+    ) => {
+      if (typeof taskId !== 'string' || !taskId.trim()) {
+        throw new Error('Invalid taskId: must be a non-empty string');
+      }
+      if (typeof toolName !== 'string' || !toolName.trim()) {
+        throw new Error('Invalid toolName: must be a non-empty string');
+      }
+      if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+        throw new Error('Invalid input: must be a plain object');
+      }
+      const added = await addGlobalPermission({ toolName, input });
+      if (!added) {
+        throw new Error(
+          'Bare "bash" without a command pattern is not allowed globally',
+        );
+      }
+
+      // Also add to session rules for immediate effect
+      const task = await TaskRepository.findById(taskId);
+      if (!task) throw new Error(`Task ${taskId} not found`);
       const { tool, matchValue } = normalizeToolRequest(toolName, input);
       const current: PermissionScope = { ...(task.sessionRules ?? {}) };
       current[tool] = buildAllowedToolConfig({

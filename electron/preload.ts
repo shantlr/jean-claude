@@ -89,6 +89,11 @@ contextBridge.exposeInMainWorld('api', {
       input: Record<string, unknown>,
     ) =>
       ipcRenderer.invoke('tasks:allowForProjectWorktrees', id, toolName, input),
+    allowGlobally: (
+      id: string,
+      toolName: string,
+      input: Record<string, unknown>,
+    ) => ipcRenderer.invoke('tasks:allowGlobally', id, toolName, input),
     reorder: (projectId: string, activeIds: string[], completedIds: string[]) =>
       ipcRenderer.invoke('tasks:reorder', projectId, activeIds, completedIds),
     worktree: {
@@ -305,6 +310,15 @@ contextBridge.exposeInMainWorld('api', {
     get: (key: string) => ipcRenderer.invoke('settings:get', key),
     set: (key: string, value: unknown) =>
       ipcRenderer.invoke('settings:set', key, value),
+  },
+  globalPermissions: {
+    get: () => ipcRenderer.invoke('globalPermissions:get'),
+    set: (permissions: import('@shared/permission-types').PermissionScope) =>
+      ipcRenderer.invoke('globalPermissions:set', permissions),
+    addRule: (toolName: string, input: Record<string, unknown>) =>
+      ipcRenderer.invoke('globalPermissions:addRule', toolName, input),
+    removeRule: (tool: string, pattern?: string) =>
+      ipcRenderer.invoke('globalPermissions:removeRule', tool, pattern),
   },
   fs: {
     readPackageJson: (dirPath: string) =>

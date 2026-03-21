@@ -175,6 +175,7 @@ export function PermissionBar({
   onAllowForSession,
   onAllowForProject,
   onAllowForProjectWorktrees,
+  onAllowGlobally,
   onSetMode,
   worktreePath,
 }: {
@@ -195,6 +196,7 @@ export function PermissionBar({
     toolName: string,
     input: Record<string, unknown>,
   ) => void;
+  onAllowGlobally?: (toolName: string, input: Record<string, unknown>) => void;
   onSetMode?: (mode: InteractionMode) => void;
   worktreePath?: string | null;
 }) {
@@ -272,6 +274,27 @@ export function PermissionBar({
       behavior: 'allow',
       updatedInput: input,
       allowMode: 'worktree',
+    });
+  };
+
+  const handleAllowGlobally = () => {
+    if (sessionAllowButton?.setModeOnAllow) {
+      onSetMode?.(sessionAllowButton.setModeOnAllow);
+    }
+    allowForSession();
+    if (isExitPlanMode) {
+      onAllowGlobally?.('Edit', {});
+      onAllowGlobally?.('Write', {});
+    } else {
+      onAllowGlobally?.(request.toolName, input);
+    }
+    // Use 'session' allowMode: global persistence is handled separately via
+    // the onAllowGlobally IPC call. Sending 'session' avoids the agent backend
+    // also writing the rule to a project-scoped file.
+    return onRespond(request.requestId, {
+      behavior: 'allow',
+      updatedInput: input,
+      allowMode: 'session',
     });
   };
 
@@ -411,6 +434,15 @@ export function PermissionBar({
               >
                 <ShieldCheck className="h-4 w-4" aria-hidden />
                 Allow for Project Worktrees
+              </Button>
+            )}
+            {sessionAllowButton && onAllowGlobally && (
+              <Button
+                onClick={handleAllowGlobally}
+                className="flex items-center gap-1.5 rounded-md bg-teal-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-500"
+              >
+                <ShieldCheck className="h-4 w-4" aria-hidden />
+                Allow Globally
               </Button>
             )}
           </div>

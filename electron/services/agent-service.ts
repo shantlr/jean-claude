@@ -46,6 +46,7 @@ import { pathExists } from '../lib/fs';
 import { AGENT_BACKEND_CLASSES } from './agent-backends';
 import { ClaudeCodeBackend } from './agent-backends/claude/claude-code-backend';
 import { OpenCodeBackend } from './agent-backends/opencode/opencode-backend';
+import { resolveGlobalRules } from './global-permissions-service';
 import { getJcMcpServerPath } from './mcp-template-service';
 import { generateTaskName } from './name-generation-service';
 import { notificationService } from './notification-service';
@@ -442,8 +443,9 @@ class AgentService {
 
     // Load backend-agnostic permissions and compile for the target backend.
     const isWorktree = !!task.worktreePath;
+    const globalRules = await resolveGlobalRules();
     const settings = await readSettings(project.path);
-    const rules = resolveRules(settings, isWorktree);
+    const rules = resolveRules(settings, isWorktree, globalRules);
 
     // For review steps, provide the Jean-Claude MCP server at runtime
     const mcpServers =

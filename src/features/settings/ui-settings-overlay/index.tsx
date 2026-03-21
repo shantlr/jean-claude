@@ -17,6 +17,7 @@ import { AutocompleteSettings } from '@/features/settings/ui-autocomplete-settin
 import { AzureDevOpsTab } from '@/features/settings/ui-azure-devops-tab';
 import { DebugDatabase } from '@/features/settings/ui-debug-database';
 import { GeneralSettings } from '@/features/settings/ui-general-settings';
+import { GlobalPermissionsSettings } from '@/features/settings/ui-global-permissions-settings';
 import { McpServersSettings } from '@/features/settings/ui-mcp-servers-settings';
 import { SkillsSettings } from '@/features/settings/ui-skills-settings';
 import { TokensTab } from '@/features/settings/ui-tokens-tab';
@@ -25,6 +26,7 @@ import { useCurrentSettingsProject } from './use-current-settings-project';
 
 type GlobalMenuItem =
   | 'general'
+  | 'permissions'
   | 'skills'
   | 'mcp-servers'
   | 'tokens'
@@ -34,6 +36,7 @@ type GlobalMenuItem =
 
 const GLOBAL_MENU_ITEMS: { id: GlobalMenuItem; label: string }[] = [
   { id: 'general', label: 'General' },
+  { id: 'permissions', label: 'Permissions' },
   { id: 'skills', label: 'Skills' },
   { id: 'mcp-servers', label: 'MCP Servers' },
   { id: 'tokens', label: 'Tokens' },
@@ -57,6 +60,8 @@ function GlobalContent({ menuItem }: { menuItem: GlobalMenuItem }) {
   switch (menuItem) {
     case 'general':
       return <GeneralSettings />;
+    case 'permissions':
+      return <GlobalPermissionsSettings />;
     case 'skills':
       return <SkillsSettings />;
     case 'mcp-servers':

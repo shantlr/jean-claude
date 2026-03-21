@@ -379,6 +379,11 @@ export interface Api {
       toolName: string,
       input: Record<string, unknown>,
     ) => Promise<Task>;
+    allowGlobally: (
+      id: string,
+      toolName: string,
+      input: Record<string, unknown>,
+    ) => Promise<Task>;
     reorder: (
       projectId: string,
       activeIds: string[],
@@ -597,6 +602,20 @@ export interface Api {
       key: K,
       value: AppSettings[K],
     ) => Promise<void>;
+  };
+  globalPermissions: {
+    get: () => Promise<import('@shared/permission-types').PermissionScope>;
+    set: (
+      permissions: import('@shared/permission-types').PermissionScope,
+    ) => Promise<void>;
+    addRule: (
+      toolName: string,
+      input: Record<string, unknown>,
+    ) => Promise<import('@shared/permission-types').PermissionScope>;
+    removeRule: (
+      tool: string,
+      pattern?: string,
+    ) => Promise<import('@shared/permission-types').PermissionScope>;
   };
   shell: {
     openInEditor: (dirPath: string) => Promise<void>;
@@ -995,6 +1014,9 @@ export const api: Api = hasWindowApi
         allowForProjectWorktrees: async () => {
           throw new Error('API not available');
         },
+        allowGlobally: async () => {
+          throw new Error('API not available');
+        },
         reorder: async () => [],
         worktree: {
           getDiff: async () => ({ files: [] }),
@@ -1136,6 +1158,12 @@ export const api: Api = hasWindowApi
         set: async () => {
           throw new Error('API not available');
         },
+      },
+      globalPermissions: {
+        get: async () => ({}),
+        set: async () => {},
+        addRule: async () => ({}),
+        removeRule: async () => ({}),
       },
       shell: {
         openInEditor: async () => {},

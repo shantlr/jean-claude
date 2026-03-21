@@ -71,6 +71,7 @@ import {
   useRemoveSessionAllowedTool,
   useAllowForProject,
   useAllowForProjectWorktrees,
+  useAllowGlobally,
   useToggleTaskUserCompleted,
 } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
@@ -193,6 +194,17 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const removeSessionAllowedTool = useRemoveSessionAllowedTool();
   const allowForProject = useAllowForProject();
   const allowForProjectWorktrees = useAllowForProjectWorktrees();
+  const allowGlobally = useAllowGlobally({
+    onError: (error) => {
+      addToast({
+        type: 'error',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to add global permission',
+      });
+    },
+  });
   const unloadStep = useTaskMessagesStore((state) => state.unloadStep);
   const addRunningJob = useBackgroundJobsStore((state) => state.addRunningJob);
   const markJobSucceeded = useBackgroundJobsStore(
@@ -502,32 +514,44 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     [taskId, updateTask, modal],
   );
 
+  const addSessionAllowedToolMutate = addSessionAllowedTool.mutate;
   const handleAllowToolsForSession = useCallback(
     (toolName: string, input: Record<string, unknown>) => {
-      addSessionAllowedTool.mutate({ id: taskId, toolName, input });
+      addSessionAllowedToolMutate({ id: taskId, toolName, input });
     },
-    [taskId, addSessionAllowedTool],
+    [taskId, addSessionAllowedToolMutate],
   );
 
+  const removeSessionAllowedToolMutate = removeSessionAllowedTool.mutate;
   const handleRemoveSessionAllowedTool = useCallback(
     ({ toolName, pattern }: { toolName: string; pattern?: string }) => {
-      removeSessionAllowedTool.mutate({ id: taskId, toolName, pattern });
+      removeSessionAllowedToolMutate({ id: taskId, toolName, pattern });
     },
-    [taskId, removeSessionAllowedTool],
+    [taskId, removeSessionAllowedToolMutate],
   );
 
+  const allowForProjectMutate = allowForProject.mutate;
   const handleAllowForProject = useCallback(
     (toolName: string, input: Record<string, unknown>) => {
-      allowForProject.mutate({ id: taskId, toolName, input });
+      allowForProjectMutate({ id: taskId, toolName, input });
     },
-    [taskId, allowForProject],
+    [taskId, allowForProjectMutate],
   );
 
+  const allowForProjectWorktreesMutate = allowForProjectWorktrees.mutate;
   const handleAllowForProjectWorktrees = useCallback(
     (toolName: string, input: Record<string, unknown>) => {
-      allowForProjectWorktrees.mutate({ id: taskId, toolName, input });
+      allowForProjectWorktreesMutate({ id: taskId, toolName, input });
     },
-    [taskId, allowForProjectWorktrees],
+    [taskId, allowForProjectWorktreesMutate],
+  );
+
+  const allowGloballyMutate = allowGlobally.mutate;
+  const handleAllowGlobally = useCallback(
+    (toolName: string, input: Record<string, unknown>) => {
+      allowGloballyMutate({ id: taskId, toolName, input });
+    },
+    [taskId, allowGloballyMutate],
   );
 
   const handleSetMode = useCallback(
@@ -547,6 +571,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       onAllowForSession: handleAllowToolsForSession,
       onAllowForProject: handleAllowForProject,
       onAllowForProjectWorktrees: handleAllowForProjectWorktrees,
+      onAllowGlobally: handleAllowGlobally,
       onSetMode: handleSetMode,
       worktreePath: task?.worktreePath,
     };
@@ -556,6 +581,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     handleAllowToolsForSession,
     handleAllowForProject,
     handleAllowForProjectWorktrees,
+    handleAllowGlobally,
     handleSetMode,
     task?.worktreePath,
   ]);
@@ -1200,6 +1226,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                     onAllowForSession={handleAllowToolsForSession}
                     onAllowForProject={handleAllowForProject}
                     onAllowForProjectWorktrees={handleAllowForProjectWorktrees}
+                    onAllowGlobally={handleAllowGlobally}
                     onSetMode={handleSetMode}
                     worktreePath={task.worktreePath}
                   />

@@ -268,28 +268,57 @@ export function flattenScope(
 export function resolveRules(
   settings: JeanClaudeSettings,
   isWorktree: boolean,
+  globalRules?: ResolvedPermissionRule[],
 ): ResolvedPermissionRule[] {
   const projectRules = flattenScope(settings.permissions.project);
+  const baseRules = [...(globalRules ?? []), ...projectRules];
 
   if (!isWorktree || !settings.permissions.worktrees) {
-    return projectRules;
+    return baseRules;
   }
 
   const worktreeScope = settings.permissions.worktrees;
   const worktreeRules = flattenScope(worktreeScope);
 
   if (worktreeScope.extends === 'project') {
-    // Append worktree rules after project rules (last-match-wins)
-    return [...projectRules, ...worktreeRules];
+    // Append worktree rules after base rules (last-match-wins)
+    return [...baseRules, ...worktreeRules];
   }
 
-  // No extends — worktree rules only
-  return worktreeRules;
+  // No extends — worktree rules only (but still include global)
+  return [...(globalRules ?? []), ...worktreeRules];
 }
 
 // ---------------------------------------------------------------------------
 // Permission Evaluation
 // ---------------------------------------------------------------------------
+
+/**
+ * Strip shell output redirections from a bash command.
+ *
+ * Removes patterns like `2>&1`, `>/dev/null`, `1>/tmp/out`, `2>/dev/null`,
+ * `&>/dev/null`, `&>>file`, `>>file`, `<input`, etc. so that redirection
+ * suffixes don't affect permission matching.
+ */
+export function stripRedirections(command: string): string {
+  // Order matters: match compound redirections first, then simple ones.
+  // &>> &> are bash-specific "redirect stdout+stderr"
+  // N>&M (fd duplication, e.g. 2>&1)
+  // N>>file, N>file (fd redirect to file)
+  // >>file, >file (stdout redirect to file)
+  // <file, <<EOF, <<<string (input redirections)
+  return command
+    .replace(/\d*>&\d+/g, '') // 2>&1, >&2
+    .replace(/&>>\s*\S+/g, '') // &>>/dev/null
+    .replace(/&>\s*\S+/g, '') // &>/dev/null
+    .replace(/\d*>>\s*\S+/g, '') // 2>>/tmp/err, >>file
+    .replace(/\d*>\s*\S+/g, '') // 2>/dev/null, >/dev/null
+    .replace(/<<<\s*\S+/g, '') // <<<string
+    .replace(/<<\s*\S+/g, '') // <<EOF
+    .replace(/<\s*\S+/g, '') // <input
+    .replace(/\s+/g, ' ') // collapse whitespace
+    .trim();
+}
 
 /**
  * Match a value against a glob pattern.
@@ -371,11 +400,15 @@ function evaluateSinglePermission(
   toolKey: string,
   matchValue: string,
 ): PermissionEvalResult {
+  // Strip redirections from bash commands so patterns like "pnpm lint*"
+  // match "pnpm lint --fix 2>&1" the same as "pnpm lint --fix"
+  const normalized =
+    toolKey === 'bash' ? stripRedirections(matchValue) : matchValue;
   let result: PermissionEvalResult = 'ask';
 
   for (const rule of rules) {
     if (rule.tool !== toolKey && rule.tool !== '*') continue;
-    if (matchPattern(rule.pattern, matchValue)) {
+    if (matchPattern(rule.pattern, normalized)) {
       result = rule.action;
     }
   }
@@ -429,7 +462,10 @@ export function normalizeToolRequest(
 
   switch (tool) {
     case 'bash':
-      return { tool: 'bash', matchValue: String(input.command ?? '').trim() };
+      return {
+        tool: 'bash',
+        matchValue: stripRedirections(String(input.command ?? '')),
+      };
     case 'read':
       return {
         tool: 'read',
@@ -676,8 +712,11 @@ export async function buildWorktreeSettings(
   sourcePath: string,
   destPath: string,
 ): Promise<void> {
+  const globalPermissions = await import('./global-permissions-service');
+  const globalRules = await globalPermissions.resolveGlobalRules();
+
   const settings = await readSettings(sourcePath);
-  const rules = resolveRules(settings, true);
+  const rules = resolveRules(settings, true, globalRules);
 
   // Write Claude-compatible settings to worktree
   const claudePerms = compileForClaude(rules);
@@ -723,8 +762,11 @@ export async function evaluateToolPermission({
   toolName: string;
   input: Record<string, unknown>;
 }): Promise<PermissionEvalResult> {
+  const globalPermissions = await import('./global-permissions-service');
+  const globalRules = await globalPermissions.resolveGlobalRules();
+
   const settings = await readSettings(projectPath);
-  const rules = resolveRules(settings, isWorktree);
+  const rules = resolveRules(settings, isWorktree, globalRules);
   const { tool, matchValue } = normalizeToolRequest(toolName, input);
   return evaluatePermission(rules, tool, matchValue);
 }
