@@ -443,6 +443,10 @@ export function NewTaskOverlay({
     [draft?.workItemIds, updateDraft],
   );
 
+  const handleClearSelectedWorkItems = useCallback(() => {
+    updateDraft({ workItemIds: [] });
+  }, [updateDraft]);
+
   // Handle work item highlight from mouse
   const handleWorkItemHighlight = useCallback(
     (workItem: AzureDevOpsWorkItem) => {
@@ -1015,6 +1019,7 @@ export function NewTaskOverlay({
                 updateDraft({ workItemsViewMode: mode })
               }
               onWorkItemToggle={handleWorkItemToggle}
+              onClearSelectedWorkItems={handleClearSelectedWorkItems}
               onWorkItemHighlight={handleWorkItemHighlight}
               onAdvanceToCompose={advanceToCompose}
               canAdvance={canAdvanceToCompose}
@@ -1275,6 +1280,7 @@ function SearchModeContent({
   viewMode,
   onViewModeChange,
   onWorkItemToggle,
+  onClearSelectedWorkItems,
   onWorkItemHighlight,
   onAdvanceToCompose,
   canAdvance,
@@ -1287,6 +1293,7 @@ function SearchModeContent({
   viewMode: WorkItemsViewMode;
   onViewModeChange: (mode: WorkItemsViewMode) => void;
   onWorkItemToggle: (workItem: AzureDevOpsWorkItem) => void;
+  onClearSelectedWorkItems: () => void;
   onWorkItemHighlight: (workItem: AzureDevOpsWorkItem) => void;
   onAdvanceToCompose: () => void;
   canAdvance: boolean;
@@ -1491,6 +1498,16 @@ function SearchModeContent({
           </span>
 
           <div className="flex items-center gap-2">
+            {viewMode === 'board' && selectedWorkItemIds.length > 0 && (
+              <button
+                type="button"
+                onClick={onClearSelectedWorkItems}
+                className="rounded border border-neutral-600 px-2 py-1 text-xs font-medium text-neutral-300 hover:border-neutral-500 hover:text-white"
+              >
+                Clear selected
+              </button>
+            )}
+
             {/* Iteration dropdown */}
             {iterations.length > 0 && (
               <Select
