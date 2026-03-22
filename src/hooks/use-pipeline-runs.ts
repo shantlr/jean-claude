@@ -1,4 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  keepPreviousData,
+} from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { api } from '@/lib/api';
@@ -94,6 +99,7 @@ export function useAllPipelineRuns(params: {
     enabled: enabled && pipelines.length > 0,
     staleTime: 30_000,
     refetchInterval: 30_000,
+    placeholderData: keepPreviousData,
   });
 }
 
