@@ -871,7 +871,10 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     )?.label ?? 'Claude Code';
 
   return (
-    <div ref={taskPanelRef} className="flex h-full w-full overflow-hidden">
+    <div
+      ref={taskPanelRef}
+      className="bg-surface-variant flex h-full w-full overflow-hidden rounded-tl-xl"
+    >
       {/* Main content */}
       <div className="relative flex min-w-0 flex-1 flex-col">
         {/* Header */}
@@ -1108,7 +1111,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             </Dropdown>
           </div>
         </div>
-        <Separator />
 
         {/* Step flow bar — hide add-step for skill-creation tasks */}
         <StepFlowBar
@@ -1132,6 +1134,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                 }
           }
         />
+        <Separator />
 
         {/* Main content area: PR view OR Diff view OR Message stream */}
         <div className="min-h-0 flex-1">
@@ -1493,7 +1496,7 @@ const TaskInputFooter = memo(function TaskInputFooter({
   return (
     <div
       className={clsx(
-        'mx-3 mb-3 flex items-center gap-2 rounded-xl px-4 py-3 transition-shadow duration-300',
+        'mx-3 mb-3 flex items-center gap-2 rounded-xl p-2 px-3 transition-shadow duration-300',
         inputFocused ? 'prompt-input-border-focused' : 'prompt-input-border',
       )}
     >

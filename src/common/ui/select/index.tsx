@@ -249,7 +249,7 @@ export const Select = forwardRef<
         aria-controls={isOpen ? listboxId : undefined}
         aria-label={label}
         className={clsx(
-          'flex items-center border border-neutral-600 bg-neutral-800 text-neutral-300 transition-colors hover:border-neutral-500 hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50',
+          'bg-surface hover:bg-surface-bright flex items-center text-neutral-300 transition-colors disabled:cursor-not-allowed disabled:opacity-50',
           heightOrPy,
           s.text,
           s.px,
@@ -275,7 +275,7 @@ export const Select = forwardRef<
             role="listbox"
             aria-orientation="vertical"
             aria-label={label}
-            className="fixed z-50 min-w-48 overflow-y-auto rounded-md border border-neutral-700 bg-neutral-800 py-1 shadow-lg"
+            className="bg-surface-container-lowest fixed z-50 min-w-48 overflow-y-auto rounded-md py-1 shadow-xl"
             style={{
               top: position.actualSide === 'bottom' ? position.top : undefined,
               bottom:

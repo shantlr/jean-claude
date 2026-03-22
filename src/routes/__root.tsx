@@ -275,7 +275,7 @@ function NotificationCenterContainer() {
 
 function RootLayout() {
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-neutral-900 text-white">
+    <div className="flex h-screen w-screen overflow-hidden">
       <TaskMessageManager />
       <GlobalPromptFromBackModal />
       <GlobalCommands />

@@ -12,7 +12,6 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
-import { Separator } from '@/common/ui/separator';
 import { useSteps } from '@/hooks/use-steps';
 import { useTaskState } from '@/stores/navigation';
 import type { TaskStep, TaskStepStatus } from '@shared/types';
@@ -445,7 +444,7 @@ export function StepFlowBar({
   if (!steps || steps.length === 0) return null;
 
   return (
-    <div className="relative bg-neutral-900/60 px-4 py-px backdrop-blur-sm">
+    <div className="relative px-4 py-px backdrop-blur-sm">
       <div className="no-scrollbar flex items-center overflow-x-auto px-1 py-0.5">
         <div
           className="relative"
@@ -545,7 +544,6 @@ export function StepFlowBar({
           )}
         </div>
       </div>
-      <Separator className="absolute right-0 bottom-0 left-0" />
     </div>
   );
 }
