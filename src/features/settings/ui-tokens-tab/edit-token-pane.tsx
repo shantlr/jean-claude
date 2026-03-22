@@ -1,8 +1,10 @@
-import { Loader2, RefreshCw, Trash2, X } from 'lucide-react';
+import { RefreshCw, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { useModal } from '@/common/context/modal';
 import { Button } from '@/common/ui/button';
+import { IconButton } from '@/common/ui/icon-button';
+import { Input } from '@/common/ui/input';
 import { useGetAzureDevOpsTokenExpiration } from '@/hooks/use-azure-devops';
 import { useDeleteToken, useUpdateToken } from '@/hooks/use-tokens';
 import type { Token } from '@shared/types';
@@ -83,12 +85,12 @@ export function EditTokenPane({
       <div className="w-80 shrink-0 rounded-lg border border-neutral-700 bg-neutral-800/50 p-4">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="font-medium text-neutral-200">Edit Token</h3>
-          <Button
+          <IconButton
             onClick={onClose}
-            className="cursor-pointer rounded-lg p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+            icon={<X />}
+            tooltip="Close"
+            size="sm"
+          />
         </div>
 
         <div className="flex flex-col gap-4">
@@ -96,24 +98,18 @@ export function EditTokenPane({
             <label className="mb-2 block text-sm font-medium text-neutral-400">
               Label
             </label>
-            <input
-              type="text"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              className="w-full rounded-lg border border-neutral-600 bg-neutral-700 px-3 py-2 text-sm text-neutral-200 focus:border-blue-500 focus:outline-none"
-            />
+            <Input value={label} onChange={(e) => setLabel(e.target.value)} />
           </div>
 
           <div>
             <label className="mb-2 block text-sm font-medium text-neutral-400">
               New Token (leave empty to keep current)
             </label>
-            <input
+            <Input
               type="password"
               value={newToken}
               onChange={(e) => setNewToken(e.target.value)}
               placeholder="Enter new PAT to update"
-              className="w-full rounded-lg border border-neutral-600 bg-neutral-700 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
             />
           </div>
 
@@ -126,22 +122,19 @@ export function EditTokenPane({
                 <Button
                   onClick={handleRefreshExpiration}
                   disabled={getExpiration.isPending}
-                  className="flex cursor-pointer items-center gap-1 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50"
+                  loading={getExpiration.isPending}
+                  variant="ghost"
+                  size="sm"
+                  icon={<RefreshCw />}
                 >
-                  {getExpiration.isPending ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-3 w-3" />
-                  )}
                   Fetch from API
                 </Button>
               )}
             </div>
-            <input
+            <Input
               type="date"
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
-              className="w-full rounded-lg border border-neutral-600 bg-neutral-700 px-3 py-2 text-sm text-neutral-200 focus:border-blue-500 focus:outline-none"
             />
           </div>
 
@@ -152,22 +145,20 @@ export function EditTokenPane({
           )}
 
           <div className="flex gap-2">
-            <Button
+            <IconButton
               onClick={handleDeleteClick}
-              className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-red-500/50 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+              icon={<Trash2 />}
+              variant="danger"
+              tooltip="Delete token"
+            />
             <Button
               onClick={handleSave}
               disabled={!hasChanges || updateToken.isPending}
-              className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600"
+              loading={updateToken.isPending}
+              variant="primary"
+              className="flex-1"
             >
-              {updateToken.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                'Save Changes'
-              )}
+              Save Changes
             </Button>
           </div>
         </div>

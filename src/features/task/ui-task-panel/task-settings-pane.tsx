@@ -15,6 +15,7 @@ import {
 import { useState } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { IconButton } from '@/common/ui/icon-button';
 import { Separator } from '@/common/ui/separator';
 import { useSkills } from '@/hooks/use-skills';
 import type { PermissionScope } from '@shared/permission-types';
@@ -199,13 +200,7 @@ export function TaskSettingsPane({
         )}
       >
         <h3 className="text-sm font-medium text-neutral-200">Task Settings</h3>
-        <Button
-          onClick={onClose}
-          className="cursor-pointer rounded p-1.5 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
-          title="Close"
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        <IconButton onClick={onClose} size="sm" icon={<X />} tooltip="Close" />
       </div>
       <Separator />
 
@@ -232,17 +227,18 @@ export function TaskSettingsPane({
                   <span className="flex-1 truncate font-mono text-sm text-neutral-200">
                     {sourceCommit.slice(0, 8)}
                   </span>
-                  <Button
+                  <IconButton
                     onClick={handleCopyCommit}
-                    className="rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
-                    title="Copy full commit hash"
-                  >
-                    {copiedCommit ? (
-                      <Check className="h-3.5 w-3.5 text-green-500" />
-                    ) : (
-                      <Copy className="h-3.5 w-3.5" />
-                    )}
-                  </Button>
+                    size="sm"
+                    icon={
+                      copiedCommit ? (
+                        <Check className="text-green-500" />
+                      ) : (
+                        <Copy />
+                      )
+                    }
+                    tooltip="Copy full commit hash"
+                  />
                 </div>
               )}
             </div>
@@ -285,15 +281,14 @@ export function TaskSettingsPane({
                         {label}
                       </span>
                     </div>
-                    <Button
+                    <IconButton
                       onClick={() =>
                         onRemoveTool({ toolName: toolKey, pattern })
                       }
-                      className="shrink-0 rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
-                      title={`Remove ${label}`}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
+                      size="sm"
+                      icon={<X />}
+                      tooltip={`Remove ${label}`}
+                    />
                   </div>
                 ));
               })}
@@ -316,9 +311,11 @@ export function TaskSettingsPane({
           </h4>
           <Button
             onClick={onOpenDebugMessages}
-            className="flex w-full cursor-pointer items-center gap-2 rounded-md bg-neutral-800 px-3 py-2.5 text-sm text-neutral-300 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
+            variant="secondary"
+            size="md"
+            icon={<Bug className="text-yellow-500" />}
+            className="w-full justify-start"
           >
-            <Bug className="h-4 w-4 shrink-0 text-yellow-500" />
             Raw Messages
           </Button>
         </section>

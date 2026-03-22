@@ -1,6 +1,8 @@
 import { X } from 'lucide-react';
 import { useState, KeyboardEvent } from 'react';
 
+import { IconButton } from '@/common/ui/icon-button';
+
 export function PortChipInput({
   ports,
   onChange,
@@ -41,13 +43,13 @@ export function PortChipInput({
           className="flex items-center gap-1 rounded bg-neutral-700 px-2 py-0.5 text-sm text-neutral-100"
         >
           {port}
-          <button
-            type="button"
+          <IconButton
+            variant="ghost"
+            size="sm"
             onClick={() => removePort(port)}
-            className="text-neutral-400 hover:text-neutral-200"
-          >
-            <X className="h-3 w-3" />
-          </button>
+            icon={<X />}
+            className="!h-4 !w-4"
+          />
         </span>
       ))}
       <input

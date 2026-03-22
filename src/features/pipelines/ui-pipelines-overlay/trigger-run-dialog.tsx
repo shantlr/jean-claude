@@ -4,6 +4,10 @@ import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { Input } from '@/common/ui/input';
+import { Select, type SelectOption } from '@/common/ui/select';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import {
   useBranchNames,
@@ -42,15 +46,12 @@ function ParameterField({
 }) {
   if (type === 'boolean') {
     return (
-      <label className="flex items-center gap-2 py-0.5">
-        <input
-          type="checkbox"
-          className="h-3.5 w-3.5 rounded border-neutral-500 accent-blue-500"
-          checked={value === 'true'}
-          onChange={(e) => onChange(name, e.target.checked ? 'true' : 'false')}
-        />
-        <span className="text-xs text-neutral-300">{label}</span>
-      </label>
+      <Checkbox
+        size="sm"
+        checked={value === 'true'}
+        onChange={(checked) => onChange(name, checked ? 'true' : 'false')}
+        label={label}
+      />
     );
   }
 
@@ -58,17 +59,12 @@ function ParameterField({
     return (
       <>
         <label className="mb-1 block text-xs text-neutral-400">{label}</label>
-        <select
-          className="w-full rounded border border-neutral-600 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-200 outline-none focus:border-blue-500"
+        <Select
+          size="sm"
           value={value}
-          onChange={(e) => onChange(name, e.target.value)}
-        >
-          {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+          options={options as SelectOption<string>[]}
+          onChange={(v) => onChange(name, v)}
+        />
       </>
     );
   }
@@ -76,9 +72,8 @@ function ParameterField({
   return (
     <>
       <label className="mb-1 block text-xs text-neutral-400">{label}</label>
-      <input
-        type="text"
-        className="w-full rounded border border-neutral-600 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-200 outline-none focus:border-blue-500"
+      <Input
+        size="sm"
         value={value}
         onChange={(e) => onChange(name, e.target.value)}
       />
@@ -122,12 +117,9 @@ export function TriggerRunDialog({
               repository first.
             </p>
             <div className="mt-4 flex justify-end">
-              <button
-                className="rounded px-3 py-1.5 text-sm text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
-                onClick={onClose}
-              >
+              <Button variant="ghost" size="sm" onClick={onClose}>
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -448,9 +440,8 @@ function TriggerRunDialogInner({
               <label className="mb-1 block text-xs text-neutral-400">
                 Branch
               </label>
-              <input
-                type="text"
-                className="w-full rounded border border-neutral-600 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-200 outline-none focus:border-blue-500"
+              <Input
+                size="sm"
                 value={branchFilter}
                 onChange={(e) => setBranchFilter(e.target.value)}
                 onFocus={() => setShowBranchDropdown(true)}
@@ -562,9 +553,8 @@ function TriggerRunDialogInner({
               <label className="mb-1 block text-xs text-neutral-400">
                 Description
               </label>
-              <input
-                type="text"
-                className="w-full rounded border border-neutral-600 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-200 outline-none focus:border-blue-500"
+              <Input
+                size="sm"
                 placeholder="Triggered from Jean-Claude"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -581,24 +571,23 @@ function TriggerRunDialogInner({
 
           {/* Actions */}
           <div className="flex justify-end gap-2">
-            <button
-              className="rounded px-3 py-1.5 text-sm text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
-              onClick={onClose}
-            >
+            <Button variant="ghost" size="sm" onClick={onClose}>
               Cancel
-            </button>
-            <button
-              className="flex items-center gap-1.5 rounded bg-green-700 px-3 py-1.5 text-sm text-white hover:bg-green-600 disabled:opacity-50"
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
               onClick={handleSubmit}
               disabled={isPending}
+              loading={isPending}
+              icon={<Play />}
             >
-              <Play className="h-3.5 w-3.5" />
               {isPending
                 ? 'Queuing...'
                 : isBuild
                   ? 'Queue Build'
                   : 'Create Release'}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

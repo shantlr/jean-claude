@@ -2,6 +2,7 @@ import { Pencil, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { IconButton } from '@/common/ui/icon-button';
 import { MarkdownContent } from '@/features/agent/ui-markdown-content';
 import { useSkillContent } from '@/hooks/use-managed-skills';
 import type { AgentBackendType } from '@shared/agent-backend-types';
@@ -46,14 +47,12 @@ export function SkillDetails({
         </h3>
         <div className="flex items-center gap-1">
           {onEdit && skill.editable && (
-            <Button
-              type="button"
+            <IconButton
               onClick={onEdit}
-              className="cursor-pointer rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-200"
-              title="Edit skill"
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
+              icon={<Pencil />}
+              tooltip="Edit skill"
+              size="sm"
+            />
           )}
           {onDelete &&
             skill.editable &&
@@ -65,27 +64,26 @@ export function SkillDetails({
                   setConfirmingDelete(false);
                 }}
                 onBlur={() => setConfirmingDelete(false)}
-                className="cursor-pointer rounded px-1.5 py-0.5 text-xs font-medium text-red-400 ring-1 ring-red-700 hover:bg-red-900/30"
+                variant="danger"
+                size="sm"
                 autoFocus
               >
                 Delete?
               </Button>
             ) : (
-              <Button
-                type="button"
+              <IconButton
                 onClick={() => setConfirmingDelete(true)}
-                className="cursor-pointer rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-red-400"
-                title="Delete skill"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+                icon={<Trash2 />}
+                tooltip="Delete skill"
+                size="sm"
+              />
             ))}
-          <Button
+          <IconButton
             onClick={onClose}
-            className="cursor-pointer rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-200"
-          >
-            <X className="h-5 w-5" />
-          </Button>
+            icon={<X />}
+            tooltip="Close"
+            size="sm"
+          />
         </div>
       </div>
 

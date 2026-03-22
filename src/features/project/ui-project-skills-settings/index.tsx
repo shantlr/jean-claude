@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { Button } from '@/common/ui/button';
 import { SkillCardGrid } from '@/features/settings/ui-skills-settings/skill-card-grid';
 import { SkillDetails } from '@/features/settings/ui-skills-settings/skill-details';
 import { SkillEditor } from '@/features/settings/ui-skills-settings/skill-editor';
@@ -117,16 +118,17 @@ export function ProjectSkillsSettings({ projectId }: { projectId: string }) {
             Manage skills for this project&apos;s {backendType} backend
           </p>
         </div>
-        <button
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => {
             setSelectedPath(null);
             setEditingPath('new');
           }}
-          className="flex cursor-pointer items-center gap-1 rounded-lg bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600"
+          icon={<Plus />}
         >
-          <Plus className="h-4 w-4" />
           Add Project Skill
-        </button>
+        </Button>
       </div>
 
       <div className="flex gap-6">

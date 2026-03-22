@@ -9,6 +9,9 @@ import {
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
 import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { IconButton } from '@/common/ui/icon-button';
+import { Input } from '@/common/ui/input';
 import { MarkdownContent } from '@/features/agent/ui-markdown-content';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import {
@@ -189,31 +192,26 @@ export function SkillEditor({
       {/* Top bar */}
       <div className="flex shrink-0 items-center justify-between border-b border-neutral-700 px-4 py-3">
         <div className="flex items-center gap-3">
-          <Button
-            type="button"
+          <IconButton
             onClick={handleBack}
-            className="cursor-pointer rounded p-1 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
-            title="Back"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+            icon={<ArrowLeft />}
+            tooltip="Back"
+            size="sm"
+          />
           <h2 className="text-lg font-semibold text-neutral-200">
             {isEditing ? 'Edit Skill' : 'New Skill'}
           </h2>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            onClick={handleBack}
-            className="cursor-pointer rounded-lg bg-neutral-700 px-4 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600"
-          >
+          <Button type="button" onClick={handleBack}>
             Cancel
           </Button>
           <Button
             type="button"
             onClick={handleSave}
             disabled={!isValid || isPending}
-            className="cursor-pointer rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            loading={isPending}
+            variant="primary"
           >
             {isPending ? 'Saving...' : 'Save'}
           </Button>
@@ -224,24 +222,24 @@ export function SkillEditor({
       <div className="flex shrink-0 flex-wrap items-center gap-4 border-b border-neutral-700 px-4 py-3">
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium text-neutral-400">Name</label>
-          <input
-            type="text"
+          <Input
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
             placeholder="my-custom-skill"
-            className="w-48 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+            size="sm"
+            className="w-48"
           />
         </div>
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <label className="text-sm font-medium text-neutral-400">
             Description
           </label>
-          <input
-            type="text"
+          <Input
             value={description}
             onChange={(e) => handleDescriptionChange(e.target.value)}
             placeholder="A brief description"
-            className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+            size="sm"
+            className="min-w-0 flex-1"
           />
         </div>
         {!isEditing && (
@@ -251,25 +249,20 @@ export function SkillEditor({
             </span>
             {(['claude-code', 'opencode'] as AgentBackendType[]).map(
               (backend) => (
-                <label
+                <Checkbox
                   key={backend}
-                  className="flex items-center gap-1.5 text-sm text-neutral-200"
-                >
-                  <input
-                    type="checkbox"
-                    checked={formEnabledBackends.includes(backend)}
-                    onChange={(e) => {
-                      setFormEnabledBackends((prev) =>
-                        e.target.checked
-                          ? [...prev, backend]
-                          : prev.filter((b) => b !== backend),
-                      );
-                      markChanged();
-                    }}
-                    className="rounded border-neutral-600 bg-neutral-800"
-                  />
-                  {backend === 'claude-code' ? 'Claude Code' : 'OpenCode'}
-                </label>
+                  checked={formEnabledBackends.includes(backend)}
+                  onChange={(checked) => {
+                    setFormEnabledBackends((prev) =>
+                      checked
+                        ? [...prev, backend]
+                        : prev.filter((b) => b !== backend),
+                    );
+                    markChanged();
+                  }}
+                  label={backend === 'claude-code' ? 'Claude Code' : 'OpenCode'}
+                  size="sm"
+                />
               ),
             )}
           </div>

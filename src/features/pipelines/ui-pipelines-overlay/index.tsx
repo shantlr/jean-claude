@@ -1,4 +1,4 @@
-import { ArrowLeft, Settings } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { type MouseEvent, useCallback, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
@@ -7,6 +7,7 @@ import { RemoveScroll } from 'react-remove-scroll';
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
 import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
+import { Separator } from '@/common/ui/separator';
 import { useProjects } from '@/hooks/use-projects';
 import { useAllTrackedPipelinesGrouped } from '@/hooks/use-tracked-pipelines';
 import { useOverlaysStore } from '@/stores/overlays';
@@ -187,18 +188,13 @@ export function PipelinesOverlay({ onClose }: { onClose: () => void }) {
             onClick={handlePanelClick}
           >
             {/* Top bar */}
-            <div className="flex shrink-0 items-center gap-2 border-b border-neutral-700 px-4 py-3">
-              <Button
-                onClick={onClose}
-                className="rounded p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-                aria-label="Close pipelines"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
+            <div className="flex shrink-0 items-center gap-2 px-4 py-3">
               <h2 className="text-sm font-medium text-neutral-200">
                 Pipelines
               </h2>
             </div>
+
+            <Separator />
 
             {/* Main body: sidebar + content */}
             <div className="flex min-h-0 flex-1">
@@ -217,8 +213,10 @@ export function PipelinesOverlay({ onClose }: { onClose: () => void }) {
               </div>
             </div>
 
+            <Separator />
+
             {/* Footer */}
-            <div className="flex shrink-0 items-center justify-between border-t border-neutral-700 px-4 py-2 text-xs text-neutral-500">
+            <div className="flex shrink-0 items-center justify-between px-4 py-2 text-xs text-neutral-500">
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1">
                   <Kbd shortcut="escape" /> close
@@ -229,10 +227,11 @@ export function PipelinesOverlay({ onClose }: { onClose: () => void }) {
                 </span>
               </div>
               <Button
+                variant="ghost"
+                size="sm"
                 onClick={handleOpenSettings}
-                className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300"
+                icon={<Settings />}
               >
-                <Settings className="h-3.5 w-3.5" />
                 Pipeline Settings
               </Button>
             </div>

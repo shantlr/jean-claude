@@ -3,11 +3,11 @@ import {
   GitCommit,
   GitMerge,
   GitPullRequest,
-  Loader2,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
+import { Button } from '@/common/ui/button';
 import { Select } from '@/common/ui/select';
 import { useProject } from '@/hooks/use-projects';
 import { useAiSkillSlotsSetting } from '@/hooks/use-settings';
@@ -165,19 +165,18 @@ export function WorktreeActions({
   return (
     <div className="flex flex-col gap-3 border-t border-neutral-700 p-3">
       {/* Commit button */}
-      <button
+      <Button
         onClick={() => setIsCommitModalOpen(true)}
-        disabled={!canCommit || commitMutation.isPending}
-        className="flex w-full items-center justify-center gap-2 rounded-md bg-neutral-700 px-3 py-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
+        disabled={!canCommit}
+        loading={commitMutation.isPending}
+        variant="secondary"
+        size="md"
+        icon={<GitCommit />}
+        className="w-full"
         title={canCommit ? 'Commit changes' : 'No changes to commit'}
       >
-        {commitMutation.isPending ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <GitCommit className="h-4 w-4" />
-        )}
         Commit
-      </button>
+      </Button>
 
       {/* Merge section */}
       <div className="flex flex-col gap-2">
@@ -198,20 +197,18 @@ export function WorktreeActions({
           disabled={isBranchesLoading || !branches?.length}
           className="w-full justify-between"
         />
-        <button
-          type="button"
+        <Button
           onClick={() => setIsMergeConfirmOpen(true)}
-          disabled={!canMerge || mergeMutation.isPending}
-          className="flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!canMerge}
+          loading={mergeMutation.isPending}
+          variant="primary"
+          size="md"
+          icon={<GitMerge />}
+          className="w-full"
           title={canMerge ? 'Merge worktree' : 'Commit staged changes first'}
         >
-          {mergeMutation.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <GitMerge className="h-4 w-4" />
-          )}
           Merge
-        </button>
+        </Button>
       </div>
 
       {/* Create PR / See PR */}
@@ -228,16 +225,17 @@ export function WorktreeActions({
             See PR
           </a>
         ) : (
-          <button
-            type="button"
+          <Button
             onClick={onOpenPrView}
             disabled={!canCreatePr}
-            className="flex w-full items-center justify-center gap-2 rounded-md bg-green-700 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
+            variant="primary"
+            size="md"
+            icon={<GitPullRequest />}
+            className="w-full bg-green-700 hover:bg-green-600"
             title={canCreatePr ? 'Create pull request' : 'Commit changes first'}
           >
-            <GitPullRequest className="h-4 w-4" />
             Create PR
-          </button>
+          </Button>
         ))}
 
       {/* Modals */}

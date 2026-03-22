@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { MessageCircle } from 'lucide-react';
 
+import { Chip } from '@/common/ui/chip';
 import { Separator } from '@/common/ui/separator';
 
 import { DiffStatusBadge } from './status-badge';
@@ -43,9 +44,9 @@ export function FileDiffHeader({
           </span>
         )}
         {commentCount !== undefined && commentCount > 0 && (
-          <span className="rounded-full bg-blue-900/50 px-2 py-0.5 text-[10px] font-medium text-blue-400">
+          <Chip size="xs" color="blue" pill>
             {commentCount} comment{commentCount !== 1 ? 's' : ''}
-          </span>
+          </Chip>
         )}
       </div>
       <Separator />

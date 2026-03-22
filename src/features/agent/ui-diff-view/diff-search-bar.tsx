@@ -2,6 +2,9 @@ import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import type { KeyboardEvent } from 'react';
 import { forwardRef, useCallback, useImperativeHandle, useRef } from 'react';
 
+import { IconButton } from '@/common/ui/icon-button';
+import { Input } from '@/common/ui/input';
+
 export interface DiffSearchBarHandle {
   focus: () => void;
 }
@@ -57,14 +60,15 @@ export const DiffSearchBar = forwardRef<
 
   return (
     <div className="flex items-center gap-1 rounded-md border border-neutral-600 bg-neutral-800 px-2 py-1 shadow-lg">
-      <input
+      <Input
         ref={inputRef}
         type="text"
         value={searchQuery}
         onChange={(e) => onSearchChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Find in diff..."
-        className="w-32 bg-transparent text-xs text-neutral-200 placeholder-neutral-500 outline-none"
+        size="sm"
+        className="w-32 border-none bg-transparent p-0 focus:border-none"
       />
 
       {/* Occurrence count */}
@@ -81,31 +85,31 @@ export const DiffSearchBar = forwardRef<
       </span>
 
       {/* Navigation arrows */}
-      <button
+      <IconButton
         onClick={onPrevious}
         disabled={totalMatches === 0}
-        className="rounded p-0.5 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-neutral-400"
+        icon={<ChevronUp />}
+        size="sm"
+        variant="ghost"
         aria-label="Previous match"
-      >
-        <ChevronUp className="h-4 w-4" />
-      </button>
-      <button
+      />
+      <IconButton
         onClick={onNext}
         disabled={totalMatches === 0}
-        className="rounded p-0.5 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-neutral-400"
+        icon={<ChevronDown />}
+        size="sm"
+        variant="ghost"
         aria-label="Next match"
-      >
-        <ChevronDown className="h-4 w-4" />
-      </button>
+      />
 
       {/* Close button */}
-      <button
+      <IconButton
         onClick={onClose}
-        className="rounded p-0.5 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
+        icon={<X />}
+        size="sm"
+        variant="ghost"
         aria-label="Close search"
-      >
-        <X className="h-4 w-4" />
-      </button>
+      />
     </div>
   );
 });

@@ -14,6 +14,8 @@ import { useState } from 'react';
 
 import { useModal } from '@/common/context/modal';
 import { Button } from '@/common/ui/button';
+import { IconButton } from '@/common/ui/icon-button';
+import { Input } from '@/common/ui/input';
 import { useCreateProject } from '@/hooks/use-projects';
 import { useDeleteProvider, useProviderDetails } from '@/hooks/use-providers';
 import { api, type ProviderProject, type ProviderRepo } from '@/lib/api';
@@ -112,12 +114,11 @@ function RepoRow({
               {repo.name}
             </span>
           </div>
-          <Button
+          <IconButton
             onClick={() => setShowCloneConfig(false)}
-            className="cursor-pointer rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+            icon={<X />}
+            size="sm"
+          />
         </div>
 
         <div className="space-y-3">
@@ -142,8 +143,7 @@ function RepoRow({
             <label className="mb-1 block text-xs font-medium text-neutral-400">
               Folder name
             </label>
-            <input
-              type="text"
+            <Input
               value={cloneConfig.folderName}
               onChange={(e) =>
                 setCloneConfig((prev) => ({
@@ -151,7 +151,6 @@ function RepoRow({
                   folderName: e.target.value,
                 }))
               }
-              className="w-full rounded-lg border border-neutral-600 bg-neutral-700/50 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
               placeholder="repo-name"
             />
           </div>
@@ -167,19 +166,12 @@ function RepoRow({
             disabled={
               isCloning || !cloneConfig.parentPath || !cloneConfig.folderName
             }
-            className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            loading={isCloning}
+            variant="primary"
+            icon={<Download />}
+            className="w-full"
           >
-            {isCloning ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Cloning...
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4" />
-                Clone & Create Project
-              </>
-            )}
+            {isCloning ? 'Cloning...' : 'Clone & Create Project'}
           </Button>
         </div>
       </div>
@@ -194,8 +186,8 @@ function RepoRow({
       </span>
       <Button
         onClick={() => setShowCloneConfig(true)}
-        className="shrink-0 cursor-pointer rounded px-2 py-1 text-xs font-medium text-blue-400 hover:bg-blue-500/20"
-        title="Clone repository"
+        variant="ghost"
+        size="sm"
       >
         Clone
       </Button>
@@ -330,12 +322,12 @@ export function OrganizationDetailsPane({
           >
             <ExternalLink className="h-4 w-4" />
           </a>
-          <Button
+          <IconButton
             onClick={onClose}
-            className="cursor-pointer rounded-lg p-2 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+            icon={<X />}
+            tooltip="Close"
+            size="sm"
+          />
         </div>
       </div>
 
@@ -378,9 +370,10 @@ export function OrganizationDetailsPane({
       <div className="border-t border-neutral-700 px-4 py-3">
         <Button
           onClick={handleDeleteClick}
-          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-red-500/50 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20"
+          variant="danger"
+          icon={<Trash2 />}
+          className="w-full"
         >
-          <Trash2 className="h-4 w-4" />
           Delete Organization
         </Button>
       </div>

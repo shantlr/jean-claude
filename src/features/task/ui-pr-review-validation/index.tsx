@@ -12,6 +12,7 @@ import {
 import { useCallback, useMemo, useState, useEffect } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { Textarea } from '@/common/ui/textarea';
 import {
   FileDiffContent,
   normalizeAzureChangeType,
@@ -223,10 +224,7 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
         <p className="max-w-md text-center text-xs text-neutral-500">
           {meta.parseError}
         </p>
-        <Button
-          onClick={handleDiscard}
-          className="rounded-md bg-neutral-700 px-4 py-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-600"
-        >
+        <Button onClick={handleDiscard} variant="secondary">
           Skip Review
         </Button>
       </div>
@@ -250,7 +248,8 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
         <div className="flex items-center gap-2">
           <Button
             onClick={() => toggleAll(enabledCount < comments.length)}
-            className="text-xs text-neutral-400 transition-colors hover:text-neutral-200"
+            variant="ghost"
+            size="sm"
           >
             {enabledCount === comments.length ? 'Deselect All' : 'Select All'}
           </Button>
@@ -305,9 +304,10 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
 
                   {/* Comment text -- click to edit */}
                   {editingIndex === index ? (
-                    <textarea
+                    <Textarea
                       autoFocus
-                      className="mt-2 w-full rounded border border-neutral-600 bg-neutral-900 p-2 text-xs text-neutral-200 focus:border-blue-500 focus:outline-none"
+                      size="sm"
+                      className="mt-2"
                       rows={3}
                       defaultValue={comment.comment}
                       onBlur={(e) => {
@@ -366,21 +366,18 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
         <Button
           onClick={handleDiscard}
           disabled={submitReview.isPending}
-          className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-200"
+          variant="ghost"
+          icon={<X />}
         >
-          <X className="h-4 w-4" />
           Discard
         </Button>
         <Button
           onClick={handleSubmit}
           disabled={enabledCount === 0 || submitReview.isPending}
-          className="flex items-center gap-1.5 rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          loading={submitReview.isPending}
+          variant="primary"
+          icon={!submitReview.isPending ? <Check /> : undefined}
         >
-          {submitReview.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Check className="h-4 w-4" />
-          )}
           Submit {enabledCount} Comment{enabledCount !== 1 ? 's' : ''}
         </Button>
       </div>

@@ -13,6 +13,7 @@ import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { Input } from '@/common/ui/input';
 import { Select } from '@/common/ui/select';
 import {
   useGlobalPermissions,
@@ -562,13 +563,12 @@ export function GlobalPermissionsSettings() {
               Pattern{' '}
               {guidance?.examples.length === 0 ? '(not applicable)' : ''}
             </label>
-            <input
-              type="text"
+            <Input
               value={pattern}
               onChange={(e) => setPattern(e.target.value)}
               placeholder={guidance?.placeholder ?? ''}
               disabled={guidance?.examples.length === 0}
-              className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm text-neutral-200 outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+              size="sm"
             />
           </div>
 
@@ -585,9 +585,10 @@ export function GlobalPermissionsSettings() {
           <Button
             type="submit"
             disabled={addRule.isPending}
-            className="flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+            variant="primary"
+            size="sm"
+            icon={<Plus />}
           >
-            <Plus className="h-3.5 w-3.5" />
             Add
           </Button>
         </div>

@@ -57,11 +57,7 @@ export function McpServersSettings() {
           <h2 className="text-lg font-semibold text-neutral-200">
             MCP Servers
           </h2>
-          <Button
-            onClick={handleCreate}
-            className="flex cursor-pointer items-center gap-1 rounded-lg bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600"
-          >
-            <Plus className="h-4 w-4" />
+          <Button onClick={handleCreate} size="sm" icon={<Plus />}>
             Add
           </Button>
         </div>

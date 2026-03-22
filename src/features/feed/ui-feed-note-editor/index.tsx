@@ -3,6 +3,8 @@ import { X } from 'lucide-react';
 import type { ChangeEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { Button } from '@/common/ui/button';
+import { IconButton } from '@/common/ui/icon-button';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import {
   useDeleteFeedNote,
@@ -107,18 +109,16 @@ export function FeedNoteEditor({ noteId }: { noteId: string }) {
       <div className="flex shrink-0 items-center justify-between border-b border-neutral-800 px-4 py-3">
         <span className="text-sm font-medium text-neutral-300">Note</span>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleDelete}
-            className="rounded px-2 py-1 text-xs text-red-400 transition-colors hover:bg-red-500/10"
-          >
+          <Button variant="danger" size="sm" onClick={handleDelete}>
             Delete
-          </button>
-          <button
+          </Button>
+          <IconButton
+            variant="ghost"
+            size="sm"
             onClick={handleClose}
-            className="rounded p-1 text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-300"
-          >
-            <X size={16} />
-          </button>
+            icon={<X />}
+            tooltip="Close"
+          />
         </div>
       </div>
 

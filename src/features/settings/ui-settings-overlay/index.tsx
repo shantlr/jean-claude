@@ -1,5 +1,3 @@
-import clsx from 'clsx';
-import { ArrowLeft } from 'lucide-react';
 import React, { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
@@ -9,6 +7,7 @@ import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings'
 import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
 import { Select } from '@/common/ui/select';
+import { Separator } from '@/common/ui/separator';
 import {
   ProjectSettings,
   type ProjectSettingsMenuItem,
@@ -213,25 +212,14 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
             className="flex h-[80svh] w-[90svw] max-w-[1280px] flex-col overflow-hidden rounded-lg border border-neutral-700 bg-neutral-900"
             onClick={handlePanelClick}
           >
-            {/* Top bar with back arrow and tabs */}
-            <div className="flex shrink-0 items-center gap-2 border-b border-neutral-700 px-4 py-3">
-              <Button
-                onClick={onClose}
-                className="rounded p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-                aria-label="Close settings"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-
+            {/* Top bar with tabs */}
+            <div className="flex shrink-0 items-center gap-2 px-4 py-3">
               <div className="flex items-center gap-1">
                 <Button
+                  variant="tab"
+                  size="sm"
+                  active={activeTab === 'global'}
                   onClick={() => setActiveTab('global')}
-                  className={clsx(
-                    'flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors',
-                    activeTab === 'global'
-                      ? 'bg-neutral-700 text-neutral-100'
-                      : 'text-neutral-400 hover:bg-neutral-800',
-                  )}
                 >
                   Global
                   <Kbd shortcut="cmd+1" />
@@ -240,13 +228,10 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                 {hasProjectTab && (
                   <div className="flex items-center gap-1.5">
                     <Button
+                      variant="tab"
+                      size="sm"
+                      active={activeTab === 'project'}
                       onClick={handleProjectTab}
-                      className={clsx(
-                        'flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors',
-                        activeTab === 'project'
-                          ? 'bg-neutral-700 text-neutral-100'
-                          : 'text-neutral-400 hover:bg-neutral-800',
-                      )}
                     >
                       Project
                       <Kbd shortcut="cmd+2" />
@@ -259,12 +244,15 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                         options={projectOptions}
                         onChange={handleProjectChange}
                         label="Select project"
+                        size="sm"
                       />
                     )}
                   </div>
                 )}
               </div>
             </div>
+
+            <Separator />
 
             {/* Main body: sidebar + content */}
             <div className="flex min-h-0 flex-1">
@@ -275,13 +263,11 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                     {GLOBAL_MENU_ITEMS.map((item) => (
                       <Button
                         key={item.id}
+                        variant="tab"
+                        size="sm"
+                        active={globalMenuItem === item.id}
                         onClick={() => setGlobalMenuItem(item.id)}
-                        className={clsx(
-                          'rounded px-3 py-1.5 text-left text-sm transition-colors',
-                          globalMenuItem === item.id
-                            ? 'bg-neutral-700 font-medium text-neutral-100'
-                            : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
-                        )}
+                        className="justify-start"
                       >
                         {item.label}
                       </Button>
@@ -300,16 +286,13 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                         key={item.id}
                         id={`project-settings-tab-${item.id}`}
                         role="tab"
-                        type="button"
                         aria-selected={projectMenuItem === item.id}
                         aria-controls={`project-settings-panel-${item.id}`}
+                        variant="tab"
+                        size="sm"
+                        active={projectMenuItem === item.id}
                         onClick={() => setProjectMenuItem(item.id)}
-                        className={clsx(
-                          'rounded px-3 py-1.5 text-left text-sm transition-colors',
-                          projectMenuItem === item.id
-                            ? 'bg-neutral-700 font-medium text-neutral-100'
-                            : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
-                        )}
+                        className="justify-start"
                       >
                         {item.label}
                       </Button>
@@ -351,8 +334,10 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
               </div>
             </div>
 
+            <Separator />
+
             {/* Footer tips */}
-            <div className="flex shrink-0 items-center gap-3 border-t border-neutral-700 px-4 py-2 text-xs text-neutral-500">
+            <div className="flex shrink-0 items-center gap-3 px-4 py-2 text-xs text-neutral-500">
               <span className="flex items-center gap-1">
                 <Kbd shortcut="up" /> <Kbd shortcut="down" /> navigate
               </span>

@@ -1,30 +1,24 @@
+import { Chip } from '@/common/ui/chip';
+
 import type { DiffFileStatus } from './types';
 
 const statusConfig: Record<
   DiffFileStatus,
-  { label: string; bg: string; text: string }
+  { label: string; color: 'green' | 'orange' | 'red' | 'yellow' }
 > = {
-  added: { label: 'Added', bg: 'bg-green-500/20', text: 'text-green-400' },
-  modified: {
-    label: 'Modified',
-    bg: 'bg-orange-500/20',
-    text: 'text-orange-400',
-  },
-  deleted: { label: 'Deleted', bg: 'bg-red-500/20', text: 'text-red-400' },
-  renamed: {
-    label: 'Renamed',
-    bg: 'bg-yellow-500/20',
-    text: 'text-yellow-400',
-  },
+  added: { label: 'Added', color: 'green' },
+  modified: { label: 'Modified', color: 'orange' },
+  deleted: { label: 'Deleted', color: 'red' },
+  renamed: { label: 'Renamed', color: 'yellow' },
 };
 
 export function DiffStatusBadge({ status }: { status: DiffFileStatus }) {
-  const { label, bg, text } = statusConfig[status];
+  const { label, color } = statusConfig[status];
 
   return (
-    <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${bg} ${text}`}>
+    <Chip size="sm" color={color}>
       {label}
-    </span>
+    </Chip>
   );
 }
 

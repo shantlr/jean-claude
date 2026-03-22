@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
+import { Input } from '@/common/ui/input';
 import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
 import { api } from '@/lib/api';
@@ -66,20 +67,20 @@ export function ChangeWorktreePathDialog({
           Worktree Path
         </label>
         <div className="flex items-center gap-2">
-          <input
-            type="text"
+          <Input
             value={selectedPath}
             onChange={(e) => setSelectedPath(e.target.value)}
             disabled={isPending}
-            className="min-w-0 flex-1 rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 outline-none focus:border-neutral-500 disabled:opacity-50"
             placeholder="/path/to/worktree"
             spellCheck={false}
+            className="min-w-0 flex-1"
           />
           <Button
             type="button"
             onClick={handleBrowse}
             disabled={isPending}
-            className="shrink-0 rounded-md border border-neutral-600 px-3 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
+            variant="secondary"
+            className="shrink-0"
           >
             Browse...
           </Button>
@@ -91,7 +92,7 @@ export function ChangeWorktreePathDialog({
           type="button"
           onClick={onClose}
           disabled={isPending}
-          className="rounded-md px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
+          variant="ghost"
         >
           Cancel
         </Button>
@@ -100,7 +101,7 @@ export function ChangeWorktreePathDialog({
           onClick={handleConfirm}
           loading={isPending}
           disabled={isPending || !hasChanged}
-          className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          variant="primary"
         >
           Change Path
           <Kbd shortcut="cmd+enter" />

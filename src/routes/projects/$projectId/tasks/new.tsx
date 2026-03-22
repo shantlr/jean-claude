@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { Input } from '@/common/ui/input';
 import { Select } from '@/common/ui/select';
 import { BackendSelector } from '@/features/agent/ui-backend-selector';
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
@@ -137,13 +139,14 @@ function NewTask() {
     <div className="h-full overflow-auto p-6">
       <div className="mx-auto max-w-xl">
         <Button
-          type="button"
+          variant="ghost"
+          size="sm"
           onClick={() =>
             navigate({ to: '/projects/$projectId', params: { projectId } })
           }
-          className="mb-6 flex cursor-pointer items-center gap-2 text-neutral-400 transition-colors hover:text-white"
+          icon={<ArrowLeft />}
+          className="mb-6"
         >
-          <ArrowLeft className="h-4 w-4" aria-hidden />
           Back
         </Button>
 
@@ -158,14 +161,13 @@ function NewTask() {
             >
               Name <span className="text-neutral-500">(optional)</span>
             </label>
-            <input
+            <Input
               id="name"
-              type="text"
+              size="md"
               value={name}
               onChange={(e) => setDraft({ name: e.target.value })}
               placeholder="Auto-generated from prompt if empty"
               autoComplete="off"
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
             />
           </div>
 
@@ -195,21 +197,12 @@ function NewTask() {
 
           {/* Use worktree checkbox */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <input
-                id="useWorktree"
-                type="checkbox"
-                checked={useWorktree}
-                onChange={(e) => setDraft({ useWorktree: e.target.checked })}
-                className="h-4 w-4 cursor-pointer rounded border-neutral-600 bg-neutral-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-neutral-900"
-              />
-              <label
-                htmlFor="useWorktree"
-                className="cursor-pointer text-sm text-neutral-300"
-              >
-                Create git worktree for isolation
-              </label>
-            </div>
+            <Checkbox
+              id="useWorktree"
+              checked={useWorktree}
+              onChange={(checked) => setDraft({ useWorktree: checked })}
+              label="Create git worktree for isolation"
+            />
 
             {/* Source branch selector - shown when worktree is checked */}
             {useWorktree && (
@@ -270,11 +263,11 @@ function NewTask() {
                 />
               ) : (
                 <Button
-                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setShowWorkItems(true)}
-                  className="flex cursor-pointer items-center gap-2 text-sm text-neutral-400 transition-colors hover:text-white"
+                  icon={<ListTodo />}
                 >
-                  <ListTodo className="h-4 w-4" aria-hidden />
                   {workItemIds?.length
                     ? `From AB#${workItemIds[0]}`
                     : 'From Work Item'}
@@ -299,19 +292,20 @@ function NewTask() {
               onChange={handleBackendChange}
             />
             <Button
-              type="button"
+              variant="secondary"
+              size="md"
               onClick={handleCreateOnly}
               loading={createTask.isPending}
               disabled={createTask.isPending || !prompt.trim()}
-              className="cursor-pointer rounded-lg border border-neutral-600 px-4 py-2 font-medium text-neutral-300 transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Create
             </Button>
             <Button
+              variant="primary"
+              size="md"
               type="submit"
               loading={createTask.isPending}
               disabled={createTask.isPending || !prompt.trim()}
-              className="cursor-pointer rounded-lg bg-white px-4 py-2 font-medium text-black transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {createTask.isPending ? 'Creating…' : 'Start'}
             </Button>

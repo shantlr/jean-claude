@@ -3,6 +3,8 @@ import { Send, Square, Loader2, ListPlus } from 'lucide-react';
 import { useState, useRef, useCallback, KeyboardEvent } from 'react';
 
 import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
+import { Button } from '@/common/ui/button';
+import { IconButton } from '@/common/ui/icon-button';
 import { Kbd } from '@/common/ui/kbd';
 import {
   PromptTextarea,
@@ -157,13 +159,16 @@ export function MessageInput({
         onBlur={() => onFocusChange?.(false)}
       />
       {/* Send/Queue button */}
-      <button
+      <Button
         onClick={handleSubmit}
         disabled={
           (!value.trim() && images.length === 0) || (disabled && !isRunning)
         }
+        size="lg"
+        variant="primary"
+        icon={isRunning ? <ListPlus /> : <Send />}
         className={clsx(
-          'flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-white transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50',
+          'shrink-0 transition-all duration-200',
           isRunning
             ? 'bg-gradient-to-r from-amber-500 to-orange-500 shadow-md shadow-amber-500/25 hover:from-amber-400 hover:to-orange-400 hover:shadow-lg hover:shadow-amber-500/40'
             : 'bg-gradient-to-r from-blue-500 to-purple-500 shadow-md shadow-blue-500/25 hover:scale-105 hover:from-blue-400 hover:to-purple-400 hover:shadow-lg hover:shadow-blue-500/40',
@@ -175,44 +180,27 @@ export function MessageInput({
             : `Send message (${formatKeyForDisplay('cmd+enter')})`
         }
       >
-        {isRunning ? (
-          <>
-            <ListPlus className="h-4 w-4" aria-hidden />
-            <span className="text-sm font-medium">Queue</span>
-            <Kbd
-              shortcut="cmd+enter"
-              className="border-white/25 bg-white/10 text-white/90"
-            />
-          </>
-        ) : (
-          <>
-            <Send className="h-4 w-4" aria-hidden />
-            <span className="text-sm font-medium">Send</span>
-            <Kbd
-              shortcut="cmd+enter"
-              className="border-white/25 bg-white/10 text-white/90"
-            />
-          </>
-        )}
-      </button>
+        {isRunning ? 'Queue' : 'Send'}
+        <Kbd
+          shortcut="cmd+enter"
+          className="border-white/25 bg-white/10 text-white/90"
+        />
+      </Button>
       {isRunning && onStop && (
-        <button
+        <IconButton
           onClick={onStop}
           disabled={isStopping}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-md shadow-red-500/25 transition-all duration-200 hover:scale-105 hover:from-red-400 hover:to-rose-400 hover:shadow-lg hover:shadow-red-500/40 disabled:opacity-50"
+          size="lg"
+          variant="danger"
+          icon={isStopping ? <Loader2 className="animate-spin" /> : <Square />}
+          className="shrink-0 bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-md shadow-red-500/25 transition-all duration-200 hover:scale-105 hover:from-red-400 hover:to-rose-400 hover:shadow-lg hover:shadow-red-500/40"
           aria-label={isStopping ? 'Stopping agent' : 'Stop agent'}
-          title={
+          tooltip={
             isStopping
               ? 'Stopping agent...'
               : `Stop agent (${formatKeyForDisplay('escape')} twice)`
           }
-        >
-          {isStopping ? (
-            <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-          ) : (
-            <Square className="h-5 w-5" aria-hidden />
-          )}
-        </button>
+        />
       )}
     </div>
   );

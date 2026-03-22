@@ -4,6 +4,7 @@ import { groupBy, map } from 'lodash-es';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useCommands, useCommandSources } from '@/common/hooks/use-commands';
+import { Input } from '@/common/ui/input';
 import { Kbd } from '@/common/ui/kbd';
 
 export function CommandPaletteOverlay({ onClose }: { onClose: () => void }) {
@@ -132,9 +133,8 @@ export function CommandPaletteOverlay({ onClose }: { onClose: () => void }) {
       >
         {/* Search input */}
         <div className="flex items-center border-b border-neutral-700 px-4 py-3">
-          <input
+          <Input
             ref={inputRef}
-            type="text"
             placeholder="Search..."
             autoFocus
             value={query}
@@ -142,7 +142,7 @@ export function CommandPaletteOverlay({ onClose }: { onClose: () => void }) {
               setQuery(e.target.value);
               setSelectedIndex(0);
             }}
-            className="placeholder:text-muted-foreground flex-1 bg-transparent text-sm outline-none"
+            className="flex-1 border-none bg-transparent"
           />
         </div>
 

@@ -123,11 +123,7 @@ export function NotificationCenterOverlay({
                 )}
               </div>
               {unreadCount > 0 && (
-                <Button
-                  type="button"
-                  onClick={markAllAsRead}
-                  className="text-xs text-neutral-400 hover:text-neutral-200"
-                >
+                <Button variant="ghost" size="sm" onClick={markAllAsRead}>
                   Mark all as read
                 </Button>
               )}

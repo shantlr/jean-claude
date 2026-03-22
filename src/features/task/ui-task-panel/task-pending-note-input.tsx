@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { Input } from '@/common/ui/input';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useUpdateTask } from '@/hooks/use-tasks';
 
@@ -57,8 +58,8 @@ export function TaskPendingNoteInput({
   }, [debouncedValue, pendingMessage, taskId, updatePendingMessage, value]);
 
   return (
-    <input
-      type="text"
+    <Input
+      size="xs"
       value={value}
       onBlur={() => {
         if (isDebouncing || isUpdatingPendingMessage) {
@@ -78,7 +79,7 @@ export function TaskPendingNoteInput({
         setValue(event.target.value);
       }}
       placeholder="Add note..."
-      className="h-7 w-72 max-w-full rounded border border-neutral-700 bg-neutral-900 px-2 text-xs text-neutral-200 placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
+      className="w-48 max-w-full"
       title="Task note"
       aria-label="Task note"
     />

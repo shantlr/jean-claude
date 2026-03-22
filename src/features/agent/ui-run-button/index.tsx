@@ -2,6 +2,8 @@ import clsx from 'clsx';
 import { FileText, Loader2, Play, Square } from 'lucide-react';
 import { type MutableRefObject, useState } from 'react';
 
+import { Button } from '@/common/ui/button';
+import { Chip } from '@/common/ui/chip';
 import { Dropdown, DropdownItem, DropdownDivider } from '@/common/ui/dropdown';
 import { Kbd } from '@/common/ui/kbd';
 import { useProjectCommands } from '@/hooks/use-project-commands';
@@ -116,7 +118,7 @@ export function RunButton({
           trigger={
             <button
               className={clsx(
-                'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors',
+                'flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium transition-colors',
                 runningCount > 0
                   ? 'bg-red-600 text-white hover:bg-red-700'
                   : 'bg-green-600 text-white hover:bg-green-700',
@@ -125,11 +127,11 @@ export function RunButton({
             >
               {runningCount > 0 ? (
                 <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                  <Square className="h-4 w-4" aria-hidden />
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                  <Square className="h-3 w-3" aria-hidden />
                 </>
               ) : (
-                <Play className="h-4 w-4" aria-hidden />
+                <Play className="h-3 w-3" aria-hidden />
               )}
               <Kbd
                 shortcut="cmd+u"
@@ -150,16 +152,13 @@ export function RunButton({
                   <span className="mr-2 truncate font-mono text-xs text-neutral-400">
                     {command.command}
                   </span>
-                  <span
-                    className={clsx(
-                      'rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase',
-                      isRunningCommand
-                        ? 'bg-red-500/20 text-red-300'
-                        : 'bg-green-500/20 text-green-300',
-                    )}
+                  <Chip
+                    size="xs"
+                    color={isRunningCommand ? 'red' : 'green'}
+                    className="uppercase"
                   >
                     {isBusy ? '...' : isRunningCommand ? 'Stop' : 'Run'}
-                  </span>
+                  </Chip>
                 </DropdownItem>
                 {index < commands.length - 1 && <DropdownDivider />}
               </div>
@@ -168,33 +167,25 @@ export function RunButton({
         </Dropdown>
 
         {hasLogEntries && (
-          <button
-            type="button"
+          <Button
             onClick={onToggleLogs}
-            className={clsx(
-              'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm transition-colors',
-              isLogsPaneOpen
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-neutral-700 text-neutral-200 hover:bg-neutral-600',
-            )}
+            variant={isLogsPaneOpen ? 'primary' : 'secondary'}
+            size="xs"
+            icon={<FileText />}
             aria-label="Open command logs"
           >
-            <FileText className="h-4 w-4" aria-hidden />
             Logs
-          </button>
+          </Button>
         )}
 
         {runningCount > 0 && (
-          <span
-            className={clsx(
-              'rounded-full px-2 py-0.5 text-xs font-medium',
-              runningCount === commands.length
-                ? 'bg-green-500/20 text-green-400'
-                : 'bg-yellow-500/20 text-yellow-400',
-            )}
+          <Chip
+            size="sm"
+            color={runningCount === commands.length ? 'green' : 'yellow'}
+            pill
           >
             {runningCount}/{commands.length}
-          </span>
+          </Chip>
         )}
       </div>
 

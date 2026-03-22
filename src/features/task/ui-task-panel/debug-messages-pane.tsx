@@ -14,6 +14,9 @@ import {
 import { useState, useCallback, useEffect } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { Chip } from '@/common/ui/chip';
+import { IconButton } from '@/common/ui/icon-button';
+import { Input } from '@/common/ui/input';
 import { Separator } from '@/common/ui/separator';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useMessagesWithRawData } from '@/hooks/use-messages-with-raw-data';
@@ -258,31 +261,25 @@ function DebugMessageCard({ message }: { message: DebugMessageWithRawData }) {
           #{message.messageIndex}
         </span>
         {message.rawFormat && (
-          <span className="rounded bg-neutral-700 px-1.5 py-0.5 text-[10px] font-medium text-neutral-400">
+          <Chip size="xs" color="neutral">
             {message.rawFormat}
-          </span>
+          </Chip>
         )}
         {/* Presence indicators */}
-        <span
-          className={clsx(
-            'rounded px-1.5 py-0.5 text-[10px] font-medium',
-            hasRaw
-              ? 'bg-blue-900/30 text-blue-400'
-              : 'bg-neutral-800 text-neutral-600',
-          )}
+        <Chip
+          size="xs"
+          color={hasRaw ? 'blue' : 'neutral'}
+          className={!hasRaw ? 'text-neutral-600' : ''}
         >
           raw
-        </span>
-        <span
-          className={clsx(
-            'rounded px-1.5 py-0.5 text-[10px] font-medium',
-            hasNormalized
-              ? 'bg-green-900/30 text-green-400'
-              : 'bg-neutral-800 text-neutral-600',
-          )}
+        </Chip>
+        <Chip
+          size="xs"
+          color={hasNormalized ? 'green' : 'neutral'}
+          className={!hasNormalized ? 'text-neutral-600' : ''}
         >
           normalized
-        </span>
+        </Chip>
         {message.backendSessionId && (
           <span
             className="truncate font-mono text-[10px] text-neutral-600"
@@ -445,68 +442,53 @@ export function DebugMessagesPane({
           )}
         </h3>
         <div className="flex items-center gap-1">
-          <Button
+          <IconButton
             onClick={() => compactMutation.mutate()}
             disabled={compactMutation.isPending}
-            className={clsx(
-              'cursor-pointer rounded p-1.5 transition-colors',
-              compactMutation.isPending
-                ? 'text-blue-400'
-                : 'text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200',
-            )}
-            title="Compact raw messages"
-          >
-            <FolderArchive
-              className={clsx(
-                'h-3.5 w-3.5',
-                compactMutation.isPending && 'animate-pulse',
-              )}
-            />
-          </Button>
-          <Button
+            size="sm"
+            icon={
+              <FolderArchive
+                className={clsx(compactMutation.isPending && 'animate-pulse')}
+              />
+            }
+            tooltip="Compact raw messages"
+            className={clsx(compactMutation.isPending && 'text-blue-400')}
+          />
+          <IconButton
             onClick={() => reprocessMutation.mutate()}
             disabled={reprocessMutation.isPending}
-            className={clsx(
-              'cursor-pointer rounded p-1.5 transition-colors',
-              reprocessMutation.isPending
-                ? 'text-amber-400'
-                : 'text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200',
-            )}
-            title="Reprocess normalization from raw data"
-          >
-            <RotateCcw
-              className={clsx(
-                'h-3.5 w-3.5',
-                reprocessMutation.isPending && 'animate-spin',
-              )}
-            />
-          </Button>
-          <Button
+            size="sm"
+            icon={
+              <RotateCcw
+                className={clsx(reprocessMutation.isPending && 'animate-spin')}
+              />
+            }
+            tooltip="Reprocess normalization from raw data"
+            className={clsx(reprocessMutation.isPending && 'text-amber-400')}
+          />
+          <IconButton
             onClick={handleRefresh}
-            className="cursor-pointer rounded p-1.5 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
-            title="Refresh"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-          </Button>
-          <Button
+            size="sm"
+            icon={<RefreshCw />}
+            tooltip="Refresh"
+          />
+          <IconButton
             onClick={onClose}
-            className="cursor-pointer rounded p-1.5 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
-            title="Close"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+            size="sm"
+            icon={<X />}
+            tooltip="Close"
+          />
         </div>
       </div>
       <Separator />
 
       {/* Search filter */}
       <div className="shrink-0 px-4 py-2">
-        <input
-          type="text"
+        <Input
+          size="sm"
           value={searchFilter}
           onChange={(e) => setSearchFilter(e.target.value)}
           placeholder="Filter across raw & normalized..."
-          className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-xs text-neutral-200 placeholder:text-neutral-600 focus:border-neutral-500 focus:outline-none"
         />
       </div>
 

@@ -1,6 +1,8 @@
-import { Link2, Link2Off, Loader2 } from 'lucide-react';
+import { Link2, Link2Off } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
 import { Select } from '@/common/ui/select';
 import { useUpdateProject } from '@/hooks/use-projects';
 import { useProviders, useProviderDetails } from '@/hooks/use-providers';
@@ -127,38 +129,25 @@ export function RepoLink({ project }: { project: Project }) {
               </p>
             </div>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleUnlink}
             disabled={updateProject.isPending}
-            className="flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-200 disabled:opacity-50"
+            loading={updateProject.isPending}
+            icon={!updateProject.isPending ? <Link2Off /> : undefined}
           >
-            {updateProject.isPending ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Link2Off className="h-3 w-3" />
-            )}
             Unlink
-          </button>
+          </Button>
         </div>
         <div className="mt-3 border-t border-neutral-800 pt-3">
-          <label className="flex cursor-pointer items-center gap-3">
-            <input
-              type="checkbox"
-              checked={!!project.showPrsInFeed}
-              onChange={(e) => handleToggleShowInFeed(e.target.checked)}
-              disabled={updateProject.isPending}
-              className="h-4 w-4 cursor-pointer rounded border-neutral-600 bg-neutral-800 accent-blue-500 disabled:opacity-50"
-            />
-            <div>
-              <p className="text-sm font-medium text-neutral-200">
-                Show in feed
-              </p>
-              <p className="text-xs text-neutral-500">
-                Display pull requests from this repository in the feed list
-              </p>
-            </div>
-          </label>
+          <Checkbox
+            checked={!!project.showPrsInFeed}
+            onChange={handleToggleShowInFeed}
+            disabled={updateProject.isPending}
+            label="Show in feed"
+            description="Display pull requests from this repository in the feed list"
+          />
         </div>
       </div>
     );
@@ -217,21 +206,16 @@ export function RepoLink({ project }: { project: Project }) {
         />
 
         {/* Link button */}
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="md"
           onClick={handleLink}
           disabled={!canLink || updateProject.isPending}
-          className="w-full cursor-pointer rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          loading={updateProject.isPending}
+          className="w-full"
         >
-          {updateProject.isPending ? (
-            <span className="flex items-center justify-center gap-2">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Linking...
-            </span>
-          ) : (
-            'Link Repository'
-          )}
-        </button>
+          {updateProject.isPending ? 'Linking...' : 'Link Repository'}
+        </Button>
       </div>
     </div>
   );

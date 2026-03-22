@@ -1,6 +1,8 @@
 import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
+import { Button } from '@/common/ui/button';
+import { Input } from '@/common/ui/input';
 import { Select } from '@/common/ui/select';
 import { useProviders, useProviderDetails } from '@/hooks/use-providers';
 import { PROJECT_COLORS } from '@/lib/colors';
@@ -367,13 +369,12 @@ export function AddProjectForm({
         >
           Name
         </label>
-        <input
+        <Input
           id="name"
-          type="text"
+          size="md"
           value={formData.name}
           onChange={(e) => onChange({ name: e.target.value })}
           autoComplete="off"
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white placeholder-neutral-500 focus:border-neutral-500 focus:ring-2 focus:ring-neutral-500/50 focus:outline-none"
           required
         />
       </div>
@@ -434,13 +435,16 @@ export function AddProjectForm({
       />
 
       {/* Submit */}
-      <button
+      <Button
         type="submit"
+        variant="primary"
+        size="md"
         disabled={isSubmitting}
-        className="w-full cursor-pointer rounded-lg bg-white px-4 py-2 font-medium text-black transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
+        loading={isSubmitting}
+        className="w-full"
       >
         {isSubmitting ? 'Adding…' : 'Add Project'}
-      </button>
+      </Button>
     </form>
   );
 }

@@ -40,9 +40,10 @@ export function TaskPrView({
         <div className="flex items-center gap-2 px-3 py-2">
           <Button
             onClick={onClose}
-            className="flex items-center gap-1 rounded px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
+            variant="ghost"
+            size="sm"
+            icon={<ArrowLeft />}
           >
-            <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
           <span className="text-sm font-medium text-neutral-300">
@@ -142,9 +143,10 @@ function PrLinkingView({
         <div className="flex items-center gap-2 px-3 py-2">
           <Button
             onClick={onClose}
-            className="flex items-center gap-1 rounded px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
+            variant="ghost"
+            size="sm"
+            icon={<ArrowLeft />}
           >
-            <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
           <span className="text-sm font-medium text-neutral-300">
@@ -227,9 +229,10 @@ function PrLinkingView({
               project?.repoId ? (
                 <Button
                   onClick={() => setShowCreateForm(true)}
-                  className="mt-2 flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
+                  variant="primary"
+                  icon={<Plus />}
+                  className="mt-2"
                 >
-                  <Plus className="h-4 w-4" />
                   Create Pull Request
                 </Button>
               ) : (
@@ -333,13 +336,11 @@ function PrSuggestionItem({
         <Button
           onClick={onLink}
           disabled={isLinking}
-          className="flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
+          loading={isLinking}
+          variant="primary"
+          size="sm"
+          icon={<Link />}
         >
-          {isLinking ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Link className="h-4 w-4" />
-          )}
           Link
         </Button>
       </div>

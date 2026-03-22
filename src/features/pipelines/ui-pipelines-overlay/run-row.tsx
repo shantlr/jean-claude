@@ -137,8 +137,9 @@ export function RunRow({
       )}
     >
       <Button
+        variant="unstyled"
         onClick={toggleExpanded}
-        className="flex w-full flex-col gap-1 px-3 py-2.5 text-left"
+        className="flex w-full cursor-pointer flex-col items-stretch gap-1 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-neutral-700"
       >
         {/* Top line */}
         <div className="flex w-full items-center gap-2">

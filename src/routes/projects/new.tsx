@@ -5,6 +5,7 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { Input } from '@/common/ui/input';
 import {
   AddProjectForm,
   type ProjectFormData,
@@ -175,11 +176,12 @@ function AddProjectPage() {
       <div className="flex h-full items-center justify-center p-6">
         <div className="w-full max-w-md">
           <Button
-            type="button"
+            variant="ghost"
+            size="sm"
             onClick={handleBack}
-            className="mb-6 flex cursor-pointer items-center gap-2 text-neutral-400 transition-colors hover:text-white"
+            icon={<ArrowLeft />}
+            className="mb-6"
           >
-            <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
           <h1 className="mb-6 text-2xl font-bold">
@@ -207,25 +209,23 @@ function AddProjectPage() {
           <h1 className="text-2xl font-bold">Add Project</h1>
           <div className="flex gap-2">
             <Button
-              type="button"
+              variant="secondary"
+              size="md"
               onClick={handleSelectLocalFolder}
-              className="flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2 text-sm font-medium transition-colors hover:border-neutral-600 hover:bg-neutral-800"
+              icon={<Folder />}
             >
-              <Folder className="h-4 w-4 shrink-0 text-neutral-400" />
               Local Folder
             </Button>
             <Button
-              type="button"
+              variant="secondary"
+              size="md"
               onClick={handleShowClonePane}
-              className="flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2 text-sm font-medium transition-colors hover:border-neutral-600 hover:bg-neutral-800"
+              icon={
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M0 8.877L2.247 5.91l8.405-3.416V.022l7.37 5.393L2.966 8.338v8.225L0 15.707zm24-4.45v14.651l-5.753 4.9-9.303-3.057v3.056l-5.978-7.416 15.057 1.798V5.415z" />
+                </svg>
+              }
             >
-              <svg
-                className="h-4 w-4 shrink-0 text-neutral-400"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M0 8.877L2.247 5.91l8.405-3.416V.022l7.37 5.393L2.966 8.338v8.225L0 15.707zm24-4.45v14.651l-5.753 4.9-9.303-3.057v3.056l-5.978-7.416 15.057 1.798V5.415z" />
-              </svg>
               Clone from Azure DevOps
             </Button>
           </div>
@@ -233,15 +233,14 @@ function AddProjectPage() {
 
         {/* Search box — only shown when detected projects exist */}
         {hasDetected && (
-          <div className="relative mb-3 shrink-0">
-            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-500" />
-            <input
-              type="text"
+          <div className="mb-3 shrink-0">
+            <Input
+              size="md"
+              icon={<Search />}
               aria-label="Filter detected projects"
               placeholder="Filter projects…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800/50 py-2 pr-3 pl-9 text-sm text-white placeholder-neutral-500 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500/50 focus:outline-none"
             />
           </div>
         )}
@@ -262,12 +261,12 @@ function AddProjectPage() {
               {/* Project cards */}
               {!isLoadingDetected &&
                 filteredProjects.map((project) => (
-                  <Button
+                  <button
                     key={project.path}
                     type="button"
                     aria-label={`Add project: ${project.name}`}
                     onClick={() => handleSelectDetectedProject(project)}
-                    className="flex h-[88px] w-full cursor-pointer flex-col rounded-lg border border-neutral-700 bg-neutral-800/50 p-3 text-left transition-colors hover:border-neutral-600 hover:bg-neutral-800"
+                    className="flex min-h-[88px] w-full cursor-pointer flex-col items-start rounded-lg border border-neutral-700 bg-neutral-800/50 p-3 text-left transition-colors hover:border-neutral-600 hover:bg-neutral-800"
                   >
                     <div className="flex items-center gap-1.5 overflow-hidden">
                       <FolderOpen className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
@@ -288,10 +287,10 @@ function AddProjectPage() {
                         })}
                       </div>
                     )}
-                    <div className="mt-auto truncate text-xs text-neutral-500">
+                    <div className="mt-auto w-full truncate text-xs text-neutral-500">
                       {project.displayPath}
                     </div>
-                  </Button>
+                  </button>
                 ))}
 
               {/* Empty filter state */}

@@ -1,7 +1,9 @@
-import { ExternalLink, Loader2, X } from 'lucide-react';
+import { ExternalLink, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { IconButton } from '@/common/ui/icon-button';
+import { Input } from '@/common/ui/input';
 import { Select } from '@/common/ui/select';
 import { useValidateAzureDevOpsToken } from '@/hooks/use-azure-devops';
 import { useCreateToken } from '@/hooks/use-tokens';
@@ -59,13 +61,12 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
     <div className="w-80 shrink-0 rounded-lg border border-neutral-700 bg-neutral-800/50 p-4">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="font-medium text-neutral-200">Add Token</h3>
-        <Button
+        <IconButton
           onClick={onClose}
-          aria-label="Close pane"
-          className="cursor-pointer rounded-lg p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
-        >
-          <X className="h-4 w-4" aria-hidden />
-        </Button>
+          icon={<X />}
+          tooltip="Close pane"
+          size="sm"
+        />
       </div>
 
       <div className="flex flex-col gap-4">
@@ -88,14 +89,12 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
           >
             Label
           </label>
-          <input
+          <Input
             id="token-label"
-            type="text"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="e.g., Work Azure PAT"
             autoComplete="off"
-            className="w-full rounded-lg border border-neutral-600 bg-neutral-700 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 focus:outline-none"
           />
         </div>
 
@@ -106,7 +105,7 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
           >
             Personal Access Token
           </label>
-          <input
+          <Input
             id="token-pat"
             type="password"
             value={token}
@@ -114,7 +113,6 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
             placeholder="Enter your PAT"
             autoComplete="off"
             spellCheck={false}
-            className="w-full rounded-lg border border-neutral-600 bg-neutral-700 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 focus:outline-none"
           />
         </div>
 
@@ -122,11 +120,10 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
           <label className="mb-2 block text-sm font-medium text-neutral-400">
             Expiration Date (optional)
           </label>
-          <input
+          <Input
             type="date"
             value={expiresAt}
             onChange={(e) => setExpiresAt(e.target.value)}
-            className="w-full rounded-lg border border-neutral-600 bg-neutral-700 px-3 py-2 text-sm text-neutral-200 focus:border-blue-500 focus:outline-none"
           />
         </div>
 
@@ -151,16 +148,10 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
         <Button
           onClick={handleSubmit}
           disabled={!isValid || step === 'validating'}
-          className="flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-600"
+          loading={step === 'validating'}
+          variant="primary"
         >
-          {step === 'validating' ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              Validating…
-            </>
-          ) : (
-            'Add Token'
-          )}
+          {step === 'validating' ? 'Validating...' : 'Add Token'}
         </Button>
       </div>
     </div>

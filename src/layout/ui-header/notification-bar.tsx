@@ -22,9 +22,10 @@ export function NotificationBar() {
 
   return (
     <Button
-      type="button"
+      variant="ghost"
+      size="sm"
       onClick={() => openOverlay('notification-center')}
-      className="flex h-7 max-w-[280px] items-center gap-1.5 rounded border border-neutral-800 bg-neutral-900 px-2 text-neutral-400 transition-colors hover:border-neutral-700 hover:bg-neutral-800 hover:text-neutral-300"
+      className="max-w-[280px]"
     >
       <Bell className="h-3.5 w-3.5 shrink-0" />
       {unreadCount > 0 && (

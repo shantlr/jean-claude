@@ -2,6 +2,9 @@ import { RefreshCw, TriangleAlert, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { Chip } from '@/common/ui/chip';
+import { IconButton } from '@/common/ui/icon-button';
 import {
   useLegacySkillMigrationExecute,
   useLegacySkillMigrationPreview,
@@ -23,24 +26,24 @@ function StatusBadge({
 }) {
   if (status === 'migrate') {
     return (
-      <span className="rounded bg-green-900/30 px-2 py-0.5 text-[11px] text-green-400">
+      <Chip size="sm" color="green">
         Migrate
-      </span>
+      </Chip>
     );
   }
 
   if (status === 'skip-conflict') {
     return (
-      <span className="rounded bg-amber-900/30 px-2 py-0.5 text-[11px] text-amber-400">
+      <Chip size="sm" color="amber">
         Skip conflict
-      </span>
+      </Chip>
     );
   }
 
   return (
-    <span className="rounded bg-neutral-700 px-2 py-0.5 text-[11px] text-neutral-300">
+    <Chip size="sm" color="neutral">
       Skip invalid
-    </span>
+    </Chip>
   );
 }
 
@@ -175,13 +178,12 @@ export function LegacySkillMigrationDialog({
               Move manually installed skills into Jean-Claude canonical storage.
             </p>
           </div>
-          <Button
-            type="button"
+          <IconButton
             onClick={onClose}
-            className="rounded p-1 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200"
-          >
-            <X className="h-5 w-5" />
-          </Button>
+            icon={<X />}
+            tooltip="Close"
+            size="sm"
+          />
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
@@ -234,7 +236,8 @@ export function LegacySkillMigrationDialog({
                   <Button
                     type="button"
                     onClick={toggleAll}
-                    className="text-xs text-blue-400 hover:text-blue-300"
+                    variant="ghost"
+                    size="sm"
                   >
                     {selectedIds.size === migratableIds.length
                       ? 'Deselect all'
@@ -258,7 +261,7 @@ export function LegacySkillMigrationDialog({
                         const isChecked = selectedIds.has(item.id);
 
                         return (
-                          <label
+                          <div
                             key={item.id}
                             className={`flex gap-3 rounded border border-neutral-700 bg-neutral-900/70 p-3 ${
                               isMigratable
@@ -267,11 +270,9 @@ export function LegacySkillMigrationDialog({
                             }`}
                           >
                             {isMigratable ? (
-                              <input
-                                type="checkbox"
+                              <Checkbox
                                 checked={isChecked}
                                 onChange={() => toggleItem(item.id)}
-                                className="mt-0.5 h-4 w-4 shrink-0 accent-blue-500"
                               />
                             ) : (
                               <div className="mt-0.5 h-4 w-4 shrink-0" />
@@ -292,7 +293,7 @@ export function LegacySkillMigrationDialog({
                                 </div>
                               )}
                             </div>
-                          </label>
+                          </div>
                         );
                       })}
                     </div>
@@ -304,11 +305,7 @@ export function LegacySkillMigrationDialog({
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-neutral-700 px-4 py-3">
-          <Button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg bg-neutral-700 px-3 py-1.5 text-sm text-neutral-200 hover:bg-neutral-600"
-          >
+          <Button type="button" onClick={onClose} size="sm">
             {result ? 'Close' : 'Cancel'}
           </Button>
           {!result && (
@@ -316,7 +313,9 @@ export function LegacySkillMigrationDialog({
               type="button"
               onClick={handleExecute}
               disabled={selectedIds.size === 0 || executeMutation.isPending}
-              className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+              loading={executeMutation.isPending}
+              variant="primary"
+              size="sm"
             >
               {executeMutation.isPending
                 ? 'Migrating...'

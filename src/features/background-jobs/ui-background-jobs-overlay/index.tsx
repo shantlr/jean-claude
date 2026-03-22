@@ -5,6 +5,8 @@ import { CheckCircle2, CircleAlert, Copy, Loader2, X } from 'lucide-react';
 import { useMemo, type ReactNode } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
+import { Button } from '@/common/ui/button';
+import { IconButton } from '@/common/ui/icon-button';
 import { api } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/time';
 import {
@@ -57,19 +59,16 @@ export function BackgroundJobsOverlay({ onClose }: { onClose: () => void }) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={clearFinished}
-              className="rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-neutral-300 transition-colors hover:bg-white/10"
-            >
+            <Button variant="secondary" size="sm" onClick={clearFinished}>
               Clear Finished
-            </button>
-            <button
+            </Button>
+            <IconButton
+              variant="ghost"
+              size="sm"
               onClick={onClose}
-              className="rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-100"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </button>
+              icon={<X />}
+              tooltip="Close"
+            />
           </div>
         </div>
 
@@ -220,50 +219,50 @@ function JobRow({
           <div className="mt-2 flex items-center gap-2">
             {job.type === 'task-creation' &&
               job.details.creationInput.prompt.trim() && (
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => {
                     void onCopyPrompt(job);
                   }}
-                  className="inline-flex items-center gap-1 rounded border border-white/[0.15] bg-white/5 px-2 py-1 text-xs text-neutral-200 transition-colors hover:bg-white/10"
+                  icon={<Copy />}
                 >
-                  <Copy className="h-3 w-3" />
                   Copy Prompt
-                </button>
+                </Button>
               )}
             {job.type === 'task-creation' && job.status === 'failed' && (
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => {
                   void onRetryTaskCreation(job);
                 }}
-                className="rounded border border-white/[0.15] bg-white/5 px-2 py-1 text-xs text-neutral-200 transition-colors hover:bg-white/10"
               >
                 Retry
-              </button>
+              </Button>
             )}
             {job.type === 'task-deletion' && job.status === 'failed' && (
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => {
                   void onRetryTaskDeletion(job);
                 }}
-                className="rounded border border-white/[0.15] bg-white/5 px-2 py-1 text-xs text-neutral-200 transition-colors hover:bg-white/10"
               >
                 Retry
-              </button>
+              </Button>
             )}
             {job.type === 'task-creation' &&
               job.status === 'succeeded' &&
               job.projectId &&
               job.taskId && (
-                <button
-                  type="button"
+                <Button
+                  variant="primary"
+                  size="sm"
                   onClick={() => onOpenTask(job)}
-                  className="rounded border border-blue-400/25 bg-blue-500/10 px-2 py-1 text-xs text-blue-200 transition-colors hover:bg-blue-500/20"
                 >
                   Open Task
-                </button>
+                </Button>
               )}
           </div>
         </div>

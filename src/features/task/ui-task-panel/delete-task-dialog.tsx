@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
 import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
 
@@ -72,23 +73,15 @@ export function DeleteTaskDialog({
       </p>
 
       {hasWorktree && (
-        <label className="mb-4 flex cursor-pointer items-start gap-2 text-sm text-neutral-300">
-          <input
-            type="checkbox"
+        <div className="mb-4">
+          <Checkbox
             checked={deleteWorktree}
-            onChange={(e) => setDeleteWorktree(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-neutral-600 bg-neutral-700"
+            onChange={setDeleteWorktree}
+            label="Delete associated worktree and branch"
+            description="If unchecked, the worktree is kept unless it has no changes."
           />
-          <span>
-            <span className="inline-flex items-center gap-1">
-              Delete associated worktree and branch
-              <Kbd shortcut="cmd+shift+w" className="text-[9px]" />
-            </span>
-            <span className="block text-xs text-neutral-400">
-              If unchecked, the worktree is kept unless it has no changes.
-            </span>
-          </span>
-        </label>
+          <Kbd shortcut="cmd+shift+w" className="mt-0.5 ml-6 text-[9px]" />
+        </div>
       )}
 
       <div className="flex justify-end gap-3">
@@ -96,7 +89,7 @@ export function DeleteTaskDialog({
           type="button"
           onClick={onClose}
           disabled={isPending}
-          className="rounded-md px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
+          variant="ghost"
         >
           Cancel
         </Button>
@@ -105,7 +98,7 @@ export function DeleteTaskDialog({
           onClick={handleConfirm}
           loading={isPending}
           disabled={isPending}
-          className="flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+          variant="danger"
         >
           Delete
           <span className="inline-flex items-center gap-1">

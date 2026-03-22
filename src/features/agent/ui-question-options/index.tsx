@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
+import { Textarea } from '@/common/ui/textarea';
 import type { QuestionResponse, AgentQuestion } from '@shared/agent-types';
 
 function QuestionInput({
@@ -127,7 +128,7 @@ function QuestionInput({
         </Button>
       </div>
       {isOtherOpen && (
-        <textarea
+        <Textarea
           value={value}
           onFocus={() => {
             onActivate({ questionIndex, optionIndex: optionCount - 1 });
@@ -136,7 +137,7 @@ function QuestionInput({
             onOtherChange({ questionIndex, value: e.currentTarget.value })
           }
           placeholder="Enter your answer..."
-          className="w-full resize-none rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-teal-500 focus:outline-none"
+          size="sm"
           rows={3}
           autoFocus
         />
@@ -378,9 +379,11 @@ export function QuestionOptions({
         <Button
           onClick={submitAnswers}
           disabled={!allAnswered}
-          className="flex items-center gap-2 rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-500 disabled:cursor-not-allowed disabled:opacity-50"
+          variant="primary"
+          size="md"
+          icon={<Send />}
+          className="bg-teal-600 hover:bg-teal-500"
         >
-          <Send className="h-4 w-4" />
           Submit
           <Kbd shortcut="cmd+enter" />
         </Button>

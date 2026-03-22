@@ -2,6 +2,10 @@ import { FolderOpen, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { IconButton } from '@/common/ui/icon-button';
+import { Input } from '@/common/ui/input';
+import { Textarea } from '@/common/ui/textarea';
 import { MarkdownContent } from '@/features/agent/ui-markdown-content';
 import {
   useMcpPresets,
@@ -162,12 +166,7 @@ export function McpTemplateForm({
         <h3 className="text-lg font-semibold text-neutral-200">
           {template ? 'Edit MCP Server' : 'Add MCP Server'}
         </h3>
-        <Button
-          onClick={onClose}
-          className="cursor-pointer rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-200"
-        >
-          <X className="h-5 w-5" />
-        </Button>
+        <IconButton onClick={onClose} icon={<X />} tooltip="Close" size="sm" />
       </div>
 
       <div className="flex-1 space-y-4 overflow-auto">
@@ -206,12 +205,10 @@ export function McpTemplateForm({
           <label className="mb-1 block text-sm font-medium text-neutral-400">
             Name
           </label>
-          <input
-            type="text"
+          <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g., Serena"
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
           />
         </div>
 
@@ -220,12 +217,12 @@ export function McpTemplateForm({
           <label className="mb-1 block text-sm font-medium text-neutral-400">
             Command Template
           </label>
-          <textarea
+          <Textarea
             value={commandTemplate}
             onChange={(e) => setCommandTemplate(e.target.value)}
             placeholder="e.g., uv run --directory {serenaPath} serena start-mcp-server --project {projectPath}"
             rows={3}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 font-mono text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+            className="font-mono"
           />
           <AvailableVariablesHint />
         </div>
@@ -250,8 +247,7 @@ export function McpTemplateForm({
                       )}
                     </label>
                     <div className="flex gap-2">
-                      <input
-                        type="text"
+                      <Input
                         value={variables[varName] ?? ''}
                         onChange={(e) =>
                           setVariables((prev) => ({
@@ -260,15 +256,14 @@ export function McpTemplateForm({
                           }))
                         }
                         placeholder={presetVar?.placeholder}
-                        className="flex-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+                        className="flex-1"
                       />
                       {presetVar?.inputType === 'folder' && (
-                        <Button
+                        <IconButton
                           onClick={() => handleBrowseFolder(varName)}
-                          className="cursor-pointer rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
-                        >
-                          <FolderOpen className="h-4 w-4" />
-                        </Button>
+                          icon={<FolderOpen />}
+                          tooltip="Browse folder"
+                        />
                       )}
                     </div>
                   </div>
@@ -280,39 +275,25 @@ export function McpTemplateForm({
 
         {/* Options */}
         <div className="space-y-3">
-          <label className="flex cursor-pointer items-center gap-3">
-            <input
-              type="checkbox"
-              checked={installOnCreateWorktree}
-              onChange={(e) => setInstallOnCreateWorktree(e.target.checked)}
-              className="h-4 w-4 rounded border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500"
-            />
-            <div>
-              <div className="text-sm font-medium text-neutral-300">
-                Install on worktree creation
-              </div>
-              <div className="text-xs text-neutral-500">
-                Automatically run `claude mcp add` when creating new worktrees
-              </div>
-            </div>
-          </label>
+          <Checkbox
+            checked={installOnCreateWorktree}
+            onChange={setInstallOnCreateWorktree}
+            label="Install on worktree creation"
+            description="Automatically run `claude mcp add` when creating new worktrees"
+          />
         </div>
       </div>
 
       {/* Save button */}
       <div className="mt-4 flex justify-end gap-2 border-t border-neutral-700 pt-4">
-        <Button
-          onClick={onClose}
-          className="cursor-pointer rounded-lg bg-neutral-700 px-4 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-600"
-        >
-          Cancel
-        </Button>
+        <Button onClick={onClose}>Cancel</Button>
         <Button
           onClick={handleSave}
           disabled={
             !isValid || createTemplate.isPending || updateTemplate.isPending
           }
-          className="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          loading={createTemplate.isPending || updateTemplate.isPending}
+          variant="primary"
         >
           {createTemplate.isPending || updateTemplate.isPending
             ? 'Saving...'

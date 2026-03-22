@@ -1,6 +1,8 @@
+import clsx from 'clsx';
 import { Wand2 } from 'lucide-react';
+import type { MouseEvent } from 'react';
 
-import { Button } from '@/common/ui/button';
+import { Chip } from '@/common/ui/chip';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { ManagedSkill } from '@shared/skill-types';
 
@@ -32,58 +34,54 @@ function BackendToggleChip({
   editable: boolean;
   onClick?: () => void;
 }) {
+  const handleClick = onClick
+    ? (e: MouseEvent) => {
+        e.stopPropagation();
+        onClick();
+      }
+    : undefined;
   const isClaude = backendType === 'claude-code';
   const label = isClaude ? 'CC' : 'OC';
+  const activeColor = isClaude ? 'orange' : 'blue';
+  const color = enabled ? activeColor : 'neutral';
 
   if (!editable || !onClick) {
     return (
-      <span
-        className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-          enabled
-            ? isClaude
-              ? 'bg-orange-900/30 text-orange-400'
-              : 'bg-blue-900/30 text-blue-400'
-            : 'bg-neutral-800 text-neutral-600'
-        }`}
+      <Chip
+        size="xs"
+        color={color}
+        className={!enabled ? 'text-neutral-600' : ''}
       >
         {label}
-      </span>
+      </Chip>
     );
   }
 
   return (
-    <Button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      className={`cursor-pointer rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
-        enabled
-          ? isClaude
-            ? 'bg-orange-900/30 text-orange-400 hover:bg-orange-900/50'
-            : 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'
-          : 'bg-neutral-800 text-neutral-600 hover:bg-neutral-700'
-      }`}
+    <Chip
+      size="xs"
+      color={color}
+      onClick={handleClick}
       title={`${enabled ? 'Disable' : 'Enable'} for ${backendLabel(backendType)}`}
+      className={!enabled ? 'text-neutral-600' : ''}
     >
       {label}
-    </Button>
+    </Chip>
   );
 }
 
 function SourceBadge({ skill }: { skill: ManagedSkill }) {
   if (skill.source === 'plugin') {
     return (
-      <span className="rounded bg-purple-900/30 px-1.5 py-0.5 text-[10px] font-medium text-purple-400">
+      <Chip size="xs" color="purple">
         {skill.pluginName ?? 'Plugin'}
-      </span>
+      </Chip>
     );
   }
   return (
-    <span className="rounded bg-neutral-700 px-1.5 py-0.5 text-[10px] font-medium text-neutral-400">
+    <Chip size="xs" color="neutral">
       {skill.source === 'user' ? 'User' : 'Project'}
-    </span>
+    </Chip>
   );
 }
 
@@ -118,19 +116,24 @@ export function SkillCardGrid({
         const anyEnabled = isEnabledForAnyBackend(skill.enabledBackends);
 
         return (
-          <Button
+          <button
             key={skill.skillPath}
             type="button"
             onClick={() => onSelect(skill.skillPath)}
-            className={`flex cursor-pointer flex-col items-start gap-2 rounded-lg border p-3 text-left transition-colors ${
+            className={clsx(
+              'flex cursor-pointer flex-col items-start gap-2 rounded-lg border p-3 text-left transition-colors',
               isSelected
                 ? 'border-blue-500 bg-blue-500/10'
-                : 'border-neutral-700 bg-neutral-800 hover:border-neutral-600'
-            } ${!anyEnabled ? 'opacity-60' : ''}`}
+                : 'border-neutral-700 bg-neutral-800 hover:border-neutral-600',
+              !anyEnabled && 'opacity-60',
+            )}
           >
             <div className="flex w-full items-center gap-2">
               <Wand2
-                className={`h-4 w-4 shrink-0 ${anyEnabled ? 'text-purple-400' : 'text-neutral-600'}`}
+                className={clsx(
+                  'h-4 w-4 shrink-0',
+                  anyEnabled ? 'text-purple-400' : 'text-neutral-600',
+                )}
               />
               <span className="truncate text-sm font-medium text-neutral-200">
                 {skill.name}
@@ -162,7 +165,7 @@ export function SkillCardGrid({
               )}
               <SourceBadge skill={skill} />
             </div>
-          </Button>
+          </button>
         );
       })}
     </div>

@@ -7,6 +7,7 @@ import {
   Loader2,
 } from 'lucide-react';
 
+import { Chip } from '@/common/ui/chip';
 import { AzureHtmlContent } from '@/features/common/ui-azure-html-content';
 import { useProject } from '@/hooks/use-projects';
 import { useWorkItemById } from '@/hooks/use-work-items';
@@ -34,20 +35,22 @@ function WorkItemTypeIcon({
 }
 
 function StateBadge({ state }: { state: string }) {
-  let colorClasses = 'bg-neutral-700/60 text-neutral-300';
+  let color: 'neutral' | 'blue' | 'yellow' | 'green' = 'neutral';
+  let ringClass = '';
   if (state === 'Active') {
-    colorClasses = 'bg-blue-500/20 text-blue-300 ring-1 ring-blue-400/30';
+    color = 'blue';
+    ringClass = 'ring-1 ring-blue-400/30';
   } else if (state === 'New') {
-    colorClasses = 'bg-yellow-500/20 text-yellow-300 ring-1 ring-yellow-400/30';
+    color = 'yellow';
+    ringClass = 'ring-1 ring-yellow-400/30';
   } else if (state === 'Resolved' || state === 'Done' || state === 'Closed') {
-    colorClasses = 'bg-green-500/20 text-green-300 ring-1 ring-green-400/30';
+    color = 'green';
+    ringClass = 'ring-1 ring-green-400/30';
   }
   return (
-    <span
-      className={`rounded-md px-2 py-0.5 text-xs font-medium ${colorClasses}`}
-    >
+    <Chip size="sm" color={color} className={ringClass}>
       {state}
-    </span>
+    </Chip>
   );
 }
 

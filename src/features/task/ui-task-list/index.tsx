@@ -296,16 +296,13 @@ export function TaskList() {
                   <Button
                     onClick={() => fetchNextPage()}
                     disabled={isFetchingNextPage}
-                    className="flex w-full items-center justify-center gap-1 rounded px-2 py-1.5 text-xs text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-300 disabled:opacity-50"
+                    loading={isFetchingNextPage}
+                    variant="ghost"
+                    size="sm"
+                    icon={<ChevronDown />}
+                    className="w-full"
                   >
-                    {isFetchingNextPage ? (
-                      'Loading...'
-                    ) : (
-                      <>
-                        <ChevronDown size={14} />
-                        <span>Load more</span>
-                      </>
-                    )}
+                    {isFetchingNextPage ? 'Loading...' : 'Load more'}
                   </Button>
                 )}
               </>

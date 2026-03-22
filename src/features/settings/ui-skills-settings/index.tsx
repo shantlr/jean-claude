@@ -148,7 +148,7 @@ export function SkillsSettings() {
               <Button
                 type="button"
                 onClick={() => setShowMigrationDialog(true)}
-                className="cursor-pointer rounded-lg border border-neutral-600 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:border-neutral-500 hover:bg-neutral-800"
+                size="sm"
               >
                 Migrate Manually Installed Skills
               </Button>
@@ -156,17 +156,17 @@ export function SkillsSettings() {
             <Button
               type="button"
               onClick={() => setShowRegistryBrowser(true)}
-              className="flex cursor-pointer items-center gap-1 rounded-lg border border-neutral-600 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:border-neutral-500 hover:bg-neutral-800"
+              size="sm"
+              icon={<Search />}
             >
-              <Search className="h-4 w-4" />
               Browse
             </Button>
             <Button
               type="button"
               onClick={handleCreate}
-              className="flex cursor-pointer items-center gap-1 rounded-lg bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600"
+              size="sm"
+              icon={<Plus />}
             >
-              <Plus className="h-4 w-4" />
               Add
             </Button>
           </div>

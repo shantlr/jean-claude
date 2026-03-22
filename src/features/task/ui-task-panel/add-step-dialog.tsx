@@ -5,9 +5,13 @@ import type { KeyboardEvent } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { IconButton } from '@/common/ui/icon-button';
+import { Input } from '@/common/ui/input';
 import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
 import { Select, type SelectOption } from '@/common/ui/select';
+import { Textarea } from '@/common/ui/textarea';
 import {
   AVAILABLE_BACKENDS,
   BackendSelector,
@@ -271,7 +275,7 @@ export function AddStepDialog({
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add Step">
+    <Modal isOpen={isOpen} onClose={onClose} title="Add Step" size="lg">
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Select
@@ -322,9 +326,10 @@ export function AddStepDialog({
                     },
                   ])
                 }
-                className="flex items-center gap-1 rounded px-2 py-1 text-xs text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
+                variant="ghost"
+                size="sm"
+                icon={<Plus />}
               >
-                <Plus className="h-3 w-3" />
                 Add reviewer
               </Button>
             </div>
@@ -335,8 +340,8 @@ export function AddStepDialog({
                   className="rounded-md border border-neutral-700 bg-neutral-800/50 p-2"
                 >
                   <div className="mb-1.5 flex items-center gap-2">
-                    <input
-                      type="text"
+                    <Input
+                      size="sm"
                       value={reviewer.label}
                       onChange={(e) =>
                         setReviewers((prev) =>
@@ -346,7 +351,7 @@ export function AddStepDialog({
                         )
                       }
                       placeholder="Reviewer label"
-                      className="flex-1 rounded border border-neutral-600 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+                      className="flex-1"
                     />
                     <Select
                       value={reviewer.backend}
@@ -375,17 +380,17 @@ export function AddStepDialog({
                         )
                       }
                     />
-                    <Button
-                      type="button"
+                    <IconButton
                       onClick={() =>
                         setReviewers((prev) => prev.filter((_, i) => i !== idx))
                       }
-                      className="rounded p-1 text-neutral-500 transition-colors hover:bg-neutral-700 hover:text-red-400"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                      size="sm"
+                      icon={<Trash2 />}
+                      tooltip="Remove reviewer"
+                    />
                   </div>
-                  <textarea
+                  <Textarea
+                    size="sm"
                     value={reviewer.focusPrompt}
                     onChange={(e) =>
                       setReviewers((prev) =>
@@ -396,7 +401,6 @@ export function AddStepDialog({
                     }
                     placeholder="Focus prompt for this reviewer..."
                     rows={2}
-                    className="w-full resize-none rounded border border-neutral-600 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
               ))}
@@ -408,7 +412,7 @@ export function AddStepDialog({
             )}
           </div>
         )}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <ModeSelector
             value={interactionMode}
             onChange={setInteractionMode}
@@ -431,29 +435,24 @@ export function AddStepDialog({
           />
         </div>
         <div className="flex items-center justify-between pt-1">
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-300">
-            <input
-              type="checkbox"
+          <div className="flex items-center gap-2">
+            <Checkbox
+              size="sm"
               checked={autoStart}
-              onChange={(e) => setAutoStart(e.target.checked)}
-              className="h-3.5 w-3.5 rounded border-neutral-600 bg-neutral-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+              onChange={setAutoStart}
+              label="Auto-start"
             />
-            Auto-start
             <Kbd shortcut="cmd+shift+s" />
-          </label>
+          </div>
           <div className="flex gap-3">
-            <Button
-              type="button"
-              onClick={onClose}
-              className="rounded-md px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-700"
-            >
+            <Button type="button" onClick={onClose} variant="ghost">
               Cancel
             </Button>
             <Button
               type="button"
               onClick={handleSubmit}
               disabled={!canSubmit}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+              variant="primary"
             >
               Add Step
               <Kbd shortcut="cmd+enter" className="ml-1" />

@@ -11,6 +11,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
 import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { Chip } from '@/common/ui/chip';
+import { IconButton } from '@/common/ui/icon-button';
+import { Input } from '@/common/ui/input';
 import {
   useAllManagedSkills,
   useInstallRegistrySkill,
@@ -43,15 +47,7 @@ function BackendCheckbox({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-1.5 text-xs text-neutral-300">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="accent-blue-500"
-      />
-      {label}
-    </label>
+    <Checkbox checked={checked} onChange={onChange} label={label} size="sm" />
   );
 }
 
@@ -81,19 +77,23 @@ function RegistrySkillCard({
           {skill.name}
         </span>
         {isInstalled && (
-          <span className="ml-auto shrink-0 rounded bg-green-900/30 px-1.5 py-0.5 text-[10px] font-medium text-green-400">
+          <Chip size="xs" color="green" className="ml-auto shrink-0">
             Installed
-          </span>
+          </Chip>
         )}
       </div>
 
       <div className="flex w-full flex-wrap items-center gap-1.5">
-        <span className="rounded bg-neutral-700 px-1.5 py-0.5 text-[10px] text-neutral-400">
+        <Chip size="xs" color="neutral">
           {formatInstalls(skill.installs)} installs
-        </span>
-        <span className="rounded bg-neutral-700/50 px-1.5 py-0.5 text-[10px] text-neutral-500">
+        </Chip>
+        <Chip
+          size="xs"
+          color="neutral"
+          className="bg-neutral-700/50 text-neutral-500"
+        >
           {skill.source}
-        </span>
+        </Chip>
         <a
           href={skillUrl(skill)}
           target="_blank"
@@ -175,9 +175,9 @@ function RegistrySkillPreview({
           <p className="text-sm text-neutral-400">{content.description}</p>
         )}
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="rounded bg-neutral-700 px-2 py-1 text-neutral-300">
+          <Chip size="sm" color="neutral">
             {formatInstalls(skill.installs)} installs
-          </span>
+          </Chip>
           <a
             href={skillUrl(skill)}
             target="_blank"
@@ -241,30 +241,16 @@ function RegistrySkillPreview({
             installMutation.isPending ||
             selectedBackends.length === 0
           }
-          className={`flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-            installed
-              ? 'bg-green-900/30 text-green-400'
-              : installMutation.isPending
-                ? 'bg-blue-900/30 text-blue-300'
-                : 'bg-blue-600 text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50'
-          }`}
+          loading={installMutation.isPending}
+          variant={installed ? 'secondary' : 'primary'}
+          icon={installed ? <Check /> : <Download />}
+          className={`w-full ${installed ? 'bg-green-900/30 text-green-400' : ''}`}
         >
-          {installed ? (
-            <>
-              <Check className="h-4 w-4" />
-              Installed
-            </>
-          ) : installMutation.isPending ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Installing...
-            </>
-          ) : (
-            <>
-              <Download className="h-4 w-4" />
-              Install
-            </>
-          )}
+          {installed
+            ? 'Installed'
+            : installMutation.isPending
+              ? 'Installing...'
+              : 'Install'}
         </Button>
       </div>
     </div>
@@ -324,38 +310,35 @@ export function SkillRegistryBrowser({ onClose }: { onClose: () => void }) {
           <h2 className="text-lg font-semibold text-neutral-200">
             Browse Skills
           </h2>
-          <Button
-            type="button"
+          <IconButton
             onClick={onClose}
-            className="cursor-pointer rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-200"
-          >
-            <X className="h-5 w-5" />
-          </Button>
+            icon={<X />}
+            tooltip="Close"
+            size="sm"
+          />
         </div>
 
         {/* Search */}
         <div className="border-b border-neutral-700 px-4 py-3">
-          <div className="flex items-center gap-2 rounded-lg border border-neutral-600 bg-neutral-800 px-3 py-2">
-            <Search className="h-4 w-4 shrink-0 text-neutral-500" />
-            <input
-              type="text"
+          <div className="flex items-center gap-2">
+            <Input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search skills on skills.sh..."
-              className="w-full bg-transparent text-sm text-neutral-200 placeholder-neutral-500 outline-none"
+              icon={<Search />}
               autoFocus
+              className="flex-1"
             />
             {searchInput && (
-              <Button
-                type="button"
+              <IconButton
                 onClick={() => {
                   setSearchInput('');
                   setSelectedSkill(null);
                 }}
-                className="cursor-pointer text-neutral-500 hover:text-neutral-300"
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
+                icon={<X />}
+                tooltip="Clear search"
+                size="sm"
+              />
             )}
           </div>
         </div>
@@ -434,11 +417,7 @@ export function SkillRegistryBrowser({ onClose }: { onClose: () => void }) {
           <span className="text-xs text-neutral-500">
             Powered by <span className="text-neutral-400">skills.sh</span>
           </span>
-          <Button
-            type="button"
-            onClick={onClose}
-            className="cursor-pointer rounded-lg border border-neutral-600 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800"
-          >
+          <Button type="button" onClick={onClose} size="sm">
             Close
           </Button>
         </div>

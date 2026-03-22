@@ -16,6 +16,7 @@ import type { BindingKey } from '@/common/context/keyboard-bindings/types';
 import { useRegisterOverlay } from '@/common/context/overlay';
 import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
 import { Kbd } from '@/common/ui/kbd';
+import { sizeClasses, type ComponentSize } from '@/common/ui/styles';
 
 export interface SelectOption<T extends string> {
   value: T;
@@ -38,6 +39,7 @@ export const Select = forwardRef<
     onChange: (value: string) => void;
     disabled?: boolean;
     label?: string;
+    size?: ComponentSize;
     side?: 'top' | 'bottom';
     align?: 'left' | 'right';
     className?: string;
@@ -51,6 +53,7 @@ export const Select = forwardRef<
     onChange,
     disabled,
     label,
+    size = 'md',
     side = 'bottom',
     align = 'left',
     className,
@@ -228,6 +231,11 @@ export const Select = forwardRef<
 
   // Resolve display shortcut (first one for <Kbd>)
   const displayShortcut = shortcutKeys[0];
+  const s = sizeClasses[size];
+
+  const chevronSize =
+    size === 'xs' || size === 'sm' ? 'h-3 w-3' : 'h-3.5 w-3.5';
+  const heightOrPy = s.height || s.py;
 
   return (
     <>
@@ -241,7 +249,12 @@ export const Select = forwardRef<
         aria-controls={isOpen ? listboxId : undefined}
         aria-label={label}
         className={clsx(
-          'flex items-center gap-1.5 rounded border border-neutral-600 px-2 py-1 text-sm text-neutral-300 hover:border-neutral-500 disabled:cursor-not-allowed disabled:opacity-50',
+          'flex items-center border border-neutral-600 bg-neutral-800 text-neutral-300 transition-colors hover:border-neutral-500 hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50',
+          heightOrPy,
+          s.text,
+          s.px,
+          s.radius,
+          s.gap,
           className,
         )}
       >
@@ -249,7 +262,7 @@ export const Select = forwardRef<
         {displayShortcut ? (
           <Kbd shortcut={displayShortcut} />
         ) : (
-          <ChevronDown className="h-3 w-3" aria-hidden />
+          <ChevronDown className={chevronSize} aria-hidden />
         )}
       </button>
 
@@ -289,7 +302,11 @@ export const Select = forwardRef<
                   close();
                 }}
                 className={clsx(
-                  'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-neutral-700 focus:bg-neutral-700 focus:outline-none',
+                  'flex w-full items-center text-left transition-colors hover:bg-neutral-700 focus:bg-neutral-700 focus:outline-none',
+                  s.text,
+                  s.gap,
+                  s.px,
+                  s.py,
                   option.value === value
                     ? 'text-neutral-200'
                     : 'text-neutral-400',
@@ -301,7 +318,7 @@ export const Select = forwardRef<
                 <div className="flex flex-col">
                   <span
                     className={clsx(
-                      'text-sm',
+                      s.text,
                       option.value === value
                         ? 'font-medium text-neutral-200'
                         : 'text-neutral-300',
@@ -328,6 +345,7 @@ export const Select = forwardRef<
   onChange: (value: T) => void;
   disabled?: boolean;
   label?: string;
+  size?: ComponentSize;
   side?: 'top' | 'bottom';
   align?: 'left' | 'right';
   className?: string;

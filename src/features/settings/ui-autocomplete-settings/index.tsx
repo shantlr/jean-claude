@@ -1,8 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { ExternalLink, Loader2 } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { Input } from '@/common/ui/input';
+import { Switch } from '@/common/ui/switch';
 import { useCompletionSetting } from '@/hooks/use-settings';
 import { api } from '@/lib/api';
 
@@ -151,23 +153,12 @@ export function AutocompleteSettings() {
       </div>
 
       {/* Enable toggle */}
-      <div className="mt-6 flex items-center gap-3">
-        <Button
-          onClick={() => setEnabled(!enabled)}
-          className={`relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors ${
-            enabled ? 'bg-blue-600' : 'bg-neutral-600'
-          }`}
-        >
-          <span
-            className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
-              enabled ? 'translate-x-6' : 'translate-x-1'
-            }`}
-          />
-        </Button>
-        <span className="text-sm font-medium text-neutral-200">
-          Enable autocomplete
-        </span>
-      </div>
+      <Switch
+        checked={enabled}
+        onChange={setEnabled}
+        label="Enable autocomplete"
+        className="mt-6"
+      />
 
       {/* Configuration fields */}
       <div
@@ -178,7 +169,7 @@ export function AutocompleteSettings() {
           <label className="block text-sm font-medium text-neutral-400">
             Codestral API Key
           </label>
-          <input
+          <Input
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
@@ -186,7 +177,7 @@ export function AutocompleteSettings() {
               hasApiKey ? '••••••••••••••••' : 'Enter your Codestral API key'
             }
             disabled={!enabled}
-            className="mt-1 w-full max-w-md rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-1 max-w-md"
           />
           {hasApiKey && (
             <p className="mt-1 text-xs text-neutral-500">
@@ -200,13 +191,12 @@ export function AutocompleteSettings() {
           <label className="block text-sm font-medium text-neutral-400">
             Model
           </label>
-          <input
-            type="text"
+          <Input
             value={model}
             onChange={(e) => setModel(e.target.value)}
             placeholder="codestral-latest"
             disabled={!enabled}
-            className="mt-1 w-full max-w-md rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-1 max-w-md"
           />
           <p className="mt-1 text-xs text-neutral-500">
             Default: <code className="text-neutral-400">codestral-latest</code>
@@ -221,13 +211,12 @@ export function AutocompleteSettings() {
               (optional)
             </span>
           </label>
-          <input
-            type="text"
+          <Input
             value={serverUrl}
             onChange={(e) => setServerUrl(e.target.value)}
             placeholder="https://api.mistral.ai"
             disabled={!enabled}
-            className="mt-1 w-full max-w-md rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-1 max-w-md"
           />
           <p className="mt-1 text-xs text-neutral-500">
             Leave empty to use the default Codestral endpoint. Use{' '}
@@ -242,9 +231,9 @@ export function AutocompleteSettings() {
         <Button
           onClick={handleSave}
           disabled={isSaving}
-          className="flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          loading={isSaving}
+          variant="primary"
         >
-          {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
           Save
         </Button>
         {hasChanges && (

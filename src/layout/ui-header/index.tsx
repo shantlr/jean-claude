@@ -82,22 +82,24 @@ export function Header() {
 
       <div className="flex min-w-0 flex-1 px-2">
         <Button
-          type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => openOverlay('settings')}
-          className="mr-2 flex h-7 shrink-0 items-center gap-1.5 rounded border border-neutral-800 bg-neutral-900 px-2 text-neutral-300 transition-colors hover:border-neutral-700 hover:bg-neutral-800"
+          icon={<SlidersHorizontal />}
+          className="mr-2 shrink-0"
           style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
           title="Settings"
           aria-label="Open settings"
         >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-          <span className="text-xs">Settings</span>
+          Settings
           <Kbd shortcut="cmd+," className="text-[9px]" />
         </Button>
 
         <Button
-          type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => openOverlay('project-switcher')}
-          className="flex max-w-[320px] cursor-pointer items-center gap-1.5 truncate rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-left text-xs text-neutral-300 transition-colors hover:border-neutral-700 hover:bg-neutral-800"
+          className="max-w-[320px] truncate"
           style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
           title={selectedProjectLabel}
         >
@@ -107,15 +109,16 @@ export function Header() {
 
         {backlogProjectId && (
           <Button
-            type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => openOverlay('project-backlog')}
-            className="ml-2 flex h-7 shrink-0 items-center gap-1.5 rounded border border-neutral-800 bg-neutral-900 px-2 text-neutral-300 transition-colors hover:border-neutral-700 hover:bg-neutral-800"
+            icon={<ClipboardList />}
+            className="ml-2 shrink-0"
             style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
             title="Backlog"
             aria-label="Open backlog"
           >
-            <ClipboardList className="h-3.5 w-3.5" />
-            <span className="text-xs">Backlog</span>
+            Backlog
             {typeof todoCount === 'number' && todoCount > 0 && (
               <span className="rounded-full bg-neutral-700/60 px-1.5 py-0.5 text-[10px] leading-none text-neutral-400">
                 {todoCount}
@@ -126,15 +129,16 @@ export function Header() {
         )}
 
         <Button
-          type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => openOverlay('pipelines')}
-          className="ml-2 flex h-7 shrink-0 items-center gap-1.5 rounded border border-neutral-800 bg-neutral-900 px-2 text-neutral-300 transition-colors hover:border-neutral-700 hover:bg-neutral-800"
+          icon={<Workflow />}
+          className="ml-2 shrink-0"
           style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
           title="Pipelines"
           aria-label="Open pipelines"
         >
-          <Workflow className="h-3.5 w-3.5" />
-          <span className="text-xs">Pipelines</span>
+          Pipelines
           <Kbd shortcut="cmd+shift+y" className="text-[9px]" />
         </Button>
       </div>
@@ -156,11 +160,12 @@ export function Header() {
         style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
       >
         <Button
-          type="button"
+          variant="ghost"
+          size="sm"
           data-animation-target="jobs-button"
           onClick={() => openOverlay('background-jobs')}
           className={clsx(
-            'relative flex h-6 items-center gap-1 rounded-lg px-2 text-xs transition-all duration-500',
+            'relative transition-all duration-500',
             runningJobsCount > 0
               ? 'jobs-running-border text-white'
               : 'border border-white/[0.08] bg-white/5 text-neutral-400 hover:border-white/[0.15] hover:bg-white/10 hover:text-white',

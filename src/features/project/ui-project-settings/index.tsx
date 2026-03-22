@@ -8,7 +8,10 @@ import {
   type ReactElement,
 } from 'react';
 
+import { Button } from '@/common/ui/button';
+import { Input } from '@/common/ui/input';
 import { Select } from '@/common/ui/select';
+import { Textarea } from '@/common/ui/textarea';
 import {
   AVAILABLE_BACKENDS,
   getModelsForBackend,
@@ -214,12 +217,11 @@ export function ProjectSettings({
             >
               Name
             </label>
-            <input
+            <Input
               id="name"
-              type="text"
+              size="md"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
             />
           </div>
 
@@ -228,19 +230,21 @@ export function ProjectSettings({
               Path
             </label>
             <div className="flex gap-2">
-              <div className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2">
-                <span className="truncate text-sm text-neutral-400">
-                  {path}
-                </span>
-              </div>
-              <button
-                type="button"
+              <Input
+                size="md"
+                value={path}
+                readOnly
+                className="min-w-0 flex-1 cursor-default text-neutral-400"
+              />
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={handlePickFolder}
-                className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-300 transition-colors hover:bg-neutral-700"
+                icon={<FolderOpen />}
+                className="shrink-0"
               >
-                <FolderOpen className="h-4 w-4" />
                 Browse
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -306,34 +310,36 @@ export function ProjectSettings({
               Worktrees folder
             </label>
             <div className="flex gap-2">
-              <input
-                type="text"
+              <Input
+                size="md"
                 value={worktreesPath}
                 onChange={(e) => setWorktreesPath(e.target.value)}
                 placeholder="Auto-created on first use"
-                className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
+                className="min-w-0 flex-1"
               />
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={async () => {
                   const selected = await api.dialog.openDirectory();
                   if (selected) setWorktreesPath(selected);
                 }}
-                className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-300 transition-colors hover:bg-neutral-700"
+                icon={<FolderOpen />}
+                className="shrink-0"
               >
-                <FolderOpen className="h-4 w-4" />
                 Browse
-              </button>
+              </Button>
               {project.worktreesPath && (
-                <button
-                  type="button"
+                <Button
+                  variant="danger"
+                  size="md"
                   onClick={() => deleteWorktreesFolder.mutate(projectId)}
                   disabled={deleteWorktreesFolder.isPending}
-                  className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-red-900 bg-red-950/50 px-3 py-2 text-sm text-red-400 transition-colors hover:bg-red-950 disabled:opacity-50"
+                  icon={<Trash2 />}
+                  className="shrink-0"
                 >
-                  <Trash2 className="h-4 w-4" />
                   Delete
-                </button>
+                </Button>
               )}
             </div>
             <p className="mt-1 text-xs text-neutral-500">
@@ -401,24 +407,25 @@ export function ProjectSettings({
             in this project. Describe what the project is about and include
             example prompts.
           </p>
-          <textarea
+          <Textarea
+            size="md"
             value={completionContext}
             onChange={(e) => setCompletionContext(e.target.value)}
             placeholder={`Project: An e-commerce platform for artisan goods\n\nExample prompts:\n- add filtering by price range to the product catalog\n- fix the checkout flow when cart has mixed shipping`}
             rows={8}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-600 focus:border-neutral-500 focus:outline-none"
           />
           <div className="flex gap-2">
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={handleGenerateContext}
               disabled={isGeneratingContext}
-              className="cursor-pointer rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-neutral-300 transition-colors hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50"
+              loading={isGeneratingContext}
             >
               {isGeneratingContext
                 ? 'Generating...'
                 : 'Generate from task history'}
-            </button>
+            </Button>
           </div>
         </div>
       );
@@ -470,32 +477,33 @@ export function ProjectSettings({
                 be undone.
               </p>
               <div className="flex gap-2">
-                <button
-                  type="button"
+                <Button
+                  variant="danger"
+                  size="md"
                   onClick={handleDelete}
                   disabled={deleteProject.isPending}
-                  className="cursor-pointer rounded-lg bg-red-600 px-4 py-2 font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                  loading={deleteProject.isPending}
                 >
                   {deleteProject.isPending ? 'Deleting...' : 'Delete Project'}
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="md"
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="cursor-pointer rounded-lg bg-neutral-700 px-4 py-2 font-medium transition-colors hover:bg-neutral-600"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
-            <button
-              type="button"
+            <Button
+              variant="danger"
+              size="md"
               onClick={() => setShowDeleteConfirm(true)}
-              className="flex cursor-pointer items-center gap-2 rounded-lg border border-red-900 bg-red-950/50 px-4 py-2 text-red-400 transition-colors hover:bg-red-950"
+              icon={<Trash2 />}
             >
-              <Trash2 className="h-4 w-4" />
               Delete Project
-            </button>
+            </Button>
           )}
         </div>
       );
@@ -508,14 +516,16 @@ export function ProjectSettings({
     <div className="space-y-6">
       {content}
       {hasChanges && (
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="md"
           onClick={handleSave}
           disabled={updateProject.isPending}
-          className="w-full cursor-pointer rounded-lg bg-white px-4 py-2 font-medium text-black transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
+          loading={updateProject.isPending}
+          className="w-full"
         >
           {updateProject.isPending ? 'Saving...' : 'Save Changes'}
-        </button>
+        </Button>
       )}
     </div>
   );

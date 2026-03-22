@@ -107,11 +107,10 @@ function TaskRow({
   return (
     <div className="ml-4 py-0.5">
       <Button
+        variant="ghost"
+        size="sm"
         onClick={isExpandable ? toggleExpanded : undefined}
-        className={clsx(
-          'flex w-full items-center gap-2 rounded px-2 py-1 text-left text-xs',
-          isExpandable && 'hover:bg-neutral-800',
-        )}
+        className="w-full justify-start"
       >
         {isExpandable ? (
           expanded ? (
@@ -180,8 +179,10 @@ function JobRow({
   return (
     <div className="ml-4 border-l border-neutral-700 pl-3">
       <Button
+        variant="ghost"
+        size="sm"
         onClick={toggleExpanded}
-        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-neutral-800"
+        className="w-full justify-start"
       >
         {expanded ? (
           <ChevronDown className="h-3 w-3 shrink-0 text-neutral-500" />

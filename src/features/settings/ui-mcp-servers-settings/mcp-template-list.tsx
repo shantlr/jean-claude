@@ -1,6 +1,6 @@
 import { Trash2, Server } from 'lucide-react';
 
-import { Button } from '@/common/ui/button';
+import { IconButton } from '@/common/ui/icon-button';
 import type { McpServerTemplate } from '@shared/mcp-types';
 
 export function McpTemplateList({
@@ -51,15 +51,16 @@ export function McpTemplateList({
               )}
             </div>
           </div>
-          <Button
+          <IconButton
             onClick={(e) => {
               e.stopPropagation();
               onDelete(template.id);
             }}
-            className="cursor-pointer rounded p-1 text-neutral-500 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-neutral-700 hover:text-red-400"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+            icon={<Trash2 />}
+            tooltip="Delete"
+            size="sm"
+            className="opacity-0 transition-opacity group-hover:opacity-100"
+          />
         </div>
       ))}
     </div>

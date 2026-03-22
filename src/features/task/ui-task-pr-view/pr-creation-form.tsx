@@ -2,7 +2,10 @@ import { Sparkles, Plus } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { Input } from '@/common/ui/input';
 import { Separator } from '@/common/ui/separator';
+import { Textarea } from '@/common/ui/textarea';
 import {
   useCreatePullRequest,
   useAddPrFileComments,
@@ -178,14 +181,12 @@ export function PrCreationForm({
             >
               Title
             </label>
-            <input
+            <Input
               id="pr-title"
-              type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter PR title..."
               autoComplete="off"
-              className="w-full rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-500 focus:border-neutral-500 focus:ring-2 focus:ring-neutral-500/50 focus:outline-none"
             />
           </div>
 
@@ -202,22 +203,21 @@ export function PrCreationForm({
                 type="button"
                 onClick={handleFillFromSummary}
                 disabled={generateSummary.isPending || formFilledFromSummary}
-                className="flex items-center gap-1.5 rounded-md border border-neutral-600 bg-neutral-700 px-2.5 py-1 text-xs font-medium text-neutral-300 transition-colors hover:border-neutral-500 hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
+                loading={generateSummary.isPending}
+                variant="secondary"
+                size="sm"
+                icon={!generateSummary.isPending ? <Sparkles /> : undefined}
               >
-                {!generateSummary.isPending && (
-                  <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                )}
                 {getSummaryButtonLabel()}
               </Button>
             </div>
-            <textarea
+            <Textarea
               id="pr-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Enter PR description..."
               rows={8}
               autoComplete="off"
-              className="w-full resize-none rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-500 focus:border-neutral-500 focus:ring-2 focus:ring-neutral-500/50 focus:outline-none"
             />
           </div>
 
@@ -229,15 +229,14 @@ export function PrCreationForm({
               </label>
               <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-neutral-700 bg-neutral-800/50 p-2">
                 {annotationStates.map((item, index) => (
-                  <label
+                  <div
                     key={`${item.annotation.filePath}:${item.annotation.lineNumber}`}
                     className="flex cursor-pointer items-start gap-2 rounded p-1.5 transition-colors hover:bg-neutral-700/50"
                   >
-                    <input
-                      type="checkbox"
+                    <Checkbox
+                      size="sm"
                       checked={item.checked}
                       onChange={() => toggleAnnotation(index)}
-                      className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-neutral-600 bg-neutral-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-neutral-900"
                     />
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-mono text-xs text-neutral-400">
@@ -247,7 +246,7 @@ export function PrCreationForm({
                         {item.annotation.explanation}
                       </div>
                     </div>
-                  </label>
+                  </div>
                 ))}
               </div>
             </div>
@@ -261,21 +260,11 @@ export function PrCreationForm({
           </div>
 
           {/* Draft checkbox */}
-          <div className="flex items-center gap-2">
-            <input
-              id="isDraft"
-              type="checkbox"
-              checked={isDraft}
-              onChange={(e) => setIsDraft(e.target.checked)}
-              className="h-4 w-4 cursor-pointer rounded border-neutral-600 bg-neutral-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-neutral-900"
-            />
-            <label
-              htmlFor="isDraft"
-              className="cursor-pointer text-sm text-neutral-300"
-            >
-              Create as draft
-            </label>
-          </div>
+          <Checkbox
+            checked={isDraft}
+            onChange={setIsDraft}
+            label="Create as draft"
+          />
 
           {/* Work item reference */}
           {workItemId && (
@@ -300,7 +289,8 @@ export function PrCreationForm({
           type="button"
           onClick={onCancel}
           disabled={isPending}
-          className="flex-1 cursor-pointer rounded-md bg-neutral-700 px-3 py-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-600 disabled:opacity-50"
+          variant="secondary"
+          className="flex-1"
         >
           Cancel
         </Button>
@@ -308,7 +298,9 @@ export function PrCreationForm({
           type="button"
           onClick={handleCreate}
           disabled={isPending || !title.trim()}
-          className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          loading={isPending}
+          variant="primary"
+          className="flex-1"
         >
           {isPending ? 'Creating...' : 'Create PR'}
         </Button>

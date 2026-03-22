@@ -47,14 +47,16 @@ function RootErrorBoundary({ error }: { error: Error }) {
         </div>
         <div className="flex justify-center gap-3">
           <Button
+            variant="secondary"
+            size="md"
             onClick={() => router.invalidate()}
-            className="rounded-md bg-neutral-700 px-4 py-2 text-sm hover:bg-neutral-600"
           >
             Try again
           </Button>
           <Button
+            variant="primary"
+            size="md"
             onClick={() => router.navigate({ to: '/' })}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm hover:bg-blue-500"
           >
             Go home
           </Button>

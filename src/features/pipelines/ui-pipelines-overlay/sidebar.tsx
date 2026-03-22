@@ -22,6 +22,8 @@ import { createPortal } from 'react-dom';
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
 import { useRegisterOverlay } from '@/common/context/overlay';
 import { Button } from '@/common/ui/button';
+import { IconButton } from '@/common/ui/icon-button';
+import { Separator } from '@/common/ui/separator';
 import {
   useToggleTrackedPipelineVisible,
   useTrackedPipelines,
@@ -181,6 +183,8 @@ function PipelineItem({
       onContextMenu={(e) => onContextMenu(e, pipeline)}
     >
       <Button
+        variant="ghost"
+        size="sm"
         data-nav-id={getNavId({
           type: 'definition',
           projectId: project.id,
@@ -193,27 +197,24 @@ function PipelineItem({
             pipeline,
           })
         }
+        icon={pipeline.kind === 'build' ? <Hammer /> : <Rocket />}
         className={clsx(
-          'flex flex-1 items-center gap-1.5 truncate rounded px-2 py-1 text-left text-xs transition-colors',
+          'flex-1 justify-start truncate',
           isSelected
             ? 'bg-neutral-700 font-medium text-neutral-100'
-            : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
+            : 'text-neutral-400',
         )}
       >
-        {pipeline.kind === 'build' ? (
-          <Hammer className="h-2.5 w-2.5 shrink-0" />
-        ) : (
-          <Rocket className="h-2.5 w-2.5 shrink-0" />
-        )}
         <span className="truncate">{pipeline.name}</span>
       </Button>
-      <Button
+      <IconButton
+        variant="ghost"
+        size="sm"
         onClick={() => onTriggerRun(project, pipeline)}
-        className="shrink-0 rounded p-1 text-neutral-500 opacity-0 group-hover:opacity-100 hover:bg-neutral-700 hover:text-neutral-300"
-        aria-label={`Trigger ${pipeline.name}`}
-      >
-        <Play className="h-3 w-3" />
-      </Button>
+        icon={<Play />}
+        tooltip={`Trigger ${pipeline.name}`}
+        className="shrink-0 opacity-0 group-hover:opacity-100"
+      />
     </div>
   );
 }
@@ -257,23 +258,21 @@ function ProjectGroup({
   return (
     <div>
       <Button
+        variant="ghost"
+        size="sm"
         data-nav-id={getNavId({ type: 'project', projectId: project.id })}
         onClick={() => {
           onFilterChange({ type: 'project', projectId: project.id });
           onToggleExpanded();
         }}
+        icon={expanded ? <ChevronDown /> : <ChevronRight />}
         className={clsx(
-          'flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left text-sm transition-colors',
+          'w-full justify-start',
           isProjectSelected
             ? 'bg-neutral-700 font-medium text-neutral-100'
-            : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
+            : 'text-neutral-400',
         )}
       >
-        {expanded ? (
-          <ChevronDown className="h-3.5 w-3.5 shrink-0" />
-        ) : (
-          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-        )}
         <span className="truncate">{project.name}</span>
       </Button>
 
@@ -294,13 +293,12 @@ function ProjectGroup({
           {hidden.length > 0 && (
             <>
               <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowHidden((prev) => !prev)}
-                className="flex items-center gap-1 px-2 py-1 text-left text-[11px] text-neutral-500 hover:text-neutral-400"
+                icon={<EyeOff />}
               >
-                <EyeOff className="h-3 w-3 shrink-0" />
-                <span>
-                  {showHidden ? 'Hide' : 'Show'} {hidden.length} hidden
-                </span>
+                {showHidden ? 'Hide' : 'Show'} {hidden.length} hidden
               </Button>
               {showHidden &&
                 hidden.map((pipeline) => (
@@ -354,22 +352,24 @@ export function Sidebar({
   }, []);
 
   return (
-    <div className="flex w-56 shrink-0 flex-col border-r border-neutral-700">
+    <div className="flex w-56 shrink-0 flex-col">
       <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-3">
         <Button
+          variant="ghost"
+          size="sm"
           data-nav-id="nav-all"
           onClick={() => onFilterChange({ type: 'all' })}
           className={clsx(
-            'rounded px-2 py-1.5 text-left text-sm transition-colors',
+            'w-full justify-start',
             filter.type === 'all'
               ? 'bg-neutral-700 font-medium text-neutral-100'
-              : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
+              : 'text-neutral-400',
           )}
         >
           All Projects
         </Button>
 
-        <div className="my-1 border-t border-neutral-800" />
+        <Separator className="my-1" />
 
         {projects.map((project) => (
           <ProjectGroup

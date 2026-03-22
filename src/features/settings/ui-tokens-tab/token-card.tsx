@@ -63,6 +63,7 @@ export function TokenCard({
   return (
     <Button
       onClick={onSelect}
+      variant="unstyled"
       className={`flex cursor-pointer flex-col gap-2 rounded-lg border p-4 text-left transition-colors ${
         isSelected
           ? 'border-blue-500 bg-blue-500/10'

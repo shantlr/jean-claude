@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
+import { Chip } from '@/common/ui/chip';
 import { Separator } from '@/common/ui/separator';
 import { UserAvatar, getVoteLabel } from '@/common/ui/user-avatar';
 import { useProject } from '@/hooks/use-projects';
@@ -27,33 +28,29 @@ function getStatusBadge(
 ) {
   if (isDraft) {
     return (
-      <span className="flex items-center gap-1 rounded-full bg-neutral-700 px-2 py-0.5 text-xs font-medium text-neutral-300">
-        <GitPullRequest className="h-3 w-3" />
+      <Chip size="sm" color="neutral" pill icon={<GitPullRequest />}>
         Draft
-      </span>
+      </Chip>
     );
   }
   switch (status) {
     case 'active':
       return (
-        <span className="flex items-center gap-1 rounded-full bg-green-900/50 px-2 py-0.5 text-xs font-medium text-green-400">
-          <GitPullRequest className="h-3 w-3" />
+        <Chip size="sm" color="green" pill icon={<GitPullRequest />}>
           Open
-        </span>
+        </Chip>
       );
     case 'completed':
       return (
-        <span className="flex items-center gap-1 rounded-full bg-purple-900/50 px-2 py-0.5 text-xs font-medium text-purple-400">
-          <GitMerge className="h-3 w-3" />
+        <Chip size="sm" color="purple" pill icon={<GitMerge />}>
           Merged
-        </span>
+        </Chip>
       );
     case 'abandoned':
       return (
-        <span className="flex items-center gap-1 rounded-full bg-red-900/50 px-2 py-0.5 text-xs font-medium text-red-400">
-          <GitPullRequest className="h-3 w-3" />
+        <Chip size="sm" color="red" pill icon={<GitPullRequest />}>
           Closed
-        </span>
+        </Chip>
       );
   }
 }

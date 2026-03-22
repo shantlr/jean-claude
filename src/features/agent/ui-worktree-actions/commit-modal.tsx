@@ -2,8 +2,11 @@ import { Loader2, Sparkles } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
+import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
 import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
+import { Textarea } from '@/common/ui/textarea';
 import { useGenerateCommitMessage } from '@/hooks/use-worktree-diff';
 
 export function CommitModal({
@@ -119,22 +122,25 @@ export function CommitModal({
               Commit message
             </label>
             {canAutoGenerate && (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={handleGenerate}
                 disabled={isBusy}
-                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-blue-400 hover:bg-blue-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                icon={
+                  isGenerating ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Sparkles />
+                  )
+                }
               >
-                {isGenerating ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                ) : (
-                  <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                )}
                 Generate
-              </button>
+              </Button>
             )}
           </div>
-          <textarea
+          <Textarea
             id="commit-message"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -145,20 +151,17 @@ export function CommitModal({
             }
             rows={3}
             autoComplete="off"
-            className="w-full rounded-md border border-neutral-600 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 focus:outline-none"
+            size="sm"
             autoFocus
           />
         </div>
 
-        <label className="mb-4 flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={stageAll}
-            onChange={(e) => setStageAll(e.target.checked)}
-            className="h-4 w-4 rounded border-neutral-600 bg-neutral-900 text-blue-500 focus:ring-blue-500"
-          />
-          <span className="text-sm text-neutral-300">Stage all changes</span>
-        </label>
+        <Checkbox
+          checked={stageAll}
+          onChange={setStageAll}
+          label="Stage all changes"
+          className="mb-4"
+        />
 
         {(error || generateMutation.error) && (
           <div className="mb-4 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-400">
@@ -170,25 +173,25 @@ export function CommitModal({
         )}
 
         <div className="flex justify-end gap-3">
-          <button
+          <Button
             type="button"
             onClick={onClose}
             disabled={isBusy}
-            className="rounded-md px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
+            variant="ghost"
+            size="md"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
             disabled={!canSubmit}
-            className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            loading={isBusy}
+            variant="primary"
+            size="md"
           >
-            {(isPending || isGenerating) && (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            )}
             {isGenerating ? 'Generating...' : 'Commit'}
             <Kbd shortcut="cmd+enter" />
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>

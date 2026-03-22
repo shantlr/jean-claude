@@ -9,6 +9,7 @@ import {
 import { useState } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { Textarea } from '@/common/ui/textarea';
 import type { PermissionResponse } from '@shared/agent-types';
 import type { NormalizedPermissionRequest } from '@shared/normalized-message-v2';
 import type { InteractionMode } from '@shared/types';
@@ -349,11 +350,11 @@ export function PermissionBar({
         {/* Footer actions */}
         {isOtherOpen ? (
           <div className="space-y-2">
-            <textarea
+            <Textarea
               value={otherMessage}
               onChange={(e) => setOtherMessage(e.target.value)}
               placeholder="Tell Claude what to do instead..."
-              className="w-full resize-none rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/50 focus:outline-none"
+              size="sm"
               rows={3}
               autoFocus
               autoComplete="off"
@@ -369,18 +370,16 @@ export function PermissionBar({
               }}
             />
             <div className="flex justify-end gap-2">
-              <Button
-                onClick={handleOtherCancel}
-                className="rounded-md px-3 py-1.5 text-sm font-medium text-neutral-400 hover:text-neutral-200"
-              >
+              <Button onClick={handleOtherCancel} variant="ghost" size="sm">
                 Cancel
               </Button>
               <Button
                 onClick={handleOtherSubmit}
                 disabled={!otherMessage.trim()}
-                className="flex items-center gap-1.5 rounded-md bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
+                variant="secondary"
+                size="sm"
+                icon={<Send />}
               >
-                <Send className="h-3.5 w-3.5" aria-hidden />
                 Deny with message
               </Button>
             </div>
@@ -389,59 +388,70 @@ export function PermissionBar({
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <Button
               onClick={() => setIsOtherOpen(true)}
-              className="flex items-center gap-1.5 rounded-md bg-neutral-700/60 px-3 py-1.5 text-sm font-medium text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
+              variant="ghost"
+              size="sm"
+              icon={<MessageSquare />}
             >
-              <MessageSquare className="h-3.5 w-3.5" aria-hidden />
               Other
             </Button>
             <Button
               onClick={handleDeny}
-              className="flex items-center gap-1.5 rounded-md bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-neutral-600"
+              variant="secondary"
+              size="sm"
+              icon={<X />}
             >
-              <X className="h-4 w-4" aria-hidden />
               Deny
             </Button>
             <div className="flex-1" />
             <Button
               onClick={handleAllow}
-              className="flex items-center gap-1.5 rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-500"
+              variant="primary"
+              size="sm"
+              icon={<Check />}
+              className="bg-green-600 hover:bg-green-500"
             >
-              <Check className="h-4 w-4" aria-hidden />
               Allow
             </Button>
             {sessionAllowButton && (
               <Button
                 onClick={handleAllowForSession}
-                className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
+                variant="primary"
+                size="sm"
+                icon={<ShieldCheck />}
               >
-                <ShieldCheck className="h-4 w-4" aria-hidden />
                 {sessionAllowButton.label}
               </Button>
             )}
             {sessionAllowButton && (
               <Button
                 onClick={handleAllowForProject}
-                className="flex items-center gap-1.5 rounded-md bg-purple-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-500"
+                variant="primary"
+                size="sm"
+                icon={<ShieldCheck />}
+                className="bg-purple-600 hover:bg-purple-500"
               >
-                <ShieldCheck className="h-4 w-4" aria-hidden />
                 Allow for Project
               </Button>
             )}
             {sessionAllowButton && worktreePath && (
               <Button
                 onClick={handleAllowForProjectWorktrees}
-                className="flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-500"
+                variant="primary"
+                size="sm"
+                icon={<ShieldCheck />}
+                className="bg-amber-600 hover:bg-amber-500"
               >
-                <ShieldCheck className="h-4 w-4" aria-hidden />
                 Allow for Project Worktrees
               </Button>
             )}
             {sessionAllowButton && onAllowGlobally && (
               <Button
                 onClick={handleAllowGlobally}
-                className="flex items-center gap-1.5 rounded-md bg-teal-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-500"
+                variant="primary"
+                size="sm"
+                icon={<ShieldCheck />}
+                className="bg-teal-600 hover:bg-teal-500"
               >
-                <ShieldCheck className="h-4 w-4" aria-hidden />
                 Allow Globally
               </Button>
             )}

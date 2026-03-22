@@ -1,6 +1,9 @@
 import { Trash2 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
+import { Checkbox } from '@/common/ui/checkbox';
+import { IconButton } from '@/common/ui/icon-button';
+import { Input } from '@/common/ui/input';
 import type {
   ProjectCommand,
   UpdateProjectCommand,
@@ -63,8 +66,8 @@ export function CommandRow({
     onUpdate({ ports });
   };
 
-  const handleConfirmToggle = () => {
-    onUpdate({ confirmBeforeRun: !command.confirmBeforeRun });
+  const handleConfirmToggle = (checked: boolean) => {
+    onUpdate({ confirmBeforeRun: checked });
   };
 
   const handleConfirmMessageBlur = () => {
@@ -77,17 +80,16 @@ export function CommandRow({
 
   return (
     <div className="rounded-lg border border-neutral-700 bg-neutral-800/50 p-3">
-      <div className="flex items-start gap-3">
-        <div className="relative flex-1">
-          <input
+      <div className="flex items-start gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Input
             ref={inputRef}
-            type="text"
+            size="md"
             value={localCommand}
             onChange={(e) => handleCommandChange(e.target.value)}
             onFocus={() => setShowSuggestions(true)}
             onBlur={handleCommandBlur}
             placeholder="Enter command (e.g., pnpm dev)"
-            className="w-full rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none placeholder:text-neutral-500 focus:border-blue-500"
           />
           {showSuggestions && filteredSuggestions.length > 0 && (
             <div className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg">
@@ -104,14 +106,13 @@ export function CommandRow({
             </div>
           )}
         </div>
-        <button
-          type="button"
+        <IconButton
+          variant="ghost"
+          size="md"
           onClick={onDelete}
-          className="rounded p-2 text-neutral-400 hover:bg-neutral-700 hover:text-red-400"
-          title="Delete command"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+          icon={<Trash2 />}
+          tooltip="Delete command"
+        />
       </div>
       <div className="mt-3">
         <label className="mb-1.5 block text-xs text-neutral-400">
@@ -120,18 +121,15 @@ export function CommandRow({
         <PortChipInput ports={command.ports} onChange={handlePortsChange} />
       </div>
       <div className="mt-3">
-        <label className="flex items-center gap-2 text-xs text-neutral-400">
-          <input
-            type="checkbox"
-            checked={command.confirmBeforeRun}
-            onChange={handleConfirmToggle}
-            className="h-3.5 w-3.5 rounded border-neutral-600 bg-neutral-800 accent-blue-500"
-          />
-          Confirm before running
-        </label>
+        <Checkbox
+          size="sm"
+          checked={command.confirmBeforeRun}
+          onChange={handleConfirmToggle}
+          label="Confirm before running"
+        />
         {command.confirmBeforeRun && (
-          <input
-            type="text"
+          <Input
+            size="sm"
             value={localConfirmMessage}
             onChange={(e) => setLocalConfirmMessage(e.target.value)}
             onBlur={handleConfirmMessageBlur}
@@ -139,7 +137,7 @@ export function CommandRow({
               if (e.key === 'Enter') e.currentTarget.blur();
             }}
             placeholder="Custom confirmation message (optional)"
-            className="mt-2 w-full rounded-md border border-neutral-600 bg-neutral-800 px-3 py-1.5 text-sm text-neutral-100 outline-none placeholder:text-neutral-500 focus:border-blue-500"
+            className="mt-2"
           />
         )}
       </div>

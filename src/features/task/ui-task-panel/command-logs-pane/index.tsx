@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { IconButton } from '@/common/ui/icon-button';
 import { Separator } from '@/common/ui/separator';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useProjectCommands } from '@/hooks/use-project-commands';
@@ -124,13 +125,7 @@ export function CommandLogsPane({
         )}
       >
         <h3 className="text-sm font-medium text-neutral-200">Command Logs</h3>
-        <Button
-          onClick={onClose}
-          className="cursor-pointer rounded p-1.5 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
-          title="Close"
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        <IconButton onClick={onClose} size="sm" icon={<X />} tooltip="Close" />
       </div>
       <Separator />
 

@@ -1,7 +1,9 @@
-import { Check, FolderOpen, Search, Star, Trash2, Loader2 } from 'lucide-react';
+import { Check, FolderOpen, Search, Star, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { Input } from '@/common/ui/input';
 import { Select } from '@/common/ui/select';
 import {
   AVAILABLE_BACKENDS,
@@ -110,18 +112,16 @@ export function GeneralSettings() {
           Custom command
         </label>
         <div className="mt-2 flex gap-2">
-          <input
-            type="text"
+          <Input
             value={customCommand}
             onChange={(e) => setCustomCommand(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSetCustomCommand()}
             placeholder="e.g., vim, emacs, nano"
-            className="flex-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+            className="flex-1"
           />
           <Button
             onClick={handleSetCustomCommand}
             disabled={!customCommand.trim()}
-            className="cursor-pointer rounded-lg bg-neutral-700 px-4 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-neutral-700"
           >
             Set
           </Button>
@@ -130,11 +130,7 @@ export function GeneralSettings() {
 
       {/* Browse for app */}
       <div className="mt-4">
-        <Button
-          onClick={handleBrowseApp}
-          className="flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-300 hover:border-neutral-600 hover:bg-neutral-700"
-        >
-          <FolderOpen className="h-4 w-4" />
+        <Button onClick={handleBrowseApp} icon={<FolderOpen />}>
           Browse for application...
         </Button>
       </div>
@@ -241,36 +237,21 @@ function BackendsSettings() {
                   : 'border-neutral-800 bg-neutral-900'
               }`}
             >
-              <label className="flex cursor-pointer items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={enabled}
-                  onChange={() => handleToggle(backend.value)}
-                  disabled={enabled && enabledBackends.length <= 1}
-                  className="h-4 w-4 rounded border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-neutral-800"
-                />
-                <div>
-                  <div
-                    className={`text-sm font-medium ${enabled ? 'text-neutral-200' : 'text-neutral-500'}`}
-                  >
-                    {backend.label}
-                  </div>
-                  <div className="text-xs text-neutral-500">
-                    {backend.description}
-                  </div>
-                </div>
-              </label>
+              <Checkbox
+                checked={enabled}
+                onChange={() => handleToggle(backend.value)}
+                disabled={enabled && enabledBackends.length <= 1}
+                label={backend.label}
+                description={backend.description}
+              />
 
               {enabled && (
                 <Button
                   onClick={() => handleSetDefault(backend.value)}
-                  className={`flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                    dflt
-                      ? 'bg-blue-500/20 text-blue-400'
-                      : 'text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300'
-                  }`}
+                  variant={dflt ? 'primary' : 'ghost'}
+                  size="sm"
+                  icon={<Star className={dflt ? 'fill-blue-400' : ''} />}
                 >
-                  <Star className={`h-3 w-3 ${dflt ? 'fill-blue-400' : ''}`} />
                   {dflt ? 'Default' : 'Set as default'}
                 </Button>
               )}
@@ -308,31 +289,21 @@ function UsageDisplaySettings() {
           const enabled = isEnabled(provider.value);
 
           return (
-            <label
+            <div
               key={provider.value}
-              className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 ${
+              className={`rounded-lg border px-4 py-3 ${
                 enabled
                   ? 'border-neutral-700 bg-neutral-800'
                   : 'border-neutral-800 bg-neutral-900'
               }`}
             >
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={enabled}
                 onChange={() => handleToggle(provider.value)}
-                className="h-4 w-4 rounded border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-neutral-800"
+                label={provider.label}
+                description={provider.description}
               />
-              <div>
-                <div
-                  className={`text-sm font-medium ${enabled ? 'text-neutral-200' : 'text-neutral-500'}`}
-                >
-                  {provider.label}
-                </div>
-                <div className="text-xs text-neutral-500">
-                  {provider.description}
-                </div>
-              </div>
-            </label>
+            </div>
           );
         })}
       </div>
@@ -428,30 +399,20 @@ function PromptNavigatorSettings() {
 
       <div className="mt-4 space-y-4">
         {/* Default collapsed state */}
-        <label
-          className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 ${
+        <div
+          className={`rounded-lg border px-4 py-3 ${
             defaultCollapsed
               ? 'border-neutral-700 bg-neutral-800'
               : 'border-neutral-800 bg-neutral-900'
           }`}
         >
-          <input
-            type="checkbox"
+          <Checkbox
             checked={defaultCollapsed}
             onChange={() => toggleSetting('promptNavigatorDefaultCollapsed')}
-            className="h-4 w-4 rounded border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-neutral-800"
+            label="Start collapsed"
+            description="Navigator starts collapsed and can be expanded per session"
           />
-          <div>
-            <div
-              className={`text-sm font-medium ${defaultCollapsed ? 'text-neutral-200' : 'text-neutral-500'}`}
-            >
-              Start collapsed
-            </div>
-            <div className="text-xs text-neutral-500">
-              Navigator starts collapsed and can be expanded per session
-            </div>
-          </div>
-        </label>
+        </div>
 
         {/* Max width */}
         <div className="flex items-center justify-between rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-3">
@@ -562,13 +523,9 @@ function ClaudeProjectsCleanup() {
         <Button
           onClick={handleScan}
           disabled={scanMutation.isPending}
-          className="flex cursor-pointer items-center gap-2 rounded-lg bg-neutral-700 px-4 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-600 disabled:cursor-not-allowed disabled:opacity-50"
+          loading={scanMutation.isPending}
+          icon={<Search />}
         >
-          {scanMutation.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Search className="h-4 w-4" />
-          )}
           Scan for Non-Existent Projects
         </Button>
       </div>
@@ -582,17 +539,11 @@ function ClaudeProjectsCleanup() {
               {scannedProjects.length === 1 ? '' : 's'} with non-existent paths
             </span>
             <div className="flex gap-2">
-              <Button
-                onClick={handleSelectAll}
-                className="cursor-pointer text-xs text-blue-400 hover:text-blue-300"
-              >
+              <Button onClick={handleSelectAll} variant="ghost" size="sm">
                 Select all
               </Button>
               <span className="text-neutral-600">|</span>
-              <Button
-                onClick={handleSelectNone}
-                className="cursor-pointer text-xs text-blue-400 hover:text-blue-300"
-              >
+              <Button onClick={handleSelectNone} variant="ghost" size="sm">
                 Select none
               </Button>
             </div>
@@ -600,15 +551,13 @@ function ClaudeProjectsCleanup() {
 
           <div className="max-h-64 overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-800/50">
             {scannedProjects.map((project) => (
-              <label
+              <div
                 key={project.path}
-                className="flex cursor-pointer items-center gap-3 border-b border-neutral-700 px-4 py-2 last:border-b-0 hover:bg-neutral-700/50"
+                className="flex items-center gap-3 border-b border-neutral-700 px-4 py-2 last:border-b-0 hover:bg-neutral-700/50"
               >
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={selectedPaths.has(project.path)}
                   onChange={() => handleToggle(project.path)}
-                  className="h-4 w-4 rounded border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-neutral-800"
                 />
                 <span className="flex-1 truncate font-mono text-sm text-neutral-300">
                   {project.path}
@@ -616,7 +565,7 @@ function ClaudeProjectsCleanup() {
                 <span className="text-xs text-neutral-500">
                   {project.source === 'both' ? 'json + folder' : project.source}
                 </span>
-              </label>
+              </div>
             ))}
           </div>
 
@@ -625,13 +574,10 @@ function ClaudeProjectsCleanup() {
             <Button
               onClick={handleCleanup}
               disabled={selectedPaths.size === 0 || cleanupMutation.isPending}
-              className="flex cursor-pointer items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+              loading={cleanupMutation.isPending}
+              variant="danger"
+              icon={<Trash2 />}
             >
-              {cleanupMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4" />
-              )}
               Remove Selected ({selectedPaths.size})
             </Button>
           </div>

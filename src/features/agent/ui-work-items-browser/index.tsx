@@ -1,5 +1,8 @@
 import { Bug, FileText, Loader2, Search, X } from 'lucide-react';
 
+import { Button } from '@/common/ui/button';
+import { IconButton } from '@/common/ui/icon-button';
+import { Input } from '@/common/ui/input';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useWorkItems } from '@/hooks/use-work-items';
 import { useWorkItemsFiltersStore } from '@/stores/new-task-form';
@@ -64,24 +67,24 @@ export function WorkItemsBrowser({
       {/* Header */}
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-medium text-neutral-200">Work Items</span>
-        <button
-          type="button"
+        <IconButton
           onClick={onClose}
-          className="cursor-pointer text-neutral-400 hover:text-white"
-        >
-          <X className="h-4 w-4" />
-        </button>
+          icon={<X />}
+          size="sm"
+          variant="ghost"
+          tooltip="Close"
+        />
       </div>
 
       {/* Search input */}
-      <div className="relative mb-3">
-        <Search className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-neutral-500" />
-        <input
+      <div className="mb-3">
+        <Input
           type="text"
           value={filters.searchText}
           onChange={(e) => setFilters({ searchText: e.target.value })}
           placeholder="Search by title or ID..."
-          className="w-full rounded-md border border-neutral-600 bg-neutral-700 py-1.5 pr-3 pl-8 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+          size="sm"
+          icon={<Search />}
         />
       </div>
 
@@ -92,18 +95,17 @@ export function WorkItemsBrowser({
           <span className="mb-1 block text-xs text-neutral-400">State</span>
           <div className="flex flex-wrap gap-1">
             {STATE_OPTIONS.map((state) => (
-              <button
+              <Button
                 key={state}
-                type="button"
                 onClick={() => toggleState(state)}
-                className={`cursor-pointer rounded px-2 py-0.5 text-xs transition-colors ${
-                  filters.states.includes(state)
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
-                }`}
+                size="sm"
+                variant={
+                  filters.states.includes(state) ? 'primary' : 'secondary'
+                }
+                className="px-2 py-0.5 text-xs"
               >
                 {state}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -113,18 +115,15 @@ export function WorkItemsBrowser({
           <span className="mb-1 block text-xs text-neutral-400">Type</span>
           <div className="flex flex-wrap gap-1">
             {TYPE_OPTIONS.map((type) => (
-              <button
+              <Button
                 key={type}
-                type="button"
                 onClick={() => toggleType(type)}
-                className={`cursor-pointer rounded px-2 py-0.5 text-xs transition-colors ${
-                  filters.types.includes(type)
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
-                }`}
+                size="sm"
+                variant={filters.types.includes(type) ? 'primary' : 'secondary'}
+                className="px-2 py-0.5 text-xs"
               >
                 {type}
-              </button>
+              </Button>
             ))}
           </div>
         </div>

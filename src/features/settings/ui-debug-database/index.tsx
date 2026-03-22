@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { Input } from '@/common/ui/input';
 import {
   useDeleteOldCompletedTasks,
   useDebugDatabaseSize,
@@ -101,7 +102,9 @@ export function DebugDatabase() {
               staleCompletedTasksCount === 0 ||
               deleteOldCompletedTasks.isPending
             }
-            className="cursor-pointer rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-red-500/10"
+            loading={deleteOldCompletedTasks.isPending}
+            variant="danger"
+            size="sm"
           >
             {deleteOldCompletedTasks.isPending
               ? 'Deleting...'
@@ -128,16 +131,12 @@ export function DebugDatabase() {
       </div>
 
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-500" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          placeholder="Search across all columns..."
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-800 py-2 pr-4 pl-10 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
-        />
-      </div>
+      <Input
+        value={search}
+        onChange={(e) => handleSearchChange(e.target.value)}
+        placeholder="Search across all columns..."
+        icon={<Search />}
+      />
 
       {/* Table */}
       <div className="overflow-hidden rounded-lg border border-neutral-700">
@@ -207,18 +206,18 @@ export function DebugDatabase() {
             <Button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
-              className="flex cursor-pointer items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-neutral-300 hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-neutral-800"
+              size="sm"
+              icon={<ChevronLeft />}
             >
-              <ChevronLeft className="h-4 w-4" />
               Prev
             </Button>
             <Button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
-              className="flex cursor-pointer items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-neutral-300 hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-neutral-800"
+              size="sm"
+              icon={<ChevronRight />}
             >
               Next
-              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>

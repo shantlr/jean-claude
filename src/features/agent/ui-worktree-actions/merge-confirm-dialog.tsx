@@ -2,8 +2,11 @@ import { Loader2 } from 'lucide-react';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
+import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
 import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
+import { Textarea } from '@/common/ui/textarea';
 import {
   useCheckMergeConflicts,
   useCommitWorktree,
@@ -224,29 +227,21 @@ export function MergeConfirmDialog({
       )}
 
       {hasUnstagedChanges && (
-        <label className="mb-4 flex cursor-pointer items-center gap-2">
-          <input
-            type="checkbox"
-            checked={commitAllUnstaged}
-            onChange={(e) => setCommitAllUnstaged(e.target.checked)}
-            className="h-4 w-4 rounded border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-neutral-800"
-          />
-          <span className="text-sm text-neutral-200">
-            Commit all unstaged files before merge
-          </span>
-        </label>
+        <Checkbox
+          checked={commitAllUnstaged}
+          onChange={setCommitAllUnstaged}
+          label="Commit all unstaged files before merge"
+          className="mb-4"
+        />
       )}
 
       {/* Squash option */}
-      <label className="mb-4 flex cursor-pointer items-center gap-2">
-        <input
-          type="checkbox"
-          checked={squash}
-          onChange={(e) => setSquash(e.target.checked)}
-          className="h-4 w-4 rounded border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-neutral-800"
-        />
-        <span className="text-sm text-neutral-200">Squash commits</span>
-      </label>
+      <Checkbox
+        checked={squash}
+        onChange={setSquash}
+        label="Squash commits"
+        className="mb-4"
+      />
 
       {/* Commit message (shown when squash is enabled) */}
       {squash && (
@@ -254,7 +249,7 @@ export function MergeConfirmDialog({
           <label className="mb-1.5 block text-xs font-medium text-neutral-400">
             Commit message
           </label>
-          <textarea
+          <Textarea
             ref={commitMessageRef}
             value={commitMessage}
             onChange={(e) => setCommitMessage(e.target.value)}
@@ -264,7 +259,7 @@ export function MergeConfirmDialog({
                 : 'Enter commit message...'
             }
             rows={3}
-            className="w-full resize-none rounded-md border border-neutral-600 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none"
+            size="sm"
           />
         </div>
       )}
@@ -283,26 +278,24 @@ export function MergeConfirmDialog({
       </div>
 
       <div className="flex justify-end gap-3">
-        <button
-          type="button"
+        <Button
           onClick={onClose}
           disabled={isPending || isSubmitting}
-          className="rounded-md px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
+          variant="ghost"
+          size="md"
         >
           Cancel
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
           onClick={handleConfirm}
           disabled={!canConfirm}
-          className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          loading={isPending || isSubmitting}
+          variant="primary"
+          size="md"
         >
-          {(isPending || isSubmitting) && (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          )}
           {squash ? 'Squash & Merge' : 'Merge'}
           <Kbd shortcut="cmd+enter" />
-        </button>
+        </Button>
       </div>
     </Modal>
   );

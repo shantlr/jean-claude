@@ -21,6 +21,7 @@ import { useModal } from '@/common/context/modal';
 import { useCommands } from '@/common/hooks/use-commands';
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { Button } from '@/common/ui/button';
+import { Chip } from '@/common/ui/chip';
 import {
   Dropdown,
   DropdownItem,
@@ -892,31 +893,28 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           {/* Center: Branch, PR badge, Work items */}
           <div className="flex shrink items-center gap-2">
             {/* Backend chip */}
-            <span className="flex max-w-40 min-w-0 items-center rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-400">
-              <span className="truncate">{backendLabel}</span>
-            </span>
+            <Chip size="sm" className="max-w-40">
+              {backendLabel}
+            </Chip>
 
             {/* Branch chip */}
             {task.worktreePath ? (
-              <Button
-                type="button"
+              <Chip
+                size="sm"
+                icon={<GitBranch />}
                 onClick={() => {
                   void handleOpenWorktreeInEditor();
                 }}
-                className="flex max-w-48 min-w-0 items-center gap-1 rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-300"
                 title="Open worktree in editor"
+                className="max-w-48"
               >
-                <GitBranch className="h-3 w-3 shrink-0" />
-                <span className="truncate">
-                  {task.branchName ??
-                    getBranchFromWorktreePath(task.worktreePath)}
-                </span>
-              </Button>
+                {task.branchName ??
+                  getBranchFromWorktreePath(task.worktreePath)}
+              </Chip>
             ) : task.branchName ? (
-              <span className="flex max-w-48 min-w-0 items-center gap-1 rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-400">
-                <GitBranch className="h-3 w-3 shrink-0" />
-                <span className="truncate">{task.branchName}</span>
-              </span>
+              <Chip size="sm" icon={<GitBranch />} className="max-w-48">
+                {task.branchName}
+              </Chip>
             ) : null}
 
             {/* PR badge */}
@@ -933,15 +931,16 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               task.workItemIds.map((workItemId, index) => {
                 const workItemUrl = task.workItemUrls?.[index];
                 return (
-                  <Button
+                  <Chip
                     key={workItemId}
-                    onClick={() => {
-                      if (workItemUrl) {
-                        window.open(workItemUrl, '_blank');
-                      }
-                    }}
+                    size="sm"
+                    color="blue"
+                    onClick={
+                      workItemUrl
+                        ? () => window.open(workItemUrl, '_blank')
+                        : undefined
+                    }
                     disabled={!workItemUrl}
-                    className="flex items-center rounded px-1.5 py-0.5 text-xs font-medium text-blue-400 transition-colors hover:bg-neutral-700 hover:text-blue-300 disabled:cursor-default disabled:text-neutral-500 disabled:hover:bg-transparent"
                     title={
                       workItemUrl
                         ? `Open work item #${workItemId} in browser`
@@ -949,7 +948,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                     }
                   >
                     #{workItemId}
-                  </Button>
+                  </Chip>
                 );
               })}
           </div>
@@ -978,10 +977,11 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             <Dropdown
               trigger={
                 <Button
-                  className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
+                  variant="ghost"
+                  size="xs"
+                  icon={<MoreHorizontal />}
                   title="Task menu (\u2318M)"
                 >
-                  <MoreHorizontal className="h-4 w-4" />
                   <Kbd shortcut="cmd+m" />
                 </Button>
               }
@@ -1193,9 +1193,10 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                   <Button
                     onClick={() => void start()}
                     disabled={isStarting}
-                    className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    loading={isStarting}
+                    variant="primary"
+                    icon={<Play />}
                   >
-                    <Play className="h-4 w-4" />
                     {isStarting ? 'Starting...' : 'Start Step'}
                   </Button>
                 </div>
@@ -1210,9 +1211,9 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                   <p className="text-neutral-400">No messages loaded</p>
                   <Button
                     onClick={agentState.refetch}
-                    className="flex items-center gap-2 rounded-md bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-600"
+                    variant="secondary"
+                    icon={<RefreshCw />}
                   >
-                    <RefreshCw className="h-4 w-4" />
                     Reload messages
                   </Button>
                 </div>

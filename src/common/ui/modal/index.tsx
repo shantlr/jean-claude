@@ -6,10 +6,17 @@ import { RemoveScroll } from 'react-remove-scroll';
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
 
+const modalSizeClasses = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-2xl',
+} as const;
+
 export function Modal({
   isOpen,
   onClose,
   title,
+  size = 'md',
   closeOnClickOutside = true,
   closeOnEscape = true,
   contentRef,
@@ -18,6 +25,7 @@ export function Modal({
   isOpen: boolean;
   onClose: () => void;
   title?: ReactNode;
+  size?: 'sm' | 'md' | 'lg';
   closeOnClickOutside?: boolean;
   closeOnEscape?: boolean;
   contentRef?: RefObject<HTMLDivElement | null>;
@@ -54,7 +62,7 @@ export function Modal({
         >
           <div
             ref={contentRef}
-            className="flex max-h-[85vh] w-full max-w-md flex-col rounded-lg bg-neutral-800 shadow-xl"
+            className={`flex max-h-[85vh] w-full ${modalSizeClasses[size]} flex-col rounded-lg bg-neutral-800 shadow-xl`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-neutral-700 px-4 py-3">

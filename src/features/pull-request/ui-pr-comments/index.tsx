@@ -9,7 +9,10 @@ import {
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
 
+import { Button } from '@/common/ui/button';
+import { IconButton } from '@/common/ui/icon-button';
 import { Separator } from '@/common/ui/separator';
+import { Textarea } from '@/common/ui/textarea';
 import { UserAvatar } from '@/common/ui/user-avatar';
 import { getLanguageFromPath } from '@/features/agent/ui-diff-view/language-utils';
 import { AzureMarkdownContent } from '@/features/common/ui-azure-html-content';
@@ -260,22 +263,25 @@ function ThreadReplyForm({
 
   if (!isExpanded) {
     return (
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => setIsExpanded(true)}
-        className="mt-2 text-xs text-neutral-500 transition-colors hover:text-neutral-300"
+        className="mt-2"
       >
         Reply…
-      </button>
+      </Button>
     );
   }
 
   return (
     <div className="mt-2 flex gap-2">
-      <textarea
+      <Textarea
+        size="sm"
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder="Write a reply…"
-        className="flex-1 resize-none rounded-md bg-neutral-900 px-2.5 py-1.5 text-xs text-neutral-200 placeholder-neutral-500 outline-none focus:ring-1 focus:ring-blue-500"
+        className="flex-1"
         rows={2}
         autoFocus
         onKeyDown={(e) => {
@@ -289,13 +295,15 @@ function ThreadReplyForm({
           }
         }}
       />
-      <button
+      <IconButton
+        variant="primary"
+        size="sm"
         onClick={handleSubmit}
         disabled={!content.trim() || addReply.isPending}
-        className="flex items-center self-end rounded-md bg-blue-600 p-1.5 text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <Send className="h-3 w-3" aria-hidden />
-      </button>
+        icon={<Send />}
+        tooltip="Send reply"
+        className="self-end"
+      />
     </div>
   );
 }

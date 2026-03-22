@@ -10,6 +10,9 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import { Button } from '@/common/ui/button';
+import { IconButton } from '@/common/ui/icon-button';
+import { Input } from '@/common/ui/input';
 import { Select } from '@/common/ui/select';
 import { useProviders, useProviderDetails } from '@/hooks/use-providers';
 import { api, ProviderProject, ProviderRepo } from '@/lib/api';
@@ -104,13 +107,13 @@ function RepoRow({
               {repo.name}
             </span>
           </div>
-          <button
+          <IconButton
+            variant="ghost"
+            size="sm"
             onClick={() => setShowCloneConfig(false)}
-            aria-label="Cancel clone"
-            className="cursor-pointer rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
-          >
-            <X className="h-4 w-4" aria-hidden />
-          </button>
+            icon={<X />}
+            tooltip="Cancel clone"
+          />
         </div>
 
         <div className="space-y-3">
@@ -119,18 +122,17 @@ function RepoRow({
               Clone to folder
             </label>
             <div className="flex gap-2">
-              <button
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={handleSelectFolder}
-                className="flex flex-1 cursor-pointer items-center gap-2 rounded-lg border border-neutral-600 bg-neutral-700/50 px-3 py-2 text-left text-sm hover:border-neutral-500"
+                icon={<Folder />}
+                className="flex-1 justify-start"
               >
-                <Folder
-                  className="h-4 w-4 shrink-0 text-neutral-500"
-                  aria-hidden
-                />
                 <span className="flex-1 truncate text-neutral-300">
                   {cloneConfig.parentPath || 'Select parent folder…'}
                 </span>
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -138,8 +140,8 @@ function RepoRow({
             <label className="mb-1 block text-xs font-medium text-neutral-400">
               Folder name
             </label>
-            <input
-              type="text"
+            <Input
+              size="md"
               value={cloneConfig.folderName}
               onChange={(e) =>
                 setCloneConfig((prev) => ({
@@ -147,7 +149,6 @@ function RepoRow({
                   folderName: e.target.value,
                 }))
               }
-              className="w-full rounded-lg border border-neutral-600 bg-neutral-700/50 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
               placeholder="repo-name"
             />
           </div>
@@ -158,25 +159,19 @@ function RepoRow({
             </div>
           )}
 
-          <button
+          <Button
+            variant="primary"
+            size="md"
             onClick={handleClone}
             disabled={
               isCloning || !cloneConfig.parentPath || !cloneConfig.folderName
             }
-            className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            loading={isCloning}
+            icon={<Download />}
+            className="w-full"
           >
-            {isCloning ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                Cloning…
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4" aria-hidden />
-                Clone Repository
-              </>
-            )}
-          </button>
+            {isCloning ? 'Cloning…' : 'Clone Repository'}
+          </Button>
         </div>
       </div>
     );
@@ -191,13 +186,15 @@ function RepoRow({
       <span className="flex-1 truncate text-sm text-neutral-400">
         {repo.name}
       </span>
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => setShowCloneConfig(true)}
-        className="shrink-0 cursor-pointer rounded px-2 py-1 text-xs font-medium text-blue-400 hover:bg-blue-500/20"
+        className="shrink-0 text-blue-400"
         aria-label={`Clone ${repo.name}`}
       >
         Clone
-      </button>
+      </Button>
       <a
         href={repo.url}
         target="_blank"
@@ -366,13 +363,13 @@ export function CloneRepoPane({
           </div>
           <h3 className="font-medium text-neutral-200">Clone Repository</h3>
         </div>
-        <button
+        <IconButton
+          variant="ghost"
+          size="sm"
           onClick={onClose}
-          aria-label="Close pane"
-          className="cursor-pointer rounded-lg p-2 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
-        >
-          <X className="h-4 w-4" aria-hidden />
-        </button>
+          icon={<X />}
+          tooltip="Close pane"
+        />
       </div>
 
       {/* Content */}

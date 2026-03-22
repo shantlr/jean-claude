@@ -13,6 +13,8 @@ import React, {
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
+import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
 import { Kbd } from '@/common/ui/kbd';
 import { Select } from '@/common/ui/select';
 import {
@@ -323,9 +325,12 @@ export function NewTaskOverlay({
 
   // Toggle worktree checkbox
   const currentCreateWorktree = draft?.createWorktree ?? true;
-  const toggleWorktree = useCallback(() => {
-    updateDraft({ createWorktree: !currentCreateWorktree });
-  }, [currentCreateWorktree, updateDraft]);
+  const toggleWorktree = useCallback(
+    (checked: boolean) => {
+      updateDraft({ createWorktree: checked });
+    },
+    [updateDraft],
+  );
 
   // Enabled backends from settings
   const { data: backendsSetting } = useBackendsSetting();
@@ -862,7 +867,7 @@ export function NewTaskOverlay({
       label: 'Toggle Worktree',
       shortcut: 'cmd+b',
       handler: () => {
-        toggleWorktree();
+        toggleWorktree(!currentCreateWorktree);
       },
     },
     {
@@ -1111,16 +1116,15 @@ export function NewTaskOverlay({
             )}
 
             {!isNoteMode && (
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
+              <div className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  size="sm"
                   checked={currentCreateWorktree}
                   onChange={toggleWorktree}
-                  className="h-4 w-4 rounded border-neutral-600 bg-neutral-700"
+                  label="Worktree"
                 />
-                <span className="text-neutral-300">Worktree</span>
                 <Kbd shortcut="cmd+b" />
-              </label>
+              </div>
             )}
 
             {/* Source branch selector - only show when project is selected */}
@@ -1551,14 +1555,11 @@ function SearchModeContent({
 
             {/* Next button */}
             {canAdvance && (
-              <button
-                onClick={onAdvanceToCompose}
-                className="flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-500"
-              >
+              <Button variant="primary" size="sm" onClick={onAdvanceToCompose}>
                 Next
                 <ChevronRight className="h-3 w-3" />
                 <Kbd shortcut="cmd+enter" className="ml-1" />
-              </button>
+              </Button>
             )}
           </div>
         </div>

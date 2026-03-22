@@ -376,10 +376,11 @@ function StepChip({
     <div className="group/step relative flex h-full w-full items-center">
       <Button
         ref={ref}
+        variant="unstyled"
         onClick={onClick}
         disabled={step.status === 'pending'}
         className={clsx(
-          'flex h-full w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] leading-none font-medium transition-all duration-300 ease-out',
+          'h-full w-full gap-1 rounded-md px-1.5 py-0.5 text-[10px] leading-none transition-all duration-300 ease-out',
           CHIP_STYLES[step.status],
           isActive &&
             'shadow-[0_0_10px_0_rgba(59,130,246,0.3),0_0_3px_0_rgba(59,130,246,0.2)] ring-[1.5px] ring-blue-400/70 ring-offset-[1.5px] ring-offset-neutral-900 brightness-125',
@@ -393,12 +394,12 @@ function StepChip({
       </Button>
       {onAddAfter && (
         <Button
-          type="button"
+          variant="unstyled"
           onClick={(event) => {
             event.stopPropagation();
             onAddAfter(step.id);
           }}
-          className="absolute top-1/2 -right-1.5 z-10 flex h-3.5 w-3.5 -translate-y-1/2 items-center justify-center rounded-full border border-neutral-600 bg-neutral-800 text-neutral-400 opacity-0 transition-all group-hover/step:opacity-100 hover:border-neutral-400 hover:text-neutral-200 focus-visible:opacity-100"
+          className="absolute top-1/2 -right-1.5 z-10 h-3.5 w-3.5 -translate-y-1/2 rounded-full border border-neutral-600 bg-neutral-800 p-0 text-neutral-400 opacity-0 transition-all group-hover/step:opacity-100 hover:border-neutral-400 hover:text-neutral-200 focus-visible:opacity-100"
           title="Add step after this step"
         >
           <Plus className="h-2 w-2" />
@@ -527,9 +528,10 @@ export function StepFlowBar({
               }}
             >
               <Button
+                variant="unstyled"
                 onClick={onAddStepAtEnd}
                 title="Add step at end (⌘⇧N)"
-                className="flex h-4 shrink-0 items-center gap-1 rounded-md border border-dashed border-neutral-700/60 px-1 text-neutral-600 transition-colors hover:border-neutral-500 hover:text-neutral-400"
+                className="h-4 shrink-0 gap-1 rounded-md border border-dashed border-neutral-700/60 px-1 text-neutral-600 transition-colors hover:border-neutral-500 hover:text-neutral-400"
               >
                 <Plus className="h-2.5 w-2.5" />
               </Button>

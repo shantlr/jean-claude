@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import TurndownService from 'turndown';
 
+import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
 
@@ -160,14 +161,10 @@ export function PromptComposer({
     <div className="flex h-full w-full flex-col gap-4 overflow-hidden">
       {/* Back button at top */}
       <div className="flex shrink-0 items-center">
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex items-center gap-2 text-xs text-neutral-400 hover:text-neutral-200"
-        >
+        <Button variant="ghost" size="sm" onClick={onBack}>
           &larr; Back to selection
           <Kbd shortcut="escape" />
-        </button>
+        </Button>
       </div>
 
       {/* Two-panel layout */}
