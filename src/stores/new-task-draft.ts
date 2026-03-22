@@ -19,6 +19,7 @@ export interface NewTaskDraft {
   agentBackend: AgentBackendType;
   // Search mode state
   workItemIds: string[]; // Changed from workItemId: string | null
+  updateWorkItemStatus: boolean;
   workItemsFilter: string;
   searchStep: SearchStep; // NEW: which step in search mode
   workItemsViewMode: WorkItemsViewMode;

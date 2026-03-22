@@ -213,6 +213,31 @@ function stripHtml(html: string): string {
     .trim();
 }
 
+async function activateAssociatedWorkItems(params: {
+  projectId: string;
+  workItemIds: string[] | null | undefined;
+  updateWorkItemStatus?: boolean;
+}) {
+  if (params.updateWorkItemStatus === false || !params.workItemIds?.length) {
+    return;
+  }
+
+  const project = await ProjectRepository.findById(params.projectId);
+  if (!project?.workItemProviderId) {
+    return;
+  }
+
+  dbg.ipc('Activating %d work items', params.workItemIds.length);
+  for (const workItemId of params.workItemIds) {
+    activateWorkItem({
+      providerId: project.workItemProviderId,
+      workItemId: parseInt(workItemId, 10),
+    }).catch((err) => {
+      dbg.ipc('Failed to activate work item %s: %O', workItemId, err);
+    });
+  }
+}
+
 export function registerIpcHandlers() {
   dbg.ipc('Registering IPC handlers');
 
@@ -334,6 +359,7 @@ export function registerIpcHandlers() {
         modelPreference,
         agentBackend,
         images,
+        updateWorkItemStatus,
         ...taskData
       } = data;
       const task = await TaskRepository.create(taskData);
@@ -349,21 +375,12 @@ export function registerIpcHandlers() {
         images: images ?? null,
       });
 
-      // Activate associated work items and assign to current user if unassigned (fire and forget)
-      if (task?.workItemIds && task.workItemIds.length > 0) {
-        const project = await ProjectRepository.findById(data.projectId);
-        if (project?.workItemProviderId) {
-          dbg.ipc('Activating %d work items', task.workItemIds.length);
-          for (const workItemId of task.workItemIds) {
-            activateWorkItem({
-              providerId: project.workItemProviderId,
-              workItemId: parseInt(workItemId, 10),
-            }).catch((err) => {
-              dbg.ipc('Failed to activate work item %s: %O', workItemId, err);
-            });
-          }
-        }
-      }
+      // Optionally activate associated work items in Azure DevOps.
+      await activateAssociatedWorkItems({
+        projectId: data.projectId,
+        workItemIds: task.workItemIds,
+        updateWorkItemStatus,
+      });
 
       return task;
     },
@@ -389,6 +406,7 @@ export function registerIpcHandlers() {
         interactionMode,
         modelPreference,
         agentBackend,
+        updateWorkItemStatus,
         ...taskData
       } = data;
       dbg.ipc(
@@ -466,23 +484,12 @@ export function registerIpcHandlers() {
         images: images ?? null,
       });
 
-      // Activate associated work items and assign to current user if unassigned (fire and forget)
-      if (task?.workItemIds && task.workItemIds.length > 0) {
-        const projectForWorkItems = await ProjectRepository.findById(
-          taskData.projectId,
-        );
-        if (projectForWorkItems?.workItemProviderId) {
-          dbg.ipc('Activating %d work items', task.workItemIds.length);
-          for (const workItemId of task.workItemIds) {
-            activateWorkItem({
-              providerId: projectForWorkItems.workItemProviderId,
-              workItemId: parseInt(workItemId, 10),
-            }).catch((err) => {
-              dbg.ipc('Failed to activate work item %s: %O', workItemId, err);
-            });
-          }
-        }
-      }
+      // Optionally activate associated work items in Azure DevOps.
+      await activateAssociatedWorkItems({
+        projectId: taskData.projectId,
+        workItemIds: task.workItemIds,
+        updateWorkItemStatus,
+      });
 
       // Auto-start the agent if requested
       if (autoStart && task) {

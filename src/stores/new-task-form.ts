@@ -15,6 +15,7 @@ interface NewTaskFormDraft {
   agentBackend?: AgentBackendType;
   workItemIds: string[] | null;
   workItemUrls: string[] | null;
+  updateWorkItemStatus: boolean;
 }
 
 interface WorkItemsFilters {
@@ -32,6 +33,7 @@ const defaultDraft: NewTaskFormDraft = {
   modelPreference: 'default',
   workItemIds: null,
   workItemUrls: null,
+  updateWorkItemStatus: true,
 };
 
 const defaultWorkItemsFilters: WorkItemsFilters = {

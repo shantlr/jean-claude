@@ -325,6 +325,7 @@ export function NewTaskOverlay({
 
   // Toggle worktree checkbox
   const currentCreateWorktree = draft?.createWorktree ?? true;
+  const currentUpdateWorkItemStatus = draft?.updateWorkItemStatus ?? true;
   const toggleWorktree = useCallback(
     (checked: boolean) => {
       updateDraft({ createWorktree: checked });
@@ -643,6 +644,7 @@ export function NewTaskOverlay({
             sourceBranch: currentCreateWorktree ? currentSourceBranch : null,
             workItemIds,
             workItemUrls,
+            updateWorkItemStatus: currentUpdateWorkItemStatus,
             updatedAt: new Date().toISOString(),
             autoStart: true,
           },
@@ -677,6 +679,7 @@ export function NewTaskOverlay({
           sourceBranch: currentCreateWorktree ? currentSourceBranch : null,
           workItemIds,
           workItemUrls,
+          updateWorkItemStatus: currentUpdateWorkItemStatus,
           updatedAt: new Date().toISOString(),
           autoStart: true,
         })
@@ -717,6 +720,7 @@ export function NewTaskOverlay({
     currentInteractionMode,
     currentModelPreference,
     currentCreateWorktree,
+    currentUpdateWorkItemStatus,
     currentSourceBranch,
     addRunningJob,
     createTaskMutation,
@@ -1124,6 +1128,19 @@ export function NewTaskOverlay({
                   label="Worktree"
                 />
                 <Kbd shortcut="cmd+b" />
+              </div>
+            )}
+
+            {!isNoteMode && selectedWorkItems.length > 0 && (
+              <div className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  size="sm"
+                  checked={currentUpdateWorkItemStatus}
+                  onChange={(checked) =>
+                    updateDraft({ updateWorkItemStatus: checked })
+                  }
+                  label="Update work item status"
+                />
               </div>
             )}
 

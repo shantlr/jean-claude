@@ -51,6 +51,7 @@ function NewTask() {
     agentBackend,
     workItemIds,
     workItemUrls,
+    updateWorkItemStatus,
   } = draft;
 
   // Sync draft backend with project→global default on mount
@@ -111,6 +112,7 @@ function NewTask() {
       useWorktree,
       workItemIds,
       workItemUrls,
+      updateWorkItemStatus,
       sourceBranch: useWorktree ? effectiveSourceBranch : null,
       updatedAt: new Date().toISOString(),
       autoStart: shouldStart,
@@ -262,16 +264,29 @@ function NewTask() {
                   onClose={() => setShowWorkItems(false)}
                 />
               ) : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowWorkItems(true)}
-                  icon={<ListTodo />}
-                >
-                  {workItemIds?.length
-                    ? `From AB#${workItemIds[0]}`
-                    : 'From Work Item'}
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowWorkItems(true)}
+                    icon={<ListTodo />}
+                  >
+                    {workItemIds?.length
+                      ? `From AB#${workItemIds[0]}`
+                      : 'From Work Item'}
+                  </Button>
+                  {workItemIds?.length ? (
+                    <div className="ml-1">
+                      <Checkbox
+                        checked={updateWorkItemStatus}
+                        onChange={(checked) =>
+                          setDraft({ updateWorkItemStatus: checked })
+                        }
+                        label="Update linked work item status to Active"
+                      />
+                    </div>
+                  ) : null}
+                </div>
               )}
             </div>
           )}

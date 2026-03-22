@@ -286,6 +286,7 @@ export interface NewTask {
   sessionRules?: PermissionScope;
   workItemIds?: string[] | null;
   workItemUrls?: string[] | null;
+  updateWorkItemStatus?: boolean;
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
   pendingMessage?: string | null;
