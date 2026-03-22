@@ -102,6 +102,7 @@ export interface ProjectTable {
 export interface TaskTable {
   id: Generated<string>;
   projectId: string;
+  type: Generated<string>; // TaskType: 'agent' (default) | 'skill-creation'
   name: string | null;
   prompt: string;
   status: TaskStatus;

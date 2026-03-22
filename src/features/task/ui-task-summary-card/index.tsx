@@ -15,27 +15,12 @@ import { StatusIndicator } from '@/features/task/ui-status-indicator';
 import type { TaskWithProject } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/time';
 import {
-  type BackgroundJobType,
+  bgJobLabel,
   useRunningBackgroundJobsForTask,
 } from '@/stores/background-jobs';
 import { useCurrentVisibleProject } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { TaskStatus } from '@shared/types';
-
-function bgJobLabel(type: BackgroundJobType): string {
-  switch (type) {
-    case 'task-deletion':
-      return 'Deleting…';
-    case 'merge':
-      return 'Merging…';
-    case 'summary-generation':
-      return 'Generating summary…';
-    case 'task-creation':
-      return 'Creating…';
-    case 'pr-review-creation':
-      return 'Creating PR review…';
-  }
-}
 
 export function TaskSummaryCard({
   task,

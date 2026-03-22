@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import {
   AlertCircle,
   ArrowDownNarrowWide,
+  Bot,
   CirclePause,
   ClipboardList,
   FolderOpen,
@@ -28,7 +29,7 @@ import {
 } from '@/common/ui/dropdown';
 import { formatRelativeTime } from '@/lib/time';
 import {
-  type BackgroundJobType,
+  bgJobLabel,
   useRunningBackgroundJobsForTask,
 } from '@/stores/background-jobs';
 import { useFeedStore } from '@/stores/feed';
@@ -82,21 +83,6 @@ function AttentionIcon({ attention }: { attention: FeedItemAttention }) {
           <span className="h-1.5 w-1.5 rounded-full bg-neutral-500" />
         </span>
       );
-  }
-}
-
-function bgJobLabel(type: BackgroundJobType): string {
-  switch (type) {
-    case 'task-deletion':
-      return 'Deleting…';
-    case 'merge':
-      return 'Merging…';
-    case 'summary-generation':
-      return 'Generating summary…';
-    case 'task-creation':
-      return 'Creating…';
-    case 'pr-review-creation':
-      return 'Creating PR review…';
   }
 }
 
@@ -306,6 +292,9 @@ export function FeedItemCard({
             <span className="absolute top-2 bottom-2 left-0 w-[3px] rounded-full bg-blue-400" />
           )}
           <div className="flex items-center gap-2">
+            {item.taskType === 'skill-creation' && (
+              <Bot className="h-3.5 w-3.5 shrink-0 text-purple-400" />
+            )}
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-100">
               {item.title}
             </span>

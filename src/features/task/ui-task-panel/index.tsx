@@ -46,6 +46,7 @@ import { QuestionOptions } from '@/features/agent/ui-question-options';
 import { RunButton } from '@/features/agent/ui-run-button';
 import { WorktreeDiffView } from '@/features/agent/ui-worktree-diff-view';
 import { PrReviewValidation } from '@/features/task/ui-pr-review-validation';
+import { SkillPublishAction } from '@/features/task/ui-skill-publish-action';
 import { StepFlowBar } from '@/features/task/ui-step-flow-bar';
 import { TaskPrView } from '@/features/task/ui-task-pr-view';
 import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
@@ -241,6 +242,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   // Steps data for auto-selection
   const { data: steps } = useSteps(taskId);
   const { data: activeStep } = useStep(activeStepId ?? '');
+  const isSkillCreationTask = task?.type === 'skill-creation';
 
   // Diff view state
   const {
@@ -1108,19 +1110,27 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         </div>
         <Separator />
 
-        {/* Step flow bar */}
+        {/* Step flow bar — hide add-step for skill-creation tasks */}
         <StepFlowBar
           taskId={taskId}
-          onAddStepAtEnd={() => {
-            setAddStepAtEnd(true);
-            setAddStepAfterStepId(null);
-            setIsAddStepDialogOpen(true);
-          }}
-          onAddStepAfter={(afterStepId) => {
-            setAddStepAtEnd(false);
-            setAddStepAfterStepId(afterStepId);
-            setIsAddStepDialogOpen(true);
-          }}
+          onAddStepAtEnd={
+            isSkillCreationTask
+              ? undefined
+              : () => {
+                  setAddStepAtEnd(true);
+                  setAddStepAfterStepId(null);
+                  setIsAddStepDialogOpen(true);
+                }
+          }
+          onAddStepAfter={
+            isSkillCreationTask
+              ? undefined
+              : (afterStepId) => {
+                  setAddStepAtEnd(false);
+                  setAddStepAfterStepId(afterStepId);
+                  setIsAddStepDialogOpen(true);
+                }
+          }
         />
 
         {/* Main content area: PR view OR Diff view OR Message stream */}
@@ -1252,6 +1262,10 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
           >
             <div className="pointer-events-auto">
+              {/* Skill publish action for skill-creation steps */}
+              {activeStep?.type === 'skill-creation' && (
+                <SkillPublishAction step={activeStep} />
+              )}
               <TaskInputFooter
                 taskId={taskId}
                 activeStepId={activeStepId}

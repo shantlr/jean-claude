@@ -114,6 +114,15 @@ To add a migration:
 2. Register in `electron/database/migrator.ts`
 3. Update types in `schema.ts`
 
+**Merging main into a feature branch (migration conflicts):**
+
+When `main` and this branch both introduce migrations with the same number, always **renumber the branch's migration** to come after main's. Never rename or modify migrations that came from `main` — they may already be applied in other environments.
+
+Example: both branches add `046_*`:
+- Keep main's `046_project_ai_skill_slots.ts` as-is
+- Rename the branch's `046_task_type.ts` → `047_task_type.ts`
+- Update imports and the migration map in `migrator.ts` accordingly
+
 #### Migration Patterns
 
 **Simple migrations (adding columns):**

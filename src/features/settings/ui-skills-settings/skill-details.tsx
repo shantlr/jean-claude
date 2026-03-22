@@ -1,4 +1,4 @@
-import { Pencil, Trash2, X } from 'lucide-react';
+import { Bot, Pencil, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/common/ui/button';
@@ -26,6 +26,7 @@ export function SkillDetails({
   onEdit,
   onToggleEnabled,
   onDelete,
+  onImproveWithAgent,
 }: {
   skill: ManagedSkill;
   onClose: () => void;
@@ -35,6 +36,7 @@ export function SkillDetails({
     backendType: AgentBackendType,
   ) => void;
   onDelete?: (skillPath: string) => void;
+  onImproveWithAgent?: (skillPath: string, skillName: string) => void;
 }) {
   const { data, isLoading, error } = useSkillContent(skill.skillPath);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -53,6 +55,16 @@ export function SkillDetails({
               tooltip="Edit skill"
               size="sm"
             />
+          )}
+          {onImproveWithAgent && skill.editable && (
+            <Button
+              type="button"
+              onClick={() => onImproveWithAgent(skill.skillPath, skill.name)}
+              className="cursor-pointer rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-purple-400"
+              title="Improve with Agent"
+            >
+              <Bot className="h-4 w-4" />
+            </Button>
           )}
           {onDelete &&
             skill.editable &&

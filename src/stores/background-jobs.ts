@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 
 export type BackgroundJobType =
   | 'task-creation'
+  | 'skill-creation'
   | 'pr-review-creation'
   | 'summary-generation'
   | 'task-deletion'
@@ -32,6 +33,12 @@ export type BackgroundJob =
         promptPreview: string | null;
         creationInput: Parameters<typeof api.tasks.createWithWorktree>[0];
         backlogTodoId: string | null;
+      };
+    })
+  | (BackgroundJobBase & {
+      type: 'skill-creation';
+      details: {
+        promptPreview: string | null;
       };
     })
   | (BackgroundJobBase & {
@@ -73,6 +80,15 @@ type NewBackgroundJobInput =
         promptPreview: string | null;
         creationInput: Parameters<typeof api.tasks.createWithWorktree>[0];
         backlogTodoId: string | null;
+      };
+    }
+  | {
+      type: 'skill-creation';
+      title: string;
+      taskId?: string | null;
+      projectId?: string | null;
+      details: {
+        promptPreview: string | null;
       };
     }
   | {
@@ -228,6 +244,24 @@ export const useBackgroundJobsStore = create<BackgroundJobsState>()(
     },
   ),
 );
+
+/** Human-readable label for a background job type. */
+export function bgJobLabel(type: BackgroundJobType): string {
+  switch (type) {
+    case 'task-deletion':
+      return 'Deleting…';
+    case 'merge':
+      return 'Merging…';
+    case 'summary-generation':
+      return 'Generating summary…';
+    case 'task-creation':
+      return 'Creating…';
+    case 'skill-creation':
+      return 'Creating skill…';
+    case 'pr-review-creation':
+      return 'Creating PR review…';
+  }
+}
 
 export function getRunningJobsCount(jobs: BackgroundJob[]) {
   return jobs.filter((job) => job.status === 'running').length;

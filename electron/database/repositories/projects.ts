@@ -2,7 +2,7 @@ import { isAiSkillSlotsSetting } from '@shared/types';
 
 import { dbg } from '../../lib/debug';
 import { db } from '../index';
-import { NewProject, ProjectRow, UpdateProject } from '../schema';
+import { NewProject, ProjectRow, ProjectType, UpdateProject } from '../schema';
 
 function parseProjectRow(row: ProjectRow) {
   let aiSkillSlots = null;
@@ -25,6 +25,7 @@ export const ProjectRepository = {
     const rows = await db
       .selectFrom('projects')
       .selectAll()
+      .where('type', '!=', 'system')
       .orderBy('sortOrder', 'asc')
       .execute();
     return rows.map(parseProjectRow);
@@ -35,6 +36,15 @@ export const ProjectRepository = {
       .selectFrom('projects')
       .selectAll()
       .where('id', '=', id)
+      .executeTakeFirst();
+    return row ? parseProjectRow(row) : undefined;
+  },
+
+  findByType: async (type: ProjectType) => {
+    const row = await db
+      .selectFrom('projects')
+      .selectAll()
+      .where('type', '=', type)
       .executeTakeFirst();
     return row ? parseProjectRow(row) : undefined;
   },
@@ -108,10 +118,11 @@ export const ProjectRepository = {
         .execute();
     }
 
-    // Return all projects in new order
+    // Return all projects in new order (excluding system projects)
     const rows = await db
       .selectFrom('projects')
       .selectAll()
+      .where('type', '!=', 'system')
       .orderBy('sortOrder', 'asc')
       .execute();
     return rows.map(parseProjectRow);

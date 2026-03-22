@@ -610,6 +610,22 @@ contextBridge.exposeInMainWorld('api', {
       skillId: string;
       enabledBackends: string[];
     }) => ipcRenderer.invoke('skills:registryInstall', params),
+    createWithAgent: (params: {
+      prompt: string;
+      enabledBackends: string[];
+      mode: 'create' | 'improve';
+      sourceSkillPath?: string;
+      interactionMode?: string | null;
+      modelPreference?: string | null;
+      agentBackend?: string | null;
+    }) => ipcRenderer.invoke('skills:createWithAgent', params),
+    publishFromWorkspace: (params: {
+      stepId: string;
+      workspacePath: string;
+      enabledBackends: string[];
+      mode: 'create' | 'improve';
+      sourceSkillPath?: string;
+    }) => ipcRenderer.invoke('skills:publishFromWorkspace', params),
   },
   prSnapshots: {
     record: (params: {

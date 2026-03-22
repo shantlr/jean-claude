@@ -36,6 +36,8 @@ import {
   type UpdateToken,
   type NewTaskStep,
   type UpdateTaskStep,
+  type SkillCreationStepMeta,
+  isSkillCreationStepMeta,
   type ReviewerConfig,
   type ReviewStepMeta,
 } from '@shared/types';
@@ -178,6 +180,13 @@ import {
 import { StepService } from '../services/step-service';
 import { generateSummary } from '../services/summary-generation-service';
 import {
+  assertValidSourceSkillPath,
+  assertValidWorkspacePath,
+  cleanupSkillWorkspace,
+  getOrCreateSystemProject,
+  getSkillWorkspacePath,
+} from '../services/system-project-service';
+import {
   checkMergeConflicts,
   createWorktree,
   getWorktreeDiff,
@@ -196,6 +205,78 @@ import {
 } from '../services/worktree-service';
 
 const execAsync = promisify(exec);
+
+const VALID_BACKENDS = new Set<string>(['claude-code', 'opencode']);
+
+function assertValidSkillCreationInput(data: {
+  mode: string;
+  enabledBackends: string[];
+  sourceSkillPath?: string;
+}) {
+  if (data.mode !== 'create' && data.mode !== 'improve') {
+    throw new Error('mode must be "create" or "improve"');
+  }
+  if (
+    !Array.isArray(data.enabledBackends) ||
+    data.enabledBackends.length === 0
+  ) {
+    throw new Error('enabledBackends must be a non-empty array');
+  }
+  for (const b of data.enabledBackends) {
+    if (!VALID_BACKENDS.has(b)) {
+      throw new Error(`Invalid backend type: ${b}`);
+    }
+  }
+  if (data.mode === 'improve' && !data.sourceSkillPath) {
+    throw new Error('sourceSkillPath is required for improve mode');
+  }
+}
+
+function buildSkillCreationPrompt({
+  userPrompt,
+  mode,
+  workspacePath,
+}: {
+  userPrompt: string;
+  mode: 'create' | 'improve';
+  workspacePath: string;
+}): string {
+  if (mode === 'improve') {
+    return [
+      `Improve an existing skill based on the following request:`,
+      ``,
+      `<user-request>`,
+      userPrompt,
+      `</user-request>`,
+      ``,
+      `The current skill files have been copied to: ${workspacePath}`,
+      `Edit the SKILL.md (and any companion files) in that directory.`,
+      ``,
+      `The SKILL.md must retain valid YAML frontmatter with \`name\` and \`description\` fields.`,
+      `Use the skill-creator skill for best practices.`,
+    ].join('\n');
+  }
+
+  return [
+    `Create a new skill based on the following description:`,
+    ``,
+    `<user-request>`,
+    userPrompt,
+    `</user-request>`,
+    ``,
+    `Write the skill to: ${workspacePath}/<skill-name>/SKILL.md`,
+    ``,
+    `The SKILL.md must have YAML frontmatter:`,
+    `---`,
+    `name: <skill-name>`,
+    `description: <one-line description>`,
+    `---`,
+    ``,
+    `<markdown body with instructions>`,
+    ``,
+    `Use the skill-creator skill for best practices.`,
+  ].join('\n');
+}
 
 function stripHtml(html: string): string {
   return html
@@ -778,6 +859,27 @@ export function registerIpcHandlers() {
           dbg.ipc('Deleted worktree for task %s', id);
         }
       }
+
+      // Clean up skill workspaces for skill-creation steps (in parallel)
+      const steps = await TaskStepRepository.findByTaskId(id);
+      await Promise.all(
+        steps
+          .filter(
+            (step) =>
+              step.type === 'skill-creation' &&
+              isSkillCreationStepMeta(step.meta),
+          )
+          .map((step) => {
+            const meta = step.meta as SkillCreationStepMeta;
+            return cleanupSkillWorkspace(meta.workspacePath).catch((err) => {
+              dbg.ipc(
+                'Failed to cleanup skill workspace %s: %O',
+                meta.workspacePath,
+                err,
+              );
+            });
+          }),
+      );
 
       await TaskRepository.delete(id);
       dbg.ipc('Deleted task %s', id);
@@ -2878,6 +2980,260 @@ export function registerIpcHandlers() {
     },
   );
 
+  ipcMain.handle(
+    'skills:createWithAgent',
+    async (
+      _event,
+      data: {
+        prompt: string;
+        enabledBackends: AgentBackendType[];
+        mode: 'create' | 'improve';
+        sourceSkillPath?: string;
+        interactionMode?: InteractionMode | null;
+        modelPreference?: string | null;
+        agentBackend?: AgentBackendType | null;
+      },
+    ) => {
+      // Runtime validation
+      if (!data.prompt || typeof data.prompt !== 'string') {
+        throw new Error('prompt is required');
+      }
+      assertValidSkillCreationInput(data);
+
+      // Validate sourceSkillPath is under a known skill directory (symlink-safe)
+      if (data.mode === 'improve' && data.sourceSkillPath) {
+        await assertValidSourceSkillPath(data.sourceSkillPath);
+      }
+
+      const systemProject = await getOrCreateSystemProject();
+
+      // Generate a task name
+      const taskName = await generateTaskName(data.prompt);
+
+      // Create task in system project
+      const task = await TaskRepository.create({
+        projectId: systemProject.id,
+        type: 'skill-creation',
+        name: taskName,
+        prompt: data.prompt,
+        updatedAt: new Date().toISOString(),
+      });
+
+      let workspacePath: string | undefined;
+
+      try {
+        // Create workspace
+        workspacePath = await getSkillWorkspacePath(task.id);
+
+        // For improve mode, copy existing skill into workspace
+        if (data.mode === 'improve' && data.sourceSkillPath) {
+          await fs.cp(data.sourceSkillPath, workspacePath, { recursive: true });
+        }
+
+        // Build the agent prompt
+        const agentPrompt = buildSkillCreationPrompt({
+          userPrompt: data.prompt,
+          mode: data.mode,
+          workspacePath,
+        });
+
+        // Create step with skill-creation meta
+        const meta: SkillCreationStepMeta = {
+          mode: data.mode,
+          workspacePath,
+          sourceSkillPath: data.sourceSkillPath,
+          enabledBackends: data.enabledBackends,
+        };
+
+        const step = await StepService.create({
+          taskId: task.id,
+          name: 'Step 1',
+          type: 'skill-creation',
+          promptTemplate: agentPrompt,
+          interactionMode: data.interactionMode ?? 'plan',
+          modelPreference: data.modelPreference ?? null,
+          agentBackend: data.agentBackend ?? 'claude-code',
+          meta,
+        });
+
+        // Auto-start
+        agentService.start(step.id).catch((err) => {
+          dbg.ipc(
+            'Error auto-starting skill creation agent for step %s: %O',
+            step.id,
+            err,
+          );
+        });
+
+        return task;
+      } catch (err) {
+        // Clean up on partial failure
+        if (workspacePath) {
+          await cleanupSkillWorkspace(workspacePath).catch(() => {});
+        }
+        await TaskRepository.delete(task.id).catch(() => {});
+        throw err;
+      }
+    },
+  );
+
+  ipcMain.handle(
+    'skills:publishFromWorkspace',
+    async (
+      _event,
+      data: {
+        stepId: string;
+        workspacePath: string;
+        enabledBackends: AgentBackendType[];
+        mode: 'create' | 'improve';
+        sourceSkillPath?: string;
+      },
+    ) => {
+      // Runtime validation
+      if (!data.stepId || typeof data.stepId !== 'string') {
+        throw new Error('stepId is required');
+      }
+      if (!data.workspacePath || typeof data.workspacePath !== 'string') {
+        throw new Error('workspacePath is required');
+      }
+      assertValidSkillCreationInput(data);
+
+      // Validate workspace path is under the expected directory (symlink-safe)
+      await assertValidWorkspacePath(data.workspacePath);
+
+      // Validate sourceSkillPath is under a known skill directory (symlink-safe)
+      if (data.mode === 'improve' && data.sourceSkillPath) {
+        await assertValidSourceSkillPath(data.sourceSkillPath);
+      }
+
+      // Verify step ownership: step must exist, be a skill-creation step,
+      // and its stored workspacePath must match the provided one
+      const step = await TaskStepRepository.findById(data.stepId);
+      if (!step || step.type !== 'skill-creation') {
+        throw new Error('Invalid stepId: must reference a skill-creation step');
+      }
+      if (!isSkillCreationStepMeta(step.meta)) {
+        throw new Error(
+          'Invalid step: missing or malformed skill-creation metadata',
+        );
+      }
+      if (step.meta.workspacePath !== data.workspacePath) {
+        throw new Error('workspacePath does not match the step metadata');
+      }
+
+      // Idempotency: if already published, return early
+      if (step.meta.published) {
+        dbg.ipc('Step %s already published, skipping', data.stepId);
+        return [];
+      }
+
+      const entries = await fs.readdir(data.workspacePath, {
+        withFileTypes: true,
+      });
+
+      // Collect skill directories: only subdirectories containing a SKILL.md
+      const skillPaths: string[] = [];
+
+      // Check if SKILL.md exists directly in workspace (improve mode)
+      const hasDirectSkillMd = entries.some(
+        (e) => e.name === 'SKILL.md' && !e.isDirectory(),
+      );
+      if (hasDirectSkillMd) {
+        skillPaths.push(data.workspacePath);
+      }
+
+      // Check subdirectories for SKILL.md (in parallel)
+      const subDirChecks = entries
+        .filter(
+          (entry) =>
+            entry.isDirectory() &&
+            !entry.name.startsWith('.') &&
+            entry.name !== 'node_modules',
+        )
+        .map(async (entry) => {
+          const subDir = path.join(data.workspacePath, entry.name);
+          const hasSkillMd = await fs
+            .access(path.join(subDir, 'SKILL.md'))
+            .then(() => true)
+            .catch(() => false);
+          return hasSkillMd ? subDir : null;
+        });
+      const subDirResults = await Promise.all(subDirChecks);
+      for (const subDir of subDirResults) {
+        if (subDir) skillPaths.push(subDir);
+      }
+
+      if (skillPaths.length === 0) {
+        throw new Error(
+          'No skill found in workspace. The agent may not have created a SKILL.md file.',
+        );
+      }
+
+      const results = [];
+
+      try {
+        for (const skillDir of skillPaths) {
+          const content = await getSkillContent({ skillPath: skillDir });
+
+          if (data.mode === 'improve' && data.sourceSkillPath) {
+            // Update existing skill in-place (use first enabled backend for context)
+            const updated = await updateSkill({
+              skillPath: data.sourceSkillPath,
+              backendType: data.enabledBackends[0],
+              name: content.name,
+              description: content.description,
+              content: content.content,
+            });
+            results.push(updated);
+          } else {
+            // Create new skill
+            const created = await createSkill({
+              enabledBackends: data.enabledBackends,
+              scope: 'user',
+              name: content.name,
+              description: content.description,
+              content: content.content,
+            });
+            results.push(created);
+          }
+        }
+
+        // Mark step as published and completed
+        await TaskStepRepository.update(data.stepId, {
+          status: 'completed',
+          meta: {
+            ...step.meta,
+            published: true,
+          },
+        });
+
+        // Mark the task as completed
+        await TaskRepository.update(step.taskId, {
+          status: 'completed',
+          updatedAt: new Date().toISOString(),
+        });
+        // Cleanup workspace after successful publish
+        await cleanupSkillWorkspace(data.workspacePath).catch((err) => {
+          dbg.ipc(
+            'Failed to cleanup skill workspace %s after publish: %O',
+            data.workspacePath,
+            err,
+          );
+        });
+      } catch (err) {
+        // On failure, preserve the workspace so the user can retry or recover
+        dbg.ipc(
+          'Publish failed for workspace %s, preserving for recovery: %O',
+          data.workspacePath,
+          err,
+        );
+        throw err;
+      }
+
+      return results;
+    },
+  );
+
   // Feed
   ipcMain.handle('feed:getItems', async () => {
     return getFeedItems();
@@ -3040,6 +3396,35 @@ export function registerIpcHandlers() {
 
   // --- Pipeline detail & trigger handlers ---
 
+  /** Validate that a string param is a non-empty string safe for URL path interpolation. */
+  function assertStringId(
+    value: unknown,
+    name: string,
+  ): asserts value is string {
+    if (typeof value !== 'string' || value.length === 0) {
+      throw new Error(`${name} must be a non-empty string`);
+    }
+    // Reject path traversal characters
+    if (/[/\\]/.test(value)) {
+      throw new Error(`${name} contains invalid characters`);
+    }
+  }
+
+  /** Validate that a numeric param is a finite positive integer. */
+  function assertPositiveInt(
+    value: unknown,
+    name: string,
+  ): asserts value is number {
+    if (
+      typeof value !== 'number' ||
+      !Number.isFinite(value) ||
+      value < 0 ||
+      !Number.isInteger(value)
+    ) {
+      throw new Error(`${name} must be a positive integer`);
+    }
+  }
+
   ipcMain.handle(
     'pipelines:listRuns',
     async (
@@ -3051,6 +3436,9 @@ export function registerIpcHandlers() {
         kind: 'build' | 'release';
       },
     ) => {
+      assertStringId(params.providerId, 'providerId');
+      assertStringId(params.azureProjectId, 'azureProjectId');
+      assertPositiveInt(params.definitionId, 'definitionId');
       if (params.kind === 'build') {
         return listBuilds({
           providerId: params.providerId,
@@ -3076,6 +3464,9 @@ export function registerIpcHandlers() {
         buildId: number;
       },
     ) => {
+      assertStringId(params.providerId, 'providerId');
+      assertStringId(params.azureProjectId, 'azureProjectId');
+      assertPositiveInt(params.buildId, 'buildId');
       return getBuild({
         providerId: params.providerId,
         projectId: params.azureProjectId,
@@ -3094,6 +3485,9 @@ export function registerIpcHandlers() {
         buildId: number;
       },
     ) => {
+      assertStringId(params.providerId, 'providerId');
+      assertStringId(params.azureProjectId, 'azureProjectId');
+      assertPositiveInt(params.buildId, 'buildId');
       return getBuildTimeline({
         providerId: params.providerId,
         projectId: params.azureProjectId,
@@ -3113,6 +3507,10 @@ export function registerIpcHandlers() {
         logId: number;
       },
     ) => {
+      assertStringId(params.providerId, 'providerId');
+      assertStringId(params.azureProjectId, 'azureProjectId');
+      assertPositiveInt(params.buildId, 'buildId');
+      assertPositiveInt(params.logId, 'logId');
       return getBuildLog({
         providerId: params.providerId,
         projectId: params.azureProjectId,
@@ -3132,6 +3530,9 @@ export function registerIpcHandlers() {
         releaseId: number;
       },
     ) => {
+      assertStringId(params.providerId, 'providerId');
+      assertStringId(params.azureProjectId, 'azureProjectId');
+      assertPositiveInt(params.releaseId, 'releaseId');
       return getRelease({
         providerId: params.providerId,
         projectId: params.azureProjectId,
@@ -3150,6 +3551,9 @@ export function registerIpcHandlers() {
         repoId: string;
       },
     ) => {
+      assertStringId(params.providerId, 'providerId');
+      assertStringId(params.azureProjectId, 'azureProjectId');
+      assertStringId(params.repoId, 'repoId');
       return listBranches({
         providerId: params.providerId,
         projectId: params.azureProjectId,
@@ -3168,6 +3572,9 @@ export function registerIpcHandlers() {
         definitionId: number;
       },
     ) => {
+      assertStringId(params.providerId, 'providerId');
+      assertStringId(params.azureProjectId, 'azureProjectId');
+      assertPositiveInt(params.definitionId, 'definitionId');
       return getBuildDefinitionDetail({
         providerId: params.providerId,
         projectId: params.azureProjectId,
@@ -3205,6 +3612,15 @@ export function registerIpcHandlers() {
   ipcMain.handle(
     'pipelines:queueBuild',
     async (_, params: QueueBuildIpcParams) => {
+      assertStringId(params.providerId, 'providerId');
+      assertStringId(params.azureProjectId, 'azureProjectId');
+      assertPositiveInt(params.definitionId, 'definitionId');
+      if (
+        typeof params.sourceBranch !== 'string' ||
+        params.sourceBranch.length === 0
+      ) {
+        throw new Error('sourceBranch must be a non-empty string');
+      }
       // Validate templateParameters keys/values to prevent injection
       if (params.templateParameters) {
         for (const [key, val] of Object.entries(params.templateParameters)) {
@@ -3227,7 +3643,6 @@ export function registerIpcHandlers() {
           }
         }
       }
-
       return queueBuild({
         providerId: params.providerId,
         projectId: params.azureProjectId,
@@ -3250,6 +3665,9 @@ export function registerIpcHandlers() {
         description?: string;
       },
     ) => {
+      assertStringId(params.providerId, 'providerId');
+      assertStringId(params.azureProjectId, 'azureProjectId');
+      assertPositiveInt(params.definitionId, 'definitionId');
       return createAzureRelease({
         providerId: params.providerId,
         projectId: params.azureProjectId,
@@ -3269,6 +3687,9 @@ export function registerIpcHandlers() {
         buildId: number;
       },
     ) => {
+      assertStringId(params.providerId, 'providerId');
+      assertStringId(params.azureProjectId, 'azureProjectId');
+      assertPositiveInt(params.buildId, 'buildId');
       return cancelBuild({
         providerId: params.providerId,
         projectId: params.azureProjectId,

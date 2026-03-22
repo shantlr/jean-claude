@@ -595,10 +595,11 @@ function replayOpenCodeContextUpdate(
   }
 }
 
-function tryParseJson(content: string): unknown | null {
+function tryParseJson(content: string): Record<string, unknown> | null {
   try {
     const parsed = JSON.parse(content);
-    if (parsed && typeof parsed === 'object') return parsed;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed))
+      return parsed as Record<string, unknown>;
   } catch {
     // not JSON
   }

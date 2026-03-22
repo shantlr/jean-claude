@@ -1,4 +1,4 @@
-import { Plus, Search } from 'lucide-react';
+import { Bot, Plus, Search } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
@@ -13,6 +13,7 @@ import {
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { ManagedSkill } from '@shared/skill-types';
 
+import { CreateWithAgentDialog } from './create-with-agent-dialog';
 import { LegacySkillMigrationDialog } from './legacy-skill-migration-dialog';
 import { SkillCardGrid } from './skill-card-grid';
 import { SkillDetails } from './skill-details';
@@ -30,6 +31,11 @@ export function SkillsSettings() {
   const [editingPath, setEditingPath] = useState<string | null | 'new'>(null);
   const [showMigrationDialog, setShowMigrationDialog] = useState(false);
   const [showRegistryBrowser, setShowRegistryBrowser] = useState(false);
+  const [agentDialog, setAgentDialog] = useState<{
+    mode: 'create' | 'improve';
+    sourceSkillPath?: string;
+    sourceSkillName?: string;
+  } | null>(null);
 
   const selectedSkill = skills?.find((s) => s.skillPath === selectedPath);
 
@@ -163,6 +169,14 @@ export function SkillsSettings() {
             </Button>
             <Button
               type="button"
+              onClick={() => setAgentDialog({ mode: 'create' })}
+              className="flex cursor-pointer items-center gap-1 rounded-lg bg-purple-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-purple-600"
+            >
+              <Bot className="h-4 w-4" />
+              Create with Agent
+            </Button>
+            <Button
+              type="button"
               onClick={handleCreate}
               size="sm"
               icon={<Plus />}
@@ -221,6 +235,13 @@ export function SkillsSettings() {
             }
             onToggleEnabled={handleToggleEnabled}
             onDelete={handleDelete}
+            onImproveWithAgent={(skillPath, skillName) =>
+              setAgentDialog({
+                mode: 'improve',
+                sourceSkillPath: skillPath,
+                sourceSkillName: skillName,
+              })
+            }
           />
         </div>
       )}
@@ -233,6 +254,15 @@ export function SkillsSettings() {
 
       {showRegistryBrowser && (
         <SkillRegistryBrowser onClose={() => setShowRegistryBrowser(false)} />
+      )}
+
+      {agentDialog && (
+        <CreateWithAgentDialog
+          mode={agentDialog.mode}
+          sourceSkillPath={agentDialog.sourceSkillPath}
+          sourceSkillName={agentDialog.sourceSkillName}
+          onClose={() => setAgentDialog(null)}
+        />
       )}
     </div>
   );

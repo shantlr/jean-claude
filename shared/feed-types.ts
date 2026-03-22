@@ -32,6 +32,7 @@ export interface FeedItem {
   hasUnread?: boolean;
   isDraft?: boolean;
   taskId?: string;
+  taskType?: string; // TaskType — present when source === 'task'
   pendingMessage?: string;
   pullRequestId?: number;
   pullRequestUrl?: string;

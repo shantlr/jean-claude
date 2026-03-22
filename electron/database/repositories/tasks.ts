@@ -1,5 +1,5 @@
 import type { PermissionScope } from '@shared/permission-types';
-import { Task, TaskStatus } from '@shared/types';
+import { Task, TaskStatus, TaskType } from '@shared/types';
 
 import { dbg } from '../../lib/debug';
 import { db } from '../index';
@@ -9,6 +9,7 @@ import { NewTaskRow, TaskRow, UpdateTaskRow } from '../schema';
 interface CreateTaskInput {
   id?: string;
   projectId: string;
+  type?: TaskType;
   name?: string | null;
   prompt: string;
   status?: TaskStatus;
@@ -53,12 +54,14 @@ function toTask<T extends TaskRow>(
   row: T,
 ): Omit<
   T,
+  | 'type'
   | 'userCompleted'
   | 'hasUnread'
   | 'sessionRules'
   | 'workItemIds'
   | 'workItemUrls'
 > & {
+  type: TaskType;
   userCompleted: boolean;
   hasUnread: boolean;
   sessionRules: PermissionScope;
@@ -66,6 +69,7 @@ function toTask<T extends TaskRow>(
   workItemUrls: string[] | null;
 } {
   const {
+    type,
     userCompleted,
     hasUnread,
     sessionRules,
@@ -75,6 +79,7 @@ function toTask<T extends TaskRow>(
   } = row;
   return {
     ...rest,
+    type: (type ?? 'agent') as TaskType,
     userCompleted: Boolean(userCompleted),
     hasUnread: Boolean(hasUnread),
     sessionRules: sessionRules
@@ -90,12 +95,14 @@ function toTaskOrUndefined<T extends TaskRow>(
 ):
   | (Omit<
       T,
+      | 'type'
       | 'userCompleted'
       | 'hasUnread'
       | 'sessionRules'
       | 'workItemIds'
       | 'workItemUrls'
     > & {
+      type: TaskType;
       userCompleted: boolean;
       hasUnread: boolean;
       sessionRules: PermissionScope;
@@ -236,6 +243,17 @@ export const TaskRepository = {
       .where('id', '=', id)
       .executeTakeFirst();
     return toTaskOrUndefined(row);
+  },
+
+  /** Returns the set of IDs that exist in the database from the given list. */
+  findExistingIds: async (ids: string[]): Promise<Set<string>> => {
+    if (ids.length === 0) return new Set();
+    const rows = await db
+      .selectFrom('tasks')
+      .select('id')
+      .where('id', 'in', ids)
+      .execute();
+    return new Set(rows.map((r) => r.id));
   },
 
   create: async (data: CreateTaskInput) => {

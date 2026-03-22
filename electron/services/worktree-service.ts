@@ -142,6 +142,18 @@ export async function deleteProjectWorktreesFolder(
   }
 
   if (project.worktreesPath && (await pathExists(project.worktreesPath))) {
+    // Validate the path is under the expected worktrees base directory to
+    // prevent accidental recursive deletion of arbitrary directories.
+    const resolvedPath = await fs.realpath(project.worktreesPath);
+    const expectedBase = getWorktreesBaseDir();
+    if (
+      !resolvedPath.startsWith(expectedBase + path.sep) &&
+      resolvedPath !== expectedBase
+    ) {
+      throw new Error(
+        `Refusing to delete worktrees path "${project.worktreesPath}" — it is not under the expected base directory "${expectedBase}"`,
+      );
+    }
     await fs.rm(project.worktreesPath, { recursive: true, force: true });
   }
 
@@ -593,8 +605,6 @@ export async function createWorktree(
   if (!(await isGitRepository(projectPath))) {
     throw new Error(`Project path is not a git repository: ${projectPath}`);
   }
-
-  console.log('AZERAZERAEZREAZRAEZEAZR');
 
   // Get or create the project's worktrees directory
   const projectWorktreesPath = await getOrCreateProjectWorktreesPath(

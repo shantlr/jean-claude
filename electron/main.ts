@@ -13,6 +13,7 @@ import {
 } from './services/azure-image-proxy-service';
 import { pipelineTrackingService } from './services/pipeline-tracking-service';
 import { runCommandService } from './services/run-command-service';
+import { cleanupOrphanedWorkspaces } from './services/system-project-service';
 
 // Register custom protocol scheme before app is ready
 // This must be done synchronously before the app ready event
@@ -126,6 +127,11 @@ app.whenReady().then(async () => {
   // Recover any tasks that were left in running/waiting state from a previous crash
   dbg.main('Recovering stale tasks...');
   await agentService.recoverStaleTasks();
+
+  // Clean up orphaned skill workspaces from previous sessions
+  cleanupOrphanedWorkspaces().catch((err) => {
+    dbg.main('Failed to cleanup orphaned workspaces: %O', err);
+  });
 
   createWindow();
   dbg.main('Main window created, app ready');

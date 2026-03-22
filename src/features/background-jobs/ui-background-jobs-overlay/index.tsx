@@ -290,6 +290,17 @@ function JobDetails({ job }: { job: BackgroundJob }) {
         </div>
       );
     },
+    'skill-creation': (typedJob) => {
+      if (typedJob.type !== 'skill-creation') return null;
+
+      return (
+        <div className="mt-1 space-y-0.5 text-xs text-neutral-400">
+          {typedJob.details.promptPreview && (
+            <p className="truncate">Prompt: {typedJob.details.promptPreview}</p>
+          )}
+        </div>
+      );
+    },
     'pr-review-creation': (typedJob) => {
       if (typedJob.type !== 'pr-review-creation') return null;
 

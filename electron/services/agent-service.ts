@@ -26,7 +26,11 @@ import {
 } from '@shared/agent-types';
 import type { AgentUIEventPayload } from '@shared/agent-ui-events';
 import type { NormalizedEntry } from '@shared/normalized-message-v2';
-import type { InteractionMode, ReviewStepMeta } from '@shared/types';
+import {
+  type InteractionMode,
+  type ReviewStepMeta,
+  isSkillCreationStepMeta,
+} from '@shared/types';
 import {
   getDefaultInteractionModeForBackend,
   normalizeInteractionModeForBackend,
@@ -58,6 +62,7 @@ import {
 } from './permission-settings-service';
 import { textPrompt, getPromptText } from './prompt-utils';
 import { StepService } from './step-service';
+import { assertValidWorkspacePath } from './system-project-service';
 
 /** In-memory store for queued prompt parts, keyed by QueuedPrompt.id.
  *  Keeps full PromptPart[] (with image base64) out of the QueuedPrompt.content
@@ -413,10 +418,22 @@ class AgentService {
       );
     }
 
-    const workingDir = task.worktreePath ?? project.path;
+    let workingDir = task.worktreePath ?? project.path;
 
     // Get step for mode/model
     const step = await TaskStepRepository.findById(stepId);
+
+    // For skill-creation steps, use the workspace path as CWD
+    if (step?.type === 'skill-creation' && isSkillCreationStepMeta(step.meta)) {
+      await assertValidWorkspacePath(step.meta.workspacePath);
+      if (!(await pathExists(step.meta.workspacePath))) {
+        throw new Error(
+          `The skill workspace has been deleted or cleaned up. ` +
+            `Create a new skill task to continue.`,
+        );
+      }
+      workingDir = step.meta.workspacePath;
+    }
 
     dbg.agentSession(
       'runBackend for step %s (task %s): backend=%s, cwd=%s, resuming=%s',

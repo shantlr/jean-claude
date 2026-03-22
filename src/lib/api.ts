@@ -854,6 +854,22 @@ export interface Api {
       skillId: string;
       enabledBackends: AgentBackendType[];
     }) => Promise<ManagedSkill>;
+    createWithAgent: (params: {
+      prompt: string;
+      enabledBackends: AgentBackendType[];
+      mode: 'create' | 'improve';
+      sourceSkillPath?: string;
+      interactionMode?: InteractionMode | null;
+      modelPreference?: string | null;
+      agentBackend?: AgentBackendType | null;
+    }) => Promise<Task>;
+    publishFromWorkspace: (params: {
+      stepId: string;
+      workspacePath: string;
+      enabledBackends: AgentBackendType[];
+      mode: 'create' | 'improve';
+      sourceSkillPath?: string;
+    }) => Promise<ManagedSkill[]>;
   };
   prSnapshots: {
     record: (params: {
@@ -1356,6 +1372,10 @@ export const api: Api = hasWindowApi
           enabledBackends: { 'claude-code': true },
           editable: true,
         }),
+        createWithAgent: async () => {
+          throw new Error('API not available');
+        },
+        publishFromWorkspace: async () => [],
       },
       prSnapshots: {
         record: async () => {},

@@ -35,7 +35,8 @@ export interface UpdateToken {
   updatedAt?: string;
 }
 
-export type ProjectType = 'local' | 'git-provider';
+export type ProjectType = 'local' | 'git-provider' | 'system';
+export type TaskType = 'agent' | 'skill-creation';
 export type TaskStatus =
   | 'running'
   | 'waiting'
@@ -250,6 +251,7 @@ export interface UpdateProject {
 export interface Task {
   id: string;
   projectId: string;
+  type: TaskType;
   name: string | null;
   prompt: string;
   status: TaskStatus;
@@ -272,6 +274,7 @@ export interface Task {
 export interface NewTask {
   id?: string;
   projectId: string;
+  type?: TaskType;
   name?: string | null;
   prompt: string;
   /** Transient image attachments (not persisted in tasks table) */
@@ -327,7 +330,8 @@ export type TaskStepType =
   | 'create-pull-request'
   | 'fork'
   | 'pr-review'
-  | 'review';
+  | 'review'
+  | 'skill-creation';
 
 /** Meta for `create-pull-request` steps — params + result after execution */
 export interface CreatePullRequestStepMeta {
@@ -379,12 +383,40 @@ export interface ReviewStepMeta {
   workItemContext?: string;
 }
 
+/** Meta for skill-creation steps — workspace and publish tracking */
+export interface SkillCreationStepMeta {
+  /** Whether this is a new skill or improving an existing one */
+  mode: 'create' | 'improve';
+  /** Absolute path to the task workspace dir */
+  workspacePath: string;
+  /** Absolute path to the original skill (for 'improve' mode) */
+  sourceSkillPath?: string;
+  /** Backends to enable when publishing */
+  enabledBackends: AgentBackendType[];
+  /** Whether the skill has been published from this workspace */
+  published?: boolean;
+}
+
 export type TaskStepMeta =
   | CreatePullRequestStepMeta
   | ForkStepMeta
   | PrReviewStepMeta
   | ReviewStepMeta
+  | SkillCreationStepMeta
   | Record<string, never>;
+
+/** Type guard for SkillCreationStepMeta */
+export function isSkillCreationStepMeta(
+  meta: TaskStepMeta | null | undefined,
+): meta is SkillCreationStepMeta {
+  if (!meta) return false;
+  const m = meta as SkillCreationStepMeta;
+  return (
+    typeof m.workspacePath === 'string' &&
+    (m.mode === 'create' || m.mode === 'improve') &&
+    Array.isArray(m.enabledBackends)
+  );
+}
 
 export interface TaskStep {
   id: string;

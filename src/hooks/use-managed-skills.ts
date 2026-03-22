@@ -15,6 +15,7 @@ import type {
   RegistrySkillContent,
   SkillScope,
 } from '@shared/skill-types';
+import type { InteractionMode } from '@shared/types';
 
 export const managedSkillsQueryKeys = {
   all: ['managedSkills'] as const,
@@ -239,6 +240,43 @@ export function useInstallRegistrySkill() {
       queryClient.invalidateQueries({
         queryKey: skillsQueryKeys.all,
       });
+    },
+  });
+}
+
+// --- Agent-driven skill creation ---
+
+export function useCreateSkillWithAgent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: {
+      prompt: string;
+      enabledBackends: AgentBackendType[];
+      mode: 'create' | 'improve';
+      sourceSkillPath?: string;
+      interactionMode?: InteractionMode | null;
+      modelPreference?: string | null;
+      agentBackend?: AgentBackendType | null;
+    }) => api.skillManagement.createWithAgent(params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+}
+
+export function usePublishSkillFromWorkspace() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: {
+      stepId: string;
+      workspacePath: string;
+      enabledBackends: AgentBackendType[];
+      mode: 'create' | 'improve';
+      sourceSkillPath?: string;
+    }) => api.skillManagement.publishFromWorkspace(params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['managedSkills'] });
+      queryClient.invalidateQueries({ queryKey: ['skills'] });
     },
   });
 }
