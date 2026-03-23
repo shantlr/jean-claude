@@ -95,6 +95,9 @@ function borderClasses({
   hasUnread?: boolean;
   isSelected: boolean;
 }): string {
+  if (isSelected) {
+    console.log({ attention, hasUnread });
+  }
   if (attention === 'completed' && hasUnread) {
     return isSelected
       ? 'completed-unread-border-selected'
@@ -110,8 +113,6 @@ function borderClasses({
         return 'border border-amber-500/60 bg-neutral-800 shadow-sm';
       case 'running':
         return 'running-border-selected';
-      case 'completed':
-        return 'border border-neutral-500/60 bg-neutral-700/80 shadow-sm';
       case 'interrupted':
         return 'border border-yellow-500/40 bg-neutral-800 shadow-sm';
       case 'review-requested':
@@ -121,8 +122,9 @@ function borderClasses({
         return 'border border-neutral-600 bg-neutral-800 shadow-sm';
       case 'assigned-work-item':
         return 'border border-teal-500/60 bg-neutral-800 shadow-sm';
+      case 'completed':
       default:
-        return 'border border-blue-500 bg-neutral-800 shadow-sm';
+        return 'border-r-2 border-primary bg-surface-bright shadow-sm';
     }
   }
 
@@ -135,7 +137,7 @@ function borderClasses({
     case 'running':
       return 'running-border';
     default:
-      return 'border border-transparent';
+      return '';
   }
 }
 
@@ -252,6 +254,7 @@ export function FeedItemCard({
 
   return (
     <Dropdown
+      variant="bright"
       trigger={({ triggerRef }) => (
         <div
           role="link"

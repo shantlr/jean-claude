@@ -38,7 +38,9 @@ export function Dropdown({
   side = 'bottom',
   className,
   dropdownRef,
+  variant = 'default',
 }: {
+  variant?: 'default' | 'bright';
   trigger:
     | ReactElement
     | ((props: { triggerRef: RefObject<HTMLElement | null> }) => ReactElement);
@@ -225,7 +227,8 @@ export function Dropdown({
             role="menu"
             aria-orientation="vertical"
             className={clsx(
-              'fixed z-50 min-w-48 overflow-y-auto rounded-md border border-neutral-700 bg-neutral-800 py-1 shadow-lg',
+              variant === 'default' ? 'bg-surface' : 'bg-surface-bright',
+              'fixed z-50 min-w-48 overflow-y-auto rounded-xl py-1 shadow-lg',
               className,
             )}
             style={{

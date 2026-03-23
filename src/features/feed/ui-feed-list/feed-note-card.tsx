@@ -126,11 +126,11 @@ export function FeedNoteCard({
             'flex cursor-pointer flex-col gap-1 rounded-lg px-3.5 py-2.5 transition-all duration-200 ease-out',
             isSelected
               ? 'bg-surface-bright border-r-primary border-r-2 shadow-sm'
-              : 'hover:bg-surface-bright border border-transparent hover:translate-x-0.5',
+              : 'hover:bg-surface-bright hover:translate-x-0.5',
           )}
         >
           <div className="flex items-center gap-2">
-            <StickyNote className="h-3.5 w-3.5 shrink-0 text-yellow-500/70" />
+            <StickyNote className="h-3.5 w-3.5 shrink-0 text-emerald-300/50" />
             <span className="min-w-0 flex-1 truncate text-sm text-neutral-200">
               {firstLine}
             </span>

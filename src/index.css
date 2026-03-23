@@ -1,8 +1,8 @@
-@import 'tailwindcss';
-
 /* ── Design System: The Kinetic Nocturne ── */
 /* Fonts: Manrope (editorial headlines) + Inter (functional interface) */
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+@import 'tailwindcss';
 
 @theme extend {
   /* ── Colors: Functional Signaling Palette ── */
