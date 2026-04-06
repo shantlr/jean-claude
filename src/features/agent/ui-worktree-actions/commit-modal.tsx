@@ -13,18 +13,16 @@ export function CommitModal({
   isOpen,
   onClose,
   onCommit,
-  isPending,
-  error,
   taskId,
   canAutoGenerate,
+  contentRef,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onCommit: (message: string, stageAll: boolean) => Promise<void>;
-  isPending: boolean;
-  error?: string;
+  onCommit: (message: string, stageAll: boolean) => void;
   taskId: string;
   canAutoGenerate: boolean;
+  contentRef?: React.RefObject<HTMLDivElement | null>;
 }) {
   const [message, setMessage] = useState('');
   const [stageAll, setStageAll] = useState(true);
@@ -40,11 +38,10 @@ export function CommitModal({
   }, [isOpen]);
 
   const isGenerating = generateMutation.isPending;
-  const isBusy = isPending || isGenerating;
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (isBusy) return;
+    if (isGenerating) return;
 
     let commitMessage = message.trim();
 
@@ -70,12 +67,12 @@ export function CommitModal({
 
     if (!commitMessage) return;
 
-    await onCommit(commitMessage, stageAll);
+    onCommit(commitMessage, stageAll);
     setMessage('');
   };
 
   const handleGenerate = async () => {
-    if (isBusy) return;
+    if (isGenerating) return;
     try {
       const generated = await generateMutation.mutateAsync({
         taskId,
@@ -102,15 +99,18 @@ export function CommitModal({
 
   if (!isOpen) return null;
 
-  const canSubmit = canAutoGenerate ? !isBusy : !!message.trim() && !isBusy;
+  const canSubmit = canAutoGenerate
+    ? !isGenerating
+    : !!message.trim() && !isGenerating;
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title="Commit Changes"
-      closeOnClickOutside={!isBusy}
-      closeOnEscape={!isBusy}
+      closeOnClickOutside={!isGenerating}
+      closeOnEscape={!isGenerating}
+      contentRef={contentRef}
     >
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
@@ -127,7 +127,7 @@ export function CommitModal({
                 variant="ghost"
                 size="sm"
                 onClick={handleGenerate}
-                disabled={isBusy}
+                disabled={isGenerating}
                 icon={
                   isGenerating ? (
                     <Loader2 className="animate-spin" />
@@ -163,12 +163,9 @@ export function CommitModal({
           className="mb-4"
         />
 
-        {(error || generateMutation.error) && (
+        {generateMutation.error && (
           <div className="mb-4 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-400">
-            {error ??
-              (generateMutation.error
-                ? 'Failed to generate commit message. Please enter one manually.'
-                : undefined)}
+            Failed to generate commit message. Please enter one manually.
           </div>
         )}
 
@@ -176,7 +173,7 @@ export function CommitModal({
           <Button
             type="button"
             onClick={onClose}
-            disabled={isBusy}
+            disabled={isGenerating}
             variant="ghost"
             size="md"
           >
@@ -185,7 +182,7 @@ export function CommitModal({
           <Button
             type="submit"
             disabled={!canSubmit}
-            loading={isBusy}
+            loading={isGenerating}
             variant="primary"
             size="md"
           >

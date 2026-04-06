@@ -11,6 +11,7 @@ export type BackgroundJobType =
   | 'pr-review-creation'
   | 'summary-generation'
   | 'task-deletion'
+  | 'commit'
   | 'merge';
 export type BackgroundJobStatus = 'running' | 'succeeded' | 'failed';
 
@@ -59,6 +60,12 @@ export type BackgroundJob =
         taskName: string | null;
         projectName: string | null;
         deleteWorktree: boolean;
+      };
+    })
+  | (BackgroundJobBase & {
+      type: 'commit';
+      details: {
+        message: string;
       };
     })
   | (BackgroundJobBase & {
@@ -118,6 +125,15 @@ type NewBackgroundJobInput =
         taskName: string | null;
         projectName: string | null;
         deleteWorktree: boolean;
+      };
+    }
+  | {
+      type: 'commit';
+      title: string;
+      taskId?: string | null;
+      projectId?: string | null;
+      details: {
+        message: string;
       };
     }
   | {
@@ -250,6 +266,8 @@ export function bgJobLabel(type: BackgroundJobType): string {
   switch (type) {
     case 'task-deletion':
       return 'Deleting…';
+    case 'commit':
+      return 'Committing…';
     case 'merge':
       return 'Merging…';
     case 'summary-generation':

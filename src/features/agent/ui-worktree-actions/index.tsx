@@ -17,7 +17,10 @@ import {
   useCommitWorktree,
   useMergeWorktree,
 } from '@/hooks/use-worktree-diff';
-import { useBackgroundJobsStore } from '@/stores/background-jobs';
+import {
+  useBackgroundJobsStore,
+  useRunningBackgroundJobsForTask,
+} from '@/stores/background-jobs';
 import { useToastStore } from '@/stores/toasts';
 
 import { CommitModal } from './commit-modal';
@@ -71,8 +74,14 @@ export function WorktreeActions({
     project?.aiSkillSlots?.['commit-message'] || globalSlots?.['commit-message']
   );
 
+  const commitDialogRef = useRef<HTMLDivElement>(null);
+  const { triggerAnimation: triggerCommitAnimation } = useShrinkToTarget({
+    panelRef: commitDialogRef,
+    targetSelector: '[data-animation-target="jobs-button"]',
+  });
+
   const mergeDialogRef = useRef<HTMLDivElement>(null);
-  const { triggerAnimation } = useShrinkToTarget({
+  const { triggerAnimation: triggerMergeAnimation } = useShrinkToTarget({
     panelRef: mergeDialogRef,
     targetSelector: '[data-animation-target="jobs-button"]',
   });
@@ -82,7 +91,11 @@ export function WorktreeActions({
   const markJobFailed = useBackgroundJobsStore((s) => s.markJobFailed);
   const addToast = useToastStore((s) => s.addToast);
 
-  const canCommit = status?.hasUncommittedChanges ?? false;
+  const runningBgJobs = useRunningBackgroundJobsForTask(taskId);
+  const hasRunningCommitJob = runningBgJobs.some((j) => j.type === 'commit');
+
+  const canCommit =
+    (status?.hasUncommittedChanges ?? false) && !hasRunningCommitJob;
   const canMerge = !status?.hasStagedChanges && !isStatusLoading;
   const canCreatePr = !status?.hasUncommittedChanges && !isStatusLoading;
 
@@ -106,9 +119,33 @@ export function WorktreeActions({
     }
   }, [branches, sourceBranch, defaultBranch, selectedBranch]);
 
-  const handleCommit = async (message: string, stageAll: boolean) => {
-    await commitMutation.mutateAsync({ taskId, message, stageAll });
+  const handleCommit = (message: string, stageAll: boolean) => {
+    // 1. Create background job
+    const jobId = addRunningJob({
+      type: 'commit',
+      title: `Committing changes`,
+      taskId,
+      projectId,
+      details: { message },
+    });
+
+    // 2. Animate the modal shrinking to jobs button
+    void triggerCommitAnimation();
+
+    // 3. Close dialog immediately
     setIsCommitModalOpen(false);
+
+    // 4. Fire-and-forget commit
+    void commitMutation
+      .mutateAsync({ taskId, message, stageAll })
+      .then(() => {
+        markJobSucceeded(jobId);
+      })
+      .catch((error: unknown) => {
+        const msg = error instanceof Error ? error.message : 'Commit failed';
+        markJobFailed(jobId, msg);
+        addToast({ type: 'error', message: msg });
+      });
   };
 
   const handleMerge = (params: {
@@ -129,7 +166,7 @@ export function WorktreeActions({
     });
 
     // 2. Animate the modal shrinking to jobs button
-    void triggerAnimation();
+    void triggerMergeAnimation();
 
     // 3. Close dialog and diff view immediately
     setIsMergeConfirmOpen(false);
@@ -168,7 +205,7 @@ export function WorktreeActions({
       <Button
         onClick={() => setIsCommitModalOpen(true)}
         disabled={!canCommit}
-        loading={commitMutation.isPending}
+        loading={hasRunningCommitJob}
         variant="secondary"
         size="md"
         icon={<GitCommit />}
@@ -243,10 +280,9 @@ export function WorktreeActions({
         isOpen={isCommitModalOpen}
         onClose={() => setIsCommitModalOpen(false)}
         onCommit={handleCommit}
-        isPending={commitMutation.isPending}
-        error={commitMutation.error?.message}
         taskId={taskId}
         canAutoGenerate={canAutoGenerateCommitMessage}
+        contentRef={commitDialogRef}
       />
 
       <MergeConfirmDialog

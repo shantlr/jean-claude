@@ -337,6 +337,15 @@ function JobDetails({ job }: { job: BackgroundJob }) {
         </div>
       );
     },
+    commit: (typedJob) => {
+      if (typedJob.type !== 'commit') return null;
+
+      return (
+        <div className="mt-1 space-y-0.5 text-xs text-neutral-400">
+          <p className="truncate">{typedJob.details.message}</p>
+        </div>
+      );
+    },
     merge: (typedJob) => {
       if (typedJob.type !== 'merge') return null;
 
