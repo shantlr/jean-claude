@@ -45,6 +45,8 @@ export interface FeedItem {
   workItemUrl?: string;
   workItemType?: string;
   workItemState?: string;
+  workItemPrStatus?: 'active' | 'completed' | 'abandoned';
+  workItemPrUrl?: string;
 
   // PR activity tracking (only present when source === 'pull-request')
   hasNewActivity?: boolean;

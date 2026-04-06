@@ -7,6 +7,7 @@ import {
   CirclePause,
   ClipboardList,
   FolderOpen,
+  GitMerge,
   GitPullRequest,
   Loader2,
   MessageCircleQuestion,
@@ -95,9 +96,6 @@ function borderClasses({
   hasUnread?: boolean;
   isSelected: boolean;
 }): string {
-  if (isSelected) {
-    console.log({ attention, hasUnread });
-  }
   if (attention === 'completed' && hasUnread) {
     return isSelected
       ? 'completed-unread-border-selected'
@@ -303,6 +301,30 @@ export function FeedItemCard({
             </span>
             {item.source === 'task' && item.pullRequestId && (
               <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-green-500" />
+            )}
+            {item.source === 'work-item' && item.workItemPrStatus && (
+              <span
+                title={
+                  item.workItemPrStatus === 'completed'
+                    ? 'PR merged'
+                    : item.workItemPrStatus === 'active'
+                      ? 'PR open'
+                      : 'PR abandoned'
+                }
+              >
+                {item.workItemPrStatus === 'completed' ? (
+                  <GitMerge className="h-3.5 w-3.5 shrink-0 text-purple-400" />
+                ) : (
+                  <GitPullRequest
+                    className={clsx(
+                      'h-3.5 w-3.5 shrink-0',
+                      item.workItemPrStatus === 'active'
+                        ? 'text-green-500'
+                        : 'text-neutral-500',
+                    )}
+                  />
+                )}
+              </span>
             )}
             {item.source === 'pull-request' &&
               (item.activeThreadCount ?? 0) > 0 && (

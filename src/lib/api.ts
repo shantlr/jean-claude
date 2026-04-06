@@ -203,6 +203,7 @@ export interface AzureDevOpsWorkItem {
     changedDate?: string;
   };
   parentId?: number;
+  linkedPrIds?: number[];
 }
 
 export interface AzureDevOpsIteration {
