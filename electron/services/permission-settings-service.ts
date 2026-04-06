@@ -321,12 +321,43 @@ export function stripRedirections(command: string): string {
 }
 
 /**
- * Match a value against a glob pattern.
- * Supports `*` (any chars except `/`), `**` (any chars including `/`), `?`.
+ * Match a bash command against a glob-like pattern.
+ *
+ * Unlike file-path matching, `*` matches ANY character (including `/`)
+ * so that patterns like `pnpm *` match commands whose arguments contain
+ * paths (e.g. `pnpm install /path/to/pkg`).
  */
-function matchPattern(pattern: string, value: string): boolean {
+function matchBashPattern(pattern: string, value: string): boolean {
+  // Escape regex special chars except * and ?
+  const regexStr = pattern
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*+/g, '.*') // any sequence of * → match anything (including /)
+    .replace(/\?/g, '.') // ?  → match single character
+    .replace(/(\.\*)+/g, '.*'); // collapse consecutive .* to prevent ReDoS
+  return new RegExp(`^${regexStr}$`).test(value);
+}
+
+/**
+ * Picomatch options shared across all file-path matching calls.
+ *
+ * `dot: true` ensures patterns like `src/**` match dot-prefixed paths
+ * (e.g. `src/.env`, `src/.config/foo`).  Without this, picomatch's
+ * default (`dot: false`) silently skips dot-segments, causing rules
+ * that look correct to never match.
+ */
+const PICOMATCH_OPTIONS: picomatch.PicomatchOptions = { dot: true };
+
+/**
+ * Match a value against a glob pattern.
+ *
+ * For bash commands, uses a regex-based matcher where `*` matches any
+ * character (including `/`).  For everything else (file paths, URLs,
+ * queries), uses picomatch with `dot: true`.
+ */
+function matchPattern(pattern: string, value: string, isBash = false): boolean {
   if (pattern === '*') return true;
-  return picomatch.isMatch(value, pattern);
+  if (isBash) return matchBashPattern(pattern, value);
+  return picomatch.isMatch(value, pattern, PICOMATCH_OPTIONS);
 }
 
 /**
@@ -404,11 +435,12 @@ function evaluateSinglePermission(
   // match "pnpm lint --fix 2>&1" the same as "pnpm lint --fix"
   const normalized =
     toolKey === 'bash' ? stripRedirections(matchValue) : matchValue;
+  const isBash = toolKey === 'bash';
   let result: PermissionEvalResult = 'ask';
 
   for (const rule of rules) {
     if (rule.tool !== toolKey && rule.tool !== '*') continue;
-    if (matchPattern(rule.pattern, normalized)) {
+    if (matchPattern(rule.pattern, normalized, isBash)) {
       result = rule.action;
     }
   }
