@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 export type BackgroundJobType =
   | 'task-creation'
   | 'skill-creation'
+  | 'pr-creation'
   | 'pr-review-creation'
   | 'summary-generation'
   | 'task-deletion'
@@ -40,6 +41,13 @@ export type BackgroundJob =
       type: 'skill-creation';
       details: {
         promptPreview: string | null;
+      };
+    })
+  | (BackgroundJobBase & {
+      type: 'pr-creation';
+      details: {
+        title: string;
+        branchName: string;
       };
     })
   | (BackgroundJobBase & {
@@ -96,6 +104,16 @@ type NewBackgroundJobInput =
       projectId?: string | null;
       details: {
         promptPreview: string | null;
+      };
+    }
+  | {
+      type: 'pr-creation';
+      title: string;
+      taskId?: string | null;
+      projectId?: string | null;
+      details: {
+        title: string;
+        branchName: string;
       };
     }
   | {
@@ -276,6 +294,8 @@ export function bgJobLabel(type: BackgroundJobType): string {
       return 'Creating…';
     case 'skill-creation':
       return 'Creating skill…';
+    case 'pr-creation':
+      return 'Creating PR…';
     case 'pr-review-creation':
       return 'Creating PR review…';
   }

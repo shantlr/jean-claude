@@ -301,6 +301,16 @@ function JobDetails({ job }: { job: BackgroundJob }) {
         </div>
       );
     },
+    'pr-creation': (typedJob) => {
+      if (typedJob.type !== 'pr-creation') return null;
+
+      return (
+        <div className="mt-1 space-y-0.5 text-xs text-neutral-400">
+          <p className="truncate">Title: {typedJob.details.title}</p>
+          <p>Branch: {typedJob.details.branchName}</p>
+        </div>
+      );
+    },
     'pr-review-creation': (typedJob) => {
       if (typedJob.type !== 'pr-review-creation') return null;
 

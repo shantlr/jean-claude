@@ -1,5 +1,5 @@
 import { Sparkles, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
@@ -16,6 +16,8 @@ import { useProject } from '@/hooks/use-projects';
 import { useGenerateSummary, useTaskSummary } from '@/hooks/use-task-summary';
 import { useTask } from '@/hooks/use-tasks';
 import type { FileAnnotation } from '@/lib/api';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
+import { useToastStore } from '@/stores/toasts';
 
 export function PrCreationForm({
   taskId,
@@ -46,15 +48,19 @@ export function PrCreationForm({
   const [annotationStates, setAnnotationStates] = useState<
     Array<{ annotation: FileAnnotation; checked: boolean }>
   >([]);
-  const [error, setError] = useState<string | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const [formFilledFromSummary, setFormFilledFromSummary] = useState(false);
+  const submittedRef = useRef(false);
 
   const { data: existingSummary } = useTaskSummary(taskId);
   const generateSummary = useGenerateSummary();
   const createPr = useCreatePullRequest();
   const addComments = useAddPrFileComments();
 
-  const isPending = createPr.isPending || addComments.isPending;
+  const addRunningJob = useBackgroundJobsStore((s) => s.addRunningJob);
+  const markJobSucceeded = useBackgroundJobsStore((s) => s.markJobSucceeded);
+  const markJobFailed = useBackgroundJobsStore((s) => s.markJobFailed);
+  const addToast = useToastStore((s) => s.addToast);
 
   // Helper to populate form from a summary
   function fillFormFromSummary(summary: {
@@ -84,7 +90,7 @@ export function PrCreationForm({
   }
 
   async function handleFillFromSummary() {
-    setError(null);
+    setSummaryError(null);
 
     // If we already have a summary, use it to fill the form
     if (existingSummary) {
@@ -97,46 +103,76 @@ export function PrCreationForm({
       const summary = await generateSummary.mutateAsync(taskId);
       fillFormFromSummary(summary);
     } catch (err) {
-      setError(
+      setSummaryError(
         err instanceof Error ? err.message : 'Failed to generate summary',
       );
     }
   }
 
-  async function handleCreate() {
-    setError(null);
-    try {
-      // Step 1: Create PR (pushes branch + creates PR + saves to task)
-      const result = await createPr.mutateAsync({
+  function handleCreate() {
+    if (submittedRef.current) return;
+    submittedRef.current = true;
+
+    // Collect checked annotations before closing
+    const checkedAnnotations = annotationStates
+      .filter((a) => a.checked)
+      .map((a) => ({
+        filePath: a.annotation.filePath,
+        line: a.annotation.lineNumber,
+        content: `jean-claude: ${a.annotation.explanation}`,
+      }));
+
+    // 1. Create background job
+    const jobId = addRunningJob({
+      type: 'pr-creation',
+      title: `Creating PR: ${title}`,
+      taskId,
+      projectId,
+      details: {
+        title,
+        branchName,
+      },
+    });
+
+    // 2. Close the form immediately
+    onSuccess();
+
+    // 3. Fire-and-forget PR creation
+    void createPr
+      .mutateAsync({
         taskId,
         title,
         description,
         isDraft,
+      })
+      .then(async (result) => {
+        // Post comments for checked annotations
+        if (checkedAnnotations.length > 0) {
+          try {
+            await addComments.mutateAsync({
+              providerId: repoProviderId,
+              projectId: repoProjectId,
+              repoId,
+              pullRequestId: result.id,
+              comments: checkedAnnotations,
+            });
+          } catch {
+            // Comments are best-effort; don't fail the job
+            addToast({
+              type: 'error',
+              message: 'PR created, but some comments could not be posted',
+            });
+          }
+        }
+
+        markJobSucceeded(jobId);
+      })
+      .catch((err: unknown) => {
+        const message =
+          err instanceof Error ? err.message : 'Failed to create PR';
+        markJobFailed(jobId, message);
+        addToast({ type: 'error', message });
       });
-
-      // Step 2: Post comments for checked annotations
-      const checkedAnnotations = annotationStates
-        .filter((a) => a.checked)
-        .map((a) => ({
-          filePath: a.annotation.filePath,
-          line: a.annotation.lineNumber,
-          content: `jean-claude: ${a.annotation.explanation}`,
-        }));
-
-      if (checkedAnnotations.length > 0) {
-        await addComments.mutateAsync({
-          providerId: repoProviderId,
-          projectId: repoProjectId,
-          repoId,
-          pullRequestId: result.id,
-          comments: checkedAnnotations,
-        });
-      }
-
-      onSuccess();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create PR');
-    }
   }
 
   function toggleAnnotation(index: number) {
@@ -147,7 +183,7 @@ export function PrCreationForm({
     );
   }
 
-  const canSubmit = !isPending && !!title.trim();
+  const canSubmit = !!title.trim();
 
   useCommands('pr-creation-form', [
     canSubmit && {
@@ -288,10 +324,10 @@ export function PrCreationForm({
             </div>
           )}
 
-          {/* Error */}
-          {error && (
+          {/* Summary generation error */}
+          {summaryError && (
             <div className="rounded-md bg-red-950/50 px-3 py-2 text-sm text-red-400">
-              {error}
+              {summaryError}
             </div>
           )}
         </div>
@@ -303,7 +339,6 @@ export function PrCreationForm({
         <Button
           type="button"
           onClick={onCancel}
-          disabled={isPending}
           variant="secondary"
           className="flex-1"
         >
@@ -312,18 +347,13 @@ export function PrCreationForm({
         <Button
           type="button"
           onClick={handleCreate}
-          disabled={isPending || !title.trim()}
-          loading={isPending}
+          disabled={!title.trim()}
           variant="primary"
           className="flex-1"
         >
-          {isPending ? (
-            'Creating...'
-          ) : (
-            <span className="flex items-center gap-1.5">
-              Create PR <Kbd shortcut="cmd+enter" />
-            </span>
-          )}
+          <span className="flex items-center gap-1.5">
+            Create PR <Kbd shortcut="cmd+enter" />
+          </span>
         </Button>
       </div>
     </div>
