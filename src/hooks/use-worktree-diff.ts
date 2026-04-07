@@ -106,7 +106,7 @@ export function useCommitWorktree() {
   return useMutation({
     mutationFn: (params: {
       taskId: string;
-      message: string;
+      message?: string;
       stageAll: boolean;
     }) =>
       api.tasks.worktree.commit(params.taskId, {

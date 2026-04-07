@@ -1347,15 +1347,38 @@ export function registerIpcHandlers() {
     async (
       _,
       taskId: string,
-      params: { message: string; stageAll: boolean },
+      params: { message?: string; stageAll: boolean },
     ) => {
       const task = await TaskRepository.findById(taskId);
       if (!task?.worktreePath) {
         throw new Error(`Task ${taskId} does not have a worktree`);
       }
+
+      let { message } = params;
+
+      // Auto-generate commit message if not provided
+      if (!message) {
+        const project = await ProjectRepository.findById(task.projectId);
+        if (!project) {
+          throw new Error(`Project ${task.projectId} not found`);
+        }
+        const generated = await generateCommitMessageForTask(
+          task,
+          project,
+          params.stageAll,
+        );
+        if (!generated) {
+          throw new Error(
+            'Failed to generate commit message. Please commit manually.',
+          );
+        }
+        message = generated;
+      }
+
       return commitWorktreeChanges({
         worktreePath: task.worktreePath,
-        ...params,
+        message,
+        stageAll: params.stageAll,
       });
     },
   );

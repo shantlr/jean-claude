@@ -19,7 +19,7 @@ export function CommitModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onCommit: (message: string, stageAll: boolean) => void;
+  onCommit: (message: string | undefined, stageAll: boolean) => void;
   taskId: string;
   canAutoGenerate: boolean;
   contentRef?: React.RefObject<HTMLDivElement | null>;
@@ -43,26 +43,14 @@ export function CommitModal({
     e?.preventDefault();
     if (isGenerating) return;
 
-    let commitMessage = message.trim();
+    const commitMessage = message.trim();
 
-    // If no message and auto-generate is available, generate one
+    // If no message and auto-generate is available, send undefined
+    // so the parent can generate it as part of the background job
     if (!commitMessage && canAutoGenerate) {
-      try {
-        const generated = await generateMutation.mutateAsync({
-          taskId,
-          stageAll,
-        });
-        if (generated) {
-          commitMessage = generated;
-          setMessage(generated);
-        } else {
-          // Generation returned nothing — user must enter manually
-          return;
-        }
-      } catch {
-        // Generation failed — user must enter manually
-        return;
-      }
+      onCommit(undefined, stageAll);
+      setMessage('');
+      return;
     }
 
     if (!commitMessage) return;

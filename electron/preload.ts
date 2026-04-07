@@ -114,7 +114,7 @@ contextBridge.exposeInMainWorld('api', {
         ipcRenderer.invoke('tasks:worktree:getStatus', taskId),
       commit: (
         taskId: string,
-        params: { message: string; stageAll: boolean },
+        params: { message?: string; stageAll: boolean },
       ) => ipcRenderer.invoke('tasks:worktree:commit', taskId, params),
       generateCommitMessage: (taskId: string, params: { stageAll: boolean }) =>
         ipcRenderer.invoke(

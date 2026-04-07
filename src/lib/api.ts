@@ -400,7 +400,7 @@ export interface Api {
       getStatus: (taskId: string) => Promise<WorktreeStatus>;
       commit: (
         taskId: string,
-        params: { message: string; stageAll: boolean },
+        params: { message?: string; stageAll: boolean },
       ) => Promise<void>;
       generateCommitMessage: (
         taskId: string,

@@ -119,14 +119,14 @@ export function WorktreeActions({
     }
   }, [branches, sourceBranch, defaultBranch, selectedBranch]);
 
-  const handleCommit = (message: string, stageAll: boolean) => {
+  const handleCommit = (message: string | undefined, stageAll: boolean) => {
     // 1. Create background job
     const jobId = addRunningJob({
       type: 'commit',
-      title: `Committing changes`,
+      title: message ? 'Committing changes' : 'Generating commit message…',
       taskId,
       projectId,
-      details: { message },
+      details: { message: message ?? 'Auto-generating…' },
     });
 
     // 2. Animate the modal shrinking to jobs button
@@ -135,7 +135,7 @@ export function WorktreeActions({
     // 3. Close dialog immediately
     setIsCommitModalOpen(false);
 
-    // 4. Fire-and-forget commit
+    // 4. Fire-and-forget commit (IPC handler auto-generates message if not provided)
     void commitMutation
       .mutateAsync({ taskId, message, stageAll })
       .then(() => {
