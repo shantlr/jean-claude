@@ -7,9 +7,11 @@ import { RemoveScroll } from 'react-remove-scroll';
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
 import { Button } from '@/common/ui/button';
+import { useProjects } from '@/hooks/use-projects';
 import { ensureUtc } from '@/lib/time';
 import { useNotificationsStore } from '@/stores/notifications';
 import type { AppNotification } from '@shared/notification-types';
+import type { Project } from '@shared/types';
 
 function getRelativeTime(dateStr: string): string {
   const date = new Date(ensureUtc(dateStr));
@@ -61,6 +63,22 @@ function NotificationIcon({ type }: { type: string }) {
   return <CheckCircle className="h-4 w-4 shrink-0 text-green-400" />;
 }
 
+function ProjectLabel({ project }: { project?: Project }) {
+  if (!project) return null;
+  const label = project.repoProjectName
+    ? `${project.repoProjectName} / ${project.name}`
+    : project.name;
+  return (
+    <p className="mt-0.5 truncate text-[11px] text-neutral-500">
+      <span
+        className="mr-1.5 inline-block h-2 w-2 rounded-full"
+        style={{ backgroundColor: project.color }}
+      />
+      {label}
+    </p>
+  );
+}
+
 export function NotificationCenterOverlay({
   onClose,
 }: {
@@ -70,6 +88,15 @@ export function NotificationCenterOverlay({
   const markAsRead = useNotificationsStore((s) => s.markAsRead);
   const markAllAsRead = useNotificationsStore((s) => s.markAllAsRead);
   const unreadCount = useNotificationsStore((s) => s.unreadCount);
+  const { data: projects } = useProjects();
+
+  const projectMap = useMemo(() => {
+    const map = new Map<string, Project>();
+    if (projects) {
+      for (const p of projects) map.set(p.id, p);
+    }
+    return map;
+  }, [projects]);
 
   const groups = useMemo(() => groupByDay(notifications), [notifications]);
 
@@ -176,6 +203,13 @@ export function NotificationCenterOverlay({
                           <p className="mt-0.5 truncate text-xs text-neutral-500">
                             {notification.body}
                           </p>
+                          <ProjectLabel
+                            project={
+                              notification.projectId
+                                ? projectMap.get(notification.projectId)
+                                : undefined
+                            }
+                          />
                         </div>
                         {notification.sourceUrl && (
                           <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 text-neutral-600" />
