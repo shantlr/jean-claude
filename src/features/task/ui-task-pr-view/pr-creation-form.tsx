@@ -1,9 +1,11 @@
 import { Sparkles, Plus } from 'lucide-react';
 import { useState } from 'react';
 
+import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
 import { Checkbox } from '@/common/ui/checkbox';
 import { Input } from '@/common/ui/input';
+import { Kbd } from '@/common/ui/kbd';
 import { Separator } from '@/common/ui/separator';
 import { Textarea } from '@/common/ui/textarea';
 import {
@@ -144,6 +146,19 @@ export function PrCreationForm({
       ),
     );
   }
+
+  const canSubmit = !isPending && !!title.trim();
+
+  useCommands('pr-creation-form', [
+    canSubmit && {
+      label: 'Submit PR',
+      shortcut: 'cmd+enter',
+      handler: () => {
+        handleCreate();
+      },
+      hideInCommandPalette: true,
+    },
+  ]);
 
   const hasSummary = !!(generateSummary.data ?? existingSummary);
 
@@ -302,7 +317,13 @@ export function PrCreationForm({
           variant="primary"
           className="flex-1"
         >
-          {isPending ? 'Creating...' : 'Create PR'}
+          {isPending ? (
+            'Creating...'
+          ) : (
+            <span className="flex items-center gap-1.5">
+              Create PR <Kbd shortcut="cmd+enter" />
+            </span>
+          )}
         </Button>
       </div>
     </div>
