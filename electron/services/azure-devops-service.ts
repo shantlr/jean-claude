@@ -319,8 +319,9 @@ function extractLinkedPrIds(relations?: WorkItemRelation[]): number[] {
   for (const r of relations) {
     if (r.rel !== 'ArtifactLink') continue;
     // Match vstfs:///Git/PullRequestId/... URLs
+    // Handles both %2F-encoded and plain / separators
     const match = r.url.match(
-      /vstfs:\/\/\/Git\/PullRequestId\/[^%]+%2F[^%]+%2F(\d+)/i,
+      /vstfs:\/\/\/Git\/PullRequestId\/.*(?:%2F|\/)(\d+)/i,
     );
     if (match) {
       prIds.push(parseInt(match[1], 10));
