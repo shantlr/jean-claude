@@ -231,6 +231,7 @@ export interface WorktreeStatus {
   hasUncommittedChanges: boolean;
   hasStagedChanges: boolean;
   hasUnstagedChanges: boolean;
+  hasUnpushedCommits: boolean;
   worktreeDeleted?: boolean;
 }
 
@@ -1057,6 +1058,7 @@ export const api: Api = hasWindowApi
             hasUncommittedChanges: false,
             hasStagedChanges: false,
             hasUnstagedChanges: false,
+            hasUnpushedCommits: false,
           }),
           commit: async () => {},
           generateCommitMessage: async () => undefined,

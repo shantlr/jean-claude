@@ -714,11 +714,12 @@ export interface WorktreeStatus {
   hasUncommittedChanges: boolean;
   hasStagedChanges: boolean;
   hasUnstagedChanges: boolean;
+  hasUnpushedCommits: boolean;
   worktreeDeleted?: boolean;
 }
 
 /**
- * Checks if a worktree has uncommitted changes.
+ * Checks if a worktree has uncommitted or unpushed changes.
  */
 export async function getWorktreeStatus(
   worktreePath: string,
@@ -744,10 +745,33 @@ export async function getWorktreeStatus(
     );
     const hasUnstagedChanges = unstagedOutput.trim().length > 0;
 
+    // Check for unpushed commits (commits ahead of upstream)
+    let hasUnpushedCommits = false;
+    try {
+      const { stdout: aheadOutput } = await execAsync(
+        'git rev-list --count @{u}..HEAD',
+        { cwd: worktreePath, encoding: 'utf-8' },
+      );
+      hasUnpushedCommits = parseInt(aheadOutput.trim(), 10) > 0;
+    } catch {
+      // No upstream tracking branch — any local commits are unpushed
+      // Check if there are any commits at all
+      try {
+        const { stdout: logOutput } = await execAsync('git log --oneline -1', {
+          cwd: worktreePath,
+          encoding: 'utf-8',
+        });
+        hasUnpushedCommits = logOutput.trim().length > 0;
+      } catch {
+        hasUnpushedCommits = false;
+      }
+    }
+
     return {
       hasUncommittedChanges: hasStagedChanges || hasUnstagedChanges,
       hasStagedChanges,
       hasUnstagedChanges,
+      hasUnpushedCommits,
     };
   } catch (error) {
     // If we get ENOENT, the worktree was likely deleted
@@ -756,6 +780,7 @@ export async function getWorktreeStatus(
         hasUncommittedChanges: false,
         hasStagedChanges: false,
         hasUnstagedChanges: false,
+        hasUnpushedCommits: false,
         worktreeDeleted: true,
       };
     }

@@ -1,4 +1,5 @@
 import {
+  ArrowUpFromLine,
   ExternalLink,
   GitCommit,
   GitMerge,
@@ -16,6 +17,7 @@ import {
   useWorktreeBranches,
   useCommitWorktree,
   useMergeWorktree,
+  usePushBranch,
 } from '@/hooks/use-worktree-diff';
 import {
   useBackgroundJobsStore,
@@ -60,6 +62,7 @@ export function WorktreeActions({
     useWorktreeBranches(taskId);
   const commitMutation = useCommitWorktree();
   const mergeMutation = useMergeWorktree();
+  const pushMutation = usePushBranch();
   const { data: project } = useProject(projectId);
   const { data: globalSlots } = useAiSkillSlotsSetting();
 
@@ -93,6 +96,22 @@ export function WorktreeActions({
 
   const runningBgJobs = useRunningBackgroundJobsForTask(taskId);
   const hasRunningCommitJob = runningBgJobs.some((j) => j.type === 'commit');
+
+  const hasUnpushedCommits = status?.hasUnpushedCommits ?? false;
+  const canPush =
+    hasUnpushedCommits && !status?.hasUncommittedChanges && !isStatusLoading;
+
+  const handlePush = () => {
+    pushMutation.mutate(taskId, {
+      onSuccess: () => {
+        addToast({ type: 'success', message: 'Changes pushed successfully' });
+      },
+      onError: (error: unknown) => {
+        const msg = error instanceof Error ? error.message : 'Push failed';
+        addToast({ type: 'error', message: msg });
+      },
+    });
+  };
 
   const canCommit =
     (status?.hasUncommittedChanges ?? false) && !hasRunningCommitJob;
@@ -248,19 +267,39 @@ export function WorktreeActions({
         </Button>
       </div>
 
-      {/* Create PR / See PR */}
+      {/* Create PR / See PR + Push */}
       {hasRepoLink &&
         (pullRequestUrl ? (
-          <a
-            href={pullRequestUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex w-full items-center justify-center gap-2 rounded-md bg-green-700 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600"
-            title="View pull request"
-          >
-            <ExternalLink className="h-4 w-4" />
-            See PR
-          </a>
+          <div className="flex gap-2">
+            {hasUnpushedCommits && (
+              <Button
+                onClick={handlePush}
+                disabled={!canPush}
+                loading={pushMutation.isPending}
+                variant="secondary"
+                size="md"
+                icon={<ArrowUpFromLine />}
+                className="flex-1"
+                title={
+                  status?.hasUncommittedChanges
+                    ? 'Commit changes first'
+                    : 'Push changes to remote'
+                }
+              >
+                Push
+              </Button>
+            )}
+            <a
+              href={pullRequestUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-1 items-center justify-center gap-2 rounded-md bg-green-700 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600"
+              title="View pull request"
+            >
+              <ExternalLink className="h-4 w-4" />
+              See PR
+            </a>
+          </div>
         ) : (
           <Button
             onClick={onOpenPrView}

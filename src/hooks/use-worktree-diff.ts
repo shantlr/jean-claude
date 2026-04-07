@@ -78,6 +78,7 @@ export function useWorktreeStatus(taskId: string | null) {
           hasUncommittedChanges: false,
           hasStagedChanges: false,
           hasUnstagedChanges: false,
+          hasUnpushedCommits: false,
         };
       }
       return api.tasks.worktree.getStatus(taskId);
@@ -167,5 +168,15 @@ export function useGenerateCommitMessage() {
   return useMutation({
     mutationFn: ({ taskId, stageAll }: { taskId: string; stageAll: boolean }) =>
       api.tasks.worktree.generateCommitMessage(taskId, { stageAll }),
+  });
+}
+
+export function usePushBranch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: string) => api.tasks.worktree.pushBranch(taskId),
+    onSuccess: (_, taskId) => {
+      queryClient.invalidateQueries({ queryKey: ['worktree-status', taskId] });
+    },
   });
 }
