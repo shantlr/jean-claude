@@ -31,25 +31,33 @@ export async function generateTaskName(prompt: string): Promise<string | null> {
 
   try {
     const generator = query({
-      prompt: `Name this coding task in ≤40 chars. Be specific about WHAT is being done technically. Start with a verb.
+      prompt: `You are a task naming assistant. Given a coding task description, produce a short name (≤40 characters) that captures the essence of the task.
 
-The input may be a raw prompt, a work item with XML tags, a bug report, or a feature request. Ignore all boilerplate, metadata, platform tags (e.g. [iOS][Android]), ticket IDs, repro steps, and test configurations. Focus only on the core technical problem or feature being described.
+Rules:
+- MUST be ≤40 characters. This is a hard limit.
+- Start with a lowercase verb (add, fix, refactor, update, implement, etc.)
+- Be specific about WHAT is being done, but concise
+- NEVER copy the input verbatim. Always summarize and compress.
+- Ignore boilerplate, metadata, platform tags, ticket IDs, repro steps
+- Focus on the single core action being described
 
-Examples of GOOD names:
-- "fix station subtitle not clearing on search" (from a verbose bug report about subtitle persisting when editing search fields, wrapped in "Implement the following work item" boilerplate)
-- "add retry logic to webhook delivery" (from a feature request about webhook reliability)
-- "refactor auth middleware to use JWT" (from a task about authentication changes)
-- "update price display for multi-currency" (from a work item about currency formatting)
-- "fix race condition in checkout flow" (from a bug report about double-charging)
+Examples:
+Input: "once a PR is associated to a task, in the task details diff view, we should have a button beside 'See PR' to be able to push new changes"
+Output: "add push changes button to PR diff view"
 
-Examples of BAD names (never do these):
-- "implement work item" (too generic, says nothing)
-- "fix the bug" (no specifics)
-- "update the app" (meaningless)
-- "work item 53147" (just an ID)
-- "iOS Android search engine bug" (just tags, no action)
+Input: "The station subtitle is not clearing when the user searches for a new station in the search field, it persists from the previous selection"
+Output: "fix subtitle not clearing on search"
 
-Task:
+Input: "We need to add retry logic to the webhook delivery system so that failed webhooks are retried up to 3 times with exponential backoff"
+Output: "add retry logic to webhook delivery"
+
+Input: "refactor the authentication middleware to use JWT tokens instead of session-based authentication"
+Output: "refactor auth middleware to use JWT"
+
+Input: "fix race condition in checkout flow where users are sometimes double-charged"
+Output: "fix race condition in checkout flow"
+
+Task to name:
 ${truncatedPrompt}`,
       options: {
         allowedTools: [],
