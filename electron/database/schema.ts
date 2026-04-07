@@ -92,6 +92,7 @@ export interface ProjectTable {
   defaultAgentBackend: string | null;
   completionContext: string | null;
   aiSkillSlots: string | null; // JSON text
+  protectedBranches: string | null; // JSON array of branch names
   priority: string;
   showWorkItemsInFeed: number; // SQLite boolean: 1 = show (default), 0 = hide
   showPrsInFeed: number; // SQLite boolean: 1 = show (default), 0 = hide

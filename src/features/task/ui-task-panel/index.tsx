@@ -1156,6 +1156,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               }
               sourceBranch={task.sourceBranch}
               defaultBranch={project.defaultBranch}
+              protectedBranches={project.protectedBranches}
               taskName={task.name}
               hasRepoLink={hasRepoLink}
               pullRequestUrl={task.pullRequestUrl}

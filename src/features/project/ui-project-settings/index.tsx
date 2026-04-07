@@ -47,6 +47,8 @@ import type {
   AiSkillSlotsSetting,
 } from '@shared/types';
 
+import { ProtectedBranchesInput } from './protected-branches-input';
+
 export type ProjectSettingsMenuItem =
   | 'details'
   | 'autocomplete'
@@ -95,6 +97,7 @@ export function ProjectSettings({
   const [aiSkillSlots, setAiSkillSlots] = useState<AiSkillSlotsSetting | null>(
     null,
   );
+  const [protectedBranches, setProtectedBranches] = useState<string[]>([]);
   const [isGeneratingContext, setIsGeneratingContext] = useState(false);
 
   const { data: backendsSetting } = useBackendsSetting();
@@ -111,6 +114,7 @@ export function ProjectSettings({
       setPriority(project.priority ?? 'normal');
       setCompletionContext(project.completionContext ?? '');
       setWorktreesPath(project.worktreesPath ?? '');
+      setProtectedBranches(project.protectedBranches ?? []);
       setAiSkillSlots(project.aiSkillSlots);
     }
   }, [project]);
@@ -160,6 +164,7 @@ export function ProjectSettings({
         priority,
         completionContext: completionContext || null,
         worktreesPath: worktreesPath || null,
+        protectedBranches,
         aiSkillSlots,
       },
     });
@@ -202,6 +207,7 @@ export function ProjectSettings({
     priority !== (project.priority ?? 'normal') ||
     completionContext !== (project.completionContext ?? '') ||
     worktreesPath !== (project.worktreesPath ?? '') ||
+    !isEqual(protectedBranches, project.protectedBranches ?? []) ||
     !isEqual(aiSkillSlots, project.aiSkillSlots ?? null);
 
   let content: ReactElement;
@@ -304,6 +310,13 @@ export function ProjectSettings({
               The branch that worktrees will merge into
             </p>
           </div>
+
+          <ProtectedBranchesInput
+            branches={branches ?? []}
+            branchesLoading={branchesLoading}
+            protectedBranches={protectedBranches}
+            onChange={setProtectedBranches}
+          />
 
           <div>
             <label className="mb-1 block text-sm font-medium text-neutral-300">

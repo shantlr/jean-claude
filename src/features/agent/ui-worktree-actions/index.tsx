@@ -4,8 +4,9 @@ import {
   GitCommit,
   GitMerge,
   GitPullRequest,
+  Shield,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { Button } from '@/common/ui/button';
@@ -34,6 +35,7 @@ export function WorktreeActions({
   branchName,
   sourceBranch,
   defaultBranch,
+  protectedBranches,
   hasRepoLink,
   pullRequestUrl,
   onMergeStarted,
@@ -44,6 +46,7 @@ export function WorktreeActions({
   branchName: string;
   sourceBranch: string | null;
   defaultBranch: string | null;
+  protectedBranches: string[];
   hasRepoLink: boolean;
   pullRequestUrl: string | null;
   onMergeStarted: () => void;
@@ -115,8 +118,22 @@ export function WorktreeActions({
 
   const canCommit =
     (status?.hasUncommittedChanges ?? false) && !hasRunningCommitJob;
-  const canMerge = !status?.hasStagedChanges && !isStatusLoading;
+  const isSelectedBranchProtected = protectedBranches.includes(selectedBranch);
+  const canMerge =
+    !status?.hasStagedChanges && !isStatusLoading && !isSelectedBranchProtected;
   const canCreatePr = !status?.hasUncommittedChanges && !isStatusLoading;
+
+  // Add protection indicators to branch options
+  const branchOptions = useMemo(
+    () =>
+      (branches ?? []).map((branch) => ({
+        value: branch,
+        label: protectedBranches.includes(branch)
+          ? `${branch} (protected)`
+          : branch,
+      })),
+    [branches, protectedBranches],
+  );
 
   // Set default branch when branches load
   // Priority: sourceBranch > defaultBranch > main > master > first branch
@@ -244,15 +261,18 @@ export function WorktreeActions({
           options={
             isBranchesLoading
               ? [{ value: '', label: 'Loading…' }]
-              : (branches ?? []).map((branch) => ({
-                  value: branch,
-                  label: branch,
-                }))
+              : branchOptions
           }
           onChange={setSelectedBranch}
           disabled={isBranchesLoading || !branches?.length}
           className="w-full justify-between"
         />
+        {isSelectedBranchProtected && (
+          <div className="flex items-center gap-1.5 rounded-md border border-amber-800/50 bg-amber-950/30 px-2 py-1.5 text-xs text-amber-300">
+            <Shield className="h-3.5 w-3.5 shrink-0" />
+            <span>This branch is protected. Direct merges are blocked.</span>
+          </div>
+        )}
         <Button
           onClick={() => setIsMergeConfirmOpen(true)}
           disabled={!canMerge}
@@ -261,7 +281,13 @@ export function WorktreeActions({
           size="md"
           icon={<GitMerge />}
           className="w-full"
-          title={canMerge ? 'Merge worktree' : 'Commit staged changes first'}
+          title={
+            isSelectedBranchProtected
+              ? 'Branch is protected'
+              : canMerge
+                ? 'Merge worktree'
+                : 'Commit staged changes first'
+          }
         >
           Merge
         </Button>

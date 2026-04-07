@@ -188,6 +188,7 @@ export interface Project {
   defaultAgentBackend: AgentBackendType | null; // null = use global default
   completionContext: string | null;
   aiSkillSlots: AiSkillSlotsSetting | null;
+  protectedBranches: string[];
   priority: ProjectPriority;
   createdAt: string;
   updatedAt: string;
@@ -216,6 +217,7 @@ export interface NewProject {
   defaultAgentBackend?: AgentBackendType | null;
   completionContext?: string | null;
   aiSkillSlots?: AiSkillSlotsSetting | null;
+  protectedBranches?: string[];
   priority?: ProjectPriority;
   createdAt?: string;
   updatedAt: string;
@@ -244,6 +246,7 @@ export interface UpdateProject {
   defaultAgentBackend?: AgentBackendType | null;
   completionContext?: string | null;
   aiSkillSlots?: AiSkillSlotsSetting | null;
+  protectedBranches?: string[];
   priority?: ProjectPriority;
   updatedAt?: string;
 }

@@ -1409,6 +1409,18 @@ export function registerIpcHandlers() {
       if (!project) {
         throw new Error(`Project ${task.projectId} not found`);
       }
+      // Block conflict checks against protected branches
+      if (
+        project.protectedBranches?.some(
+          (b) => b.toLowerCase() === params.targetBranch.toLowerCase(),
+        )
+      ) {
+        return {
+          hasConflicts: false,
+          error: `Branch "${params.targetBranch}" is protected. Direct merges into this branch are not allowed.`,
+        };
+      }
+
       return checkMergeConflicts({
         worktreePath: task.worktreePath,
         projectPath: project.path,
@@ -1449,6 +1461,18 @@ export function registerIpcHandlers() {
       const project = await ProjectRepository.findById(task.projectId);
       if (!project) {
         throw new Error(`Project ${task.projectId} not found`);
+      }
+
+      // Block merges into protected branches (case-insensitive for macOS HFS+)
+      if (
+        project.protectedBranches?.some(
+          (b) => b.toLowerCase() === params.targetBranch.toLowerCase(),
+        )
+      ) {
+        return {
+          success: false,
+          error: `Branch "${params.targetBranch}" is protected. Direct merges into this branch are not allowed.`,
+        };
       }
 
       // Auto-generate commit message if squash merge with no user-provided message

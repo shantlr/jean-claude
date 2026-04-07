@@ -34,6 +34,7 @@ export function WorktreeDiffView({
   branchName,
   sourceBranch,
   defaultBranch,
+  protectedBranches,
   taskName,
   hasRepoLink,
   pullRequestUrl,
@@ -48,6 +49,7 @@ export function WorktreeDiffView({
   branchName: string;
   sourceBranch: string | null;
   defaultBranch: string | null;
+  protectedBranches: string[];
   taskName: string | null;
   hasRepoLink: boolean;
   pullRequestUrl: string | null;
@@ -260,6 +262,7 @@ export function WorktreeDiffView({
             branchName={branchName}
             sourceBranch={sourceBranch}
             defaultBranch={defaultBranch}
+            protectedBranches={protectedBranches}
             hasRepoLink={hasRepoLink}
             pullRequestUrl={pullRequestUrl}
             onMergeStarted={onMergeStarted}
