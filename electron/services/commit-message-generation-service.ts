@@ -57,7 +57,9 @@ function parseTitleBodyResult(
     const typed = result as { title: string; body: string };
     return {
       title: typed.title.slice(0, 72),
-      body: typed.body,
+      // Models sometimes return literal "\n" escape sequences instead of real
+      // newlines in structured JSON output — normalise them.
+      body: typed.body.replace(/\\n/g, '\n'),
     };
   }
   return null;
