@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { promisify } from 'util';
@@ -14,6 +14,20 @@ import { installMcpForWorktree } from './mcp-template-service';
 import { buildWorktreeSettings } from './permission-settings-service';
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+async function gitCommit({
+  cwd,
+  message,
+}: {
+  cwd: string;
+  message: string;
+}): Promise<void> {
+  await execFileAsync('git', ['commit', '-m', message], {
+    cwd,
+    encoding: 'utf-8',
+  });
+}
 
 /**
  * Escapes a string for safe use in shell commands within double quotes.
@@ -816,10 +830,7 @@ export async function commitWorktreeChanges(
 
     // Commit with the provided message
     dbg.worktree('Creating commit');
-    await execAsync(`git commit -m ${JSON.stringify(message)}`, {
-      cwd: worktreePath,
-      encoding: 'utf-8',
-    });
+    await gitCommit({ cwd: worktreePath, message });
     dbg.worktree('Commit successful');
   } catch (error) {
     dbg.worktree('Commit failed: %O', error);
@@ -1055,10 +1066,7 @@ export async function mergeWorktree(
       // Commit the squashed changes with the provided message
       const message =
         commitMessage || `Squash merge branch '${worktreeBranch}'`;
-      await execAsync(`git commit -m ${JSON.stringify(message)}`, {
-        cwd: projectPath,
-        encoding: 'utf-8',
-      });
+      await gitCommit({ cwd: projectPath, message });
     } else {
       // Regular merge
       dbg.worktree('Performing regular merge');
