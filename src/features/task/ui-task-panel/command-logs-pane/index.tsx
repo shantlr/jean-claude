@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { X } from 'lucide-react';
+import { Trash2, X } from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -37,6 +37,9 @@ export function CommandLogsPane({
   const { data: commands = [] } = useProjectCommands(projectId);
   const runCommandLogs =
     useTaskMessagesStore((state) => state.runCommandLogs[taskId]) ?? {};
+  const clearRunCommandLogs = useTaskMessagesStore(
+    (state) => state.clearRunCommandLogs,
+  );
   const [status, setStatus] = useState<RunStatus | null>(null);
 
   useEffect(() => {
@@ -125,7 +128,22 @@ export function CommandLogsPane({
         )}
       >
         <h3 className="text-sm font-medium text-neutral-200">Command Logs</h3>
-        <IconButton onClick={onClose} size="sm" icon={<X />} tooltip="Close" />
+        <div className="flex items-center gap-1">
+          <IconButton
+            onClick={() => {
+              if (activeCommandId) clearRunCommandLogs(taskId, activeCommandId);
+            }}
+            size="sm"
+            icon={<Trash2 />}
+            tooltip="Clear logs"
+          />
+          <IconButton
+            onClick={onClose}
+            size="sm"
+            icon={<X />}
+            tooltip="Close"
+          />
+        </div>
       </div>
       <Separator />
 
