@@ -1,11 +1,14 @@
 import { AlertTriangle, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 
+import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import { Kbd } from '@/common/ui/kbd';
 import { api } from '@/lib/api';
 import type { GlobalPrompt } from '@shared/global-prompt-types';
 
 export function GlobalPromptFromBackModal() {
   const [promptQueue, setPromptQueue] = useState<GlobalPrompt[]>([]);
+  const id = useId();
 
   useEffect(() => {
     const unsubscribe = api.globalPrompt.onShow((prompt) => {
@@ -16,12 +19,31 @@ export function GlobalPromptFromBackModal() {
 
   const currentPrompt = promptQueue[0] ?? null;
 
-  const handleResponse = (accepted: boolean) => {
-    if (currentPrompt) {
-      api.globalPrompt.respond({ id: currentPrompt.id, accepted });
-      setPromptQueue((queue) => queue.slice(1));
-    }
-  };
+  const handleResponse = useCallback(
+    (accepted: boolean) => {
+      if (currentPrompt) {
+        api.globalPrompt.respond({ id: currentPrompt.id, accepted });
+        setPromptQueue((queue) => queue.slice(1));
+      }
+    },
+    [currentPrompt],
+  );
+
+  useRegisterKeyboardBindings(
+    `global-prompt-modal-${id}`,
+    currentPrompt
+      ? {
+          escape: () => {
+            handleResponse(false);
+            return true;
+          },
+          'cmd+enter': () => {
+            handleResponse(true);
+            return true;
+          },
+        }
+      : {},
+  );
 
   if (!currentPrompt) return null;
 
@@ -62,15 +84,17 @@ export function GlobalPromptFromBackModal() {
         <div className="flex justify-end gap-3 border-t border-neutral-700 px-4 py-3">
           <button
             onClick={() => handleResponse(false)}
-            className="rounded-md px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-700"
+            className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-700"
           >
             {currentPrompt.rejectLabel ?? 'Cancel'}
+            <Kbd shortcut="escape" className="text-[9px]" />
           </button>
           <button
             onClick={() => handleResponse(true)}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
+            className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
           >
             {currentPrompt.acceptLabel ?? 'Accept'}
+            <Kbd shortcut="cmd+enter" className="text-[9px]" />
           </button>
         </div>
       </div>
