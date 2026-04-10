@@ -2,7 +2,8 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 
 import picomatch from 'picomatch';
-import { parse as shellParse } from 'shell-quote';
+
+import { parseCompoundCommand, stripRedirections } from '@shared/shell-parse';
 
 import type {
   JeanClaudeSettings,
@@ -294,33 +295,6 @@ export function resolveRules(
 // ---------------------------------------------------------------------------
 
 /**
- * Strip shell output redirections from a bash command.
- *
- * Removes patterns like `2>&1`, `>/dev/null`, `1>/tmp/out`, `2>/dev/null`,
- * `&>/dev/null`, `&>>file`, `>>file`, `<input`, etc. so that redirection
- * suffixes don't affect permission matching.
- */
-export function stripRedirections(command: string): string {
-  // Order matters: match compound redirections first, then simple ones.
-  // &>> &> are bash-specific "redirect stdout+stderr"
-  // N>&M (fd duplication, e.g. 2>&1)
-  // N>>file, N>file (fd redirect to file)
-  // >>file, >file (stdout redirect to file)
-  // <file, <<EOF, <<<string (input redirections)
-  return command
-    .replace(/\d*>&\d+/g, '') // 2>&1, >&2
-    .replace(/&>>\s*\S+/g, '') // &>>/dev/null
-    .replace(/&>\s*\S+/g, '') // &>/dev/null
-    .replace(/\d*>>\s*\S+/g, '') // 2>>/tmp/err, >>file
-    .replace(/\d*>\s*\S+/g, '') // 2>/dev/null, >/dev/null
-    .replace(/<<<\s*\S+/g, '') // <<<string
-    .replace(/<<\s*\S+/g, '') // <<EOF
-    .replace(/<\s*\S+/g, '') // <input
-    .replace(/\s+/g, ' ') // collapse whitespace
-    .trim();
-}
-
-/**
  * Match a bash command against a glob-like pattern.
  *
  * Unlike file-path matching, `*` matches ANY character (including `/`)
@@ -358,42 +332,6 @@ function matchPattern(pattern: string, value: string, isBash = false): boolean {
   if (pattern === '*') return true;
   if (isBash) return matchBashPattern(pattern, value);
   return picomatch.isMatch(value, pattern, PICOMATCH_OPTIONS);
-}
-
-/**
- * Parse a compound shell command into individual sub-commands.
- *
- * Splits on `&&`, `||`, `;`, and `|` operators using `shell-quote`,
- * which correctly handles quoting (single, double), escape sequences,
- * command substitutions, and other shell syntax.
- *
- * Returns an array of trimmed, non-empty sub-command strings.
- * If the command has no compound operators, returns a single-element array.
- */
-export function parseCompoundCommand(command: string): string[] {
-  const parsed = shellParse(command);
-  const commands: string[] = [];
-  let currentTokens: string[] = [];
-
-  for (const token of parsed) {
-    if (typeof token === 'object' && token !== null && 'op' in token) {
-      // Operator token — flush current command
-      if (currentTokens.length > 0) {
-        commands.push(currentTokens.join(' '));
-        currentTokens = [];
-      }
-    } else if (typeof token === 'string') {
-      currentTokens.push(token);
-    }
-    // Skip other token types (glob patterns, etc.)
-  }
-
-  // Push the last segment
-  if (currentTokens.length > 0) {
-    commands.push(currentTokens.join(' '));
-  }
-
-  return commands.length > 0 ? commands : [command.trim()];
 }
 
 /**

@@ -1181,6 +1181,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               bottomPadding={footerHeight}
               pendingPermission={permissionProps}
               pendingQuestion={questionProps}
+              taskId={task.id}
+              hasWorktree={!!task.worktreePath}
             />
           ) : (
             <div

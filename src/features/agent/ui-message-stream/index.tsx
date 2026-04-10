@@ -1,10 +1,11 @@
 import {
   memo,
-  useEffect,
-  useRef,
-  useMemo,
-  useLayoutEffect,
   useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 
 import type {
@@ -19,6 +20,7 @@ import type {
 } from '@shared/normalized-message-v2';
 import type { InteractionMode } from '@shared/types';
 
+import { AddPermissionModal } from '../ui-add-permission-modal';
 import { PermissionBar } from '../ui-permission-bar';
 import { QuestionOptions } from '../ui-question-options';
 
@@ -80,6 +82,8 @@ export const MessageStream = memo(function MessageStream({
   bottomPadding = 0,
   pendingPermission,
   pendingQuestion,
+  taskId,
+  hasWorktree,
 }: {
   messages: NormalizedEntry[];
   isRunning?: boolean;
@@ -101,10 +105,31 @@ export const MessageStream = memo(function MessageStream({
   pendingPermission?: PermissionBannerProps | null;
   /** Question request to render inline at the bottom of the stream */
   pendingQuestion?: QuestionBannerProps | null;
+  /** Task ID for permission management */
+  taskId?: string;
+  /** Whether the task has a worktree */
+  hasWorktree?: boolean;
 }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
+
+  // Single modal state for "Add to permissions" — hoisted here so only one instance exists
+  const [permissionModal, setPermissionModal] = useState<{
+    command: string;
+  } | null>(null);
+
+  const handleAddBashToPermissions = useCallback(
+    (command: string) => {
+      if (!taskId) return;
+      setPermissionModal({ command });
+    },
+    [taskId],
+  );
+
+  const closePermissionModal = useCallback(() => {
+    setPermissionModal(null);
+  }, []);
 
   // Merge skill messages for display
   const displayMessages = useMemo(
@@ -225,6 +250,7 @@ export const MessageStream = memo(function MessageStream({
                   )}
                   onFilePathClick={onFilePathClick}
                   onToolDiffClick={onToolDiffClick}
+                  onAddBashToPermissions={handleAddBashToPermissions}
                 />
               </div>
             );
@@ -238,6 +264,7 @@ export const MessageStream = memo(function MessageStream({
               )}
               onFilePathClick={onFilePathClick}
               onToolDiffClick={onToolDiffClick}
+              onAddBashToPermissions={handleAddBashToPermissions}
             />
           );
         })}
@@ -288,6 +315,16 @@ export const MessageStream = memo(function MessageStream({
         )}
         <div ref={bottomRef} />
       </div>
+      {/* Single hoisted modal for "Add to permissions" */}
+      {taskId && permissionModal && (
+        <AddPermissionModal
+          isOpen
+          onClose={closePermissionModal}
+          command={permissionModal.command}
+          taskId={taskId}
+          hasWorktree={hasWorktree ?? false}
+        />
+      )}
     </div>
   );
 });
