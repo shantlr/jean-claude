@@ -299,33 +299,43 @@ export function FeedItemCard({
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-100">
               {item.title}
             </span>
-            {item.source === 'task' && item.pullRequestId && (
-              <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-green-500" />
-            )}
-            {item.source === 'work-item' && item.workItemPrStatus && (
-              <span
-                title={
-                  item.workItemPrStatus === 'completed'
-                    ? 'PR merged'
-                    : item.workItemPrStatus === 'active'
-                      ? 'PR open'
+            {item.source === 'task' &&
+              item.pullRequestId &&
+              !item.workItemPrStatus && (
+                <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-green-500" />
+              )}
+            {(item.source === 'work-item' || item.source === 'task') &&
+              item.workItemPrStatus &&
+              item.workItemPrStatus !== 'active' && (
+                <span
+                  className={clsx(
+                    'flex shrink-0 items-center gap-1',
+                    item.workItemPrStatus === 'completed'
+                      ? 'text-purple-400'
+                      : 'text-neutral-500',
+                  )}
+                  title={
+                    item.workItemPrStatus === 'completed'
+                      ? 'PR merged'
                       : 'PR abandoned'
-                }
-              >
-                {item.workItemPrStatus === 'completed' ? (
-                  <GitMerge className="h-3.5 w-3.5 shrink-0 text-purple-400" />
-                ) : (
-                  <GitPullRequest
-                    className={clsx(
-                      'h-3.5 w-3.5 shrink-0',
-                      item.workItemPrStatus === 'active'
-                        ? 'text-green-500'
-                        : 'text-neutral-500',
-                    )}
-                  />
-                )}
-              </span>
-            )}
+                  }
+                >
+                  {item.workItemPrStatus === 'completed' ? (
+                    <GitMerge className="h-3.5 w-3.5" />
+                  ) : (
+                    <GitPullRequest className="h-3.5 w-3.5" />
+                  )}
+                  <span className="text-[10px] font-medium">
+                    {item.workItemPrStatus === 'completed'
+                      ? 'Completed'
+                      : 'Abandoned'}
+                  </span>
+                </span>
+              )}
+            {(item.source === 'work-item' || item.source === 'task') &&
+              item.workItemPrStatus === 'active' && (
+                <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-green-500" />
+              )}
             {item.source === 'pull-request' &&
               (item.activeThreadCount ?? 0) > 0 && (
                 <span className="flex shrink-0 items-center gap-0.5 text-purple-400">

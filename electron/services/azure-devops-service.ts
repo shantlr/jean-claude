@@ -26,6 +26,7 @@ import type {
 
 import { ProviderRepository } from '../database/repositories/providers';
 import { TokenRepository } from '../database/repositories/tokens';
+import { dbg } from '../lib/debug';
 
 import { sendGlobalPromptToWindow } from './global-prompt-service';
 import {
@@ -74,6 +75,12 @@ export interface AzureDevOpsOrgDetails {
   }>;
 }
 
+export interface LinkedPr {
+  prId: number;
+  projectId: string; // GUID from vstfs URL
+  repoId: string; // GUID from vstfs URL
+}
+
 export interface AzureDevOpsWorkItem {
   id: number;
   url: string;
@@ -87,7 +94,7 @@ export interface AzureDevOpsWorkItem {
     changedDate?: string;
   };
   parentId?: number;
-  linkedPrIds?: number[];
+  linkedPrs?: LinkedPr[];
 }
 
 export interface AzureDevOpsIteration {
@@ -313,34 +320,41 @@ function extractParentId(relations?: WorkItemRelation[]): number | undefined {
  * PR artifact links use rel "ArtifactLink" with URL format:
  *   vstfs:///Git/PullRequestId/{projectGuid}%2F{repoGuid}%2F{prId}
  */
-function extractLinkedPrIds(relations?: WorkItemRelation[]): number[] {
-  if (!relations) return [];
-  const prIds: number[] = [];
-  for (const r of relations) {
-    if (r.rel !== 'ArtifactLink') continue;
-    // Match vstfs:///Git/PullRequestId/... URLs
+function extractLinkedPrs(relations?: WorkItemRelation[]): LinkedPr[] {
+  if (!relations) {
+    return [];
+  }
+  const artifactLinks = relations.filter((r) => r.rel === 'ArtifactLink');
+  const prs: LinkedPr[] = [];
+  for (const r of artifactLinks) {
+    // Match vstfs:///Git/PullRequestId/{projectGuid}%2F{repoGuid}%2F{prId}
     // Handles both %2F-encoded and plain / separators
     const match = r.url.match(
-      /vstfs:\/\/\/Git\/PullRequestId\/.*(?:%2F|\/)(\d+)/i,
+      /vstfs:\/\/\/Git\/PullRequestId\/([^%/]+)(?:%2F|\/)([^%/]+)(?:%2F|\/)(\d+)/i,
     );
     if (match) {
-      prIds.push(parseInt(match[1], 10));
+      prs.push({
+        projectId: match[1],
+        repoId: match[2],
+        prId: parseInt(match[3], 10),
+      });
     }
   }
-  return prIds;
+  return prs;
 }
 
 /**
- * Fetch PR statuses by ID at the org level.
+ * Fetch PR statuses using project-scoped API (more reliable than org-level).
+ * Each LinkedPr carries the project and repo GUIDs extracted from the vstfs URL.
  * Returns a map of PR ID → { status, url }.
  */
-export async function getPullRequestStatusesByIds(params: {
+export async function getPullRequestStatuses(params: {
   providerId: string;
-  prIds: number[];
+  linkedPrs: LinkedPr[];
 }): Promise<
   Map<number, { status: 'active' | 'completed' | 'abandoned'; url: string }>
 > {
-  if (params.prIds.length === 0) return new Map();
+  if (params.linkedPrs.length === 0) return new Map();
   const { authHeader, orgName } = await getProviderAuth(params.providerId);
 
   const results = new Map<
@@ -349,16 +363,25 @@ export async function getPullRequestStatusesByIds(params: {
   >();
 
   // Fetch in chunks to avoid too many concurrent requests
-  for (let i = 0; i < params.prIds.length; i += 10) {
-    const chunk = params.prIds.slice(i, i + 10);
+  for (let i = 0; i < params.linkedPrs.length; i += 10) {
+    const chunk = params.linkedPrs.slice(i, i + 10);
     await Promise.all(
-      chunk.map(async (prId) => {
+      chunk.map(async (linkedPr) => {
         try {
-          const response = await fetch(
-            `https://dev.azure.com/${orgName}/_apis/git/pullrequests/${prId}?api-version=7.0`,
-            { headers: { Authorization: authHeader } },
-          );
-          if (!response.ok) return;
+          // Use project-scoped API with GUIDs extracted from the vstfs artifact link
+          const apiUrl = `https://dev.azure.com/${orgName}/${linkedPr.projectId}/_apis/git/repositories/${linkedPr.repoId}/pullrequests/${linkedPr.prId}?api-version=7.0`;
+          const response = await fetch(apiUrl, {
+            headers: { Authorization: authHeader },
+          });
+          if (!response.ok) {
+            dbg.azure(
+              'getPullRequestStatuses: failed PR#%d → %d %s',
+              linkedPr.prId,
+              response.status,
+              response.statusText,
+            );
+            return;
+          }
           const pr: {
             status: string;
             repository?: { project?: { name?: string }; name?: string };
@@ -368,14 +391,19 @@ export async function getPullRequestStatusesByIds(params: {
           const repoName = pr.repository?.name ?? '';
           const url =
             projectName && repoName
-              ? `https://dev.azure.com/${orgName}/${encodeURIComponent(projectName)}/_git/${encodeURIComponent(repoName)}/pullrequest/${prId}`
+              ? `https://dev.azure.com/${orgName}/${encodeURIComponent(projectName)}/_git/${encodeURIComponent(repoName)}/pullrequest/${linkedPr.prId}`
               : '';
-          results.set(prId, {
-            status: mapPrStatus(pr.status),
+          const mappedStatus = mapPrStatus(pr.status);
+          results.set(linkedPr.prId, {
+            status: mappedStatus,
             url,
           });
-        } catch {
-          // Skip individual PR failures
+        } catch (err) {
+          dbg.azure(
+            'getPullRequestStatuses: exception fetching PR#%d: %O',
+            linkedPr.prId,
+            err,
+          );
         }
       }),
     );
@@ -597,7 +625,7 @@ export async function queryAssignedWorkItems(params: {
       changedDate: wi.fields['System.ChangedDate'],
     },
     parentId: extractParentId(wi.relations),
-    linkedPrIds: extractLinkedPrIds(wi.relations),
+    linkedPrs: extractLinkedPrs(wi.relations),
   }));
 }
 

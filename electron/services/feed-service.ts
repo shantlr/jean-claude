@@ -13,10 +13,11 @@ import { dbg } from '../lib/debug';
 import {
   getCurrentUser,
   getPullRequestActivityMetadata,
-  getPullRequestStatusesByIds,
+  getPullRequestStatuses,
   listPullRequests,
   queryAssignedWorkItems,
 } from './azure-devops-service';
+import type { LinkedPr } from './azure-devops-service';
 import { getMostRecentlyUpdatedStep } from './step-service';
 
 // In-memory cache for PR feed items to avoid hammering Azure DevOps API
@@ -184,7 +185,7 @@ export async function getFeedItems(): Promise<FeedItem[]> {
       projectPriority: 'high' | 'normal' | 'low';
     };
 
-    feedItems.push({
+    const taskFeedItem: FeedItem = {
       id: `task:${task.id}`,
       source: 'task',
       attention,
@@ -204,7 +205,9 @@ export async function getFeedItems(): Promise<FeedItem[]> {
         : undefined,
       pullRequestUrl: task.pullRequestUrl ?? undefined,
       workItemIds: task.workItemIds ?? undefined,
-    });
+    };
+
+    feedItems.push(taskFeedItem);
   }
 
   // Fetch PR items (with cache to avoid hammering Azure DevOps API)
@@ -223,6 +226,120 @@ export async function getFeedItems(): Promise<FeedItem[]> {
   const filteredWorkItems = workItemItems.filter(
     (wi) => wi.workItemId === undefined || !taskWorkItemIds.has(wi.workItemId),
   );
+
+  // --- Enrich task feed items with PR status ---
+  // Build a set of known active PR IDs from the PR feed
+  const activePrIds = new Set(
+    prItems
+      .filter((p) => p.pullRequestId)
+      .map((p) => p.pullRequestId as number),
+  );
+
+  // Propagate work item PR status to task feed items whose work items were
+  // filtered out — so the PR icon still shows on the task card.
+  const workItemPrStatusMap = new Map<
+    number,
+    { status: 'active' | 'completed' | 'abandoned'; url?: string }
+  >();
+  for (const wi of workItemItems) {
+    if (wi.workItemId && wi.workItemPrStatus) {
+      workItemPrStatusMap.set(wi.workItemId, {
+        status: wi.workItemPrStatus,
+        url: wi.workItemPrUrl,
+      });
+    }
+  }
+
+  // Collect task PRs that need status fetching (not already active in feed)
+  const projects = await ProjectRepository.findAll();
+  const projectsById = new Map(projects.map((p) => [p.id, p]));
+
+  const taskPrsToFetch: {
+    item: FeedItem;
+    linkedPr: LinkedPr;
+    providerId: string;
+  }[] = [];
+
+  for (const item of feedItems) {
+    if (item.source !== 'task') continue;
+
+    // Case 1: task has pullRequestId directly — check if we know the status
+    if (item.pullRequestId) {
+      if (activePrIds.has(item.pullRequestId)) {
+        // PR is active in the feed — mark it
+        item.workItemPrStatus = 'active';
+      } else {
+        // Need to fetch status — parse project/repo from the task's project config
+        const project = projectsById.get(item.projectId);
+        if (
+          project?.repoProviderId &&
+          project.repoProjectId &&
+          project.repoId
+        ) {
+          taskPrsToFetch.push({
+            item,
+            linkedPr: {
+              prId: item.pullRequestId,
+              projectId: project.repoProjectId,
+              repoId: project.repoId,
+            },
+            providerId: project.repoProviderId,
+          });
+        }
+      }
+      continue;
+    }
+
+    // Case 2: task has no pullRequestId — propagate from linked work items
+    if (item.workItemIds) {
+      for (const wiIdStr of item.workItemIds) {
+        const prInfo = workItemPrStatusMap.get(Number(wiIdStr));
+        if (prInfo) {
+          item.workItemPrStatus = prInfo.status;
+          item.workItemPrUrl = prInfo.url;
+          break;
+        }
+      }
+    }
+  }
+
+  // Fetch unknown task PR statuses grouped by provider
+  if (taskPrsToFetch.length > 0) {
+    const byProvider = new Map<
+      string,
+      { item: FeedItem; linkedPr: LinkedPr }[]
+    >();
+    for (const entry of taskPrsToFetch) {
+      if (!byProvider.has(entry.providerId)) {
+        byProvider.set(entry.providerId, []);
+      }
+      byProvider.get(entry.providerId)!.push(entry);
+    }
+
+    for (const [providerId, entries] of byProvider) {
+      try {
+        const statuses = await getPullRequestStatuses({
+          providerId,
+          linkedPrs: entries.map((e) => e.linkedPr),
+        });
+        for (const entry of entries) {
+          const status = statuses.get(entry.linkedPr.prId);
+          if (status) {
+            entry.item.workItemPrStatus = status.status;
+            if (status.url) {
+              entry.item.workItemPrUrl = status.url;
+            }
+          }
+        }
+      } catch (err) {
+        dbg.feed(
+          'Error fetching task PR statuses for provider %s: %O',
+          providerId,
+          err,
+        );
+      }
+    }
+  }
 
   const allItems = [
     ...feedItems,
@@ -568,9 +685,9 @@ async function fetchWorkItemFeedItems(
   const feedItems: FeedItem[] = [];
   const seen = new Set<string>();
 
-  // Collect linked PR IDs that we DON'T already know about (not in the active PR feed)
-  const unknownPrIdsByProvider = new Map<string, Set<number>>();
-  const workItemPrMap = new Map<number, number[]>(); // workItemId → prIds
+  // Collect linked PRs that we DON'T already know about (not in the active PR feed)
+  const unknownPrsByProvider = new Map<string, LinkedPr[]>();
+  const workItemPrMap = new Map<number, LinkedPr[]>(); // workItemId → linked PRs
 
   for (const project of wiProjects) {
     const key = `${project.workItemProviderId}:${project.workItemProjectName}`;
@@ -585,15 +702,15 @@ async function fetchWorkItemFeedItems(
 
       for (const wi of workItems) {
         // Track linked PRs — only queue unknown ones for fetching
-        if (wi.linkedPrIds && wi.linkedPrIds.length > 0) {
-          workItemPrMap.set(wi.id, wi.linkedPrIds);
+        if (wi.linkedPrs && wi.linkedPrs.length > 0) {
+          workItemPrMap.set(wi.id, wi.linkedPrs);
           const providerId = project.workItemProviderId!;
-          for (const prId of wi.linkedPrIds) {
-            if (!knownActivePrs.has(prId)) {
-              if (!unknownPrIdsByProvider.has(providerId)) {
-                unknownPrIdsByProvider.set(providerId, new Set());
+          for (const lpr of wi.linkedPrs) {
+            if (!knownActivePrs.has(lpr.prId)) {
+              if (!unknownPrsByProvider.has(providerId)) {
+                unknownPrsByProvider.set(providerId, []);
               }
-              unknownPrIdsByProvider.get(providerId)!.add(prId);
+              unknownPrsByProvider.get(providerId)!.push(lpr);
             }
           }
         }
@@ -628,16 +745,11 @@ async function fetchWorkItemFeedItems(
   // Only fetch statuses for PRs NOT already in the active PR feed (likely completed/abandoned)
   const allPrStatuses = new Map(knownActivePrs);
 
-  for (const [providerId, prIds] of unknownPrIdsByProvider) {
+  for (const [providerId, linkedPrs] of unknownPrsByProvider) {
     try {
-      dbg.feed(
-        'fetchWorkItemFeedItems: fetching %d unknown PR statuses for provider %s',
-        prIds.size,
+      const statuses = await getPullRequestStatuses({
         providerId,
-      );
-      const statuses = await getPullRequestStatusesByIds({
-        providerId,
-        prIds: [...prIds],
+        linkedPrs,
       });
       for (const [prId, status] of statuses) {
         allPrStatuses.set(prId, status);
@@ -654,14 +766,14 @@ async function fetchWorkItemFeedItems(
   // Enrich feed items with PR status (use the "best" status: completed > active > abandoned)
   for (const item of feedItems) {
     if (!item.workItemId) continue;
-    const prIds = workItemPrMap.get(item.workItemId);
-    if (!prIds || prIds.length === 0) continue;
+    const linkedPrs = workItemPrMap.get(item.workItemId);
+    if (!linkedPrs || linkedPrs.length === 0) continue;
 
     // Pick the most relevant PR status
     let bestStatus: 'active' | 'completed' | 'abandoned' | undefined;
     let bestUrl: string | undefined;
-    for (const prId of prIds) {
-      const prInfo = allPrStatuses.get(prId);
+    for (const lpr of linkedPrs) {
+      const prInfo = allPrStatuses.get(lpr.prId);
       if (!prInfo) continue;
       // Prefer completed (merged), then active, then abandoned
       if (
