@@ -240,6 +240,27 @@ export const MessageStream = memo(function MessageStream({
     [buildContextMenuItems, openContextMenu],
   );
 
+  // Context menu handler for individual entries inside subagents
+  const handleEntryContextMenu = useCallback(
+    (e: MouseEvent, entry: NormalizedEntry) => {
+      const items: ContextMenuItem[] = [];
+
+      if (taskId && entry.type === 'tool-use' && entry.name === 'bash') {
+        const command = (entry as ToolUseByName<'bash'>).input.command;
+        items.push(
+          addBashToPermissionsItem(handleAddBashToPermissions, command),
+        );
+      }
+
+      if (onShowRawMessage && entry.id) {
+        items.push(showRawMessageItem(onShowRawMessage, entry.id));
+      }
+
+      openContextMenu(e, items);
+    },
+    [taskId, onShowRawMessage, handleAddBashToPermissions, openContextMenu],
+  );
+
   if (messages.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-neutral-500">
@@ -301,6 +322,7 @@ export const MessageStream = memo(function MessageStream({
                   childEntries={displayMessage.childEntries}
                   onFilePathClick={onFilePathClick}
                   onToolDiffClick={onToolDiffClick}
+                  onEntryContextMenu={handleEntryContextMenu}
                 />
               </div>
             );

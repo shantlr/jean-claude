@@ -1,4 +1,5 @@
 import { Bot, Check, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import type { MouseEvent } from 'react';
 import { useState, useMemo } from 'react';
 
 import { formatModelName } from '@/hooks/use-model';
@@ -38,6 +39,7 @@ export function SubagentEntry({
   childEntries,
   onFilePathClick,
   onToolDiffClick,
+  onEntryContextMenu,
 }: {
   toolUse: NormalizedToolUse;
   childEntries: NormalizedEntry[];
@@ -51,6 +53,7 @@ export function SubagentEntry({
     oldString: string,
     newString: string,
   ) => void;
+  onEntryContextMenu?: (e: MouseEvent, entry: NormalizedEntry) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -210,12 +213,20 @@ export function SubagentEntry({
             </div>
           )}
           {displayEntries.map((entry, index) => (
-            <TimelineEntry
+            <div
               key={index}
-              entry={entry}
-              onFilePathClick={onFilePathClick}
-              onToolDiffClick={onToolDiffClick}
-            />
+              onContextMenu={
+                onEntryContextMenu
+                  ? (e) => onEntryContextMenu(e, entry)
+                  : undefined
+              }
+            >
+              <TimelineEntry
+                entry={entry}
+                onFilePathClick={onFilePathClick}
+                onToolDiffClick={onToolDiffClick}
+              />
+            </div>
           ))}
         </div>
       )}
