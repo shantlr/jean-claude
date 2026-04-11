@@ -17,6 +17,7 @@ import { NotificationCenterOverlay } from '@/features/notifications/ui-notificat
 import { PipelinesOverlay } from '@/features/pipelines/ui-pipelines-overlay';
 import { BacklogOverlay } from '@/features/project/ui-backlog-overlay';
 import { ProjectOverlay } from '@/features/project/ui-project-overlay';
+import { RunningCommandsOverlay } from '@/features/run-commands/ui-running-commands-overlay';
 import { SettingsOverlay } from '@/features/settings/ui-settings-overlay';
 import { useBacklogProjectId } from '@/hooks/use-backlog-project-id';
 import { Header } from '@/layout/ui-header';
@@ -222,6 +223,28 @@ function ProjectBacklogContainer() {
   );
 }
 
+function RunningCommandsContainer() {
+  const isOpen = useOverlaysStore(
+    (s) => s.activeOverlay === 'running-commands',
+  );
+  const toggle = useOverlaysStore((s) => s.toggle);
+  const close = useOverlaysStore((s) => s.close);
+
+  useCommands('running-commands-trigger', [
+    {
+      shortcut: 'cmd+shift+r',
+      label: 'Open Running Commands',
+      section: 'General',
+      handler: () => {
+        toggle('running-commands');
+      },
+    },
+  ]);
+
+  if (!isOpen) return null;
+  return <RunningCommandsOverlay onClose={() => close('running-commands')} />;
+}
+
 function PipelinesOverlayContainer() {
   const isOpen = useOverlaysStore((s) => s.activeOverlay === 'pipelines');
   const toggle = useOverlaysStore((s) => s.toggle);
@@ -289,6 +312,7 @@ function RootLayout() {
       <BackgroundJobsContainer />
       <SettingsContainer />
       <NotificationCenterContainer />
+      <RunningCommandsContainer />
       <PipelinesOverlayContainer />
 
       <div className="flex h-full w-full flex-1 flex-col overflow-hidden">
