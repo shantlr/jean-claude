@@ -11,7 +11,8 @@ import {
   Check,
   FolderArchive,
 } from 'lucide-react';
-import { useState, useCallback, useEffect } from 'react';
+import type { Ref } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 import { Button } from '@/common/ui/button';
 import { Chip } from '@/common/ui/chip';
@@ -239,14 +240,32 @@ function JsonObject({
 
 // --- Debug Message Card ---
 
-function DebugMessageCard({ message }: { message: DebugMessageWithRawData }) {
-  const [expanded, setExpanded] = useState(false);
+function DebugMessageCard({
+  message,
+  isHighlighted,
+  defaultExpanded = false,
+  cardRef,
+}: {
+  message: DebugMessageWithRawData;
+  isHighlighted?: boolean;
+  defaultExpanded?: boolean;
+  cardRef?: Ref<HTMLDivElement>;
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
 
   const hasRaw = message.rawData !== null;
   const hasNormalized = message.normalizedData !== null;
 
   return (
-    <div className="flex w-full flex-col overflow-hidden rounded-md border border-white/[0.06] bg-neutral-800/30">
+    <div
+      ref={cardRef}
+      className={clsx(
+        'flex w-full flex-col overflow-hidden rounded-md border bg-neutral-800/30',
+        isHighlighted
+          ? 'border-blue-500/50 ring-1 ring-blue-500/30'
+          : 'border-white/[0.06]',
+      )}
+    >
       {/* Card header */}
       <Button
         onClick={() => setExpanded(!expanded)}
@@ -351,10 +370,12 @@ function DebugMessageCard({ message }: { message: DebugMessageWithRawData }) {
 export function DebugMessagesPane({
   taskId,
   stepId,
+  scrollToEntryId,
   onClose,
 }: {
   taskId: string;
   stepId: string | null;
+  scrollToEntryId?: string;
   onClose: () => void;
 }) {
   const {
@@ -365,6 +386,52 @@ export function DebugMessagesPane({
   } = useMessagesWithRawData({ taskId, stepId });
 
   const [searchFilter, setSearchFilter] = useState('');
+  const [highlightedEntryId, setHighlightedEntryId] = useState<string | null>(
+    scrollToEntryId ?? null,
+  );
+  const scrollTargetRef = useRef<HTMLDivElement>(null);
+  const prevScrollToEntryIdRef = useRef(scrollToEntryId);
+
+  // Reset highlight when scrollToEntryId changes (e.g., right-clicking a different message)
+  if (prevScrollToEntryIdRef.current !== scrollToEntryId) {
+    prevScrollToEntryIdRef.current = scrollToEntryId;
+    setHighlightedEntryId(scrollToEntryId ?? null);
+  }
+
+  // Scroll to target entry when data loads or scrollToEntryId changes
+  useEffect(() => {
+    if (!scrollToEntryId || !debugMessages) {
+      return;
+    }
+
+    // Find the matching message (check both id and toolId)
+    const targetIndex = debugMessages.findIndex((msg) => {
+      const normalized = msg.normalizedData as Record<string, unknown> | null;
+      return (
+        normalized?.id === scrollToEntryId ||
+        normalized?.toolId === scrollToEntryId
+      );
+    });
+
+    if (targetIndex === -1) return;
+
+    // Wait for render, then scroll
+    const frame = requestAnimationFrame(() => {
+      scrollTargetRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    });
+
+    // Clear highlight after a few seconds
+    const timer = setTimeout(() => {
+      setHighlightedEntryId(null);
+    }, 3000);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+    };
+  }, [scrollToEntryId, debugMessages]);
   const unloadStep = useTaskMessagesStore((s) => s.unloadStep);
 
   const reprocessMutation = useMutation({
@@ -563,12 +630,25 @@ export function DebugMessagesPane({
           </p>
         )}
 
-        {filteredMessages?.map((msg, index) => (
-          <DebugMessageCard
-            key={`${msg.messageIndex}-${index}`}
-            message={msg}
-          />
-        ))}
+        {filteredMessages?.map((msg, index) => {
+          const normalized = msg.normalizedData as Record<
+            string,
+            unknown
+          > | null;
+          const isTarget =
+            !!highlightedEntryId &&
+            (normalized?.id === highlightedEntryId ||
+              normalized?.toolId === highlightedEntryId);
+          return (
+            <DebugMessageCard
+              key={`${msg.messageIndex}-${index}`}
+              message={msg}
+              isHighlighted={isTarget}
+              defaultExpanded={isTarget}
+              cardRef={isTarget ? scrollTargetRef : undefined}
+            />
+          );
+        })}
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import type { MouseEvent } from 'react';
 import {
   memo,
   useCallback,
@@ -18,6 +19,7 @@ import type {
   NormalizedEntry,
   NormalizedPermissionRequest,
 } from '@shared/normalized-message-v2';
+import type { ToolUseByName } from '@shared/normalized-message-v2';
 import type { InteractionMode } from '@shared/types';
 
 import { AddPermissionModal } from '../ui-add-permission-modal';
@@ -26,6 +28,12 @@ import { QuestionOptions } from '../ui-question-options';
 
 import { mergeSkillMessages } from './message-merger';
 import { computePromptAndResultDurations } from './prompt-duration';
+import {
+  addBashToPermissionsItem,
+  showRawMessageItem,
+  useMessageContextMenu,
+} from './ui-message-context-menu';
+import type { ContextMenuItem } from './ui-message-context-menu';
 import { QueuedPromptEntry } from './ui-queued-prompt-entry';
 import { SkillEntry } from './ui-skill-entry';
 import { SubagentEntry } from './ui-subagent-entry';
@@ -79,6 +87,7 @@ export const MessageStream = memo(function MessageStream({
   onFilePathClick,
   onToolDiffClick,
   onCancelQueuedPrompt,
+  onShowRawMessage,
   bottomPadding = 0,
   pendingPermission,
   pendingQuestion,
@@ -99,6 +108,8 @@ export const MessageStream = memo(function MessageStream({
     newString: string,
   ) => void;
   onCancelQueuedPrompt?: (promptId: string) => void;
+  /** Callback when user wants to see a message's raw data in the debug pane */
+  onShowRawMessage?: (entryId: string) => void;
   /** Extra bottom padding (px) so content can scroll behind a floating footer */
   bottomPadding?: number;
   /** Permission request to render inline at the bottom of the stream */
@@ -180,6 +191,55 @@ export const MessageStream = memo(function MessageStream({
     }
   }, [displayMessages.length, queuedPrompts.length, hasPendingBanner]);
 
+  const { openMenu: openContextMenu, portal: contextMenuPortal } =
+    useMessageContextMenu();
+
+  // Build context menu items for a display message
+  const buildContextMenuItems = useCallback(
+    (displayMessage: (typeof displayMessages)[number]): ContextMenuItem[] => {
+      const items: ContextMenuItem[] = [];
+
+      // "Add to permissions" for bash tool entries
+      if (
+        taskId &&
+        displayMessage.kind === 'entry' &&
+        displayMessage.entry.type === 'tool-use' &&
+        displayMessage.entry.name === 'bash'
+      ) {
+        const command = (displayMessage.entry as ToolUseByName<'bash'>).input
+          .command;
+        items.push(
+          addBashToPermissionsItem(handleAddBashToPermissions, command),
+        );
+      }
+
+      // "Show in Raw Messages" for all entries
+      if (onShowRawMessage) {
+        let entryId: string | null = null;
+        if (displayMessage.kind === 'entry') entryId = displayMessage.entry.id;
+        else if (displayMessage.kind === 'skill')
+          entryId = displayMessage.skillToolUse.toolId;
+        else if (displayMessage.kind === 'subagent')
+          entryId = displayMessage.toolUse.toolId;
+
+        if (entryId) {
+          items.push(showRawMessageItem(onShowRawMessage, entryId));
+        }
+      }
+
+      return items;
+    },
+    [taskId, onShowRawMessage, handleAddBashToPermissions],
+  );
+
+  const handleContextMenu = useCallback(
+    (e: MouseEvent, displayMessage: (typeof displayMessages)[number]) => {
+      const items = buildContextMenuItems(displayMessage);
+      openContextMenu(e, items);
+    },
+    [buildContextMenuItems, openContextMenu],
+  );
+
   if (messages.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-neutral-500">
@@ -195,6 +255,7 @@ export const MessageStream = memo(function MessageStream({
       className="h-full overflow-auto"
       style={bottomPadding > 0 ? { paddingBottom: bottomPadding } : undefined}
     >
+      {contextMenuPortal}
       <TimelinePromptNavigator
         scrollContainerRef={scrollContainerRef}
         displayMessages={displayMessages}
@@ -208,6 +269,7 @@ export const MessageStream = memo(function MessageStream({
             return (
               <div
                 key={index}
+                onContextMenu={(e) => handleContextMenu(e, displayMessage)}
                 {...(promptIdx !== undefined
                   ? { 'data-prompt-index': promptIdx }
                   : {})}
@@ -230,19 +292,27 @@ export const MessageStream = memo(function MessageStream({
           }
           if (displayMessage.kind === 'subagent') {
             return (
-              <SubagentEntry
+              <div
                 key={index}
-                toolUse={displayMessage.toolUse}
-                childEntries={displayMessage.childEntries}
-                onFilePathClick={onFilePathClick}
-                onToolDiffClick={onToolDiffClick}
-              />
+                onContextMenu={(e) => handleContextMenu(e, displayMessage)}
+              >
+                <SubagentEntry
+                  toolUse={displayMessage.toolUse}
+                  childEntries={displayMessage.childEntries}
+                  onFilePathClick={onFilePathClick}
+                  onToolDiffClick={onToolDiffClick}
+                />
+              </div>
             );
           }
           const promptIdx = promptIndexMap.get(index);
           if (promptIdx !== undefined) {
             return (
-              <div key={index} data-prompt-index={promptIdx}>
+              <div
+                key={index}
+                data-prompt-index={promptIdx}
+                onContextMenu={(e) => handleContextMenu(e, displayMessage)}
+              >
                 <TimelineEntry
                   entry={displayMessage.entry}
                   resultDurationMs={resultDurationMsByEntryId.get(
@@ -250,22 +320,24 @@ export const MessageStream = memo(function MessageStream({
                   )}
                   onFilePathClick={onFilePathClick}
                   onToolDiffClick={onToolDiffClick}
-                  onAddBashToPermissions={handleAddBashToPermissions}
                 />
               </div>
             );
           }
           return (
-            <TimelineEntry
+            <div
               key={index}
-              entry={displayMessage.entry}
-              resultDurationMs={resultDurationMsByEntryId.get(
-                displayMessage.entry.id,
-              )}
-              onFilePathClick={onFilePathClick}
-              onToolDiffClick={onToolDiffClick}
-              onAddBashToPermissions={handleAddBashToPermissions}
-            />
+              onContextMenu={(e) => handleContextMenu(e, displayMessage)}
+            >
+              <TimelineEntry
+                entry={displayMessage.entry}
+                resultDurationMs={resultDurationMsByEntryId.get(
+                  displayMessage.entry.id,
+                )}
+                onFilePathClick={onFilePathClick}
+                onToolDiffClick={onToolDiffClick}
+              />
+            </div>
           );
         })}
         {isRunning && (

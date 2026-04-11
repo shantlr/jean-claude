@@ -22,6 +22,7 @@ export type RightPane =
     }
   | {
       type: 'debugMessages';
+      scrollToEntryId?: string;
     }
   | {
       type: 'fileExplorer';
@@ -567,7 +568,11 @@ export function useTaskState(taskId: string) {
   );
 
   const openDebugMessages = useCallback(
-    () => setTaskRightPaneAction(taskId, { type: 'debugMessages' }),
+    (scrollToEntryId?: string) =>
+      setTaskRightPaneAction(taskId, {
+        type: 'debugMessages',
+        scrollToEntryId,
+      }),
     [taskId, setTaskRightPaneAction],
   );
 

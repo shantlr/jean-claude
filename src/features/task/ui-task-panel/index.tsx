@@ -1178,6 +1178,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               onFilePathClick={handleFilePathClick}
               onToolDiffClick={handleToolDiffClick}
               onCancelQueuedPrompt={cancelQueuedPrompt}
+              onShowRawMessage={openDebugMessages}
               bottomPadding={footerHeight}
               pendingPermission={permissionProps}
               pendingQuestion={questionProps}
@@ -1331,6 +1332,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         <DebugMessagesPane
           taskId={taskId}
           stepId={activeStepId}
+          scrollToEntryId={rightPane.scrollToEntryId}
           onClose={closeRightPane}
         />
       )}

@@ -7,15 +7,11 @@ import {
   Copy,
   Loader2,
   PackageOpen,
-  Shield,
 } from 'lucide-react';
 import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
 
-import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
-import { useRegisterOverlay } from '@/common/context/overlay';
 import { formatNumber } from '@/lib/number';
 import { formatDuration } from '@/lib/time';
 import type {
@@ -536,72 +532,10 @@ function CompactDiffPreview({
   );
 }
 
-// Estimated context menu dimensions for viewport clamping
-const CONTEXT_MENU_WIDTH = 200;
-const CONTEXT_MENU_HEIGHT = 36;
-
-// Context menu for bash tool entries
-function BashContextMenu({
-  x,
-  y,
-  onAddToPermissions,
-  onClose,
-}: {
-  x: number;
-  y: number;
-  onAddToPermissions: () => void;
-  onClose: () => void;
-}) {
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
-  // Clamp position to viewport
-  const clampedX = Math.min(x, window.innerWidth - CONTEXT_MENU_WIDTH);
-  const clampedY = Math.min(y, window.innerHeight - CONTEXT_MENU_HEIGHT);
-
-  useRegisterOverlay({
-    id: 'bash-context-menu',
-    refs: [menuRef],
-    onClose,
-    enabled: true,
-  });
-
-  useRegisterKeyboardBindings('bash-context-menu', {
-    escape: () => {
-      onClose();
-      return true;
-    },
-  });
-
-  return createPortal(
-    <div
-      ref={menuRef}
-      role="menu"
-      className="bg-surface fixed z-50 min-w-48 overflow-y-auto rounded-xl py-1 shadow-lg"
-      style={{ top: clampedY, left: clampedX }}
-    >
-      <button
-        role="menuitem"
-        tabIndex={-1}
-        onClick={() => {
-          onAddToPermissions();
-          onClose();
-        }}
-        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-neutral-300 transition-colors hover:bg-neutral-700 focus:bg-neutral-700 focus:outline-none"
-        autoFocus
-      >
-        <Shield className="h-3.5 w-3.5 shrink-0" />
-        <span className="flex-1">Add to permissions…</span>
-      </button>
-    </div>,
-    document.body,
-  );
-}
-
 // Tool entry with expandable input/output
 function ToolEntry({
   toolUse,
   onToolDiffClick,
-  onAddBashToPermissions,
 }: {
   toolUse: NormalizedToolUse;
   onToolDiffClick?: (
@@ -609,7 +543,6 @@ function ToolEntry({
     oldString: string,
     newString: string,
   ) => void;
-  onAddBashToPermissions?: (command: string) => void;
 }) {
   const summary = getToolSummary(toolUse);
   const hasResult = toolUse.result !== undefined;
@@ -633,25 +566,6 @@ function ToolEntry({
   const formattedInput = formatToolInput(toolUse);
   const formattedResult = formatToolResult(toolUse);
   const [expandContent, setExpandContent] = useState(false);
-
-  // Context menu state for bash entries
-  const isBashTool = toolUse.name === 'bash';
-  const bashCommand = isBashTool
-    ? (toolUse as ToolUseByName<'bash'>).input.command
-    : '';
-  const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
-
-  const handleContextMenu = useCallback(
-    (e: MouseEvent) => {
-      if (!isBashTool || !onAddBashToPermissions) return;
-      e.preventDefault();
-      setContextMenu({ x: e.clientX, y: e.clientY });
-    },
-    [isBashTool, onAddBashToPermissions],
-  );
 
   // Custom rendering for TodoWrite
   if (toolUse.name === 'todo-write') {
@@ -844,24 +758,14 @@ function ToolEntry({
   );
 
   return (
-    <div onContextMenu={handleContextMenu}>
-      <DotEntry
-        type="tool"
-        isError={isError}
-        isPending={isPending}
-        summary={summary}
-        expandedContent={expandedContent}
-        codeStyle={codeStyle}
-      />
-      {contextMenu && (
-        <BashContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onAddToPermissions={() => onAddBashToPermissions?.(bashCommand)}
-          onClose={() => setContextMenu(null)}
-        />
-      )}
-    </div>
+    <DotEntry
+      type="tool"
+      isError={isError}
+      isPending={isPending}
+      summary={summary}
+      expandedContent={expandedContent}
+      codeStyle={codeStyle}
+    />
   );
 }
 
@@ -1081,7 +985,6 @@ export function TimelineEntry({
   resultDurationMs,
   onFilePathClick,
   onToolDiffClick,
-  onAddBashToPermissions,
 }: {
   entry: NormalizedEntry;
   resultDurationMs?: number;
@@ -1095,7 +998,6 @@ export function TimelineEntry({
     oldString: string,
     newString: string,
   ) => void;
-  onAddBashToPermissions?: (command: string) => void;
 }) {
   switch (entry.type) {
     case 'user-prompt':
@@ -1110,13 +1012,7 @@ export function TimelineEntry({
     case 'tool-use':
       // Sub-agent tool-use entries are rendered as SubagentEntry in message stream
       if (entry.name === 'sub-agent') return null;
-      return (
-        <ToolEntry
-          toolUse={entry}
-          onToolDiffClick={onToolDiffClick}
-          onAddBashToPermissions={onAddBashToPermissions}
-        />
-      );
+      return <ToolEntry toolUse={entry} onToolDiffClick={onToolDiffClick} />;
     case 'result':
       return (
         <ResultEntry
