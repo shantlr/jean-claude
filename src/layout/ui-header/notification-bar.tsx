@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 
 import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
+import { useDebugLogsListener } from '@/stores/debug-logs';
 import {
   initNotificationsStore,
   useNotificationsStore,
@@ -13,6 +14,8 @@ export function NotificationBar() {
   useEffect(() => {
     initNotificationsStore();
   }, []);
+
+  useDebugLogsListener();
 
   const notifications = useNotificationsStore((s) => s.notifications);
   const unreadCount = useNotificationsStore((s) => s.unreadCount);

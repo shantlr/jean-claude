@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 import { AGENT_CHANNELS } from '@shared/agent-types';
+import type { DebugLogEntry } from '@shared/debug-log-types';
 import type {
   GlobalPrompt,
   GlobalPromptResponse,
@@ -727,6 +728,14 @@ contextBridge.exposeInMainWorld('api', {
   },
   system: {
     getMemoryUsage: () => ipcRenderer.invoke('system:getMemoryUsage'),
+  },
+  debugLogs: {
+    onBatch: (callback: (entries: DebugLogEntry[]) => void) => {
+      const handler = (_: unknown, entries: DebugLogEntry[]) =>
+        callback(entries);
+      ipcRenderer.on('debug:log-batch', handler);
+      return () => ipcRenderer.removeListener('debug:log-batch', handler);
+    },
   },
 });
 console.log('Preload script loaded');

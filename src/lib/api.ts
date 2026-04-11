@@ -13,6 +13,7 @@ import type {
   AzureDevOpsCommentThread,
   AzureDevOpsComment,
 } from '@shared/azure-devops-types';
+import type { DebugLogEntry } from '@shared/debug-log-types';
 import type { FeedItem, FeedNote, ProjectPriority } from '@shared/feed-types';
 import type {
   GlobalPrompt,
@@ -972,6 +973,9 @@ export interface Api {
       };
     }>;
   };
+  debugLogs: {
+    onBatch: (callback: (entries: DebugLogEntry[]) => void) => () => void;
+  };
 }
 
 declare global {
@@ -1441,5 +1445,8 @@ export const api: Api = hasWindowApi
             privateBytes: 0,
           },
         }),
+      },
+      debugLogs: {
+        onBatch: () => () => {},
       },
     } as Api);
