@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { IconButton } from '@/common/ui/icon-button';
+import { Kbd } from '@/common/ui/kbd';
 import { useProjects } from '@/hooks/use-projects';
 import { useTasks } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
@@ -28,14 +29,6 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [stoppingKeys, setStoppingKeys] = useState<Set<string>>(new Set());
   const addToast = useToastStore((s) => s.addToast);
-
-  useCommands('running-commands-overlay', [
-    {
-      label: 'Close Running Commands Overlay',
-      shortcut: 'escape',
-      handler: () => onClose(),
-    },
-  ]);
 
   const runningCommands = useMemo(() => {
     const result: RunningCommand[] = [];
@@ -109,6 +102,63 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
     [addToast],
   );
 
+  const handleStopSelected = useCallback(() => {
+    if (!selectedCommand) return;
+    const key = makeKey(
+      selectedCommand.taskId,
+      selectedCommand.commandStatus.id,
+    );
+    if (stoppingKeys.has(key)) return;
+    void handleStop(selectedCommand.taskId, selectedCommand.commandStatus.id);
+  }, [selectedCommand, stoppingKeys, handleStop]);
+
+  const handleArrowNavigation = useCallback(
+    (direction: 'up' | 'down') => {
+      if (runningCommands.length === 0) return;
+      const currentIndex = runningCommands.findIndex(
+        (c) => makeKey(c.taskId, c.commandStatus.id) === selectedKey,
+      );
+      let nextIndex: number;
+      if (direction === 'up') {
+        nextIndex =
+          currentIndex <= 0 ? runningCommands.length - 1 : currentIndex - 1;
+      } else {
+        nextIndex =
+          currentIndex >= runningCommands.length - 1 ? 0 : currentIndex + 1;
+      }
+      const next = runningCommands[nextIndex];
+      setSelectedKey(makeKey(next.taskId, next.commandStatus.id));
+    },
+    [runningCommands, selectedKey],
+  );
+
+  useCommands('running-commands-overlay', [
+    {
+      label: 'Close Running Commands Overlay',
+      shortcut: 'escape',
+      handler: () => onClose(),
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Stop Selected Command',
+      shortcut: 'cmd+backspace',
+      handler: handleStopSelected,
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Select Previous Command',
+      shortcut: 'up',
+      handler: () => handleArrowNavigation('up'),
+      hideInCommandPalette: true,
+    },
+    {
+      label: 'Select Next Command',
+      shortcut: 'down',
+      handler: () => handleArrowNavigation('down'),
+      hideInCommandPalette: true,
+    },
+  ]);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-[10vh]"
@@ -164,7 +214,7 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
                     role="button"
                     tabIndex={0}
                     className={clsx(
-                      'group flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left transition-colors',
+                      'group flex w-full cursor-pointer items-start gap-2 rounded-lg px-3 py-2 text-left transition-colors',
                       isSelected
                         ? 'bg-white/10 text-neutral-100'
                         : 'text-neutral-400 hover:bg-white/5 hover:text-neutral-200',
@@ -191,7 +241,7 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
                     </div>
                     <button
                       className={clsx(
-                        'mt-0.5 shrink-0 rounded p-1 transition-colors',
+                        'mt-0.5 shrink-0 cursor-pointer rounded p-1 transition-colors',
                         isStopping
                           ? 'cursor-not-allowed text-neutral-600'
                           : 'text-neutral-600 hover:bg-red-500/20 hover:text-red-400',
@@ -239,6 +289,23 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
             </div>
           </div>
         )}
+
+        {/* Footer with shortcut hints */}
+        <div className="flex items-center gap-4 border-t border-white/10 px-4 py-2">
+          <div className="flex items-center gap-1.5 text-[11px] text-neutral-500">
+            <Kbd shortcut="up" />
+            <Kbd shortcut="down" />
+            <span>Navigate</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-[11px] text-neutral-500">
+            <Kbd shortcut="cmd+backspace" />
+            <span>Stop</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-[11px] text-neutral-500">
+            <Kbd shortcut="escape" />
+            <span>Close</span>
+          </div>
+        </div>
       </div>
     </div>
   );
