@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { useCommands } from '@/common/hooks/use-commands';
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { Button } from '@/common/ui/button';
 import { Select } from '@/common/ui/select';
@@ -234,6 +235,19 @@ export function WorktreeActions({
         addToast({ type: 'error', message });
       });
   };
+
+  useCommands('worktree-actions', [
+    {
+      label: 'Merge Worktree',
+      shortcut: 'cmd+shift+m',
+      section: 'Task',
+      handler: () => {
+        if (canMerge) {
+          setIsMergeConfirmOpen(true);
+        }
+      },
+    },
+  ]);
 
   return (
     <div className="flex flex-col gap-3 border-t border-neutral-700 p-3">
