@@ -3,17 +3,25 @@ import { parse as shellParse } from 'shell-quote';
 /**
  * Strip shell output redirections (e.g. `2>&1`, `>/dev/null`) from a command
  * so that `shell-quote` can parse the remaining operators cleanly.
+ *
+ * The target-file portion uses `[^\s;|&]+` instead of `\S+` so that shell
+ * operators (`;`, `|`, `&&`, `||`) adjacent to the target are preserved.
  */
 export function stripRedirections(command: string): string {
+  // Match a redirection target: one or more chars that are NOT whitespace,
+  // semicolons, pipes, or ampersands.  This ensures operators like `;` and
+  // `&&` that follow a target (e.g. `>/dev/null; echo`) are not consumed.
+  const T = '[^\\s;|&]+';
+
   return command
     .replace(/\d*>&\d+/g, '') // 2>&1, >&2
-    .replace(/&>>\s*\S+/g, '') // &>>/dev/null
-    .replace(/&>\s*\S+/g, '') // &>/dev/null
-    .replace(/\d*>>\s*\S+/g, '') // 2>>/tmp/err, >>file
-    .replace(/\d*>\s*\S+/g, '') // 2>/dev/null, >/dev/null
-    .replace(/<<<\s*\S+/g, '') // <<<string
-    .replace(/<<\s*\S+/g, '') // <<EOF
-    .replace(/<\s*\S+/g, '') // <input
+    .replace(new RegExp(`&>>\\s*${T}`, 'g'), '') // &>>/dev/null
+    .replace(new RegExp(`&>\\s*${T}`, 'g'), '') // &>/dev/null
+    .replace(new RegExp(`\\d*>>\\s*${T}`, 'g'), '') // 2>>/tmp/err, >>file
+    .replace(new RegExp(`\\d*>\\s*${T}`, 'g'), '') // 2>/dev/null, >/dev/null
+    .replace(new RegExp(`<<<\\s*${T}`, 'g'), '') // <<<string
+    .replace(new RegExp(`<<\\s*${T}`, 'g'), '') // <<EOF
+    .replace(new RegExp(`<\\s*${T}`, 'g'), '') // <input
     .replace(/\s+/g, ' ') // collapse whitespace
     .trim();
 }

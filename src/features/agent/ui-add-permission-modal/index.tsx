@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import { useToastStore } from '@/stores/toasts';
 import { parseCompoundCommand } from '@shared/shell-parse';
 
-type PermissionScope = 'project' | 'worktree';
+type PermissionScope = 'project' | 'worktree' | 'global';
 
 export function AddPermissionModal({
   isOpen,
@@ -66,9 +66,11 @@ export function AddPermissionModal({
     setIsSubmitting(true);
     try {
       const addFn =
-        scope === 'worktree'
-          ? api.tasks.allowForProjectWorktrees
-          : api.tasks.allowForProject;
+        scope === 'global'
+          ? api.tasks.allowGlobally
+          : scope === 'worktree'
+            ? api.tasks.allowForProjectWorktrees
+            : api.tasks.allowForProject;
 
       await Promise.all(
         toAdd.map((entry) =>
@@ -155,6 +157,17 @@ export function AddPermissionModal({
                 Worktree
               </label>
             )}
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-300">
+              <input
+                type="radio"
+                name="permission-scope"
+                value="global"
+                checked={scope === 'global'}
+                onChange={() => setScope('global')}
+                className="h-3.5 w-3.5 border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500/30"
+              />
+              Global
+            </label>
           </div>
         </div>
 
