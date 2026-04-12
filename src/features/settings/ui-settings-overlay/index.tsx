@@ -49,6 +49,7 @@ const GLOBAL_MENU_ITEMS: { id: GlobalMenuItem; label: string }[] = [
 
 const PROJECT_MENU_ITEMS: { id: ProjectSettingsMenuItem; label: string }[] = [
   { id: 'details', label: 'Details' },
+  { id: 'permissions', label: 'Permissions' },
   { id: 'autocomplete', label: 'Autocomplete' },
   { id: 'integrations', label: 'Integrations' },
   { id: 'pipelines', label: 'Pipelines' },

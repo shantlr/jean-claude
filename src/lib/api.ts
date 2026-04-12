@@ -631,6 +631,29 @@ export interface Api {
       action: import('@shared/permission-types').PermissionAction,
     ) => Promise<import('@shared/permission-types').PermissionScope>;
   };
+  projectPermissions: {
+    get: (
+      projectPath: string,
+    ) => Promise<import('@shared/permission-types').PermissionScope>;
+    addRule: (
+      projectPath: string,
+      toolName: string,
+      input: Record<string, unknown>,
+      action?: import('@shared/permission-types').PermissionAction,
+    ) => Promise<import('@shared/permission-types').PermissionScope>;
+    removeRule: (
+      projectPath: string,
+      tool: string,
+      pattern?: string,
+    ) => Promise<import('@shared/permission-types').PermissionScope>;
+    editRule: (
+      projectPath: string,
+      tool: string,
+      oldPattern: string | undefined,
+      newPattern: string | undefined,
+      action: import('@shared/permission-types').PermissionAction,
+    ) => Promise<import('@shared/permission-types').PermissionScope>;
+  };
   shell: {
     openInEditor: (dirPath: string) => Promise<void>;
     getAvailableEditors: () => Promise<{ id: string; available: boolean }[]>;
@@ -1197,6 +1220,12 @@ export const api: Api = hasWindowApi
       globalPermissions: {
         get: async () => ({}),
         set: async () => {},
+        addRule: async () => ({}),
+        removeRule: async () => ({}),
+        editRule: async () => ({}),
+      },
+      projectPermissions: {
+        get: async () => ({}),
         addRule: async () => ({}),
         removeRule: async () => ({}),
         editRule: async () => ({}),

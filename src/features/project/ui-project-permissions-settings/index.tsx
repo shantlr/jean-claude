@@ -5,18 +5,22 @@ import {
   type FlatRule,
 } from '@/features/common/ui-permissions-editor';
 import {
-  useGlobalPermissions,
-  useAddGlobalPermissionRule,
-  useRemoveGlobalPermissionRule,
-  useEditGlobalPermissionRule,
-} from '@/hooks/use-global-permissions';
+  useProjectPermissions,
+  useAddProjectPermissionRule,
+  useRemoveProjectPermissionRule,
+  useEditProjectPermissionRule,
+} from '@/hooks/use-project-permissions';
 import type { PermissionAction } from '@shared/permission-types';
 
-export function GlobalPermissionsSettings() {
-  const { data: permissions, isLoading } = useGlobalPermissions();
-  const addRule = useAddGlobalPermissionRule();
-  const removeRule = useRemoveGlobalPermissionRule();
-  const editRule = useEditGlobalPermissionRule();
+export function ProjectPermissionsSettings({
+  projectPath,
+}: {
+  projectPath: string;
+}) {
+  const { data: permissions, isLoading } = useProjectPermissions(projectPath);
+  const addRule = useAddProjectPermissionRule(projectPath);
+  const removeRule = useRemoveProjectPermissionRule(projectPath);
+  const editRule = useEditProjectPermissionRule(projectPath);
 
   const handleAdd = useCallback(
     async (params: {
@@ -31,10 +35,17 @@ export function GlobalPermissionsSettings() {
 
   const handleRemove = useCallback(
     (rule: FlatRule) => {
-      removeRule.mutate({
-        tool: rule.tool,
-        pattern: rule.pattern ?? undefined,
-      });
+      removeRule.mutate(
+        {
+          tool: rule.tool,
+          pattern: rule.pattern ?? undefined,
+        },
+        {
+          onError: (err: Error) => {
+            console.error('Failed to remove permission rule:', err.message);
+          },
+        },
+      );
     },
     [removeRule],
   );
@@ -63,9 +74,9 @@ export function GlobalPermissionsSettings() {
       onRemove={handleRemove}
       onEdit={handleEdit}
       title="Permissions"
-      description="Global permission rules applied to all projects. Project-level rules take precedence over global rules."
-      emptyTitle="No global permission rules configured."
-      emptyDescription="Add a rule above to control tool access across all projects."
+      description="Project-level permission rules. These take precedence over global rules."
+      emptyTitle="No project permission rules configured."
+      emptyDescription="Add a rule above to control tool access for this project."
     />
   );
 }

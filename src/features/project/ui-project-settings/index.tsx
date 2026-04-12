@@ -18,6 +18,7 @@ import {
 } from '@/features/agent/ui-backend-selector';
 import { SLOT_DEFINITIONS } from '@/features/common/ui-ai-skill-slot';
 import { ProjectMcpSettings } from '@/features/project/ui-project-mcp-settings';
+import { ProjectPermissionsSettings } from '@/features/project/ui-project-permissions-settings';
 import { ProjectPipelineSettings } from '@/features/project/ui-project-pipeline-settings';
 import { ProjectSkillsSettings } from '@/features/project/ui-project-skills-settings';
 import { RepoLink } from '@/features/project/ui-repo-link';
@@ -51,6 +52,7 @@ import { ProtectedBranchesInput } from './protected-branches-input';
 
 export type ProjectSettingsMenuItem =
   | 'details'
+  | 'permissions'
   | 'autocomplete'
   | 'integrations'
   | 'pipelines'
@@ -408,6 +410,9 @@ export function ProjectSettings({
           </div>
         </div>
       );
+      break;
+    case 'permissions':
+      content = <ProjectPermissionsSettings projectPath={project.path} />;
       break;
     case 'autocomplete':
       content = (

@@ -344,6 +344,45 @@ contextBridge.exposeInMainWorld('api', {
         action,
       ),
   },
+  projectPermissions: {
+    get: (projectPath: string) =>
+      ipcRenderer.invoke('projectPermissions:get', projectPath),
+    addRule: (
+      projectPath: string,
+      toolName: string,
+      input: Record<string, unknown>,
+      action?: import('@shared/permission-types').PermissionAction,
+    ) =>
+      ipcRenderer.invoke(
+        'projectPermissions:addRule',
+        projectPath,
+        toolName,
+        input,
+        action,
+      ),
+    removeRule: (projectPath: string, tool: string, pattern?: string) =>
+      ipcRenderer.invoke(
+        'projectPermissions:removeRule',
+        projectPath,
+        tool,
+        pattern,
+      ),
+    editRule: (
+      projectPath: string,
+      tool: string,
+      oldPattern: string | undefined,
+      newPattern: string | undefined,
+      action: import('@shared/permission-types').PermissionAction,
+    ) =>
+      ipcRenderer.invoke(
+        'projectPermissions:editRule',
+        projectPath,
+        tool,
+        oldPattern,
+        newPattern,
+        action,
+      ),
+  },
   fs: {
     readPackageJson: (dirPath: string) =>
       ipcRenderer.invoke('fs:readPackageJson', dirPath),

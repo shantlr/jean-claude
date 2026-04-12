@@ -2,6 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 
 import picomatch from 'picomatch';
+import writeFileAtomic from 'write-file-atomic';
 
 import { parseCompoundCommand, stripRedirections } from '@shared/shell-parse';
 
@@ -208,6 +209,7 @@ export async function readSettings(
 /**
  * Writes the `.jean-claude/settings.local.json` file.
  * Creates the `.jean-claude` directory if needed.
+ * Uses atomic writes to prevent data corruption on crash.
  */
 export async function writeSettings(
   rootDir: string,
@@ -216,11 +218,9 @@ export async function writeSettings(
   const filePath = getSettingsPath(rootDir);
   const dir = path.dirname(filePath);
   await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(
-    filePath,
-    JSON.stringify(settings, null, 2) + '\n',
-    'utf-8',
-  );
+  await writeFileAtomic(filePath, JSON.stringify(settings, null, 2) + '\n', {
+    encoding: 'utf-8',
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -410,7 +410,9 @@ function evaluateCompoundPermission(
  * specific command. Bare bash must never be allowed.
  */
 function isBareBash(tool: string, pattern: string): boolean {
-  return tool.toLowerCase() === 'bash' && (pattern === '*' || pattern === '');
+  const t = tool.toLowerCase();
+  const p = pattern.trim();
+  return t === 'bash' && (p === '*' || p === '' || p === '**');
 }
 
 /**
@@ -578,6 +580,198 @@ export async function addWorktreePermission(
   });
 
   await writeSettings(projectPath, settings);
+}
+
+// ---------------------------------------------------------------------------
+// Project Permission CRUD (UI-driven, analogous to global-permissions-service)
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-project write lock map to prevent TOCTOU races on read-modify-write.
+ * Keyed by project path so different projects can be modified concurrently.
+ */
+const projectWriteLocks = new Map<string, Promise<void>>();
+
+async function withProjectWriteLock<T>(
+  projectPath: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  let resolve: () => void;
+  const next = new Promise<void>((r) => {
+    resolve = r;
+  });
+  const previous = projectWriteLocks.get(projectPath) ?? Promise.resolve();
+  projectWriteLocks.set(projectPath, next);
+
+  await previous;
+  try {
+    return await fn();
+  } finally {
+    resolve!();
+    // Clean up if this is the last queued operation
+    if (projectWriteLocks.get(projectPath) === next) {
+      projectWriteLocks.delete(projectPath);
+    }
+  }
+}
+
+/**
+ * Read the project-level permission scope from `.jean-claude/settings.local.json`.
+ * Returns only the `project` scope (not worktrees).
+ */
+export async function readProjectPermissions(
+  projectPath: string,
+): Promise<PermissionScope> {
+  const settings = await readSettings(projectPath);
+  return settings.permissions.project;
+}
+
+/**
+ * Write the project-level permission scope to `.jean-claude/settings.local.json`.
+ * Preserves the worktrees scope if it exists.
+ */
+async function writeProjectPermissions(
+  projectPath: string,
+  projectScope: PermissionScope,
+): Promise<void> {
+  const settings = await readSettings(projectPath);
+  settings.permissions.project = projectScope;
+  await writeSettings(projectPath, settings);
+}
+
+/**
+ * Add a permission rule to the project scope (via UI).
+ *
+ * @returns `true` if added, `false` if rejected (bare bash).
+ */
+export async function addProjectPermissionRule({
+  projectPath,
+  toolName,
+  input,
+  action = 'allow',
+}: {
+  projectPath: string;
+  toolName: string;
+  input: Record<string, unknown>;
+  action?: PermissionAction;
+}): Promise<boolean> {
+  const { tool, matchValue } = normalizeToolRequest(toolName, input);
+
+  if (isBareBash(tool, matchValue || '*') && action === 'allow') {
+    dbg.agentPermission(
+      'Refusing to allow bare "bash" at project level — a specific command pattern is required',
+    );
+    return false;
+  }
+
+  return withProjectWriteLock(projectPath, async () => {
+    const permissions = await readProjectPermissions(projectPath);
+    permissions[tool] = buildToolPermissionConfig({
+      existing: permissions[tool],
+      matchValue,
+      action,
+    });
+
+    await writeProjectPermissions(projectPath, permissions);
+    return true;
+  });
+}
+
+/**
+ * Remove a permission rule from the project scope.
+ */
+export async function removeProjectPermissionRule({
+  projectPath,
+  tool,
+  pattern,
+}: {
+  projectPath: string;
+  tool: string;
+  pattern?: string;
+}): Promise<void> {
+  return withProjectWriteLock(projectPath, async () => {
+    const permissions = await readProjectPermissions(projectPath);
+
+    if (!pattern) {
+      delete permissions[tool];
+    } else {
+      const existing = permissions[tool];
+      if (typeof existing === 'object' && existing !== null) {
+        const config = { ...existing } as Record<string, PermissionAction>;
+        delete config[pattern];
+        const remaining = Object.keys(config);
+        if (remaining.length === 0) {
+          delete permissions[tool];
+        } else if (remaining.length === 1 && remaining[0] === '*') {
+          permissions[tool] = config['*'] as ToolPermissionConfig;
+        } else {
+          permissions[tool] = config;
+        }
+      } else if (pattern === '*') {
+        delete permissions[tool];
+      }
+    }
+
+    await writeProjectPermissions(projectPath, permissions);
+  });
+}
+
+/**
+ * Atomically edit a project permission rule (remove old, add new in one write).
+ */
+export async function editProjectPermissionRule({
+  projectPath,
+  tool,
+  oldPattern,
+  newPattern,
+  action,
+}: {
+  projectPath: string;
+  tool: string;
+  oldPattern: string | undefined;
+  newPattern: string | undefined;
+  action: PermissionAction;
+}): Promise<void> {
+  const newMatchValue = newPattern?.trim() || '';
+
+  if (isBareBash(tool, newMatchValue || '*') && action === 'allow') {
+    throw new Error(
+      'Bare "bash" without a command pattern is not allowed at project level',
+    );
+  }
+
+  return withProjectWriteLock(projectPath, async () => {
+    const permissions = await readProjectPermissions(projectPath);
+
+    // 1. Remove old entry
+    const patternChanged = oldPattern !== newPattern;
+    if (patternChanged && oldPattern !== undefined) {
+      const existing = permissions[tool];
+      if (typeof existing === 'object' && existing !== null) {
+        const config = { ...existing } as Record<string, PermissionAction>;
+        delete config[oldPattern];
+        const remaining = Object.keys(config);
+        if (remaining.length === 0) {
+          delete permissions[tool];
+        } else if (remaining.length === 1 && remaining[0] === '*') {
+          permissions[tool] = config['*'] as ToolPermissionConfig;
+        } else {
+          permissions[tool] = config;
+        }
+      } else if (oldPattern === '*') {
+        delete permissions[tool];
+      }
+    }
+
+    // 2. Add new entry
+    permissions[tool] = buildToolPermissionConfig({
+      existing: permissions[tool],
+      matchValue: newMatchValue,
+      action,
+    });
+
+    await writeProjectPermissions(projectPath, permissions);
+  });
 }
 
 // ---------------------------------------------------------------------------

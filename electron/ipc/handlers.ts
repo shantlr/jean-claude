@@ -155,6 +155,10 @@ import {
   addWorktreePermission,
   buildToolPermissionConfig,
   normalizeToolRequest,
+  readProjectPermissions,
+  addProjectPermissionRule,
+  removeProjectPermissionRule,
+  editProjectPermissionRule,
 } from '../services/permission-settings-service';
 import { pipelineTrackingService } from '../services/pipeline-tracking-service';
 import { detectProjects } from '../services/project-detection-service';
@@ -1257,6 +1261,104 @@ export function registerIpcHandlers() {
       }
       await editGlobalPermission({ tool, oldPattern, newPattern, action });
       return readGlobalPermissions();
+    },
+  );
+
+  // Project permissions
+  ipcMain.handle('projectPermissions:get', async (_, projectPath: string) => {
+    if (typeof projectPath !== 'string' || !projectPath.trim()) {
+      throw new Error('Invalid projectPath: must be a non-empty string');
+    }
+    return readProjectPermissions(projectPath);
+  });
+
+  ipcMain.handle(
+    'projectPermissions:addRule',
+    async (
+      _,
+      projectPath: string,
+      toolName: string,
+      input: Record<string, unknown>,
+      action?: import('@shared/permission-types').PermissionAction,
+    ) => {
+      if (typeof projectPath !== 'string' || !projectPath.trim()) {
+        throw new Error('Invalid projectPath: must be a non-empty string');
+      }
+      if (typeof toolName !== 'string' || !toolName.trim()) {
+        throw new Error('Invalid toolName: must be a non-empty string');
+      }
+      if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+        throw new Error('Invalid input: must be a plain object');
+      }
+      if (
+        action !== undefined &&
+        action !== 'allow' &&
+        action !== 'ask' &&
+        action !== 'deny'
+      ) {
+        throw new Error(
+          'Invalid action: must be one of "allow", "ask", or "deny"',
+        );
+      }
+      const added = await addProjectPermissionRule({
+        projectPath,
+        toolName,
+        input,
+        action,
+      });
+      if (!added) {
+        throw new Error('Bare "bash" without a command pattern is not allowed');
+      }
+      return readProjectPermissions(projectPath);
+    },
+  );
+
+  ipcMain.handle(
+    'projectPermissions:removeRule',
+    async (_, projectPath: string, tool: string, pattern?: string) => {
+      if (typeof projectPath !== 'string' || !projectPath.trim()) {
+        throw new Error('Invalid projectPath: must be a non-empty string');
+      }
+      if (typeof tool !== 'string' || !tool.trim()) {
+        throw new Error('Invalid tool: must be a non-empty string');
+      }
+      if (pattern !== undefined && typeof pattern !== 'string') {
+        throw new Error('Invalid pattern: must be a string if provided');
+      }
+      await removeProjectPermissionRule({ projectPath, tool, pattern });
+      return readProjectPermissions(projectPath);
+    },
+  );
+
+  ipcMain.handle(
+    'projectPermissions:editRule',
+    async (
+      _,
+      projectPath: string,
+      tool: string,
+      oldPattern: string | undefined,
+      newPattern: string | undefined,
+      action: import('@shared/permission-types').PermissionAction,
+    ) => {
+      if (typeof projectPath !== 'string' || !projectPath.trim()) {
+        throw new Error('Invalid projectPath: must be a non-empty string');
+      }
+      if (typeof tool !== 'string' || !tool.trim()) {
+        throw new Error('Invalid tool: must be a non-empty string');
+      }
+      if (action !== 'allow' && action !== 'ask' && action !== 'deny') {
+        throw new Error(
+          'Invalid action: must be one of "allow", "ask", or "deny"',
+        );
+      }
+      await editProjectPermissionRule({
+        projectPath,
+        tool,
+        oldPattern,
+        newPattern,
+        action,
+      });
+      return readProjectPermissions(projectPath);
     },
   );
 
