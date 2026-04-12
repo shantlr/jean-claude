@@ -281,30 +281,25 @@ export function WorktreeActions({
           disabled={isBranchesLoading || !branches?.length}
           className="w-full justify-between"
         />
-        {isSelectedBranchProtected && (
+        {isSelectedBranchProtected ? (
           <div className="flex items-center gap-1.5 rounded-md border border-amber-800/50 bg-amber-950/30 px-2 py-1.5 text-xs text-amber-300">
             <Shield className="h-3.5 w-3.5 shrink-0" />
             <span>This branch is protected. Direct merges are blocked.</span>
           </div>
+        ) : (
+          <Button
+            onClick={() => setIsMergeConfirmOpen(true)}
+            disabled={!canMerge}
+            loading={mergeMutation.isPending}
+            variant="primary"
+            size="md"
+            icon={<GitMerge />}
+            className="w-full"
+            title={canMerge ? 'Merge worktree' : 'Commit staged changes first'}
+          >
+            Merge
+          </Button>
         )}
-        <Button
-          onClick={() => setIsMergeConfirmOpen(true)}
-          disabled={!canMerge}
-          loading={mergeMutation.isPending}
-          variant="primary"
-          size="md"
-          icon={<GitMerge />}
-          className="w-full"
-          title={
-            isSelectedBranchProtected
-              ? 'Branch is protected'
-              : canMerge
-                ? 'Merge worktree'
-                : 'Commit staged changes first'
-          }
-        >
-          Merge
-        </Button>
       </div>
 
       {/* Create PR / See PR + Push */}
