@@ -173,6 +173,12 @@ interface ToolGroup {
   rules: FlatRule[];
 }
 
+const VALID_ACTIONS = new Set<string>(['allow', 'ask', 'deny']);
+
+function isValidAction(value: unknown): value is PermissionAction {
+  return typeof value === 'string' && VALID_ACTIONS.has(value);
+}
+
 function groupPermissions(scope: PermissionScope): ToolGroup[] {
   const groups: Map<string, FlatRule[]> = new Map();
 
@@ -181,20 +187,30 @@ function groupPermissions(scope: PermissionScope): ToolGroup[] {
     const bucket = groups.get(tool)!;
 
     if (typeof config === 'string') {
-      bucket.push({ tool, pattern: null, action: config });
-    } else {
+      if (isValidAction(config)) {
+        bucket.push({ tool, pattern: null, action: config });
+      }
+    } else if (
+      typeof config === 'object' &&
+      config !== null &&
+      !Array.isArray(config)
+    ) {
       for (const [pattern, action] of Object.entries(config)) {
-        bucket.push({ tool, pattern, action });
+        if (isValidAction(action)) {
+          bucket.push({ tool, pattern, action });
+        }
       }
     }
   }
 
-  return Array.from(groups.entries()).map(([tool, rules]) => ({
-    tool,
-    label: TOOL_META[tool]?.label ?? tool,
-    description: TOOL_META[tool]?.description ?? '',
-    rules,
-  }));
+  return Array.from(groups.entries())
+    .filter(([, rules]) => rules.length > 0)
+    .map(([tool, rules]) => ({
+      tool,
+      label: TOOL_META[tool]?.label ?? tool,
+      description: TOOL_META[tool]?.description ?? '',
+      rules,
+    }));
 }
 
 // ---------------------------------------------------------------------------
@@ -218,8 +234,14 @@ const ACTION_STYLES: Record<
   },
 };
 
+const FALLBACK_STYLE = {
+  bg: 'bg-neutral-500/10',
+  text: 'text-neutral-400',
+  dot: 'bg-neutral-400',
+};
+
 function ActionBadge({ action }: { action: PermissionAction }) {
-  const style = ACTION_STYLES[action];
+  const style = ACTION_STYLES[action] ?? FALLBACK_STYLE;
   return (
     <span
       className={clsx(
