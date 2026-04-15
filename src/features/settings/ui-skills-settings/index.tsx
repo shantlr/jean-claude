@@ -10,6 +10,7 @@ import {
   useEnableSkill,
   useHasLegacySkills,
 } from '@/hooks/use-managed-skills';
+import { useCreateSkillDraftStore } from '@/stores/create-skill-draft';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { ManagedSkill } from '@shared/skill-types';
 
@@ -31,11 +32,9 @@ export function SkillsSettings() {
   const [editingPath, setEditingPath] = useState<string | null | 'new'>(null);
   const [showMigrationDialog, setShowMigrationDialog] = useState(false);
   const [showRegistryBrowser, setShowRegistryBrowser] = useState(false);
-  const [agentDialog, setAgentDialog] = useState<{
-    mode: 'create' | 'improve';
-    sourceSkillPath?: string;
-    sourceSkillName?: string;
-  } | null>(null);
+  const isAgentDialogOpen = useCreateSkillDraftStore((s) => s.isOpen);
+  const openAgentDialog = useCreateSkillDraftStore((s) => s.open);
+  const closeAgentDialog = useCreateSkillDraftStore((s) => s.close);
 
   const selectedSkill = skills?.find((s) => s.skillPath === selectedPath);
 
@@ -169,7 +168,7 @@ export function SkillsSettings() {
             </Button>
             <Button
               type="button"
-              onClick={() => setAgentDialog({ mode: 'create' })}
+              onClick={() => openAgentDialog({ mode: 'create' })}
               className="flex cursor-pointer items-center gap-1 rounded-lg bg-purple-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-purple-600"
             >
               <Bot className="h-4 w-4" />
@@ -236,7 +235,7 @@ export function SkillsSettings() {
             onToggleEnabled={handleToggleEnabled}
             onDelete={handleDelete}
             onImproveWithAgent={(skillPath, skillName) =>
-              setAgentDialog({
+              openAgentDialog({
                 mode: 'improve',
                 sourceSkillPath: skillPath,
                 sourceSkillName: skillName,
@@ -256,13 +255,8 @@ export function SkillsSettings() {
         <SkillRegistryBrowser onClose={() => setShowRegistryBrowser(false)} />
       )}
 
-      {agentDialog && (
-        <CreateWithAgentDialog
-          mode={agentDialog.mode}
-          sourceSkillPath={agentDialog.sourceSkillPath}
-          sourceSkillName={agentDialog.sourceSkillName}
-          onClose={() => setAgentDialog(null)}
-        />
+      {isAgentDialogOpen && (
+        <CreateWithAgentDialog onClose={closeAgentDialog} />
       )}
     </div>
   );

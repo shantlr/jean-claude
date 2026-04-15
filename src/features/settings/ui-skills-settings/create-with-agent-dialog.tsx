@@ -1,6 +1,6 @@
 import { useNavigate } from '@tanstack/react-router';
 import { Bot } from 'lucide-react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { Button } from '@/common/ui/button';
@@ -11,22 +11,12 @@ import {
 } from '@/features/agent/ui-backend-selector';
 import { useCreateSkillWithAgent } from '@/hooks/use-managed-skills';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
-import type { AgentBackendType } from '@shared/agent-backend-types';
+import { useCreateSkillDraftStore } from '@/stores/create-skill-draft';
 
-export function CreateWithAgentDialog({
-  onClose,
-  mode = 'create',
-  sourceSkillPath,
-  sourceSkillName,
-}: {
-  onClose: () => void;
-  mode?: 'create' | 'improve';
-  sourceSkillPath?: string;
-  sourceSkillName?: string;
-}) {
-  const [prompt, setPrompt] = useState('');
-  const [agentBackend, setAgentBackend] =
-    useState<AgentBackendType>('claude-code');
+export function CreateWithAgentDialog({ onClose }: { onClose: () => void }) {
+  const draft = useCreateSkillDraftStore((s) => s.draft);
+  const updateDraft = useCreateSkillDraftStore((s) => s.update);
+  const discardDraft = useCreateSkillDraftStore((s) => s.discard);
 
   const panelRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -42,6 +32,9 @@ export function CreateWithAgentDialog({
     targetSelector: '[data-animation-target="jobs-button"]',
   });
 
+  const mode = draft?.mode ?? 'create';
+  const prompt = draft?.prompt ?? '';
+  const agentBackend = draft?.agentBackend ?? 'claude-code';
   const canSubmit = prompt.trim().length > 0;
 
   // Close on Escape key
@@ -57,21 +50,22 @@ export function CreateWithAgentDialog({
   }, [onClose]);
 
   const handleSubmit = useCallback(async () => {
-    if (!canSubmit) return;
+    if (!canSubmit || !draft) return;
 
     const jobId = addRunningJob({
       type: 'skill-creation',
       title:
         mode === 'improve'
-          ? `Improving skill: ${sourceSkillName ?? 'unknown'}`
+          ? `Improving skill: ${draft.sourceSkillName ?? 'unknown'}`
           : 'Creating skill with agent',
       details: {
         promptPreview: prompt.slice(0, 100),
       },
     });
 
-    // Fire the shrink animation, then close
+    // Fire the shrink animation, then close and discard draft
     void triggerAnimation();
+    discardDraft();
     onClose();
 
     try {
@@ -79,7 +73,7 @@ export function CreateWithAgentDialog({
         prompt,
         enabledBackends: [...AGENT_BACKENDS],
         mode,
-        sourceSkillPath,
+        sourceSkillPath: draft.sourceSkillPath,
         agentBackend,
       });
 
@@ -101,9 +95,9 @@ export function CreateWithAgentDialog({
     }
   }, [
     canSubmit,
+    draft,
     prompt,
     mode,
-    sourceSkillPath,
     agentBackend,
     addRunningJob,
     markJobSucceeded,
@@ -111,7 +105,7 @@ export function CreateWithAgentDialog({
     createMutation,
     navigate,
     onClose,
-    sourceSkillName,
+    discardDraft,
     triggerAnimation,
   ]);
 
@@ -125,6 +119,8 @@ export function CreateWithAgentDialog({
     },
     [handleSubmit],
   );
+
+  if (!draft) return null;
 
   return (
     <div
@@ -142,7 +138,7 @@ export function CreateWithAgentDialog({
           <textarea
             ref={textareaRef}
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
+            onChange={(e) => updateDraft({ prompt: e.target.value })}
             onKeyDown={handleTextareaKeyDown}
             placeholder={
               mode === 'improve'
@@ -158,7 +154,7 @@ export function CreateWithAgentDialog({
         <div className="flex min-h-[42px] shrink-0 items-center justify-between px-4 py-2">
           <BackendSelector
             value={agentBackend}
-            onChange={setAgentBackend}
+            onChange={(v) => updateDraft({ agentBackend: v })}
             shortcut="cmd+j"
             side="top"
           />
