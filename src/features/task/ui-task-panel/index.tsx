@@ -890,6 +890,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               {task.name ?? task.prompt.split('\n')[0]}
             </h1>
             <TaskPendingNoteInput
+              key={taskId}
               taskId={taskId}
               pendingMessage={task.pendingMessage}
             />

@@ -4,6 +4,10 @@ import { Input } from '@/common/ui/input';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useUpdateTask } from '@/hooks/use-tasks';
 
+/**
+ * Self-contained pending-note input. Use with `key={taskId}` at the call site
+ * so React remounts on task change — no internal task-switch sync needed.
+ */
 export function TaskPendingNoteInput({
   taskId,
   pendingMessage,
@@ -15,23 +19,13 @@ export function TaskPendingNoteInput({
     useUpdateTask();
   const [value, setValue] = useState(pendingMessage ?? '');
   const debouncedValue = useDebouncedValue(value, 500);
-  const previousTaskIdRef = useRef(taskId);
-  // Refs prevent race-related flicker/dup saves: one tracks the latest submitted
-  // debounced value, the other tracks the latest value confirmed from props.
   const lastSubmittedValueRef = useRef(pendingMessage ?? '');
   const lastSyncedValueRef = useRef(pendingMessage ?? '');
   const isDebouncing = value !== debouncedValue;
 
   useEffect(() => {
-    const nextSyncedValue = pendingMessage ?? '';
-    lastSyncedValueRef.current = nextSyncedValue;
-
-    if (previousTaskIdRef.current !== taskId) {
-      previousTaskIdRef.current = taskId;
-      setValue(nextSyncedValue);
-      lastSubmittedValueRef.current = nextSyncedValue;
-    }
-  }, [taskId, pendingMessage]);
+    lastSyncedValueRef.current = pendingMessage ?? '';
+  }, [pendingMessage]);
 
   useEffect(() => {
     const currentPendingMessage = pendingMessage ?? '';
