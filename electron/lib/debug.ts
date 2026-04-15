@@ -24,6 +24,21 @@ if (!process.env.DEBUG) {
   createDebug.enable(`${BASE}:*`);
 }
 
+/**
+ * Strip ANSI/terminal escape sequences from a string so debug logs render
+ * cleanly in the notification-center UI.
+ */
+
+const ESC = String.fromCharCode(0x1b);
+const CSI = String.fromCharCode(0x9b);
+const ANSI_RE = new RegExp(
+  `[${ESC}${CSI}][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><~]`,
+  'g',
+);
+function stripAnsi(str: string): string {
+  return str.replace(ANSI_RE, '');
+}
+
 let logIdCounter = 0;
 let pendingBatch: DebugLogEntry[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -77,7 +92,7 @@ function createLogger(
     original(fmt, ...args);
     const formatted =
       args.length > 0 ? `${fmt} ${args.join(' ')}` : String(fmt);
-    broadcastLog(instance.namespace, level, formatted);
+    broadcastLog(instance.namespace, level, stripAnsi(formatted));
   };
   return instance;
 }
