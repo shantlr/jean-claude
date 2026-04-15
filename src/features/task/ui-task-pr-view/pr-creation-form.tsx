@@ -17,6 +17,7 @@ import { useGenerateSummary, useTaskSummary } from '@/hooks/use-task-summary';
 import { useTask } from '@/hooks/use-tasks';
 import type { FileAnnotation } from '@/lib/api';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
+import { usePrDraftState } from '@/stores/navigation';
 import { useToastStore } from '@/stores/toasts';
 
 export function PrCreationForm({
@@ -42,8 +43,9 @@ export function PrCreationForm({
   const repoProviderId = project?.repoProviderId ?? '';
   const repoProjectId = project?.repoProjectId ?? '';
   const repoId = project?.repoId ?? '';
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const { prDraft, setPrDraft } = usePrDraftState(taskId);
+  const [title, setTitle] = useState(prDraft?.title ?? '');
+  const [description, setDescription] = useState(prDraft?.description ?? '');
   const [isDraft, setIsDraft] = useState(true);
   const [annotationStates, setAnnotationStates] = useState<
     Array<{ annotation: FileAnnotation; checked: boolean }>
@@ -51,6 +53,16 @@ export function PrCreationForm({
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [formFilledFromSummary, setFormFilledFromSummary] = useState(false);
   const submittedRef = useRef(false);
+
+  function handleTitleChange(newTitle: string) {
+    setTitle(newTitle);
+    setPrDraft({ title: newTitle, description });
+  }
+
+  function handleDescriptionChange(newDescription: string) {
+    setDescription(newDescription);
+    setPrDraft({ title, description: newDescription });
+  }
 
   const { data: existingSummary } = useTaskSummary(taskId);
   const generateSummary = useGenerateSummary();
@@ -75,6 +87,9 @@ export function PrCreationForm({
     const workItemRef = workItemId ? `AB#${workItemId}\n\n` : '';
     const desc = `${workItemRef}## What I Did\n${summary.summary.whatIDid}\n\n## Key Decisions\n${summary.summary.keyDecisions}`;
     setDescription(desc);
+
+    // Persist draft
+    setPrDraft({ title: generatedTitle, description: desc });
 
     // Populate annotations
     if (summary.annotations) {
@@ -134,7 +149,8 @@ export function PrCreationForm({
       },
     });
 
-    // 2. Close the form immediately
+    // 2. Clear persisted draft and close the form
+    setPrDraft({ title: '', description: '' });
     onSuccess();
 
     // 3. Fire-and-forget PR creation
@@ -235,7 +251,7 @@ export function PrCreationForm({
             <Input
               id="pr-title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => handleTitleChange(e.target.value)}
               placeholder="Enter PR title..."
               autoComplete="off"
             />
@@ -265,7 +281,7 @@ export function PrCreationForm({
             <Textarea
               id="pr-description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => handleDescriptionChange(e.target.value)}
               placeholder="Enter PR description..."
               rows={8}
               autoComplete="off"

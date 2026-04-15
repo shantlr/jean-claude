@@ -43,12 +43,18 @@ interface FileExplorerState {
 
 type TaskViewMode = 'diff' | 'pr' | undefined;
 
+interface PrDraft {
+  title?: string;
+  description?: string;
+}
+
 interface TaskState {
   rightPane: RightPane | null;
   activeView: TaskViewMode;
   diffView: DiffViewState;
   fileExplorer?: FileExplorerState;
   activeStepId: string | null;
+  prDraft?: PrDraft;
 }
 
 const defaultDiffViewState: DiffViewState = {
@@ -159,6 +165,7 @@ interface NavigationState {
   ) => void;
   toggleFileExplorerExpandedDir: (taskId: string, dirPath: string) => void;
   setActiveStepId: (taskId: string, stepId: string | null) => void;
+  setPrDraft: (taskId: string, draft: PrDraft) => void;
   clearProjectNavHistoryState: (projectId: string) => void;
   clearTaskNavHistoryState: (taskId: string) => void;
 }
@@ -330,6 +337,26 @@ const useStore = create<NavigationState>()(
           },
         })),
 
+      setPrDraft: (taskId, draft) =>
+        set((state) => {
+          // Remove empty strings, keep only non-empty values
+          const cleaned: PrDraft = {};
+          if (draft.title?.trim()) cleaned.title = draft.title;
+          if (draft.description?.trim())
+            cleaned.description = draft.description;
+
+          return {
+            taskState: {
+              ...state.taskState,
+              [taskId]: {
+                ...defaultTaskState,
+                ...state.taskState[taskId],
+                prDraft: Object.keys(cleaned).length > 0 ? cleaned : undefined,
+              },
+            },
+          };
+        }),
+
       clearProjectNavHistoryState: (projectId) =>
         set((state) => {
           const { [projectId]: _, ...restTasks } = state.lastTaskByProject;
@@ -388,6 +415,7 @@ const useStore = create<NavigationState>()(
               rightPane: taskState.rightPane,
               activeView: taskState.activeView,
               diffView: taskState.diffView,
+              prDraft: taskState.prDraft,
             },
           ]),
         ),
@@ -799,6 +827,19 @@ export function useCommandLogsPaneWidth() {
     minWidth: MIN_COMMAND_LOGS_PANE_WIDTH,
     maxWidth: MAX_COMMAND_LOGS_PANE_WIDTH,
   };
+}
+
+// Hook for PR draft state (persisted per-task, cleaned up with task)
+export function usePrDraftState(taskId: string) {
+  const prDraft = useStore((state) => state.taskState[taskId]?.prDraft);
+  const setPrDraftAction = useStore((state) => state.setPrDraft);
+
+  const setPrDraft = useCallback(
+    (draft: PrDraft) => setPrDraftAction(taskId, draft),
+    [taskId, setPrDraftAction],
+  );
+
+  return { prDraft, setPrDraft };
 }
 
 // Hook for tool diff preview pane width
