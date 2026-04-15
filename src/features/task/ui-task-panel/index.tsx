@@ -14,6 +14,7 @@ import {
   FolderTree,
   FolderSymlink,
   Bug,
+  ListTodo,
 } from 'lucide-react';
 import { useEffect, useState, useCallback, useMemo, useRef, memo } from 'react';
 
@@ -28,6 +29,7 @@ import {
   DropdownDivider,
   DropdownInfo,
 } from '@/common/ui/dropdown';
+import { IconButton } from '@/common/ui/icon-button';
 import { Kbd } from '@/common/ui/kbd';
 import { Separator } from '@/common/ui/separator';
 import {
@@ -111,6 +113,7 @@ import { FileExplorerPane } from './file-explorer-pane';
 import { TaskPendingNoteInput } from './task-pending-note-input';
 import { TaskSettingsPane } from './task-settings-pane';
 import { ToolDiffPreviewPane } from './tool-diff-preview-pane';
+import { WorkItemsEditor } from './work-items-editor';
 
 const LAST_ASSISTANT_MESSAGE_MAX_LENGTH = 1200;
 
@@ -284,6 +287,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     null,
   );
   const [addStepAtEnd, setAddStepAtEnd] = useState(false);
+  const [showWorkItemsEditor, setShowWorkItemsEditor] = useState(false);
   const createStep = useCreateStep();
   // Ref for the task panel container (used by shrink-to-target animation)
   const taskPanelRef = useRef<HTMLDivElement>(null);
@@ -323,6 +327,24 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       setLastTaskForProject(projectId, taskId);
     }
   }, [projectId, taskId, setLastLocation, setLastTaskForProject]);
+
+  // Reset work items editor when switching tasks
+  useEffect(() => {
+    setShowWorkItemsEditor(false);
+  }, [taskId]);
+
+  // Close work items editor on Escape
+  useEffect(() => {
+    if (!showWorkItemsEditor) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setShowWorkItemsEditor(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [showWorkItemsEditor]);
 
   // Notify backend this task is focused (dismisses completion notifications, etc.)
   useEffect(() => {
@@ -865,6 +887,10 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const canSendMessage = !isRunning && hasMessages && !!activeStep?.sessionId;
   const hasRepoLink =
     !!project.repoProviderId && !!project.repoProjectId && !!project.repoId;
+  const hasWorkItemsLink =
+    !!project.workItemProviderId &&
+    !!project.workItemProjectId &&
+    !!project.workItemProjectName;
   const backendLabel =
     AVAILABLE_BACKENDS.find(
       (backend) => backend.value === activeStep?.agentBackend,
@@ -957,7 +983,50 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                   </Chip>
                 );
               })}
+
+            {/* Edit / Add work items button */}
+            {hasWorkItemsLink && (
+              <IconButton
+                onClick={() => setShowWorkItemsEditor(true)}
+                icon={<ListTodo />}
+                size="sm"
+                variant="ghost"
+                tooltip={
+                  task.workItemIds?.length
+                    ? 'Edit linked work items'
+                    : 'Link work items'
+                }
+              />
+            )}
           </div>
+
+          {/* Work items editor popover */}
+          {showWorkItemsEditor && hasWorkItemsLink && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                role="presentation"
+                onClick={() => setShowWorkItemsEditor(false)}
+              />
+              <div className="absolute top-12 right-4 z-50 w-80">
+                <WorkItemsEditor
+                  projectId={project.id}
+                  providerId={project.workItemProviderId!}
+                  azureProjectId={project.workItemProjectId!}
+                  azureProjectName={project.workItemProjectName!}
+                  workItemIds={task.workItemIds ?? []}
+                  workItemUrls={task.workItemUrls ?? []}
+                  onUpdate={({ workItemIds, workItemUrls }) => {
+                    updateTask.mutate({
+                      id: taskId,
+                      data: { workItemIds, workItemUrls },
+                    });
+                  }}
+                  onClose={() => setShowWorkItemsEditor(false)}
+                />
+              </div>
+            </>
+          )}
 
           {/* Right: Run + Overflow menu */}
           <div className="flex shrink-0 items-center gap-2">
@@ -1026,6 +1095,16 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                   checked={isPrViewOpen}
                 >
                   Pull Request
+                </DropdownItem>
+              )}
+              {hasWorkItemsLink && (
+                <DropdownItem
+                  icon={<ListTodo />}
+                  onClick={() => setShowWorkItemsEditor(true)}
+                >
+                  {task.workItemIds?.length
+                    ? 'Edit Work Items'
+                    : 'Link Work Items'}
                 </DropdownItem>
               )}
 
