@@ -229,10 +229,10 @@ export async function getFeedItems(): Promise<FeedItem[]> {
 
   // --- Enrich task feed items with PR status ---
   // Build a set of known active PR IDs from the PR feed
-  const activePrIds = new Set(
+  const activePrMap = new Map(
     prItems
       .filter((p) => p.pullRequestId)
-      .map((p) => p.pullRequestId as number),
+      .map((p) => [p.pullRequestId as number, { isDraft: !!p.isDraft }]),
   );
 
   // Propagate work item PR status to task feed items whose work items were
@@ -265,9 +265,11 @@ export async function getFeedItems(): Promise<FeedItem[]> {
 
     // Case 1: task has pullRequestId directly — check if we know the status
     if (item.pullRequestId) {
-      if (activePrIds.has(item.pullRequestId)) {
+      const activePrInfo = activePrMap.get(item.pullRequestId);
+      if (activePrInfo) {
         // PR is active in the feed — mark it
         item.workItemPrStatus = 'active';
+        item.isDraft = activePrInfo.isDraft;
       } else {
         // Need to fetch status — parse project/repo from the task's project config
         const project = projectsById.get(item.projectId);
@@ -326,6 +328,7 @@ export async function getFeedItems(): Promise<FeedItem[]> {
           const status = statuses.get(entry.linkedPr.prId);
           if (status) {
             entry.item.workItemPrStatus = status.status;
+            entry.item.isDraft = status.isDraft;
             if (status.url) {
               entry.item.workItemPrUrl = status.url;
             }

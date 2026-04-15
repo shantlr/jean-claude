@@ -352,14 +352,25 @@ export async function getPullRequestStatuses(params: {
   providerId: string;
   linkedPrs: LinkedPr[];
 }): Promise<
-  Map<number, { status: 'active' | 'completed' | 'abandoned'; url: string }>
+  Map<
+    number,
+    {
+      status: 'active' | 'completed' | 'abandoned';
+      url: string;
+      isDraft: boolean;
+    }
+  >
 > {
   if (params.linkedPrs.length === 0) return new Map();
   const { authHeader, orgName } = await getProviderAuth(params.providerId);
 
   const results = new Map<
     number,
-    { status: 'active' | 'completed' | 'abandoned'; url: string }
+    {
+      status: 'active' | 'completed' | 'abandoned';
+      url: string;
+      isDraft: boolean;
+    }
   >();
 
   // Fetch in chunks to avoid too many concurrent requests
@@ -384,6 +395,7 @@ export async function getPullRequestStatuses(params: {
           }
           const pr: {
             status: string;
+            isDraft?: boolean;
             repository?: { project?: { name?: string }; name?: string };
             pullRequestId: number;
           } = await response.json();
@@ -397,6 +409,7 @@ export async function getPullRequestStatuses(params: {
           results.set(linkedPr.prId, {
             status: mappedStatus,
             url,
+            isDraft: !!pr.isDraft,
           });
         } catch (err) {
           dbg.azure(

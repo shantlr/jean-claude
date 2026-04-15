@@ -302,7 +302,14 @@ export function FeedItemCard({
             {item.source === 'task' &&
               item.pullRequestId &&
               !item.workItemPrStatus && (
-                <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                <>
+                  <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                  {item.isDraft && (
+                    <span className="shrink-0 rounded border border-neutral-600 px-1.5 py-0.5 text-[10px] text-neutral-400">
+                      Draft
+                    </span>
+                  )}
+                </>
               )}
             {(item.source === 'work-item' || item.source === 'task') &&
               item.workItemPrStatus &&
@@ -334,7 +341,14 @@ export function FeedItemCard({
               )}
             {(item.source === 'work-item' || item.source === 'task') &&
               item.workItemPrStatus === 'active' && (
-                <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                <>
+                  <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                  {item.isDraft && (
+                    <span className="shrink-0 rounded border border-neutral-600 px-1.5 py-0.5 text-[10px] text-neutral-400">
+                      Draft
+                    </span>
+                  )}
+                </>
               )}
             {item.source === 'pull-request' &&
               (item.activeThreadCount ?? 0) > 0 && (
