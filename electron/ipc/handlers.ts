@@ -136,10 +136,7 @@ import {
   removeGlobalPermission,
   editGlobalPermission,
 } from '../services/global-permissions-service';
-import {
-  handlePromptResponse,
-  sendGlobalPromptToWindow,
-} from '../services/global-prompt-service';
+import { handlePromptResponse } from '../services/global-prompt-service';
 import {
   MCP_PRESETS,
   getEnabledTemplatesForProject,
@@ -1008,62 +1005,73 @@ export function registerIpcHandlers() {
       await agentService.compactRawMessages(id);
     }
 
-    // Prompt to clean up worktree when completing a task that has one
-    if (isCompleting && taskBefore.worktreePath && taskBefore.branchName) {
-      const project = await ProjectRepository.findById(taskBefore.projectId);
-      if (project) {
-        const worktreeExists = await pathExists(taskBefore.worktreePath);
-        let accepted = false;
-
-        if (worktreeExists) {
-          accepted = await sendGlobalPromptToWindow({
-            title: 'Delete Worktree?',
-            message:
-              'This task has an associated worktree. Would you like to delete the worktree and its branch?',
-            details: `Path: ${taskBefore.worktreePath}\nBranch: ${taskBefore.branchName}`,
-            acceptLabel: 'Delete Worktree',
-            rejectLabel: 'Keep',
-          });
-
-          if (accepted) {
-            await cleanupWorktree({
-              worktreePath: taskBefore.worktreePath,
-              projectPath: project.path,
-              branchName: taskBefore.branchName,
-              force: true,
-            });
-          }
-        } else {
-          accepted = await sendGlobalPromptToWindow({
-            title: 'Worktree Directory Missing',
-            message:
-              'The worktree directory for this task no longer exists on disk. Would you like to clean up the orphaned git branch and worktree references?',
-            details: `Path: ${taskBefore.worktreePath}\nBranch: ${taskBefore.branchName}`,
-            acceptLabel: 'Clean Up',
-            rejectLabel: 'Skip',
-          });
-
-          if (accepted) {
-            await cleanupMissingWorktree({
-              projectPath: project.path,
-              branchName: taskBefore.branchName,
-            });
-          }
-        }
-
-        if (accepted) {
-          return TaskRepository.update(id, {
-            worktreePath: null,
-            branchName: null,
-            startCommitHash: null,
-            sourceBranch: null,
-          });
-        }
-      }
-    }
-
     return updatedTask;
   });
+  ipcMain.handle(
+    'tasks:complete',
+    async (_, id: string, options: { cleanupWorktree?: boolean }) => {
+      const task = await TaskRepository.findById(id);
+      if (!task) throw new Error('Task not found');
+
+      // Stop running commands and compact messages
+      await runCommandService.stopCommandsForTask(id);
+      const updatedTask = await TaskRepository.toggleUserCompleted(id);
+      await agentService.compactRawMessages(id);
+
+      // If worktree cleanup requested, eagerly clear worktree fields so the
+      // task appears "deworktree'd" immediately. The actual git cleanup runs
+      // as a renderer-side background job via tasks:worktree:cleanupAfterCompletion.
+      if (options.cleanupWorktree && task.worktreePath && task.branchName) {
+        const clearedTask = await TaskRepository.update(id, {
+          worktreePath: null,
+          branchName: null,
+          startCommitHash: null,
+          sourceBranch: null,
+        });
+        return {
+          task: clearedTask,
+          worktreeCleanup: {
+            worktreePath: task.worktreePath,
+            branchName: task.branchName,
+          },
+        };
+      }
+
+      return { task: updatedTask };
+    },
+  );
+  ipcMain.handle(
+    'tasks:worktree:cleanupAfterCompletion',
+    async (
+      _,
+      taskId: string,
+      params: {
+        worktreePath: string;
+        branchName: string;
+      },
+    ) => {
+      // Resolve projectPath from the database rather than trusting renderer input.
+      const task = await TaskRepository.findById(taskId);
+      if (!task) throw new Error('Task not found');
+      const project = await ProjectRepository.findById(task.projectId);
+      if (!project) throw new Error('Project not found');
+
+      const worktreeExists = await pathExists(params.worktreePath);
+      if (worktreeExists) {
+        await cleanupWorktree({
+          worktreePath: params.worktreePath,
+          projectPath: project.path,
+          branchName: params.branchName,
+          force: true,
+        });
+      } else {
+        await cleanupMissingWorktree({
+          projectPath: project.path,
+          branchName: params.branchName,
+        });
+      }
+    },
+  );
   ipcMain.handle('tasks:clearUserCompleted', (_, id: string) =>
     TaskRepository.clearUserCompleted(id),
   );

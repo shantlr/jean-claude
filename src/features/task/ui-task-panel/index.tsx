@@ -77,6 +77,7 @@ import {
   useAllowForProjectWorktrees,
   useAllowGlobally,
   useToggleTaskUserCompleted,
+  useCompleteTask,
 } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
 import { getBranchFromWorktreePath } from '@/lib/worktree';
@@ -106,6 +107,7 @@ import {
 import { AddStepDialog, type AddStepPresetType } from './add-step-dialog';
 import { ChangeWorktreePathDialog } from './change-worktree-path-dialog';
 import { CommandLogsPane } from './command-logs-pane';
+import { CompleteTaskDialog } from './complete-task-dialog';
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
 import { DebugMessagesPane } from './debug-messages-pane';
 import { DeleteTaskDialog } from './delete-task-dialog';
@@ -280,6 +282,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
 
   const addToast = useToastStore((s) => s.addToast);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false);
   const [isChangeWorktreePathDialogOpen, setIsChangeWorktreePathDialogOpen] =
     useState(false);
   const [isAddStepDialogOpen, setIsAddStepDialogOpen] = useState(false);
@@ -743,6 +746,16 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   }, [isDiffViewOpen, toggleDiffView]);
 
   const toggleUserCompleted = useToggleTaskUserCompleted();
+  const completeTask = useCompleteTask();
+
+  const handleCompleteConfirm = useCallback(
+    ({ cleanupWorktree }: { cleanupWorktree: boolean }) => {
+      setIsCompleteDialogOpen(false);
+      completeTask.mutate({ id: taskId, cleanupWorktree });
+    },
+    [taskId, completeTask],
+  );
+
   useCommands('task-panel', [
     {
       label: 'Task Menu',
@@ -848,7 +861,16 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         : 'Mark Task as Complete',
       section: 'Task',
       handler: () => {
-        toggleUserCompleted.mutate(taskId);
+        if (task?.userCompleted) {
+          // Uncompleting — simple toggle
+          toggleUserCompleted.mutate(taskId);
+        } else if (task?.worktreePath) {
+          // Completing with worktree — show dialog to choose cleanup
+          setIsCompleteDialogOpen(true);
+        } else {
+          // Completing without worktree — complete directly
+          completeTask.mutate({ id: taskId });
+        }
       },
     },
     {
@@ -1469,6 +1491,15 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         taskName={task.name ?? task.prompt.split('\n')[0]}
         hasWorktree={!!task.worktreePath}
         isPending={false}
+      />
+
+      {/* Complete task with worktree cleanup dialog */}
+      <CompleteTaskDialog
+        isOpen={isCompleteDialogOpen}
+        onClose={() => setIsCompleteDialogOpen(false)}
+        onConfirm={handleCompleteConfirm}
+        hasWorktree={!!task.worktreePath}
+        isPending={completeTask.isPending}
       />
     </div>
   );

@@ -61,6 +61,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('tasks:delete', id, options),
     toggleUserCompleted: (id: string) =>
       ipcRenderer.invoke('tasks:toggleUserCompleted', id),
+    complete: (id: string, options: { cleanupWorktree?: boolean }) =>
+      ipcRenderer.invoke('tasks:complete', id, options),
     clearUserCompleted: (id: string) =>
       ipcRenderer.invoke('tasks:clearUserCompleted', id),
     addSessionAllowedTool: (
@@ -144,6 +146,18 @@ contextBridge.exposeInMainWorld('api', {
         ipcRenderer.invoke('tasks:worktree:pushBranch', taskId),
       delete: (taskId: string, options?: { keepBranch?: boolean }) =>
         ipcRenderer.invoke('tasks:worktree:delete', taskId, options),
+      cleanupAfterCompletion: (
+        taskId: string,
+        params: {
+          worktreePath: string;
+          branchName: string;
+        },
+      ) =>
+        ipcRenderer.invoke(
+          'tasks:worktree:cleanupAfterCompletion',
+          taskId,
+          params,
+        ),
     },
     summary: {
       get: (taskId: string) => ipcRenderer.invoke('tasks:summary:get', taskId),

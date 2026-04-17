@@ -1,7 +1,7 @@
 import { CheckCircle } from 'lucide-react';
 
 import { Modal } from '@/common/ui/modal';
-import { useToggleTaskUserCompleted } from '@/hooks/use-tasks';
+import { useCompleteTask } from '@/hooks/use-tasks';
 
 export function MergeSuccessDialog({
   isOpen,
@@ -14,10 +14,11 @@ export function MergeSuccessDialog({
   targetBranch: string;
   taskId: string;
 }) {
-  const toggleCompleted = useToggleTaskUserCompleted();
+  const completeTask = useCompleteTask();
 
   const handleComplete = async () => {
-    await toggleCompleted.mutateAsync(taskId);
+    // After a merge the worktree is already cleaned up, no need for cleanup
+    await completeTask.mutateAsync({ id: taskId });
     onClose(true);
   };
 
@@ -26,8 +27,8 @@ export function MergeSuccessDialog({
       isOpen={isOpen}
       onClose={() => onClose(false)}
       title="Worktree Merged"
-      closeOnClickOutside={!toggleCompleted.isPending}
-      closeOnEscape={!toggleCompleted.isPending}
+      closeOnClickOutside={!completeTask.isPending}
+      closeOnEscape={!completeTask.isPending}
     >
       <div className="mb-4 flex items-center gap-3 text-green-400">
         <CheckCircle className="h-6 w-6" />
@@ -40,14 +41,14 @@ export function MergeSuccessDialog({
         <button
           type="button"
           onClick={() => onClose(false)}
-          disabled={toggleCompleted.isPending}
+          disabled={completeTask.isPending}
           className="rounded-md px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
         >
           Keep Running
         </button>
         <button
           onClick={handleComplete}
-          disabled={toggleCompleted.isPending}
+          disabled={completeTask.isPending}
           className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-500 disabled:opacity-50"
         >
           Complete Task

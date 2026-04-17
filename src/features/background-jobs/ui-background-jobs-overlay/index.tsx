@@ -367,6 +367,16 @@ function JobDetails({ job }: { job: BackgroundJob }) {
         </div>
       );
     },
+    'worktree-cleanup': (typedJob) => {
+      if (typedJob.type !== 'worktree-cleanup') return null;
+
+      return (
+        <div className="mt-1 space-y-0.5 text-xs text-neutral-400">
+          <p>Branch: {typedJob.details.branchName}</p>
+          <p className="truncate">Path: {typedJob.details.worktreePath}</p>
+        </div>
+      );
+    },
   };
 
   return renderers[job.type](job);

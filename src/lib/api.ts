@@ -361,6 +361,16 @@ export interface Api {
       options?: { deleteWorktree?: boolean },
     ) => Promise<void>;
     toggleUserCompleted: (id: string) => Promise<Task>;
+    complete: (
+      id: string,
+      options: { cleanupWorktree?: boolean },
+    ) => Promise<{
+      task: Task;
+      worktreeCleanup?: {
+        worktreePath: string;
+        branchName: string;
+      };
+    }>;
     clearUserCompleted: (id: string) => Promise<Task>;
     addSessionAllowedTool: (
       id: string,
@@ -426,6 +436,13 @@ export interface Api {
       delete: (
         taskId: string,
         options?: { keepBranch?: boolean },
+      ) => Promise<void>;
+      cleanupAfterCompletion: (
+        taskId: string,
+        params: {
+          worktreePath: string;
+          branchName: string;
+        },
       ) => Promise<void>;
     };
     summary: {
@@ -1055,6 +1072,9 @@ export const api: Api = hasWindowApi
         toggleUserCompleted: async () => {
           throw new Error('API not available');
         },
+        complete: async () => {
+          throw new Error('API not available') as never;
+        },
         clearUserCompleted: async () => {
           throw new Error('API not available');
         },
@@ -1098,6 +1118,7 @@ export const api: Api = hasWindowApi
           getBranches: async () => [],
           pushBranch: async () => {},
           delete: async () => {},
+          cleanupAfterCompletion: async () => {},
         },
         summary: {
           get: async () => undefined,

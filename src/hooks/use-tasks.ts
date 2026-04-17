@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { InteractionMode, NewTask, UpdateTask } from '@shared/types';
@@ -212,6 +213,71 @@ export function useToggleTaskUserCompleted() {
       queryClient.invalidateQueries({ queryKey: ['tasks', 'allActive'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', 'allCompleted'] });
       invalidateFeedItems(queryClient);
+    },
+  });
+}
+
+export function useCompleteTask() {
+  const queryClient = useQueryClient();
+  const clearAllRunCommandLogs = useTaskMessagesStore(
+    (s) => s.clearAllRunCommandLogs,
+  );
+  const setRunCommandRunning = useTaskMessagesStore(
+    (s) => s.setRunCommandRunning,
+  );
+  const addRunningJob = useBackgroundJobsStore((s) => s.addRunningJob);
+  const markJobSucceeded = useBackgroundJobsStore((s) => s.markJobSucceeded);
+  const markJobFailed = useBackgroundJobsStore((s) => s.markJobFailed);
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      cleanupWorktree,
+    }: {
+      id: string;
+      cleanupWorktree?: boolean;
+    }) => api.tasks.complete(id, { cleanupWorktree }),
+    onSuccess: (result, { id }) => {
+      const { task, worktreeCleanup } = result;
+
+      clearAllRunCommandLogs(id);
+      setRunCommandRunning(id, false);
+      queryClient.invalidateQueries({ queryKey: ['tasks', id] });
+      queryClient.invalidateQueries({
+        queryKey: ['tasks', { projectId: task.projectId }],
+      });
+      queryClient.invalidateQueries({ queryKey: ['tasks', 'allActive'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', 'allCompleted'] });
+      invalidateFeedItems(queryClient);
+
+      // Run worktree cleanup as a background job
+      if (worktreeCleanup) {
+        const jobId = addRunningJob({
+          type: 'worktree-cleanup',
+          title: `Cleaning up worktree ${worktreeCleanup.branchName}`,
+          taskId: id,
+          projectId: task.projectId,
+          details: {
+            branchName: worktreeCleanup.branchName,
+            worktreePath: worktreeCleanup.worktreePath,
+          },
+        });
+
+        void api.tasks.worktree
+          .cleanupAfterCompletion(id, worktreeCleanup)
+          .then(() => {
+            markJobSucceeded(jobId);
+            queryClient.invalidateQueries({ queryKey: ['tasks', id] });
+            invalidateFeedItems(queryClient);
+          })
+          .catch((error) => {
+            const message =
+              error instanceof Error
+                ? error.message
+                : 'Worktree cleanup failed';
+            markJobFailed(jobId, message);
+          });
+      }
     },
   });
 }
