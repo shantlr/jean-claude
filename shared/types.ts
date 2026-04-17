@@ -628,6 +628,7 @@ function isSummaryModelsSetting(v: unknown): v is SummaryModelsSetting {
 const VALID_SLOT_KEYS: AiSkillSlotKey[] = [
   'merge-commit-message',
   'commit-message',
+  'pr-description',
 ];
 
 /** Note: returns true for `{}` (empty object) — this is intentional as it represents "no slots configured". */
