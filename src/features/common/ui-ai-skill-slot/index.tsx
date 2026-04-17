@@ -1,8 +1,9 @@
-import { ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/common/ui/button';
 import { Select } from '@/common/ui/select';
+import { Switch } from '@/common/ui/switch';
 import { getModelsForBackend } from '@/features/agent/ui-backend-selector';
 import { useBackendModels } from '@/hooks/use-backend-models';
 import { useManagedSkills } from '@/hooks/use-managed-skills';
@@ -30,6 +31,12 @@ export const SLOT_DEFINITIONS: {
     label: 'Commit Message',
     description: 'Auto-generate commit messages when committing changes',
   },
+  {
+    key: 'pr-description',
+    label: 'PR Description',
+    description:
+      'Auto-generate pull request title and description when creating a PR',
+  },
 ];
 
 export function SlotRow({
@@ -46,6 +53,8 @@ export function SlotRow({
   onUpdate: (config: AiSkillSlotConfig | null) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+
+  const isEnabled = config !== null;
 
   // Local editing state
   const [localBackend, setLocalBackend] = useState<AgentBackendType>(
@@ -88,7 +97,7 @@ export function SlotRow({
 
   const skillOptions = useMemo(
     () => [
-      { value: NO_SKILL_VALUE, label: 'None (built-in default)' },
+      { value: NO_SKILL_VALUE, label: 'None' },
       ...enabledSkills.map((s) => ({
         value: s.name,
         label: s.name,
@@ -96,6 +105,8 @@ export function SlotRow({
     ],
     [enabledSkills],
   );
+
+  const hasSkillSelected = localSkillName !== null;
 
   const handleBackendChange = useCallback((backend: string) => {
     const backendType = backend as AgentBackendType;
@@ -123,13 +134,22 @@ export function SlotRow({
     setExpanded(false);
   }, [config]);
 
-  const handleRemove = useCallback(() => {
-    onUpdate(null);
-    setLocalBackend('claude-code');
-    setLocalModel(DEFAULT_CLAUDE_CODE_MODEL);
-    setLocalSkillName(null);
-    setExpanded(false);
-  }, [onUpdate]);
+  const handleToggleEnabled = useCallback(
+    (checked: boolean) => {
+      if (checked) {
+        // Enable: save current local config (only possible when skill is selected)
+        onUpdate({
+          backend: localBackend,
+          model: localModel,
+          skillName: localSkillName,
+        });
+      } else {
+        // Disable: clear config
+        onUpdate(null);
+      }
+    },
+    [localBackend, localModel, localSkillName, onUpdate],
+  );
 
   const handleToggle = useCallback(() => {
     if (!expanded) {
@@ -157,6 +177,9 @@ export function SlotRow({
     value: b.value,
     label: b.label,
   }));
+
+  // Can only enable the toggle when a skill is selected
+  const canEnable = hasSkillSelected;
 
   return (
     <div className="rounded-lg border border-neutral-700 bg-neutral-800">
@@ -223,21 +246,27 @@ export function SlotRow({
                 label="Skill"
               />
             </div>
+
+            {/* Enable/Disable toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <label className="text-sm text-neutral-400">Enabled</label>
+                {!canEnable && !isEnabled && (
+                  <span className="text-xs text-neutral-600">
+                    Select a skill to enable
+                  </span>
+                )}
+              </div>
+              <Switch
+                checked={isEnabled}
+                onChange={handleToggleEnabled}
+                disabled={!canEnable && !isEnabled}
+              />
+            </div>
           </div>
 
           {/* Actions */}
-          <div className="mt-4 flex items-center justify-between">
-            <div>
-              {config && (
-                <Button
-                  onClick={handleRemove}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/10"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Remove
-                </Button>
-              )}
-            </div>
+          <div className="mt-4 flex items-center justify-end">
             <div className="flex gap-2">
               <Button
                 onClick={handleCancel}

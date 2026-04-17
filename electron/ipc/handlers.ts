@@ -158,6 +158,7 @@ import {
   editProjectPermissionRule,
 } from '../services/permission-settings-service';
 import { pipelineTrackingService } from '../services/pipeline-tracking-service';
+import { generatePrDescriptionForTask } from '../services/pr-description-generation-service';
 import { detectProjects } from '../services/project-detection-service';
 import { projectFileIndexService } from '../services/project-file-index-service';
 import { runCommandService } from '../services/run-command-service';
@@ -2043,7 +2044,21 @@ export function registerIpcHandlers() {
         branchName: task.branchName,
       });
 
-      // Step 3: Create PR via Azure DevOps
+      // Step 3: Generate title/description with AI if not provided
+      let { title, description } = params;
+      if (!title.trim() || !description.trim()) {
+        const generated = await generatePrDescriptionForTask(task, project);
+        if (generated) {
+          if (!title.trim()) title = generated.title;
+          if (!description.trim()) description = generated.description;
+        }
+        // If still empty after generation attempt, use a fallback title
+        if (!title.trim()) {
+          title = task.name ?? task.branchName ?? 'Pull Request';
+        }
+      }
+
+      // Step 4: Create PR via Azure DevOps
       const targetBranch = task.sourceBranch ?? project.defaultBranch ?? 'main';
       const pr = await createPullRequest({
         providerId: project.repoProviderId,
@@ -2051,19 +2066,19 @@ export function registerIpcHandlers() {
         repoId: project.repoId,
         sourceBranch: task.branchName,
         targetBranch,
-        title: params.title,
-        description: params.description,
+        title,
+        description,
         isDraft: params.isDraft,
         workItemIds: task.workItemIds ?? undefined,
       });
 
-      // Step 4: Save PR info to task
+      // Step 5: Save PR info to task
       await TaskRepository.update(params.taskId, {
         pullRequestId: String(pr.id),
         pullRequestUrl: pr.url,
       });
 
-      // Step 5: Optionally delete worktree (keep branch)
+      // Step 6: Optionally delete worktree (keep branch)
       if (params.deleteWorktree) {
         await cleanupWorktree({
           worktreePath: task.worktreePath,

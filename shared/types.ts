@@ -549,7 +549,10 @@ export interface AiSkillSlotConfig {
   skillName: string | null; // null = built-in default prompt
 }
 
-export type AiSkillSlotKey = 'merge-commit-message' | 'commit-message';
+export type AiSkillSlotKey =
+  | 'merge-commit-message'
+  | 'commit-message'
+  | 'pr-description';
 export type AiSkillSlotsSetting = Partial<
   Record<AiSkillSlotKey, AiSkillSlotConfig>
 >;
