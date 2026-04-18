@@ -12,7 +12,6 @@ import {
   MoreHorizontal,
   Play,
   Plug,
-  Search,
   Settings,
   Sparkles,
   Terminal,
@@ -39,7 +38,6 @@ import { GlobalPermissionsSettings } from '@/features/settings/ui-global-permiss
 import { McpServersSettings } from '@/features/settings/ui-mcp-servers-settings';
 import { SkillsSettings } from '@/features/settings/ui-skills-settings';
 import { TokensTab } from '@/features/settings/ui-tokens-tab';
-import { useOverlaysStore } from '@/stores/overlays';
 
 import { useCurrentSettingsProject } from './use-current-settings-project';
 
@@ -263,8 +261,6 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
 
   const hasProjectTab = projects.length > 0;
 
-  const openCommandPalette = useOverlaysStore((s) => s.open);
-
   const handleProjectChange = useCallback((projectId: string) => {
     setSelectedProjectId(projectId);
     setActiveTab('project');
@@ -349,11 +345,6 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
   const handleProjectDeleted = useCallback(() => {
     onClose();
   }, [onClose]);
-
-  const handleSearchClick = useCallback(() => {
-    onClose();
-    openCommandPalette('command-palette');
-  }, [onClose, openCommandPalette]);
 
   return createPortal(
     <FocusLock returnFocus>
@@ -483,30 +474,6 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                 <X size={13} />
               </button>
             </div>
-
-            {/* Search bar — opens command palette */}
-            <button
-              className="flex shrink-0 cursor-pointer items-center gap-2.5 text-left"
-              style={{
-                padding: '14px 18px',
-                borderBottom: '1px solid oklch(1 0 0 / 0.06)',
-                background: 'transparent',
-                border: 'none',
-                borderBlockEnd: '1px solid oklch(1 0 0 / 0.06)',
-                width: '100%',
-              }}
-              onClick={handleSearchClick}
-              aria-label="Search settings"
-            >
-              <Search size={15} style={{ color: 'oklch(0.6 0.01 280)' }} />
-              <span
-                className="flex-1 text-[15px]"
-                style={{ color: 'oklch(0.5 0.01 280)' }}
-              >
-                Search settings, actions, or shortcuts…
-              </span>
-              <Kbd shortcut="cmd+k" />
-            </button>
 
             {/* Main body: sidebar + content */}
             <div className="flex min-h-0 flex-1">
