@@ -1,3 +1,5 @@
+import { format } from 'node:util';
+
 import createDebug from 'debug';
 import { BrowserWindow } from 'electron';
 
@@ -90,8 +92,7 @@ function createLogger(
   const original = instance.log || console.debug;
   instance.log = (fmt: string, ...args: unknown[]) => {
     original(fmt, ...args);
-    const formatted =
-      args.length > 0 ? `${fmt} ${args.join(' ')}` : String(fmt);
+    const formatted = args.length > 0 ? format(fmt, ...args) : String(fmt);
     broadcastLog(instance.namespace, level, stripAnsi(formatted));
   };
   return instance;
