@@ -2,7 +2,7 @@ import { query } from '@anthropic-ai/claude-agent-sdk';
 
 import { dbg } from '../lib/debug';
 
-const TASK_NAME_TIMEOUT_MS = 10_000;
+const TASK_NAME_TIMEOUT_MS = 10 * 60 * 1000;
 const TASK_NAME_MAX_PROMPT_LENGTH = 8000;
 
 const TASK_NAME_SCHEMA = {
