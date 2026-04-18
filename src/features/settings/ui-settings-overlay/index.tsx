@@ -161,10 +161,12 @@ const SEGMENTED_TAB_INACTIVE: React.CSSProperties = {
 const NAV_ITEM_ACTIVE: React.CSSProperties = {
   background:
     'linear-gradient(135deg, color-mix(in oklch, oklch(0.78 0.18 295) 22%, transparent), color-mix(in oklch, oklch(0.78 0.18 295) 4%, transparent))',
-  border: '1px solid color-mix(in oklch, oklch(0.78 0.18 295) 35%, transparent)',
+  border:
+    '1px solid color-mix(in oklch, oklch(0.78 0.18 295) 35%, transparent)',
   color: 'oklch(0.99 0 0)',
   fontWeight: 500,
-  boxShadow: '0 0 20px color-mix(in oklch, oklch(0.78 0.18 295) 15%, transparent)',
+  boxShadow:
+    '0 0 20px color-mix(in oklch, oklch(0.78 0.18 295) 15%, transparent)',
 };
 
 const NAV_ITEM_INACTIVE: React.CSSProperties = {
@@ -419,12 +421,11 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
               </div>
 
               {/* Project chip with dropdown */}
-              {hasProjectTab && resolvedProject && (
+              {hasProjectTab && resolvedProject && activeTab === 'project' && (
                 <div
                   className="relative inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs transition-opacity"
                   style={{
                     color: 'oklch(0.8 0.01 280)',
-                    opacity: activeTab === 'global' ? 0.55 : 1,
                   }}
                 >
                   <span
@@ -589,7 +590,6 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                       );
                     })}
                 </nav>
-
               </div>
 
               {/* Right content area */}
