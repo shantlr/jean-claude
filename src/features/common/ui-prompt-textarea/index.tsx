@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import Fuse from 'fuse.js';
 import {
   ChevronLeft,
   ChevronRight,
@@ -272,12 +273,18 @@ export const PromptTextarea = forwardRef<
 
     const items: DropdownItem[] = [];
 
-    // Filter built-in commands
+    // Fuzzy filter built-in commands
     if (showCommands) {
-      const filteredCommands = COMMANDS.filter((cmd) =>
-        cmd.command.toLowerCase().slice(1).startsWith(searchText),
-      );
-      for (const cmd of filteredCommands) {
+      const matchedCommands = searchText
+        ? new Fuse(COMMANDS, {
+            keys: ['command'],
+            threshold: 0.4,
+            ignoreLocation: true,
+          })
+            .search(searchText)
+            .map((r) => r.item)
+        : COMMANDS;
+      for (const cmd of matchedCommands) {
         items.push({
           type: 'command',
           command: cmd.command,
@@ -286,11 +293,17 @@ export const PromptTextarea = forwardRef<
       }
     }
 
-    // Filter skills
-    const filteredSkills = skills.filter((skill) =>
-      skill.name.toLowerCase().startsWith(searchText),
-    );
-    for (const skill of filteredSkills) {
+    // Fuzzy filter skills
+    const matchedSkills = searchText
+      ? new Fuse(skills, {
+          keys: ['name'],
+          threshold: 0.4,
+          ignoreLocation: true,
+        })
+          .search(searchText)
+          .map((r) => r.item)
+      : skills;
+    for (const skill of matchedSkills) {
       items.push({ type: 'skill', skill });
     }
 
