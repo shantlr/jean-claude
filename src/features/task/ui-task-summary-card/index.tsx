@@ -119,7 +119,7 @@ export function TaskSummaryCard({
                   ? 'completed-unread-border-selected'
                   : 'completed-unread-border'
                 : isSelected
-                  ? 'border-glass-border-strong bg-glass-strong border shadow-sm'
+                  ? 'focused-border'
                   : 'hover:bg-glass-light border border-transparent hover:translate-x-0.5',
       )}
     >

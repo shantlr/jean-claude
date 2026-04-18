@@ -107,24 +107,24 @@ function borderClasses({
   if (isSelected) {
     switch (attention) {
       case 'errored':
-        return 'border border-status-fail/60 bg-glass-light shadow-sm';
+        return 'focused-border-fail';
       case 'needs-permission':
       case 'has-question':
-        return 'border border-status-run/60 bg-glass-light shadow-sm';
+        return 'focused-border-run';
       case 'running':
         return 'running-border-selected';
       case 'interrupted':
-        return 'border border-status-run/40 bg-glass-light shadow-sm';
+        return 'focused-border-run-subtle';
       case 'review-requested':
       case 'pr-comments':
-        return 'border border-status-pr/40 bg-glass-light shadow-sm';
+        return 'focused-border-pr';
       case 'pr-approved-by-me':
-        return 'border border-glass-border bg-glass-light shadow-sm';
+        return 'focused-border';
       case 'assigned-work-item':
-        return 'border border-status-azure/60 bg-glass-light shadow-sm';
+        return 'focused-border-azure';
       case 'completed':
       default:
-        return 'border border-acc/45 bg-glass-strong shadow-[inset_0_0_0_1px_oklch(0.72_0.20_295_/_0.15),0_0_24px_oklch(0.72_0.20_295_/_0.10)]';
+        return 'focused-border';
     }
   }
 
