@@ -3,6 +3,7 @@ import {
   ClipboardList,
   Loader2,
   SlidersHorizontal,
+  Terminal,
   Workflow,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
@@ -19,6 +20,7 @@ import {
 } from '@/stores/background-jobs';
 import { useCurrentVisibleProject } from '@/stores/navigation';
 import { useOverlaysStore } from '@/stores/overlays';
+import { useTaskMessagesStore } from '@/stores/task-messages';
 
 import { CompletionCostDisplay } from './completion-cost-display';
 import { NotificationBar } from './notification-bar';
@@ -36,6 +38,17 @@ export function Header() {
   const { data: todoCount } = useProjectTodoCount(backlogProjectId);
 
   const runningJobsCount = useMemo(() => getRunningJobsCount(jobs), [jobs]);
+
+  const runCommandRunning = useTaskMessagesStore((s) => s.runCommandRunning);
+  const runningCommandsCount = useMemo(() => {
+    let count = 0;
+    for (const status of Object.values(runCommandRunning)) {
+      for (const cmd of status.commands) {
+        if (cmd.status === 'running') count++;
+      }
+    }
+    return count;
+  }, [runCommandRunning]);
 
   const selectedProjectLabel = useMemo(() => {
     if (projectId === 'all') {
@@ -152,6 +165,32 @@ export function Header() {
         <RamUsageDisplay />
         <CompletionCostDisplay />
         <UsageDisplay />
+      </div>
+
+      {/* Running commands */}
+      <div style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => openOverlay('running-commands')}
+          icon={<Terminal />}
+          className={clsx(
+            'transition-all duration-500',
+            runningCommandsCount > 0
+              ? 'text-acc'
+              : 'text-ink-2 hover:text-bg-0',
+          )}
+          title="Running Commands"
+          aria-label="Open running commands"
+        >
+          Commands
+          {runningCommandsCount > 0 && (
+            <span className="bg-acc text-bg-0 rounded-full px-1.5 py-0.5 text-[10px] leading-none shadow-[0_0_6px_oklch(0.6_0.2_264)]">
+              {runningCommandsCount}
+            </span>
+          )}
+          <Kbd shortcut="cmd+shift+r" className="text-[9px]" />
+        </Button>
       </div>
 
       {/* Background jobs */}
