@@ -49,18 +49,23 @@ function getUsageLevel(usageRatio: number): UsageLevel {
   return 'excellent';
 }
 
-/** Returns true if any limit has raw utilization >= threshold. */
+/** Returns true if any non-omelette limit has raw utilization >= threshold. */
 function hasAnyRangeOver(data: UsageDisplayData, threshold: number): boolean {
-  return data.limits.some((l) => l.range.utilization >= threshold);
+  return data.limits.some(
+    (l) => !l.key.includes('omelette') && l.range.utilization >= threshold,
+  );
 }
 
-/** Returns true if any non-primary limit has raw utilization >= threshold. */
+/** Returns true if any non-primary, non-omelette limit has raw utilization >= threshold. */
 function hasSecondaryRangeOver(
   data: UsageDisplayData,
   threshold: number,
 ): boolean {
   return data.limits.some(
-    (l) => !l.isPrimary && l.range.utilization >= threshold,
+    (l) =>
+      !l.isPrimary &&
+      !l.key.includes('omelette') &&
+      l.range.utilization >= threshold,
   );
 }
 
