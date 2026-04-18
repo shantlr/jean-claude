@@ -332,19 +332,19 @@ button {
   position: relative;
   isolation: isolate;
   background:
-    linear-gradient(var(--color-bg-2), var(--color-bg-2))
+    linear-gradient(var(--color-bg-3), var(--color-bg-3))
       padding-box,
     conic-gradient(
         from var(--gradient-angle),
-        oklch(0.65 0.20 295),
-        oklch(0.60 0.22 320),
-        oklch(0.72 0.18 295),
-        oklch(0.65 0.20 295)
+        oklch(0.72 0.22 295),
+        oklch(0.67 0.24 320),
+        oklch(0.78 0.20 295),
+        oklch(0.72 0.22 295)
       )
       border-box;
-  border: 1px solid transparent;
+  border: 1.5px solid transparent;
   animation: gradient-rotate 1.5s linear infinite;
-  box-shadow: 0 0 6px 0px oklch(0.72 0.20 295 / 0.50);
+  box-shadow: 0 0 10px 1px oklch(0.72 0.20 295 / 0.60);
 }
 
 /* Animated gradient border for permission requests (yellow/orange) */
@@ -371,19 +371,19 @@ button {
   position: relative;
   isolation: isolate;
   background:
-    linear-gradient(var(--color-bg-2), var(--color-bg-2))
+    linear-gradient(var(--color-bg-3), var(--color-bg-3))
       padding-box,
     conic-gradient(
         from var(--gradient-angle),
-        oklch(0.78 0.16 75),
-        oklch(0.72 0.18 55),
-        oklch(0.82 0.15 80),
-        oklch(0.78 0.16 75)
+        oklch(0.84 0.18 75),
+        oklch(0.78 0.20 55),
+        oklch(0.88 0.17 80),
+        oklch(0.84 0.18 75)
       )
       border-box;
-  border: 1px solid transparent;
+  border: 1.5px solid transparent;
   animation: gradient-rotate 2s linear infinite;
-  box-shadow: 0 0 6px 0px oklch(0.78 0.16 75 / 0.50);
+  box-shadow: 0 0 10px 1px oklch(0.78 0.16 75 / 0.60);
 }
 
 /* Animated gradient border for question requests (teal/blue) */
@@ -410,19 +410,19 @@ button {
   position: relative;
   isolation: isolate;
   background:
-    linear-gradient(var(--color-bg-2), var(--color-bg-2))
+    linear-gradient(var(--color-bg-3), var(--color-bg-3))
       padding-box,
     conic-gradient(
         from var(--gradient-angle),
-        oklch(0.78 0.16 195),
-        oklch(0.78 0.16 235),
-        oklch(0.82 0.14 200),
-        oklch(0.78 0.16 195)
+        oklch(0.84 0.18 195),
+        oklch(0.84 0.18 235),
+        oklch(0.88 0.16 200),
+        oklch(0.84 0.18 195)
       )
       border-box;
-  border: 1px solid transparent;
+  border: 1.5px solid transparent;
   animation: gradient-rotate 2s linear infinite;
-  box-shadow: 0 0 6px 0px oklch(0.78 0.16 205 / 0.50);
+  box-shadow: 0 0 10px 1px oklch(0.78 0.16 205 / 0.60);
 }
 
 @keyframes completed-unread-breathe {
@@ -460,16 +460,16 @@ button {
   position: relative;
   isolation: isolate;
   background:
-    linear-gradient(var(--color-bg-2), var(--color-bg-2))
+    linear-gradient(var(--color-bg-3), var(--color-bg-3))
       padding-box,
     linear-gradient(
         120deg,
-        oklch(0.78 0.16 155),
-        oklch(0.78 0.16 205),
-        oklch(0.82 0.14 160)
+        oklch(0.84 0.18 155),
+        oklch(0.84 0.18 205),
+        oklch(0.88 0.16 160)
       )
       border-box;
-  border: 1px solid transparent;
+  border: 1.5px solid transparent;
   animation: completed-unread-breathe 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
