@@ -34,8 +34,8 @@ export function AiGenerationSettings() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-neutral-200">AI Generation</h2>
-      <p className="mt-1 text-sm text-neutral-500">
+      <h2 className="text-ink-1 text-lg font-semibold">AI Generation</h2>
+      <p className="text-ink-3 mt-1 text-sm">
         Configure AI-powered generation features. Each slot uses a backend,
         model, and optional skill to generate content. Slots that are not
         configured are disabled.

@@ -78,7 +78,7 @@ export function ProjectSkillsSettings({ projectId }: { projectId: string }) {
   }, [skills]);
 
   if (isLoading || !project) {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-ink-3 text-sm">Loading...</p>;
   }
 
   // Full-page editor view when editing or creating
@@ -113,8 +113,8 @@ export function ProjectSkillsSettings({ projectId }: { projectId: string }) {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-neutral-200">Skills</h2>
-          <p className="text-xs text-neutral-500">
+          <h2 className="text-ink-1 text-lg font-semibold">Skills</h2>
+          <p className="text-ink-3 text-xs">
             Manage skills for this project&apos;s {backendType} backend
           </p>
         </div>
@@ -134,7 +134,7 @@ export function ProjectSkillsSettings({ projectId }: { projectId: string }) {
       <div className="flex gap-6">
         <div className="min-w-0 flex-1 space-y-4">
           <div>
-            <h3 className="mb-2 text-xs font-medium tracking-wide text-green-400 uppercase">
+            <h3 className="text-status-done mb-2 text-xs font-medium tracking-wide uppercase">
               Project Skills
             </h3>
             <SkillCardGrid
@@ -148,7 +148,7 @@ export function ProjectSkillsSettings({ projectId }: { projectId: string }) {
 
           {inheritedSkills.length > 0 && (
             <div>
-              <h3 className="mb-2 text-xs font-medium tracking-wide text-neutral-500 uppercase">
+              <h3 className="text-ink-3 mb-2 text-xs font-medium tracking-wide uppercase">
                 Inherited (user &amp; plugins)
               </h3>
               <SkillCardGrid
@@ -164,7 +164,7 @@ export function ProjectSkillsSettings({ projectId }: { projectId: string }) {
         </div>
 
         {selectedSkill && (
-          <div className="w-96 flex-shrink-0 rounded-lg border border-neutral-700 bg-neutral-800/50 p-6">
+          <div className="border-glass-border bg-bg-1/50 w-96 flex-shrink-0 rounded-lg border p-6">
             <SkillDetails
               skill={selectedSkill}
               onClose={() => {

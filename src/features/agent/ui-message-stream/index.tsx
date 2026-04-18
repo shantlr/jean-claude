@@ -263,7 +263,7 @@ export const MessageStream = memo(function MessageStream({
 
   if (messages.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-neutral-500">
+      <div className="text-ink-3 flex h-full items-center justify-center">
         <p>Agent session will appear here</p>
       </div>
     );
@@ -365,8 +365,8 @@ export const MessageStream = memo(function MessageStream({
         {isRunning && (
           <div className="relative pl-6">
             <div className="absolute top-2.5 -left-1 flex h-2 w-2 items-center justify-center">
-              <span className="animate-timeline-working-ping absolute h-3 w-3 rounded-full bg-sky-400/20" />
-              <span className="animate-timeline-working-core h-2 w-2 rounded-full bg-sky-400 shadow-[0_0_5px_theme(colors.sky.400/35)]" />
+              <span className="animate-timeline-working-ping bg-acc/20 absolute h-3 w-3 rounded-full" />
+              <span className="animate-timeline-working-core bg-acc-ink h-2 w-2 rounded-full shadow-[0_0_5px_oklch(0.82_0.17_295_/_0.35)]" />
             </div>
             <div className="py-1.5 pr-3">
               <WorkingIndicator />

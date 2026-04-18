@@ -26,7 +26,7 @@ function ProjectIndex() {
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center text-neutral-500">
+      <div className="text-ink-3 flex h-full items-center justify-center">
         Loading...
       </div>
     );
@@ -50,7 +50,7 @@ function ProjectIndex() {
 
   // Empty state
   return (
-    <div className="flex h-full flex-col items-center justify-center text-neutral-500">
+    <div className="text-ink-3 flex h-full flex-col items-center justify-center">
       <p className="mb-2 text-lg">No tasks yet</p>
       <p className="text-sm">Create a new task to get started</p>
     </div>

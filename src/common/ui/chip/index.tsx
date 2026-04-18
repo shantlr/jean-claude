@@ -22,9 +22,9 @@ const colorClasses: Record<
   { bg: string; text: string; hover: string }
 > = {
   neutral: {
-    bg: 'bg-neutral-800',
-    text: 'text-neutral-400',
-    hover: 'hover:bg-neutral-700 hover:text-neutral-300',
+    bg: 'bg-bg-1',
+    text: 'text-ink-2',
+    hover: 'hover:bg-glass-medium hover:text-ink-1',
   },
   green: {
     bg: 'bg-green-900/30',

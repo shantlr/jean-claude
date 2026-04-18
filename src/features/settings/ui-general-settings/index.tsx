@@ -71,13 +71,13 @@ export function GeneralSettings() {
   };
 
   if (isLoading) {
-    return <p className="text-neutral-500">Loading...</p>;
+    return <p className="text-ink-3">Loading...</p>;
   }
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-neutral-200">Editor</h2>
-      <p className="mt-1 text-sm text-neutral-500">
+      <h2 className="text-ink-1 text-lg font-semibold">Editor</h2>
+      <p className="text-ink-3 mt-1 text-sm">
         Choose which editor to open projects in
       </p>
 
@@ -93,14 +93,14 @@ export function GeneralSettings() {
               onClick={() => handleSelectPreset(editor.id)}
               className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                 selected
-                  ? 'border-blue-500 bg-blue-500/20 text-blue-400'
+                  ? 'border-acc bg-acc/20 text-acc-ink'
                   : available
-                    ? 'border-neutral-700 bg-neutral-800 text-neutral-300 hover:border-neutral-600 hover:bg-neutral-700'
-                    : 'border-neutral-800 bg-neutral-900 text-neutral-600'
+                    ? 'border-glass-border bg-bg-1 text-ink-1 hover:border-glass-border-strong hover:bg-glass-medium'
+                    : 'border-line-soft bg-bg-0 text-ink-4'
               }`}
             >
               {editor.label}
-              {available && <Check className="h-3 w-3 text-green-500" />}
+              {available && <Check className="text-status-done h-3 w-3" />}
             </Button>
           );
         })}
@@ -108,7 +108,7 @@ export function GeneralSettings() {
 
       {/* Custom command */}
       <div className="mt-6">
-        <label className="block text-sm font-medium text-neutral-400">
+        <label className="text-ink-2 block text-sm font-medium">
           Custom command
         </label>
         <div className="mt-2 flex gap-2">
@@ -137,13 +137,13 @@ export function GeneralSettings() {
 
       {/* Current selection */}
       {editorSetting && (
-        <div className="mt-6 rounded-lg border border-neutral-700 bg-neutral-800/50 px-4 py-3">
-          <span className="text-sm text-neutral-500">Current editor: </span>
-          <span className="text-sm font-medium text-neutral-200">
+        <div className="border-glass-border bg-bg-1/50 mt-6 rounded-lg border px-4 py-3">
+          <span className="text-ink-3 text-sm">Current editor: </span>
+          <span className="text-ink-1 text-sm font-medium">
             {getEditorLabel(editorSetting)}
           </span>
           {editorSetting.type === 'app' && (
-            <span className="ml-2 text-xs text-neutral-500">
+            <span className="text-ink-3 ml-2 text-xs">
               ({editorSetting.path})
             </span>
           )}
@@ -151,31 +151,31 @@ export function GeneralSettings() {
       )}
 
       {/* Divider */}
-      <div className="my-8 border-t border-neutral-800" />
+      <div className="border-line-soft my-8 border-t" />
 
       {/* Agent Backends */}
       <BackendsSettings />
 
       {/* Divider */}
-      <div className="my-8 border-t border-neutral-800" />
+      <div className="border-line-soft my-8 border-t" />
 
       {/* Template summary models */}
       <SummaryModelsSettings />
 
       {/* Divider */}
-      <div className="my-8 border-t border-neutral-800" />
+      <div className="border-line-soft my-8 border-t" />
 
       {/* Usage Display */}
       <UsageDisplaySettings />
 
       {/* Divider */}
-      <div className="my-8 border-t border-neutral-800" />
+      <div className="border-line-soft my-8 border-t" />
 
       {/* Prompt Navigator */}
       <PromptNavigatorSettings />
 
       {/* Divider */}
-      <div className="my-8 border-t border-neutral-800" />
+      <div className="border-line-soft my-8 border-t" />
 
       {/* Claude Projects Cleanup */}
       <ClaudeProjectsCleanup />
@@ -217,8 +217,8 @@ function BackendsSettings() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-neutral-200">Agent Backends</h2>
-      <p className="mt-1 text-sm text-neutral-500">
+      <h2 className="text-ink-1 text-lg font-semibold">Agent Backends</h2>
+      <p className="text-ink-3 mt-1 text-sm">
         Enable or disable agent backends. The default backend is used when
         creating new tasks.
       </p>
@@ -233,8 +233,8 @@ function BackendsSettings() {
               key={backend.value}
               className={`flex items-center justify-between rounded-lg border px-4 py-3 ${
                 enabled
-                  ? 'border-neutral-700 bg-neutral-800'
-                  : 'border-neutral-800 bg-neutral-900'
+                  ? 'border-glass-border bg-bg-1'
+                  : 'border-line-soft bg-bg-0'
               }`}
             >
               <Checkbox
@@ -250,7 +250,7 @@ function BackendsSettings() {
                   onClick={() => handleSetDefault(backend.value)}
                   variant={dflt ? 'primary' : 'ghost'}
                   size="sm"
-                  icon={<Star className={dflt ? 'fill-blue-400' : ''} />}
+                  icon={<Star className={dflt ? 'fill-acc-ink' : ''} />}
                 >
                   {dflt ? 'Default' : 'Set as default'}
                 </Button>
@@ -279,8 +279,8 @@ function UsageDisplaySettings() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-neutral-200">Usage Display</h2>
-      <p className="mt-1 text-sm text-neutral-500">
+      <h2 className="text-ink-1 text-lg font-semibold">Usage Display</h2>
+      <p className="text-ink-3 mt-1 text-sm">
         Show rate limit usage in the header for these providers.
       </p>
 
@@ -293,8 +293,8 @@ function UsageDisplaySettings() {
               key={provider.value}
               className={`rounded-lg border px-4 py-3 ${
                 enabled
-                  ? 'border-neutral-700 bg-neutral-800'
-                  : 'border-neutral-800 bg-neutral-900'
+                  ? 'border-glass-border bg-bg-1'
+                  : 'border-line-soft bg-bg-0'
               }`}
             >
               <Checkbox
@@ -333,19 +333,17 @@ function SummaryModelsSettings() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-neutral-200">Summary Models</h2>
-      <p className="mt-1 text-sm text-neutral-500">
+      <h2 className="text-ink-1 text-lg font-semibold">Summary Models</h2>
+      <p className="text-ink-3 mt-1 text-sm">
         Model used for <code>{'{{summary(step.<id>)}}'}</code> template
         functions. Summary generation runs on a forked session per backend.
       </p>
 
       <div className="mt-4 space-y-3">
-        <div className="flex items-center justify-between rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-3">
+        <div className="border-glass-border bg-bg-1 flex items-center justify-between rounded-lg border px-4 py-3">
           <div>
-            <div className="text-sm font-medium text-neutral-200">
-              Claude Code
-            </div>
-            <div className="text-xs text-neutral-500">Recommended: Haiku</div>
+            <div className="text-ink-1 text-sm font-medium">Claude Code</div>
+            <div className="text-ink-3 text-xs">Recommended: Haiku</div>
           </div>
           <ModelSelector
             value={models['claude-code']}
@@ -354,10 +352,10 @@ function SummaryModelsSettings() {
           />
         </div>
 
-        <div className="flex items-center justify-between rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-3">
+        <div className="border-glass-border bg-bg-1 flex items-center justify-between rounded-lg border px-4 py-3">
           <div>
-            <div className="text-sm font-medium text-neutral-200">OpenCode</div>
-            <div className="text-xs text-neutral-500">
+            <div className="text-ink-1 text-sm font-medium">OpenCode</div>
+            <div className="text-ink-3 text-xs">
               Use a lightweight provider/model when available
             </div>
           </div>
@@ -390,10 +388,8 @@ function PromptNavigatorSettings() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-neutral-200">
-        Prompt Navigator
-      </h2>
-      <p className="mt-1 text-sm text-neutral-500">
+      <h2 className="text-ink-1 text-lg font-semibold">Prompt Navigator</h2>
+      <p className="text-ink-3 mt-1 text-sm">
         Configure the prompt navigator shown in message streams.
       </p>
 
@@ -402,8 +398,8 @@ function PromptNavigatorSettings() {
         <div
           className={`rounded-lg border px-4 py-3 ${
             defaultCollapsed
-              ? 'border-neutral-700 bg-neutral-800'
-              : 'border-neutral-800 bg-neutral-900'
+              ? 'border-glass-border bg-bg-1'
+              : 'border-line-soft bg-bg-0'
           }`}
         >
           <Checkbox
@@ -415,12 +411,10 @@ function PromptNavigatorSettings() {
         </div>
 
         {/* Max width */}
-        <div className="flex items-center justify-between rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-3">
+        <div className="border-glass-border bg-bg-1 flex items-center justify-between rounded-lg border px-4 py-3">
           <div>
-            <div className="text-sm font-medium text-neutral-200">
-              Max width
-            </div>
-            <div className="text-xs text-neutral-500">
+            <div className="text-ink-1 text-sm font-medium">Max width</div>
+            <div className="text-ink-3 text-xs">
               Maximum width of the prompt navigator panel
             </div>
           </div>
@@ -510,10 +504,10 @@ function ClaudeProjectsCleanup() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-neutral-200">
+      <h2 className="text-ink-1 text-lg font-semibold">
         Claude Projects Cleanup
       </h2>
-      <p className="mt-1 text-sm text-neutral-500">
+      <p className="text-ink-3 mt-1 text-sm">
         Remove Claude project entries for folders that no longer exist on disk.
         This cleans up both ~/.claude.json and ~/.claude/projects/.
       </p>
@@ -534,7 +528,7 @@ function ClaudeProjectsCleanup() {
       {scannedProjects.length > 0 && (
         <div className="mt-4">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-sm text-neutral-400">
+            <span className="text-ink-2 text-sm">
               Found {scannedProjects.length} project
               {scannedProjects.length === 1 ? '' : 's'} with non-existent paths
             </span>
@@ -542,27 +536,27 @@ function ClaudeProjectsCleanup() {
               <Button onClick={handleSelectAll} variant="ghost" size="sm">
                 Select all
               </Button>
-              <span className="text-neutral-600">|</span>
+              <span className="text-ink-4">|</span>
               <Button onClick={handleSelectNone} variant="ghost" size="sm">
                 Select none
               </Button>
             </div>
           </div>
 
-          <div className="max-h-64 overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-800/50">
+          <div className="border-glass-border bg-bg-1/50 max-h-64 overflow-y-auto rounded-lg border">
             {scannedProjects.map((project) => (
               <div
                 key={project.path}
-                className="flex items-center gap-3 border-b border-neutral-700 px-4 py-2 last:border-b-0 hover:bg-neutral-700/50"
+                className="border-glass-border hover:bg-glass-medium/50 flex items-center gap-3 border-b px-4 py-2 last:border-b-0"
               >
                 <Checkbox
                   checked={selectedPaths.has(project.path)}
                   onChange={() => handleToggle(project.path)}
                 />
-                <span className="flex-1 truncate font-mono text-sm text-neutral-300">
+                <span className="text-ink-1 flex-1 truncate font-mono text-sm">
                   {project.path}
                 </span>
-                <span className="text-xs text-neutral-500">
+                <span className="text-ink-3 text-xs">
                   {project.source === 'both' ? 'json + folder' : project.source}
                 </span>
               </div>
@@ -588,8 +582,8 @@ function ClaudeProjectsCleanup() {
       {!scanMutation.isPending &&
         scanMutation.isSuccess &&
         scannedProjects.length === 0 && (
-          <div className="mt-4 rounded-lg border border-neutral-700 bg-neutral-800/50 px-4 py-3">
-            <span className="text-sm text-neutral-400">
+          <div className="border-glass-border bg-bg-1/50 mt-4 rounded-lg border px-4 py-3">
+            <span className="text-ink-2 text-sm">
               No projects with non-existent paths found. Everything is clean!
             </span>
           </div>
@@ -600,8 +594,8 @@ function ClaudeProjectsCleanup() {
         <div
           className={`mt-4 rounded-lg border px-4 py-3 ${
             cleanupMessage.type === 'success'
-              ? 'border-green-700 bg-green-900/30 text-green-400'
-              : 'border-red-700 bg-red-900/30 text-red-400'
+              ? 'text-status-done border-status-done bg-status-done/30'
+              : 'text-status-fail border-status-fail bg-status-fail/30'
           }`}
         >
           <span className="text-sm">{cleanupMessage.text}</span>

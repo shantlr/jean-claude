@@ -85,9 +85,9 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="w-80 shrink-0 rounded-lg border border-neutral-700 bg-neutral-800/50 p-4">
+    <div className="border-glass-border bg-bg-1/50 w-80 shrink-0 rounded-lg border p-4">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="font-medium text-neutral-200">Add Organization</h3>
+        <h3 className="text-ink-1 font-medium">Add Organization</h3>
         <IconButton
           onClick={onClose}
           icon={<X />}
@@ -98,24 +98,22 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
 
       {step === 'selectToken' && (
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-neutral-400">
+          <p className="text-ink-2 text-sm">
             Select a token to authenticate with Azure DevOps:
           </p>
 
           {tokensLoading ? (
             <div className="flex items-center justify-center py-4">
               <Loader2
-                className="h-5 w-5 animate-spin text-neutral-400"
+                className="text-ink-2 h-5 w-5 animate-spin"
                 aria-hidden
               />
               <span className="sr-only">Loading…</span>
             </div>
           ) : tokens.length === 0 ? (
-            <div className="rounded-lg border border-neutral-600 bg-neutral-700/50 p-4 text-center">
-              <p className="text-sm text-neutral-400">
-                No Azure DevOps tokens found
-              </p>
-              <p className="mt-2 text-sm text-neutral-500">
+            <div className="border-glass-border bg-glass-medium/50 rounded-lg border p-4 text-center">
+              <p className="text-ink-2 text-sm">No Azure DevOps tokens found</p>
+              <p className="text-ink-3 mt-2 text-sm">
                 Add a token in the Tokens tab first
               </p>
             </div>
@@ -126,15 +124,15 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
                   key={token.id}
                   onClick={() => handleSelectToken(token.id)}
                   disabled={getOrganizations.isPending}
-                  className="flex cursor-pointer items-center justify-between rounded-lg border border-neutral-600 bg-neutral-700 px-3 py-2 text-left hover:border-neutral-500 disabled:opacity-50"
+                  className="border-glass-border bg-glass-medium hover:border-glass-border-strong flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2 text-left disabled:opacity-50"
                 >
-                  <span className="text-sm font-medium text-neutral-200">
+                  <span className="text-ink-1 text-sm font-medium">
                     {token.label}
                   </span>
                   {getOrganizations.isPending &&
                     selectedTokenId === token.id && (
                       <Loader2
-                        className="h-4 w-4 animate-spin text-neutral-400"
+                        className="text-ink-2 h-4 w-4 animate-spin"
                         aria-hidden
                       />
                     )}
@@ -144,7 +142,7 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
           )}
 
           {getOrganizations.error && (
-            <div className="rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+            <div className="bg-status-fail/10 text-status-fail border-status-fail/50 rounded-lg border px-3 py-2 text-sm">
               {getOrganizations.error.message}
             </div>
           )}
@@ -153,15 +151,13 @@ export function AddOrganizationPane({ onClose }: { onClose: () => void }) {
 
       {step === 'selectOrgs' && (
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-neutral-400">
-            Select organizations to add:
-          </p>
+          <p className="text-ink-2 text-sm">Select organizations to add:</p>
 
           <div className="flex flex-col gap-2">
             {organizations.map((org) => (
               <div
                 key={org.id}
-                className="rounded-lg border border-neutral-600 bg-neutral-700 px-3 py-2 hover:border-neutral-500"
+                className="border-glass-border bg-glass-medium hover:border-glass-border-strong rounded-lg border px-3 py-2"
               >
                 <Checkbox
                   checked={selectedOrgs.has(org.id)}

@@ -31,7 +31,7 @@ const SOURCE_BADGE_CONFIG: Record<
 > = {
   'claude-code': {
     className:
-      'rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/15 text-amber-400',
+      'rounded px-1.5 py-0.5 text-[10px] font-medium bg-status-run/15 text-status-run',
     label: 'Claude Code',
   },
   opencode: {
@@ -41,7 +41,7 @@ const SOURCE_BADGE_CONFIG: Record<
   },
   codex: {
     className:
-      'rounded px-1.5 py-0.5 text-[10px] font-medium bg-violet-500/15 text-violet-400',
+      'rounded px-1.5 py-0.5 text-[10px] font-medium bg-acc/15 text-acc-ink',
     label: 'Codex',
   },
 };
@@ -254,7 +254,7 @@ function AddProjectPage() {
                 [0, 1, 2, 3, 4, 5].map((i) => (
                   <div
                     key={i}
-                    className="h-[88px] animate-pulse rounded-lg bg-neutral-800/50"
+                    className="bg-bg-1/50 h-[88px] animate-pulse rounded-lg"
                   />
                 ))}
 
@@ -266,10 +266,10 @@ function AddProjectPage() {
                     type="button"
                     aria-label={`Add project: ${project.name}`}
                     onClick={() => handleSelectDetectedProject(project)}
-                    className="flex min-h-[88px] w-full cursor-pointer flex-col items-start rounded-lg border border-neutral-700 bg-neutral-800/50 p-3 text-left transition-colors hover:border-neutral-600 hover:bg-neutral-800"
+                    className="bg-bg-1/50 hover:border-glass-border hover:bg-glass-light border-glass-border flex min-h-[88px] w-full cursor-pointer flex-col items-start rounded-lg border p-3 text-left transition-colors"
                   >
                     <div className="flex items-center gap-1.5 overflow-hidden">
-                      <FolderOpen className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
+                      <FolderOpen className="text-ink-3 h-3.5 w-3.5 shrink-0" />
                       <span className="truncate text-sm font-medium">
                         {project.name}
                       </span>
@@ -287,7 +287,7 @@ function AddProjectPage() {
                         })}
                       </div>
                     )}
-                    <div className="mt-auto w-full truncate text-xs text-neutral-500">
+                    <div className="text-ink-3 mt-auto w-full truncate text-xs">
                       {project.displayPath}
                     </div>
                   </button>
@@ -297,7 +297,7 @@ function AddProjectPage() {
               {!isLoadingDetected &&
                 hasDetected &&
                 filteredProjects.length === 0 && (
-                  <p className="col-span-3 py-8 text-center text-sm text-neutral-500">
+                  <p className="text-ink-3 col-span-3 py-8 text-center text-sm">
                     No projects match &ldquo;{searchQuery}&rdquo;
                   </p>
                 )}

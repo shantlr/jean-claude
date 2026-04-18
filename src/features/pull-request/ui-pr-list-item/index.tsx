@@ -11,15 +11,15 @@ function getStatusIcon(
   isDraft: boolean,
 ) {
   if (isDraft) {
-    return <GitPullRequest className="h-4 w-4 text-neutral-500" />;
+    return <GitPullRequest className="text-ink-3 h-4 w-4" />;
   }
   switch (status) {
     case 'active':
-      return <GitPullRequest className="h-4 w-4 text-green-500" />;
+      return <GitPullRequest className="text-status-done h-4 w-4" />;
     case 'completed':
-      return <GitMerge className="h-4 w-4 text-purple-500" />;
+      return <GitMerge className="text-acc-ink h-4 w-4" />;
     case 'abandoned':
-      return <GitPullRequest className="h-4 w-4 text-red-500" />;
+      return <GitPullRequest className="text-status-fail h-4 w-4" />;
   }
 }
 
@@ -59,28 +59,26 @@ export function PrListItem({
       {...linkProps}
       className={clsx(
         'group flex flex-col gap-1.5 rounded-lg px-3 py-2 transition-colors',
-        isActive ? 'bg-neutral-700' : 'hover:bg-neutral-800',
+        isActive ? 'bg-glass-medium' : 'hover:bg-glass-light',
       )}
     >
       {/* Top row: icon, PR number, draft badge */}
       <div className="flex items-center gap-2">
         <div className="shrink-0">{getStatusIcon(pr.status, pr.isDraft)}</div>
-        <span className="text-xs text-neutral-500">#{pr.id}</span>
+        <span className="text-ink-3 text-xs">#{pr.id}</span>
         {pr.isDraft && (
-          <span className="rounded bg-neutral-700 px-1.5 py-0.5 text-[10px] font-medium text-neutral-400 uppercase">
+          <span className="text-ink-2 bg-glass-medium rounded px-1.5 py-0.5 text-[10px] font-medium uppercase">
             Draft
           </span>
         )}
       </div>
 
       {/* Title */}
-      <p className="truncate text-sm font-medium text-neutral-200">
-        {pr.title}
-      </p>
+      <p className="text-ink-1 truncate text-sm font-medium">{pr.title}</p>
 
       {/* Bottom row: metadata and reviewers */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-1.5 text-xs text-neutral-500">
+        <div className="text-ink-3 flex min-w-0 items-center gap-1.5 text-xs">
           {projectName && projectColor && (
             <>
               <span
@@ -109,7 +107,7 @@ export function PrListItem({
               />
             ))}
             {reviewersWithVotes.length > 3 && (
-              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-neutral-600 text-[9px] font-medium text-neutral-300">
+              <div className="bg-bg-3 text-ink-1 flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-medium">
                 +{reviewersWithVotes.length - 3}
               </div>
             )}

@@ -13,9 +13,9 @@ function getContextLevel(percentage: number): ContextLevel {
 }
 
 const LEVEL_STROKE_COLORS: Record<ContextLevel, string> = {
-  low: 'stroke-blue-500',
-  medium: 'stroke-green-500',
-  high: 'stroke-yellow-500',
+  low: 'stroke-acc',
+  medium: 'stroke-status-done',
+  high: 'stroke-status-run',
   critical: 'stroke-orange-500',
 };
 
@@ -48,7 +48,7 @@ function PieLoader({
         fill="none"
         stroke="currentColor"
         strokeWidth={strokeWidth}
-        className="text-neutral-700"
+        className="text-ink-4"
       />
       {/* Progress circle */}
       <circle

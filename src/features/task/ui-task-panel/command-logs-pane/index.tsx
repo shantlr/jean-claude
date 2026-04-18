@@ -111,13 +111,13 @@ export function CommandLogsPane({
   return (
     <div
       style={{ width }}
-      className="panel-edge-shadow relative flex h-full flex-col bg-neutral-900"
+      className="panel-edge-shadow bg-bg-0 relative flex h-full flex-col"
     >
       <div
         onMouseDown={handleMouseDown}
         className={clsx(
-          'absolute top-0 left-0 z-10 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500/50',
-          isDragging && 'bg-blue-500/50',
+          'hover:bg-acc/50 absolute top-0 left-0 z-10 h-full w-1 cursor-col-resize transition-colors',
+          isDragging && 'bg-acc/50',
         )}
       />
 
@@ -127,7 +127,7 @@ export function CommandLogsPane({
           TASK_PANEL_HEADER_HEIGHT_CLS,
         )}
       >
-        <h3 className="text-sm font-medium text-neutral-200">Command Logs</h3>
+        <h3 className="text-ink-1 text-sm font-medium">Command Logs</h3>
         <div className="flex items-center gap-1">
           <IconButton
             onClick={() => {
@@ -158,8 +158,8 @@ export function CommandLogsPane({
                 className={clsx(
                   'max-w-64 truncate rounded px-2.5 py-1 text-xs font-medium transition-colors',
                   activeCommandId === tab.id
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700',
+                    ? 'bg-acc text-ink-0'
+                    : 'text-ink-1 bg-bg-1 hover:bg-glass-medium',
                 )}
                 title={tab.command}
               >
@@ -179,9 +179,7 @@ export function CommandLogsPane({
                 key={`${entry.timestamp}-${index}`}
                 className={clsx(
                   'break-words whitespace-pre-wrap',
-                  entry.stream === 'stderr'
-                    ? 'text-red-300'
-                    : 'text-neutral-200',
+                  entry.stream === 'stderr' ? 'text-status-fail' : 'text-ink-1',
                 )}
               >
                 {entry.line || ' '}
@@ -190,7 +188,7 @@ export function CommandLogsPane({
           </div>
         </>
       ) : (
-        <div className="flex flex-1 items-center justify-center px-4 text-sm text-neutral-500">
+        <div className="text-ink-3 flex flex-1 items-center justify-center px-4 text-sm">
           Run a command to see logs.
         </div>
       )}

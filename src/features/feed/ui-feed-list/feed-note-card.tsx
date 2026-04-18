@@ -125,16 +125,16 @@ export function FeedNoteCard({
           className={clsx(
             'flex cursor-pointer flex-col gap-1 rounded-lg px-3.5 py-2.5 transition-all duration-200 ease-out',
             isSelected
-              ? 'bg-surface-bright border-r-primary border-r-2 shadow-sm'
-              : 'hover:bg-surface-bright hover:translate-x-0.5',
+              ? 'border-acc/45 bg-glass-strong border shadow-[inset_0_0_0_1px_oklch(0.72_0.20_295_/_0.15),0_0_24px_oklch(0.72_0.20_295_/_0.10)]'
+              : 'hover:bg-glass-light border border-transparent hover:translate-x-0.5',
           )}
         >
           <div className="flex items-center gap-2">
-            <StickyNote className="h-3.5 w-3.5 shrink-0 text-emerald-300/50" />
-            <span className="min-w-0 flex-1 truncate text-sm text-neutral-200">
+            <StickyNote className="text-status-done/50 h-3.5 w-3.5 shrink-0" />
+            <span className="text-ink-1 min-w-0 flex-1 truncate text-sm">
               {firstLine}
             </span>
-            <span className="shrink-0 text-[11px] text-neutral-500 tabular-nums">
+            <span className="text-ink-3 shrink-0 text-[11px] tabular-nums">
               {formatRelativeTime(item.timestamp)}
             </span>
           </div>
@@ -143,15 +143,12 @@ export function FeedNoteCard({
       dropdownRef={menuRef}
       className="min-w-[180px]"
     >
-      <DropdownItem
-        onClick={openNote}
-        icon={<Pencil className="text-neutral-400" />}
-      >
+      <DropdownItem onClick={openNote} icon={<Pencil className="text-ink-2" />}>
         Edit
       </DropdownItem>
       <DropdownItem
         onClick={handleMarkDone}
-        icon={<Check className="text-neutral-400" />}
+        icon={<Check className="text-ink-2" />}
       >
         Mark done
       </DropdownItem>
@@ -161,13 +158,13 @@ export function FeedNoteCard({
           onClick={() => {
             setShowProjectPicker(true);
           }}
-          icon={<ArrowRight className="text-neutral-400" />}
+          icon={<ArrowRight className="text-ink-2" />}
         >
           Convert to task…
         </DropdownItem>
       ) : (
         <>
-          <div className="px-3 py-1.5 text-xs font-medium text-neutral-500">
+          <div className="text-ink-3 px-3 py-1.5 text-xs font-medium">
             Select project
           </div>
           {projects?.map((project) => (
@@ -189,7 +186,7 @@ export function FeedNoteCard({
       <DropdownDivider />
       <DropdownItem
         onClick={handleDelete}
-        icon={<Trash2 className="text-red-400" />}
+        icon={<Trash2 className="text-status-fail" />}
       >
         Delete
       </DropdownItem>

@@ -204,13 +204,13 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
     <FocusLock returnFocus>
       <RemoveScroll>
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          className="bg-bg-0/50 fixed inset-0 z-50 flex items-center justify-center"
           onClick={handleBackdropClick}
           tabIndex={-1}
           role="dialog"
         >
           <div
-            className="flex h-[80svh] w-[90svw] max-w-[1280px] flex-col overflow-hidden rounded-lg border border-neutral-700 bg-neutral-900"
+            className="border-glass-border bg-bg-0 flex h-[80svh] w-[90svw] max-w-[1280px] flex-col overflow-hidden rounded-lg border"
             onClick={handlePanelClick}
           >
             {/* Top bar with tabs */}
@@ -338,7 +338,7 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
             <Separator />
 
             {/* Footer tips */}
-            <div className="flex shrink-0 items-center gap-3 px-4 py-2 text-xs text-neutral-500">
+            <div className="text-ink-3 flex shrink-0 items-center gap-3 px-4 py-2 text-xs">
               <span className="flex items-center gap-1">
                 <Kbd shortcut="up" /> <Kbd shortcut="down" /> navigate
               </span>

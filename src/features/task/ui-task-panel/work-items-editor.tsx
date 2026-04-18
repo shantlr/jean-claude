@@ -53,10 +53,10 @@ export function WorkItemsEditor({
   }
 
   return (
-    <div className="rounded-lg border border-neutral-700 bg-neutral-800 p-3 shadow-lg">
+    <div className="border-glass-border bg-bg-1 rounded-lg border p-3 shadow-lg">
       {/* Header */}
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-medium text-neutral-200">
+        <span className="text-ink-1 text-sm font-medium">
           Linked Work Items
         </span>
         <IconButton
@@ -79,15 +79,15 @@ export function WorkItemsEditor({
             return (
               <div
                 key={id}
-                className="flex items-center justify-between rounded px-2 py-1 hover:bg-neutral-700"
+                className="hover:bg-glass-medium flex items-center justify-between rounded px-2 py-1"
               >
-                <span className="text-sm text-neutral-200">
+                <span className="text-ink-1 text-sm">
                   {url ? (
                     <a
                       href={url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-400 hover:underline"
+                      className="text-acc-ink hover:underline"
                     >
                       #{id}
                     </a>
@@ -110,7 +110,7 @@ export function WorkItemsEditor({
           })}
         </div>
       ) : (
-        <p className="mb-2 text-sm text-neutral-400">No linked work items</p>
+        <p className="text-ink-2 mb-2 text-sm">No linked work items</p>
       )}
 
       {/* Add work item */}

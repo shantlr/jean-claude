@@ -80,31 +80,31 @@ export const buttonVariantClasses: Record<
   }
 > = {
   primary: {
-    base: 'bg-blue-600 text-white border border-transparent',
-    hover: 'hover:bg-blue-500',
-    active: 'active:bg-blue-700',
+    base: 'bg-acc text-bg-0 border border-transparent',
+    hover: 'hover:brightness-110',
+    active: 'active:brightness-90',
   },
   secondary: {
-    base: 'bg-neutral-800 text-neutral-300 border border-neutral-600',
-    hover: 'hover:bg-neutral-700 hover:border-neutral-500',
-    active: 'active:bg-neutral-600',
+    base: 'bg-glass-medium text-ink-1 border border-glass-border',
+    hover: 'hover:bg-glass-strong hover:border-glass-border-strong',
+    active: 'active:bg-bg-3',
   },
   ghost: {
-    base: 'bg-transparent text-neutral-400 border border-transparent',
-    hover: 'hover:bg-neutral-700 hover:text-neutral-200',
-    active: 'active:bg-neutral-600',
+    base: 'bg-transparent text-ink-2 border border-transparent',
+    hover: 'hover:bg-glass-light hover:text-ink-1',
+    active: 'active:bg-glass-medium',
   },
   danger: {
-    base: 'bg-red-600 text-white border border-transparent',
-    hover: 'hover:bg-red-500',
-    active: 'active:bg-red-700',
+    base: 'bg-status-fail text-ink-0 border border-transparent',
+    hover: 'hover:brightness-110',
+    active: 'active:brightness-90',
   },
   tab: {
     base: 'border border-transparent',
     hover: '',
     active: '',
-    selected: 'bg-neutral-700 font-medium text-neutral-100',
-    unselected: 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
+    selected: 'bg-glass-strong font-medium text-ink-0',
+    unselected: 'text-ink-2 hover:bg-glass-light hover:text-ink-1',
   },
   unstyled: {
     base: '',
@@ -114,11 +114,11 @@ export const buttonVariantClasses: Record<
 } as const;
 
 export const inputBaseClasses =
-  'bg-neutral-800 text-neutral-200 placeholder-neutral-500 border focus:outline-none transition-colors';
+  'bg-glass-light text-ink-1 placeholder-ink-3 border focus:outline-none transition-colors';
 
 export const inputBorderClasses = {
-  normal: 'border-neutral-600 focus:border-blue-500',
-  error: 'border-red-500 focus:border-red-500',
+  normal: 'border-glass-border focus:border-acc-line',
+  error: 'border-status-fail focus:border-status-fail',
 } as const;
 
 export const checkboxSizeClasses = {

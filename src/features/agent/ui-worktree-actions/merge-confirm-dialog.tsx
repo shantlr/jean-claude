@@ -194,14 +194,14 @@ export function MergeConfirmDialog({
       closeOnEscape={!isPending && !isSubmitting}
       contentRef={contentRef}
     >
-      <p className="mb-4 text-neutral-200">
+      <p className="text-ink-1 mb-4">
         Merge branch{' '}
-        <span className="font-mono text-blue-400">{branchName}</span> into{' '}
-        <span className="font-mono text-green-400">{targetBranch}</span>?
+        <span className="text-acc-ink font-mono">{branchName}</span> into{' '}
+        <span className="text-status-done font-mono">{targetBranch}</span>?
       </p>
 
       {isCheckingConflicts && (
-        <div className="mb-4 flex items-center gap-2 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-300">
+        <div className="border-glass-border bg-bg-0 text-ink-1 mb-4 flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
           <Loader2 className="h-4 w-4 animate-spin" />
           Checking for merge conflicts...
         </div>
@@ -246,7 +246,7 @@ export function MergeConfirmDialog({
       {/* Commit message (shown when squash is enabled) */}
       {squash && (
         <div className="mb-4">
-          <label className="mb-1.5 block text-xs font-medium text-neutral-400">
+          <label className="text-ink-2 mb-1.5 block text-xs font-medium">
             Commit message
           </label>
           <Textarea
@@ -264,7 +264,7 @@ export function MergeConfirmDialog({
         </div>
       )}
 
-      <div className="mb-4 rounded-md bg-neutral-900 p-3 text-sm text-neutral-400">
+      <div className="bg-bg-0 text-ink-2 mb-4 rounded-md p-3 text-sm">
         <p className="mb-2">This will:</p>
         <ul className="list-inside list-disc space-y-1">
           {squash ? (

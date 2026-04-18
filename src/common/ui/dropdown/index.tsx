@@ -227,8 +227,8 @@ export function Dropdown({
             role="menu"
             aria-orientation="vertical"
             className={clsx(
-              variant === 'default' ? 'bg-surface' : 'bg-surface-bright',
-              'fixed z-50 min-w-48 overflow-y-auto rounded-xl py-1 shadow-lg',
+              variant === 'default' ? 'bg-bg-1' : 'bg-bg-1',
+              'border-glass-border fixed z-50 min-w-48 overflow-y-auto rounded-xl border py-1 shadow-lg',
               className,
             )}
             style={{
@@ -274,8 +274,8 @@ export function DropdownItem({
       tabIndex={-1}
       onClick={onClick}
       className={clsx(
-        'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-neutral-700 focus:bg-neutral-700 focus:outline-none',
-        variant === 'danger' ? 'text-red-400' : 'text-neutral-300',
+        'hover:bg-glass-medium focus:bg-glass-medium flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors focus:outline-none',
+        variant === 'danger' ? 'text-red-400' : 'text-ink-1',
       )}
     >
       {icon && (
@@ -286,14 +286,14 @@ export function DropdownItem({
       <span className="flex-1">{children}</span>
       {shortcut && <Kbd shortcut={shortcut} />}
       {checked === true && (
-        <Check className="h-3.5 w-3.5 shrink-0 text-blue-400" />
+        <Check className="text-acc-ink h-3.5 w-3.5 shrink-0" />
       )}
     </button>
   );
 }
 
 export function DropdownDivider() {
-  return <hr role="separator" className="my-1 border-t border-neutral-700" />;
+  return <hr role="separator" className="border-glass-border my-1 border-t" />;
 }
 
 export function DropdownInfo({
@@ -313,14 +313,12 @@ export function DropdownInfo({
       className={clsx(
         'flex w-full items-center justify-between gap-4 px-3 py-1.5 text-sm',
         onClick
-          ? 'cursor-pointer transition-colors hover:bg-neutral-700 focus:bg-neutral-700 focus:outline-none'
+          ? 'hover:bg-glass-medium focus:bg-glass-medium cursor-pointer transition-colors focus:outline-none'
           : 'cursor-default',
       )}
     >
-      <span className="text-neutral-500">{label}</span>
-      <span className="truncate font-mono text-xs text-neutral-400">
-        {value}
-      </span>
+      <span className="text-ink-3">{label}</span>
+      <span className="text-ink-2 truncate font-mono text-xs">{value}</span>
     </div>
   );
 }

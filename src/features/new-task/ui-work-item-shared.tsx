@@ -21,14 +21,14 @@ export function WorkItemTypeIcon({
   const s = ICON_SIZE[size];
   switch (type) {
     case 'Bug':
-      return <Bug className={clsx(s, 'shrink-0 text-red-400')} />;
+      return <Bug className={clsx(s, 'text-status-fail shrink-0')} />;
     case 'User Story':
     case 'Feature':
-      return <BookOpen className={clsx(s, 'shrink-0 text-blue-400')} />;
+      return <BookOpen className={clsx(s, 'text-acc-ink shrink-0')} />;
     case 'Task':
-      return <CheckSquare className={clsx(s, 'shrink-0 text-green-400')} />;
+      return <CheckSquare className={clsx(s, 'text-status-done shrink-0')} />;
     default:
-      return <FileText className={clsx(s, 'shrink-0 text-neutral-400')} />;
+      return <FileText className={clsx(s, 'text-ink-2 shrink-0')} />;
   }
 }
 
@@ -46,8 +46,8 @@ export function SelectionCheckbox({
         'flex shrink-0 items-center justify-center rounded border',
         s.box,
         checked
-          ? 'border-blue-500 bg-blue-500 text-white'
-          : 'border-neutral-500 bg-transparent',
+          ? 'border-acc bg-acc text-ink-0'
+          : 'border-glass-border-strong bg-transparent',
       )}
     >
       {checked ? <Check className={s.check} /> : null}

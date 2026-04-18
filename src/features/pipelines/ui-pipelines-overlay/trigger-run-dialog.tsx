@@ -58,7 +58,7 @@ function ParameterField({
   if (type === 'select' && options && options.length > 0) {
     return (
       <>
-        <label className="mb-1 block text-xs text-neutral-400">{label}</label>
+        <label className="text-ink-2 mb-1 block text-xs">{label}</label>
         <Select
           size="sm"
           value={value}
@@ -71,7 +71,7 @@ function ParameterField({
 
   return (
     <>
-      <label className="mb-1 block text-xs text-neutral-400">{label}</label>
+      <label className="text-ink-2 mb-1 block text-xs">{label}</label>
       <Input
         size="sm"
         value={value}
@@ -105,14 +105,14 @@ export function TriggerRunDialog({
     return createPortal(
       <FocusLock returnFocus>
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
+          className="bg-bg-0/40 fixed inset-0 z-[60] flex items-center justify-center"
           onClick={onClose}
         >
           <div
-            className="w-full max-w-md rounded-lg border border-neutral-700 bg-neutral-800 p-6 text-sm text-neutral-300"
+            className="text-ink-1 border-glass-border bg-bg-1 w-full max-w-md rounded-lg border p-6 text-sm"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-red-400">
+            <p className="text-status-fail">
               Project is missing repository configuration. Please link a
               repository first.
             </p>
@@ -422,24 +422,22 @@ function TriggerRunDialogInner({
   return createPortal(
     <FocusLock returnFocus>
       <div
-        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
+        className="bg-bg-0/40 fixed inset-0 z-[60] flex items-center justify-center"
         onClick={onClose}
       >
         <div
-          className="w-full max-w-md rounded-lg border border-neutral-700 bg-neutral-800 p-6 text-sm text-neutral-300"
+          className="text-ink-1 border-glass-border bg-bg-1 w-full max-w-md rounded-lg border p-6 text-sm"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Title */}
-          <h3 className="mb-4 text-base font-medium text-neutral-100">
+          <h3 className="text-ink-0 mb-4 text-base font-medium">
             Run {pipelineName}
           </h3>
 
           {/* Branch selector (build only) */}
           {isBuild && (
             <div className="relative mb-4">
-              <label className="mb-1 block text-xs text-neutral-400">
-                Branch
-              </label>
+              <label className="text-ink-2 mb-1 block text-xs">Branch</label>
               <Input
                 size="sm"
                 value={branchFilter}
@@ -453,11 +451,11 @@ function TriggerRunDialogInner({
                 }}
               />
               {showBranchDropdown && filteredBranches.length > 0 && (
-                <div className="absolute top-full z-10 mt-1 max-h-40 w-full overflow-y-auto rounded border border-neutral-600 bg-neutral-900">
+                <div className="border-glass-border bg-bg-0 absolute top-full z-10 mt-1 max-h-40 w-full overflow-y-auto rounded border">
                   {filteredBranches.map((branch) => (
                     <button
                       key={branch}
-                      className="block w-full px-3 py-1.5 text-left text-sm text-neutral-300 hover:bg-neutral-700"
+                      className="text-ink-1 hover:bg-glass-medium block w-full px-3 py-1.5 text-left text-sm"
                       onMouseDown={(e) => {
                         e.preventDefault();
                         setBranchFilter(branch);
@@ -475,7 +473,7 @@ function TriggerRunDialogInner({
           {/* Parameters section (build only) */}
           {isBuild && hasParams && (
             <div className="mb-4">
-              <label className="mb-2 block text-xs text-neutral-400">
+              <label className="text-ink-2 mb-2 block text-xs">
                 Parameters
               </label>
               <div className="space-y-3">
@@ -550,7 +548,7 @@ function TriggerRunDialogInner({
           {/* Release description (release only) */}
           {!isBuild && (
             <div className="mb-4">
-              <label className="mb-1 block text-xs text-neutral-400">
+              <label className="text-ink-2 mb-1 block text-xs">
                 Description
               </label>
               <Input
@@ -564,7 +562,7 @@ function TriggerRunDialogInner({
 
           {/* Error */}
           {error && (
-            <div className="mb-4 rounded bg-red-900/40 px-3 py-2 text-xs text-red-300">
+            <div className="text-status-fail bg-status-fail/40 mb-4 rounded px-3 py-2 text-xs">
               {error}
             </div>
           )}

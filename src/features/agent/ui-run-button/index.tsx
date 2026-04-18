@@ -149,7 +149,7 @@ export function RunButton({
             return (
               <div key={command.id}>
                 <DropdownItem onClick={() => handleCommandAction(command.id)}>
-                  <span className="mr-2 truncate font-mono text-xs text-neutral-400">
+                  <span className="text-ink-2 mr-2 truncate font-mono text-xs">
                     {command.command}
                   </span>
                   <Chip

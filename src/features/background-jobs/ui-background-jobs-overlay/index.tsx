@@ -42,19 +42,19 @@ export function BackgroundJobsOverlay({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-[12vh]"
+      className="bg-bg-0/40 fixed inset-0 z-50 flex items-start justify-center p-4 pt-[12vh]"
       onClick={onClose}
     >
       <div
-        className="flex max-h-[70svh] w-[min(900px,96vw)] flex-col overflow-hidden rounded-xl border border-white/10 bg-neutral-900/85 shadow-2xl shadow-black/50 backdrop-blur-xl"
+        className="bg-bg-0/85 flex max-h-[70svh] w-[min(900px,96vw)] flex-col overflow-hidden rounded-xl border border-white/10 shadow-2xl shadow-black/50 backdrop-blur-xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent px-4 py-3">
           <div>
-            <h2 className="text-sm font-semibold text-neutral-100">
+            <h2 className="text-ink-0 text-sm font-semibold">
               Background Jobs
             </h2>
-            <p className="mt-0.5 text-xs text-neutral-400">
+            <p className="text-ink-2 mt-0.5 text-xs">
               {runningCount > 0 ? `${runningCount} running` : 'No running jobs'}
             </p>
           </div>
@@ -74,7 +74,7 @@ export function BackgroundJobsOverlay({ onClose }: { onClose: () => void }) {
 
         <div className="overflow-y-auto p-3">
           {jobs.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-white/10 px-4 py-8 text-center text-sm text-neutral-500">
+            <div className="text-ink-3 rounded-lg border border-dashed border-white/10 px-4 py-8 text-center text-sm">
               No background jobs yet.
             </div>
           ) : (
@@ -183,11 +183,11 @@ function JobRow({
 }) {
   const icon =
     job.status === 'running' ? (
-      <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+      <Loader2 className="text-acc-ink h-4 w-4 animate-spin" />
     ) : job.status === 'succeeded' ? (
-      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+      <CheckCircle2 className="text-status-done h-4 w-4" />
     ) : (
-      <CircleAlert className="h-4 w-4 text-red-400" />
+      <CircleAlert className="text-status-fail h-4 w-4" />
     );
 
   return (
@@ -195,17 +195,17 @@ function JobRow({
       className={clsx(
         'rounded-lg border px-3 py-2',
         job.status === 'running' &&
-          'border-blue-400/20 bg-blue-500/[0.08] backdrop-blur-sm',
+          'bg-acc/[0.08] border-acc/20 backdrop-blur-sm',
         job.status === 'succeeded' &&
-          'border-emerald-400/20 bg-emerald-500/[0.08]',
-        job.status === 'failed' && 'border-red-400/20 bg-red-500/[0.08]',
+          'bg-status-done/[0.08] border-status-done/20',
+        job.status === 'failed' && 'bg-status-fail/[0.08] border-red-400/20',
       )}
     >
       <div className="flex items-start gap-2">
         <div className="mt-0.5">{icon}</div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm text-neutral-100">{job.title}</p>
-          <p className="mt-0.5 text-xs text-neutral-400">
+          <p className="text-ink-0 truncate text-sm">{job.title}</p>
+          <p className="text-ink-2 mt-0.5 text-xs">
             {job.status === 'running'
               ? `Started ${formatRelativeTime(job.createdAt)}`
               : job.status === 'succeeded'
@@ -214,7 +214,7 @@ function JobRow({
           </p>
           <JobDetails job={job} />
           {job.errorMessage && (
-            <p className="mt-1 text-xs text-red-300">{job.errorMessage}</p>
+            <p className="text-status-fail mt-1 text-xs">{job.errorMessage}</p>
           )}
           <div className="mt-2 flex items-center gap-2">
             {job.type === 'task-creation' &&
@@ -280,7 +280,7 @@ function JobDetails({ job }: { job: BackgroundJob }) {
       if (typedJob.type !== 'task-creation') return null;
 
       return (
-        <div className="mt-1 space-y-0.5 text-xs text-neutral-400">
+        <div className="text-ink-2 mt-1 space-y-0.5 text-xs">
           {typedJob.details.projectName && (
             <p>Project: {typedJob.details.projectName}</p>
           )}
@@ -294,7 +294,7 @@ function JobDetails({ job }: { job: BackgroundJob }) {
       if (typedJob.type !== 'skill-creation') return null;
 
       return (
-        <div className="mt-1 space-y-0.5 text-xs text-neutral-400">
+        <div className="text-ink-2 mt-1 space-y-0.5 text-xs">
           {typedJob.details.promptPreview && (
             <p className="truncate">Prompt: {typedJob.details.promptPreview}</p>
           )}
@@ -305,7 +305,7 @@ function JobDetails({ job }: { job: BackgroundJob }) {
       if (typedJob.type !== 'pr-creation') return null;
 
       return (
-        <div className="mt-1 space-y-0.5 text-xs text-neutral-400">
+        <div className="text-ink-2 mt-1 space-y-0.5 text-xs">
           <p className="truncate">Title: {typedJob.details.title}</p>
           <p>Branch: {typedJob.details.branchName}</p>
         </div>
@@ -315,7 +315,7 @@ function JobDetails({ job }: { job: BackgroundJob }) {
       if (typedJob.type !== 'pr-review-creation') return null;
 
       return (
-        <div className="mt-1 space-y-0.5 text-xs text-neutral-400">
+        <div className="text-ink-2 mt-1 space-y-0.5 text-xs">
           <p>PR #{typedJob.details.pullRequestId}</p>
         </div>
       );
@@ -324,7 +324,7 @@ function JobDetails({ job }: { job: BackgroundJob }) {
       if (typedJob.type !== 'summary-generation') return null;
 
       return (
-        <div className="mt-1 space-y-0.5 text-xs text-neutral-400">
+        <div className="text-ink-2 mt-1 space-y-0.5 text-xs">
           {typedJob.details.taskName && (
             <p>Task: {typedJob.details.taskName}</p>
           )}
@@ -336,7 +336,7 @@ function JobDetails({ job }: { job: BackgroundJob }) {
       if (typedJob.type !== 'task-deletion') return null;
 
       return (
-        <div className="mt-1 space-y-0.5 text-xs text-neutral-400">
+        <div className="text-ink-2 mt-1 space-y-0.5 text-xs">
           {typedJob.details.taskName && (
             <p>Task: {typedJob.details.taskName}</p>
           )}
@@ -351,7 +351,7 @@ function JobDetails({ job }: { job: BackgroundJob }) {
       if (typedJob.type !== 'commit') return null;
 
       return (
-        <div className="mt-1 space-y-0.5 text-xs text-neutral-400">
+        <div className="text-ink-2 mt-1 space-y-0.5 text-xs">
           <p className="truncate">{typedJob.details.message}</p>
         </div>
       );
@@ -360,7 +360,7 @@ function JobDetails({ job }: { job: BackgroundJob }) {
       if (typedJob.type !== 'merge') return null;
 
       return (
-        <div className="mt-1 space-y-0.5 text-xs text-neutral-400">
+        <div className="text-ink-2 mt-1 space-y-0.5 text-xs">
           <p>
             {typedJob.details.branchName} → {typedJob.details.targetBranch}
           </p>
@@ -371,7 +371,7 @@ function JobDetails({ job }: { job: BackgroundJob }) {
       if (typedJob.type !== 'worktree-cleanup') return null;
 
       return (
-        <div className="mt-1 space-y-0.5 text-xs text-neutral-400">
+        <div className="text-ink-2 mt-1 space-y-0.5 text-xs">
           <p>Branch: {typedJob.details.branchName}</p>
           <p className="truncate">Path: {typedJob.details.worktreePath}</p>
         </div>

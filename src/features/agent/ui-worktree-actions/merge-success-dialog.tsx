@@ -30,19 +30,19 @@ export function MergeSuccessDialog({
       closeOnClickOutside={!completeTask.isPending}
       closeOnEscape={!completeTask.isPending}
     >
-      <div className="mb-4 flex items-center gap-3 text-green-400">
+      <div className="text-status-done mb-4 flex items-center gap-3">
         <CheckCircle className="h-6 w-6" />
         <span>Successfully merged into {targetBranch}</span>
       </div>
 
-      <p className="mb-4 text-neutral-300">Mark this task as completed?</p>
+      <p className="text-ink-1 mb-4">Mark this task as completed?</p>
 
       <div className="flex justify-end gap-3">
         <button
           type="button"
           onClick={() => onClose(false)}
           disabled={completeTask.isPending}
-          className="rounded-md px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
+          className="text-ink-1 hover:bg-glass-medium rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50"
         >
           Keep Running
         </button>

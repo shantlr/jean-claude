@@ -662,7 +662,7 @@ export const PromptTextarea = forwardRef<
           <div
             ref={dropdownRef}
             className={clsx(
-              'fixed z-50 max-h-80 overflow-y-auto rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg',
+              'border-glass-border bg-bg-1 fixed z-50 max-h-80 overflow-y-auto rounded-md border py-1 shadow-lg',
             )}
             style={{
               top:
@@ -693,12 +693,12 @@ export const PromptTextarea = forwardRef<
                   className={clsx(
                     'flex w-full items-center gap-2 px-3 py-1.5 text-left',
                     index === selectedIndex
-                      ? 'bg-neutral-700'
-                      : 'hover:bg-neutral-700',
+                      ? 'bg-glass-medium'
+                      : 'hover:bg-glass-medium',
                   )}
                 >
-                  <File className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
-                  <span className="truncate text-xs text-neutral-200">
+                  <File className="text-ink-2 h-3.5 w-3.5 shrink-0" />
+                  <span className="text-ink-1 truncate text-xs">
                     {item.filePath}
                   </span>
                 </button>
@@ -708,7 +708,7 @@ export const PromptTextarea = forwardRef<
             {showMentionDropdown &&
               isLoadingFilePaths &&
               fileItems.length === 0 && (
-                <div className="flex items-center gap-2 px-3 py-2 text-xs text-neutral-400">
+                <div className="text-ink-2 flex items-center gap-2 px-3 py-2 text-xs">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   Loading files...
                 </div>
@@ -728,28 +728,26 @@ export const PromptTextarea = forwardRef<
                   className={clsx(
                     'w-full px-3 py-1.5 text-left',
                     index === selectedIndex
-                      ? 'bg-neutral-700'
-                      : 'hover:bg-neutral-700',
+                      ? 'bg-glass-medium'
+                      : 'hover:bg-glass-medium',
                   )}
                 >
-                  <div className="text-xs font-medium text-neutral-200">
+                  <div className="text-ink-1 text-xs font-medium">
                     {item.command}
                   </div>
-                  <div className="text-xs text-neutral-400">
-                    {item.description}
-                  </div>
+                  <div className="text-ink-2 text-xs">{item.description}</div>
                 </button>
               );
             })}
 
             {/* Divider between commands and skills */}
             {commandItems.length > 0 && skillItems.length > 0 && (
-              <div className="my-1 border-t border-neutral-700" />
+              <div className="border-glass-border my-1 border-t" />
             )}
 
             {/* Skills section header */}
             {skillItems.length > 0 && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-500">
+              <div className="text-ink-3 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium">
                 <Wand2 className="h-3 w-3" aria-hidden />
                 Skills
               </div>
@@ -770,22 +768,22 @@ export const PromptTextarea = forwardRef<
                   className={clsx(
                     'w-full px-3 py-1.5 text-left',
                     index === selectedIndex
-                      ? 'bg-neutral-700'
-                      : 'hover:bg-neutral-700',
+                      ? 'bg-glass-medium'
+                      : 'hover:bg-glass-medium',
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-neutral-200">
+                    <span className="text-ink-1 text-xs font-medium">
                       /{skill.name}
                     </span>
                     {skill.source !== 'user' && (
-                      <span className="rounded bg-neutral-700 px-1 py-0.5 text-xs text-neutral-400">
+                      <span className="bg-glass-medium text-ink-2 rounded px-1 py-0.5 text-xs">
                         {skill.pluginName ?? skill.source}
                       </span>
                     )}
                   </div>
                   {skill.description && (
-                    <div className="line-clamp-2 text-xs text-neutral-400">
+                    <div className="text-ink-2 line-clamp-2 text-xs">
                       {skill.description}
                     </div>
                   )}
@@ -810,12 +808,12 @@ export const PromptTextarea = forwardRef<
           autoComplete="off"
           className={clsx(
             // Structural classes (always applied)
-            'min-h-[40px] w-full resize-none text-sm leading-[20px] text-neutral-200 placeholder-neutral-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+            'text-ink-1 placeholder-ink-3 min-h-[40px] w-full resize-none text-sm leading-[20px] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
             // Chrome classes (border, bg, padding, rounding) — replaced when className is provided
             className ??
-              'rounded-lg border border-neutral-700/50 bg-neutral-900/50 px-3 py-2 focus:border-neutral-600 focus:ring-1 focus:ring-white/10',
+              'border-glass-border bg-glass-light focus:border-glass-border-strong focus:ring-acc/10 rounded-lg border px-3 py-2 focus:ring-1',
             needsTrailingPadding && 'pr-11',
-            isDragOver && 'border-blue-500 bg-blue-500/10',
+            isDragOver && 'border-acc bg-acc-soft',
           )}
           {...textareaProps}
         />
@@ -831,7 +829,7 @@ export const PromptTextarea = forwardRef<
             style={{ maxHeight: `${maxHeight}px` }}
           >
             <span className="invisible">{value}</span>
-            <span className="text-neutral-500">{completion}</span>
+            <span className="text-ink-3">{completion}</span>
           </div>
         )}
         {/* Completion loader + file picker button */}
@@ -839,7 +837,7 @@ export const PromptTextarea = forwardRef<
           <div className="absolute right-2 bottom-2 flex items-center gap-1">
             {isCompletionLoading && !completion && (
               <div className="pointer-events-none">
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-500" />
+                <Loader2 className="text-ink-3 h-3.5 w-3.5 animate-spin" />
               </div>
             )}
             {onImageAttach && (
@@ -855,7 +853,7 @@ export const PromptTextarea = forwardRef<
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
+                  className="text-ink-3 hover:bg-glass-medium hover:text-ink-1 rounded p-1"
                   title="Attach image"
                 >
                   <ImageIcon className="h-4 w-4" />
@@ -867,8 +865,8 @@ export const PromptTextarea = forwardRef<
 
         {/* Drag overlay */}
         {isDragOver && (
-          <div className="absolute inset-0 flex items-center justify-center rounded-lg border-2 border-dashed border-blue-500 bg-blue-500/10">
-            <span className="text-sm text-blue-400">Drop image here</span>
+          <div className="border-acc bg-acc-soft absolute inset-0 flex items-center justify-center rounded-lg border-2 border-dashed">
+            <span className="text-acc-ink text-sm">Drop image here</span>
           </div>
         )}
       </div>
@@ -901,7 +899,7 @@ function ImageThumbnails({
             <button
               type="button"
               onClick={() => setPreviewIndex(index)}
-              className="block cursor-pointer overflow-hidden rounded border border-neutral-600 hover:border-neutral-400"
+              className="border-glass-border hover:border-glass-border-strong block cursor-pointer overflow-hidden rounded border"
             >
               <img
                 src={`data:${img.storageMimeType ?? img.mimeType};base64,${img.storageData ?? img.data}`}
@@ -912,7 +910,7 @@ function ImageThumbnails({
             <button
               type="button"
               onClick={() => onImageRemove?.(index)}
-              className="absolute -top-1.5 -right-1.5 hidden h-4 w-4 items-center justify-center rounded-full bg-neutral-700 text-xs text-neutral-300 group-hover:flex hover:bg-red-600"
+              className="bg-glass-medium text-ink-1 hover:bg-status-fail absolute -top-1.5 -right-1.5 hidden h-4 w-4 items-center justify-center rounded-full text-xs group-hover:flex"
             >
               <X className="h-3 w-3" />
             </button>
@@ -965,13 +963,13 @@ function ImagePreviewDialog({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+      className="bg-bg-0/80 fixed inset-0 z-50 flex items-center justify-center"
       onClick={onClose}
     >
       <button
         type="button"
         onClick={onClose}
-        className="absolute top-4 right-4 rounded-full bg-neutral-800/80 p-2 text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100"
+        className="bg-bg-1/80 text-ink-1 hover:bg-glass-medium hover:text-ink-0 absolute top-4 right-4 rounded-full p-2"
         aria-label="Close preview"
       >
         <X className="h-5 w-5" />
@@ -984,7 +982,7 @@ function ImagePreviewDialog({
             e.stopPropagation();
             setCurrentIndex((i) => i - 1);
           }}
-          className="absolute left-4 rounded-full bg-neutral-800/80 p-2 text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100"
+          className="bg-bg-1/80 text-ink-1 hover:bg-glass-medium hover:text-ink-0 absolute left-4 rounded-full p-2"
           aria-label="Previous image"
         >
           <ChevronLeft className="h-5 w-5" />
@@ -1005,7 +1003,7 @@ function ImagePreviewDialog({
             e.stopPropagation();
             setCurrentIndex((i) => i + 1);
           }}
-          className="absolute right-4 rounded-full bg-neutral-800/80 p-2 text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100"
+          className="bg-bg-1/80 text-ink-1 hover:bg-glass-medium hover:text-ink-0 absolute right-4 rounded-full p-2"
           aria-label="Next image"
         >
           <ChevronRight className="h-5 w-5" />
@@ -1013,7 +1011,7 @@ function ImagePreviewDialog({
       )}
 
       {images.length > 1 && (
-        <div className="absolute bottom-4 text-sm text-neutral-400">
+        <div className="text-ink-2 absolute bottom-4 text-sm">
           {currentIndex + 1} / {images.length}
         </div>
       )}

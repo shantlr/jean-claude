@@ -103,7 +103,7 @@ export function AddPermissionModal({
       <div className="space-y-4">
         {/* Commands list */}
         <div>
-          <label className="mb-2 block text-xs font-medium text-neutral-400">
+          <label className="text-ink-2 mb-2 block text-xs font-medium">
             Commands
           </label>
           <div className="space-y-2">
@@ -113,13 +113,13 @@ export function AddPermissionModal({
                   type="checkbox"
                   checked={entry.checked}
                   onChange={() => handleToggle(index)}
-                  className="mt-2 h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500/30"
+                  className="border-glass-border bg-glass-medium text-acc focus:ring-acc/30 mt-2 h-3.5 w-3.5 shrink-0 cursor-pointer rounded"
                 />
                 <input
                   type="text"
                   value={entry.value}
                   onChange={(e) => handleValueChange(index, e.target.value)}
-                  className="w-full rounded border border-neutral-600 bg-neutral-900 px-2.5 py-1.5 font-mono text-xs text-neutral-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 focus:outline-none"
+                  className="border-glass-border bg-bg-0 text-ink-1 focus:border-acc-line focus:ring-acc/30 w-full rounded border px-2.5 py-1.5 font-mono text-xs focus:ring-1 focus:outline-none"
                   spellCheck={false}
                 />
               </div>
@@ -129,42 +129,42 @@ export function AddPermissionModal({
 
         {/* Scope selector */}
         <div>
-          <label className="mb-2 block text-xs font-medium text-neutral-400">
+          <label className="text-ink-2 mb-2 block text-xs font-medium">
             Scope
           </label>
           <div className="flex gap-4">
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-300">
+            <label className="text-ink-1 flex cursor-pointer items-center gap-2 text-sm">
               <input
                 type="radio"
                 name="permission-scope"
                 value="project"
                 checked={scope === 'project'}
                 onChange={() => setScope('project')}
-                className="h-3.5 w-3.5 border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500/30"
+                className="border-glass-border bg-glass-medium text-acc focus:ring-acc/30 h-3.5 w-3.5"
               />
               Project
             </label>
             {hasWorktree && (
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-300">
+              <label className="text-ink-1 flex cursor-pointer items-center gap-2 text-sm">
                 <input
                   type="radio"
                   name="permission-scope"
                   value="worktree"
                   checked={scope === 'worktree'}
                   onChange={() => setScope('worktree')}
-                  className="h-3.5 w-3.5 border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500/30"
+                  className="border-glass-border bg-glass-medium text-acc focus:ring-acc/30 h-3.5 w-3.5"
                 />
                 Worktree
               </label>
             )}
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-300">
+            <label className="text-ink-1 flex cursor-pointer items-center gap-2 text-sm">
               <input
                 type="radio"
                 name="permission-scope"
                 value="global"
                 checked={scope === 'global'}
                 onChange={() => setScope('global')}
-                className="h-3.5 w-3.5 border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500/30"
+                className="border-glass-border bg-glass-medium text-acc focus:ring-acc/30 h-3.5 w-3.5"
               />
               Global
             </label>
@@ -172,17 +172,17 @@ export function AddPermissionModal({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-2 border-t border-neutral-700 pt-4">
+        <div className="border-glass-border flex items-center justify-end gap-2 border-t pt-4">
           <button
             onClick={onClose}
-            className="rounded px-3 py-1.5 text-sm text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
+            className="text-ink-2 hover:bg-glass-medium hover:text-ink-1 rounded px-3 py-1.5 text-sm"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={checkedCount === 0 || isSubmitting}
-            className="flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            className="bg-acc hover:bg-acc flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Shield className="h-3.5 w-3.5" />
             {isSubmitting

@@ -159,9 +159,9 @@ function NewTask() {
           <div>
             <label
               htmlFor="name"
-              className="mb-1 block text-sm font-medium text-neutral-300"
+              className="text-ink-1 mb-1 block text-sm font-medium"
             >
-              Name <span className="text-neutral-500">(optional)</span>
+              Name <span className="text-ink-3">(optional)</span>
             </label>
             <Input
               id="name"
@@ -177,7 +177,7 @@ function NewTask() {
           <div>
             <label
               htmlFor="prompt"
-              className="mb-1 block text-sm font-medium text-neutral-300"
+              className="text-ink-1 mb-1 block text-sm font-medium"
             >
               Prompt
             </label>
@@ -193,7 +193,7 @@ function NewTask() {
               enableCompletion={completionSetting?.enabled ?? false}
               projectId={projectId}
               maxHeight={400}
-              className="min-h-[200px] rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-white focus:border-neutral-500 focus:ring-1 focus:ring-white/10"
+              className="focus:border-glass-border-strong border-glass-border bg-bg-1 text-ink-0 min-h-[200px] rounded-lg border px-3 py-2 focus:ring-1 focus:ring-white/10"
             />
           </div>
 
@@ -209,7 +209,7 @@ function NewTask() {
             {/* Source branch selector - shown when worktree is checked */}
             {useWorktree && (
               <div className="ml-6">
-                <label className="mb-1 block text-sm font-medium text-neutral-400">
+                <label className="text-ink-2 mb-1 block text-sm font-medium">
                   Base branch
                 </label>
                 <Select

@@ -190,7 +190,7 @@ export function SkillEditor({
   return (
     <div className="flex h-full flex-col">
       {/* Top bar */}
-      <div className="flex shrink-0 items-center justify-between border-b border-neutral-700 px-4 py-3">
+      <div className="border-glass-border flex shrink-0 items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-3">
           <IconButton
             onClick={handleBack}
@@ -198,7 +198,7 @@ export function SkillEditor({
             tooltip="Back"
             size="sm"
           />
-          <h2 className="text-lg font-semibold text-neutral-200">
+          <h2 className="text-ink-1 text-lg font-semibold">
             {isEditing ? 'Edit Skill' : 'New Skill'}
           </h2>
         </div>
@@ -219,9 +219,9 @@ export function SkillEditor({
       </div>
 
       {/* Metadata row */}
-      <div className="flex shrink-0 flex-wrap items-center gap-4 border-b border-neutral-700 px-4 py-3">
+      <div className="border-glass-border flex shrink-0 flex-wrap items-center gap-4 border-b px-4 py-3">
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-neutral-400">Name</label>
+          <label className="text-ink-2 text-sm font-medium">Name</label>
           <Input
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
@@ -231,9 +231,7 @@ export function SkillEditor({
           />
         </div>
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <label className="text-sm font-medium text-neutral-400">
-            Description
-          </label>
+          <label className="text-ink-2 text-sm font-medium">Description</label>
           <Input
             value={description}
             onChange={(e) => handleDescriptionChange(e.target.value)}
@@ -244,9 +242,7 @@ export function SkillEditor({
         </div>
         {!isEditing && (
           <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-neutral-400">
-              Backends
-            </span>
+            <span className="text-ink-2 text-sm font-medium">Backends</span>
             {(['claude-code', 'opencode'] as AgentBackendType[]).map(
               (backend) => (
                 <Checkbox
@@ -277,19 +273,17 @@ export function SkillEditor({
         {/* Left pane: markdown textarea */}
         {leftWidth > 0 && (
           <div
-            className="flex shrink-0 flex-col border-r border-neutral-700"
+            className="border-glass-border flex shrink-0 flex-col border-r"
             style={{ width: leftWidth }}
           >
-            <div className="flex shrink-0 items-center border-b border-neutral-700 px-3 py-2">
-              <span className="text-xs font-medium text-neutral-400">
-                Markdown
-              </span>
+            <div className="border-glass-border flex shrink-0 items-center border-b px-3 py-2">
+              <span className="text-ink-2 text-xs font-medium">Markdown</span>
             </div>
             <textarea
               value={content}
               onChange={(e) => handleContentChange(e.target.value)}
               placeholder="Write the skill instructions in Markdown..."
-              className="flex-1 resize-none border-none bg-neutral-900/60 p-4 font-mono text-sm leading-relaxed text-neutral-200 placeholder-neutral-500 focus:outline-none"
+              className="bg-bg-0/60 text-ink-1 placeholder-ink-3 flex-1 resize-none border-none p-4 font-mono text-sm leading-relaxed focus:outline-none"
             />
           </div>
         )}
@@ -297,21 +291,19 @@ export function SkillEditor({
         {/* Resize handle */}
         <div
           onMouseDown={handleMouseDown}
-          className={`w-1 shrink-0 cursor-col-resize transition-colors hover:bg-blue-500/50 ${isDragging ? 'bg-blue-500/50' : ''}`}
+          className={`hover:bg-acc/50 w-1 shrink-0 cursor-col-resize transition-colors ${isDragging ? 'bg-acc/50' : ''}`}
         />
 
         {/* Right pane: live preview */}
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex shrink-0 items-center border-b border-neutral-700 px-3 py-2">
-            <span className="text-xs font-medium text-neutral-400">
-              Preview
-            </span>
+          <div className="border-glass-border flex shrink-0 items-center border-b px-3 py-2">
+            <span className="text-ink-2 text-xs font-medium">Preview</span>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 text-sm text-neutral-200">
+          <div className="text-ink-1 flex-1 overflow-y-auto p-4 text-sm">
             {deferredContent ? (
               <MarkdownContent content={deferredContent} />
             ) : (
-              <p className="text-neutral-500 italic">
+              <p className="text-ink-3 italic">
                 Start typing to see a preview...
               </p>
             )}

@@ -62,9 +62,9 @@ function SkillPublishActionInner({
   }, [publishMutation, step.id, meta, addToast]);
 
   return (
-    <div className="flex items-center gap-2 border-b border-neutral-700 bg-neutral-900 px-4 py-3">
+    <div className="border-glass-border bg-bg-0 flex items-center gap-2 border-b px-4 py-3">
       {published ? (
-        <div className="flex items-center gap-2 text-sm text-green-400">
+        <div className="text-status-done flex items-center gap-2 text-sm">
           <Check className="h-4 w-4" />
           <span>Skill {meta.mode === 'improve' ? 'updated' : 'published'}</span>
         </div>
@@ -74,13 +74,13 @@ function SkillPublishActionInner({
             type="button"
             onClick={handlePublish}
             disabled={!canPublish || publishMutation.isPending}
-            className="flex cursor-pointer items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
+            className="bg-acc text-ink-0 hover:bg-acc flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Package className="h-4 w-4" />
             {meta.mode === 'improve' ? 'Publish Changes' : 'Publish Skill'}
           </Button>
           {step.status === 'completed' && (
-            <span className="text-xs text-neutral-500">
+            <span className="text-ink-3 text-xs">
               Review the agent&apos;s work above, then publish when ready.
             </span>
           )}

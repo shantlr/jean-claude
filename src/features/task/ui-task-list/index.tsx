@@ -255,11 +255,9 @@ export function TaskList() {
             {/* Active tasks section */}
             {filteredActiveTasks.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-12 text-center">
-                <ListTodo className="h-6 w-6 text-neutral-700" />
-                <span className="text-sm text-neutral-600">
-                  No active tasks
-                </span>
-                <span className="text-[11px] text-neutral-700">
+                <ListTodo className="text-ink-3 h-6 w-6" />
+                <span className="text-ink-2 text-sm">No active tasks</span>
+                <span className="text-ink-3 text-[11px]">
                   Press &#x2318;N to create a task
                 </span>
               </div>
@@ -279,10 +277,10 @@ export function TaskList() {
             {filteredCompletedTasks.length > 0 && (
               <>
                 <div className="flex items-center gap-2 px-1 pt-4 pb-1">
-                  <span className="text-[10px] font-semibold tracking-wider text-neutral-500 uppercase">
+                  <span className="text-ink-3 text-[10px] font-semibold tracking-wider uppercase">
                     Completed
                   </span>
-                  <div className="h-px flex-1 bg-neutral-800" />
+                  <div className="bg-glass-light h-px flex-1" />
                 </div>
                 {filteredCompletedTasks.map((task) => (
                   <TaskSummaryCard

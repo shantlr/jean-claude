@@ -170,8 +170,8 @@ export function MessageInput({
         className={clsx(
           'shrink-0 transition-all duration-200',
           isRunning
-            ? 'bg-gradient-to-r from-amber-500 to-orange-500 shadow-md shadow-amber-500/25 hover:from-amber-400 hover:to-orange-400 hover:shadow-lg hover:shadow-amber-500/40'
-            : 'bg-gradient-to-r from-blue-500 to-purple-500 shadow-md shadow-blue-500/25 hover:scale-105 hover:from-blue-400 hover:to-purple-400 hover:shadow-lg hover:shadow-blue-500/40',
+            ? 'bg-status-run shadow-status-run/25 hover:shadow-status-run/40 shadow-md hover:shadow-lg hover:brightness-110'
+            : 'bg-acc shadow-acc/25 hover:shadow-acc/40 shadow-md hover:scale-105 hover:shadow-lg hover:brightness-110',
         )}
         aria-label={isRunning ? 'Queue this message' : 'Send message'}
         title={
@@ -183,7 +183,7 @@ export function MessageInput({
         {isRunning ? 'Queue' : 'Send'}
         <Kbd
           shortcut="cmd+enter"
-          className="border-white/25 bg-white/10 text-white/90"
+          className="border-glass-border bg-glass-light text-ink-0"
         />
       </Button>
       {isRunning && onStop && (
@@ -193,7 +193,7 @@ export function MessageInput({
           size="lg"
           variant="danger"
           icon={isStopping ? <Loader2 className="animate-spin" /> : <Square />}
-          className="shrink-0 bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-md shadow-red-500/25 transition-all duration-200 hover:scale-105 hover:from-red-400 hover:to-rose-400 hover:shadow-lg hover:shadow-red-500/40"
+          className="bg-status-fail text-bg-0 shadow-status-fail/25 hover:shadow-status-fail/40 shrink-0 shadow-md transition-all duration-200 hover:scale-105 hover:shadow-lg hover:brightness-110"
           aria-label={isStopping ? 'Stopping agent' : 'Stop agent'}
           tooltip={
             isStopping

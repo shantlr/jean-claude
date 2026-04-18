@@ -58,7 +58,7 @@ function ToolInputDisplay({
     case 'Bash':
       return (
         <pre
-          className="rounded bg-neutral-800 px-2 py-1 text-sm break-all whitespace-pre-wrap text-neutral-200"
+          className="bg-bg-1 text-ink-1 rounded px-2 py-1 text-sm break-all whitespace-pre-wrap"
           title={String(input.command || '')}
         >
           {String(input.command || '')}
@@ -76,7 +76,7 @@ function ToolInputDisplay({
       return (
         <code
           className={`block truncate text-sm ${
-            isExternal ? 'text-orange-400' : 'text-neutral-300'
+            isExternal ? 'text-orange-400' : 'text-ink-1'
           }`}
           title={isExternal ? `External path: ${filePath}` : filePath}
         >
@@ -88,21 +88,19 @@ function ToolInputDisplay({
     case 'Glob':
     case 'Grep':
       return (
-        <code className="block truncate text-sm text-neutral-300">
+        <code className="text-ink-1 block truncate text-sm">
           {String(input.pattern || '')}
         </code>
       );
 
     case 'WebSearch':
       return (
-        <span className="text-sm text-neutral-300">
-          {String(input.query || '')}
-        </span>
+        <span className="text-ink-1 text-sm">{String(input.query || '')}</span>
       );
 
     case 'WebFetch':
       return (
-        <code className="block truncate text-sm text-neutral-300">
+        <code className="text-ink-1 block truncate text-sm">
           {String(input.url || '')}
         </code>
       );
@@ -113,7 +111,7 @@ function ToolInputDisplay({
 
     case 'Task':
       return (
-        <div className="text-sm text-neutral-300">
+        <div className="text-ink-1 text-sm">
           Launch{' '}
           <span className="font-medium text-yellow-400">
             {String(input.subagent_type)}
@@ -124,7 +122,7 @@ function ToolInputDisplay({
 
     default:
       return (
-        <pre className="rounded bg-neutral-800 p-2 text-xs break-all whitespace-pre-wrap text-neutral-400">
+        <pre className="bg-bg-1 text-ink-2 rounded p-2 text-xs break-all whitespace-pre-wrap">
           {JSON.stringify(input, null, 2)}
         </pre>
       );
@@ -144,16 +142,14 @@ function ExitPlanModeDisplay({
   return (
     <div className="space-y-3">
       {plan && (
-        <div className="rounded border border-neutral-700 bg-neutral-800/50 p-3 text-xs">
+        <div className="border-glass-border bg-bg-1/50 rounded border p-3 text-xs">
           <MarkdownContent content={plan} />
         </div>
       )}
       {allowedPrompts?.length ? (
         <div>
-          <div className="mb-1 text-xs text-neutral-400">
-            Requested permissions:
-          </div>
-          <ul className="list-inside list-disc space-y-0.5 text-sm text-neutral-300">
+          <div className="text-ink-2 mb-1 text-xs">Requested permissions:</div>
+          <ul className="text-ink-1 list-inside list-disc space-y-0.5 text-sm">
             {allowedPrompts.map((p, i) => (
               <li key={i}>
                 <span className="text-yellow-400">{p.tool}</span>: {p.prompt}
@@ -162,9 +158,7 @@ function ExitPlanModeDisplay({
           </ul>
         </div>
       ) : !plan ? (
-        <span className="text-sm text-neutral-400">
-          Submit plan for approval
-        </span>
+        <span className="text-ink-2 text-sm">Submit plan for approval</span>
       ) : null}
     </div>
   );

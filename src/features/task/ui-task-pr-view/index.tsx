@@ -46,7 +46,7 @@ export function TaskPrView({
           >
             Back
           </Button>
-          <span className="text-sm font-medium text-neutral-300">
+          <span className="text-ink-1 text-sm font-medium">
             Pull Request #{task.pullRequestId}
           </span>
         </div>
@@ -149,17 +149,13 @@ function PrLinkingView({
           >
             Back
           </Button>
-          <span className="text-sm font-medium text-neutral-300">
-            Pull Request
-          </span>
+          <span className="text-ink-1 text-sm font-medium">Pull Request</span>
         </div>
         <Separator />
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-          <GitPullRequest className="h-12 w-12 text-neutral-600" />
-          <p className="text-neutral-400">
-            No repository linked to this project.
-          </p>
-          <p className="text-sm text-neutral-500">
+          <GitPullRequest className="text-ink-4 h-12 w-12" />
+          <p className="text-ink-2">No repository linked to this project.</p>
+          <p className="text-ink-3 text-sm">
             Link a repository in project settings to view and manage pull
             requests.
           </p>
@@ -173,12 +169,12 @@ function PrLinkingView({
       <div className="flex items-center gap-2 px-3 py-2">
         <Button
           onClick={onClose}
-          className="flex items-center gap-1 rounded px-2 py-1 text-sm text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
+          className="text-ink-2 hover:text-ink-1 hover:bg-glass-medium flex items-center gap-1 rounded px-2 py-1 text-sm transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Back
         </Button>
-        <span className="text-sm font-medium text-neutral-300">
+        <span className="text-ink-1 text-sm font-medium">
           Link Pull Request
         </span>
       </div>
@@ -190,15 +186,13 @@ function PrLinkingView({
       >
         {isPrsLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
+            <Loader2 className="text-ink-3 h-6 w-6 animate-spin" />
           </div>
         ) : !branchName ? (
           <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
-            <GitPullRequest className="h-12 w-12 text-neutral-600" />
-            <p className="text-neutral-400">
-              No branch associated with this task.
-            </p>
-            <p className="text-sm text-neutral-500">
+            <GitPullRequest className="text-ink-4 h-12 w-12" />
+            <p className="text-ink-2">No branch associated with this task.</p>
+            <p className="text-ink-3 text-sm">
               Create a worktree task to enable pull request linking.
             </p>
           </div>
@@ -216,10 +210,10 @@ function PrLinkingView({
             />
           ) : (
             <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
-              <GitPullRequest className="h-12 w-12 text-neutral-600" />
-              <p className="text-neutral-400">
+              <GitPullRequest className="text-ink-4 h-12 w-12" />
+              <p className="text-ink-2">
                 No pull requests found for branch{' '}
-                <code className="rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-sm">
+                <code className="bg-bg-1 rounded px-1.5 py-0.5 font-mono text-sm">
                   {branchName}
                 </code>
               </p>
@@ -236,7 +230,7 @@ function PrLinkingView({
                   Create Pull Request
                 </Button>
               ) : (
-                <p className="text-sm text-neutral-500">
+                <p className="text-ink-3 text-sm">
                   Create a pull request from the diff view or your git provider.
                 </p>
               )}
@@ -244,10 +238,10 @@ function PrLinkingView({
           )
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-neutral-400">
+            <p className="text-ink-2 text-sm">
               Found {matchingPrs.length} pull request
               {matchingPrs.length > 1 ? 's' : ''} for branch{' '}
-              <code className="rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-xs">
+              <code className="bg-bg-1 rounded px-1.5 py-0.5 font-mono text-xs">
                 {branchName}
               </code>
             </p>
@@ -278,29 +272,29 @@ function PrSuggestionItem({
   isLinking: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-neutral-700 bg-neutral-800/50 p-3">
+    <div className="bg-bg-1/50 border-glass-border flex items-center justify-between gap-3 rounded-lg border p-3">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <GitPullRequest
             className={clsx(
               'h-4 w-4 shrink-0',
               pr.status === 'active'
-                ? 'text-green-400'
+                ? 'text-status-done'
                 : pr.status === 'completed'
-                  ? 'text-purple-400'
-                  : 'text-red-400',
+                  ? 'text-acc-ink'
+                  : 'text-status-fail',
             )}
           />
-          <span className="truncate text-sm font-medium text-neutral-200">
+          <span className="text-ink-1 truncate text-sm font-medium">
             #{pr.id} {pr.title}
           </span>
           {pr.isDraft && (
-            <span className="shrink-0 rounded bg-neutral-700 px-1.5 py-0.5 text-xs text-neutral-400">
+            <span className="text-ink-2 bg-glass-medium shrink-0 rounded px-1.5 py-0.5 text-xs">
               Draft
             </span>
           )}
         </div>
-        <div className="mt-1 flex items-center gap-2 text-xs text-neutral-500">
+        <div className="text-ink-3 mt-1 flex items-center gap-2 text-xs">
           <span>{pr.createdBy.displayName}</span>
           <span>&middot;</span>
           <span>
@@ -313,10 +307,10 @@ function PrSuggestionItem({
           <span
             className={clsx(
               pr.status === 'active'
-                ? 'text-green-400'
+                ? 'text-status-done'
                 : pr.status === 'completed'
-                  ? 'text-purple-400'
-                  : 'text-red-400',
+                  ? 'text-acc-ink'
+                  : 'text-status-fail',
             )}
           >
             {pr.status}
@@ -328,7 +322,7 @@ function PrSuggestionItem({
           href={pr.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded p-1.5 text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
+          className="text-ink-2 hover:text-ink-1 hover:bg-glass-medium rounded p-1.5 transition-colors"
           title="Open in browser"
         >
           <ExternalLink className="h-4 w-4" />

@@ -182,7 +182,7 @@ export function SlotRow({
   const canEnable = hasSkillSelected;
 
   return (
-    <div className="rounded-lg border border-neutral-700 bg-neutral-800">
+    <div className="border-glass-border bg-bg-1 rounded-lg border">
       {/* Header */}
       <button
         type="button"
@@ -190,18 +190,18 @@ export function SlotRow({
         className="flex w-full cursor-pointer items-center gap-3 px-4 py-3"
       >
         {expanded ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400" />
+          <ChevronDown className="text-ink-2 h-4 w-4 shrink-0" />
         ) : (
-          <ChevronRight className="h-4 w-4 shrink-0 text-neutral-400" />
+          <ChevronRight className="text-ink-2 h-4 w-4 shrink-0" />
         )}
         <div className="flex-1 text-left">
-          <div className="text-sm font-medium text-neutral-200">{label}</div>
-          <div className="text-xs text-neutral-500">{description}</div>
+          <div className="text-ink-1 text-sm font-medium">{label}</div>
+          <div className="text-ink-3 text-xs">{description}</div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-neutral-400">{summary}</span>
+          <span className="text-ink-2 text-xs">{summary}</span>
           {!config && (
-            <span className="rounded bg-neutral-700 px-1.5 py-0.5 text-xs text-neutral-500">
+            <span className="text-ink-3 bg-glass-medium rounded px-1.5 py-0.5 text-xs">
               Disabled
             </span>
           )}
@@ -210,11 +210,11 @@ export function SlotRow({
 
       {/* Expanded content */}
       {expanded && (
-        <div className="border-t border-neutral-700 px-4 py-3">
+        <div className="border-glass-border border-t px-4 py-3">
           <div className="space-y-3">
             {/* Backend */}
             <div className="flex items-center justify-between">
-              <label className="text-sm text-neutral-400">Backend</label>
+              <label className="text-ink-2 text-sm">Backend</label>
               <Select
                 value={localBackend}
                 options={backendOptions}
@@ -225,7 +225,7 @@ export function SlotRow({
 
             {/* Model */}
             <div className="flex items-center justify-between">
-              <label className="text-sm text-neutral-400">Model</label>
+              <label className="text-ink-2 text-sm">Model</label>
               <Select
                 value={localModel}
                 options={modelOptions}
@@ -236,7 +236,7 @@ export function SlotRow({
 
             {/* Skill */}
             <div className="flex items-center justify-between">
-              <label className="text-sm text-neutral-400">Skill</label>
+              <label className="text-ink-2 text-sm">Skill</label>
               <Select
                 value={localSkillName ?? NO_SKILL_VALUE}
                 options={skillOptions}
@@ -250,9 +250,9 @@ export function SlotRow({
             {/* Enable/Disable toggle */}
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
-                <label className="text-sm text-neutral-400">Enabled</label>
+                <label className="text-ink-2 text-sm">Enabled</label>
                 {!canEnable && !isEnabled && (
-                  <span className="text-xs text-neutral-600">
+                  <span className="text-ink-4 text-xs">
                     Select a skill to enable
                   </span>
                 )}
@@ -270,13 +270,13 @@ export function SlotRow({
             <div className="flex gap-2">
               <Button
                 onClick={handleCancel}
-                className="cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
+                className="text-ink-2 hover:text-ink-1 hover:bg-glass-medium cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSave}
-                className="cursor-pointer rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500"
+                className="bg-acc text-ink-0 hover:bg-acc cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium"
               >
                 Save
               </Button>

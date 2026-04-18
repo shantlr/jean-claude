@@ -161,22 +161,22 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-[10vh]"
+      className="bg-bg-0/40 fixed inset-0 z-50 flex items-start justify-center p-4 pt-[10vh]"
       onClick={onClose}
     >
       <div
-        className="flex max-h-[75svh] w-[min(1000px,96vw)] flex-col overflow-hidden rounded-xl border border-white/10 bg-neutral-900/85 shadow-2xl shadow-black/50 backdrop-blur-xl"
+        className="bg-bg-0/85 flex max-h-[75svh] w-[min(1000px,96vw)] flex-col overflow-hidden rounded-xl border border-white/10 shadow-2xl shadow-black/50 backdrop-blur-xl"
         onClick={(event) => event.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent px-4 py-3">
           <div className="flex items-center gap-2">
-            <Terminal className="h-4 w-4 text-emerald-400" />
+            <Terminal className="text-status-done h-4 w-4" />
             <div>
-              <h2 className="text-sm font-semibold text-neutral-100">
+              <h2 className="text-ink-0 text-sm font-semibold">
                 Running Commands
               </h2>
-              <p className="mt-0.5 text-xs text-neutral-400">
+              <p className="text-ink-2 mt-0.5 text-xs">
                 {runningCommands.length === 0
                   ? 'No running commands'
                   : `${runningCommands.length} running`}
@@ -195,8 +195,8 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
         {/* Content */}
         {runningCommands.length === 0 ? (
           <div className="px-4 py-12 text-center">
-            <Terminal className="mx-auto mb-3 h-8 w-8 text-neutral-600" />
-            <p className="text-sm text-neutral-500">
+            <Terminal className="text-ink-4 mx-auto mb-3 h-8 w-8" />
+            <p className="text-ink-3 text-sm">
               No commands are currently running.
             </p>
           </div>
@@ -216,8 +216,8 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
                     className={clsx(
                       'group flex w-full cursor-pointer items-start gap-2 rounded-lg px-3 py-2 text-left transition-colors',
                       isSelected
-                        ? 'bg-white/10 text-neutral-100'
-                        : 'text-neutral-400 hover:bg-white/5 hover:text-neutral-200',
+                        ? 'text-ink-0 bg-white/10'
+                        : 'text-ink-2 hover:text-ink-1 hover:bg-white/5',
                     )}
                     onClick={() => setSelectedKey(key)}
                     onKeyDown={(e) => {
@@ -227,15 +227,15 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
                       }
                     }}
                   >
-                    <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin text-emerald-400" />
+                    <Loader2 className="text-status-done mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium">
                         {cmd.commandStatus.command}
                       </p>
-                      <p className="mt-0.5 truncate text-[11px] text-neutral-500">
+                      <p className="text-ink-3 mt-0.5 truncate text-[11px]">
                         {cmd.taskName}
                       </p>
-                      <p className="truncate text-[11px] text-neutral-600">
+                      <p className="text-ink-4 truncate text-[11px]">
                         {cmd.projectName}
                       </p>
                     </div>
@@ -243,8 +243,8 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
                       className={clsx(
                         'mt-0.5 shrink-0 cursor-pointer rounded p-1 transition-colors',
                         isStopping
-                          ? 'cursor-not-allowed text-neutral-600'
-                          : 'text-neutral-600 hover:bg-red-500/20 hover:text-red-400',
+                          ? 'text-ink-4 cursor-not-allowed'
+                          : 'text-ink-4 hover:bg-status-fail/20 hover:text-status-fail',
                       )}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -282,7 +282,7 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
                   }
                 />
               ) : (
-                <div className="flex flex-1 items-center justify-center text-sm text-neutral-600">
+                <div className="text-ink-4 flex flex-1 items-center justify-center text-sm">
                   Select a command to view logs
                 </div>
               )}
@@ -292,16 +292,16 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
 
         {/* Footer with shortcut hints */}
         <div className="flex items-center gap-4 border-t border-white/10 px-4 py-2">
-          <div className="flex items-center gap-1.5 text-[11px] text-neutral-500">
+          <div className="text-ink-3 flex items-center gap-1.5 text-[11px]">
             <Kbd shortcut="up" />
             <Kbd shortcut="down" />
             <span>Navigate</span>
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-neutral-500">
+          <div className="text-ink-3 flex items-center gap-1.5 text-[11px]">
             <Kbd shortcut="cmd+backspace" />
             <span>Stop</span>
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-neutral-500">
+          <div className="text-ink-3 flex items-center gap-1.5 text-[11px]">
             <Kbd shortcut="escape" />
             <span>Close</span>
           </div>
@@ -352,8 +352,8 @@ function LogViewer({
       {/* Log header */}
       <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-neutral-300">{command}</span>
-          <span className="flex items-center gap-1 text-[11px] text-emerald-400">
+          <span className="text-ink-1 font-mono text-xs">{command}</span>
+          <span className="text-status-done flex items-center gap-1 text-[11px]">
             <Loader2 className="h-3 w-3 animate-spin" />
             running
           </span>
@@ -362,8 +362,8 @@ function LogViewer({
           className={clsx(
             'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
             isStopping
-              ? 'cursor-not-allowed bg-neutral-800 text-neutral-600'
-              : 'bg-red-500/15 text-red-400 hover:bg-red-500/25',
+              ? 'text-ink-4 bg-bg-1 cursor-not-allowed'
+              : 'bg-status-fail/15 text-status-fail hover:bg-status-fail/25',
           )}
           disabled={isStopping}
           onClick={onStop}
@@ -376,11 +376,11 @@ function LogViewer({
       {/* Log content */}
       <div
         ref={logContainerRef}
-        className="flex-1 overflow-auto bg-neutral-950/50 p-3 font-mono text-xs leading-5"
+        className="bg-bg-0/50 flex-1 overflow-auto p-3 font-mono text-xs leading-5"
         onScroll={handleScroll}
       >
         {logLines.length === 0 ? (
-          <p className="text-neutral-600">Waiting for output...</p>
+          <p className="text-ink-4">Waiting for output...</p>
         ) : (
           logLines.map((entry, i) => (
             <div
@@ -388,8 +388,8 @@ function LogViewer({
               className={clsx(
                 'break-all whitespace-pre-wrap',
                 entry.stream === 'stderr'
-                  ? 'text-red-400/80'
-                  : 'text-neutral-300',
+                  ? 'text-status-fail/80'
+                  : 'text-ink-1',
               )}
             >
               {entry.line}

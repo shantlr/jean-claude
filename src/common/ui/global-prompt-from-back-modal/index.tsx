@@ -48,20 +48,20 @@ export function GlobalPromptFromBackModal() {
   if (!currentPrompt) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-lg bg-neutral-800 shadow-xl">
+    <div className="bg-bg-0/50 fixed inset-0 z-50 flex items-center justify-center">
+      <div className="bg-bg-1 w-full max-w-md rounded-lg shadow-xl">
         {/* Header */}
-        <div className="flex items-center gap-3 border-b border-neutral-700 px-4 py-3">
+        <div className="border-glass-border flex items-center gap-3 border-b px-4 py-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500/20">
             <AlertTriangle className="h-4 w-4 text-yellow-500" aria-hidden />
           </div>
-          <h2 className="flex-1 text-lg font-semibold text-neutral-100">
+          <h2 className="text-ink-0 flex-1 text-lg font-semibold">
             {currentPrompt.title}
           </h2>
           <button
             onClick={() => handleResponse(false)}
             aria-label="Close dialog"
-            className="rounded p-1 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
+            className="text-ink-2 hover:bg-glass-medium hover:text-ink-1 rounded p-1"
           >
             <X className="h-5 w-5" aria-hidden />
           </button>
@@ -69,11 +69,11 @@ export function GlobalPromptFromBackModal() {
 
         {/* Content */}
         <div className="p-4">
-          <p className="text-sm text-neutral-300">{currentPrompt.message}</p>
+          <p className="text-ink-1 text-sm">{currentPrompt.message}</p>
 
           {currentPrompt.details && (
-            <div className="mt-3 rounded-md bg-neutral-900 p-3">
-              <pre className="font-mono text-xs break-all whitespace-pre-wrap text-neutral-400">
+            <div className="bg-bg-0 mt-3 rounded-md p-3">
+              <pre className="text-ink-2 font-mono text-xs break-all whitespace-pre-wrap">
                 {currentPrompt.details}
               </pre>
             </div>
@@ -81,17 +81,17 @@ export function GlobalPromptFromBackModal() {
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end gap-3 border-t border-neutral-700 px-4 py-3">
+        <div className="border-glass-border flex justify-end gap-3 border-t px-4 py-3">
           <button
             onClick={() => handleResponse(false)}
-            className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-700"
+            className="text-ink-1 hover:bg-glass-medium flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium"
           >
             {currentPrompt.rejectLabel ?? 'Cancel'}
             <Kbd shortcut="escape" className="text-[9px]" />
           </button>
           <button
             onClick={() => handleResponse(true)}
-            className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
+            className="bg-acc text-ink-0 flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium hover:bg-blue-500"
           >
             {currentPrompt.acceptLabel ?? 'Accept'}
             <Kbd shortcut="cmd+enter" className="text-[9px]" />

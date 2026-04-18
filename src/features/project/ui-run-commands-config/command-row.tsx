@@ -79,7 +79,7 @@ export function CommandRow({
   };
 
   return (
-    <div className="rounded-lg border border-neutral-700 bg-neutral-800/50 p-3">
+    <div className="border-glass-border bg-bg-1/50 rounded-lg border p-3">
       <div className="flex items-start gap-2">
         <div className="relative min-w-0 flex-1">
           <Input
@@ -92,13 +92,13 @@ export function CommandRow({
             placeholder="Enter command (e.g., pnpm dev)"
           />
           {showSuggestions && filteredSuggestions.length > 0 && (
-            <div className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border border-neutral-600 bg-neutral-800 py-1 shadow-lg">
+            <div className="border-glass-border bg-bg-1 absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border py-1 shadow-lg">
               {filteredSuggestions.map((suggestion) => (
                 <button
                   key={suggestion}
                   type="button"
                   onMouseDown={() => handleSelectSuggestion(suggestion)}
-                  className="w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-neutral-700"
+                  className="text-ink-1 hover:bg-glass-medium w-full px-3 py-1.5 text-left text-sm"
                 >
                   {suggestion}
                 </button>
@@ -115,7 +115,7 @@ export function CommandRow({
         />
       </div>
       <div className="mt-3">
-        <label className="mb-1.5 block text-xs text-neutral-400">
+        <label className="text-ink-2 mb-1.5 block text-xs">
           Ports to check
         </label>
         <PortChipInput ports={command.ports} onChange={handlePortsChange} />

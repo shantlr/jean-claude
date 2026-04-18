@@ -166,7 +166,7 @@ export function WorktreeDiffView({
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
+        <Loader2 className="text-ink-3 h-6 w-6 animate-spin" />
       </div>
     );
   }
@@ -174,10 +174,10 @@ export function WorktreeDiffView({
   if (error) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6">
-        <p className="text-red-400">Failed to load diff</p>
+        <p className="text-status-fail">Failed to load diff</p>
         <button
           onClick={refresh}
-          className="flex items-center gap-2 rounded-md bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-600"
+          className="bg-glass-medium text-ink-1 hover:bg-bg-3 flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
         >
           <RefreshCw className="h-4 w-4" />
           Retry
@@ -188,10 +188,10 @@ export function WorktreeDiffView({
 
   if (data?.worktreeDeleted) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 text-neutral-500">
+      <div className="text-ink-3 flex h-full flex-col items-center justify-center gap-2">
         <FolderX className="h-8 w-8" />
         <p>Worktree has been deleted</p>
-        <p className="text-xs text-neutral-600">
+        <p className="text-ink-4 text-xs">
           The diff view is no longer available
         </p>
       </div>
@@ -202,12 +202,12 @@ export function WorktreeDiffView({
 
   if (files.length === 0) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 text-neutral-500">
+      <div className="text-ink-3 flex h-full flex-col items-center justify-center gap-3">
         <FileX className="h-8 w-8" />
         <p>No changes yet</p>
         <button
           onClick={refresh}
-          className="flex items-center gap-2 rounded-md bg-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-600"
+          className="bg-glass-medium text-ink-1 hover:bg-bg-3 flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
         >
           <RefreshCw className="h-4 w-4" />
           Refresh
@@ -232,12 +232,12 @@ export function WorktreeDiffView({
             HEADER_HEIGHT_CLS,
           )}
         >
-          <span className="text-xs font-medium text-neutral-400">
+          <span className="text-ink-2 text-xs font-medium">
             Changed Files ({files.length})
           </span>
           <button
             onClick={refresh}
-            className="rounded p-1 text-neutral-500 transition-colors hover:bg-neutral-700 hover:text-neutral-300"
+            className="text-ink-3 hover:bg-glass-medium hover:text-ink-1 rounded p-1 transition-colors"
             title="Refresh diff"
           >
             <RefreshCw className="h-3.5 w-3.5" />
@@ -273,8 +273,8 @@ export function WorktreeDiffView({
         <div
           onMouseDown={handleMouseDown}
           className={clsx(
-            'absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500/50',
-            isDragging && 'bg-blue-500/50',
+            'hover:bg-acc/50 absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors',
+            isDragging && 'bg-acc/50',
           )}
         />
       </div>
@@ -303,7 +303,7 @@ export function WorktreeDiffView({
               annotations={annotations}
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-neutral-500">
+            <div className="text-ink-3 flex h-full items-center justify-center">
               <p>Select a file to view changes</p>
             </div>
           )}
@@ -332,8 +332,8 @@ function WorktreeFileDiffContent({
 
   if (error) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 text-neutral-500">
-        <p className="text-red-400">Failed to load file content</p>
+      <div className="text-ink-3 flex h-full flex-col items-center justify-center gap-2">
+        <p className="text-status-fail">Failed to load file content</p>
         <p className="text-xs">{file.path}</p>
       </div>
     );

@@ -30,16 +30,16 @@ type ThreadStatus = AzureDevOpsCommentThread['status'];
 const ACTIVE_STATUSES = new Set<ThreadStatus>(['active', 'pending', 'unknown']);
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  active: { label: 'Active', color: 'bg-blue-900/50 text-blue-400' },
-  fixed: { label: 'Resolved', color: 'bg-green-900/50 text-green-400' },
-  wontFix: { label: "Won't fix", color: 'bg-neutral-700 text-neutral-400' },
-  closed: { label: 'Closed', color: 'bg-neutral-700 text-neutral-400' },
+  active: { label: 'Active', color: 'bg-acc/50 text-acc-ink' },
+  fixed: { label: 'Resolved', color: 'bg-status-done/50 text-status-done' },
+  wontFix: { label: "Won't fix", color: 'bg-glass-medium text-ink-2' },
+  closed: { label: 'Closed', color: 'bg-glass-medium text-ink-2' },
   byDesign: {
     label: 'By design',
-    color: 'bg-purple-900/50 text-purple-400',
+    color: 'bg-acc/50 text-acc-ink',
   },
-  pending: { label: 'Pending', color: 'bg-yellow-900/50 text-yellow-400' },
-  unknown: { label: 'Unknown', color: 'bg-neutral-700 text-neutral-400' },
+  pending: { label: 'Pending', color: 'bg-yellow-900/50 text-status-run' },
+  unknown: { label: 'Unknown', color: 'bg-glass-medium text-ink-2' },
 };
 
 const SETTABLE_STATUSES: ThreadStatus[] = [
@@ -89,9 +89,7 @@ export function PrComments({
 
   if (visibleThreads.length === 0) {
     return (
-      <div className="py-4 text-center text-sm text-neutral-500">
-        No comments yet
-      </div>
+      <div className="text-ink-3 py-4 text-center text-sm">No comments yet</div>
     );
   }
 
@@ -100,10 +98,10 @@ export function PrComments({
       {/* Active threads */}
       {activeThreads.length > 0 && (
         <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2 text-xs font-medium text-blue-400">
+          <div className="text-acc-ink flex items-center gap-2 text-xs font-medium">
             <MessageCircle className="h-3.5 w-3.5" />
             Active
-            <span className="rounded-full bg-blue-900/50 px-1.5 py-0.5 text-[10px] text-blue-400">
+            <span className="text-acc-ink bg-acc/50 rounded-full px-1.5 py-0.5 text-[10px]">
               {activeThreads.length}
             </span>
           </div>
@@ -124,7 +122,7 @@ export function PrComments({
         <div className="flex flex-col gap-3">
           <button
             onClick={() => setShowResolved((v) => !v)}
-            className="flex items-center gap-2 text-xs font-medium text-neutral-500 transition-colors hover:text-neutral-400"
+            className="text-ink-3 hover:text-ink-2 flex items-center gap-2 text-xs font-medium transition-colors"
           >
             <ChevronRight
               className={clsx(
@@ -134,7 +132,7 @@ export function PrComments({
             />
             <CheckCircle2 className="h-3.5 w-3.5" />
             Resolved
-            <span className="rounded-full bg-neutral-700 px-1.5 py-0.5 text-[10px] text-neutral-400">
+            <span className="text-ink-2 bg-glass-medium rounded-full px-1.5 py-0.5 text-[10px]">
               {resolvedThreads.length}
             </span>
           </button>
@@ -209,7 +207,7 @@ function StatusDropdown({
         <ChevronDown className="h-2.5 w-2.5" />
       </button>
       {isOpen && (
-        <div className="absolute top-full right-0 z-50 mt-1 min-w-[120px] rounded-lg border border-neutral-700 bg-neutral-800 py-1 shadow-lg">
+        <div className="border-glass-border bg-bg-1 absolute top-full right-0 z-50 mt-1 min-w-[120px] rounded-lg border py-1 shadow-lg">
           {SETTABLE_STATUSES.map((s) => {
             const c = STATUS_CONFIG[s];
             return (
@@ -217,8 +215,8 @@ function StatusDropdown({
                 key={s}
                 onClick={() => handleSelect(s)}
                 className={clsx(
-                  'flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors hover:bg-neutral-700',
-                  s === status ? 'text-white' : 'text-neutral-400',
+                  'hover:bg-glass-medium flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors',
+                  s === status ? 'text-ink-0' : 'text-ink-2',
                 )}
               >
                 <span
@@ -361,8 +359,8 @@ function ThreadCodePreview({
   if (!fileContent || snippetLines.length === 0) return null;
 
   return (
-    <div className="mb-2 overflow-hidden rounded-md border border-neutral-700">
-      <div className="overflow-x-auto bg-black/30 font-mono text-xs">
+    <div className="border-glass-border mb-2 overflow-hidden rounded-md border">
+      <div className="bg-bg-0/30 overflow-x-auto font-mono text-xs">
         <table className="w-full border-collapse">
           <tbody>
             {snippetLines.map((line, i) => {
@@ -373,12 +371,12 @@ function ThreadCodePreview({
               return (
                 <tr
                   key={lineNum}
-                  className={clsx(isHighlighted && 'bg-blue-500/10')}
+                  className={clsx(isHighlighted && 'bg-acc/10')}
                 >
                   <td
                     className={clsx(
                       'w-8 pr-1 text-right align-top select-none',
-                      isHighlighted ? 'text-blue-400' : 'text-neutral-600',
+                      isHighlighted ? 'text-acc-ink' : 'text-ink-4',
                     )}
                   >
                     {lineNum}
@@ -391,7 +389,7 @@ function ThreadCodePreview({
                         </span>
                       ))
                     ) : (
-                      <span className="text-neutral-300">{line}</span>
+                      <span className="text-ink-1">{line}</span>
                     )}
                   </td>
                 </tr>
@@ -421,7 +419,7 @@ function CommentThread({
     <div
       className={clsx(
         'relative rounded-lg p-3',
-        dimmed ? 'bg-neutral-800/30 opacity-70' : 'bg-neutral-800/50',
+        dimmed ? 'bg-bg-1/30 opacity-70' : 'bg-bg-1/50',
       )}
     >
       {/* Thread status dropdown - top right */}
@@ -436,7 +434,7 @@ function CommentThread({
 
       {/* File context if present */}
       {thread.threadContext && (
-        <div className="mb-2 flex items-center gap-2 pr-20 text-xs text-neutral-500">
+        <div className="text-ink-3 mb-2 flex items-center gap-2 pr-20 text-xs">
           <span className="font-mono">{thread.threadContext.filePath}</span>
           {thread.threadContext.rightFileStart && (
             <span>Line {thread.threadContext.rightFileStart.line}</span>
@@ -476,14 +474,14 @@ function CommentThread({
                   imageUrl={avatarUrl}
                   size="sm"
                 />
-                <span className="text-sm font-medium text-neutral-200">
+                <span className="text-ink-1 text-sm font-medium">
                   {comment.author.displayName}
                 </span>
-                <span className="text-xs text-neutral-500">
+                <span className="text-ink-3 text-xs">
                   {formatRelativeTime(comment.publishedDate)}
                 </span>
               </div>
-              <div className="text-xs text-neutral-300 [&_code]:text-[11px] [&_pre]:text-[11px]">
+              <div className="text-ink-1 text-xs [&_code]:text-[11px] [&_pre]:text-[11px]">
                 <AzureMarkdownContent
                   markdown={comment.content}
                   providerId={providerId}

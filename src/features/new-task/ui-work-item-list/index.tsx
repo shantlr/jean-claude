@@ -49,18 +49,18 @@ function getStatusColor(status: string): string {
   switch (status.toLowerCase()) {
     case 'in progress':
     case 'active':
-      return 'bg-blue-500/20 text-blue-400';
+      return 'bg-acc/20 text-acc-ink';
     case 'new':
     case 'to do':
-      return 'bg-neutral-500/20 text-neutral-400';
+      return 'bg-bg-2/20 text-ink-2';
     case 'resolved':
     case 'done':
     case 'closed':
-      return 'bg-green-500/20 text-green-400';
+      return 'bg-status-done/20 text-status-done';
     case 'removed':
-      return 'bg-red-500/20 text-red-400';
+      return 'bg-status-fail/20 text-status-fail';
     default:
-      return 'bg-neutral-500/20 text-neutral-400';
+      return 'bg-bg-2/20 text-ink-2';
   }
 }
 
@@ -164,7 +164,7 @@ export function WorkItemList({
   if (workItems.length === 0) {
     return (
       <div className="flex h-full min-h-[100px] items-center justify-center">
-        <p className="text-sm text-neutral-400">No work items available</p>
+        <p className="text-ink-2 text-sm">No work items available</p>
       </div>
     );
   }
@@ -205,8 +205,8 @@ export function WorkItemList({
             }}
             className={clsx(
               'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left',
-              isHighlighted && 'bg-neutral-700/50',
-              !isHighlighted && 'hover:bg-neutral-700/30',
+              isHighlighted && 'bg-glass-medium/50',
+              !isHighlighted && 'hover:bg-glass-medium/30',
               hasParentInList && 'pl-6', // Add left indent for child items
             )}
           >
@@ -217,12 +217,10 @@ export function WorkItemList({
             <WorkItemTypeIcon type={workItem.fields.workItemType} />
 
             {/* Work item ID */}
-            <span className="shrink-0 text-xs text-neutral-500">
-              #{workItem.id}
-            </span>
+            <span className="text-ink-3 shrink-0 text-xs">#{workItem.id}</span>
 
             {/* Title (truncated) */}
-            <span className="min-w-0 flex-1 truncate text-sm text-neutral-200">
+            <span className="text-ink-1 min-w-0 flex-1 truncate text-sm">
               {workItem.fields.title}
             </span>
 

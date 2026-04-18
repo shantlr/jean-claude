@@ -65,19 +65,19 @@ function hasSecondaryRangeOver(
 }
 
 const LEVEL_DOT_COLORS: Record<UsageLevel, string> = {
-  excellent: 'bg-blue-400',
-  low: 'bg-green-400',
+  excellent: 'bg-acc',
+  low: 'bg-status-done',
   medium: 'bg-yellow-400',
-  high: 'bg-orange-400',
-  critical: 'bg-red-400',
+  high: 'bg-status-run',
+  critical: 'bg-status-fail',
 };
 
 const LEVEL_TEXT_COLORS: Record<UsageLevel, string> = {
-  excellent: 'text-blue-400',
-  low: 'text-green-400',
-  medium: 'text-yellow-400',
-  high: 'text-orange-400',
-  critical: 'text-red-400',
+  excellent: 'text-acc-ink',
+  low: 'text-status-done',
+  medium: 'text-status-run',
+  high: 'text-status-run',
+  critical: 'text-status-fail',
 };
 
 const PROVIDER_ICONS: Partial<
@@ -123,12 +123,12 @@ function TooltipRangeRow({
   return (
     <div>
       <div className="flex items-center justify-between gap-4">
-        <span className="text-neutral-400">{label}</span>
+        <span className="text-ink-2">{label}</span>
         <span className={clsx('font-medium', ratioColor)}>
           {range.utilization.toFixed(0)}%
         </span>
       </div>
-      <div className="flex items-center justify-between gap-4 text-neutral-500">
+      <div className="text-ink-3 flex items-center justify-between gap-4">
         <span>
           Ratio:{' '}
           <span className={ratioColor}>
@@ -155,8 +155,8 @@ function TooltipContent({
 
   return (
     <div className="space-y-1.5">
-      <div className="font-medium text-neutral-200">{meta.label}</div>
-      <div className="text-xs text-neutral-500">
+      <div className="text-ink-1 font-medium">{meta.label}</div>
+      <div className="text-ink-3 text-xs">
         Last refreshed {formatFetchedAt(fetchedAtMs)} (
         {fetchedAt.toLocaleTimeString()})
       </div>
@@ -191,17 +191,17 @@ function ProviderUsageChip({
     return (
       <Tooltip
         content={
-          <span className="text-neutral-400">
+          <span className="text-ink-2">
             {result.error?.message ?? 'No usage data'}
           </span>
         }
         side="bottom"
       >
-        <div className="flex items-center gap-1.5 rounded px-1.5 py-0.5 text-neutral-500">
+        <div className="text-ink-3 flex items-center gap-1.5 rounded px-1.5 py-0.5">
           {Icon ? (
             <Icon className="h-3.5 w-3.5 shrink-0" />
           ) : (
-            <div className="h-1.5 w-1.5 rounded-full bg-neutral-600" />
+            <div className="bg-bg-3 h-1.5 w-1.5 rounded-full" />
           )}
           <span className="text-xs">{meta.shortLabel}</span>
         </div>
@@ -219,8 +219,8 @@ function ProviderUsageChip({
   const isExhausted = hasAnyRangeOver(data, 100);
   const hasSecondaryWarning = !isExhausted && hasSecondaryRangeOver(data, 90);
 
-  const textColor = isExhausted ? 'text-red-400' : LEVEL_TEXT_COLORS[level];
-  const dotColor = isExhausted ? 'bg-red-400' : LEVEL_DOT_COLORS[level];
+  const textColor = isExhausted ? 'text-status-fail' : LEVEL_TEXT_COLORS[level];
+  const dotColor = isExhausted ? 'bg-status-fail' : LEVEL_DOT_COLORS[level];
   const ringClass = isExhausted
     ? 'ring-1 ring-red-400/60'
     : hasSecondaryWarning
@@ -268,7 +268,7 @@ export function UsageDisplay() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 text-neutral-500">
+      <div className="text-ink-3 flex items-center gap-2">
         <Loader2 className="h-3 w-3 animate-spin" />
       </div>
     );

@@ -30,31 +30,27 @@ function TooltipContent({
 }) {
   return (
     <div className="space-y-1.5">
-      <div className="font-medium text-neutral-200">
-        Autocomplete Usage (Today)
-      </div>
-      <div className="space-y-0.5 text-neutral-400">
+      <div className="text-ink-1 font-medium">Autocomplete Usage (Today)</div>
+      <div className="text-ink-2 space-y-0.5">
         <div className="flex items-center justify-between gap-6">
           <span>Requests</span>
-          <span className="text-neutral-300">{requests.toLocaleString()}</span>
+          <span className="text-ink-1">{requests.toLocaleString()}</span>
         </div>
         <div className="flex items-center justify-between gap-6">
           <span>Input tokens</span>
-          <span className="text-neutral-300">
+          <span className="text-ink-1">
             {formatTokens(promptTokens)} ({formatCost(inputCostUsd)})
           </span>
         </div>
         <div className="flex items-center justify-between gap-6">
           <span>Output tokens</span>
-          <span className="text-neutral-300">
+          <span className="text-ink-1">
             {formatTokens(completionTokens)} ({formatCost(outputCostUsd)})
           </span>
         </div>
-        <div className="mt-1 flex items-center justify-between gap-6 border-t border-neutral-700 pt-1">
-          <span className="font-medium text-neutral-200">Total</span>
-          <span className="font-medium text-neutral-200">
-            {formatCost(costUsd)}
-          </span>
+        <div className="border-glass-border mt-1 flex items-center justify-between gap-6 border-t pt-1">
+          <span className="text-ink-1 font-medium">Total</span>
+          <span className="text-ink-1 font-medium">{formatCost(costUsd)}</span>
         </div>
       </div>
     </div>
@@ -81,7 +77,7 @@ export function CompletionCostDisplay() {
       }
       side="bottom"
     >
-      <div className="flex items-center gap-1.5 rounded px-1.5 py-0.5 text-neutral-400">
+      <div className="text-ink-2 flex items-center gap-1.5 rounded px-1.5 py-0.5">
         <span className="text-xs">FIM {formatCost(usage.costUsd)}</span>
       </div>
     </Tooltip>

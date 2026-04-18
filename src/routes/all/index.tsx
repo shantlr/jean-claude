@@ -11,7 +11,7 @@ function AllIndex() {
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center text-neutral-500">
+      <div className="text-ink-3 flex h-full items-center justify-center">
         Loading...
       </div>
     );

@@ -28,22 +28,22 @@ function SkillItem({ skill }: { skill: Skill }) {
 
   return (
     <div
-      className="cursor-pointer rounded px-2 py-1 hover:bg-neutral-800"
+      className="hover:bg-glass-light cursor-pointer rounded px-2 py-1"
       onClick={() => setIsExpanded(!isExpanded)}
     >
       <div className="flex items-center gap-1.5">
         {isExpanded ? (
-          <ChevronDown className="h-3 w-3 shrink-0 text-neutral-500" />
+          <ChevronDown className="text-ink-3 h-3 w-3 shrink-0" />
         ) : (
-          <ChevronRight className="h-3 w-3 shrink-0 text-neutral-500" />
+          <ChevronRight className="text-ink-3 h-3 w-3 shrink-0" />
         )}
-        <Wand2 className="h-3 w-3 shrink-0 text-purple-400" />
-        <span className="min-w-0 flex-1 truncate text-xs text-neutral-300">
+        <Wand2 className="text-acc-ink h-3 w-3 shrink-0" />
+        <span className="text-ink-1 min-w-0 flex-1 truncate text-xs">
           {skill.name}
         </span>
       </div>
       {isExpanded && (
-        <p className="mt-1 mr-2 ml-[30px] text-[11px] leading-relaxed text-neutral-500">
+        <p className="text-ink-3 mt-1 mr-2 ml-[30px] text-[11px] leading-relaxed">
           {skill.description || 'No description available.'}
         </p>
       )}
@@ -80,7 +80,7 @@ function groupSkills(skills: Skill[]): SkillGroup[] {
     groups.push({
       key: 'project',
       label: 'Project',
-      className: 'text-green-400',
+      className: 'text-status-done',
       skills: projectSkills,
     });
   }
@@ -89,7 +89,7 @@ function groupSkills(skills: Skill[]): SkillGroup[] {
     groups.push({
       key: 'user',
       label: 'User',
-      className: 'text-blue-400',
+      className: 'text-acc-ink',
       skills: userSkills,
     });
   }
@@ -98,7 +98,7 @@ function groupSkills(skills: Skill[]): SkillGroup[] {
     groups.push({
       key: `plugin-${pluginName}`,
       label: pluginName,
-      className: 'text-orange-400',
+      className: 'text-status-run',
       skills,
     });
   }
@@ -131,17 +131,17 @@ function SkillsList({ taskId, stepId }: { taskId: string; stepId?: string }) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-2">
-        <Loader2 className="h-3 w-3 animate-spin text-neutral-500" />
+        <Loader2 className="text-ink-3 h-3 w-3 animate-spin" />
       </div>
     );
   }
 
   if (error) {
-    return <p className="text-xs text-red-400">Failed to load skills</p>;
+    return <p className="text-status-fail text-xs">Failed to load skills</p>;
   }
 
   if (!skills || skills.length === 0) {
-    return <p className="text-xs text-neutral-600">No skills available.</p>;
+    return <p className="text-ink-4 text-xs">No skills available.</p>;
   }
 
   const groups = groupSkills(skills);
@@ -191,7 +191,7 @@ export function TaskSettingsPane({
   };
 
   return (
-    <div className="panel-edge-shadow flex h-full w-80 flex-col bg-neutral-900">
+    <div className="panel-edge-shadow bg-bg-0 flex h-full w-80 flex-col">
       {/* Header */}
       <div
         className={clsx(
@@ -199,7 +199,7 @@ export function TaskSettingsPane({
           TASK_PANEL_HEADER_HEIGHT_CLS,
         )}
       >
-        <h3 className="text-sm font-medium text-neutral-200">Task Settings</h3>
+        <h3 className="text-ink-1 text-sm font-medium">Task Settings</h3>
         <IconButton onClick={onClose} size="sm" icon={<X />} tooltip="Close" />
       </div>
       <Separator />
@@ -209,22 +209,20 @@ export function TaskSettingsPane({
         {/* Source Info Section */}
         {(sourceBranch || sourceCommit) && (
           <section>
-            <h4 className="mb-3 text-xs font-medium tracking-wide text-neutral-500 uppercase">
+            <h4 className="text-ink-3 mb-3 text-xs font-medium tracking-wide uppercase">
               Source
             </h4>
             <div className="space-y-2">
               {sourceBranch && (
-                <div className="flex items-center gap-2 rounded-md bg-neutral-800 px-3 py-2.5">
-                  <GitBranch className="h-4 w-4 text-neutral-500" />
-                  <span className="text-sm text-neutral-200">
-                    {sourceBranch}
-                  </span>
+                <div className="bg-bg-1 flex items-center gap-2 rounded-md px-3 py-2.5">
+                  <GitBranch className="text-ink-3 h-4 w-4" />
+                  <span className="text-ink-1 text-sm">{sourceBranch}</span>
                 </div>
               )}
               {sourceCommit && (
-                <div className="flex items-center gap-2 rounded-md bg-neutral-800 px-3 py-2.5">
-                  <GitCommitHorizontal className="h-4 w-4 text-neutral-500" />
-                  <span className="flex-1 truncate font-mono text-sm text-neutral-200">
+                <div className="bg-bg-1 flex items-center gap-2 rounded-md px-3 py-2.5">
+                  <GitCommitHorizontal className="text-ink-3 h-4 w-4" />
+                  <span className="text-ink-1 flex-1 truncate font-mono text-sm">
                     {sourceCommit.slice(0, 8)}
                   </span>
                   <IconButton
@@ -232,7 +230,7 @@ export function TaskSettingsPane({
                     size="sm"
                     icon={
                       copiedCommit ? (
-                        <Check className="text-green-500" />
+                        <Check className="text-status-done" />
                       ) : (
                         <Copy />
                       )
@@ -247,11 +245,11 @@ export function TaskSettingsPane({
 
         {/* Session Allowed Tools Section */}
         <section>
-          <h4 className="mb-3 text-xs font-medium tracking-wide text-neutral-500 uppercase">
+          <h4 className="text-ink-3 mb-3 text-xs font-medium tracking-wide uppercase">
             Session Allowed Tools
           </h4>
           {Object.keys(sessionRules).length === 0 ? (
-            <p className="text-xs text-neutral-600">
+            <p className="text-ink-4 text-xs">
               No tools are currently allowed for this session. Tools will appear
               here when you use &quot;Allow for Session&quot; on a permission
               request.
@@ -273,11 +271,11 @@ export function TaskSettingsPane({
                 return entries.map(({ label, tool: toolKey, pattern }) => (
                   <div
                     key={label}
-                    className="flex items-center justify-between rounded-md bg-neutral-800 px-3 py-2"
+                    className="bg-bg-1 flex items-center justify-between rounded-md px-3 py-2"
                   >
                     <div className="flex min-w-0 items-center gap-2">
-                      <Shield className="h-3.5 w-3.5 shrink-0 text-blue-400" />
-                      <span className="truncate text-sm text-neutral-200">
+                      <Shield className="text-acc-ink h-3.5 w-3.5 shrink-0" />
+                      <span className="text-ink-1 truncate text-sm">
                         {label}
                       </span>
                     </div>
@@ -298,7 +296,7 @@ export function TaskSettingsPane({
 
         {/* Skills Section */}
         <section>
-          <h4 className="mb-2 text-xs font-medium tracking-wide text-neutral-500 uppercase">
+          <h4 className="text-ink-3 mb-2 text-xs font-medium tracking-wide uppercase">
             Available Skills
           </h4>
           <SkillsList taskId={taskId} stepId={stepId} />
@@ -306,14 +304,14 @@ export function TaskSettingsPane({
 
         {/* Debug Section */}
         <section>
-          <h4 className="mb-3 text-xs font-medium tracking-wide text-neutral-500 uppercase">
+          <h4 className="text-ink-3 mb-3 text-xs font-medium tracking-wide uppercase">
             Debug
           </h4>
           <Button
             onClick={onOpenDebugMessages}
             variant="secondary"
             size="md"
-            icon={<Bug className="text-yellow-500" />}
+            icon={<Bug className="text-status-run" />}
             className="w-full justify-start"
           >
             Raw Messages

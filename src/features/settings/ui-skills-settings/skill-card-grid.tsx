@@ -47,11 +47,7 @@ function BackendToggleChip({
 
   if (!editable || !onClick) {
     return (
-      <Chip
-        size="xs"
-        color={color}
-        className={!enabled ? 'text-neutral-600' : ''}
-      >
+      <Chip size="xs" color={color} className={!enabled ? 'text-ink-4' : ''}>
         {label}
       </Chip>
     );
@@ -63,7 +59,7 @@ function BackendToggleChip({
       color={color}
       onClick={handleClick}
       title={`${enabled ? 'Disable' : 'Enable'} for ${backendLabel(backendType)}`}
-      className={!enabled ? 'text-neutral-600' : ''}
+      className={!enabled ? 'text-ink-4' : ''}
     >
       {label}
     </Chip>
@@ -101,7 +97,7 @@ export function SkillCardGrid({
 }) {
   if (skills.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-neutral-700 p-8 text-center text-sm text-neutral-500">
+      <div className="border-glass-border text-ink-3 rounded-lg border border-dashed p-8 text-center text-sm">
         No skills found.
         <br />
         Click &quot;Add&quot; to create one.
@@ -123,8 +119,8 @@ export function SkillCardGrid({
             className={clsx(
               'flex cursor-pointer flex-col items-start gap-2 rounded-lg border p-3 text-left transition-colors',
               isSelected
-                ? 'border-blue-500 bg-blue-500/10'
-                : 'border-neutral-700 bg-neutral-800 hover:border-neutral-600',
+                ? 'border-acc bg-acc/10'
+                : 'border-glass-border bg-bg-1 hover:border-glass-border-strong',
               !anyEnabled && 'opacity-60',
             )}
           >
@@ -132,16 +128,16 @@ export function SkillCardGrid({
               <Wand2
                 className={clsx(
                   'h-4 w-4 shrink-0',
-                  anyEnabled ? 'text-purple-400' : 'text-neutral-600',
+                  anyEnabled ? 'text-acc-ink' : 'text-ink-4',
                 )}
               />
-              <span className="truncate text-sm font-medium text-neutral-200">
+              <span className="text-ink-1 truncate text-sm font-medium">
                 {skill.name}
               </span>
             </div>
 
             {skill.description && (
-              <p className="line-clamp-2 text-xs leading-relaxed text-neutral-500">
+              <p className="text-ink-3 line-clamp-2 text-xs leading-relaxed">
                 {skill.description}
               </p>
             )}

@@ -18,24 +18,24 @@ export function RamUsageDisplay() {
     <Tooltip
       content={
         <div className="space-y-1">
-          <div className="font-medium text-neutral-200">Jean-Claude Memory</div>
-          <div className="text-neutral-400">
+          <div className="text-ink-1 font-medium">Jean-Claude Memory</div>
+          <div className="text-ink-2">
             Total RSS: {formatBytes(data.totalRssBytes)}
           </div>
-          <div className="text-neutral-400">
+          <div className="text-ink-2">
             Main RSS: {formatBytes(data.mainProcess.rssBytes)}
           </div>
-          <div className="text-neutral-400">
+          <div className="text-ink-2">
             Main Heap: {formatBytes(data.mainProcess.heapUsedBytes)}
           </div>
-          <div className="text-neutral-400">
+          <div className="text-ink-2">
             Renderer RSS: {formatBytes(data.rendererProcess.rssBytes)}
           </div>
         </div>
       }
       side="bottom"
     >
-      <div className="flex cursor-default items-center gap-1.5 rounded px-1.5 py-0.5 text-neutral-400">
+      <div className="text-ink-2 flex cursor-default items-center gap-1.5 rounded px-1.5 py-0.5">
         <MemoryStick size={14} />
         <span className="text-xs">{formatBytes(data.totalRssBytes)}</span>
       </div>

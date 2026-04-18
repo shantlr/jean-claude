@@ -249,7 +249,7 @@ export const Select = forwardRef<
         aria-controls={isOpen ? listboxId : undefined}
         aria-label={label}
         className={clsx(
-          'bg-surface hover:bg-surface-bright flex items-center text-neutral-300 transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+          'bg-glass-light hover:bg-glass-medium text-ink-1 flex items-center transition-colors disabled:cursor-not-allowed disabled:opacity-50',
           heightOrPy,
           s.text,
           s.px,
@@ -275,7 +275,7 @@ export const Select = forwardRef<
             role="listbox"
             aria-orientation="vertical"
             aria-label={label}
-            className="bg-surface-container-lowest fixed z-50 min-w-48 overflow-y-auto rounded-md py-1 shadow-xl"
+            className="bg-bg-1 border-glass-border fixed z-50 min-w-48 overflow-y-auto rounded-md border py-1 shadow-xl"
             style={{
               top: position.actualSide === 'bottom' ? position.top : undefined,
               bottom:
@@ -302,14 +302,12 @@ export const Select = forwardRef<
                   close();
                 }}
                 className={clsx(
-                  'flex w-full items-center text-left transition-colors hover:bg-neutral-700 focus:bg-neutral-700 focus:outline-none',
+                  'hover:bg-glass-medium focus:bg-glass-medium flex w-full items-center text-left transition-colors focus:outline-none',
                   s.text,
                   s.gap,
                   s.px,
                   s.py,
-                  option.value === value
-                    ? 'text-neutral-200'
-                    : 'text-neutral-400',
+                  option.value === value ? 'text-ink-1' : 'text-ink-2',
                 )}
               >
                 <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
@@ -320,14 +318,14 @@ export const Select = forwardRef<
                     className={clsx(
                       s.text,
                       option.value === value
-                        ? 'font-medium text-neutral-200'
-                        : 'text-neutral-300',
+                        ? 'text-ink-1 font-medium'
+                        : 'text-ink-1',
                     )}
                   >
                     {option.label}
                   </span>
                   {option.description && (
-                    <span className="text-xs text-neutral-500">
+                    <span className="text-ink-3 text-xs">
                       {option.description}
                     </span>
                   )}

@@ -35,17 +35,15 @@ export function PrOverview({
       >
         <div className="max-w-3xl min-w-0">
           {/* Description */}
-          <h2 className="mb-4 text-sm font-medium text-neutral-400">
-            Description
-          </h2>
+          <h2 className="text-ink-2 mb-4 text-sm font-medium">Description</h2>
           {pr.description.trim() ? (
             <AzureMarkdownContent
               markdown={pr.description}
               providerId={providerId}
-              className="text-sm text-neutral-300"
+              className="text-ink-1 text-sm"
             />
           ) : (
-            <p className="text-sm text-neutral-500 italic">No description</p>
+            <p className="text-ink-3 text-sm italic">No description</p>
           )}
 
           {/* Comments */}

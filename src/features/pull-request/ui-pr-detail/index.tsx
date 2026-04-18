@@ -191,14 +191,14 @@ export function PrDetail({
   if (isPrLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
+        <Loader2 className="text-ink-3 h-6 w-6 animate-spin" />
       </div>
     );
   }
 
   if (!pr) {
     return (
-      <div className="flex h-full items-center justify-center text-neutral-500">
+      <div className="text-ink-3 flex h-full items-center justify-center">
         Pull request not found
       </div>
     );
@@ -264,7 +264,7 @@ export function PrDetail({
             >
               {isFilesLoading ? (
                 <div className="flex h-full items-center justify-center">
-                  <Loader2 className="h-5 w-5 animate-spin text-neutral-500" />
+                  <Loader2 className="text-ink-3 h-5 w-5 animate-spin" />
                 </div>
               ) : (
                 <DiffFileTree
@@ -277,8 +277,8 @@ export function PrDetail({
               <div
                 onMouseDown={handleMouseDown}
                 className={clsx(
-                  'absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500/50',
-                  isDragging && 'bg-blue-500/50',
+                  'hover:bg-acc/50 absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors',
+                  isDragging && 'bg-acc/50',
                 )}
               />
             </div>
@@ -296,7 +296,7 @@ export function PrDetail({
                   isAddingComment={addFileComment.isPending}
                 />
               ) : (
-                <div className="flex h-full items-center justify-center text-neutral-500">
+                <div className="text-ink-3 flex h-full items-center justify-center">
                   Select a file to view changes
                 </div>
               )}
@@ -307,7 +307,7 @@ export function PrDetail({
         {activeTab === 'commits' &&
           (isCommitsLoading ? (
             <div className="flex h-full items-center justify-center">
-              <Loader2 className="h-5 w-5 animate-spin text-neutral-500" />
+              <Loader2 className="text-ink-3 h-5 w-5 animate-spin" />
             </div>
           ) : (
             <PrCommits commits={commits} bottomPadding={bottomPadding} />
@@ -336,8 +336,8 @@ function TabButton({
       className={clsx(
         'flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors',
         active
-          ? 'border-blue-500 text-blue-400'
-          : 'border-transparent text-neutral-400 hover:text-neutral-200',
+          ? 'border-acc text-acc-ink'
+          : 'text-ink-2 hover:text-ink-1 border-transparent',
       )}
     >
       {icon}
@@ -346,7 +346,7 @@ function TabButton({
         <span
           className={clsx(
             'rounded-full px-1.5 py-0.5 text-xs',
-            active ? 'bg-blue-900/50' : 'bg-neutral-700',
+            active ? 'bg-acc/50' : 'bg-glass-medium',
           )}
         >
           {count}

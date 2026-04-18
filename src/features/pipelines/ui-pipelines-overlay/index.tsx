@@ -178,20 +178,18 @@ export function PipelinesOverlay({ onClose }: { onClose: () => void }) {
     <FocusLock returnFocus>
       <RemoveScroll>
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          className="bg-bg-0/50 fixed inset-0 z-50 flex items-center justify-center"
           onClick={handleBackdropClick}
           tabIndex={-1}
           role="dialog"
         >
           <div
-            className="flex h-[80svh] w-[90svw] max-w-[1280px] flex-col overflow-hidden rounded-lg border border-neutral-700 bg-neutral-900"
+            className="border-glass-border bg-bg-0 flex h-[80svh] w-[90svw] max-w-[1280px] flex-col overflow-hidden rounded-lg border"
             onClick={handlePanelClick}
           >
             {/* Top bar */}
             <div className="flex shrink-0 items-center gap-2 px-4 py-3">
-              <h2 className="text-sm font-medium text-neutral-200">
-                Pipelines
-              </h2>
+              <h2 className="text-ink-1 text-sm font-medium">Pipelines</h2>
             </div>
 
             <Separator />
@@ -216,7 +214,7 @@ export function PipelinesOverlay({ onClose }: { onClose: () => void }) {
             <Separator />
 
             {/* Footer */}
-            <div className="flex shrink-0 items-center justify-between px-4 py-2 text-xs text-neutral-500">
+            <div className="text-ink-3 flex shrink-0 items-center justify-between px-4 py-2 text-xs">
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1">
                   <Kbd shortcut="escape" /> close

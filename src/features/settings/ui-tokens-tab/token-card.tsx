@@ -15,7 +15,7 @@ function getExpirationStatus(expiresAt: string | null): {
   icon: typeof CheckCircle;
 } {
   if (!expiresAt) {
-    return { label: 'No expiration', color: 'text-neutral-400', icon: Clock };
+    return { label: 'No expiration', color: 'text-ink-2', icon: Clock };
   }
 
   const now = new Date();
@@ -25,25 +25,25 @@ function getExpirationStatus(expiresAt: string | null): {
   );
 
   if (daysUntil < 0) {
-    return { label: 'Expired', color: 'text-red-400', icon: AlertCircle };
+    return { label: 'Expired', color: 'text-status-fail', icon: AlertCircle };
   }
   if (daysUntil <= 7) {
     return {
       label: `Expires in ${daysUntil} days`,
-      color: 'text-yellow-400',
+      color: 'text-status-run',
       icon: AlertCircle,
     };
   }
   if (daysUntil <= 30) {
     return {
       label: `Expires in ${daysUntil} days`,
-      color: 'text-yellow-500',
+      color: 'text-status-run',
       icon: Clock,
     };
   }
   return {
     label: `Expires in ${daysUntil} days`,
-    color: 'text-green-400',
+    color: 'text-status-done',
     icon: CheckCircle,
   };
 }
@@ -66,16 +66,16 @@ export function TokenCard({
       variant="unstyled"
       className={`flex cursor-pointer flex-col gap-2 rounded-lg border p-4 text-left transition-colors ${
         isSelected
-          ? 'border-blue-500 bg-blue-500/10'
-          : 'border-neutral-700 bg-neutral-800/50 hover:border-neutral-600'
+          ? 'border-acc bg-acc/10'
+          : 'border-glass-border bg-bg-1/50 hover:border-glass-border-strong'
       }`}
     >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
-          <Key className="h-4 w-4 text-neutral-400" />
-          <span className="font-medium text-neutral-200">{token.label}</span>
+          <Key className="text-ink-2 h-4 w-4" />
+          <span className="text-ink-1 font-medium">{token.label}</span>
         </div>
-        <span className="rounded-full bg-neutral-700 px-2 py-0.5 text-xs text-neutral-300">
+        <span className="bg-glass-medium text-ink-1 rounded-full px-2 py-0.5 text-xs">
           {PROVIDER_LABELS[token.providerType] || token.providerType}
         </span>
       </div>

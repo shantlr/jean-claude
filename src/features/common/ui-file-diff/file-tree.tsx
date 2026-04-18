@@ -109,7 +109,7 @@ function TreeNodeRow({
         <button
           onClick={() => onToggleFolder(node.path)}
           aria-expanded={isExpanded}
-          className="flex w-full items-center gap-1.5 px-2 py-1 text-left text-sm text-neutral-400 hover:bg-neutral-700/50"
+          className="text-ink-2 hover:bg-glass-medium/50 flex w-full items-center gap-1.5 px-2 py-1 text-left text-sm"
           style={{ paddingLeft }}
         >
           {isExpanded ? (
@@ -117,7 +117,7 @@ function TreeNodeRow({
           ) : (
             <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
           )}
-          <Folder className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
+          <Folder className="text-ink-3 h-4 w-4 shrink-0" aria-hidden />
           <span className="truncate">{node.name}</span>
         </button>
         {isExpanded &&
@@ -147,22 +147,22 @@ function TreeNodeRow({
       aria-current={isSelected ? 'true' : undefined}
       className={`flex w-full items-center gap-1.5 px-2 py-1 text-left text-sm transition-colors ${
         isSelected
-          ? 'bg-neutral-700 text-neutral-100'
-          : 'text-neutral-300 hover:bg-neutral-700/50'
+          ? 'text-ink-0 bg-glass-medium'
+          : 'text-ink-1 hover:bg-glass-medium/50'
       }`}
       style={{ paddingLeft }}
     >
       <span className="w-3.5 shrink-0" aria-hidden />
-      <File className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
+      <File className="text-ink-3 h-4 w-4 shrink-0" aria-hidden />
       <span className="truncate">{node.name}</span>
       {node.status === 'renamed' && node.originalPath && (
-        <span className="truncate text-xs text-neutral-500">
+        <span className="text-ink-3 truncate text-xs">
           ← {getFileName(node.originalPath)}
         </span>
       )}
       {fileHasAnnotation && (
         <MessageCircle
-          className="ml-1 h-3 w-3 shrink-0 text-amber-400/70"
+          className="text-status-run/70 ml-1 h-3 w-3 shrink-0"
           aria-label="Has AI annotations"
         />
       )}

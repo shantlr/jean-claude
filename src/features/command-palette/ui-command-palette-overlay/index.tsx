@@ -128,11 +128,11 @@ export function CommandPaletteOverlay({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="flex max-h-[60svh] w-[90svw] max-w-[1280px] flex-col overflow-hidden rounded-lg border border-neutral-700 bg-neutral-800 shadow-2xl"
+        className="border-glass-border bg-bg-1 flex max-h-[60svh] w-[90svw] max-w-[1280px] flex-col overflow-hidden rounded-lg border shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search input */}
-        <div className="flex items-center border-b border-neutral-700 px-4 py-3">
+        <div className="border-glass-border flex items-center border-b px-4 py-3">
           <Input
             ref={inputRef}
             placeholder="Search..."
@@ -157,7 +157,7 @@ export function CommandPaletteOverlay({ onClose }: { onClose: () => void }) {
               // const cmds = groupedCommands[section];
               return (
                 <div key={sectionName} className="mt-4 mb-2 first:mt-0">
-                  <div className="mb-2 px-2 text-[11px] font-semibold tracking-wider text-neutral-500 uppercase">
+                  <div className="text-ink-3 mb-2 px-2 text-[11px] font-semibold tracking-wider uppercase">
                     {sectionName}
                     {/* {SECTION_LABELS[section] ?? section} */}
                   </div>
@@ -172,8 +172,8 @@ export function CommandPaletteOverlay({ onClose }: { onClose: () => void }) {
                         className={clsx(
                           'flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm',
                           isSelected
-                            ? 'bg-neutral-700 text-white'
-                            : 'text-neutral-300 hover:bg-neutral-700/50',
+                            ? 'bg-glass-medium text-ink-0'
+                            : 'text-ink-1 hover:bg-glass-medium/50',
                         )}
                       >
                         <span>{cmd.label}</span>

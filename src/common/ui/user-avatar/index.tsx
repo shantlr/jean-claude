@@ -38,7 +38,7 @@ const VOTE_BORDER_CLASSES: Record<ReviewerVoteStatus, string> = {
   'approved-with-suggestions': 'border-green-400',
   waiting: 'border-yellow-500',
   rejected: 'border-red-500',
-  none: 'border-neutral-600',
+  none: 'border-glass-border',
 };
 
 // Human-readable labels for vote statuses
@@ -93,9 +93,7 @@ export function UserAvatar({
         'relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-medium',
         SIZE_CLASSES[size],
         !showImage &&
-          (highlight
-            ? 'bg-blue-600 text-white'
-            : 'bg-neutral-700 text-neutral-300'),
+          (highlight ? 'bg-acc text-ink-0' : 'bg-glass-medium text-ink-1'),
         showBorder && ['border-2', VOTE_BORDER_CLASSES[vote]],
         className,
       )}
@@ -121,7 +119,7 @@ export function UserAvatar({
           )}
         >
           <Check
-            className={clsx('text-white', BADGE_ICON_CLASSES[size])}
+            className={clsx('text-ink-0', BADGE_ICON_CLASSES[size])}
             strokeWidth={3}
           />
         </div>
@@ -134,7 +132,7 @@ export function UserAvatar({
           )}
         >
           <X
-            className={clsx('text-white', BADGE_ICON_CLASSES[size])}
+            className={clsx('text-ink-0', BADGE_ICON_CLASSES[size])}
             strokeWidth={3}
           />
         </div>

@@ -112,7 +112,7 @@ export function TimelinePromptNavigator({
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}
-          className="flex items-center gap-1 rounded-md border border-neutral-600 bg-neutral-800 px-2 py-0.5 text-[10px] text-neutral-400 opacity-90 transition-colors hover:border-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
+          className="border-glass-border bg-bg-1 text-ink-2 hover:border-glass-border-strong hover:bg-glass-medium hover:text-ink-1 flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] opacity-90 transition-colors"
           title={
             collapsed ? 'Expand prompt navigator' : 'Collapse prompt navigator'
           }
@@ -141,7 +141,7 @@ export function TimelinePromptNavigator({
               return (
                 <div
                   key={item.id}
-                  className="w-full text-center text-xs leading-4 text-neutral-500"
+                  className="text-ink-3 w-full text-center text-xs leading-4"
                 >
                   ...
                 </div>
@@ -161,17 +161,17 @@ export function TimelinePromptNavigator({
                 }}
                 className={
                   isCurrent
-                    ? 'w-full min-w-0 rounded-lg border border-neutral-500 bg-neutral-900 px-3 py-1.5 text-left text-xs text-neutral-100 shadow-md'
-                    : 'w-full min-w-0 rounded-lg border border-neutral-600 bg-neutral-800 px-3 py-1 text-left text-xs text-neutral-300 opacity-90 transition-colors hover:border-neutral-500 hover:bg-neutral-700 hover:text-neutral-200'
+                    ? 'border-glass-border-strong bg-bg-0 text-ink-0 w-full min-w-0 rounded-lg border px-3 py-1.5 text-left text-xs shadow-md'
+                    : 'border-glass-border bg-bg-1 text-ink-1 hover:text-ink-1 hover:border-glass-border-strong hover:bg-glass-medium w-full min-w-0 rounded-lg border px-3 py-1 text-left text-xs opacity-90 transition-colors'
                 }
                 title={isCurrent ? 'Align current prompt' : 'Jump to prompt'}
               >
                 <span className="inline-flex w-full min-w-0 items-start gap-2">
-                  <span className="shrink-0 text-[10px] leading-4 text-neutral-400">
+                  <span className="text-ink-2 shrink-0 text-[10px] leading-4">
                     {item.prompt.index + 1}/{totalPrompts}
                   </span>
                   {promptDurationMs !== undefined && (
-                    <span className="shrink-0 text-[10px] leading-4 text-neutral-500">
+                    <span className="text-ink-3 shrink-0 text-[10px] leading-4">
                       {formatDuration(promptDurationMs)}
                     </span>
                   )}

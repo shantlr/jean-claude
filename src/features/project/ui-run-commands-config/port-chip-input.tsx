@@ -36,11 +36,11 @@ export function PortChipInput({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-neutral-600 bg-neutral-800 px-2 py-1.5">
+    <div className="border-glass-border bg-bg-1 flex flex-wrap items-center gap-1.5 rounded-md border px-2 py-1.5">
       {ports.map((port) => (
         <span
           key={port}
-          className="flex items-center gap-1 rounded bg-neutral-700 px-2 py-0.5 text-sm text-neutral-100"
+          className="bg-glass-medium text-ink-0 flex items-center gap-1 rounded px-2 py-0.5 text-sm"
         >
           {port}
           <IconButton
@@ -59,7 +59,7 @@ export function PortChipInput({
         onKeyDown={handleKeyDown}
         onBlur={() => inputValue.trim() && addPort(inputValue)}
         placeholder={ports.length === 0 ? 'Add port...' : ''}
-        className="min-w-16 flex-1 border-none bg-transparent text-sm text-neutral-100 outline-none placeholder:text-neutral-500"
+        className="text-ink-0 placeholder:text-ink-3 min-w-16 flex-1 border-none bg-transparent text-sm outline-none"
       />
     </div>
   );

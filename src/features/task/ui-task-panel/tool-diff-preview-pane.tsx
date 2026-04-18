@@ -33,13 +33,13 @@ export function ToolDiffPreviewPane({
   return (
     <div
       style={{ width }}
-      className="panel-edge-shadow relative flex h-full flex-col bg-neutral-900"
+      className="panel-edge-shadow bg-bg-0 relative flex h-full flex-col"
     >
       <div
         onMouseDown={handleMouseDown}
         className={clsx(
-          'absolute top-0 left-0 z-10 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500/50',
-          isDragging && 'bg-blue-500/50',
+          'hover:bg-acc/50 absolute top-0 left-0 z-10 h-full w-1 cursor-col-resize transition-colors',
+          isDragging && 'bg-acc/50',
         )}
       />
 
@@ -51,12 +51,12 @@ export function ToolDiffPreviewPane({
       >
         <div className="min-w-0 flex-1">
           <div
-            className="truncate text-sm font-medium text-neutral-200"
+            className="text-ink-1 truncate text-sm font-medium"
             title={filePath}
           >
             {filePath}
           </div>
-          <div className="text-xs text-neutral-500">Tool diff preview</div>
+          <div className="text-ink-3 text-xs">Tool diff preview</div>
         </div>
         <IconButton onClick={onClose} size="sm" icon={<X />} tooltip="Close" />
       </div>

@@ -91,32 +91,32 @@ export function AutocompleteSettings() {
   };
 
   if (isLoading) {
-    return <p className="text-neutral-500">Loading...</p>;
+    return <p className="text-ink-3">Loading...</p>;
   }
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-neutral-200">Autocomplete</h2>
-      <p className="mt-1 text-sm text-neutral-500">
+      <h2 className="text-ink-1 text-lg font-semibold">Autocomplete</h2>
+      <p className="text-ink-3 mt-1 text-sm">
         Inline ghost text completions powered by Mistral Codestral FIM
         (Fill-in-the-Middle). Press{' '}
-        <kbd className="rounded bg-neutral-700 px-1 py-0.5 text-xs text-neutral-300">
+        <kbd className="bg-glass-medium text-ink-1 rounded px-1 py-0.5 text-xs">
           Tab
         </kbd>{' '}
         to accept a suggestion.
       </p>
 
       {/* Setup guide */}
-      <div className="mt-4 max-w-lg rounded-lg border border-neutral-700 bg-neutral-800/50 px-4 py-3">
-        <p className="text-sm font-medium text-neutral-300">Getting started</p>
-        <ol className="mt-2 list-inside list-decimal space-y-1 text-sm text-neutral-400">
+      <div className="border-glass-border bg-bg-1/50 mt-4 max-w-lg rounded-lg border px-4 py-3">
+        <p className="text-ink-1 text-sm font-medium">Getting started</p>
+        <ol className="text-ink-2 mt-2 list-inside list-decimal space-y-1 text-sm">
           <li>
             Create a Mistral account at{' '}
             <a
               href="https://console.mistral.ai"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300"
+              className="text-acc-ink hover:text-acc-ink inline-flex items-center gap-1"
             >
               console.mistral.ai
               <ExternalLink className="h-3 w-3" />
@@ -128,7 +128,7 @@ export function AutocompleteSettings() {
               href="https://console.mistral.ai/codestral"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300"
+              className="text-acc-ink hover:text-acc-ink inline-flex items-center gap-1"
             >
               the Codestral section
               <ExternalLink className="h-3 w-3" />
@@ -136,15 +136,15 @@ export function AutocompleteSettings() {
           </li>
           <li>Paste the API key below and save</li>
         </ol>
-        <p className="mt-2 text-xs text-neutral-500">
+        <p className="text-ink-3 mt-2 text-xs">
           Codestral API keys use the{' '}
-          <code className="text-neutral-400">codestral.mistral.ai</code>{' '}
-          endpoint and have separate (generous) rate limits.{' '}
+          <code className="text-ink-2">codestral.mistral.ai</code> endpoint and
+          have separate (generous) rate limits.{' '}
           <a
             href="https://docs.mistral.ai/capabilities/code_generation"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300"
+            className="text-acc-ink hover:text-acc-ink inline-flex items-center gap-1"
           >
             Learn more
             <ExternalLink className="h-3 w-3" />
@@ -166,7 +166,7 @@ export function AutocompleteSettings() {
       >
         {/* API Key */}
         <div>
-          <label className="block text-sm font-medium text-neutral-400">
+          <label className="text-ink-2 block text-sm font-medium">
             Codestral API Key
           </label>
           <Input
@@ -180,7 +180,7 @@ export function AutocompleteSettings() {
             className="mt-1 max-w-md"
           />
           {hasApiKey && (
-            <p className="mt-1 text-xs text-neutral-500">
+            <p className="text-ink-3 mt-1 text-xs">
               Leave empty to keep existing key. Enter a new value to replace it.
             </p>
           )}
@@ -188,9 +188,7 @@ export function AutocompleteSettings() {
 
         {/* Model */}
         <div>
-          <label className="block text-sm font-medium text-neutral-400">
-            Model
-          </label>
+          <label className="text-ink-2 block text-sm font-medium">Model</label>
           <Input
             value={model}
             onChange={(e) => setModel(e.target.value)}
@@ -198,16 +196,16 @@ export function AutocompleteSettings() {
             disabled={!enabled}
             className="mt-1 max-w-md"
           />
-          <p className="mt-1 text-xs text-neutral-500">
-            Default: <code className="text-neutral-400">codestral-latest</code>
+          <p className="text-ink-3 mt-1 text-xs">
+            Default: <code className="text-ink-2">codestral-latest</code>
           </p>
         </div>
 
         {/* Server URL (advanced) */}
         <div>
-          <label className="block text-sm font-medium text-neutral-400">
+          <label className="text-ink-2 block text-sm font-medium">
             Server URL
-            <span className="ml-1.5 text-xs font-normal text-neutral-500">
+            <span className="text-ink-3 ml-1.5 text-xs font-normal">
               (optional)
             </span>
           </label>
@@ -218,10 +216,10 @@ export function AutocompleteSettings() {
             disabled={!enabled}
             className="mt-1 max-w-md"
           />
-          <p className="mt-1 text-xs text-neutral-500">
+          <p className="text-ink-3 mt-1 text-xs">
             Leave empty to use the default Codestral endpoint. Use{' '}
-            <code className="text-neutral-400">https://api.mistral.ai</code> if
-            using a standard Mistral API key instead.
+            <code className="text-ink-2">https://api.mistral.ai</code> if using
+            a standard Mistral API key instead.
           </p>
         </div>
       </div>
@@ -237,7 +235,7 @@ export function AutocompleteSettings() {
           Save
         </Button>
         {hasChanges && (
-          <span className="text-xs text-neutral-500">Unsaved changes</span>
+          <span className="text-ink-3 text-xs">Unsaved changes</span>
         )}
       </div>
 
@@ -246,8 +244,8 @@ export function AutocompleteSettings() {
         <div
           className={`mt-4 max-w-md rounded-lg border px-4 py-3 ${
             testResult.type === 'success'
-              ? 'border-green-700 bg-green-900/30 text-green-400'
-              : 'border-red-700 bg-red-900/30 text-red-400'
+              ? 'text-status-done border-status-done bg-status-done/30'
+              : 'text-status-fail border-status-fail bg-status-fail/30'
           }`}
         >
           <span className="text-sm">{testResult.text}</span>

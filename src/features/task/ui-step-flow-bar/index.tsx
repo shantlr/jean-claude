@@ -253,12 +253,12 @@ function getEdgeClass({
   fromStatus: TaskStepStatus;
   toStatus: TaskStepStatus;
 }) {
-  if (toStatus === 'running') return 'stroke-blue-400';
-  if (toStatus === 'completed') return 'stroke-emerald-500';
-  if (toStatus === 'errored') return 'stroke-red-500';
-  if (toStatus === 'interrupted') return 'stroke-yellow-500';
-  if (fromStatus === 'completed') return 'stroke-emerald-700/70';
-  return 'stroke-neutral-700';
+  if (toStatus === 'running') return 'stroke-acc';
+  if (toStatus === 'completed') return 'stroke-status-done';
+  if (toStatus === 'errored') return 'stroke-status-fail';
+  if (toStatus === 'interrupted') return 'stroke-status-run';
+  if (fromStatus === 'completed') return 'stroke-status-done/40';
+  return 'stroke-line';
 }
 
 function getEdgeStrokeClass(isDependency: boolean) {
@@ -274,29 +274,27 @@ function StatusIcon({ status }: { status: TaskStepStatus }) {
 
   switch (status) {
     case 'pending':
-      return (
-        <Circle className={clsx(cls, 'text-neutral-600')} strokeWidth={2} />
-      );
+      return <Circle className={clsx(cls, 'text-ink-4')} strokeWidth={2} />;
     case 'ready':
       return (
         <Circle
-          className={clsx(cls, 'text-neutral-400')}
+          className={clsx(cls, 'text-ink-2')}
           fill="currentColor"
           strokeWidth={0}
         />
       );
     case 'running':
-      return <Loader2 className={clsx(cls, 'animate-spin text-blue-400')} />;
+      return <Loader2 className={clsx(cls, 'text-acc-ink animate-spin')} />;
     case 'completed':
       return (
-        <Check className={clsx(cls, 'text-emerald-400')} strokeWidth={3} />
+        <Check className={clsx(cls, 'text-status-done')} strokeWidth={3} />
       );
     case 'errored':
-      return <X className={clsx(cls, 'text-red-400')} strokeWidth={3} />;
+      return <X className={clsx(cls, 'text-status-fail')} strokeWidth={3} />;
     case 'interrupted':
       return (
         <AlertTriangle
-          className={clsx(cls, 'text-yellow-400')}
+          className={clsx(cls, 'text-status-run')}
           strokeWidth={2.5}
         />
       );
@@ -311,15 +309,15 @@ function StepTypeIcon({ step }: { step: TaskStep }) {
   if (step.type === 'review') {
     const cls = 'h-2.5 w-2.5 shrink-0';
     if (step.status === 'running') {
-      return <Search className={clsx(cls, 'animate-pulse text-blue-400')} />;
+      return <Search className={clsx(cls, 'text-acc-ink animate-pulse')} />;
     }
     if (step.status === 'completed') {
-      return <Search className={clsx(cls, 'text-emerald-400')} />;
+      return <Search className={clsx(cls, 'text-status-done')} />;
     }
     if (step.status === 'errored') {
-      return <Search className={clsx(cls, 'text-red-400')} />;
+      return <Search className={clsx(cls, 'text-status-fail')} />;
     }
-    return <Search className={clsx(cls, 'text-neutral-400')} />;
+    return <Search className={clsx(cls, 'text-ink-2')} />;
   }
   return <StatusIcon status={step.status} />;
 }
@@ -329,17 +327,16 @@ function StepTypeIcon({ step }: { step: TaskStep }) {
 /* ------------------------------------------------------------------ */
 
 const CHIP_STYLES: Record<TaskStepStatus, string> = {
-  pending:
-    'border border-neutral-800 bg-neutral-900 text-neutral-500 cursor-default',
+  pending: 'border border-line-soft bg-bg-0 text-ink-3 cursor-default',
   ready:
-    'border border-neutral-700 bg-neutral-800/60 text-neutral-300 cursor-pointer hover:bg-neutral-800 hover:border-neutral-600',
-  running: 'step-chip-running text-blue-200 cursor-pointer',
+    'border border-glass-border bg-glass-light text-ink-1 cursor-pointer hover:bg-glass-medium hover:border-glass-border-strong',
+  running: 'step-chip-running text-acc-ink cursor-pointer',
   completed:
-    'border border-emerald-800/50 bg-emerald-950/40 text-emerald-300 cursor-pointer hover:bg-emerald-950/60 shadow-[inset_0_1px_0_0_rgba(52,211,153,0.06)]',
+    'border border-status-done/30 bg-status-done-soft text-status-done cursor-pointer hover:bg-status-done/15 shadow-[inset_0_1px_0_0_oklch(0.78_0.16_155_/_0.06)]',
   errored:
-    'border border-red-800/50 bg-red-950/40 text-red-300 cursor-pointer hover:bg-red-950/60',
+    'border border-status-fail/30 bg-status-fail-soft text-status-fail cursor-pointer hover:bg-status-fail/15',
   interrupted:
-    'border border-yellow-800/50 bg-yellow-950/40 text-yellow-300 cursor-pointer hover:bg-yellow-950/60',
+    'border border-status-run/30 bg-status-run-soft text-status-run cursor-pointer hover:bg-status-run/15',
 };
 
 /* ------------------------------------------------------------------ */
@@ -382,7 +379,7 @@ function StepChip({
           'h-full w-full gap-1 rounded-md px-1.5 py-0.5 text-[10px] leading-none transition-all duration-300 ease-out',
           CHIP_STYLES[step.status],
           isActive &&
-            'shadow-[0_0_10px_0_rgba(59,130,246,0.3),0_0_3px_0_rgba(59,130,246,0.2)] ring-[1.5px] ring-blue-400/70 ring-offset-[1.5px] ring-offset-neutral-900 brightness-125',
+            'ring-acc/70 ring-offset-bg-0 shadow-[0_0_10px_0_oklch(0.72_0.20_295_/_0.3),0_0_3px_0_oklch(0.72_0.20_295_/_0.2)] ring-[1.5px] ring-offset-[1.5px] brightness-125',
         )}
       >
         <StepTypeIcon step={step} />
@@ -398,7 +395,7 @@ function StepChip({
             event.stopPropagation();
             onAddAfter(step.id);
           }}
-          className="absolute top-1/2 -right-1.5 z-10 h-3.5 w-3.5 -translate-y-1/2 rounded-full border border-neutral-600 bg-neutral-800 p-0 text-neutral-400 opacity-0 transition-all group-hover/step:opacity-100 hover:border-neutral-400 hover:text-neutral-200 focus-visible:opacity-100"
+          className="border-line bg-bg-1 text-ink-2 hover:border-glass-border-strong hover:text-ink-1 absolute top-1/2 -right-1.5 z-10 h-3.5 w-3.5 -translate-y-1/2 rounded-full border p-0 opacity-0 transition-all group-hover/step:opacity-100 focus-visible:opacity-100"
           title="Add step after this step"
         >
           <Plus className="h-2 w-2" />
@@ -530,7 +527,7 @@ export function StepFlowBar({
                 variant="unstyled"
                 onClick={onAddStepAtEnd}
                 title="Add step at end (⌘⇧N)"
-                className="h-4 shrink-0 gap-1 rounded-md border border-dashed border-neutral-700/60 px-1 text-neutral-600 transition-colors hover:border-neutral-500 hover:text-neutral-400"
+                className="border-line/60 text-ink-4 hover:border-glass-border-strong hover:text-ink-2 h-4 shrink-0 gap-1 rounded-md border border-dashed px-1 transition-colors"
               >
                 <Plus className="h-2.5 w-2.5" />
               </Button>
@@ -538,7 +535,7 @@ export function StepFlowBar({
           )}
 
           {layout.hasCycle && (
-            <div className="absolute top-0 right-0 rounded border border-yellow-800/50 bg-yellow-950/30 px-2 py-1 text-[10px] text-yellow-300">
+            <div className="border-status-run/30 bg-status-run-soft text-status-run absolute top-0 right-0 rounded border px-2 py-1 text-[10px]">
               Dependency cycle detected
             </div>
           )}

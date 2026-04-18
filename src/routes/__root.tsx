@@ -38,13 +38,13 @@ function RootErrorBoundary({ error }: { error: Error }) {
   const router = useRouter();
 
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-neutral-900 text-white">
+    <div className="aurora-app-bg flex h-screen w-screen items-center justify-center text-white">
       <div className="max-w-lg space-y-4 p-8 text-center">
         <h1 className="text-2xl font-semibold text-red-400">
           Something went wrong
         </h1>
-        <div className="rounded-lg bg-neutral-800 p-4 text-left">
-          <p className="font-mono text-sm text-neutral-300">{error.message}</p>
+        <div className="bg-glass-light rounded-lg p-4 text-left">
+          <p className="text-ink-1 font-mono text-sm">{error.message}</p>
         </div>
         <div className="flex justify-center gap-3">
           <Button
@@ -64,10 +64,10 @@ function RootErrorBoundary({ error }: { error: Error }) {
         </div>
         {process.env.NODE_ENV === 'development' && error.stack && (
           <details className="mt-4 text-left">
-            <summary className="cursor-pointer text-sm text-neutral-500">
+            <summary className="text-ink-3 cursor-pointer text-sm">
               Stack trace
             </summary>
-            <pre className="mt-2 overflow-auto rounded bg-neutral-800 p-3 text-xs text-neutral-400">
+            <pre className="bg-glass-light text-ink-2 mt-2 overflow-auto rounded p-3 text-xs">
               {error.stack}
             </pre>
           </details>
@@ -298,7 +298,7 @@ function NotificationCenterContainer() {
 
 function RootLayout() {
   return (
-    <div className="flex h-screen w-screen overflow-hidden">
+    <div className="aurora-app-bg flex h-screen w-screen overflow-hidden">
       <TaskMessageManager />
       <GlobalPromptFromBackModal />
       <GlobalCommands />

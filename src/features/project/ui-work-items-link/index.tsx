@@ -68,8 +68,8 @@ export function WorkItemsLink({ project }: { project: Project }) {
 
   if (azureProviders.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-neutral-700 p-4">
-        <div className="flex items-center gap-2 text-neutral-500">
+      <div className="border-glass-border rounded-lg border border-dashed p-4">
+        <div className="text-ink-3 flex items-center gap-2">
           <ListTodo className="h-4 w-4" />
           <span className="text-sm">
             Add an Azure DevOps provider in Settings to link work items
@@ -95,13 +95,13 @@ export function WorkItemsLink({ project }: { project: Project }) {
 
   if (isLinked) {
     return (
-      <div className="rounded-lg border border-neutral-700 bg-neutral-900 p-4">
+      <div className="border-glass-border bg-bg-0 rounded-lg border p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ListTodo className="h-4 w-4 text-blue-400" />
+            <ListTodo className="text-acc-ink h-4 w-4" />
             <div>
-              <p className="text-sm font-medium text-neutral-200">Work Items</p>
-              <p className="text-sm text-neutral-400">
+              <p className="text-ink-1 text-sm font-medium">Work Items</p>
+              <p className="text-ink-2 text-sm">
                 {azureProviders.find((p) => p.id === project.workItemProviderId)
                   ?.label ?? 'Unknown'}{' '}
                 / {project.workItemProjectName}
@@ -119,7 +119,7 @@ export function WorkItemsLink({ project }: { project: Project }) {
             Unlink
           </Button>
         </div>
-        <div className="mt-3 border-t border-neutral-800 pt-3">
+        <div className="border-line-soft mt-3 border-t pt-3">
           <Checkbox
             checked={!!project.showWorkItemsInFeed}
             onChange={handleToggleShowInFeed}
@@ -133,10 +133,10 @@ export function WorkItemsLink({ project }: { project: Project }) {
   }
 
   return (
-    <div className="rounded-lg border border-neutral-700 bg-neutral-900 p-4">
+    <div className="border-glass-border bg-bg-0 rounded-lg border p-4">
       <div className="mb-3 flex items-center gap-2">
-        <ListTodo className="h-4 w-4 text-neutral-400" />
-        <p className="text-sm font-medium text-neutral-200">Link Work Items</p>
+        <ListTodo className="text-ink-2 h-4 w-4" />
+        <p className="text-ink-1 text-sm font-medium">Link Work Items</p>
       </div>
 
       <div className="space-y-3">

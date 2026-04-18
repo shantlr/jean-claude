@@ -132,7 +132,7 @@ function PipelineContextMenu({
   return createPortal(
     <div
       ref={menuRef}
-      className="fixed z-50 min-w-[160px] rounded-md border border-neutral-700 bg-neutral-800 py-1 shadow-lg"
+      className="border-glass-border bg-bg-1 fixed z-50 min-w-[160px] rounded-md border py-1 shadow-lg"
       style={{ top: pos.y, left: pos.x }}
       role="menu"
       aria-label="Pipeline actions"
@@ -141,7 +141,7 @@ function PipelineContextMenu({
         role="menuitem"
         tabIndex={-1}
         onClick={handleToggleVisible}
-        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-neutral-300 transition-colors hover:bg-neutral-700 focus:bg-neutral-700 focus:outline-none"
+        className="text-ink-1 hover:bg-glass-medium focus:bg-glass-medium flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors focus:outline-none"
       >
         {isHidden ? (
           <Eye className="h-3.5 w-3.5 shrink-0" />
@@ -200,9 +200,7 @@ function PipelineItem({
         icon={pipeline.kind === 'build' ? <Hammer /> : <Rocket />}
         className={clsx(
           'flex-1 justify-start truncate',
-          isSelected
-            ? 'bg-neutral-700 font-medium text-neutral-100'
-            : 'text-neutral-400',
+          isSelected ? 'text-ink-0 bg-glass-medium font-medium' : 'text-ink-2',
         )}
       >
         <span className="truncate">{pipeline.name}</span>
@@ -269,8 +267,8 @@ function ProjectGroup({
         className={clsx(
           'w-full justify-start',
           isProjectSelected
-            ? 'bg-neutral-700 font-medium text-neutral-100'
-            : 'text-neutral-400',
+            ? 'text-ink-0 bg-glass-medium font-medium'
+            : 'text-ink-2',
         )}
       >
         <span className="truncate">{project.name}</span>
@@ -362,8 +360,8 @@ export function Sidebar({
           className={clsx(
             'w-full justify-start',
             filter.type === 'all'
-              ? 'bg-neutral-700 font-medium text-neutral-100'
-              : 'text-neutral-400',
+              ? 'text-ink-0 bg-glass-medium font-medium'
+              : 'text-ink-2',
           )}
         >
           All Projects

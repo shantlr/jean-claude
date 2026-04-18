@@ -157,7 +157,7 @@ export function DiffView({
   if (isLoading || !state) {
     return (
       <div className="flex items-center justify-center rounded bg-black/30 p-2">
-        <span className="text-xs text-neutral-500">Loading diff…</span>
+        <span className="text-ink-3 text-xs">Loading diff…</span>
       </div>
     );
   }
@@ -182,7 +182,7 @@ export function DiffView({
           onClick={() =>
             setViewMode(viewMode === 'inline' ? 'side-by-side' : 'inline')
           }
-          className="rounded bg-neutral-700/70 p-1 text-neutral-300 hover:bg-neutral-600 hover:text-neutral-100"
+          className="bg-glass-medium/70 text-ink-1 hover:bg-bg-3 hover:text-ink-0 rounded p-1"
           aria-label={
             viewMode === 'inline'
               ? 'Switch to side-by-side view'
@@ -447,7 +447,7 @@ function DiffLineRow({
         currentMatch,
       })
     ) : (
-      <span className="text-neutral-300">{line.content}</span>
+      <span className="text-ink-1">{line.content}</span>
     );
 
   return (
@@ -471,11 +471,11 @@ function DiffLineRow({
         <td
           className={clsx(
             'relative w-8 pr-1 text-right align-top select-none',
-            line.type === 'deletion' ? 'text-red-400' : 'text-neutral-600',
+            line.type === 'deletion' ? 'text-status-fail' : 'text-ink-4',
           )}
         >
           {canComment && isHovered ? (
-            <span className="flex h-full w-full items-center justify-center text-blue-400">
+            <span className="text-acc-ink flex h-full w-full items-center justify-center">
               <MessageSquarePlus className="h-3 w-3" aria-hidden />
             </span>
           ) : (
@@ -486,7 +486,7 @@ function DiffLineRow({
         <td
           className={clsx(
             'w-8 pr-1 text-right align-top select-none',
-            line.type === 'addition' ? 'text-green-400' : 'text-neutral-600',
+            line.type === 'addition' ? 'text-status-done' : 'text-ink-4',
           )}
         >
           {line.newLineNumber ?? ''}
@@ -494,9 +494,9 @@ function DiffLineRow({
         {/* Prefix (+/-/space) */}
         <td
           className={clsx('w-4 text-center align-top select-none', {
-            'text-green-400': line.type === 'addition',
-            'text-red-400': line.type === 'deletion',
-            'text-neutral-600': line.type === 'context',
+            'text-status-done': line.type === 'addition',
+            'text-status-fail': line.type === 'deletion',
+            'text-ink-4': line.type === 'context',
           })}
         >
           {line.type === 'addition'
@@ -519,7 +519,7 @@ function DiffLineRow({
       {inlineComments && inlineComments.length > 0 && (
         <tr>
           <td colSpan={4} className="p-0">
-            <div className="border-y border-white/[0.06] bg-neutral-800/80 px-4 py-2">
+            <div className="bg-bg-1/80 border-y border-white/[0.06] px-4 py-2">
               {inlineComments.map((comment, i) => (
                 <div key={i}>{comment.content}</div>
               ))}
@@ -532,7 +532,7 @@ function DiffLineRow({
       {commentForm && (
         <tr>
           <td colSpan={4} className="p-0">
-            <div className="border-y border-blue-600/50 bg-neutral-800/90 px-4 py-3">
+            <div className="border-acc/50 bg-bg-1/90 border-y px-4 py-3">
               {commentForm}
             </div>
           </td>

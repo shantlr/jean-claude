@@ -250,7 +250,7 @@ export function WorktreeActions({
   ]);
 
   return (
-    <div className="flex flex-col gap-3 border-t border-neutral-700 p-3">
+    <div className="border-glass-border flex flex-col gap-3 border-t p-3">
       {/* Commit button */}
       <Button
         onClick={() => setIsCommitModalOpen(true)}
@@ -267,9 +267,7 @@ export function WorktreeActions({
 
       {/* Merge section */}
       <div className="flex flex-col gap-2">
-        <label className="text-xs font-medium text-neutral-400">
-          Merge into
-        </label>
+        <label className="text-ink-2 text-xs font-medium">Merge into</label>
         <Select
           value={isBranchesLoading ? '' : selectedBranch}
           options={

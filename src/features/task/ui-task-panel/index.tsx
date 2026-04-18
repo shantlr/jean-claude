@@ -496,12 +496,12 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         <div className="space-y-2">
           <p>
             This will remove the worktree directory and delete branch{' '}
-            <code className="rounded bg-neutral-800 px-1.5 py-0.5 text-xs text-neutral-300">
+            <code className="text-ink-1 bg-bg-1 rounded px-1.5 py-0.5 text-xs">
               {branchName}
             </code>
             .
           </p>
-          <p className="text-neutral-400">This action cannot be undone.</p>
+          <p className="text-ink-2">This action cannot be undone.</p>
         </div>
       ),
       confirmLabel: 'Delete Worktree',
@@ -892,7 +892,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
 
   if (!task || !project) {
     return (
-      <div className="flex h-full items-center justify-center text-neutral-500">
+      <div className="text-ink-3 flex h-full items-center justify-center">
         Loading...
       </div>
     );
@@ -921,7 +921,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   return (
     <div
       ref={taskPanelRef}
-      className="bg-surface-variant flex h-full w-full overflow-hidden rounded-tl-xl"
+      className="bg-bg-0 flex h-full w-full overflow-hidden rounded-tl-xl"
     >
       {/* Main content */}
       <div className="relative flex min-w-0 flex-1 flex-col">
@@ -934,7 +934,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         >
           {/* Left: Task title and note input */}
           <div className="flex min-w-0 flex-1 items-center gap-2">
-            <h1 className="min-w-0 shrink truncate text-sm font-semibold text-neutral-200">
+            <h1 className="text-ink-1 min-w-0 shrink truncate text-sm font-semibold">
               {task.name ?? task.prompt.split('\n')[0]}
             </h1>
             <TaskPendingNoteInput
@@ -1270,7 +1270,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             <PrReviewValidation step={activeStep} />
           ) : agentState.isLoading ? (
             <div className="flex h-full items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
+              <Loader2 className="text-ink-3 h-6 w-6 animate-spin" />
             </div>
           ) : hasMessages ? (
             <MessageStream
@@ -1294,21 +1294,21 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                 footerHeight > 0 ? { paddingBottom: footerHeight } : undefined
               }
             >
-              <div className="mb-2 text-sm font-medium text-neutral-400">
+              <div className="text-ink-2 mb-2 text-sm font-medium">
                 {activeStep?.name ?? 'Prompt'}
               </div>
-              <div className="rounded-lg border border-neutral-700 bg-neutral-800 p-4">
+              <div className="border-glass-border bg-bg-1 rounded-lg border p-4">
                 <pre className="overflow-x-hidden font-sans text-xs whitespace-pre-wrap">
                   {activeStep?.promptTemplate ?? task.prompt}
                 </pre>
               </div>
               {isRunning ? (
-                <div className="mt-6 flex items-center justify-center gap-2 rounded-lg border border-dashed border-neutral-700 p-8">
-                  <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
-                  <p className="text-neutral-400">Starting agent...</p>
+                <div className="border-glass-border mt-6 flex items-center justify-center gap-2 rounded-lg border border-dashed p-8">
+                  <Loader2 className="text-ink-2 h-4 w-4 animate-spin" />
+                  <p className="text-ink-2">Starting agent...</p>
                 </div>
               ) : activeStep?.status === 'ready' ? (
-                <div className="mt-6 flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-700 p-8">
+                <div className="border-glass-border mt-6 flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-8">
                   <Button
                     onClick={() => void start()}
                     disabled={isStarting}
@@ -1320,14 +1320,14 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                   </Button>
                 </div>
               ) : activeStep?.status === 'pending' ? (
-                <div className="mt-6 flex items-center justify-center rounded-lg border border-dashed border-neutral-700 p-8">
-                  <p className="text-sm text-neutral-500">
+                <div className="border-glass-border mt-6 flex items-center justify-center rounded-lg border border-dashed p-8">
+                  <p className="text-ink-3 text-sm">
                     Waiting for dependencies to complete
                   </p>
                 </div>
               ) : (
-                <div className="mt-6 flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-neutral-700 p-8">
-                  <p className="text-neutral-400">No messages loaded</p>
+                <div className="border-glass-border mt-6 flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-8">
+                  <p className="text-ink-2">No messages loaded</p>
                   <Button
                     onClick={agentState.refetch}
                     variant="secondary"

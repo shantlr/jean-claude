@@ -31,8 +31,8 @@ export function TokensTab() {
       <div className="flex-1">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-neutral-200">Tokens</h2>
-            <p className="mt-1 text-sm text-neutral-500">
+            <h2 className="text-ink-1 text-lg font-semibold">Tokens</h2>
+            <p className="text-ink-3 mt-1 text-sm">
               Manage your Personal Access Tokens for git providers
             </p>
           </div>

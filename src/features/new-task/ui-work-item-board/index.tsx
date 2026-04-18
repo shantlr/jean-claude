@@ -32,20 +32,20 @@ function getColumnColor(status: string): string {
   switch (status.toLowerCase()) {
     case 'new':
     case 'to do':
-      return 'border-neutral-500';
+      return 'border-glass-border-strong';
     case 'active':
     case 'in progress':
     case 'in design':
-      return 'border-blue-500';
+      return 'border-acc';
     case 'resolved':
     case 'done':
     case 'closed':
     case 'deployed':
-      return 'border-green-500';
+      return 'border-status-done';
     case 'removed':
-      return 'border-red-500';
+      return 'border-status-fail';
     default:
-      return 'border-neutral-500';
+      return 'border-glass-border-strong';
   }
 }
 
@@ -181,7 +181,7 @@ export function WorkItemBoard({
   if (workItems.length === 0) {
     return (
       <div className="flex h-full min-h-[100px] items-center justify-center">
-        <p className="text-sm text-neutral-400">No work items available</p>
+        <p className="text-ink-2 text-sm">No work items available</p>
       </div>
     );
   }
@@ -194,18 +194,14 @@ export function WorkItemBoard({
       {columns.map(({ state, items }) => (
         <div
           key={state}
-          className="flex h-full w-56 shrink-0 flex-col overflow-hidden rounded bg-neutral-800/50"
+          className="bg-bg-1/50 flex h-full w-56 shrink-0 flex-col overflow-hidden rounded"
         >
           {/* Column header */}
           <div
             className={clsx('border-t-2 px-2 py-1.5', getColumnColor(state))}
           >
-            <span className="text-xs font-medium text-neutral-300">
-              {state}
-            </span>
-            <span className="ml-1.5 text-xs text-neutral-500">
-              {items.length}
-            </span>
+            <span className="text-ink-1 text-xs font-medium">{state}</span>
+            <span className="text-ink-3 ml-1.5 text-xs">{items.length}</span>
           </div>
 
           {/* Cards */}
@@ -229,8 +225,8 @@ export function WorkItemBoard({
                   className={clsx(
                     'flex flex-col gap-1.5 rounded border p-2 text-left',
                     isHighlighted
-                      ? 'border-blue-500 bg-neutral-700/70'
-                      : 'border-neutral-700 hover:border-neutral-600',
+                      ? 'border-acc bg-glass-medium/70'
+                      : 'hover:border-glass-border border-glass-border',
                   )}
                 >
                   {/* Top row: checkbox + type icon + id + type */}
@@ -240,10 +236,10 @@ export function WorkItemBoard({
                       type={workItem.fields.workItemType}
                       size="sm"
                     />
-                    <span className="text-[10px] text-neutral-500">
+                    <span className="text-ink-3 text-[10px]">
                       #{workItem.id}
                     </span>
-                    <span className="max-w-[80px] truncate text-[10px] text-neutral-400">
+                    <span className="text-ink-2 max-w-[80px] truncate text-[10px]">
                       {workItem.fields.workItemType}
                     </span>
                     {/* Assignee (far right) */}
@@ -269,7 +265,7 @@ export function WorkItemBoard({
                   </div>
 
                   {/* Title (2-line clamp) */}
-                  <span className="line-clamp-2 text-xs text-neutral-200">
+                  <span className="text-ink-1 line-clamp-2 text-xs">
                     {workItem.fields.title}
                   </span>
                 </button>

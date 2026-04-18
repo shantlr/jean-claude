@@ -68,12 +68,12 @@ function RegistrySkillCard({
       onClick={onSelect}
       className={`flex cursor-pointer flex-col items-start gap-1.5 rounded-lg border p-3 text-left transition-colors ${
         isSelected
-          ? 'border-blue-500 bg-blue-500/10'
-          : 'border-neutral-700 bg-neutral-800 hover:border-neutral-600'
+          ? 'border-acc bg-acc/10'
+          : 'border-glass-border bg-bg-1 hover:border-glass-border-strong'
       }`}
     >
       <div className="flex w-full items-center gap-2">
-        <span className="truncate text-sm font-medium text-neutral-200">
+        <span className="text-ink-1 truncate text-sm font-medium">
           {skill.name}
         </span>
         {isInstalled && (
@@ -90,7 +90,7 @@ function RegistrySkillCard({
         <Chip
           size="xs"
           color="neutral"
-          className="bg-neutral-700/50 text-neutral-500"
+          className="bg-glass-medium/50 text-ink-3"
         >
           {skill.source}
         </Chip>
@@ -99,7 +99,7 @@ function RegistrySkillCard({
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="ml-auto rounded p-0.5 text-neutral-600 hover:bg-neutral-700 hover:text-neutral-400"
+          className="text-ink-4 hover:bg-glass-medium hover:text-ink-2 ml-auto rounded p-0.5"
           title="View on skills.sh"
         >
           <ExternalLink className="h-3 w-3" />
@@ -168,11 +168,11 @@ function RegistrySkillPreview({
   return (
     <div className="flex h-full flex-col">
       <div className="mb-3 space-y-2">
-        <div className="text-base font-medium text-neutral-100">
+        <div className="text-ink-0 text-base font-medium">
           {content?.name || skill.name}
         </div>
         {content?.description && (
-          <p className="text-sm text-neutral-400">{content.description}</p>
+          <p className="text-ink-2 text-sm">{content.description}</p>
         )}
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <Chip size="sm" color="neutral">
@@ -182,7 +182,7 @@ function RegistrySkillPreview({
             href={skillUrl(skill)}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 rounded bg-neutral-700/50 px-2 py-1 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-300"
+            className="bg-glass-medium/50 text-ink-2 hover:bg-glass-medium hover:text-ink-1 inline-flex items-center gap-1 rounded px-2 py-1"
             title="View on skills.sh"
           >
             {skill.source}
@@ -193,27 +193,27 @@ function RegistrySkillPreview({
 
       {/* Content preview */}
       <div className="mb-3 min-h-0 flex-1 overflow-hidden">
-        <div className="mb-1.5 text-xs font-medium tracking-wide text-neutral-400 uppercase">
+        <div className="text-ink-2 mb-1.5 text-xs font-medium tracking-wide uppercase">
           Skill Content
         </div>
         {contentLoading ? (
-          <div className="flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800/30 p-3 text-sm text-neutral-400">
+          <div className="border-glass-border bg-bg-1/30 text-ink-2 flex items-center gap-2 rounded-lg border p-3 text-sm">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading content...
           </div>
         ) : content ? (
-          <pre className="h-full overflow-auto rounded-lg border border-neutral-700 bg-neutral-900/60 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-neutral-200">
+          <pre className="border-glass-border bg-bg-0/60 text-ink-1 h-full overflow-auto rounded-lg border p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
             {content.content || 'No content found.'}
           </pre>
         ) : (
-          <div className="rounded-lg border border-neutral-700 bg-neutral-800/30 p-3 text-sm text-neutral-500">
+          <div className="border-glass-border bg-bg-1/30 text-ink-3 rounded-lg border p-3 text-sm">
             Could not load skill content.
           </div>
         )}
       </div>
 
       {/* Install controls */}
-      <div className="border-t border-neutral-700 pt-3">
+      <div className="border-glass-border border-t pt-3">
         <div className="mb-2 flex gap-4">
           <BackendCheckbox
             label="Claude Code"
@@ -244,7 +244,7 @@ function RegistrySkillPreview({
           loading={installMutation.isPending}
           variant={installed ? 'secondary' : 'primary'}
           icon={installed ? <Check /> : <Download />}
-          className={`w-full ${installed ? 'bg-green-900/30 text-green-400' : ''}`}
+          className={`w-full ${installed ? 'text-status-done bg-status-done/30' : ''}`}
         >
           {installed
             ? 'Installed'
@@ -303,13 +303,11 @@ export function SkillRegistryBrowser({ onClose }: { onClose: () => void }) {
   }, [localSkills]);
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/55">
-      <div className="flex h-[80svh] w-[85svw] max-w-[1200px] flex-col rounded-lg border border-neutral-700 bg-neutral-900">
+    <div className="bg-bg-0/55 fixed inset-0 z-60 flex items-center justify-center">
+      <div className="border-glass-border bg-bg-0 flex h-[80svh] w-[85svw] max-w-[1200px] flex-col rounded-lg border">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-neutral-700 px-4 py-3">
-          <h2 className="text-lg font-semibold text-neutral-200">
-            Browse Skills
-          </h2>
+        <div className="border-glass-border flex items-center justify-between border-b px-4 py-3">
+          <h2 className="text-ink-1 text-lg font-semibold">Browse Skills</h2>
           <IconButton
             onClick={onClose}
             icon={<X />}
@@ -319,7 +317,7 @@ export function SkillRegistryBrowser({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Search */}
-        <div className="border-b border-neutral-700 px-4 py-3">
+        <div className="border-glass-border border-b px-4 py-3">
           <div className="flex items-center gap-2">
             <Input
               value={searchInput}
@@ -348,7 +346,7 @@ export function SkillRegistryBrowser({ onClose }: { onClose: () => void }) {
           {/* Left: Results */}
           <div className="min-w-0 flex-1 overflow-y-auto p-4">
             {searchLoading && (
-              <div className="flex h-full items-center justify-center gap-2 text-sm text-neutral-400">
+              <div className="text-ink-2 flex h-full items-center justify-center gap-2 text-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 {isShowingPopular
                   ? 'Loading popular skills...'
@@ -357,8 +355,8 @@ export function SkillRegistryBrowser({ onClose }: { onClose: () => void }) {
             )}
 
             {!searchLoading && searchError && (
-              <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-neutral-500">
-                <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              <div className="text-ink-3 flex h-full flex-col items-center justify-center gap-2 text-sm">
+                <AlertTriangle className="text-status-run h-5 w-5" />
                 <span>
                   {isShowingPopular
                     ? 'Failed to load popular skills. Check your network connection.'
@@ -371,7 +369,7 @@ export function SkillRegistryBrowser({ onClose }: { onClose: () => void }) {
               !searchError &&
               searchResult &&
               searchResult.skills.length === 0 && (
-                <div className="flex h-full items-center justify-center text-sm text-neutral-500">
+                <div className="text-ink-3 flex h-full items-center justify-center text-sm">
                   No skills found for &quot;{debouncedQuery}&quot;
                 </div>
               )}
@@ -380,7 +378,7 @@ export function SkillRegistryBrowser({ onClose }: { onClose: () => void }) {
               searchResult &&
               searchResult.skills.length > 0 && (
                 <div>
-                  <div className="mb-3 text-xs text-neutral-500">
+                  <div className="text-ink-3 mb-3 text-xs">
                     {isShowingPopular
                       ? 'Popular skills'
                       : `${searchResult.count} result${searchResult.count !== 1 ? 's' : ''}`}
@@ -402,7 +400,7 @@ export function SkillRegistryBrowser({ onClose }: { onClose: () => void }) {
 
           {/* Right: Preview pane */}
           {selectedSkill && (
-            <div className="w-[380px] shrink-0 overflow-y-auto border-l border-neutral-700 p-4">
+            <div className="border-glass-border w-[380px] shrink-0 overflow-y-auto border-l p-4">
               <RegistrySkillPreview
                 key={selectedSkill.id}
                 skill={selectedSkill}
@@ -413,9 +411,9 @@ export function SkillRegistryBrowser({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-neutral-700 px-4 py-2">
-          <span className="text-xs text-neutral-500">
-            Powered by <span className="text-neutral-400">skills.sh</span>
+        <div className="border-glass-border flex items-center justify-between border-t px-4 py-2">
+          <span className="text-ink-3 text-xs">
+            Powered by <span className="text-ink-2">skills.sh</span>
           </span>
           <Button type="button" onClick={onClose} size="sm">
             Close

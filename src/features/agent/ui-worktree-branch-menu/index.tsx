@@ -15,7 +15,7 @@ export function WorktreeBranchMenu({
     <Dropdown
       trigger={
         <button
-          className="flex max-w-48 min-w-0 items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-300"
+          className="text-ink-3 hover:text-ink-1 flex max-w-48 min-w-0 items-center gap-1.5 text-sm transition-colors"
           title="Worktree branch actions"
         >
           <GitBranch className="h-3.5 w-3.5 shrink-0" />

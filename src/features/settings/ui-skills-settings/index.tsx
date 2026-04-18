@@ -115,7 +115,7 @@ export function SkillsSettings() {
   };
 
   if (isLoading) {
-    return <p className="text-neutral-500">Loading...</p>;
+    return <p className="text-ink-3">Loading...</p>;
   }
 
   // Full-page editor view when editing or creating
@@ -147,7 +147,7 @@ export function SkillsSettings() {
       {/* Left: Card Grid */}
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-neutral-200">Skills</h2>
+          <h2 className="text-ink-1 text-lg font-semibold">Skills</h2>
           <div className="flex items-center gap-2">
             {hasLegacySkills && (
               <Button
@@ -169,7 +169,7 @@ export function SkillsSettings() {
             <Button
               type="button"
               onClick={() => openAgentDialog({ mode: 'create' })}
-              className="flex cursor-pointer items-center gap-1 rounded-lg bg-purple-700 px-3 py-1.5 text-sm font-medium text-neutral-200 hover:bg-purple-600"
+              className="text-ink-1 bg-acc hover:bg-acc flex cursor-pointer items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium"
             >
               <Bot className="h-4 w-4" />
               Create with Agent
@@ -188,7 +188,7 @@ export function SkillsSettings() {
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-2">
           {mySkills.length > 0 && (
             <div>
-              <h3 className="mb-2 text-xs font-medium tracking-wide text-green-400 uppercase">
+              <h3 className="text-status-done mb-2 text-xs font-medium tracking-wide uppercase">
                 My Skills
               </h3>
               <SkillCardGrid
@@ -202,7 +202,7 @@ export function SkillsSettings() {
 
           {installedSkills.length > 0 && (
             <div>
-              <h3 className="mb-2 text-xs font-medium tracking-wide text-neutral-500 uppercase">
+              <h3 className="text-ink-3 mb-2 text-xs font-medium tracking-wide uppercase">
                 Installed Skills
               </h3>
               <SkillCardGrid
@@ -214,7 +214,7 @@ export function SkillsSettings() {
           )}
 
           {mySkills.length === 0 && installedSkills.length === 0 && (
-            <p className="py-8 text-center text-sm text-neutral-500">
+            <p className="text-ink-3 py-8 text-center text-sm">
               No skills found. Click &quot;Add&quot; to create one.
             </p>
           )}
@@ -223,7 +223,7 @@ export function SkillsSettings() {
 
       {/* Right: Detail pane (read-only with Edit button) */}
       {selectedSkill && (
-        <div className="w-96 flex-shrink-0 rounded-lg border border-neutral-700 bg-neutral-800/50 p-6">
+        <div className="border-glass-border bg-bg-1/50 w-96 flex-shrink-0 rounded-lg border p-6">
           <SkillDetails
             skill={selectedSkill}
             onClose={handleClose}

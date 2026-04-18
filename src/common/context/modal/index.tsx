@@ -156,12 +156,12 @@ function ModalRenderer({
         closeOnClickOutside={!isLoading}
         closeOnEscape={!isLoading}
       >
-        <div className="text-sm text-neutral-300">{content}</div>
+        <div className="text-ink-1 text-sm">{content}</div>
         <div className="mt-4 flex justify-end">
           <button
             onClick={handleClose}
             disabled={isLoading}
-            className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+            className="bg-acc text-ink-0 flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium hover:bg-blue-500 disabled:opacity-50"
           >
             {loadingAction === 'close' && (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -195,12 +195,12 @@ function ModalRenderer({
         closeOnClickOutside={!isLoading}
         closeOnEscape={!isLoading}
       >
-        <div className="text-sm text-neutral-300">{content}</div>
+        <div className="text-ink-1 text-sm">{content}</div>
         <div className="mt-4 flex justify-end gap-3">
           <button
             onClick={handleCancel}
             disabled={isLoading}
-            className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
+            className="text-ink-1 hover:bg-glass-medium flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50"
           >
             {loadingAction === 'cancel' && (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -212,10 +212,10 @@ function ModalRenderer({
             onClick={handleConfirm}
             disabled={isLoading}
             className={clsx(
-              'flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-50',
+              'text-ink-0 flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50',
               variant === 'danger'
                 ? 'bg-red-600 hover:bg-red-500'
-                : 'bg-blue-600 hover:bg-blue-500',
+                : 'bg-acc hover:bg-blue-500',
             )}
           >
             {loadingAction === 'confirm' && (
@@ -260,13 +260,13 @@ function ModalRenderer({
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/10">
             <AlertCircle className="h-5 w-5 text-red-400" aria-hidden />
           </div>
-          <div className="text-sm text-neutral-300">{content}</div>
+          <div className="text-ink-1 text-sm">{content}</div>
         </div>
         <div className="mt-4 flex justify-end">
           <button
             onClick={handleClose}
             disabled={isLoading}
-            className="flex items-center gap-2 rounded-md bg-neutral-700 px-4 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-600 disabled:opacity-50"
+            className="bg-glass-medium text-ink-1 hover:bg-bg-3 flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50"
           >
             {loadingAction === 'close' && (
               <Loader2 className="h-4 w-4 animate-spin" />

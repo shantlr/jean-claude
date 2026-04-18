@@ -36,7 +36,7 @@ export function PrListPage({
 
   if (!hasRepoConfig) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-neutral-500">
+      <div className="text-ink-3 flex h-full flex-col items-center justify-center gap-4 p-8">
         <GitPullRequest className="h-12 w-12" />
         <p className="text-center">
           This project doesn't have a repository linked.
@@ -45,7 +45,7 @@ export function PrListPage({
         </p>
         <button
           onClick={() => openOverlay('settings')}
-          className="text-blue-400 hover:text-blue-300"
+          className="text-acc-ink hover:text-acc-ink"
         >
           Go to Project Settings
         </button>
@@ -64,15 +64,15 @@ export function PrListPage({
       <div className="flex items-center gap-3 px-4 py-3">
         <Link
           {...backLink}
-          className="flex items-center gap-1 text-sm text-neutral-400 transition-colors hover:text-white"
+          className="text-ink-2 hover:text-ink-0 flex items-center gap-1 text-sm transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Back
         </Link>
-        <div className="h-4 w-px bg-neutral-700" />
+        <div className="bg-glass-medium h-4 w-px" />
         <h1 className="text-lg font-semibold">Pull Requests</h1>
         {project?.repoName && (
-          <span className="text-sm text-neutral-500">{project.repoName}</span>
+          <span className="text-ink-3 text-sm">{project.repoName}</span>
         )}
       </div>
       <Separator />
@@ -86,8 +86,8 @@ export function PrListPage({
             className={clsx(
               'rounded-md px-3 py-1 text-sm font-medium capitalize transition-colors',
               status === s
-                ? 'bg-neutral-700 text-white'
-                : 'text-neutral-400 hover:bg-neutral-800 hover:text-white',
+                ? 'bg-glass-medium text-ink-0'
+                : 'text-ink-2 hover:bg-glass-light hover:text-ink-0',
             )}
           >
             {s}
@@ -100,10 +100,10 @@ export function PrListPage({
       <div className="flex-1 overflow-y-auto p-2">
         {isLoading ? (
           <div className="flex h-32 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
+            <Loader2 className="text-ink-3 h-6 w-6 animate-spin" />
           </div>
         ) : prs.length === 0 ? (
-          <div className="flex h-32 flex-col items-center justify-center gap-2 text-neutral-500">
+          <div className="text-ink-3 flex h-32 flex-col items-center justify-center gap-2">
             <GitPullRequest className="h-8 w-8" />
             <p>No {status === 'all' ? '' : status} pull requests</p>
           </div>

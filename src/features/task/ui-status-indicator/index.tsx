@@ -6,9 +6,9 @@ import { Button } from '@/common/ui/button';
 import type { TaskStatus } from '@shared/types';
 
 const STATUS_COLORS: Record<TaskStatus, string> = {
-  running: 'bg-blue-500 animate-pulse',
+  running: 'bg-acc animate-pulse',
   waiting: 'bg-yellow-500',
-  completed: 'bg-neutral-500',
+  completed: 'bg-bg-2',
   errored: 'bg-red-500',
   interrupted: 'bg-orange-500',
 };
@@ -65,7 +65,7 @@ export const ToggleableStatusIndicator = ({
           hidden: !isChecked && disabled,
           'group-[:not(:hover)]/status-indicator:hidden':
             !isChecked && !disabled,
-          'text-green-500': isChecked,
+          'text-status-done': isChecked,
           'group-hover/status-indicator:text-inherit': !disabled,
         })}
       />

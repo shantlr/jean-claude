@@ -28,26 +28,26 @@ import {
 function getStatusIcon(status: string, result: string | null) {
   if (status === 'inProgress' || status === 'notStarted') {
     return (
-      <Circle className="h-3.5 w-3.5 shrink-0 animate-pulse text-blue-400" />
+      <Circle className="text-acc-ink h-3.5 w-3.5 shrink-0 animate-pulse" />
     );
   }
   if (result === 'succeeded' || status === 'succeeded') {
-    return <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-400" />;
+    return <CheckCircle2 className="text-status-done h-3.5 w-3.5 shrink-0" />;
   }
   if (result === 'failed' || status === 'failed' || status === 'rejected') {
-    return <XCircle className="h-3.5 w-3.5 shrink-0 text-red-400" />;
+    return <XCircle className="text-status-fail h-3.5 w-3.5 shrink-0" />;
   }
   if (
     result === 'canceled' ||
     status === 'canceled' ||
     status === 'cancelling'
   ) {
-    return <Clock className="h-3.5 w-3.5 shrink-0 text-neutral-400" />;
+    return <Clock className="text-ink-2 h-3.5 w-3.5 shrink-0" />;
   }
   if (result === 'partiallySucceeded') {
-    return <AlertCircle className="h-3.5 w-3.5 shrink-0 text-yellow-400" />;
+    return <AlertCircle className="text-status-run h-3.5 w-3.5 shrink-0" />;
   }
-  return <Circle className="h-3.5 w-3.5 shrink-0 text-neutral-500" />;
+  return <Circle className="text-ink-3 h-3.5 w-3.5 shrink-0" />;
 }
 
 function getEnvSummary(release: AzureRelease): string | null {
@@ -132,63 +132,57 @@ export function RunRow({
       className={clsx(
         'rounded-lg border transition-colors',
         expanded
-          ? 'border-neutral-600 bg-neutral-800/50'
-          : 'border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30',
+          ? 'border-glass-border bg-bg-1/50'
+          : 'border-line-soft hover:bg-bg-1/30 hover:border-glass-border',
       )}
     >
       <Button
         variant="unstyled"
         onClick={toggleExpanded}
-        className="flex w-full cursor-pointer flex-col items-stretch gap-1 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-neutral-700"
+        className="hover:bg-glass-medium flex w-full cursor-pointer flex-col items-stretch gap-1 rounded-lg px-3 py-2.5 text-sm transition-colors"
       >
         {/* Top line */}
         <div className="flex w-full items-center gap-2">
           {expanded ? (
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
+            <ChevronDown className="text-ink-3 h-3.5 w-3.5 shrink-0" />
           ) : (
-            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
+            <ChevronRight className="text-ink-3 h-3.5 w-3.5 shrink-0" />
           )}
 
           {getStatusIcon(status, result)}
 
           {isBuild ? (
-            <Hammer className="h-3 w-3 shrink-0 text-neutral-500" />
+            <Hammer className="text-ink-3 h-3 w-3 shrink-0" />
           ) : (
-            <Rocket className="h-3 w-3 shrink-0 text-neutral-500" />
+            <Rocket className="text-ink-3 h-3 w-3 shrink-0" />
           )}
 
-          <span className="truncate text-sm font-medium text-neutral-200">
+          <span className="text-ink-1 truncate text-sm font-medium">
             {pipelineName}
           </span>
-          <span className="shrink-0 text-xs text-neutral-500">
-            {displayNumber}
-          </span>
+          <span className="text-ink-3 shrink-0 text-xs">{displayNumber}</span>
 
           <div className="flex-1" />
 
           {branch && (
-            <span className="flex shrink-0 items-center gap-1 text-xs text-neutral-400">
+            <span className="text-ink-2 flex shrink-0 items-center gap-1 text-xs">
               <GitBranch className="h-3 w-3" />
               <span className="max-w-[120px] truncate">{branch}</span>
             </span>
           )}
 
           {relativeTime && (
-            <span className="shrink-0 text-xs text-neutral-500">
-              {relativeTime}
-            </span>
+            <span className="text-ink-3 shrink-0 text-xs">{relativeTime}</span>
           )}
 
           {duration && (
-            <span className="shrink-0 text-xs text-neutral-500">
-              {duration}
-            </span>
+            <span className="text-ink-3 shrink-0 text-xs">{duration}</span>
           )}
         </div>
 
         {/* Bottom line */}
         <div className="flex w-full items-center gap-2 pl-[calc(0.875rem+0.875rem+1rem)]">
-          <span className="text-xs text-neutral-500">
+          <span className="text-ink-3 text-xs">
             {status === 'inProgress'
               ? 'Running'
               : status === 'notStarted'
@@ -206,21 +200,21 @@ export function RunRow({
 
           {envSummary && (
             <>
-              <span className="text-xs text-neutral-600">&middot;</span>
-              <span className="text-xs text-neutral-500">{envSummary}</span>
+              <span className="text-ink-4 text-xs">&middot;</span>
+              <span className="text-ink-3 text-xs">{envSummary}</span>
             </>
           )}
 
           <div className="flex-1" />
 
-          <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-500">
+          <span className="text-ink-3 bg-bg-1 rounded px-1.5 py-0.5 text-[10px]">
             {projectName}
           </span>
         </div>
       </Button>
 
       {expanded && (
-        <div className="border-t border-neutral-700 px-3 py-3 text-xs text-neutral-500">
+        <div className="text-ink-3 border-glass-border border-t px-3 py-3 text-xs">
           <RunDetail
             run={run}
             kind={kind}

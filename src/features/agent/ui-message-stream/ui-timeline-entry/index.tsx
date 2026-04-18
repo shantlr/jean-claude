@@ -84,7 +84,7 @@ function LineNumberedContent({
   if (!hasLineNumbers || !parsedLines) {
     return (
       <div className="relative">
-        <pre className="overflow-auto rounded bg-black/30 p-2 whitespace-pre-wrap text-neutral-300">
+        <pre className="text-ink-1 overflow-auto rounded bg-black/30 p-2 whitespace-pre-wrap">
           {content}
         </pre>
       </div>
@@ -100,7 +100,7 @@ function LineNumberedContent({
               const lineTokens = tokens?.[i];
               return (
                 <tr key={i}>
-                  <td className="pr-3 text-right align-top text-neutral-600 select-none">
+                  <td className="text-ink-4 pr-3 text-right align-top select-none">
                     {line.lineNum}
                   </td>
                   <td className="whitespace-pre-wrap">
@@ -111,7 +111,7 @@ function LineNumberedContent({
                         </span>
                       ))
                     ) : (
-                      <span className="text-neutral-300">{line.content}</span>
+                      <span className="text-ink-1">{line.content}</span>
                     )}
                   </td>
                 </tr>
@@ -203,16 +203,16 @@ function DotEntry({
 
   // Dot colors: blue for tools, yellow for system, amber for thinking, gray for text/result, purple for user
   const dotColor = isError
-    ? 'bg-red-500'
+    ? 'bg-status-fail'
     : type === 'tool'
-      ? 'bg-blue-500'
+      ? 'bg-acc'
       : type === 'user'
-        ? 'bg-purple-500'
+        ? 'bg-acc'
         : type === 'system'
-          ? 'bg-yellow-500'
+          ? 'bg-status-run'
           : type === 'thinking'
-            ? 'bg-amber-400'
-            : 'bg-neutral-500';
+            ? 'bg-status-run'
+            : 'bg-ink-3';
 
   const bgClass = type === 'user' ? 'bg-purple-500/5' : '';
 
@@ -242,13 +242,13 @@ function DotEntry({
         <div className="flex items-center gap-2">
           {isPending && (
             <Loader2
-              className="h-3 w-3 shrink-0 animate-spin text-neutral-400"
+              className="text-ink-2 h-3 w-3 shrink-0 animate-spin"
               aria-hidden
             />
           )}
           {isError && (
             <AlertCircle
-              className="h-3 w-3 shrink-0 text-red-400"
+              className="text-status-fail h-3 w-3 shrink-0"
               aria-hidden
             />
           )}
@@ -256,10 +256,10 @@ function DotEntry({
             className={clsx(
               'text-xs',
               type === 'tool'
-                ? 'text-neutral-400'
+                ? 'text-ink-2'
                 : type === 'result'
-                  ? 'text-neutral-500'
-                  : 'text-neutral-300',
+                  ? 'text-ink-3'
+                  : 'text-ink-1',
             )}
           >
             <SummaryText text={summary} codeStyle={codeStyle} />
@@ -296,12 +296,12 @@ function SummaryText({
   const parts = text.split(/(`[^`]+`)/g);
 
   const codeClasses: Record<CodeStyle, string> = {
-    file: 'text-blue-400 underline decoration-blue-400/50',
+    file: 'text-acc-ink underline decoration-blue-400/50',
     command:
       'rounded border border-cyan-700/50 bg-cyan-900/30 px-1 py-0.5 text-cyan-200',
     pattern:
       'rounded border border-green-700/50 bg-green-900/30 px-1 py-0.5 text-green-200',
-    default: 'rounded bg-neutral-800 px-1 py-0.5 text-neutral-200',
+    default: 'rounded bg-bg-1 px-1 py-0.5 text-ink-1',
   };
 
   return (
@@ -448,7 +448,7 @@ function CompactDiffPreview({
     }) => {
       const lineTokens = getLineTokens(line);
       if (!lineTokens || lineTokens.length === 0) {
-        return <span className="text-neutral-300">{line.content || ' '}</span>;
+        return <span className="text-ink-1">{line.content || ' '}</span>;
       }
       return lineTokens.map((token, tokenIndex) => (
         <span key={tokenIndex} style={{ color: token.color }}>
@@ -466,7 +466,7 @@ function CompactDiffPreview({
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       className={clsx(
-        'w-full rounded bg-black/30 p-2 text-left font-mono text-xs text-neutral-300',
+        'text-ink-1 w-full rounded bg-black/30 p-2 text-left font-mono text-xs',
         onClick && 'cursor-pointer hover:bg-blue-500/5',
       )}
       title={onClick ? `Open full diff for ${filePath}` : undefined}
@@ -490,26 +490,26 @@ function CompactDiffPreview({
               >
                 <td
                   className={clsx(
-                    'w-8 pr-1 text-right align-top text-neutral-600 tabular-nums select-none',
-                    line.type === 'deletion' && 'text-red-400',
+                    'text-ink-4 w-8 pr-1 text-right align-top tabular-nums select-none',
+                    line.type === 'deletion' && 'text-status-fail',
                   )}
                 >
                   {line.oldLineNumber ?? ''}
                 </td>
                 <td
                   className={clsx(
-                    'w-8 pr-1 text-right align-top text-neutral-600 tabular-nums select-none',
-                    line.type === 'addition' && 'text-green-400',
+                    'text-ink-4 w-8 pr-1 text-right align-top tabular-nums select-none',
+                    line.type === 'addition' && 'text-status-done',
                   )}
                 >
                   {line.newLineNumber ?? ''}
                 </td>
                 <td
                   className={clsx(
-                    'w-4 text-center align-top text-neutral-600 select-none',
+                    'text-ink-4 w-4 text-center align-top select-none',
                     {
-                      'text-green-400': line.type === 'addition',
-                      'text-red-400': line.type === 'deletion',
+                      'text-status-done': line.type === 'addition',
+                      'text-status-fail': line.type === 'deletion',
                     },
                   )}
                 >
@@ -524,7 +524,7 @@ function CompactDiffPreview({
         </tbody>
       </table>
       {preview.hasMore && (
-        <div className="mt-2 text-[11px] text-neutral-500">
+        <div className="text-ink-3 mt-2 text-[11px]">
           +{preview.hiddenCount} more lines (click to open full diff)
         </div>
       )}
@@ -636,20 +636,20 @@ function ToolEntry({
                   key={`${question.question}-${index}`}
                   className="space-y-2"
                 >
-                  <div className="font-medium text-neutral-500">
+                  <div className="text-ink-3 font-medium">
                     {ask.input.questions.length > 1
                       ? `Question ${index + 1}`
                       : 'Question'}
                   </div>
-                  <div className="rounded bg-black/30 p-2 whitespace-pre-wrap text-neutral-200">
+                  <div className="text-ink-1 rounded bg-black/30 p-2 whitespace-pre-wrap">
                     {question.question}
                   </div>
                   {ask.result && (
                     <div>
-                      <div className="mb-1 font-medium text-neutral-500">
+                      <div className="text-ink-3 mb-1 font-medium">
                         Response
                       </div>
-                      <div className="rounded bg-black/30 p-2 whitespace-pre-wrap text-neutral-300">
+                      <div className="text-ink-1 rounded bg-black/30 p-2 whitespace-pre-wrap">
                         {responseText ?? 'No response'}
                       </div>
                     </div>
@@ -700,7 +700,7 @@ function ToolEntry({
   const expandedContent = (
     <div className="space-y-2 text-xs">
       <div>
-        <div className="mb-1 font-medium text-neutral-500">
+        <div className="text-ink-3 mb-1 font-medium">
           {hasDiffView ? 'Changes' : 'Input'}
         </div>
         <div
@@ -729,12 +729,12 @@ function ToolEntry({
       {hasResult && !hasDiffView && (
         <div>
           <div
-            className={`mb-1 font-medium ${isError ? 'text-red-400' : 'text-neutral-500'}`}
+            className={`mb-1 font-medium ${isError ? 'text-status-fail' : 'text-ink-3'}`}
           >
             {isError ? 'Error' : 'Result'}
           </div>
           {isError ? (
-            <pre className="max-h-64 overflow-auto rounded bg-red-900/20 p-2 whitespace-pre-wrap text-neutral-300">
+            <pre className="text-ink-1 max-h-64 overflow-auto rounded bg-red-900/20 p-2 whitespace-pre-wrap">
               {formattedResult}
             </pre>
           ) : (
@@ -748,8 +748,8 @@ function ToolEntry({
       {/* Show error for diff tools */}
       {hasResult && hasDiffView && isError && (
         <div>
-          <div className="mb-1 font-medium text-red-400">Error</div>
-          <pre className="max-h-64 overflow-auto rounded bg-red-900/20 p-2 whitespace-pre-wrap text-neutral-300">
+          <div className="text-status-fail mb-1 font-medium">Error</div>
+          <pre className="text-ink-1 max-h-64 overflow-auto rounded bg-red-900/20 p-2 whitespace-pre-wrap">
             {formattedResult}
           </pre>
         </div>
@@ -784,8 +784,8 @@ function TextEntry({
   return (
     <div className="relative pl-6">
       {/* Dot - gray for text */}
-      <div className="absolute top-2.5 -left-1 h-2 w-2 rounded-full bg-neutral-500" />
-      <div className="py-1.5 pr-3 text-xs text-neutral-300">
+      <div className="bg-ink-3 absolute top-2.5 -left-1 h-2 w-2 rounded-full" />
+      <div className="text-ink-1 py-1.5 pr-3 text-xs">
         <MarkdownContent content={text} onFilePathClick={onFilePathClick} />
       </div>
     </div>
@@ -799,7 +799,7 @@ function ThinkingEntry({ text }: { text: string }) {
       type="thinking"
       summary="Thinking…"
       expandedContent={
-        <pre className="max-h-64 overflow-auto text-xs whitespace-pre-wrap text-neutral-400">
+        <pre className="text-ink-2 max-h-64 overflow-auto text-xs whitespace-pre-wrap">
           {text}
         </pre>
       }
@@ -842,19 +842,19 @@ function UserEntry({
 
   return (
     <div className="group/user relative border-l-2 border-purple-500 bg-purple-500/8 pl-6">
-      <div className="py-2.5 pr-3 text-[13px] leading-relaxed text-neutral-200">
+      <div className="text-ink-1 py-2.5 pr-3 text-[13px] leading-relaxed">
         <MarkdownContent
           content={displayText}
           onFilePathClick={onFilePathClick}
         />
         {wasTruncated && !expanded && (
-          <span className="text-neutral-500">&hellip;</span>
+          <span className="text-ink-3">&hellip;</span>
         )}
       </div>
       {wasTruncated && (
         <button
           onClick={() => setExpanded((prev) => !prev)}
-          className="flex items-center gap-0.5 pb-1.5 text-[10px] text-neutral-500 hover:text-neutral-300"
+          className="text-ink-3 hover:text-ink-1 flex items-center gap-0.5 pb-1.5 text-[10px]"
         >
           {expanded ? (
             <>
@@ -872,11 +872,11 @@ function UserEntry({
       {/* Copy button - shown on hover */}
       <button
         onClick={handleCopy}
-        className="absolute top-1 right-1 rounded p-1 text-neutral-500 opacity-0 transition-opacity group-hover/user:opacity-100 hover:bg-neutral-700 hover:text-neutral-300"
+        className="text-ink-3 hover:text-ink-1 hover:bg-glass-medium absolute top-1 right-1 rounded p-1 opacity-0 transition-opacity group-hover/user:opacity-100"
         title="Copy message"
       >
         {copied ? (
-          <Check className="h-3.5 w-3.5 text-green-500" />
+          <Check className="text-status-done h-3.5 w-3.5" />
         ) : (
           <Copy className="h-3.5 w-3.5" />
         )}
@@ -928,7 +928,7 @@ function ResultEntry({
   const summary = `--- ${tokens} tokens, ${formatDuration(resolvedDurationMs)}, $${cost}`;
 
   const expandedContent = entry.value ? (
-    <div className="text-xs text-neutral-300">
+    <div className="text-ink-1 text-xs">
       <MarkdownContent
         content={entry.value}
         onFilePathClick={onFilePathClick}
@@ -973,7 +973,7 @@ export function CompactingEntry({ isComplete }: { isComplete: boolean }) {
               aria-hidden
             />
           )}
-          <span className="text-xs text-neutral-400">{summary}</span>
+          <span className="text-ink-2 text-xs">{summary}</span>
         </div>
       </div>
     </div>

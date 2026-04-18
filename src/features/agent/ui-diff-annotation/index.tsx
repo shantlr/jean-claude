@@ -99,7 +99,7 @@ export function AnnotationContent({
         </span>
       </button>
       {isExpanded && (
-        <div className="mt-2 rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-neutral-300">
+        <div className="text-ink-1 mt-2 rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs">
           {annotation.explanation}
         </div>
       )}

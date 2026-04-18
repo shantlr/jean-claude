@@ -965,12 +965,12 @@ export function NewTaskOverlay({
     >
       <div
         ref={panelRef}
-        className="flex max-h-[80svh] w-[90svw] max-w-[1280px] flex-col overflow-hidden rounded-lg border border-neutral-700 bg-neutral-800 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5),0_0_100px_-20px_rgba(0,0,0,0.6)]"
+        className="border-glass-border bg-bg-1 flex max-h-[80svh] w-[90svw] max-w-[1280px] flex-col overflow-hidden rounded-lg border shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5),0_0_100px_-20px_rgba(0,0,0,0.6)]"
         onClick={handleModalClick}
       >
         {/* Search/Prompt input - only show in select or prompt mode */}
         {(showSearchInput || showPromptInput) && (
-          <div className="flex shrink-0 items-start border-b border-neutral-700 px-4 py-3">
+          <div className="border-glass-border flex shrink-0 items-start border-b px-4 py-3">
             <div className="flex flex-1 flex-col">
               {showSearchInput ? (
                 <textarea
@@ -979,7 +979,7 @@ export function NewTaskOverlay({
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
                   placeholder={getPlaceholder({ mode: inputMode, isNoteMode })}
-                  className="field-sizing-content max-h-[40svh] min-h-[60px] flex-1 resize-none bg-transparent text-sm text-neutral-200 placeholder-neutral-500 outline-none"
+                  className="text-ink-1 placeholder-ink-3 field-sizing-content max-h-[40svh] min-h-[60px] flex-1 resize-none bg-transparent text-sm outline-none"
                 />
               ) : (
                 <PromptTextarea
@@ -998,7 +998,7 @@ export function NewTaskOverlay({
                   images={draft?.images}
                   onImageAttach={handleImageAttach}
                   onImageRemove={handleImageRemove}
-                  className="min-h-[60px] border-transparent bg-transparent px-0 py-0 text-sm text-neutral-200 placeholder-neutral-500 focus:border-transparent focus:ring-0 focus:outline-none"
+                  className="text-ink-1 placeholder-ink-3 min-h-[60px] border-transparent bg-transparent px-0 py-0 text-sm focus:border-transparent focus:ring-0 focus:outline-none"
                 />
               )}
             </div>
@@ -1016,7 +1016,7 @@ export function NewTaskOverlay({
 
         {/* Main content area */}
         {inputMode === 'search' && searchStep === 'select' && (
-          <div className="flex h-full w-full grow flex-col overflow-hidden border-b border-neutral-700 p-2">
+          <div className="border-glass-border flex h-full w-full grow flex-col overflow-hidden border-b p-2">
             <SearchModeContent
               projectId={selectedProjectId}
               project={selectedProject}
@@ -1037,7 +1037,7 @@ export function NewTaskOverlay({
         )}
 
         {inputMode === 'search' && searchStep === 'compose' && (
-          <div className="flex h-full w-full grow flex-col overflow-hidden border-b border-neutral-700 p-4">
+          <div className="border-glass-border flex h-full w-full grow flex-col overflow-hidden border-b p-4">
             <PromptComposer
               template={promptTemplate}
               workItems={selectedWorkItems}
@@ -1046,8 +1046,8 @@ export function NewTaskOverlay({
             />
             {/* Loading indicator while fetching work item images */}
             {isFetchingWorkItemImages && (
-              <div className="flex shrink-0 items-center gap-2 px-1 pb-2 text-xs text-neutral-400">
-                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-neutral-500 border-t-neutral-200" />
+              <div className="text-ink-2 flex shrink-0 items-center gap-2 px-1 pb-2 text-xs">
+                <span className="border-glass-border-strong border-t-ink-1 inline-block h-3 w-3 animate-spin rounded-full border-2" />
                 Extracting images from work items…
               </div>
             )}
@@ -1062,7 +1062,7 @@ export function NewTaskOverlay({
                     return (
                       <div
                         key={index}
-                        className="group relative h-12 w-12 shrink-0 overflow-hidden rounded border border-neutral-700"
+                        className="group border-glass-border relative h-12 w-12 shrink-0 overflow-hidden rounded border"
                       >
                         <img
                           src={`data:${thumbMime};base64,${thumbData}`}
@@ -1072,9 +1072,9 @@ export function NewTaskOverlay({
                         <button
                           type="button"
                           onClick={() => handleImageRemove(index)}
-                          className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100"
+                          className="bg-bg-0/60 absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100"
                         >
-                          <span className="text-xs text-white">✕</span>
+                          <span className="text-ink-0 text-xs">✕</span>
                         </button>
                       </div>
                     );
@@ -1150,7 +1150,7 @@ export function NewTaskOverlay({
               selectedProjectId &&
               branches.length > 0 && (
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-neutral-400">from</span>
+                  <span className="text-ink-2">from</span>
                   <Select
                     value={currentSourceBranch ?? ''}
                     options={branches.map((branch) => ({
@@ -1165,7 +1165,7 @@ export function NewTaskOverlay({
               )}
           </div>
 
-          <div className="flex items-center gap-3 text-xs whitespace-nowrap text-neutral-500">
+          <div className="text-ink-3 flex items-center gap-3 text-xs whitespace-nowrap">
             {!isNoteMode && showSearchInput && (
               <span className="flex items-center gap-1">
                 <Kbd shortcut="cmd+right" /> project
@@ -1253,7 +1253,7 @@ function ProjectGrid({
   return (
     <div
       ref={projectGridRef}
-      className="grid max-h-[180px] shrink-0 grid-cols-7 gap-1.5 overflow-y-auto border-b border-neutral-700 px-4 py-2 sm:grid-cols-8 lg:grid-cols-10"
+      className="border-glass-border grid max-h-[180px] shrink-0 grid-cols-7 gap-1.5 overflow-y-auto border-b px-4 py-2 sm:grid-cols-8 lg:grid-cols-10"
     >
       <button
         data-project-tab="note"
@@ -1261,8 +1261,8 @@ function ProjectGrid({
         className={clsx(
           'flex min-w-0 items-center justify-center rounded px-2 py-1 text-xs font-medium transition-colors',
           selectedProjectId === null
-            ? 'bg-neutral-700 text-white'
-            : 'text-neutral-400 hover:bg-neutral-800 hover:text-white',
+            ? 'bg-glass-medium text-ink-0'
+            : 'text-ink-2 hover:bg-glass-light hover:text-ink-0',
         )}
       >
         Note
@@ -1276,8 +1276,8 @@ function ProjectGrid({
           className={clsx(
             'flex min-w-0 items-center gap-1.5 rounded px-2 py-1 text-left text-xs font-medium transition-colors',
             selectedProjectId === project.id
-              ? 'bg-neutral-700 text-white'
-              : 'text-neutral-400 hover:bg-neutral-800 hover:text-white',
+              ? 'bg-glass-medium text-ink-0'
+              : 'text-ink-2 hover:bg-glass-light hover:text-ink-0',
           )}
         >
           <span
@@ -1471,7 +1471,7 @@ function SearchModeContent({
     // Note mode does not show work items
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="text-center text-neutral-400">
+        <div className="text-ink-2 text-center">
           <p className="text-sm">Select a project to search work items</p>
         </div>
       </div>
@@ -1482,7 +1482,7 @@ function SearchModeContent({
     // Project doesn't have work items linked
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="text-center text-neutral-400">
+        <div className="text-ink-2 text-center">
           <p className="text-sm">No work items linked to this project.</p>
           <p className="mt-1 text-xs">
             Link Azure DevOps in project settings to see work items.
@@ -1495,7 +1495,7 @@ function SearchModeContent({
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="text-sm text-neutral-400">Loading work items...</div>
+        <div className="text-ink-2 text-sm">Loading work items...</div>
       </div>
     );
   }
@@ -1509,10 +1509,10 @@ function SearchModeContent({
         style={{ width: `${panelWidth}%` }}
       >
         <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="text-xs font-medium text-neutral-400 uppercase">
+          <span className="text-ink-2 text-xs font-medium uppercase">
             Work Items ({filteredWorkItems.length})
             {selectedWorkItemIds.length > 0 && (
-              <span className="ml-2 text-blue-400">
+              <span className="text-acc-ink ml-2">
                 {selectedWorkItemIds.length} selected
               </span>
             )}
@@ -1523,7 +1523,7 @@ function SearchModeContent({
               <button
                 type="button"
                 onClick={onClearSelectedWorkItems}
-                className="rounded border border-neutral-600 px-2 py-1 text-xs font-medium text-neutral-300 hover:border-neutral-500 hover:text-white"
+                className="border-glass-border text-ink-1 hover:border-glass-border-strong hover:text-ink-0 rounded border px-2 py-1 text-xs font-medium"
               >
                 Clear selected
               </button>
@@ -1541,15 +1541,15 @@ function SearchModeContent({
             )}
 
             {/* View mode toggle */}
-            <div className="flex rounded border border-neutral-600">
+            <div className="border-glass-border flex rounded border">
               <button
                 type="button"
                 onClick={() => onViewModeChange('list')}
                 className={clsx(
                   'flex items-center px-1.5 py-1',
                   viewMode === 'list'
-                    ? 'bg-neutral-600 text-white'
-                    : 'text-neutral-400 hover:text-neutral-200',
+                    ? 'bg-bg-3 text-ink-0'
+                    : 'text-ink-2 hover:text-ink-1',
                 )}
                 title="List view"
               >
@@ -1561,8 +1561,8 @@ function SearchModeContent({
                 className={clsx(
                   'flex items-center px-1.5 py-1',
                   viewMode === 'board'
-                    ? 'bg-neutral-600 text-white'
-                    : 'text-neutral-400 hover:text-neutral-200',
+                    ? 'bg-bg-3 text-ink-0'
+                    : 'text-ink-2 hover:text-ink-1',
                 )}
                 title="Board view"
               >
@@ -1605,12 +1605,12 @@ function SearchModeContent({
 
       {/* Drag handle */}
       <div
-        className="w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-neutral-600 active:bg-neutral-500"
+        className="hover:bg-bg-3 active:bg-bg-2 w-1 shrink-0 cursor-col-resize bg-transparent"
         onMouseDown={handleDragStart}
       />
 
       {/* Work item details */}
-      <div className="flex-1 overflow-y-auto rounded border border-neutral-700 p-2">
+      <div className="border-glass-border flex-1 overflow-y-auto rounded border p-2">
         <WorkItemDetails
           workItem={highlightedWorkItem ?? null}
           providerId={project?.workItemProviderId ?? undefined}

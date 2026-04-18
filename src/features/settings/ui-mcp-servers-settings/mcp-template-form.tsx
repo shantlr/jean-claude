@@ -31,15 +31,15 @@ function VariableBadge({ name }: { name: string }) {
   const description = VARIABLE_DESCRIPTIONS[name];
   return (
     <span
-      className="group relative inline-block cursor-help rounded bg-neutral-700 px-1.5 py-0.5 font-mono text-xs text-blue-400"
+      className="group bg-glass-medium text-acc-ink relative inline-block cursor-help rounded px-1.5 py-0.5 font-mono text-xs"
       title={description}
     >
       {`{${name}}`}
       {description && (
-        <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden w-56 -translate-x-1/2 rounded-lg bg-neutral-900 px-3 py-2 text-xs font-normal text-neutral-300 shadow-lg ring-1 ring-neutral-700 group-hover:block">
-          <span className="mb-1 block font-medium text-blue-400">{`{${name}}`}</span>
+        <span className="bg-bg-0 text-ink-1 ring-glass-border pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden w-56 -translate-x-1/2 rounded-lg px-3 py-2 text-xs font-normal shadow-lg ring-1 group-hover:block">
+          <span className="text-acc-ink mb-1 block font-medium">{`{${name}}`}</span>
           {description}
-          <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-neutral-900" />
+          <span className="border-t-bg-0 absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent" />
         </span>
       )}
     </span>
@@ -55,7 +55,7 @@ function AvailableVariablesHint() {
     'mainRepoPath',
   ];
   return (
-    <p className="mt-1 flex flex-wrap items-center gap-1 text-xs text-neutral-500">
+    <p className="text-ink-3 mt-1 flex flex-wrap items-center gap-1 text-xs">
       <span>Available variables:</span>
       {variables.map((v, i) => (
         <span key={v} className="inline-flex items-center">
@@ -163,7 +163,7 @@ export function McpTemplateForm({
   return (
     <div className="flex h-full flex-col">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-neutral-200">
+        <h3 className="text-ink-1 text-lg font-semibold">
           {template ? 'Edit MCP Server' : 'Add MCP Server'}
         </h3>
         <IconButton onClick={onClose} icon={<X />} tooltip="Close" size="sm" />
@@ -173,7 +173,7 @@ export function McpTemplateForm({
         {/* Preset buttons */}
         {!template && presets && presets.length > 0 && (
           <div>
-            <label className="mb-2 block text-sm font-medium text-neutral-400">
+            <label className="text-ink-2 mb-2 block text-sm font-medium">
               Quick setup
             </label>
             <div className="flex flex-wrap gap-2">
@@ -183,8 +183,8 @@ export function McpTemplateForm({
                   onClick={() => handleApplyPreset(preset)}
                   className={`cursor-pointer rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
                     presetId === preset.id
-                      ? 'border-blue-500 bg-blue-500/20 text-blue-400'
-                      : 'border-neutral-700 bg-neutral-800 text-neutral-300 hover:border-neutral-600'
+                      ? 'border-acc bg-acc/20 text-acc-ink'
+                      : 'border-glass-border bg-bg-1 text-ink-1 hover:border-glass-border-strong'
                   }`}
                 >
                   Use {preset.name} Preset
@@ -193,7 +193,7 @@ export function McpTemplateForm({
             </div>
             {/* Preset description */}
             {currentPreset && currentPreset.description && (
-              <div className="mt-3 rounded-lg bg-neutral-800/50 text-xs text-neutral-300">
+              <div className="bg-bg-1/50 text-ink-1 mt-3 rounded-lg text-xs">
                 <MarkdownContent content={currentPreset.description} />
               </div>
             )}
@@ -202,7 +202,7 @@ export function McpTemplateForm({
 
         {/* Name */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-400">
+          <label className="text-ink-2 mb-1 block text-sm font-medium">
             Name
           </label>
           <Input
@@ -214,7 +214,7 @@ export function McpTemplateForm({
 
         {/* Command Template */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-400">
+          <label className="text-ink-2 mb-1 block text-sm font-medium">
             Command Template
           </label>
           <Textarea
@@ -230,7 +230,7 @@ export function McpTemplateForm({
         {/* User-defined variables */}
         {userDefinedVars.length > 0 && (
           <div>
-            <label className="mb-2 block text-sm font-medium text-neutral-400">
+            <label className="text-ink-2 mb-2 block text-sm font-medium">
               Variables
             </label>
             <div className="space-y-2">
@@ -238,10 +238,10 @@ export function McpTemplateForm({
                 const presetVar = currentPreset?.variables[varName];
                 return (
                   <div key={varName}>
-                    <label className="mb-1 block text-xs text-neutral-500">
+                    <label className="text-ink-3 mb-1 block text-xs">
                       {presetVar?.label ?? varName}
                       {presetVar?.description && (
-                        <span className="ml-1 text-neutral-600">
+                        <span className="text-ink-4 ml-1">
                           — {presetVar.description}
                         </span>
                       )}
@@ -285,7 +285,7 @@ export function McpTemplateForm({
       </div>
 
       {/* Save button */}
-      <div className="mt-4 flex justify-end gap-2 border-t border-neutral-700 pt-4">
+      <div className="border-glass-border mt-4 flex justify-end gap-2 border-t pt-4">
         <Button onClick={onClose}>Cancel</Button>
         <Button
           onClick={handleSave}

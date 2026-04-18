@@ -8,14 +8,14 @@ import type { AzureDevOpsWorkItem } from '@/lib/api';
 function WorkItemTypeIcon({ type }: { type: string }) {
   switch (type) {
     case 'Bug':
-      return <Bug className="h-4 w-4 shrink-0 text-red-400" />;
+      return <Bug className="text-status-fail h-4 w-4 shrink-0" />;
     case 'User Story':
     case 'Feature':
-      return <BookOpen className="h-4 w-4 shrink-0 text-blue-400" />;
+      return <BookOpen className="text-acc-ink h-4 w-4 shrink-0" />;
     case 'Task':
-      return <CheckSquare className="h-4 w-4 shrink-0 text-green-400" />;
+      return <CheckSquare className="text-status-done h-4 w-4 shrink-0" />;
     default:
-      return <FileText className="h-4 w-4 shrink-0 text-neutral-400" />;
+      return <FileText className="text-ink-2 h-4 w-4 shrink-0" />;
   }
 }
 
@@ -30,9 +30,7 @@ export function WorkItemDetails({
   if (!workItem) {
     return (
       <div className="flex h-full min-h-37.5 items-center justify-center">
-        <p className="text-sm text-neutral-500">
-          Select a work item to see details
-        </p>
+        <p className="text-ink-3 text-sm">Select a work item to see details</p>
       </div>
     );
   }
@@ -45,33 +43,33 @@ export function WorkItemDetails({
       {/* Header: Type icon + ID + open hint */}
       <div className="flex items-center gap-2">
         <WorkItemTypeIcon type={workItemType} />
-        <span className="text-sm font-medium text-neutral-400">#{id}</span>
-        <span className="ml-auto flex items-center gap-1 text-xs text-neutral-500">
+        <span className="text-ink-2 text-sm font-medium">#{id}</span>
+        <span className="text-ink-3 ml-auto flex items-center gap-1 text-xs">
           <Kbd shortcut="cmd+shift+o" /> open
         </span>
       </div>
 
       {/* Title */}
-      <h3 className="mt-2 text-sm font-medium text-neutral-100">{title}</h3>
+      <h3 className="text-ink-0 mt-2 text-sm font-medium">{title}</h3>
 
       {/* Metadata row */}
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
         {/* Assigned To */}
         <div className="flex items-center gap-1">
-          <span className="text-neutral-500">Assigned:</span>
-          <span className="text-neutral-300">{assignedTo ?? 'Unassigned'}</span>
+          <span className="text-ink-3">Assigned:</span>
+          <span className="text-ink-1">{assignedTo ?? 'Unassigned'}</span>
         </div>
 
         {/* State */}
         <div className="flex items-center gap-1">
-          <span className="text-neutral-500">State:</span>
-          <span className="text-neutral-300">{state}</span>
+          <span className="text-ink-3">State:</span>
+          <span className="text-ink-1">{state}</span>
         </div>
       </div>
 
       {/* Divider */}
       {fields.description && (
-        <div className="my-3 border-t border-neutral-700" />
+        <div className="border-glass-border my-3 border-t" />
       )}
 
       {/* Description (scrollable) */}
@@ -79,7 +77,7 @@ export function WorkItemDetails({
         <AzureHtmlContent
           html={fields.description}
           providerId={providerId}
-          className="min-h-0 flex-1 overflow-y-auto text-xs text-neutral-400"
+          className="text-ink-2 min-h-0 flex-1 overflow-y-auto text-xs"
         />
       )}
     </div>

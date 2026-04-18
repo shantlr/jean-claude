@@ -143,7 +143,7 @@ export function ProjectSettings({
 
   if (!project) {
     return (
-      <div className="flex h-full items-center justify-center text-neutral-500">
+      <div className="text-ink-3 flex h-full items-center justify-center">
         Loading...
       </div>
     );
@@ -221,7 +221,7 @@ export function ProjectSettings({
           <div>
             <label
               htmlFor="name"
-              className="mb-1 block text-sm font-medium text-neutral-300"
+              className="text-ink-1 mb-1 block text-sm font-medium"
             >
               Name
             </label>
@@ -234,7 +234,7 @@ export function ProjectSettings({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-neutral-300">
+            <label className="text-ink-1 mb-1 block text-sm font-medium">
               Path
             </label>
             <div className="flex gap-2">
@@ -242,7 +242,7 @@ export function ProjectSettings({
                 size="md"
                 value={path}
                 readOnly
-                className="min-w-0 flex-1 cursor-default text-neutral-400"
+                className="text-ink-2 min-w-0 flex-1 cursor-default"
               />
               <Button
                 variant="secondary"
@@ -257,16 +257,16 @@ export function ProjectSettings({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-neutral-300">
+            <label className="text-ink-1 mb-1 block text-sm font-medium">
               Type
             </label>
-            <span className="inline-block rounded-md bg-neutral-700 px-2 py-1 text-sm">
+            <span className="bg-glass-medium inline-block rounded-md px-2 py-1 text-sm">
               {project.type === 'local' ? 'Local folder' : 'Git provider'}
             </span>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-neutral-300">
+            <label className="text-ink-1 mb-1 block text-sm font-medium">
               Color
             </label>
             <div className="flex flex-wrap gap-2">
@@ -277,7 +277,7 @@ export function ProjectSettings({
                   onClick={() => setColor(c)}
                   className={`h-8 w-8 cursor-pointer rounded-lg transition-all ${
                     color === c
-                      ? 'ring-2 ring-white ring-offset-2 ring-offset-neutral-900'
+                      ? 'ring-offset-bg-0 ring-2 ring-white ring-offset-2'
                       : 'hover:scale-110'
                   }`}
                   style={{ backgroundColor: c }}
@@ -287,7 +287,7 @@ export function ProjectSettings({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-neutral-300">
+            <label className="text-ink-1 mb-1 block text-sm font-medium">
               Default merge branch
             </label>
             <Select
@@ -308,7 +308,7 @@ export function ProjectSettings({
               disabled={branchesLoading || !branches?.length}
               className="w-full justify-between"
             />
-            <p className="mt-1 text-xs text-neutral-500">
+            <p className="text-ink-3 mt-1 text-xs">
               The branch that worktrees will merge into
             </p>
           </div>
@@ -321,7 +321,7 @@ export function ProjectSettings({
           />
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-neutral-300">
+            <label className="text-ink-1 mb-1 block text-sm font-medium">
               Worktrees folder
             </label>
             <div className="flex gap-2">
@@ -357,13 +357,13 @@ export function ProjectSettings({
                 </Button>
               )}
             </div>
-            <p className="mt-1 text-xs text-neutral-500">
+            <p className="text-ink-3 mt-1 text-xs">
               Where worktrees for this project are stored
             </p>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-neutral-300">
+            <label className="text-ink-1 mb-1 block text-sm font-medium">
               Default agent backend
             </label>
             <Select
@@ -385,13 +385,13 @@ export function ProjectSettings({
               }
               className="w-full justify-between"
             />
-            <p className="mt-1 text-xs text-neutral-500">
+            <p className="text-ink-3 mt-1 text-xs">
               The agent backend used for new tasks in this project
             </p>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-neutral-300">
+            <label className="text-ink-1 mb-1 block text-sm font-medium">
               Feed priority
             </label>
             <Select
@@ -404,7 +404,7 @@ export function ProjectSettings({
               onChange={(value) => setPriority(value as ProjectPriority)}
               className="w-full justify-between"
             />
-            <p className="mt-1 text-xs text-neutral-500">
+            <p className="text-ink-3 mt-1 text-xs">
               Affects how tasks from this project are ranked in the feed
             </p>
           </div>
@@ -417,10 +417,10 @@ export function ProjectSettings({
     case 'autocomplete':
       content = (
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-neutral-200">
+          <h2 className="text-ink-1 text-lg font-semibold">
             Autocomplete Context
           </h2>
-          <p className="text-xs text-neutral-500">
+          <p className="text-ink-3 text-xs">
             Provides context to the autocomplete model when completing prompts
             in this project. Describe what the project is about and include
             example prompts.
@@ -451,9 +451,7 @@ export function ProjectSettings({
     case 'integrations':
       content = (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-neutral-200">
-            Integrations
-          </h2>
+          <h2 className="text-ink-1 text-lg font-semibold">Integrations</h2>
           <RepoLink project={project} />
           <WorkItemsLink project={project} />
         </div>
@@ -485,12 +483,12 @@ export function ProjectSettings({
     case 'danger-zone':
       content = (
         <div>
-          <h2 className="mb-4 text-lg font-semibold text-red-400">
+          <h2 className="text-status-fail mb-4 text-lg font-semibold">
             Danger Zone
           </h2>
           {showDeleteConfirm ? (
-            <div className="rounded-lg border border-red-900 bg-red-950/50 p-4">
-              <p className="mb-4 text-sm text-neutral-300">
+            <div className="border-status-fail bg-status-fail/50 rounded-lg border p-4">
+              <p className="text-ink-1 mb-4 text-sm">
                 Are you sure you want to delete this project? This action cannot
                 be undone.
               </p>
@@ -579,8 +577,8 @@ function ProjectAiGenerationSettings({
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-neutral-200">AI Generation</h2>
-      <p className="mt-1 text-sm text-neutral-500">
+      <h2 className="text-ink-1 text-lg font-semibold">AI Generation</h2>
+      <p className="text-ink-3 mt-1 text-sm">
         Override AI generation settings for this project. Remove a slot to use
         the global default.
       </p>
@@ -658,7 +656,7 @@ function ProjectSlotRow({
   };
 
   return (
-    <div className="rounded-lg border border-neutral-700 bg-neutral-800/50 p-3">
+    <div className="border-glass-border bg-bg-1/50 rounded-lg border p-3">
       <div className="flex items-center justify-between">
         <button
           type="button"
@@ -666,22 +664,20 @@ function ProjectSlotRow({
           className="flex cursor-pointer items-center gap-2 text-left"
         >
           {config !== null && expanded ? (
-            <ChevronDown className="h-4 w-4 text-neutral-400" />
+            <ChevronDown className="text-ink-2 h-4 w-4" />
           ) : (
-            <ChevronRight className="h-4 w-4 text-neutral-400" />
+            <ChevronRight className="text-ink-2 h-4 w-4" />
           )}
           <div>
-            <span className="text-sm font-medium text-neutral-200">
-              {label}
-            </span>
-            <p className="text-xs text-neutral-500">{description}</p>
+            <span className="text-ink-1 text-sm font-medium">{label}</span>
+            <p className="text-ink-3 text-xs">{description}</p>
           </div>
         </button>
         {config === null ? (
           <button
             type="button"
             onClick={handleConfigure}
-            className="cursor-pointer rounded-md border border-neutral-600 px-2 py-1 text-xs text-neutral-300 transition-colors hover:bg-neutral-700"
+            className="border-glass-border text-ink-1 hover:bg-glass-medium cursor-pointer rounded-md border px-2 py-1 text-xs transition-colors"
           >
             Configure override
           </button>
@@ -689,7 +685,7 @@ function ProjectSlotRow({
           <button
             type="button"
             onClick={handleRemove}
-            className="flex cursor-pointer items-center gap-1 rounded-md border border-red-900/50 px-2 py-1 text-xs text-red-400 transition-colors hover:bg-red-950/50"
+            className="text-status-fail border-status-fail/50 hover:bg-status-fail/50 flex cursor-pointer items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors"
           >
             <Trash2 className="h-3 w-3" />
             Remove override
@@ -698,15 +694,13 @@ function ProjectSlotRow({
       </div>
 
       {config === null && (
-        <p className="mt-2 text-xs text-neutral-500 italic">
-          Using global default
-        </p>
+        <p className="text-ink-3 mt-2 text-xs italic">Using global default</p>
       )}
 
       {config !== null && expanded && (
-        <div className="mt-3 space-y-3 border-t border-neutral-700 pt-3">
+        <div className="border-glass-border mt-3 space-y-3 border-t pt-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-400">
+            <label className="text-ink-2 mb-1 block text-xs font-medium">
               Backend
             </label>
             <Select
@@ -728,7 +722,7 @@ function ProjectSlotRow({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-400">
+            <label className="text-ink-2 mb-1 block text-xs font-medium">
               Model
             </label>
             <Select
@@ -743,7 +737,7 @@ function ProjectSlotRow({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-400">
+            <label className="text-ink-2 mb-1 block text-xs font-medium">
               Skill (optional)
             </label>
             <Select
@@ -757,7 +751,7 @@ function ProjectSlotRow({
               }
               className="w-full justify-between"
             />
-            <p className="mt-1 text-xs text-neutral-600">
+            <p className="text-ink-4 mt-1 text-xs">
               Override the prompt used for generation
             </p>
           </div>

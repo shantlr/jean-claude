@@ -52,12 +52,12 @@ function QuestionInput({
                   onActivate({ questionIndex, optionIndex: index });
                   onSelectOption({ questionIndex, optionIndex: index });
                 }}
-                className={`rounded-md px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none ${
+                className={`focus-visible:ring-acc rounded-md px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${
                   selectedLabels.includes(option.label)
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-acc text-white'
                     : isActive && activeOptionIndex === index
-                      ? 'bg-neutral-600 text-neutral-100'
-                      : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+                      ? 'bg-bg-3 text-ink-0'
+                      : 'bg-glass-medium text-ink-1 hover:bg-bg-3'
                 }`}
                 title={option.description}
               >
@@ -88,12 +88,12 @@ function QuestionInput({
               onActivate({ questionIndex, optionIndex: index });
               onSelectOption({ questionIndex, optionIndex: index });
             }}
-            className={`rounded-md px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none ${
+            className={`focus-visible:ring-acc rounded-md px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${
               value === option.label && !isOtherOpen
-                ? 'bg-blue-600 text-white'
+                ? 'bg-acc text-white'
                 : isActive && activeOptionIndex === index
-                  ? 'bg-neutral-600 text-neutral-100'
-                  : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+                  ? 'bg-bg-3 text-ink-0'
+                  : 'bg-glass-medium text-ink-1 hover:bg-bg-3'
             }`}
             title={option.description}
           >
@@ -113,12 +113,12 @@ function QuestionInput({
             onActivate({ questionIndex, optionIndex: optionCount - 1 });
             onSelectOption({ questionIndex, optionIndex: optionCount - 1 });
           }}
-          className={`rounded-md px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none ${
+          className={`focus-visible:ring-acc rounded-md px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${
             isOtherOpen
-              ? 'bg-blue-600 text-white'
+              ? 'bg-acc text-white'
               : isActive && activeOptionIndex === optionCount - 1
-                ? 'bg-neutral-600 text-neutral-100'
-                : 'bg-neutral-700 text-neutral-300 hover:bg-neutral-600'
+                ? 'bg-bg-3 text-ink-0'
+                : 'bg-glass-medium text-ink-1 hover:bg-bg-3'
           }`}
         >
           <div className="font-medium">Other</div>

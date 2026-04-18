@@ -37,13 +37,13 @@ export function RunDetail({
       {isBuild && (
         <>
           {timelineLoading && (
-            <div className="flex items-center gap-2 text-xs text-neutral-500">
+            <div className="text-ink-3 flex items-center gap-2 text-xs">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               Loading timeline...
             </div>
           )}
           {!timelineLoading && timeline && timeline.records.length === 0 && (
-            <span className="text-xs text-neutral-500">
+            <span className="text-ink-3 text-xs">
               No stage information available.
             </span>
           )}
@@ -60,13 +60,13 @@ export function RunDetail({
 
       {/* Release placeholder */}
       {!isBuild && (
-        <span className="text-xs text-neutral-500">
+        <span className="text-ink-3 text-xs">
           Release environment detail view coming soon.
         </span>
       )}
 
       {/* Actions bar */}
-      <div className="flex items-center gap-2 border-t border-neutral-700 pt-3">
+      <div className="border-glass-border flex items-center gap-2 border-t pt-3">
         {isInProgress && (
           <button
             onClick={() =>
@@ -77,7 +77,7 @@ export function RunDetail({
               })
             }
             disabled={cancelBuild.isPending}
-            className="flex items-center gap-1.5 rounded-md border border-red-800 px-2.5 py-1.5 text-xs text-red-400 transition-colors hover:bg-red-950/50 disabled:opacity-50"
+            className="text-status-fail border-status-fail hover:bg-status-fail/50 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors disabled:opacity-50"
           >
             <XCircle className="h-3.5 w-3.5" />
             {cancelBuild.isPending ? 'Cancelling...' : 'Cancel'}
@@ -89,7 +89,7 @@ export function RunDetail({
             href={webUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-md border border-neutral-700 px-2.5 py-1.5 text-xs text-neutral-300 transition-colors hover:border-neutral-600 hover:bg-neutral-800"
+            className="text-ink-1 hover:border-glass-border hover:bg-glass-light border-glass-border flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors"
           >
             <ExternalLink className="h-3.5 w-3.5" />
             Open in Azure DevOps

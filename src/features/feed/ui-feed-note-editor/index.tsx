@@ -89,7 +89,7 @@ export function FeedNoteEditor({ noteId }: { noteId: string }) {
 
   if (isLoading) {
     return (
-      <div className="flex h-full w-full flex-1 items-center justify-center text-neutral-500">
+      <div className="text-ink-3 flex h-full w-full flex-1 items-center justify-center">
         Loading...
       </div>
     );
@@ -97,7 +97,7 @@ export function FeedNoteEditor({ noteId }: { noteId: string }) {
 
   if (!note) {
     return (
-      <div className="flex h-full w-full flex-1 items-center justify-center text-neutral-500">
+      <div className="text-ink-3 flex h-full w-full flex-1 items-center justify-center">
         Note not found
       </div>
     );
@@ -106,8 +106,8 @@ export function FeedNoteEditor({ noteId }: { noteId: string }) {
   return (
     <div className="flex h-full w-full flex-1 flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-neutral-800 px-4 py-3">
-        <span className="text-sm font-medium text-neutral-300">Note</span>
+      <div className="border-line-soft flex shrink-0 items-center justify-between border-b px-4 py-3">
+        <span className="text-ink-1 text-sm font-medium">Note</span>
         <div className="flex items-center gap-2">
           <Button variant="danger" size="sm" onClick={handleDelete}>
             Delete
@@ -129,7 +129,7 @@ export function FeedNoteEditor({ noteId }: { noteId: string }) {
           onChange={handleChange}
           placeholder="Write your note..."
           autoFocus
-          className="h-full w-full resize-none bg-transparent font-mono text-sm leading-relaxed text-neutral-200 placeholder-neutral-600 outline-none"
+          className="text-ink-1 placeholder-ink-4 h-full w-full resize-none bg-transparent font-mono text-sm leading-relaxed outline-none"
         />
       </div>
     </div>

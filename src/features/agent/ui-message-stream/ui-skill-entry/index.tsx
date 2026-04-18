@@ -45,16 +45,16 @@ export function SkillEntry({
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <Wand2 className="h-3 w-3 shrink-0 text-purple-400" />
-        <span className="text-xs text-neutral-300">
+        <span className="text-ink-1 text-xs">
           Using{' '}
           <code className="rounded border border-purple-700/50 bg-purple-900/30 px-1 py-0.5 text-purple-200">
             {skillName}
           </code>
         </span>
         {isExpanded ? (
-          <ChevronDown className="h-3 w-3 text-neutral-500" />
+          <ChevronDown className="text-ink-3 h-3 w-3" />
         ) : (
-          <ChevronRight className="h-3 w-3 text-neutral-500" />
+          <ChevronRight className="text-ink-3 h-3 w-3" />
         )}
       </div>
 
@@ -62,7 +62,7 @@ export function SkillEntry({
       {isExpanded && promptText && (
         <div className="relative mb-2 ml-5 pr-3 pl-4">
           <div className="absolute top-1 bottom-1 left-1.5 w-px rounded-full bg-white/[0.06]" />
-          <div className="max-h-96 overflow-auto rounded bg-black/30 p-3 text-xs text-neutral-300">
+          <div className="text-ink-1 max-h-96 overflow-auto rounded bg-black/30 p-3 text-xs">
             <MarkdownContent
               content={promptText}
               onFilePathClick={onFilePathClick}

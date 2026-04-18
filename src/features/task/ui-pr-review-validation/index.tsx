@@ -186,11 +186,11 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
   if (step.status === 'completed' && meta.submittedAt) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-8">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-950/50">
-          <Check className="h-6 w-6 text-emerald-400" />
+        <div className="bg-status-done/50 flex h-12 w-12 items-center justify-center rounded-full">
+          <Check className="text-status-done h-6 w-6" />
         </div>
-        <p className="text-sm font-medium text-neutral-200">Review submitted</p>
-        <p className="text-xs text-neutral-500">
+        <p className="text-ink-1 text-sm font-medium">Review submitted</p>
+        <p className="text-ink-3 text-xs">
           {meta.submittedCount ?? 0} comment
           {(meta.submittedCount ?? 0) !== 1 ? 's' : ''} posted to PR #
           {meta.pullRequestId}
@@ -203,8 +203,8 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
   if (step.status === 'pending') {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
-        <p className="text-sm text-neutral-500">
+        <Loader2 className="text-ink-3 h-6 w-6 animate-spin" />
+        <p className="text-ink-3 text-sm">
           Waiting for review step to complete...
         </p>
       </div>
@@ -216,12 +216,12 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 p-8">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-yellow-950/50">
-          <AlertTriangle className="h-6 w-6 text-yellow-400" />
+          <AlertTriangle className="text-status-run h-6 w-6" />
         </div>
-        <p className="text-sm font-medium text-neutral-200">
+        <p className="text-ink-1 text-sm font-medium">
           Could not parse review comments
         </p>
-        <p className="max-w-md text-center text-xs text-neutral-500">
+        <p className="text-ink-3 max-w-md text-center text-xs">
           {meta.parseError}
         </p>
         <Button onClick={handleDiscard} variant="secondary">
@@ -235,13 +235,13 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-neutral-700 px-4 py-3">
+      <div className="border-glass-border flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2">
-          <MessageSquare className="h-4 w-4 text-neutral-400" />
-          <span className="text-sm font-medium text-neutral-200">
+          <MessageSquare className="text-ink-2 h-4 w-4" />
+          <span className="text-ink-1 text-sm font-medium">
             Review Comments
           </span>
-          <span className="rounded-full bg-neutral-700 px-2 py-0.5 text-[10px] font-medium text-neutral-400">
+          <span className="text-ink-2 bg-glass-medium rounded-full px-2 py-0.5 text-[10px] font-medium">
             {enabledCount}/{comments.length} selected
           </span>
         </div>
@@ -258,10 +258,10 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
 
       <div className="flex min-h-0 flex-1">
         {/* Comment list */}
-        <div className="flex w-[420px] max-w-[50%] min-w-[360px] flex-col border-r border-neutral-700">
+        <div className="border-glass-border flex w-[420px] max-w-[50%] min-w-[360px] flex-col border-r">
           <div className="flex-1 overflow-y-auto p-4">
             {meta.submissionError && (
-              <div className="mb-3 rounded-md border border-yellow-700/50 bg-yellow-950/20 px-3 py-2 text-xs text-yellow-300">
+              <div className="text-status-run mb-3 rounded-md border border-yellow-700/50 bg-yellow-950/20 px-3 py-2 text-xs">
                 {meta.submissionError}
               </div>
             )}
@@ -273,10 +273,10 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
                   className={clsx(
                     'rounded-lg border p-3 transition-colors',
                     comment.enabled
-                      ? 'border-neutral-700 bg-neutral-800/60'
-                      : 'border-neutral-800 bg-neutral-900/40 opacity-50',
+                      ? 'bg-bg-1/60 border-glass-border'
+                      : 'border-line-soft bg-bg-0/40 opacity-50',
                     selectedCommentIndex === index &&
-                      'ring-1 ring-blue-500/60 ring-inset',
+                      'ring-acc/60 ring-1 ring-inset',
                   )}
                 >
                   {/* Top row: checkbox, file path, line number */}
@@ -286,18 +286,18 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
                         e.stopPropagation();
                         toggleComment(index);
                       }}
-                      className="shrink-0 text-neutral-400 transition-colors hover:text-neutral-200"
+                      className="text-ink-2 hover:text-ink-1 shrink-0 transition-colors"
                     >
                       {comment.enabled ? (
-                        <CheckSquare className="h-4 w-4 text-blue-400" />
+                        <CheckSquare className="text-acc-ink h-4 w-4" />
                       ) : (
                         <Square className="h-4 w-4" />
                       )}
                     </Button>
-                    <span className="rounded bg-neutral-700 px-1.5 py-0.5 font-mono text-[11px] text-neutral-300">
+                    <span className="text-ink-1 bg-glass-medium rounded px-1.5 py-0.5 font-mono text-[11px]">
                       {comment.filePath}
                     </span>
-                    <span className="text-[10px] text-neutral-500">
+                    <span className="text-ink-3 text-[10px]">
                       L{comment.lineNumber}
                     </span>
                   </div>
@@ -320,7 +320,7 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
                     />
                   ) : (
                     <p
-                      className="mt-2 cursor-text text-xs leading-relaxed text-neutral-300"
+                      className="text-ink-1 mt-2 cursor-text text-xs leading-relaxed"
                       onClick={() => setEditingIndex(index)}
                       title="Click to edit"
                     >
@@ -347,7 +347,7 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
               threads={selectedFileThreads}
             />
           ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-2 text-neutral-500">
+            <div className="text-ink-3 flex h-full flex-col items-center justify-center gap-2">
               {isLoadingChangedFiles ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
@@ -362,7 +362,7 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
       </div>
 
       {/* Footer actions */}
-      <div className="flex items-center justify-between border-t border-neutral-700 px-4 py-3">
+      <div className="border-glass-border flex items-center justify-between border-t px-4 py-3">
         <Button
           onClick={handleDiscard}
           disabled={submitReview.isPending}

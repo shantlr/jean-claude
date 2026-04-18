@@ -16,24 +16,22 @@ export function ConfirmRunModal({
   return (
     <Modal isOpen onClose={onCancel} title="Confirm Run">
       <div className="-mt-2 mb-4 flex items-center gap-3">
-        <div className="rounded-full bg-yellow-500/20 p-2">
-          <AlertTriangle className="h-5 w-5 text-yellow-500" />
+        <div className="bg-status-run/20 rounded-full p-2">
+          <AlertTriangle className="text-status-run h-5 w-5" />
         </div>
-        <div className="text-sm text-neutral-300">
+        <div className="text-ink-1 text-sm">
           {message ? (
             <>
               <div className="mb-1">{message}</div>
-              <div className="text-xs text-neutral-500">
+              <div className="text-ink-3 text-xs">
                 Command:{' '}
-                <span className="font-mono text-neutral-400">
-                  {commandName}
-                </span>
+                <span className="text-ink-2 font-mono">{commandName}</span>
               </div>
             </>
           ) : (
             <>
               Are you sure you want to run{' '}
-              <span className="font-mono text-neutral-100">{commandName}</span>?
+              <span className="text-ink-0 font-mono">{commandName}</span>?
             </>
           )}
         </div>
@@ -43,7 +41,7 @@ export function ConfirmRunModal({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md px-4 py-2 text-sm text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
+          className="text-ink-2 hover:bg-glass-medium hover:text-ink-1 rounded-md px-4 py-2 text-sm"
         >
           Cancel
         </button>

@@ -57,13 +57,13 @@ export function ChangeWorktreePathDialog({
       closeOnClickOutside={!isPending}
       closeOnEscape={!isPending}
     >
-      <p className="mb-4 text-sm text-neutral-300">
+      <p className="text-ink-1 mb-4 text-sm">
         Select the new location for the worktree directory. Use this to
         reconnect a task to a worktree that has been moved.
       </p>
 
       <div className="mb-4">
-        <label className="mb-1.5 block text-xs font-medium text-neutral-400">
+        <label className="text-ink-2 mb-1.5 block text-xs font-medium">
           Worktree Path
         </label>
         <div className="flex items-center gap-2">

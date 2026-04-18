@@ -129,12 +129,12 @@ export function CreateWithAgentDialog({ onClose }: { onClose: () => void }) {
     >
       <div
         ref={panelRef}
-        className="flex w-[520px] flex-col overflow-hidden rounded-lg border border-neutral-700 bg-neutral-800 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5),0_0_100px_-20px_rgba(0,0,0,0.6)]"
+        className="border-glass-border bg-bg-1 flex w-[520px] flex-col overflow-hidden rounded-lg border shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5),0_0_100px_-20px_rgba(0,0,0,0.6)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Prompt input */}
-        <div className="flex shrink-0 items-start border-b border-neutral-700 px-4 py-3">
-          <Bot className="mt-0.5 mr-2 h-5 w-5 shrink-0 text-purple-400" />
+        <div className="border-glass-border flex shrink-0 items-start border-b px-4 py-3">
+          <Bot className="text-acc-ink mt-0.5 mr-2 h-5 w-5 shrink-0" />
           <textarea
             ref={textareaRef}
             value={prompt}
@@ -145,7 +145,7 @@ export function CreateWithAgentDialog({ onClose }: { onClose: () => void }) {
                 ? 'Describe what to improve…'
                 : 'Describe the skill you want…'
             }
-            className="h-24 w-full resize-none bg-transparent text-sm text-neutral-200 placeholder-neutral-600 focus:outline-none"
+            className="text-ink-1 placeholder-ink-4 h-24 w-full resize-none bg-transparent text-sm focus:outline-none"
             autoFocus
           />
         </div>
@@ -163,12 +163,12 @@ export function CreateWithAgentDialog({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={handleSubmit}
             disabled={!canSubmit || createMutation.isPending}
-            className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
+            className="text-ink-0 bg-acc hover:bg-acc flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
             {mode === 'improve' ? 'Start Improving' : 'Start Creating'}
             <Kbd
               shortcut="cmd+enter"
-              className="border-purple-400/40 bg-purple-500/30 text-purple-200"
+              className="bg-acc/30 border-acc/40 text-acc-ink"
             />
           </Button>
         </div>

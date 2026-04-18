@@ -177,7 +177,7 @@ function SideBySideRowComponent({
       />
       {/* Divider / drag handle */}
       <td
-        className={`cursor-col-resize bg-neutral-700 transition-colors hover:bg-blue-500/50 ${isDragging ? 'bg-blue-500/50' : ''}`}
+        className={`bg-glass-medium hover:bg-acc/50 cursor-col-resize transition-colors ${isDragging ? 'bg-acc/50' : ''}`}
         onMouseDown={onDividerMouseDown}
       />
       {/* Right side (new/additions) */}
@@ -209,8 +209,8 @@ function SideBySideCell({
   if (!line) {
     return (
       <>
-        <td className="bg-neutral-800/50 pr-1 text-right align-top text-neutral-600 select-none" />
-        <td className="overflow-hidden bg-neutral-800/50 pr-2 whitespace-pre-wrap" />
+        <td className="bg-bg-1/50 text-ink-4 pr-1 text-right align-top select-none" />
+        <td className="bg-bg-1/50 overflow-hidden pr-2 whitespace-pre-wrap" />
       </>
     );
   }
@@ -225,10 +225,10 @@ function SideBySideCell({
 
   const lineNumClass =
     line.type === 'deletion'
-      ? 'text-red-400'
+      ? 'text-status-fail'
       : line.type === 'addition'
-        ? 'text-green-400'
-        : 'text-neutral-600';
+        ? 'text-status-done'
+        : 'text-ink-4';
 
   // Get line number for this side
   const lineNumber = side === 'left' ? line.oldLineNumber : line.newLineNumber;
@@ -253,7 +253,7 @@ function SideBySideCell({
         currentMatch,
       })
     ) : (
-      <span className="text-neutral-300">{line.content}</span>
+      <span className="text-ink-1">{line.content}</span>
     );
 
   return (

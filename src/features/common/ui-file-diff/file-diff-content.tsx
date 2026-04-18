@@ -111,10 +111,10 @@ export function FileDiffContent({
         <div className="flex flex-col gap-2">
           {thread.comments.map((comment, i) => (
             <div key={i} className="flex gap-2">
-              <span className="shrink-0 text-xs font-medium text-neutral-400">
+              <span className="text-ink-2 shrink-0 text-xs font-medium">
                 {comment.author}:
               </span>
-              <div className="min-w-0 flex-1 text-xs text-neutral-300">
+              <div className="text-ink-1 min-w-0 flex-1 text-xs">
                 <MarkdownContent content={comment.content} />
               </div>
             </div>
@@ -146,12 +146,12 @@ export function FileDiffContent({
     return (
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-medium text-neutral-400">
+          <span className="text-ink-2 text-xs font-medium">
             Add comment on {lineRangeLabel}
           </span>
           <button
             onClick={handleCancelComment}
-            className="rounded p-0.5 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-300"
+            className="text-ink-3 hover:text-ink-1 hover:bg-glass-medium rounded p-0.5"
           >
             <X className="h-3 w-3" />
           </button>
@@ -176,14 +176,14 @@ export function FileDiffContent({
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-neutral-500" />
+        <Loader2 className="text-ink-3 h-5 w-5 animate-spin" />
       </div>
     );
   }
 
   if (isBinary) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 text-neutral-500">
+      <div className="text-ink-3 flex h-full flex-col items-center justify-center gap-2">
         <p>Binary file changed</p>
         <p className="text-xs">{file.path}</p>
       </div>

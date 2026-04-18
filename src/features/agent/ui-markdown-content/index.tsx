@@ -51,7 +51,7 @@ function TextWithFilePaths({
     parts.push(
       <button
         key={match.index}
-        className="text-blue-400 underline hover:text-blue-300"
+        className="text-acc-ink hover:text-acc-ink underline"
         onClick={() => onFilePathClick(path, lineStart, lineEnd)}
       >
         {match[0]}
@@ -95,8 +95,8 @@ function isAsciiArt(code: string): boolean {
 // Special rendering for ASCII art - no syntax highlighting, smaller font, no wrap
 function AsciiArtBlock({ code }: { code: string }) {
   return (
-    <div className="overflow-x-auto rounded-lg bg-neutral-900 p-3">
-      <pre className="font-mono text-[10px] leading-tight whitespace-pre text-neutral-300">
+    <div className="bg-bg-0 overflow-x-auto rounded-lg p-3">
+      <pre className="text-ink-1 font-mono text-[10px] leading-tight whitespace-pre">
         {code}
       </pre>
     </div>
@@ -136,7 +136,7 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
 
   if (!html) {
     return (
-      <pre className="overflow-x-auto rounded-lg bg-neutral-900 p-4 whitespace-pre">
+      <pre className="bg-bg-0 overflow-x-auto rounded-lg p-4 whitespace-pre">
         <code>{code}</code>
       </pre>
     );
@@ -144,7 +144,7 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
 
   return (
     <div
-      className="mb-3 overflow-x-auto rounded border border-neutral-600 [&_pre]:p-2 [&_pre]:whitespace-pre"
+      className="border-glass-border mb-3 overflow-x-auto rounded border [&_pre]:p-2 [&_pre]:whitespace-pre"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -216,7 +216,7 @@ export function MarkdownContent({
             if (isInline) {
               return (
                 <code
-                  className="rounded border border-neutral-600 bg-neutral-800 px-1 py-0.5"
+                  className="border-glass-border bg-bg-1 rounded border px-1 py-0.5"
                   {...props}
                 >
                   {children}
@@ -237,7 +237,7 @@ export function MarkdownContent({
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-400 underline hover:text-blue-300"
+              className="text-acc-ink hover:text-acc-ink underline"
             >
               {children}
             </a>
@@ -269,7 +269,7 @@ export function MarkdownContent({
             </h3>
           ),
           blockquote: ({ children }) => (
-            <blockquote className="mb-3 border-l-4 border-neutral-600 pl-4 text-neutral-400 italic">
+            <blockquote className="border-glass-border text-ink-2 mb-3 border-l-4 pl-4 italic">
               {children}
             </blockquote>
           ),
@@ -279,14 +279,14 @@ export function MarkdownContent({
             </div>
           ),
           th: ({ children }) => (
-            <th className="border border-neutral-700 bg-neutral-800 px-3 py-2 text-left font-semibold">
+            <th className="border-glass-border bg-bg-1 border px-3 py-2 text-left font-semibold">
               {children}
             </th>
           ),
           td: ({ children }) => (
-            <td className="border border-neutral-700 px-3 py-2">{children}</td>
+            <td className="border-glass-border border px-3 py-2">{children}</td>
           ),
-          hr: () => <hr className="my-4 border-neutral-700" />,
+          hr: () => <hr className="border-glass-border my-4" />,
           img: ({ src, alt, ...props }) => {
             // Don't render if src is empty or undefined
             if (!src) {

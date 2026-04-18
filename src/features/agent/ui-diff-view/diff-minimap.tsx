@@ -96,7 +96,7 @@ export function DiffMinimap({
       {/* Viewport indicator */}
       {viewportIndicator && (
         <div
-          className="pointer-events-none absolute right-0 left-0 rounded border border-neutral-300/80 bg-neutral-400/20"
+          className="border-ink-1/80 bg-ink-2/20 pointer-events-none absolute right-0 left-0 rounded border"
           style={{
             top: `${viewportIndicator.topPercent}%`,
             height: `${viewportIndicator.heightPercent}%`,

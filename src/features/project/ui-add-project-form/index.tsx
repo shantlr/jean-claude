@@ -48,37 +48,31 @@ function RepoSection({
     formData.repoProviderId || formData.repoProjectId || formData.repoId;
 
   return (
-    <div className="rounded-lg border border-neutral-700 bg-neutral-800/30">
+    <div className="border-glass-border bg-bg-1/30 rounded-lg border">
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
         aria-expanded={isExpanded}
-        className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left hover:bg-neutral-700/30"
+        className="hover:bg-glass-medium/30 flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left"
       >
         {isExpanded ? (
-          <ChevronDown
-            className="h-4 w-4 shrink-0 text-neutral-500"
-            aria-hidden
-          />
+          <ChevronDown className="text-ink-3 h-4 w-4 shrink-0" aria-hidden />
         ) : (
-          <ChevronRight
-            className="h-4 w-4 shrink-0 text-neutral-500"
-            aria-hidden
-          />
+          <ChevronRight className="text-ink-3 h-4 w-4 shrink-0" aria-hidden />
         )}
-        <span className="flex-1 text-sm font-medium text-neutral-300">
+        <span className="text-ink-1 flex-1 text-sm font-medium">
           Repository
         </span>
-        <span className="text-xs text-neutral-500">
+        <span className="text-ink-3 text-xs">
           {hasValues ? 'Configured' : 'Optional'}
         </span>
       </button>
 
       {isExpanded && (
-        <div className="space-y-3 border-t border-neutral-700 px-3 py-3">
+        <div className="border-glass-border space-y-3 border-t px-3 py-3">
           {/* Provider */}
           <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-400">
+            <label className="text-ink-2 mb-1 block text-xs font-medium">
               Organization
             </label>
             <Select
@@ -131,10 +125,7 @@ function RepoProjectSelector({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-2">
-        <Loader2
-          className="h-4 w-4 animate-spin text-neutral-500"
-          aria-hidden
-        />
+        <Loader2 className="text-ink-3 h-4 w-4 animate-spin" aria-hidden />
         <span className="sr-only">Loading…</span>
       </div>
     );
@@ -150,7 +141,7 @@ function RepoProjectSelector({
     <>
       {/* Project */}
       <div>
-        <label className="mb-1 block text-xs font-medium text-neutral-400">
+        <label className="text-ink-2 mb-1 block text-xs font-medium">
           Project
         </label>
         <Select
@@ -178,7 +169,7 @@ function RepoProjectSelector({
       {/* Repository */}
       {formData.repoProjectId && (
         <div>
-          <label className="mb-1 block text-xs font-medium text-neutral-400">
+          <label className="text-ink-2 mb-1 block text-xs font-medium">
             Repository
           </label>
           <Select
@@ -225,37 +216,31 @@ function WorkItemSection({
   const hasValues = formData.workItemProviderId || formData.workItemProjectId;
 
   return (
-    <div className="rounded-lg border border-neutral-700 bg-neutral-800/30">
+    <div className="border-glass-border bg-bg-1/30 rounded-lg border">
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
         aria-expanded={isExpanded}
-        className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left hover:bg-neutral-700/30"
+        className="hover:bg-glass-medium/30 flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left"
       >
         {isExpanded ? (
-          <ChevronDown
-            className="h-4 w-4 shrink-0 text-neutral-500"
-            aria-hidden
-          />
+          <ChevronDown className="text-ink-3 h-4 w-4 shrink-0" aria-hidden />
         ) : (
-          <ChevronRight
-            className="h-4 w-4 shrink-0 text-neutral-500"
-            aria-hidden
-          />
+          <ChevronRight className="text-ink-3 h-4 w-4 shrink-0" aria-hidden />
         )}
-        <span className="flex-1 text-sm font-medium text-neutral-300">
+        <span className="text-ink-1 flex-1 text-sm font-medium">
           Work Items
         </span>
-        <span className="text-xs text-neutral-500">
+        <span className="text-ink-3 text-xs">
           {hasValues ? 'Configured' : 'Optional'}
         </span>
       </button>
 
       {isExpanded && (
-        <div className="space-y-3 border-t border-neutral-700 px-3 py-3">
+        <div className="border-glass-border space-y-3 border-t px-3 py-3">
           {/* Provider */}
           <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-400">
+            <label className="text-ink-2 mb-1 block text-xs font-medium">
               Organization
             </label>
             <Select
@@ -306,10 +291,7 @@ function WorkItemProjectSelector({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-2">
-        <Loader2
-          className="h-4 w-4 animate-spin text-neutral-500"
-          aria-hidden
-        />
+        <Loader2 className="text-ink-3 h-4 w-4 animate-spin" aria-hidden />
         <span className="sr-only">Loading…</span>
       </div>
     );
@@ -319,7 +301,7 @@ function WorkItemProjectSelector({
 
   return (
     <div>
-      <label className="mb-1 block text-xs font-medium text-neutral-400">
+      <label className="text-ink-2 mb-1 block text-xs font-medium">
         Project
       </label>
       <Select
@@ -365,7 +347,7 @@ export function AddProjectForm({
       <div>
         <label
           htmlFor="name"
-          className="mb-1 block text-sm font-medium text-neutral-300"
+          className="text-ink-1 mb-1 block text-sm font-medium"
         >
           Name
         </label>
@@ -381,19 +363,17 @@ export function AddProjectForm({
 
       {/* Path */}
       <div>
-        <label className="mb-1 block text-sm font-medium text-neutral-300">
+        <label className="text-ink-1 mb-1 block text-sm font-medium">
           Path
         </label>
-        <div className="rounded-lg border border-neutral-700 bg-neutral-800/50 px-3 py-2">
-          <span className="truncate text-sm text-neutral-400">
-            {formData.path}
-          </span>
+        <div className="border-glass-border bg-bg-1/50 rounded-lg border px-3 py-2">
+          <span className="text-ink-2 truncate text-sm">{formData.path}</span>
         </div>
       </div>
 
       {/* Color */}
       <div>
-        <label className="mb-1 block text-sm font-medium text-neutral-300">
+        <label className="text-ink-1 mb-1 block text-sm font-medium">
           Color
         </label>
         <div
@@ -411,7 +391,7 @@ export function AddProjectForm({
               onClick={() => onChange({ color })}
               className={`h-8 w-8 cursor-pointer rounded-lg transition-transform ${
                 formData.color === color
-                  ? 'ring-2 ring-white ring-offset-2 ring-offset-neutral-900'
+                  ? 'ring-offset-bg-0 ring-2 ring-white ring-offset-2'
                   : 'hover:scale-110'
               }`}
               style={{ backgroundColor: color }}

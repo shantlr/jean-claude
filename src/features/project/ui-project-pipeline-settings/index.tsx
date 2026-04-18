@@ -31,7 +31,7 @@ function Toggle({
       onClick={onChange}
       disabled={disabled}
       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-        checked ? 'bg-blue-600' : 'bg-neutral-700'
+        checked ? 'bg-acc' : 'bg-glass-medium'
       } disabled:opacity-50`}
     >
       <span
@@ -54,9 +54,9 @@ function PipelineRow({
   const toggleVisibleMutation = useToggleTrackedPipelineVisible(projectId);
 
   return (
-    <div className="flex items-center justify-between rounded-lg border border-neutral-800 px-3 py-2">
+    <div className="border-line-soft flex items-center justify-between rounded-lg border px-3 py-2">
       <div className="min-w-0 flex-1">
-        <span className="text-sm text-neutral-200">{pipeline.name}</span>
+        <span className="text-ink-1 text-sm">{pipeline.name}</span>
       </div>
       <div className="flex items-center gap-4">
         <Tooltip content="Show in the Pipelines overlay">
@@ -107,7 +107,7 @@ function PipelineSection({
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-medium text-neutral-400">{title}</h3>
+      <h3 className="text-ink-2 text-sm font-medium">{title}</h3>
       <div className="space-y-1">
         {pipelines.map((p) => (
           <PipelineRow key={p.id} pipeline={p} projectId={projectId} />
@@ -159,10 +159,8 @@ export function ProjectPipelineSettings({ projectId }: { projectId: string }) {
   if (!hasRepoLink) {
     return (
       <div className="space-y-3">
-        <h2 className="text-lg font-semibold text-neutral-200">
-          Pipeline Tracking
-        </h2>
-        <p className="text-sm text-neutral-500">
+        <h2 className="text-ink-1 text-lg font-semibold">Pipeline Tracking</h2>
+        <p className="text-ink-3 text-sm">
           Link an Azure DevOps repository in Integrations to track pipelines.
         </p>
       </div>
@@ -174,14 +172,12 @@ export function ProjectPipelineSettings({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-neutral-200">
-          Pipeline Tracking
-        </h2>
+        <h2 className="text-ink-1 text-lg font-semibold">Pipeline Tracking</h2>
         <button
           type="button"
           onClick={() => discoverMutation.mutate()}
           disabled={discoverMutation.isPending}
-          className="flex cursor-pointer items-center gap-1.5 rounded border border-neutral-700 bg-neutral-800 px-2.5 py-1 text-xs text-neutral-300 transition-colors hover:bg-neutral-700 disabled:opacity-50"
+          className="border-glass-border bg-bg-1 text-ink-1 hover:bg-glass-medium flex cursor-pointer items-center gap-1.5 rounded border px-2.5 py-1 text-xs transition-colors disabled:opacity-50"
         >
           <RefreshCw
             className={`h-3 w-3 ${discoverMutation.isPending ? 'animate-spin' : ''}`}
@@ -190,23 +186,23 @@ export function ProjectPipelineSettings({ projectId }: { projectId: string }) {
         </button>
       </div>
 
-      <p className="text-xs leading-relaxed text-neutral-500">
+      <p className="text-ink-3 text-xs leading-relaxed">
         Configure which pipelines appear in the Pipelines overlay and which ones
         send desktop notifications when runs complete or fail.
       </p>
 
       {isLoading ? (
-        <p className="text-sm text-neutral-500">Loading pipelines...</p>
+        <p className="text-ink-3 text-sm">Loading pipelines...</p>
       ) : !hasPipelines ? (
-        <div className="rounded-lg border border-neutral-800 px-4 py-8 text-center">
-          <p className="text-sm text-neutral-500">
+        <div className="border-line-soft rounded-lg border px-4 py-8 text-center">
+          <p className="text-ink-3 text-sm">
             No pipelines found for this repository.
           </p>
           <button
             type="button"
             onClick={() => discoverMutation.mutate()}
             disabled={discoverMutation.isPending}
-            className="mt-2 cursor-pointer text-sm text-blue-400 hover:text-blue-300"
+            className="text-acc-ink hover:text-acc-ink mt-2 cursor-pointer text-sm"
           >
             Discover pipelines
           </button>
@@ -214,7 +210,7 @@ export function ProjectPipelineSettings({ projectId }: { projectId: string }) {
       ) : (
         <>
           {/* Column headers */}
-          <div className="flex items-center justify-end gap-4 pr-3 text-[10px] tracking-wider text-neutral-500 uppercase">
+          <div className="text-ink-3 flex items-center justify-end gap-4 pr-3 text-[10px] tracking-wider uppercase">
             <Tooltip content="Show in the Pipelines overlay">
               <span className="flex w-9 cursor-default items-center justify-center">
                 <Eye className="h-3 w-3" />

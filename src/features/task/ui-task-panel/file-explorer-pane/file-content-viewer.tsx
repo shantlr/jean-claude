@@ -51,14 +51,14 @@ export function FileContentViewer({ filePath }: { filePath: string }) {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
+        <Loader2 className="text-ink-2 h-5 w-5 animate-spin" />
       </div>
     );
   }
 
   if (!fileData) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-neutral-500">
+      <div className="text-ink-3 flex h-full items-center justify-center text-sm">
         Unable to read file
       </div>
     );
@@ -74,7 +74,7 @@ export function FileContentViewer({ filePath }: { filePath: string }) {
             dangerouslySetInnerHTML={{ __html: highlightedHtml }}
           />
         ) : (
-          <pre className="p-4 text-neutral-300">{fileData.content}</pre>
+          <pre className="text-ink-1 p-4">{fileData.content}</pre>
         )}
       </div>
     </div>

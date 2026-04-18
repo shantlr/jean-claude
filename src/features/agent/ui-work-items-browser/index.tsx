@@ -63,10 +63,10 @@ export function WorkItemsBrowser({
   }
 
   return (
-    <div className="rounded-lg border border-neutral-700 bg-neutral-800 p-3">
+    <div className="border-glass-border bg-bg-1 rounded-lg border p-3">
       {/* Header */}
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-sm font-medium text-neutral-200">Work Items</span>
+        <span className="text-ink-1 text-sm font-medium">Work Items</span>
         <IconButton
           onClick={onClose}
           icon={<X />}
@@ -92,7 +92,7 @@ export function WorkItemsBrowser({
       <div className="mb-3 space-y-2">
         {/* State filter */}
         <div>
-          <span className="mb-1 block text-xs text-neutral-400">State</span>
+          <span className="text-ink-2 mb-1 block text-xs">State</span>
           <div className="flex flex-wrap gap-1">
             {STATE_OPTIONS.map((state) => (
               <Button
@@ -112,7 +112,7 @@ export function WorkItemsBrowser({
 
         {/* Type filter */}
         <div>
-          <span className="mb-1 block text-xs text-neutral-400">Type</span>
+          <span className="text-ink-2 mb-1 block text-xs">Type</span>
           <div className="flex flex-wrap gap-1">
             {TYPE_OPTIONS.map((type) => (
               <Button
@@ -132,20 +132,20 @@ export function WorkItemsBrowser({
       {/* Work items list */}
       <div className="max-h-64 overflow-y-auto">
         {isLoading && (
-          <div className="flex items-center justify-center py-4 text-neutral-400">
+          <div className="text-ink-2 flex items-center justify-center py-4">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span className="ml-2 text-sm">Loading work items...</span>
           </div>
         )}
 
         {error && (
-          <div className="py-4 text-center text-sm text-red-400">
+          <div className="text-status-fail py-4 text-center text-sm">
             Failed to load work items
           </div>
         )}
 
         {!isLoading && !error && workItems?.length === 0 && (
-          <div className="py-4 text-center text-sm text-neutral-400">
+          <div className="text-ink-2 py-4 text-center text-sm">
             No work items found
           </div>
         )}
@@ -155,18 +155,18 @@ export function WorkItemsBrowser({
             key={wi.id}
             type="button"
             onClick={() => onSelect(wi)}
-            className="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left transition-colors hover:bg-neutral-700"
+            className="hover:bg-glass-medium flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-left transition-colors"
           >
-            <span className="shrink-0 text-xs text-neutral-500">{wi.id}</span>
+            <span className="text-ink-3 shrink-0 text-xs">{wi.id}</span>
             {wi.fields.workItemType === 'Bug' ? (
-              <Bug className="h-3.5 w-3.5 shrink-0 text-red-400" />
+              <Bug className="text-status-fail h-3.5 w-3.5 shrink-0" />
             ) : (
-              <FileText className="h-3.5 w-3.5 shrink-0 text-blue-400" />
+              <FileText className="text-acc-ink h-3.5 w-3.5 shrink-0" />
             )}
-            <span className="min-w-0 flex-1 truncate text-sm text-neutral-200">
+            <span className="text-ink-1 min-w-0 flex-1 truncate text-sm">
               {wi.fields.title}
             </span>
-            <span className="shrink-0 text-xs text-neutral-500">
+            <span className="text-ink-3 shrink-0 text-xs">
               {wi.fields.state}
             </span>
           </button>

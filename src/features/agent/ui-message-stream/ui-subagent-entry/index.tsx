@@ -127,24 +127,21 @@ export function SubagentEntry({
               aria-hidden
             />
           )}
-          <span className="text-xs text-neutral-300">
+          <span className="text-ink-1 text-xs">
             <span className="font-medium text-cyan-300">{description}</span>
             {subagentType && (
-              <span className="ml-1 text-neutral-500">({subagentType})</span>
+              <span className="text-ink-3 ml-1">({subagentType})</span>
             )}
             {subagentModel && (
-              <span
-                className="ml-2 font-mono text-neutral-500"
-                title={subagentModel}
-              >
+              <span className="text-ink-3 ml-2 font-mono" title={subagentModel}>
                 {formatModelName(subagentModel)}
               </span>
             )}
           </span>
           {isExpanded ? (
-            <ChevronDown className="ml-auto h-3 w-3 shrink-0 text-neutral-500" />
+            <ChevronDown className="text-ink-3 ml-auto h-3 w-3 shrink-0" />
           ) : (
-            <ChevronRight className="ml-auto h-3 w-3 shrink-0 text-neutral-500" />
+            <ChevronRight className="text-ink-3 ml-auto h-3 w-3 shrink-0" />
           )}
         </div>
 
@@ -154,28 +151,28 @@ export function SubagentEntry({
             {todoProgress.activeTask ? (
               <>
                 <Loader2
-                  className="h-3 w-3 shrink-0 animate-spin text-blue-400"
+                  className="text-acc-ink h-3 w-3 shrink-0 animate-spin"
                   aria-hidden
                 />
-                <span className="truncate text-blue-300">
+                <span className="text-acc-ink truncate">
                   {todoProgress.activeTask}
                 </span>
-                <span className="shrink-0 text-neutral-500">
+                <span className="text-ink-3 shrink-0">
                   ({todoProgress.completed}/{todoProgress.total})
                 </span>
               </>
             ) : todoProgress.completed > 0 ? (
               <>
                 <Check
-                  className="h-3 w-3 shrink-0 text-green-400"
+                  className="text-status-done h-3 w-3 shrink-0"
                   aria-hidden
                 />
-                <span className="shrink-0 text-green-400">
+                <span className="text-status-done shrink-0">
                   {todoProgress.completed}/{todoProgress.total} completed
                 </span>
               </>
             ) : (
-              <span className="shrink-0 text-neutral-500">
+              <span className="text-ink-3 shrink-0">
                 {todoProgress.total} todos pending
               </span>
             )}
@@ -184,12 +181,12 @@ export function SubagentEntry({
 
         {/* Last activity preview (only when collapsed and has activity) */}
         {!isExpanded && lastActivity && (
-          <div className="ml-5 text-xs text-neutral-500">{lastActivity}</div>
+          <div className="text-ink-3 ml-5 text-xs">{lastActivity}</div>
         )}
 
         {/* Sub-agent result preview (only when collapsed and available) */}
         {!isExpanded && resultPreview && (
-          <div className="ml-5 max-h-9 overflow-hidden text-xs text-neutral-400">
+          <div className="text-ink-2 ml-5 max-h-9 overflow-hidden text-xs">
             Result: {resultPreview}
           </div>
         )}
@@ -204,7 +201,7 @@ export function SubagentEntry({
               <div className="mb-1 text-[11px] font-medium tracking-wide text-cyan-300 uppercase">
                 Result
               </div>
-              <div className="max-h-96 overflow-auto rounded bg-black/30 p-3 text-xs text-neutral-300">
+              <div className="text-ink-1 max-h-96 overflow-auto rounded bg-black/30 p-3 text-xs">
                 <MarkdownContent
                   content={resultOutput}
                   onFilePathClick={onFilePathClick}
@@ -233,7 +230,7 @@ export function SubagentEntry({
 
       {/* Empty state when expanded but no entries and no result yet */}
       {isExpanded && displayEntries.length === 0 && !resultOutput && (
-        <div className="relative mb-2 ml-5 pl-4 text-xs text-neutral-500">
+        <div className="text-ink-3 relative mb-2 ml-5 pl-4 text-xs">
           <div className="absolute top-1 bottom-1 left-1.5 w-px rounded-full bg-white/[0.06]" />
           Waiting for sub-agent activity...
         </div>

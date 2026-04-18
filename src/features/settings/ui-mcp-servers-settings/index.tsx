@@ -46,7 +46,7 @@ export function McpServersSettings() {
   };
 
   if (isLoading) {
-    return <p className="text-neutral-500">Loading...</p>;
+    return <p className="text-ink-3">Loading...</p>;
   }
 
   return (
@@ -54,14 +54,12 @@ export function McpServersSettings() {
       {/* Left: List */}
       <div className="w-80 flex-shrink-0">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-neutral-200">
-            MCP Servers
-          </h2>
+          <h2 className="text-ink-1 text-lg font-semibold">MCP Servers</h2>
           <Button onClick={handleCreate} size="sm" icon={<Plus />}>
             Add
           </Button>
         </div>
-        <p className="mb-4 text-sm text-neutral-500">
+        <p className="text-ink-3 mb-4 text-sm">
           Configure MCP servers to auto-install when creating worktrees.
         </p>
         <McpTemplateList
@@ -74,7 +72,7 @@ export function McpServersSettings() {
 
       {/* Right: Form pane */}
       {(isCreating || selectedTemplate) && (
-        <div className="flex-1 rounded-lg border border-neutral-700 bg-neutral-800/50 p-6">
+        <div className="border-glass-border bg-bg-1/50 flex-1 rounded-lg border p-6">
           <McpTemplateForm
             template={selectedTemplate}
             onClose={handleClose}

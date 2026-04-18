@@ -120,7 +120,7 @@ export function Header() {
           >
             Backlog
             {typeof todoCount === 'number' && todoCount > 0 && (
-              <span className="rounded-full bg-neutral-700/60 px-1.5 py-0.5 text-[10px] leading-none text-neutral-400">
+              <span className="bg-glass-medium text-ink-2 rounded-full px-1.5 py-0.5 text-[10px] leading-none">
                 {todoCount}
               </span>
             )}
@@ -167,8 +167,8 @@ export function Header() {
           className={clsx(
             'relative transition-all duration-500',
             runningJobsCount > 0
-              ? 'jobs-running-border text-white'
-              : 'border border-white/[0.08] bg-white/5 text-neutral-400 hover:border-white/[0.15] hover:bg-white/10 hover:text-white',
+              ? 'jobs-running-border text-bg-0'
+              : 'text-ink-2 hover:border-glass-border-strong hover:text-bg-0 border border-white/[0.08] bg-white/5 hover:bg-white/10',
           )}
         >
           {runningJobsCount > 0 ? (
@@ -179,7 +179,7 @@ export function Header() {
           <span>Jobs</span>
           <Kbd shortcut="cmd+j" className="text-[9px]" />
           {runningJobsCount > 0 && (
-            <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] leading-none text-white shadow-[0_0_6px_rgba(59,130,246,0.4)]">
+            <span className="bg-acc text-bg-0 rounded-full px-1.5 py-0.5 text-[10px] leading-none shadow-[0_0_6px_oklch(0.6_0.2_264)]">
               {runningJobsCount}
             </span>
           )}

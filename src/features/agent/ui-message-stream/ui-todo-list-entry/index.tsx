@@ -43,10 +43,10 @@ function TodoCheckbox({
       className={`flex items-start gap-2 rounded px-2 py-1 ${
         isChanged
           ? isCompleted
-            ? 'bg-green-500/10'
+            ? 'bg-status-done/10'
             : isInProgress
               ? 'bg-blue-500/10'
-              : 'bg-neutral-500/10'
+              : 'bg-ink-3/10'
           : ''
       }`}
     >
@@ -55,15 +55,15 @@ function TodoCheckbox({
         {isCompleted ? (
           <div
             className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm ${
-              isChanged ? 'bg-green-500' : 'bg-neutral-600'
+              isChanged ? 'bg-status-done' : 'bg-bg-3'
             }`}
           >
             <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
           </div>
         ) : isInProgress ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
+          <Loader2 className="text-acc-ink h-3.5 w-3.5 animate-spin" />
         ) : (
-          <Circle className="h-3.5 w-3.5 text-neutral-600" />
+          <Circle className="text-ink-4 h-3.5 w-3.5" />
         )}
       </div>
 
@@ -71,10 +71,10 @@ function TodoCheckbox({
       <span
         className={`text-xs leading-relaxed ${
           isCompleted
-            ? 'text-neutral-500 line-through'
+            ? 'text-ink-3 line-through'
             : isInProgress
-              ? 'text-blue-300'
-              : 'text-neutral-400'
+              ? 'text-acc-ink'
+              : 'text-ink-2'
         }`}
       >
         {item.content}
@@ -106,7 +106,7 @@ export function TodoListEntry({
 
       <div className="py-1.5 pr-3">
         {/* Summary header */}
-        <div className="mb-1.5 flex items-center gap-2 text-xs text-neutral-400">
+        <div className="text-ink-2 mb-1.5 flex items-center gap-2 text-xs">
           {isPending && <Loader2 className="h-3 w-3 shrink-0 animate-spin" />}
           <span>
             {isPending

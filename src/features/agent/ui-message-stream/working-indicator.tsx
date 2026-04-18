@@ -95,11 +95,14 @@ export const WorkingIndicator = memo(function WorkingIndicator() {
 
   return (
     <span className="flex items-center gap-1.5">
-      <span className="font-mono text-xs text-sky-400 select-none" aria-hidden>
+      <span
+        className="text-status-review font-mono text-xs select-none"
+        aria-hidden
+      >
         {BRAILLE_FRAMES[brailleIdx]}
       </span>
       <span
-        className="inline-flex overflow-hidden text-xs text-neutral-400"
+        className="text-ink-2 inline-flex overflow-hidden text-xs"
         aria-label={phrase}
       >
         {phrase.split('').map((char, i) => {

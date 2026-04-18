@@ -84,8 +84,7 @@ const TOOL_COLORS: Record<string, string> = {
 
 export function ToolUseCard({ toolUse }: { toolUse: NormalizedToolUse }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const colorClass =
-    TOOL_COLORS[toolUse.name] || 'bg-neutral-800 border-neutral-600';
+  const colorClass = TOOL_COLORS[toolUse.name] || 'bg-bg-1 border-glass-border';
   const formattedInput = formatInput(toolUse);
 
   const hasResult = toolUse.result !== undefined;
@@ -104,30 +103,28 @@ export function ToolUseCard({ toolUse }: { toolUse: NormalizedToolUse }) {
         onClick={() => setIsExpanded(!isExpanded)}
       >
         {isExpanded ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400" />
+          <ChevronDown className="text-ink-2 h-4 w-4 shrink-0" />
         ) : (
-          <ChevronRight className="h-4 w-4 shrink-0 text-neutral-400" />
+          <ChevronRight className="text-ink-2 h-4 w-4 shrink-0" />
         )}
-        <span className="font-mono text-xs text-neutral-400">
-          {toolUse.name}
-        </span>
+        <span className="text-ink-2 font-mono text-xs">{toolUse.name}</span>
 
         {/* Status indicator */}
         {hasResult ? (
           isError ? (
-            <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-400" />
+            <AlertCircle className="text-status-fail h-3.5 w-3.5 shrink-0" />
           ) : (
-            <CheckCircle className="h-3.5 w-3.5 shrink-0 text-green-400" />
+            <CheckCircle className="text-status-done h-3.5 w-3.5 shrink-0" />
           )
         ) : (
-          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-neutral-400" />
+          <Loader2 className="text-ink-2 h-3.5 w-3.5 shrink-0 animate-spin" />
         )}
       </button>
 
       {/* Collapsed input preview */}
       {!isExpanded && (
         <div className="border-t border-white/10 bg-black/20 px-3 py-1.5">
-          <pre className="text-neutral-300">{formattedInput}</pre>
+          <pre className="text-ink-1">{formattedInput}</pre>
         </div>
       )}
 
@@ -136,10 +133,8 @@ export function ToolUseCard({ toolUse }: { toolUse: NormalizedToolUse }) {
         <div className="border-t border-white/10">
           {/* Input section */}
           <div className="bg-black/20 px-3 py-2">
-            <div className="mb-1 text-xs font-medium text-neutral-500">
-              Input
-            </div>
-            <pre className="overflow-x-auto text-xs whitespace-pre-wrap text-neutral-300">
+            <div className="text-ink-3 mb-1 text-xs font-medium">Input</div>
+            <pre className="text-ink-1 overflow-x-auto text-xs whitespace-pre-wrap">
               {formattedInput}
             </pre>
           </div>
@@ -150,11 +145,11 @@ export function ToolUseCard({ toolUse }: { toolUse: NormalizedToolUse }) {
               className={`border-t border-white/10 px-3 py-2 ${isError ? 'bg-red-900/20' : 'bg-black/10'}`}
             >
               <div
-                className={`mb-1 text-xs font-medium ${isError ? 'text-red-400' : 'text-neutral-500'}`}
+                className={`mb-1 text-xs font-medium ${isError ? 'text-status-fail' : 'text-ink-3'}`}
               >
                 {isError ? 'Error' : 'Result'}
               </div>
-              <pre className="max-h-64 overflow-auto text-xs whitespace-pre-wrap text-neutral-300">
+              <pre className="text-ink-1 max-h-64 overflow-auto text-xs whitespace-pre-wrap">
                 {formattedResult}
               </pre>
             </div>
@@ -168,7 +163,7 @@ export function ToolUseCard({ toolUse }: { toolUse: NormalizedToolUse }) {
           className={`border-t border-white/10 px-3 py-1.5 ${isError ? 'bg-red-900/20' : 'bg-black/10'}`}
         >
           <span
-            className={`text-xs ${isError ? 'text-red-300' : 'text-neutral-500'}`}
+            className={`text-xs ${isError ? 'text-status-fail' : 'text-ink-3'}`}
           >
             {resultPreview}
             {formattedResult.length > 80 && '...'}

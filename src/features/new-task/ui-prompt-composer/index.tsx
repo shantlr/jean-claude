@@ -172,28 +172,28 @@ export function PromptComposer({
         {/* Left: Template editor */}
         <div className="flex w-1/2 flex-col overflow-hidden">
           <div className="mb-2">
-            <span className="text-xs font-medium text-neutral-400 uppercase">
+            <span className="text-ink-2 text-xs font-medium uppercase">
               Prompt Template
             </span>
           </div>
           <textarea
             value={template}
             onChange={(e) => onTemplateChange(e.target.value)}
-            className="flex-1 resize-none rounded border border-neutral-700 bg-neutral-900 p-3 font-mono text-sm text-neutral-200 outline-none focus:border-neutral-500"
+            className="text-ink-1 focus:border-glass-border-strong border-glass-border bg-bg-0 flex-1 resize-none rounded border p-3 font-mono text-sm outline-none"
             placeholder="Enter your prompt template..."
           />
-          <p className="mt-2 text-xs text-neutral-500">
+          <p className="text-ink-3 mt-2 text-xs">
             Use {'{#id}'} placeholders to include work item details
           </p>
         </div>
 
         {/* Right: Preview */}
         <div className="flex w-1/2 flex-col overflow-hidden">
-          <div className="mb-2 text-xs font-medium text-neutral-400 uppercase">
+          <div className="text-ink-2 mb-2 text-xs font-medium uppercase">
             Preview
           </div>
-          <div className="flex-1 overflow-y-auto rounded border border-neutral-700 bg-neutral-900/50 p-3">
-            <pre className="font-mono text-sm whitespace-pre-wrap text-neutral-300">
+          <div className="bg-bg-0/50 border-glass-border flex-1 overflow-y-auto rounded border p-3">
+            <pre className="text-ink-1 font-mono text-sm whitespace-pre-wrap">
               {preview}
             </pre>
           </div>

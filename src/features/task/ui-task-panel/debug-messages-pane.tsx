@@ -71,8 +71,8 @@ function CopyJsonButton({
       className={clsx(
         'inline-flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors',
         copied
-          ? 'bg-green-900/30 text-green-400'
-          : 'bg-neutral-700/50 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200',
+          ? 'text-status-done bg-status-done/30'
+          : 'bg-glass-medium/50 text-ink-2 hover:text-ink-1 hover:bg-glass-medium',
         className,
       )}
       title={label ?? 'Copy JSON'}
@@ -93,22 +93,22 @@ function JsonValue({
   defaultExpanded?: boolean;
 }) {
   if (value === null) {
-    return <span className="text-neutral-500">null</span>;
+    return <span className="text-ink-3">null</span>;
   }
   if (value === undefined) {
-    return <span className="text-neutral-500">undefined</span>;
+    return <span className="text-ink-3">undefined</span>;
   }
   if (typeof value === 'boolean') {
-    return <span className="text-yellow-400">{String(value)}</span>;
+    return <span className="text-status-run">{String(value)}</span>;
   }
   if (typeof value === 'number') {
-    return <span className="text-blue-400">{String(value)}</span>;
+    return <span className="text-acc-ink">{String(value)}</span>;
   }
   if (typeof value === 'string') {
     const display = value.length > 120 ? value.slice(0, 120) + '...' : value;
     return (
       <span
-        className="text-green-400"
+        className="text-status-done"
         title={value.length > 120 ? value : undefined}
       >
         &quot;{display}&quot;
@@ -126,7 +126,7 @@ function JsonValue({
       />
     );
   }
-  return <span className="text-neutral-400">{String(value)}</span>;
+  return <span className="text-ink-2">{String(value)}</span>;
 }
 
 function JsonArray({
@@ -139,17 +139,17 @@ function JsonArray({
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   if (items.length === 0) {
-    return <span className="text-neutral-500">[]</span>;
+    return <span className="text-ink-3">[]</span>;
   }
 
   if (!expanded) {
     return (
       <span
-        className="cursor-pointer text-neutral-400 hover:text-neutral-200"
+        className="text-ink-2 hover:text-ink-1 cursor-pointer"
         onClick={() => setExpanded(true)}
       >
         <ChevronRight className="mr-0.5 inline h-3 w-3" />
-        <span className="text-neutral-500">
+        <span className="text-ink-3">
           [{items.length} item{items.length !== 1 ? 's' : ''}]
         </span>
       </span>
@@ -159,7 +159,7 @@ function JsonArray({
   return (
     <span>
       <span
-        className="cursor-pointer text-neutral-400 hover:text-neutral-200"
+        className="text-ink-2 hover:text-ink-1 cursor-pointer"
         onClick={() => setExpanded(false)}
       >
         <ChevronDown className="mr-0.5 inline h-3 w-3" />[
@@ -168,15 +168,13 @@ function JsonArray({
         <div className="absolute top-1 bottom-1 left-0.5 w-px rounded-full bg-white/[0.06]" />
         {items.map((item, index) => (
           <div key={index} className="py-0.5">
-            <span className="mr-1 text-neutral-600">{index}:</span>
+            <span className="text-ink-4 mr-1">{index}:</span>
             <JsonValue value={item} defaultExpanded={defaultExpanded} />
-            {index < items.length - 1 && (
-              <span className="text-neutral-600">,</span>
-            )}
+            {index < items.length - 1 && <span className="text-ink-4">,</span>}
           </div>
         ))}
       </div>
-      <span className="text-neutral-400">]</span>
+      <span className="text-ink-2">]</span>
     </span>
   );
 }
@@ -192,17 +190,17 @@ function JsonObject({
   const keys = Object.keys(obj);
 
   if (keys.length === 0) {
-    return <span className="text-neutral-500">{'{}'}</span>;
+    return <span className="text-ink-3">{'{}'}</span>;
   }
 
   if (!expanded) {
     return (
       <span
-        className="cursor-pointer text-neutral-400 hover:text-neutral-200"
+        className="text-ink-2 hover:text-ink-1 cursor-pointer"
         onClick={() => setExpanded(true)}
       >
         <ChevronRight className="mr-0.5 inline h-3 w-3" />
-        <span className="text-neutral-500">
+        <span className="text-ink-3">
           {'{'}
           {keys.length} key{keys.length !== 1 ? 's' : ''}
           {'}'}
@@ -214,7 +212,7 @@ function JsonObject({
   return (
     <span>
       <span
-        className="cursor-pointer text-neutral-400 hover:text-neutral-200"
+        className="text-ink-2 hover:text-ink-1 cursor-pointer"
         onClick={() => setExpanded(false)}
       >
         <ChevronDown className="mr-0.5 inline h-3 w-3" />
@@ -224,16 +222,14 @@ function JsonObject({
         <div className="absolute top-1 bottom-1 left-0.5 w-px rounded-full bg-white/[0.06]" />
         {keys.map((key, index) => (
           <div key={key} className="py-0.5">
-            <span className="text-purple-300">&quot;{key}&quot;</span>
-            <span className="text-neutral-500">: </span>
+            <span className="text-acc-ink">&quot;{key}&quot;</span>
+            <span className="text-ink-3">: </span>
             <JsonValue value={obj[key]} defaultExpanded={defaultExpanded} />
-            {index < keys.length - 1 && (
-              <span className="text-neutral-600">,</span>
-            )}
+            {index < keys.length - 1 && <span className="text-ink-4">,</span>}
           </div>
         ))}
       </div>
-      <span className="text-neutral-400">{'}'}</span>
+      <span className="text-ink-2">{'}'}</span>
     </span>
   );
 }
@@ -260,23 +256,23 @@ function DebugMessageCard({
     <div
       ref={cardRef}
       className={clsx(
-        'flex w-full flex-col overflow-hidden rounded-md border bg-neutral-800/30',
+        'bg-bg-1/30 flex w-full flex-col overflow-hidden rounded-md border',
         isHighlighted
-          ? 'border-blue-500/50 ring-1 ring-blue-500/30'
+          ? 'border-acc/50 ring-acc/30 ring-1'
           : 'border-white/[0.06]',
       )}
     >
       {/* Card header */}
       <Button
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-neutral-800"
+        className="hover:bg-glass-light flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors"
       >
         {expanded ? (
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
+          <ChevronDown className="text-ink-3 h-3.5 w-3.5 shrink-0" />
         ) : (
-          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
+          <ChevronRight className="text-ink-3 h-3.5 w-3.5 shrink-0" />
         )}
-        <span className="font-mono text-xs font-medium text-neutral-300">
+        <span className="text-ink-1 font-mono text-xs font-medium">
           #{message.messageIndex}
         </span>
         {message.rawFormat && (
@@ -288,26 +284,26 @@ function DebugMessageCard({
         <Chip
           size="xs"
           color={hasRaw ? 'blue' : 'neutral'}
-          className={!hasRaw ? 'text-neutral-600' : ''}
+          className={!hasRaw ? 'text-ink-4' : ''}
         >
           raw
         </Chip>
         <Chip
           size="xs"
           color={hasNormalized ? 'green' : 'neutral'}
-          className={!hasNormalized ? 'text-neutral-600' : ''}
+          className={!hasNormalized ? 'text-ink-4' : ''}
         >
           normalized
         </Chip>
         {message.backendSessionId && (
           <span
-            className="truncate font-mono text-[10px] text-neutral-600"
+            className="text-ink-4 truncate font-mono text-[10px]"
             title={message.backendSessionId}
           >
             {message.backendSessionId.slice(0, 8)}...
           </span>
         )}
-        <span className="ml-auto shrink-0 text-[10px] text-neutral-600">
+        <span className="text-ink-4 ml-auto shrink-0 text-[10px]">
           {message.createdAt
             ? new Date(message.createdAt).toLocaleTimeString()
             : '\u00A0'}
@@ -322,7 +318,7 @@ function DebugMessageCard({
             {/* Raw side */}
             <div className="flex w-full flex-col overflow-hidden">
               <div className="flex items-center justify-between px-3 py-1.5">
-                <span className="text-[10px] font-semibold tracking-wider text-blue-400 uppercase">
+                <span className="text-acc-ink text-[10px] font-semibold tracking-wider uppercase">
                   Raw
                 </span>
                 {hasRaw && <CopyJsonButton value={message.rawData} />}
@@ -331,7 +327,7 @@ function DebugMessageCard({
                 {hasRaw ? (
                   <JsonValue value={message.rawData} defaultExpanded />
                 ) : (
-                  <span className="text-neutral-600 italic">
+                  <span className="text-ink-4 italic">
                     No raw message (synthetic)
                   </span>
                 )}
@@ -341,7 +337,7 @@ function DebugMessageCard({
             {/* Normalized side */}
             <div className="flex w-full flex-col overflow-hidden">
               <div className="flex w-full items-center justify-between px-3 py-1.5">
-                <span className="text-[10px] font-semibold tracking-wider text-green-400 uppercase">
+                <span className="text-status-done text-[10px] font-semibold tracking-wider uppercase">
                   Normalized
                 </span>
                 {hasNormalized && (
@@ -352,7 +348,7 @@ function DebugMessageCard({
                 {hasNormalized ? (
                   <JsonValue value={message.normalizedData} defaultExpanded />
                 ) : (
-                  <span className="text-neutral-600 italic">
+                  <span className="text-ink-4 italic">
                     No normalized message (filtered)
                   </span>
                 )}
@@ -483,14 +479,14 @@ export function DebugMessagesPane({
   return (
     <div
       style={{ width }}
-      className="panel-edge-shadow relative flex h-full flex-col bg-neutral-900"
+      className="panel-edge-shadow bg-bg-0 relative flex h-full flex-col"
     >
       {/* Resize handle */}
       <div
         onMouseDown={handleMouseDown}
         className={clsx(
-          'absolute top-0 left-0 z-10 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500/50',
-          isDragging && 'bg-blue-500/50',
+          'hover:bg-acc/50 absolute top-0 left-0 z-10 h-full w-1 cursor-col-resize transition-colors',
+          isDragging && 'bg-acc/50',
         )}
       />
       {/* Header */}
@@ -500,12 +496,10 @@ export function DebugMessagesPane({
           TASK_PANEL_HEADER_HEIGHT_CLS,
         )}
       >
-        <h3 className="text-sm font-medium text-neutral-200">
+        <h3 className="text-ink-1 text-sm font-medium">
           Raw vs Normalized
           {debugMessages && (
-            <span className="ml-1.5 text-neutral-500">
-              ({debugMessages.length})
-            </span>
+            <span className="text-ink-3 ml-1.5">({debugMessages.length})</span>
           )}
         </h3>
         <div className="flex items-center gap-1">
@@ -519,7 +513,7 @@ export function DebugMessagesPane({
               />
             }
             tooltip="Compact raw messages"
-            className={clsx(compactMutation.isPending && 'text-blue-400')}
+            className={clsx(compactMutation.isPending && 'text-acc-ink')}
           />
           <IconButton
             onClick={() => reprocessMutation.mutate()}
@@ -531,7 +525,7 @@ export function DebugMessagesPane({
               />
             }
             tooltip="Reprocess normalization from raw data"
-            className={clsx(reprocessMutation.isPending && 'text-amber-400')}
+            className={clsx(reprocessMutation.isPending && 'text-status-run')}
           />
           <IconButton
             onClick={handleRefresh}
@@ -563,31 +557,31 @@ export function DebugMessagesPane({
 
       {/* Legend + Copy All buttons */}
       <div className="flex shrink-0 items-center gap-3 px-4 py-1.5">
-        <span className="flex items-center gap-1.5 text-[10px] text-neutral-500">
-          <span className="inline-block h-2 w-2 rounded-full bg-blue-400" />
+        <span className="text-ink-3 flex items-center gap-1.5 text-[10px]">
+          <span className="bg-acc inline-block h-2 w-2 rounded-full" />
           Raw (SDK)
         </span>
-        <span className="flex items-center gap-1.5 text-[10px] text-neutral-500">
-          <span className="inline-block h-2 w-2 rounded-full bg-green-400" />
+        <span className="text-ink-3 flex items-center gap-1.5 text-[10px]">
+          <span className="bg-status-done inline-block h-2 w-2 rounded-full" />
           Normalized
         </span>
         {reprocessMutation.isSuccess && (
-          <span className="text-[10px] text-green-400">
+          <span className="text-status-done text-[10px]">
             ✓ Reprocessed {reprocessMutation.data} messages
           </span>
         )}
         {compactMutation.isSuccess && (
-          <span className="text-[10px] text-blue-400">
+          <span className="text-acc-ink text-[10px]">
             ✓ Raw messages compacted
           </span>
         )}
         {reprocessMutation.isError && (
-          <span className="text-[10px] text-red-400">
+          <span className="text-status-fail text-[10px]">
             Reprocess failed: {(reprocessMutation.error as Error).message}
           </span>
         )}
         {compactMutation.isError && (
-          <span className="text-[10px] text-red-400">
+          <span className="text-status-fail text-[10px]">
             Compaction failed: {(compactMutation.error as Error).message}
           </span>
         )}
@@ -612,18 +606,18 @@ export function DebugMessagesPane({
       <div className="flex-1 space-y-2 overflow-auto p-3">
         {isLoading && (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-5 w-5 animate-spin text-neutral-500" />
+            <Loader2 className="text-ink-3 h-5 w-5 animate-spin" />
           </div>
         )}
 
         {error && (
-          <div className="rounded-md bg-red-900/20 p-3 text-xs text-red-400">
+          <div className="text-status-fail bg-status-fail/20 rounded-md p-3 text-xs">
             Failed to load messages: {error.message}
           </div>
         )}
 
         {!isLoading && filteredMessages && filteredMessages.length === 0 && (
-          <p className="py-4 text-center text-xs text-neutral-600">
+          <p className="text-ink-4 py-4 text-center text-xs">
             {searchFilter
               ? 'No messages match the filter.'
               : 'No messages found.'}

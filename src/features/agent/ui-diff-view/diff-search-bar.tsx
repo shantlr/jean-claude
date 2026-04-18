@@ -59,7 +59,7 @@ export const DiffSearchBar = forwardRef<
   );
 
   return (
-    <div className="flex items-center gap-1 rounded-md border border-neutral-600 bg-neutral-800 px-2 py-1 shadow-lg">
+    <div className="border-glass-border bg-bg-1 flex items-center gap-1 rounded-md border px-2 py-1 shadow-lg">
       <Input
         ref={inputRef}
         type="text"
@@ -72,7 +72,7 @@ export const DiffSearchBar = forwardRef<
       />
 
       {/* Occurrence count */}
-      <span className="min-w-[4rem] text-center text-xs text-neutral-400">
+      <span className="text-ink-2 min-w-[4rem] text-center text-xs">
         {searchQuery ? (
           totalMatches > 0 ? (
             `${currentMatch} of ${totalMatches}`

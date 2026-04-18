@@ -309,9 +309,7 @@ export function AddStepDialog({
         {presetType === 'review-changes' && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-neutral-300">
-                Reviewers
-              </span>
+              <span className="text-ink-1 text-xs font-medium">Reviewers</span>
               <Button
                 type="button"
                 onClick={() =>
@@ -337,7 +335,7 @@ export function AddStepDialog({
               {reviewers.map((reviewer, idx) => (
                 <div
                   key={reviewer.id}
-                  className="rounded-md border border-neutral-700 bg-neutral-800/50 p-2"
+                  className="bg-bg-1/50 border-glass-border rounded-md border p-2"
                 >
                   <div className="mb-1.5 flex items-center gap-2">
                     <Input
@@ -406,7 +404,7 @@ export function AddStepDialog({
               ))}
             </div>
             {!canSubmit && (
-              <p className="text-xs text-amber-400">
+              <p className="text-status-run text-xs">
                 Add at least one reviewer and fill every label/focus prompt.
               </p>
             )}

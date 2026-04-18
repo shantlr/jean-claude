@@ -153,24 +153,24 @@ export function ProjectOverlay({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-[12vh]"
+      className="bg-bg-0/50 fixed inset-0 z-50 flex items-start justify-center p-4 pt-[12vh]"
       onClick={onClose}
     >
       <div
-        className="flex max-h-[72svh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-neutral-700 bg-neutral-900 shadow-2xl"
+        className="border-glass-border bg-bg-0 flex max-h-[72svh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-neutral-800 px-4 py-3">
+        <div className="border-line-soft flex items-center justify-between border-b px-4 py-3">
           <div>
-            <h2 className="text-sm font-semibold text-white">Switch Project</h2>
-            <p className="text-xs text-neutral-400">
+            <h2 className="text-ink-0 text-sm font-semibold">Switch Project</h2>
+            <p className="text-ink-2 text-xs">
               Choose a project to filter the sidebar task list.
             </p>
           </div>
           <Link
             to="/projects/new"
             onClick={onClose}
-            className="inline-flex items-center gap-1 rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-600 hover:bg-neutral-800 hover:text-white"
+            className="border-glass-border text-ink-1 hover:border-glass-border-strong hover:bg-glass-light hover:text-ink-0 inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors"
           >
             <Plus size={12} />
             <span>New Project</span>
@@ -191,15 +191,15 @@ export function ProjectOverlay({ onClose }: { onClose: () => void }) {
             className={clsx(
               'rounded-lg border px-3 py-4 text-left transition-colors',
               projectId === 'all'
-                ? 'border-blue-500 bg-blue-500/10'
+                ? 'border-acc bg-acc/10'
                 : highlightedIndex === 0
-                  ? 'border-neutral-500 bg-neutral-800'
-                  : 'border-neutral-700 bg-neutral-800/80 hover:border-neutral-600 hover:bg-neutral-800',
+                  ? 'border-glass-border-strong bg-bg-1'
+                  : 'border-glass-border bg-bg-1/80 hover:border-glass-border-strong hover:bg-glass-light',
               highlightedIndex === 0 && 'ring-1 ring-white/35',
             )}
           >
-            <p className="text-xs text-neutral-400">Overview</p>
-            <p className="mt-1 text-sm font-medium text-white">All Projects</p>
+            <p className="text-ink-2 text-xs">Overview</p>
+            <p className="text-ink-0 mt-1 text-sm font-medium">All Projects</p>
           </button>
 
           {sortedProjects.map((project, index) => {
@@ -214,10 +214,10 @@ export function ProjectOverlay({ onClose }: { onClose: () => void }) {
                 className={clsx(
                   'rounded-lg border px-3 py-4 text-left transition-colors',
                   projectId === project.id
-                    ? 'border-blue-500 bg-blue-500/10'
+                    ? 'border-acc bg-acc/10'
                     : highlightedIndex === optionIndex
-                      ? 'border-neutral-500 bg-neutral-800'
-                      : 'border-neutral-700 bg-neutral-800/80 hover:border-neutral-600 hover:bg-neutral-800',
+                      ? 'border-glass-border-strong bg-bg-1'
+                      : 'border-glass-border bg-bg-1/80 hover:border-glass-border-strong hover:bg-glass-light',
                   highlightedIndex === optionIndex && 'ring-1 ring-white/35',
                 )}
               >
@@ -226,11 +226,11 @@ export function ProjectOverlay({ onClose }: { onClose: () => void }) {
                     className="h-2.5 w-2.5 rounded-full"
                     style={{ backgroundColor: project.color }}
                   />
-                  <p className="truncate text-sm font-medium text-white">
+                  <p className="text-ink-0 truncate text-sm font-medium">
                     {project.name}
                   </p>
                 </div>
-                <p className="mt-2 truncate text-xs text-neutral-400">
+                <p className="text-ink-2 mt-2 truncate text-xs">
                   {project.path}
                 </p>
               </button>

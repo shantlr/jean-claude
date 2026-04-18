@@ -37,9 +37,9 @@ export function Switch({
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={clsx(
-          'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900',
+          'focus-visible:ring-acc focus-visible:ring-offset-bg-0 relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
           disabled ? 'cursor-not-allowed' : 'cursor-pointer',
-          checked ? 'bg-blue-600' : 'bg-neutral-600',
+          checked ? 'bg-acc' : 'bg-bg-3',
         )}
       >
         <span
@@ -49,9 +49,7 @@ export function Switch({
           )}
         />
       </button>
-      {label && (
-        <span className="text-sm font-medium text-neutral-200">{label}</span>
-      )}
+      {label && <span className="text-ink-1 text-sm font-medium">{label}</span>}
     </label>
   );
 }

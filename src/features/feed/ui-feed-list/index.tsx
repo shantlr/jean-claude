@@ -75,7 +75,7 @@ function StackableZone({
     <div
       className={clsx(
         'flex flex-col py-0.5',
-        sticky && 'sticky top-0 z-30 bg-neutral-900/95 backdrop-blur-sm',
+        sticky && 'bg-bg-0/95 sticky top-0 z-30 backdrop-blur-sm',
       )}
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
@@ -477,18 +477,16 @@ export function FeedList() {
       {/* Initial loading state */}
       {isLoading && totalCount === 0 && (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 py-12 text-center">
-          <Loader2 className="h-6 w-6 animate-spin text-neutral-600" />
-          <span className="text-sm text-neutral-500">Loading feed...</span>
+          <Loader2 className="text-ink-2 h-6 w-6 animate-spin" />
+          <span className="text-ink-3 text-sm">Loading feed...</span>
         </div>
       )}
 
       {/* Empty state */}
       {!isLoading && totalCount === 0 && (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 py-12 text-center">
-          <ListTodo className="h-6 w-6 text-neutral-700" />
-          <span className="text-sm text-neutral-600">
-            No active tasks or notes
-          </span>
+          <ListTodo className="text-ink-3 h-6 w-6" />
+          <span className="text-ink-2 text-sm">No active tasks or notes</span>
         </div>
       )}
 
@@ -500,12 +498,12 @@ export function FeedList() {
           onDrop={handlePinZoneDrop}
           className={clsx(
             'flex flex-col gap-1.5 rounded-md p-1 transition-colors',
-            dragOverPinZone && 'bg-blue-500/10',
+            dragOverPinZone && 'bg-acc/10',
           )}
         >
           <div className="flex items-center gap-1.5 px-1.5 py-1">
-            <Pin size={12} className="text-neutral-500" />
-            <span className="text-xs font-medium text-neutral-500">Pinned</span>
+            <Pin size={12} className="text-ink-3" />
+            <span className="text-ink-3 text-xs font-medium">Pinned</span>
           </div>
           {pinnedItems.map((item) => (
             <FeedCard
@@ -528,7 +526,7 @@ export function FeedList() {
         (actionNeededItems.length > 0 ||
           normalItems.length > 0 ||
           runningItems.length > 0) && (
-          <div className="mx-2 my-1 border-t border-dashed border-neutral-700/50" />
+          <div className="border-line-soft mx-2 my-1 border-t border-dashed" />
         )}
 
       {/* Action needed zone - permissions, questions, errors (sticky + stacked) */}
@@ -555,7 +553,7 @@ export function FeedList() {
 
       {/* Divider between running and auto-sorted */}
       {runningItems.length > 0 && normalItems.length > 0 && (
-        <div className="mx-2 my-1 border-t border-dashed border-neutral-700/50" />
+        <div className="border-line-soft mx-2 my-1 border-t border-dashed" />
       )}
 
       {/* Auto-sorted zone */}
@@ -577,7 +575,7 @@ export function FeedList() {
         <div className="mt-2">
           <button
             onClick={() => setLowPriorityExpanded((prev) => !prev)}
-            className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-neutral-500 transition-colors hover:bg-neutral-800/50 hover:text-neutral-400"
+            className="text-ink-3 hover:bg-glass-light/50 hover:text-ink-2 flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs transition-colors"
           >
             {lowPriorityExpanded ? (
               <ChevronDown size={12} />

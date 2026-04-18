@@ -42,7 +42,7 @@ export const Input = forwardRef<
           <span
             className={clsx(
               s.icon,
-              'shrink-0 text-neutral-500 [&>svg]:h-full [&>svg]:w-full',
+              'text-ink-3 shrink-0 [&>svg]:h-full [&>svg]:w-full',
             )}
             aria-hidden
           >

@@ -97,8 +97,8 @@ export function ProjectMcpSettings({ projectId }: { projectId: string }) {
   if (isLoading || !project) {
     return (
       <div>
-        <h2 className="mb-4 text-lg font-semibold text-white">MCP Servers</h2>
-        <p className="text-sm text-neutral-500">Loading...</p>
+        <h2 className="text-ink-0 mb-4 text-lg font-semibold">MCP Servers</h2>
+        <p className="text-ink-3 text-sm">Loading...</p>
       </div>
     );
   }
@@ -106,9 +106,9 @@ export function ProjectMcpSettings({ projectId }: { projectId: string }) {
   if (!servers || servers.length === 0) {
     return (
       <div>
-        <h2 className="mb-4 text-lg font-semibold text-white">MCP Servers</h2>
-        <div className="rounded-lg border border-dashed border-neutral-700 p-4">
-          <div className="flex items-center gap-2 text-neutral-500">
+        <h2 className="text-ink-0 mb-4 text-lg font-semibold">MCP Servers</h2>
+        <div className="border-glass-border rounded-lg border border-dashed p-4">
+          <div className="text-ink-3 flex items-center gap-2">
             <Server className="h-4 w-4" />
             <span className="text-sm">
               No MCP servers configured. Add templates in Settings → MCP Servers
@@ -122,7 +122,7 @@ export function ProjectMcpSettings({ projectId }: { projectId: string }) {
 
   return (
     <div>
-      <h2 className="mb-4 text-lg font-semibold text-white">MCP Servers</h2>
+      <h2 className="text-ink-0 mb-4 text-lg font-semibold">MCP Servers</h2>
 
       <div className="space-y-3">
         {servers.map((server) => {
@@ -133,35 +133,33 @@ export function ProjectMcpSettings({ projectId }: { projectId: string }) {
           return (
             <div
               key={server.name}
-              className="rounded-lg border border-neutral-700 bg-neutral-800/50 p-4"
+              className="border-glass-border bg-bg-1/50 rounded-lg border p-4"
             >
               {/* Header row */}
               <div className="mb-2 flex items-center gap-2">
-                <Server className="h-4 w-4 text-neutral-400" />
-                <span className="font-medium text-neutral-200">
-                  {server.name}
-                </span>
+                <Server className="text-ink-2 h-4 w-4" />
+                <span className="text-ink-1 font-medium">{server.name}</span>
                 {server.template && (
-                  <span className="rounded bg-blue-900/50 px-1.5 py-0.5 text-xs text-blue-400">
+                  <span className="text-acc-ink bg-acc/50 rounded px-1.5 py-0.5 text-xs">
                     Template
                   </span>
                 )}
               </div>
 
               {/* Command */}
-              <p className="mb-3 truncate text-xs text-neutral-500">
+              <p className="text-ink-3 mb-3 truncate text-xs">
                 {server.command}
               </p>
 
               {/* Toggles row */}
               <div className="flex flex-col gap-3">
                 {/* Active now toggle */}
-                <label className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1.5 transition-colors hover:bg-neutral-700/50">
+                <label className="hover:bg-glass-medium/50 flex cursor-pointer items-center justify-between rounded-md px-2 py-1.5 transition-colors">
                   <div>
-                    <div className="text-sm font-medium text-neutral-300">
+                    <div className="text-ink-1 text-sm font-medium">
                       Active now
                     </div>
-                    <div className="text-xs text-neutral-500">
+                    <div className="text-ink-3 text-xs">
                       Enable this MCP server for the main project
                     </div>
                   </div>
@@ -171,8 +169,8 @@ export function ProjectMcpSettings({ projectId }: { projectId: string }) {
                     aria-checked={server.isActive}
                     disabled={isPending}
                     onClick={() => handleActiveToggle(server, !server.isActive)}
-                    className={`relative h-5 w-9 flex-shrink-0 cursor-pointer rounded-full transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-neutral-900 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
-                      server.isActive ? 'bg-green-600' : 'bg-neutral-600'
+                    className={`focus:ring-acc focus:ring-offset-bg-0 relative h-5 w-9 flex-shrink-0 cursor-pointer rounded-full transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
+                      server.isActive ? 'bg-status-done' : 'bg-bg-3'
                     }`}
                   >
                     <span
@@ -185,12 +183,12 @@ export function ProjectMcpSettings({ projectId }: { projectId: string }) {
 
                 {/* Auto-install on new worktrees toggle (only for templates) */}
                 {server.template && (
-                  <label className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1.5 transition-colors hover:bg-neutral-700/50">
+                  <label className="hover:bg-glass-medium/50 flex cursor-pointer items-center justify-between rounded-md px-2 py-1.5 transition-colors">
                     <div>
-                      <div className="text-sm font-medium text-neutral-300">
+                      <div className="text-ink-1 text-sm font-medium">
                         Auto-install on new worktrees
                       </div>
-                      <div className="text-xs text-neutral-500">
+                      <div className="text-ink-3 text-xs">
                         Automatically configure when creating worktree tasks
                       </div>
                     </div>
@@ -209,10 +207,8 @@ export function ProjectMcpSettings({ projectId }: { projectId: string }) {
                           ? 'This template is not configured for worktree installation'
                           : undefined
                       }
-                      className={`relative h-5 w-9 flex-shrink-0 cursor-pointer rounded-full transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-neutral-900 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
-                        server.installOnWorktree
-                          ? 'bg-blue-600'
-                          : 'bg-neutral-600'
+                      className={`focus:ring-acc focus:ring-offset-bg-0 relative h-5 w-9 flex-shrink-0 cursor-pointer rounded-full transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
+                        server.installOnWorktree ? 'bg-acc' : 'bg-bg-3'
                       }`}
                     >
                       <span

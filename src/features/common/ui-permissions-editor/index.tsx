@@ -222,22 +222,26 @@ const ACTION_STYLES: Record<
   { bg: string; text: string; dot: string }
 > = {
   allow: {
-    bg: 'bg-green-500/10',
-    text: 'text-green-400',
-    dot: 'bg-green-400',
+    bg: 'bg-status-done/10',
+    text: 'text-status-done',
+    dot: 'bg-status-done',
   },
-  deny: { bg: 'bg-red-500/10', text: 'text-red-400', dot: 'bg-red-400' },
+  deny: {
+    bg: 'bg-status-fail/10',
+    text: 'text-status-fail',
+    dot: 'bg-status-fail',
+  },
   ask: {
-    bg: 'bg-amber-500/10',
-    text: 'text-amber-400',
-    dot: 'bg-amber-400',
+    bg: 'bg-status-run/10',
+    text: 'text-status-run',
+    dot: 'bg-status-run',
   },
 };
 
 const FALLBACK_STYLE = {
-  bg: 'bg-neutral-500/10',
-  text: 'text-neutral-400',
-  dot: 'bg-neutral-400',
+  bg: 'bg-bg-2/10',
+  text: 'text-ink-2',
+  dot: 'bg-bg-2',
 };
 
 function ActionBadge({ action }: { action: PermissionAction }) {
@@ -321,8 +325,8 @@ function RuleRow({
     return (
       <div
         className={clsx(
-          'bg-neutral-750/50 flex items-center gap-2 px-3 py-2',
-          !isLast && 'border-b border-neutral-700/20',
+          'bg-bg-1/50 flex items-center gap-2 px-3 py-2',
+          !isLast && 'border-glass-border/20 border-b',
         )}
       >
         {hasPattern ? (
@@ -333,10 +337,10 @@ function RuleRow({
             onChange={(e) => setEditPattern(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={TOOL_GUIDANCE[rule.tool]?.placeholder ?? ''}
-            className="min-w-0 flex-1 rounded border border-neutral-600 bg-neutral-800 px-2 py-1 text-xs text-neutral-200 outline-none focus:border-blue-500"
+            className="border-glass-border text-ink-1 focus:border-acc bg-bg-1 min-w-0 flex-1 rounded border px-2 py-1 text-xs outline-none"
           />
         ) : (
-          <span className="min-w-0 flex-1 text-xs text-neutral-500 italic">
+          <span className="text-ink-3 min-w-0 flex-1 text-xs italic">
             All operations
           </span>
         )}
@@ -351,14 +355,14 @@ function RuleRow({
         <Button
           onClick={commitEdit}
           disabled={isBusy}
-          className="rounded p-1 text-green-500 transition-colors hover:bg-neutral-700 hover:text-green-400"
+          className="text-status-done hover:text-status-done hover:bg-glass-medium rounded p-1 transition-colors"
           aria-label="Save changes"
         >
           <Check className="h-3.5 w-3.5" />
         </Button>
         <Button
           onClick={cancelEdit}
-          className="rounded p-1 text-neutral-500 transition-colors hover:bg-neutral-700 hover:text-neutral-300"
+          className="text-ink-3 hover:text-ink-1 hover:bg-glass-medium rounded p-1 transition-colors"
           aria-label="Cancel editing"
         >
           <X className="h-3.5 w-3.5" />
@@ -370,13 +374,13 @@ function RuleRow({
   return (
     <div
       className={clsx(
-        'group flex items-center gap-3 px-3 py-2 transition-colors hover:bg-neutral-700/20',
-        !isLast && 'border-b border-neutral-700/20',
+        'group hover:bg-glass-medium/20 flex items-center gap-3 px-3 py-2 transition-colors',
+        !isLast && 'border-glass-border/20 border-b',
       )}
     >
-      <code className="min-w-0 flex-1 truncate text-xs text-neutral-300">
+      <code className="text-ink-1 min-w-0 flex-1 truncate text-xs">
         {rule.pattern ?? (
-          <span className="text-neutral-500 italic">All operations</span>
+          <span className="text-ink-3 italic">All operations</span>
         )}
       </code>
 
@@ -385,7 +389,7 @@ function RuleRow({
       <Button
         onClick={startEdit}
         disabled={isBusy}
-        className="rounded p-1 text-neutral-600 opacity-0 transition-all group-hover:opacity-100 hover:bg-neutral-700 hover:text-blue-400"
+        className="text-ink-4 hover:text-acc-ink hover:bg-glass-medium rounded p-1 opacity-0 transition-all group-hover:opacity-100"
         aria-label={`Edit ${rule.pattern ?? 'all'} rule`}
       >
         <Pencil className="h-3.5 w-3.5" />
@@ -394,7 +398,7 @@ function RuleRow({
       <Button
         onClick={onRemove}
         disabled={isBusy}
-        className="rounded p-1 text-neutral-600 opacity-0 transition-all group-hover:opacity-100 hover:bg-neutral-700 hover:text-red-400"
+        className="text-ink-4 hover:text-status-fail hover:bg-glass-medium rounded p-1 opacity-0 transition-all group-hover:opacity-100"
         aria-label={`Remove ${rule.pattern ?? 'all'} rule`}
       >
         <Trash2 className="h-3.5 w-3.5" />
@@ -420,29 +424,27 @@ function ToolGroupCard({
   const [expanded, setExpanded] = useState(true);
 
   return (
-    <div className="overflow-hidden rounded-lg border border-neutral-700/50 bg-neutral-800/40">
+    <div className="border-glass-border/50 bg-bg-1/40 overflow-hidden rounded-lg border">
       <button
         type="button"
         onClick={() => setExpanded((p) => !p)}
-        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-neutral-700/30"
+        className="hover:bg-glass-medium/30 flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors"
       >
         {expanded ? (
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
+          <ChevronDown className="text-ink-3 h-3.5 w-3.5 shrink-0" />
         ) : (
-          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
+          <ChevronRight className="text-ink-3 h-3.5 w-3.5 shrink-0" />
         )}
-        <Terminal className="h-4 w-4 shrink-0 text-neutral-400" />
-        <span className="text-sm font-medium text-neutral-200">
-          {group.label}
-        </span>
-        <span className="text-xs text-neutral-500">{group.description}</span>
-        <span className="ml-auto rounded-full bg-neutral-700/60 px-1.5 py-0.5 text-[10px] text-neutral-400 tabular-nums">
+        <Terminal className="text-ink-2 h-4 w-4 shrink-0" />
+        <span className="text-ink-1 text-sm font-medium">{group.label}</span>
+        <span className="text-ink-3 text-xs">{group.description}</span>
+        <span className="bg-glass-medium/60 text-ink-2 ml-auto rounded-full px-1.5 py-0.5 text-[10px] tabular-nums">
           {group.rules.length}
         </span>
       </button>
 
       {expanded && (
-        <div className="border-t border-neutral-700/30">
+        <div className="border-glass-border/30 border-t">
           {group.rules.map((rule, i) => (
             <RuleRow
               key={`${rule.tool}-${rule.pattern ?? '*'}`}
@@ -561,19 +563,19 @@ export function PermissionsEditor({
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div>
-        <h2 className="text-lg font-semibold text-neutral-200">{title}</h2>
-        <p className="mt-1 text-sm text-neutral-500">{description}</p>
+        <h2 className="text-ink-1 text-lg font-semibold">{title}</h2>
+        <p className="text-ink-3 mt-1 text-sm">{description}</p>
       </div>
 
       {/* Add Rule Form */}
       <form
         onSubmit={handleAdd}
-        className="rounded-lg border border-neutral-700/50 bg-neutral-800/30 p-4"
+        className="border-glass-border/50 bg-bg-1/30 rounded-lg border p-4"
       >
-        <h3 className="mb-3 text-sm font-medium text-neutral-300">Add Rule</h3>
+        <h3 className="text-ink-1 mb-3 text-sm font-medium">Add Rule</h3>
         <div className="flex items-end gap-2">
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-neutral-500">Tool</label>
+            <label className="text-ink-3 text-xs">Tool</label>
             <Select
               value={tool}
               options={[...TOOL_OPTIONS]}
@@ -587,7 +589,7 @@ export function PermissionsEditor({
           </div>
 
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <label className="text-xs text-neutral-500">
+            <label className="text-ink-3 text-xs">
               Pattern{' '}
               {guidance?.examples.length === 0 ? '(not applicable)' : ''}
             </label>
@@ -601,7 +603,7 @@ export function PermissionsEditor({
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-neutral-500">Action</label>
+            <label className="text-ink-3 text-xs">Action</label>
             <Select
               value={action}
               options={ACTION_OPTIONS}
@@ -623,8 +625,8 @@ export function PermissionsEditor({
 
         {/* Tool-specific guidance */}
         {guidance && (
-          <div className="mt-3 rounded-md border border-neutral-700/50 bg-neutral-800/50 px-3 py-2">
-            <p className="text-xs text-neutral-400">{guidance.hint}</p>
+          <div className="border-glass-border/50 bg-bg-1/50 mt-3 rounded-md border px-3 py-2">
+            <p className="text-ink-2 text-xs">{guidance.hint}</p>
             {guidance.examples.length > 0 && (
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {guidance.examples.map((ex) => (
@@ -632,7 +634,7 @@ export function PermissionsEditor({
                     key={ex}
                     type="button"
                     onClick={() => setPattern(ex)}
-                    className="rounded bg-neutral-700/60 px-1.5 py-0.5 text-[11px] text-neutral-300 transition-colors hover:bg-neutral-600 hover:text-neutral-200"
+                    className="bg-glass-medium/60 text-ink-1 hover:bg-bg-3 hover:text-ink-1 rounded px-1.5 py-0.5 text-[11px] transition-colors"
                   >
                     {ex}
                   </button>
@@ -642,29 +644,29 @@ export function PermissionsEditor({
           </div>
         )}
 
-        {addError && <p className="mt-2 text-xs text-red-400">{addError}</p>}
+        {addError && (
+          <p className="text-status-fail mt-2 text-xs">{addError}</p>
+        )}
       </form>
 
       {/* Current Rules */}
       <div className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between">
-          <h3 className="text-sm font-medium text-neutral-300">
-            Current Rules
-          </h3>
+          <h3 className="text-ink-1 text-sm font-medium">Current Rules</h3>
           {totalRules > 0 && (
-            <span className="text-xs text-neutral-500">
+            <span className="text-ink-3 text-xs">
               {totalRules} rule{totalRules !== 1 ? 's' : ''} across{' '}
               {groups.length} tool{groups.length !== 1 ? 's' : ''}
             </span>
           )}
         </div>
 
-        {isLoading && <p className="text-sm text-neutral-500">Loading...</p>}
+        {isLoading && <p className="text-ink-3 text-sm">Loading...</p>}
 
         {!isLoading && groups.length === 0 && (
-          <div className="rounded-lg border border-dashed border-neutral-700/50 px-4 py-8 text-center">
-            <p className="text-sm text-neutral-500">{emptyTitle}</p>
-            <p className="mt-1 text-xs text-neutral-600">{emptyDescription}</p>
+          <div className="border-glass-border/50 rounded-lg border border-dashed px-4 py-8 text-center">
+            <p className="text-ink-3 text-sm">{emptyTitle}</p>
+            <p className="text-ink-4 mt-1 text-xs">{emptyDescription}</p>
           </div>
         )}
 

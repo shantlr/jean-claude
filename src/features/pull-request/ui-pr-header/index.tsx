@@ -140,17 +140,15 @@ export function PrHeader({
         <div className="flex items-start justify-between">
           <div className="min-w-0 flex-1">
             {project && (
-              <div className="mb-1 flex items-center gap-1.5 text-xs text-neutral-500">
-                <span className="font-medium text-neutral-400">
-                  {project.name}
-                </span>
+              <div className="text-ink-3 mb-1 flex items-center gap-1.5 text-xs">
+                <span className="text-ink-2 font-medium">{project.name}</span>
                 {project.repoProjectName && (
                   <>
                     <span>·</span>
                     <span>
                       {project.repoProjectName}
                       {project.repoName && (
-                        <span className="text-neutral-600">
+                        <span className="text-ink-4">
                           {' / '}
                           {project.repoName}
                         </span>
@@ -161,14 +159,14 @@ export function PrHeader({
               </div>
             )}
             <div className="flex items-center gap-2">
-              <span className="text-neutral-500">#{pr.id}</span>
+              <span className="text-ink-3">#{pr.id}</span>
               <div className="flex">
                 {getStatusBadge(pr.status, pr.isDraft)}
               </div>
               <div className="grow" />
               <button
                 onClick={handleCreateTaskFromPrBranch}
-                className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-500"
+                className="bg-status-done text-ink-0 hover:bg-status-done flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 New Task
@@ -177,7 +175,7 @@ export function PrHeader({
                 <button
                   onClick={handleReview}
                   disabled={isCreating}
-                  className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
+                  className="bg-acc text-ink-0 hover:bg-acc flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
                 >
                   {isCreating ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -190,7 +188,7 @@ export function PrHeader({
               {project?.path && (
                 <button
                   onClick={handleOpenInEditor}
-                  className="flex items-center gap-1 rounded-lg bg-neutral-700 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-neutral-600"
+                  className="hover:bg-bg-3 bg-glass-medium flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
                 >
                   <FolderOpen className="h-4 w-4" />
                   Open in{' '}
@@ -201,7 +199,7 @@ export function PrHeader({
                 href={pr.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 rounded-lg bg-neutral-700 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-neutral-600"
+                className="hover:bg-bg-3 bg-glass-medium flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
               >
                 <ExternalLink className="h-4 w-4" />
                 Open in Azure DevOps
@@ -209,19 +207,19 @@ export function PrHeader({
             </div>
 
             {/* TITLE */}
-            <h1 className="text-lg font-semibold text-neutral-100">
-              {pr.title}
-            </h1>
+            <h1 className="text-ink-0 text-lg font-semibold">{pr.title}</h1>
 
-            <div className="flex w-full items-center gap-x-4 text-neutral-400">
+            <div className="text-ink-2 flex w-full items-center gap-x-4">
               <div className="flex items-center gap-1">
-                <span className="text-neutral-500">by</span>
+                <span className="text-ink-3">by</span>
                 <span>{pr.createdBy.displayName}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="font-mono text-blue-400">{sourceBranch}</span>
-                <span className="text-neutral-500">→</span>
-                <span className="font-mono text-green-400">{targetBranch}</span>
+                <span className="text-acc-ink font-mono">{sourceBranch}</span>
+                <span className="text-ink-3">→</span>
+                <span className="text-status-done font-mono">
+                  {targetBranch}
+                </span>
               </div>
               <div className="grow">{formatRelativeTime(pr.creationDate)}</div>
 

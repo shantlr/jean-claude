@@ -66,10 +66,10 @@ export function DeleteTaskDialog({
       closeOnClickOutside={!isPending}
       closeOnEscape={!isPending}
     >
-      <p className="mb-3 text-sm text-neutral-300">
+      <p className="text-ink-1 mb-3 text-sm">
         Are you sure you want to delete{' '}
-        <span className="font-medium text-neutral-100">{taskName}</span>? This
-        action cannot be undone.
+        <span className="text-ink-0 font-medium">{taskName}</span>? This action
+        cannot be undone.
       </p>
 
       {hasWorktree && (

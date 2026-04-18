@@ -47,7 +47,7 @@ export function Checkbox({
         disabled={disabled}
         className={clsx(
           checkboxSizeClasses[size],
-          'shrink-0 rounded border-neutral-600 bg-neutral-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-0',
+          'border-glass-border bg-glass-medium text-acc-ink focus:ring-acc shrink-0 rounded focus:ring-offset-0',
           disabled ? 'cursor-not-allowed' : 'cursor-pointer',
           // Vertically center with label text
           label ? 'mt-0.5' : '',
@@ -56,12 +56,12 @@ export function Checkbox({
       {(label || description) && (
         <div className="flex flex-col">
           {label && (
-            <span className={clsx(s.text, 'font-medium text-neutral-300')}>
+            <span className={clsx(s.text, 'text-ink-1 font-medium')}>
               {label}
             </span>
           )}
           {description && (
-            <span className="text-xs text-neutral-500">{description}</span>
+            <span className="text-ink-3 text-xs">{description}</span>
           )}
         </div>
       )}

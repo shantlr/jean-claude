@@ -19,22 +19,22 @@ import { computeDuration } from './utils';
 function getRecordStatusIcon(state: string, result: string | null) {
   if (state === 'inProgress') {
     return (
-      <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-blue-400" />
+      <Loader2 className="text-acc-ink h-3.5 w-3.5 shrink-0 animate-spin" />
     );
   }
   if (result === 'succeeded') {
-    return <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-400" />;
+    return <CheckCircle2 className="text-status-done h-3.5 w-3.5 shrink-0" />;
   }
   if (result === 'failed') {
-    return <XCircle className="h-3.5 w-3.5 shrink-0 text-red-400" />;
+    return <XCircle className="text-status-fail h-3.5 w-3.5 shrink-0" />;
   }
   if (result === 'skipped') {
-    return <MinusCircle className="h-3.5 w-3.5 shrink-0 text-neutral-500" />;
+    return <MinusCircle className="text-ink-3 h-3.5 w-3.5 shrink-0" />;
   }
   if (result === 'canceled' || result === 'abandoned') {
-    return <MinusCircle className="h-3.5 w-3.5 shrink-0 text-neutral-400" />;
+    return <MinusCircle className="text-ink-2 h-3.5 w-3.5 shrink-0" />;
   }
-  return <Circle className="h-3.5 w-3.5 shrink-0 text-neutral-500" />;
+  return <Circle className="text-ink-3 h-3.5 w-3.5 shrink-0" />;
 }
 
 interface StageGroup {
@@ -67,7 +67,7 @@ function TaskLogView({
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 py-2 text-xs text-neutral-500">
+      <div className="text-ink-3 flex items-center gap-2 py-2 text-xs">
         <Loader2 className="h-3 w-3 animate-spin" />
         Loading log...
       </div>
@@ -77,7 +77,7 @@ function TaskLogView({
   if (!logContent) return null;
 
   return (
-    <pre className="max-h-60 overflow-auto rounded bg-neutral-950 p-3 text-xs text-neutral-300">
+    <pre className="bg-bg-0 text-ink-1 max-h-60 overflow-auto rounded p-3 text-xs">
       {logContent}
     </pre>
   );
@@ -114,31 +114,31 @@ function TaskRow({
       >
         {isExpandable ? (
           expanded ? (
-            <ChevronDown className="h-3 w-3 shrink-0 text-neutral-500" />
+            <ChevronDown className="text-ink-3 h-3 w-3 shrink-0" />
           ) : (
-            <ChevronRight className="h-3 w-3 shrink-0 text-neutral-500" />
+            <ChevronRight className="text-ink-3 h-3 w-3 shrink-0" />
           )
         ) : (
           <span className="w-3 shrink-0" />
         )}
         {getRecordStatusIcon(task.state, task.result)}
-        <span className="truncate text-neutral-300">{task.name}</span>
+        <span className="text-ink-1 truncate">{task.name}</span>
         {issueCount > 0 && (
-          <span className="shrink-0 text-red-400">
+          <span className="text-status-fail shrink-0">
             {issueCount} issue{issueCount !== 1 ? 's' : ''}
           </span>
         )}
         {duration && (
-          <span className="ml-auto shrink-0 text-neutral-500">{duration}</span>
+          <span className="text-ink-3 ml-auto shrink-0">{duration}</span>
         )}
       </Button>
 
       {expanded && (
         <div className="mt-1 ml-8 space-y-2">
           {hasIssues && (
-            <div className="rounded border border-red-900/50 bg-red-950/30 p-2">
+            <div className="border-status-fail/50 bg-status-fail/30 rounded border p-2">
               {task.issues!.map((issue, i) => (
-                <div key={i} className="text-xs text-red-300">
+                <div key={i} className="text-status-fail text-xs">
                   <span className="font-medium">[{issue.type}]</span>{' '}
                   {issue.message}
                 </div>
@@ -177,7 +177,7 @@ function JobRow({
   const duration = computeDuration(job.startTime, job.finishTime);
 
   return (
-    <div className="ml-4 border-l border-neutral-700 pl-3">
+    <div className="border-glass-border ml-4 border-l pl-3">
       <Button
         variant="ghost"
         size="sm"
@@ -185,14 +185,14 @@ function JobRow({
         className="w-full justify-start"
       >
         {expanded ? (
-          <ChevronDown className="h-3 w-3 shrink-0 text-neutral-500" />
+          <ChevronDown className="text-ink-3 h-3 w-3 shrink-0" />
         ) : (
-          <ChevronRight className="h-3 w-3 shrink-0 text-neutral-500" />
+          <ChevronRight className="text-ink-3 h-3 w-3 shrink-0" />
         )}
         {getRecordStatusIcon(job.state, job.result)}
-        <span className="truncate text-sm text-neutral-200">{job.name}</span>
+        <span className="text-ink-1 truncate text-sm">{job.name}</span>
         {duration && (
-          <span className="ml-auto shrink-0 text-xs text-neutral-500">
+          <span className="text-ink-3 ml-auto shrink-0 text-xs">
             {duration}
           </span>
         )}
@@ -277,21 +277,19 @@ export function StagesTimeline({
 
           return (
             <div key={stage.id} className="flex items-center">
-              {i > 0 && <div className="h-px w-4 bg-neutral-600" />}
+              {i > 0 && <div className="bg-bg-3 h-px w-4" />}
               <button
                 onClick={() => setExpandedStageId(isSelected ? null : stage.id)}
                 className={clsx(
                   'flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors',
                   isSelected
-                    ? 'border-neutral-500 bg-neutral-700'
-                    : 'border-neutral-700 hover:border-neutral-600 hover:bg-neutral-800',
+                    ? 'border-glass-border-strong bg-glass-medium'
+                    : 'hover:border-glass-border hover:bg-glass-light border-glass-border',
                 )}
               >
                 {getRecordStatusIcon(stage.state, stage.result)}
-                <span className="text-neutral-200">{stage.name}</span>
-                {duration && (
-                  <span className="text-neutral-500">{duration}</span>
-                )}
+                <span className="text-ink-1">{stage.name}</span>
+                {duration && <span className="text-ink-3">{duration}</span>}
               </button>
             </div>
           );
@@ -300,11 +298,9 @@ export function StagesTimeline({
 
       {/* Expanded stage detail */}
       {expandedGroup && (
-        <div className="rounded-lg border border-neutral-700 p-3">
+        <div className="border-glass-border rounded-lg border p-3">
           {expandedGroup.jobs.length === 0 ? (
-            <span className="text-xs text-neutral-500">
-              No jobs in this stage.
-            </span>
+            <span className="text-ink-3 text-xs">No jobs in this stage.</span>
           ) : (
             <div className="space-y-1">
               {expandedGroup.jobs.map((jg) => (

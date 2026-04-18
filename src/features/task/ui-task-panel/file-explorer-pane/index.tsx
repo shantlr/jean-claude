@@ -76,7 +76,7 @@ export function FileExplorerPane({
   return (
     <div
       className={clsx(
-        'panel-edge-shadow relative flex h-full shrink-0 flex-col bg-neutral-900',
+        'panel-edge-shadow bg-bg-0 relative flex h-full shrink-0 flex-col',
         'max-w-[70vw]',
         (isDragging || isOuterDragging) && 'select-none',
       )}
@@ -85,12 +85,12 @@ export function FileExplorerPane({
       {/* Left-edge resize handle for the whole pane */}
       <div
         onMouseDown={handleOuterMouseDown}
-        className="absolute top-0 left-0 z-10 h-full w-1 cursor-col-resize hover:bg-blue-500/30"
+        className="hover:bg-acc/30 absolute top-0 left-0 z-10 h-full w-1 cursor-col-resize"
       />
 
       {/* Header */}
       <div className="flex h-[40px] shrink-0 items-center justify-between gap-1 px-3">
-        <div className="flex shrink items-center gap-2 overflow-hidden text-xs font-medium text-ellipsis whitespace-nowrap text-neutral-300">
+        <div className="text-ink-1 flex shrink items-center gap-2 overflow-hidden text-xs font-medium text-ellipsis whitespace-nowrap">
           <FolderTree className="h-4 w-4 shrink-0" />
           {selectedFilePath
             ? rootPath && selectedFilePath.startsWith(rootPath)
@@ -144,7 +144,7 @@ export function FileExplorerPane({
               onToggleDir={handleToggleDir}
             />
           ) : (
-            <div className="px-3 py-2 text-xs text-neutral-500">
+            <div className="text-ink-3 px-3 py-2 text-xs">
               {isRootPathLoading
                 ? 'Loading workspace...'
                 : 'Workspace unavailable'}
@@ -157,7 +157,7 @@ export function FileExplorerPane({
             {/* Resize handle between tree and content */}
             <div
               onMouseDown={handleMouseDown}
-              className="h-full w-1 shrink-0 cursor-col-resize hover:bg-blue-500/30"
+              className="hover:bg-acc/30 h-full w-1 shrink-0 cursor-col-resize"
             />
             {/* File content panel */}
             <div className="panel-edge-shadow flex min-w-0 flex-1 flex-col overflow-hidden">

@@ -16,7 +16,7 @@ export function McpTemplateList({
 }) {
   if (templates.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-neutral-700 p-4 text-center text-sm text-neutral-500">
+      <div className="border-glass-border text-ink-3 rounded-lg border border-dashed p-4 text-center text-sm">
         No MCP servers configured yet.
         <br />
         Click "Add" to create one.
@@ -32,19 +32,17 @@ export function McpTemplateList({
           onClick={() => onSelect(template.id)}
           className={`group flex cursor-pointer items-center justify-between rounded-lg border p-3 transition-colors ${
             selectedId === template.id
-              ? 'border-blue-500 bg-blue-500/10'
-              : 'border-neutral-700 bg-neutral-800 hover:border-neutral-600'
+              ? 'border-acc bg-acc/10'
+              : 'border-glass-border bg-bg-1 hover:border-glass-border-strong'
           }`}
         >
           <div className="flex items-center gap-3">
-            <Server className="h-5 w-5 text-neutral-400" />
+            <Server className="text-ink-2 h-5 w-5" />
             <div>
-              <div className="font-medium text-neutral-200">
-                {template.name}
-              </div>
+              <div className="text-ink-1 font-medium">{template.name}</div>
               {template.installOnCreateWorktree && (
                 <div className="flex gap-2 text-xs">
-                  <span className="rounded bg-blue-900/50 px-1.5 py-0.5 text-blue-400">
+                  <span className="text-acc-ink bg-acc/50 rounded px-1.5 py-0.5">
                     Install per worktree
                   </span>
                 </div>

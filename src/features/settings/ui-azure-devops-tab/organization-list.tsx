@@ -18,9 +18,9 @@ export function OrganizationList({
 
   if (azureDevOpsProviders.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-neutral-700 px-6 py-8 text-center">
-        <p className="text-neutral-500">No organizations connected yet</p>
-        <p className="mt-1 text-sm text-neutral-600">
+      <div className="border-glass-border rounded-lg border border-dashed px-6 py-8 text-center">
+        <p className="text-ink-3">No organizations connected yet</p>
+        <p className="text-ink-4 mt-1 text-sm">
           Click "Add Organization" to connect your Azure DevOps account
         </p>
       </div>

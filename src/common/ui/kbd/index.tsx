@@ -29,7 +29,7 @@ export function Kbd({
   return (
     <kbd
       className={clsx(
-        'rounded border border-neutral-700 bg-neutral-800/50 px-1.5 py-0.5 font-mono text-[10px] text-neutral-500',
+        'border-glass-border bg-bg-1/50 text-ink-3 rounded border px-1.5 py-0.5 font-mono text-[10px]',
         className,
       )}
     >

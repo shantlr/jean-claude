@@ -73,26 +73,24 @@ export function DebugDatabase() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h2 className="text-lg font-semibold text-neutral-200">
-          Database Browser
-        </h2>
-        <p className="mt-1 text-sm text-neutral-500">
+        <h2 className="text-ink-1 text-lg font-semibold">Database Browser</h2>
+        <p className="text-ink-3 mt-1 text-sm">
           Browse database tables and rows for debugging
         </p>
         {databaseSize && (
-          <p className="mt-2 text-sm text-neutral-400">
+          <p className="text-ink-2 mt-2 text-sm">
             Current DB size: {formatBytes(databaseSize.bytes)}
           </p>
         )}
       </div>
 
-      <div className="rounded-lg border border-neutral-700 bg-neutral-900 p-4">
+      <div className="border-glass-border bg-bg-0 rounded-lg border p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-sm font-medium text-neutral-200">
+            <h3 className="text-ink-1 text-sm font-medium">
               Cleanup old completed tasks
             </h3>
-            <p className="mt-1 text-sm text-neutral-400">
+            <p className="text-ink-2 mt-1 text-sm">
               Completed tasks older than 7 days: {staleCompletedTasksCount}
             </p>
           </div>
@@ -121,8 +119,8 @@ export function DebugDatabase() {
             onClick={() => handleTableChange(table)}
             className={`cursor-pointer rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
               activeTable === table
-                ? 'border-blue-500 bg-blue-500/20 text-blue-400'
-                : 'border-neutral-700 bg-neutral-800 text-neutral-300 hover:border-neutral-600 hover:bg-neutral-700'
+                ? 'border-acc bg-acc/20 text-acc-ink'
+                : 'border-glass-border bg-bg-1 text-ink-1 hover:border-glass-border-strong hover:bg-glass-medium'
             }`}
           >
             {table}
@@ -139,15 +137,15 @@ export function DebugDatabase() {
       />
 
       {/* Table */}
-      <div className="overflow-hidden rounded-lg border border-neutral-700">
+      <div className="border-glass-border overflow-hidden rounded-lg border">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-neutral-700 bg-neutral-800">
+              <tr className="border-glass-border bg-bg-1 border-b">
                 {data?.columns.map((col) => (
                   <th
                     key={col}
-                    className="px-4 py-2 text-left font-medium text-neutral-400"
+                    className="text-ink-2 px-4 py-2 text-left font-medium"
                   >
                     {col}
                   </th>
@@ -157,10 +155,7 @@ export function DebugDatabase() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td
-                    colSpan={1}
-                    className="px-4 py-8 text-center text-neutral-500"
-                  >
+                  <td colSpan={1} className="text-ink-3 px-4 py-8 text-center">
                     Loading...
                   </td>
                 </tr>
@@ -168,7 +163,7 @@ export function DebugDatabase() {
                 <tr>
                   <td
                     colSpan={data?.columns.length || 1}
-                    className="px-4 py-8 text-center text-neutral-500"
+                    className="text-ink-3 px-4 py-8 text-center"
                   >
                     No rows found
                   </td>
@@ -177,12 +172,12 @@ export function DebugDatabase() {
                 data?.rows.map((row, idx) => (
                   <tr
                     key={idx}
-                    className="border-b border-neutral-800 hover:bg-neutral-800/50"
+                    className="border-line-soft hover:bg-glass-light/50 border-b"
                   >
                     {data.columns.map((col) => (
                       <td
                         key={col}
-                        className="max-w-[200px] truncate px-4 py-2 text-neutral-300"
+                        className="text-ink-1 max-w-[200px] truncate px-4 py-2"
                         title={String(row[col] ?? '')}
                       >
                         {formatCellValue(row[col])}
@@ -198,7 +193,7 @@ export function DebugDatabase() {
 
       {/* Pagination */}
       {data && data.total > 0 && (
-        <div className="flex items-center justify-between text-sm text-neutral-400">
+        <div className="text-ink-2 flex items-center justify-between text-sm">
           <span>
             Showing {showingFrom}-{showingTo} of {data.total} rows
           </span>

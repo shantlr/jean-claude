@@ -88,19 +88,19 @@ function BacklogTodoRow({
       className={clsx(
         'group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm',
         dragOverId === todo.id
-          ? 'border-t-2 border-blue-500'
+          ? 'border-acc border-t-2'
           : 'border-t-2 border-transparent',
-        isSelected ? 'bg-neutral-700' : 'hover:bg-neutral-700/50',
+        isSelected ? 'bg-glass-medium' : 'hover:bg-glass-medium/50',
         isCreating && 'opacity-60',
       )}
     >
       {/* Drag handle or creating spinner */}
       {isCreating ? (
-        <span className="text-blue-400">
+        <span className="text-acc-ink">
           <Loader2 size={14} className="animate-spin" />
         </span>
       ) : (
-        <span className="cursor-grab text-neutral-600 opacity-0 group-hover:opacity-100">
+        <span className="text-ink-4 cursor-grab opacity-0 group-hover:opacity-100">
           <GripVertical size={14} />
         </span>
       )}
@@ -124,10 +124,10 @@ function BacklogTodoRow({
             }
           }}
           onBlur={onEditBlur}
-          className="max-h-32 flex-1 resize-none bg-transparent text-sm text-neutral-200 outline-none"
+          className="text-ink-1 max-h-32 flex-1 resize-none bg-transparent text-sm outline-none"
         />
       ) : (
-        <span className="flex-1 truncate text-neutral-300">{todo.content}</span>
+        <span className="text-ink-1 flex-1 truncate">{todo.content}</span>
       )}
 
       {/* Context menu (hidden while creating) */}
@@ -143,10 +143,10 @@ function BacklogTodoRow({
                 }
               }}
               className={clsx(
-                'rounded p-0.5 hover:bg-neutral-600 hover:text-neutral-300',
+                'hover:bg-bg-3 hover:text-ink-1 rounded p-0.5',
                 isSelected
-                  ? 'text-neutral-400 opacity-100'
-                  : 'text-neutral-500 opacity-0 group-hover:opacity-100',
+                  ? 'text-ink-2 opacity-100'
+                  : 'text-ink-3 opacity-0 group-hover:opacity-100',
               )}
             >
               <MoreHorizontal size={14} />
@@ -526,22 +526,22 @@ export function BacklogOverlay({
       onClick={handleOverlayClick}
     >
       <div
-        className="flex max-h-[60svh] w-[90svw] max-w-[720px] flex-col overflow-hidden rounded-lg border border-neutral-700 bg-neutral-800 shadow-2xl"
+        className="border-glass-border bg-bg-1 flex max-h-[60svh] w-[90svw] max-w-[720px] flex-col overflow-hidden rounded-lg border shadow-2xl"
         onClick={handleModalClick}
       >
         {/* Project selector header */}
-        <div className="flex items-center border-b border-neutral-700 px-4 py-2">
+        <div className="border-glass-border flex items-center border-b px-4 py-2">
           <Select
             value={projectId}
             options={projectOptions}
             onChange={handleProjectChange}
             label="Project"
-            className="border-none bg-transparent px-1 py-0.5 text-neutral-300 hover:border-none hover:bg-neutral-700"
+            className="text-ink-1 hover:bg-glass-medium border-none bg-transparent px-1 py-0.5 hover:border-none"
           />
         </div>
 
         {/* Quick-add input */}
-        <div className="flex items-center border-b border-neutral-700 px-4 py-3">
+        <div className="border-glass-border flex items-center border-b px-4 py-3">
           <textarea
             ref={inputRef}
             placeholder="Add a todo..."
@@ -574,7 +574,7 @@ export function BacklogOverlay({
         {/* Todo list */}
         <div ref={listRef} className="overflow-y-auto p-2">
           {todos.length === 0 ? (
-            <div className="py-8 text-center text-sm text-neutral-500">
+            <div className="text-ink-3 py-8 text-center text-sm">
               No backlog items yet. Type above and press Cmd+Enter to add one.
             </div>
           ) : (
@@ -603,7 +603,7 @@ export function BacklogOverlay({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-neutral-700 px-4 py-2 text-xs text-neutral-400">
+        <div className="border-glass-border text-ink-2 flex flex-wrap items-center gap-3 border-t px-4 py-2 text-xs">
           <span className="inline-flex items-center gap-1.5">
             <Kbd shortcut="tab" /> Switch Input/List Focus
           </span>

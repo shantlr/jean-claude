@@ -13,8 +13,8 @@ export function SidebarContentTabs() {
         className={clsx(
           'flex flex-1 items-center justify-center gap-1.5 px-2 py-1.5 text-xs transition-colors duration-150',
           sidebarTab === 'tasks'
-            ? 'border-b-2 border-blue-500/70 font-semibold text-white'
-            : 'border-b-2 border-transparent text-neutral-500 hover:text-neutral-300',
+            ? 'border-acc/70 text-ink-0 border-b-2 font-semibold'
+            : 'text-ink-3 hover:text-ink-1 border-b-2 border-transparent',
         )}
       >
         <ListTodo size={14} />
@@ -25,8 +25,8 @@ export function SidebarContentTabs() {
         className={clsx(
           'flex flex-1 items-center justify-center gap-1.5 px-2 py-1.5 text-xs transition-colors duration-150',
           sidebarTab === 'prs'
-            ? 'border-b-2 border-blue-500/70 font-semibold text-white'
-            : 'border-b-2 border-transparent text-neutral-500 hover:text-neutral-300',
+            ? 'border-acc/70 text-ink-0 border-b-2 font-semibold'
+            : 'text-ink-3 hover:text-ink-1 border-b-2 border-transparent',
         )}
       >
         <GitPullRequest size={14} />

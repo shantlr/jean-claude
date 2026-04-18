@@ -53,35 +53,37 @@ function getInitials(name: string): string {
 function AttentionIcon({ attention }: { attention: FeedItemAttention }) {
   switch (attention) {
     case 'errored':
-      return <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-400" />;
+      return <AlertCircle className="text-status-fail h-3.5 w-3.5 shrink-0" />;
     case 'needs-permission':
-      return <ShieldQuestion className="h-3.5 w-3.5 shrink-0 text-amber-400" />;
+      return (
+        <ShieldQuestion className="text-status-run h-3.5 w-3.5 shrink-0" />
+      );
     case 'has-question':
       return (
-        <MessageCircleQuestion className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+        <MessageCircleQuestion className="text-status-run h-3.5 w-3.5 shrink-0" />
       );
     case 'completed':
       return null;
     case 'interrupted':
-      return <CirclePause className="h-3.5 w-3.5 shrink-0 text-yellow-400" />;
+      return <CirclePause className="text-status-run h-3.5 w-3.5 shrink-0" />;
     case 'running':
       return (
-        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-blue-400" />
+        <Loader2 className="text-acc-ink h-3.5 w-3.5 shrink-0 animate-spin" />
       );
     case 'review-requested':
     case 'pr-comments':
     case 'pr-approved-by-me':
-      return (
-        <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-purple-400" />
-      );
+      return <GitPullRequest className="text-status-pr h-3.5 w-3.5 shrink-0" />;
     case 'assigned-work-item':
-      return <ClipboardList className="h-3.5 w-3.5 shrink-0 text-teal-400" />;
+      return (
+        <ClipboardList className="text-status-azure h-3.5 w-3.5 shrink-0" />
+      );
     case 'note':
-      return <StickyNote className="h-3.5 w-3.5 shrink-0 text-yellow-500/70" />;
+      return <StickyNote className="text-status-run/70 h-3.5 w-3.5 shrink-0" />;
     case 'waiting':
       return (
         <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-          <span className="h-1.5 w-1.5 rounded-full bg-neutral-500" />
+          <span className="bg-ink-3 h-1.5 w-1.5 rounded-full" />
         </span>
       );
   }
@@ -105,33 +107,33 @@ function borderClasses({
   if (isSelected) {
     switch (attention) {
       case 'errored':
-        return 'border border-red-500/60 bg-neutral-800 shadow-sm';
+        return 'border border-status-fail/60 bg-glass-light shadow-sm';
       case 'needs-permission':
       case 'has-question':
-        return 'border border-amber-500/60 bg-neutral-800 shadow-sm';
+        return 'border border-status-run/60 bg-glass-light shadow-sm';
       case 'running':
         return 'running-border-selected';
       case 'interrupted':
-        return 'border border-yellow-500/40 bg-neutral-800 shadow-sm';
+        return 'border border-status-run/40 bg-glass-light shadow-sm';
       case 'review-requested':
       case 'pr-comments':
-        return 'border border-purple-500/40 bg-neutral-800 shadow-sm';
+        return 'border border-status-pr/40 bg-glass-light shadow-sm';
       case 'pr-approved-by-me':
-        return 'border border-neutral-600 bg-neutral-800 shadow-sm';
+        return 'border border-glass-border bg-glass-light shadow-sm';
       case 'assigned-work-item':
-        return 'border border-teal-500/60 bg-neutral-800 shadow-sm';
+        return 'border border-status-azure/60 bg-glass-light shadow-sm';
       case 'completed':
       default:
-        return 'border-r-2 border-primary bg-surface-bright shadow-sm';
+        return 'border border-acc/45 bg-glass-strong shadow-[inset_0_0_0_1px_oklch(0.72_0.20_295_/_0.15),0_0_24px_oklch(0.72_0.20_295_/_0.10)]';
     }
   }
 
   switch (attention) {
     case 'errored':
-      return 'border border-red-500/30 hover:border-red-500/50';
+      return 'border border-status-fail/30 hover:border-status-fail/50';
     case 'needs-permission':
     case 'has-question':
-      return 'border border-amber-500/30 hover:border-amber-500/50';
+      return 'border border-status-run/30 hover:border-status-run/50';
     case 'running':
       return 'running-border';
     default:
@@ -285,27 +287,27 @@ export function FeedItemCard({
               isSelected: isSelected ?? false,
             }),
             isDeleting && 'opacity-50',
-            !isSelected && 'hover:bg-surface-bright hover:translate-x-0.5',
+            !isSelected && 'hover:bg-glass-light hover:translate-x-0.5',
           )}
         >
           {/* New activity accent bar */}
           {item.hasNewActivity && (
-            <span className="absolute top-2 bottom-2 left-0 w-[3px] rounded-full bg-blue-400" />
+            <span className="bg-acc absolute top-2 bottom-2 left-0 w-[3px] rounded-full" />
           )}
           <div className="flex items-center gap-2">
             {item.taskType === 'skill-creation' && (
-              <Bot className="h-3.5 w-3.5 shrink-0 text-purple-400" />
+              <Bot className="text-status-pr h-3.5 w-3.5 shrink-0" />
             )}
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-neutral-100">
+            <span className="text-ink-0 min-w-0 flex-1 truncate text-sm font-semibold">
               {item.title}
             </span>
             {item.source === 'task' &&
               item.pullRequestId &&
               !item.workItemPrStatus && (
                 <>
-                  <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                  <GitPullRequest className="text-status-done h-3.5 w-3.5 shrink-0" />
                   {item.isDraft && (
-                    <span className="shrink-0 rounded border border-neutral-600 px-1.5 py-0.5 text-[10px] text-neutral-400">
+                    <span className="border-glass-border text-ink-2 shrink-0 rounded border px-1.5 py-0.5 text-[10px]">
                       Draft
                     </span>
                   )}
@@ -318,8 +320,8 @@ export function FeedItemCard({
                   className={clsx(
                     'flex shrink-0 items-center gap-1',
                     item.workItemPrStatus === 'completed'
-                      ? 'text-purple-400'
-                      : 'text-neutral-500',
+                      ? 'text-status-pr'
+                      : 'text-ink-3',
                   )}
                   title={
                     item.workItemPrStatus === 'completed'
@@ -342,9 +344,9 @@ export function FeedItemCard({
             {(item.source === 'work-item' || item.source === 'task') &&
               item.workItemPrStatus === 'active' && (
                 <>
-                  <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                  <GitPullRequest className="text-status-done h-3.5 w-3.5 shrink-0" />
                   {item.isDraft && (
-                    <span className="shrink-0 rounded border border-neutral-600 px-1.5 py-0.5 text-[10px] text-neutral-400">
+                    <span className="border-glass-border text-ink-2 shrink-0 rounded border px-1.5 py-0.5 text-[10px]">
                       Draft
                     </span>
                   )}
@@ -352,17 +354,17 @@ export function FeedItemCard({
               )}
             {item.source === 'pull-request' &&
               (item.activeThreadCount ?? 0) > 0 && (
-                <span className="flex shrink-0 items-center gap-0.5 text-purple-400">
+                <span className="text-status-pr flex shrink-0 items-center gap-0.5">
                   <MessageSquare className="h-3 w-3" />
                   <span className="text-[10px]">{item.activeThreadCount}</span>
                 </span>
               )}
-            <span className="shrink-0 text-[11px] text-neutral-500 tabular-nums">
+            <span className="text-ink-3 shrink-0 text-[11px] tabular-nums">
               {formatRelativeTime(item.timestamp)}
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs text-neutral-400">
+          <div className="text-ink-2 flex items-center gap-1.5 text-xs">
             <AttentionIcon attention={item.attention} />
             <span className="min-w-0 truncate">
               {item.projectName}
@@ -377,15 +379,15 @@ export function FeedItemCard({
                 className={clsx(
                   'max-w-28 shrink-0 truncate rounded px-1.5 py-0.5 text-[10px]',
                   item.isOwnedByCurrentUser
-                    ? 'bg-blue-500/20 text-blue-200 ring-1 ring-blue-400/40'
-                    : 'bg-neutral-700/70 text-neutral-300',
+                    ? 'bg-acc/20 text-acc-ink ring-acc/40 ring-1'
+                    : 'bg-glass-medium/70 text-ink-1',
                 )}
               >
                 {item.ownerName}
               </span>
             )}
             {item.source === 'pull-request' && item.isDraft && (
-              <span className="shrink-0 rounded border border-neutral-600 px-1.5 py-0.5 text-[10px] text-neutral-400">
+              <span className="border-glass-border text-ink-2 shrink-0 rounded border px-1.5 py-0.5 text-[10px]">
                 Draft
               </span>
             )}
@@ -394,7 +396,7 @@ export function FeedItemCard({
                 {item.approvedBy.map((reviewer) => (
                   <span
                     key={reviewer.uniqueName}
-                    className="flex h-4 w-4 items-center justify-center rounded-full bg-green-900/50 text-[8px] font-medium text-green-300 ring-1 ring-green-500/50"
+                    className="bg-status-done/20 text-status-done ring-status-done/50 flex h-4 w-4 items-center justify-center rounded-full text-[8px] font-medium ring-1"
                     title={`${reviewer.displayName} approved`}
                   >
                     {getInitials(reviewer.displayName)}
@@ -403,34 +405,34 @@ export function FeedItemCard({
               </div>
             )}
             {item.source === 'work-item' && item.workItemState && (
-              <span className="ml-auto shrink-0 rounded bg-teal-500/15 px-1.5 py-0.5 text-[10px] font-medium text-teal-300 ring-1 ring-teal-500/30">
+              <span className="bg-status-azure/15 text-status-azure ring-status-azure/30 ml-auto shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ring-1">
                 {item.workItemState}
               </span>
             )}
           </div>
 
           {item.source === 'task' && item.pendingMessage && (
-            <div className="flex items-center gap-1 text-xs text-amber-400">
+            <div className="text-status-run flex items-center gap-1 text-xs">
               <MessageSquare className="h-3 w-3 shrink-0" />
               <span className="min-w-0 truncate">{item.pendingMessage}</span>
             </div>
           )}
 
           {runningCommands.length > 0 && (
-            <div className="flex items-center gap-1.5 rounded-md bg-green-500/10 px-2 py-1 ring-1 ring-green-500/20">
-              <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-green-400">
+            <div className="bg-status-done/10 ring-status-done/20 flex items-center gap-1.5 rounded-md px-2 py-1 ring-1">
+              <span className="text-status-done flex shrink-0 items-center gap-1.5 text-[11px] font-medium">
                 <Terminal className="animate-command-running h-3 w-3" />
               </span>
-              <span className="min-w-0 truncate text-[11px] text-green-300">
+              <span className="text-status-done min-w-0 truncate text-[11px]">
                 {runningCommands.map((c) => c.command).join(', ')}
               </span>
             </div>
           )}
 
           {hasNonDeleteBgJob && (
-            <div className="flex items-center gap-1.5 rounded-md bg-violet-500/10 px-2 py-1 ring-1 ring-violet-500/20">
-              <Loader2 className="h-3 w-3 shrink-0 animate-spin text-violet-400" />
-              <span className="min-w-0 truncate text-[11px] text-violet-300">
+            <div className="bg-acc/10 ring-acc/20 flex items-center gap-1.5 rounded-md px-2 py-1 ring-1">
+              <Loader2 className="text-acc-ink h-3 w-3 shrink-0 animate-spin" />
+              <span className="text-acc-ink min-w-0 truncate text-[11px]">
                 {runningBgJobs
                   .filter((j) => j.type !== 'task-deletion')
                   .map((j) => bgJobLabel(j.type))
@@ -447,9 +449,9 @@ export function FeedItemCard({
         onClick={handlePin}
         icon={
           isPinned ? (
-            <PinOff className="text-neutral-400" />
+            <PinOff className="text-ink-2" />
           ) : (
-            <Pin className="text-neutral-400" />
+            <Pin className="text-ink-2" />
           )
         }
       >
@@ -457,20 +459,20 @@ export function FeedItemCard({
       </DropdownItem>
       <DropdownItem
         onClick={handleToggleLowPriority}
-        icon={<ArrowDownNarrowWide className="text-neutral-400" />}
+        icon={<ArrowDownNarrowWide className="text-ink-2" />}
       >
         {isLowPriority ? 'Remove low priority' : 'Mark low priority'}
       </DropdownItem>
       <DropdownItem
         onClick={handleDismiss}
-        icon={<XCircle className="text-neutral-400" />}
+        icon={<XCircle className="text-ink-2" />}
       >
         Dismiss
       </DropdownItem>
       <DropdownDivider />
       <DropdownItem
         onClick={handleOpenInProject}
-        icon={<FolderOpen className="text-neutral-400" />}
+        icon={<FolderOpen className="text-ink-2" />}
       >
         Open in project
       </DropdownItem>

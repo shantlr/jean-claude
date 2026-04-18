@@ -37,10 +37,8 @@ export function AzureDevOpsTab() {
       <div className="flex-1">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-neutral-200">
-              Organizations
-            </h2>
-            <p className="mt-1 text-sm text-neutral-500">
+            <h2 className="text-ink-1 text-lg font-semibold">Organizations</h2>
+            <p className="text-ink-3 mt-1 text-sm">
               Connect your Azure DevOps organizations
             </p>
           </div>

@@ -44,9 +44,7 @@ export function SkillDetails({
   return (
     <div className="flex h-full flex-col">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-neutral-200">
-          Skill Details
-        </h3>
+        <h3 className="text-ink-1 text-lg font-semibold">Skill Details</h3>
         <div className="flex items-center gap-1">
           {onEdit && skill.editable && (
             <IconButton
@@ -60,7 +58,7 @@ export function SkillDetails({
             <Button
               type="button"
               onClick={() => onImproveWithAgent(skill.skillPath, skill.name)}
-              className="cursor-pointer rounded p-1 text-neutral-500 hover:bg-neutral-700 hover:text-purple-400"
+              className="text-ink-3 hover:bg-glass-medium hover:text-acc-ink cursor-pointer rounded p-1"
               title="Improve with Agent"
             >
               <Bot className="h-4 w-4" />
@@ -100,15 +98,13 @@ export function SkillDetails({
       </div>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-2">
-        <div className="rounded-lg border border-neutral-700 bg-neutral-800/50 p-3 text-sm">
-          <div className="text-base font-medium text-neutral-100">
-            {skill.name}
-          </div>
-          <div className="mt-1 text-neutral-400">
+        <div className="border-glass-border bg-bg-1/50 rounded-lg border p-3 text-sm">
+          <div className="text-ink-0 text-base font-medium">{skill.name}</div>
+          <div className="text-ink-2 mt-1">
             {skill.description || 'No description provided.'}
           </div>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            <span className="rounded bg-neutral-700 px-2 py-1 text-neutral-300">
+            <span className="bg-glass-medium text-ink-1 rounded px-2 py-1">
               {getSourceLabel(skill)}
             </span>
             {onToggleEnabled && skill.editable
@@ -123,9 +119,9 @@ export function SkillDetails({
                       className={`cursor-pointer rounded px-2 py-1 ${
                         enabled
                           ? backend === 'claude-code'
-                            ? 'bg-orange-900/30 text-orange-400 hover:bg-orange-900/50'
-                            : 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'
-                          : 'bg-neutral-700 text-neutral-400 hover:bg-neutral-600'
+                            ? 'text-status-run bg-status-run/30 hover:bg-status-run/50'
+                            : 'text-acc-ink bg-acc/30 hover:bg-acc/50'
+                          : 'bg-glass-medium text-ink-2 hover:bg-bg-3'
                       }`}
                     >
                       {backend === 'claude-code' ? 'Claude Code' : 'OpenCode'}:{' '}
@@ -140,9 +136,9 @@ export function SkillDetails({
                       className={`rounded px-2 py-1 ${
                         enabled
                           ? backend === 'claude-code'
-                            ? 'bg-orange-900/30 text-orange-400'
-                            : 'bg-blue-900/30 text-blue-400'
-                          : 'bg-neutral-700 text-neutral-400'
+                            ? 'text-status-run bg-status-run/30'
+                            : 'text-acc-ink bg-acc/30'
+                          : 'bg-glass-medium text-ink-2'
                       }`}
                     >
                       {backend === 'claude-code' ? 'Claude Code' : 'OpenCode'}:{' '}
@@ -151,27 +147,27 @@ export function SkillDetails({
                   ),
                 )}
           </div>
-          <div className="mt-3 text-xs break-all text-neutral-500">
+          <div className="text-ink-3 mt-3 text-xs break-all">
             {skill.skillPath}
           </div>
         </div>
 
         <div>
-          <div className="mb-2 text-xs font-medium tracking-wide text-neutral-400 uppercase">
+          <div className="text-ink-2 mb-2 text-xs font-medium tracking-wide uppercase">
             Skill Content
           </div>
           {isLoading && (
-            <div className="rounded-lg border border-neutral-700 bg-neutral-800/30 p-3 text-sm text-neutral-400">
+            <div className="border-glass-border bg-bg-1/30 text-ink-2 rounded-lg border p-3 text-sm">
               Loading content...
             </div>
           )}
           {error && (
-            <div className="rounded-lg border border-red-900/60 bg-red-950/20 p-3 text-sm text-red-300">
+            <div className="border-status-fail/60 bg-status-fail/20 text-status-fail rounded-lg border p-3 text-sm">
               Failed to load skill content.
             </div>
           )}
           {!isLoading && !error && (
-            <div className="overflow-auto rounded-lg border border-neutral-700 bg-neutral-900/60 p-3 text-sm text-neutral-200">
+            <div className="border-glass-border bg-bg-0/60 text-ink-1 overflow-auto rounded-lg border p-3 text-sm">
               <MarkdownContent content={data?.content || 'No content found.'} />
             </div>
           )}

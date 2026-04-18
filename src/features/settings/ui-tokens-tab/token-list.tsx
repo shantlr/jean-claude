@@ -14,7 +14,7 @@ export function TokenList({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8 text-neutral-500">
+      <div className="text-ink-3 flex items-center justify-center py-8">
         Loading tokens...
       </div>
     );
@@ -23,8 +23,8 @@ export function TokenList({
   if (tokens.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <p className="text-neutral-400">No tokens configured</p>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="text-ink-2">No tokens configured</p>
+        <p className="text-ink-3 mt-1 text-sm">
           Add a token to connect to your git providers
         </p>
       </div>

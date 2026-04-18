@@ -66,12 +66,12 @@ function groupByDay(notifications: AppNotification[]) {
 
 function NotificationIcon({ type }: { type: string }) {
   if (type.includes('cancelled')) {
-    return <Ban className="h-4 w-4 shrink-0 text-neutral-400" />;
+    return <Ban className="text-ink-2 h-4 w-4 shrink-0" />;
   }
   if (type.includes('failed')) {
-    return <XCircle className="h-4 w-4 shrink-0 text-red-400" />;
+    return <XCircle className="text-status-fail h-4 w-4 shrink-0" />;
   }
-  return <CheckCircle className="h-4 w-4 shrink-0 text-green-400" />;
+  return <CheckCircle className="text-status-done h-4 w-4 shrink-0" />;
 }
 
 function ProjectLabel({ project }: { project?: Project }) {
@@ -80,7 +80,7 @@ function ProjectLabel({ project }: { project?: Project }) {
     ? `${project.repoProjectName} / ${project.name}`
     : project.name;
   return (
-    <p className="mt-0.5 truncate text-[11px] text-neutral-500">
+    <p className="text-ink-3 mt-0.5 truncate text-[11px]">
       <span
         className="mr-1.5 inline-block h-2 w-2 rounded-full"
         style={{ backgroundColor: project.color }}
@@ -113,7 +113,7 @@ function NotificationsTab({
   return (
     <>
       {unreadCount > 0 && (
-        <div className="flex shrink-0 items-center justify-end border-b border-neutral-800 px-4 py-1.5">
+        <div className="border-line-soft flex shrink-0 items-center justify-end border-b px-4 py-1.5">
           <Button variant="ghost" size="sm" onClick={markAllAsRead}>
             Mark all as read
           </Button>
@@ -121,7 +121,7 @@ function NotificationsTab({
       )}
       <div className="flex-1 overflow-y-auto">
         {groups.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-12 text-neutral-500">
+          <div className="text-ink-3 flex flex-col items-center gap-2 py-12">
             <Bell className="h-8 w-8" />
             <span className="text-sm">No notifications yet</span>
             <span className="text-xs">
@@ -131,7 +131,7 @@ function NotificationsTab({
         ) : (
           groups.map((group) => (
             <div key={group.label}>
-              <div className="sticky top-0 bg-neutral-900/95 px-4 py-1.5 text-[11px] font-medium tracking-wider text-neutral-500 uppercase backdrop-blur">
+              <div className="bg-bg-0/95 text-ink-3 sticky top-0 px-4 py-1.5 text-[11px] font-medium tracking-wider uppercase backdrop-blur">
                 {group.label}
               </div>
               {group.items.map((notification) => (
@@ -140,9 +140,9 @@ function NotificationsTab({
                   type="button"
                   onClick={() => onItemClick(notification)}
                   className={clsx(
-                    'flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-neutral-800/60',
+                    'hover:bg-bg-1/60 flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left transition-colors',
                     !notification.read &&
-                      'border-l-2 border-l-blue-500 bg-neutral-800/30',
+                      'bg-bg-1/30 border-l-2 border-l-blue-500',
                   )}
                 >
                   <NotificationIcon type={notification.type} />
@@ -152,17 +152,17 @@ function NotificationsTab({
                         className={clsx(
                           'truncate text-sm',
                           notification.read
-                            ? 'text-neutral-400'
-                            : 'font-medium text-neutral-200',
+                            ? 'text-ink-2'
+                            : 'text-ink-1 font-medium',
                         )}
                       >
                         {notification.title}
                       </span>
-                      <span className="shrink-0 text-[11px] text-neutral-500">
+                      <span className="text-ink-3 shrink-0 text-[11px]">
                         {getRelativeTime(notification.createdAt)}
                       </span>
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-neutral-500">
+                    <p className="text-ink-3 mt-0.5 truncate text-xs">
                       {notification.body}
                     </p>
                     <ProjectLabel
@@ -174,7 +174,7 @@ function NotificationsTab({
                     />
                   </div>
                   {notification.sourceUrl && (
-                    <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 text-neutral-600" />
+                    <ExternalLink className="text-ink-4 mt-0.5 h-3 w-3 shrink-0" />
                   )}
                 </button>
               ))}
@@ -187,9 +187,9 @@ function NotificationsTab({
 }
 
 const LEVEL_COLORS: Record<string, string> = {
-  info: 'text-blue-400',
-  warn: 'text-yellow-400',
-  error: 'text-red-400',
+  info: 'text-acc-ink',
+  warn: 'text-status-run',
+  error: 'text-status-fail',
 };
 
 function formatTimestamp(iso: string): string {
@@ -208,8 +208,8 @@ function DebugTab() {
 
   return (
     <>
-      <div className="flex shrink-0 items-center justify-between border-b border-neutral-800 px-4 py-1.5">
-        <span className="text-[11px] text-neutral-500">
+      <div className="border-line-soft flex shrink-0 items-center justify-between border-b px-4 py-1.5">
+        <span className="text-ink-3 text-[11px]">
           {logs.length} log{logs.length !== 1 ? 's' : ''}
         </span>
         {logs.length > 0 && (
@@ -221,7 +221,7 @@ function DebugTab() {
       </div>
       <div className="flex-1 overflow-y-auto font-mono text-[11px] leading-relaxed">
         {logs.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-12 text-neutral-500">
+          <div className="text-ink-3 flex flex-col items-center gap-2 py-12">
             <Bug className="h-8 w-8" />
             <span className="font-sans text-sm">No debug logs yet</span>
             <span className="font-sans text-xs">
@@ -232,18 +232,16 @@ function DebugTab() {
           logs.map((entry) => (
             <div
               key={entry.id}
-              className="flex gap-2 border-b border-neutral-800/50 px-3 py-1.5 hover:bg-neutral-800/30"
+              className="border-line-soft/50 hover:bg-bg-1/30 flex gap-2 border-b px-3 py-1.5"
             >
-              <span className="shrink-0 text-neutral-600">
+              <span className="text-ink-4 shrink-0">
                 {formatTimestamp(entry.timestamp)}
               </span>
-              <span className="shrink-0 text-purple-400">
-                {entry.namespace}
-              </span>
+              <span className="text-acc-ink shrink-0">{entry.namespace}</span>
               <span
                 className={clsx(
                   'min-w-0 break-all',
-                  LEVEL_COLORS[entry.level] ?? 'text-neutral-300',
+                  LEVEL_COLORS[entry.level] ?? 'text-ink-1',
                 )}
               >
                 {entry.message}
@@ -299,25 +297,25 @@ export function NotificationCenterOverlay({
           tabIndex={-1}
         >
           <div
-            className="flex max-h-[70svh] w-[420px] flex-col overflow-hidden rounded-lg border border-neutral-700 bg-neutral-900 shadow-2xl"
+            className="border-glass-border bg-bg-0 flex max-h-[70svh] w-[420px] flex-col overflow-hidden rounded-lg border shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Tab bar */}
-            <div className="flex shrink-0 border-b border-neutral-700">
+            <div className="border-glass-border flex shrink-0 border-b">
               <button
                 type="button"
                 onClick={() => setActiveTab('notifications')}
                 className={clsx(
                   'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors',
                   activeTab === 'notifications'
-                    ? 'border-b-2 border-blue-500 text-neutral-200'
-                    : 'text-neutral-500 hover:text-neutral-300',
+                    ? 'border-acc text-ink-1 border-b-2'
+                    : 'text-ink-3 hover:text-ink-1',
                 )}
               >
                 <Bell className="h-3.5 w-3.5" />
                 Notifications
                 {unreadCount > 0 && (
-                  <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] leading-none text-white">
+                  <span className="bg-acc text-ink-0 rounded-full px-1.5 py-0.5 text-[10px] leading-none">
                     {unreadCount}
                   </span>
                 )}
@@ -328,14 +326,14 @@ export function NotificationCenterOverlay({
                 className={clsx(
                   'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors',
                   activeTab === 'debug'
-                    ? 'border-b-2 border-blue-500 text-neutral-200'
-                    : 'text-neutral-500 hover:text-neutral-300',
+                    ? 'border-acc text-ink-1 border-b-2'
+                    : 'text-ink-3 hover:text-ink-1',
                 )}
               >
                 <Bug className="h-3.5 w-3.5" />
                 Debug
                 {logCount > 0 && (
-                  <span className="rounded-full bg-neutral-700 px-1.5 py-0.5 text-[10px] leading-none text-neutral-300">
+                  <span className="text-ink-1 bg-glass-medium rounded-full px-1.5 py-0.5 text-[10px] leading-none">
                     {logCount}
                   </span>
                 )}

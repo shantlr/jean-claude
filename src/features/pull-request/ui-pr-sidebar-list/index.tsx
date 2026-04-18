@@ -59,9 +59,7 @@ function isCurrentUserAuthor(
 // Section header component for grouping
 function SectionHeader({ title }: { title: string }) {
   return (
-    <div className="px-1 py-1.5 text-xs font-medium text-neutral-500">
-      {title}
-    </div>
+    <div className="text-ink-3 px-1 py-1.5 text-xs font-medium">{title}</div>
   );
 }
 
@@ -202,7 +200,7 @@ export function PrSidebarList() {
   // Early return for no repos
   if (isAllView && !hasAnyRepoConfig) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4 text-neutral-500">
+      <div className="text-ink-3 flex flex-1 flex-col items-center justify-center gap-3 p-4">
         <GitPullRequest className="h-8 w-8" />
         <p className="text-center text-sm">
           No projects with linked repositories
@@ -213,7 +211,7 @@ export function PrSidebarList() {
 
   if (!isAllView && !hasSelectedProjectRepo) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4 text-neutral-500">
+      <div className="text-ink-3 flex flex-1 flex-col items-center justify-center gap-3 p-4">
         <GitPullRequest className="h-8 w-8" />
         <p className="text-center text-sm">
           This project has no linked repository
@@ -249,8 +247,8 @@ export function PrSidebarList() {
             className={clsx(
               'shrink-0 rounded px-2 py-1 text-xs font-medium transition-colors',
               tab === t
-                ? 'bg-neutral-700 text-white'
-                : 'text-neutral-400 hover:bg-neutral-800 hover:text-white',
+                ? 'bg-glass-medium text-ink-0'
+                : 'text-ink-2 hover:bg-glass-light hover:text-ink-0',
             )}
           >
             {TAB_LABELS[t]}
@@ -259,16 +257,16 @@ export function PrSidebarList() {
       </div>
 
       {/* Divider */}
-      <div className="mx-2 border-b border-neutral-800" />
+      <div className="border-line-soft mx-2 border-b" />
 
       {/* PR list */}
       <div className="flex-1 overflow-y-auto p-2">
         {isLoading ? (
           <div className="flex h-32 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-neutral-500" />
+            <Loader2 className="text-ink-3 h-6 w-6 animate-spin" />
           </div>
         ) : filteredPrs.length === 0 ? (
-          <div className="flex h-32 flex-col items-center justify-center gap-2 text-neutral-500">
+          <div className="text-ink-3 flex h-32 flex-col items-center justify-center gap-2">
             <GitPullRequest className="h-6 w-6" />
             <p className="text-sm">{getEmptyMessage()}</p>
           </div>

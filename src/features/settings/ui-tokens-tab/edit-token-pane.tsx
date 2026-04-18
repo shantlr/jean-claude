@@ -82,9 +82,9 @@ export function EditTokenPane({
 
   return (
     <>
-      <div className="w-80 shrink-0 rounded-lg border border-neutral-700 bg-neutral-800/50 p-4">
+      <div className="border-glass-border bg-bg-1/50 w-80 shrink-0 rounded-lg border p-4">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-medium text-neutral-200">Edit Token</h3>
+          <h3 className="text-ink-1 font-medium">Edit Token</h3>
           <IconButton
             onClick={onClose}
             icon={<X />}
@@ -95,14 +95,14 @@ export function EditTokenPane({
 
         <div className="flex flex-col gap-4">
           <div>
-            <label className="mb-2 block text-sm font-medium text-neutral-400">
+            <label className="text-ink-2 mb-2 block text-sm font-medium">
               Label
             </label>
             <Input value={label} onChange={(e) => setLabel(e.target.value)} />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-neutral-400">
+            <label className="text-ink-2 mb-2 block text-sm font-medium">
               New Token (leave empty to keep current)
             </label>
             <Input
@@ -115,7 +115,7 @@ export function EditTokenPane({
 
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <label className="text-sm font-medium text-neutral-400">
+              <label className="text-ink-2 text-sm font-medium">
                 Expiration Date
               </label>
               {token.providerType === 'azure-devops' && (
@@ -139,7 +139,7 @@ export function EditTokenPane({
           </div>
 
           {error && (
-            <div className="rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+            <div className="bg-status-fail/10 text-status-fail border-status-fail/50 rounded-lg border px-3 py-2 text-sm">
               {error}
             </div>
           )}

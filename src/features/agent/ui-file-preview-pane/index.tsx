@@ -94,18 +94,18 @@ export function FilePreviewPane({
     : '';
 
   return (
-    <div className="flex h-full w-[450px] flex-col border-l border-neutral-700 bg-neutral-900">
+    <div className="border-glass-border bg-bg-0 flex h-full w-[450px] flex-col border-l">
       {/* Header */}
-      <div className="flex items-center gap-2 border-b border-neutral-700 px-4 py-3">
+      <div className="border-glass-border flex items-center gap-2 border-b px-4 py-3">
         <div className="min-w-0 flex-1">
           <div
-            className="truncate text-sm font-medium text-neutral-200"
+            className="text-ink-1 truncate text-sm font-medium"
             title={fullPath}
           >
             {filePath}
           </div>
           {lineStart && (
-            <div className="text-xs text-neutral-500">
+            <div className="text-ink-3 text-xs">
               Line {lineStart}
               {lineEnd && lineEnd !== lineStart && `-${lineEnd}`}
             </div>
@@ -113,14 +113,14 @@ export function FilePreviewPane({
         </div>
         <button
           onClick={handleOpenInEditor}
-          className="rounded p-1.5 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
+          className="hover:text-ink-1 text-ink-2 hover:bg-glass-medium rounded p-1.5"
           title="Open in editor"
         >
           <ExternalLink className="h-4 w-4" />
         </button>
         <button
           onClick={onClose}
-          className="rounded p-1.5 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
+          className="hover:text-ink-1 text-ink-2 hover:bg-glass-medium rounded p-1.5"
           title="Close"
         >
           <X className="h-4 w-4" />
@@ -130,19 +130,19 @@ export function FilePreviewPane({
       {/* Content */}
       <div className="flex-1 overflow-auto">
         {isLoading && (
-          <div className="flex h-full items-center justify-center text-neutral-500">
+          <div className="text-ink-3 flex h-full items-center justify-center">
             Loading...
           </div>
         )}
         {error && (
-          <div className="flex h-full items-center justify-center text-red-400">
+          <div className="text-status-fail flex h-full items-center justify-center">
             {error}
           </div>
         )}
         {!isLoading && !error && content && (
           <div className="relative">
             {/* Line numbers */}
-            <div className="absolute top-0 left-0 flex flex-col border-r border-neutral-700 bg-neutral-900 px-2 py-4 text-right text-xs text-neutral-600 select-none">
+            <div className="border-glass-border bg-bg-0 text-ink-4 absolute top-0 left-0 flex flex-col border-r px-2 py-4 text-right text-xs select-none">
               {content.split('\n').map((_, index) => {
                 const lineNum = index + 1;
                 const isHighlighted =

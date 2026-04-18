@@ -83,7 +83,7 @@ export function useMessageContextMenu() {
       <div
         ref={menuRef}
         role="menu"
-        className="bg-surface fixed z-50 min-w-48 overflow-y-auto rounded-xl py-1 shadow-lg"
+        className="bg-bg-1 border-glass-border fixed z-50 min-w-48 overflow-y-auto rounded-xl border py-1 shadow-lg"
         style={{
           left: adjustedPos?.x ?? menu.x,
           top: adjustedPos?.y ?? menu.y,
@@ -99,7 +99,7 @@ export function useMessageContextMenu() {
               item.onClick();
               close();
             }}
-            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-neutral-300 transition-colors hover:bg-neutral-700 focus:bg-neutral-700 focus:outline-none"
+            className="text-ink-1 hover:bg-glass-medium focus:bg-glass-medium flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors focus:outline-none"
           >
             <span className="h-3.5 w-3.5 shrink-0 [&>svg]:h-full [&>svg]:w-full">
               {item.icon}

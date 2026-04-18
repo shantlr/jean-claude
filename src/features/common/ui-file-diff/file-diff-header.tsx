@@ -22,22 +22,20 @@ export function FileDiffHeader({
     <>
       <div
         className={clsx(
-          'flex items-center gap-2 overflow-hidden bg-neutral-800/50 px-4 py-2',
+          'bg-bg-1/50 flex items-center gap-2 overflow-hidden px-4 py-2',
           className,
         )}
       >
         <DiffStatusBadge status={file.status} />
-        <div className="shrink overflow-hidden font-mono text-sm text-ellipsis whitespace-nowrap text-neutral-300">
+        <div className="text-ink-1 shrink overflow-hidden font-mono text-sm text-ellipsis whitespace-nowrap">
           {file.path}
         </div>
         {file.status === 'renamed' && file.originalPath && (
-          <span className="text-xs text-neutral-500">
-            ← {file.originalPath}
-          </span>
+          <span className="text-ink-3 text-xs">← {file.originalPath}</span>
         )}
         {hasAnnotations && (
           <span
-            className="flex items-center gap-1 text-amber-400/70"
+            className="text-status-run/70 flex items-center gap-1"
             title="Has AI annotations"
           >
             <MessageCircle className="h-3.5 w-3.5" aria-hidden />

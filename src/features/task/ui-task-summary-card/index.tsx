@@ -119,23 +119,23 @@ export function TaskSummaryCard({
                   ? 'completed-unread-border-selected'
                   : 'completed-unread-border'
                 : isSelected
-                  ? 'border border-neutral-500/60 bg-neutral-700/80 shadow-sm'
-                  : 'border border-transparent hover:translate-x-0.5 hover:bg-neutral-800/70',
+                  ? 'border-glass-border-strong bg-glass-strong border shadow-sm'
+                  : 'hover:bg-glass-light border border-transparent hover:translate-x-0.5',
       )}
     >
       {/* Top row: status, name, number badge */}
       <div className="flex items-center gap-1">
         {isDeleting ? (
-          <Loader2 className="h-3 w-3 shrink-0 animate-spin text-neutral-400" />
+          <Loader2 className="text-ink-2 h-3 w-3 shrink-0 animate-spin" />
         ) : (
           <StatusIndicator status={task.status as TaskStatus} />
         )}
         {task.pullRequestId && (
-          <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-green-500" />
+          <GitPullRequest className="text-status-done h-3.5 w-3.5 shrink-0" />
         )}
         {hasRunningCommand && (
           <span title="Command running">
-            <Terminal className="animate-command-running h-3.5 w-3.5 shrink-0 text-green-500" />
+            <Terminal className="animate-command-running text-status-done h-3.5 w-3.5 shrink-0" />
           </span>
         )}
         <span className="min-w-0 flex-1 truncate text-sm font-semibold">
@@ -148,12 +148,12 @@ export function TaskSummaryCard({
           />
         )}
         {needsAttention ? (
-          <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
+          <AlertCircle className="text-status-run h-4 w-4 shrink-0" />
         ) : null}
       </div>
 
       {/* Bottom row: project tag, time */}
-      <div className="flex items-center gap-2 text-[11px] text-neutral-500">
+      <div className="text-ink-3 flex items-center gap-2 text-[11px]">
         <span className="truncate">{projectName}</span>
         <span className="ml-auto shrink-0 tabular-nums">
           {formatRelativeTime(task.updatedAt)}
@@ -162,9 +162,9 @@ export function TaskSummaryCard({
 
       {/* Background job indicator */}
       {hasBgJob && !isDeleting && (
-        <div className="flex items-center gap-1.5 rounded-md bg-violet-500/10 px-2 py-1 ring-1 ring-violet-500/20">
-          <Loader2 className="h-3 w-3 shrink-0 animate-spin text-violet-400" />
-          <span className="truncate text-[11px] text-violet-300">
+        <div className="bg-acc-soft ring-acc-line flex items-center gap-1.5 rounded-md px-2 py-1 ring-1">
+          <Loader2 className="text-acc-ink h-3 w-3 shrink-0 animate-spin" />
+          <span className="text-acc-ink truncate text-[11px]">
             {runningBgJobs.map((j) => bgJobLabel(j.type)).join(', ')}
           </span>
         </div>
@@ -172,7 +172,7 @@ export function TaskSummaryCard({
 
       {/* Pending message row */}
       {task.pendingMessage && (
-        <div className="flex items-center gap-1 text-xs text-amber-400">
+        <div className="text-status-run flex items-center gap-1 text-xs">
           <MessageSquare className="h-3 w-3 shrink-0" />
           <span className="truncate">{task.pendingMessage}</span>
         </div>

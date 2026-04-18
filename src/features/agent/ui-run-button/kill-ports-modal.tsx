@@ -23,23 +23,23 @@ export function KillPortsModal({
       closeOnEscape={!isLoading}
     >
       <div className="-mt-2 mb-4 flex items-center gap-3">
-        <div className="rounded-full bg-yellow-500/20 p-2">
-          <AlertTriangle className="h-5 w-5 text-yellow-500" />
+        <div className="bg-status-run/20 rounded-full p-2">
+          <AlertTriangle className="text-status-run h-5 w-5" />
         </div>
-        <p className="text-sm text-neutral-300">
+        <p className="text-ink-1 text-sm">
           The following ports are already in use. Do you want to kill these
           processes and start the commands?
         </p>
       </div>
 
-      <div className="mb-4 max-h-48 overflow-y-auto rounded-md border border-neutral-700 bg-neutral-900 p-3">
+      <div className="border-glass-border bg-bg-0 mb-4 max-h-48 overflow-y-auto rounded-md border p-3">
         {error.portsInUse.map((portInfo, idx) => (
           <div
             key={idx}
             className="flex items-center justify-between py-1 text-sm"
           >
-            <span className="font-mono text-neutral-200">:{portInfo.port}</span>
-            <span className="text-neutral-400">
+            <span className="text-ink-1 font-mono">:{portInfo.port}</span>
+            <span className="text-ink-2">
               {portInfo.processInfo ?? 'Unknown process'}
             </span>
           </div>
@@ -51,7 +51,7 @@ export function KillPortsModal({
           type="button"
           onClick={onCancel}
           disabled={isLoading}
-          className="rounded-md px-4 py-2 text-sm text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200 disabled:opacity-50"
+          className="text-ink-2 hover:bg-glass-medium hover:text-ink-1 rounded-md px-4 py-2 text-sm disabled:opacity-50"
         >
           Cancel
         </button>

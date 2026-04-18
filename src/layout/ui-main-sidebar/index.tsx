@@ -45,7 +45,7 @@ export function MainSidebar() {
   return (
     <aside
       className={clsx(
-        'relative flex h-full shrink-0 flex-col',
+        'bg-glass-subtle border-glass-border relative flex h-full shrink-0 flex-col border-r backdrop-blur-xl backdrop-saturate-[130%]',
         isDragging && 'select-none',
       )}
       style={{ width }}
@@ -57,8 +57,8 @@ export function MainSidebar() {
       <div
         onMouseDown={handleMouseDown}
         className={clsx(
-          'hover:bg-primary/50 absolute top-0 right-0 h-full w-0.5 cursor-col-resize transition-all duration-150 hover:w-1',
-          isDragging && 'bg-primary/50 w-1',
+          'hover:bg-acc/50 absolute top-0 right-0 h-full w-0.5 cursor-col-resize transition-all duration-150 hover:w-1',
+          isDragging && 'bg-acc/50 w-1',
         )}
       />
     </aside>

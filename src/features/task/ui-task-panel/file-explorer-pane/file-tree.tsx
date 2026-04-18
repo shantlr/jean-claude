@@ -34,15 +34,13 @@ export function FileTree({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-4">
-        <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+        <Loader2 className="text-ink-2 h-4 w-4 animate-spin" />
       </div>
     );
   }
 
   if (!entries || entries.length === 0) {
-    return (
-      <div className="px-3 py-2 text-xs text-neutral-500">Empty directory</div>
-    );
+    return <div className="text-ink-3 px-3 py-2 text-xs">Empty directory</div>;
   }
 
   return (
@@ -89,21 +87,21 @@ function FileTreeNode({
         <Button
           onClick={() => onToggleDir(entry.path)}
           className={clsx(
-            'flex w-full items-center gap-1 py-0.5 text-left text-sm hover:bg-neutral-700/50',
+            'hover:bg-glass-medium/50 flex w-full items-center gap-1 py-0.5 text-left text-sm',
           )}
           style={{ paddingLeft: 8 + depth * 16 }}
         >
           {isExpanded ? (
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+            <ChevronDown className="text-ink-2 h-3.5 w-3.5 shrink-0" />
           ) : (
-            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+            <ChevronRight className="text-ink-2 h-3.5 w-3.5 shrink-0" />
           )}
           {isExpanded ? (
-            <FolderOpen className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+            <FolderOpen className="text-ink-2 h-3.5 w-3.5 shrink-0" />
           ) : (
-            <Folder className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+            <Folder className="text-ink-2 h-3.5 w-3.5 shrink-0" />
           )}
-          <span className="truncate text-neutral-300">{entry.name}</span>
+          <span className="text-ink-1 truncate">{entry.name}</span>
         </Button>
         {isExpanded && (
           <DirectoryChildren
@@ -126,12 +124,12 @@ function FileTreeNode({
       className={clsx(
         'flex w-full items-center gap-1 py-0.5 text-left text-sm',
         isSelected
-          ? 'bg-neutral-700 text-neutral-100'
-          : 'text-neutral-400 hover:bg-neutral-700/50 hover:text-neutral-300',
+          ? 'text-ink-0 bg-glass-medium'
+          : 'text-ink-2 hover:bg-glass-medium/50 hover:text-ink-1',
       )}
       style={{ paddingLeft: 8 + depth * 16 + 14 }}
     >
-      <File className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
+      <File className="text-ink-3 h-3.5 w-3.5 shrink-0" />
       <span className="truncate">{entry.name}</span>
     </Button>
   );
@@ -162,7 +160,7 @@ function DirectoryChildren({
   if (isLoading) {
     return (
       <div
-        className="flex items-center gap-1 py-0.5 text-xs text-neutral-500"
+        className="text-ink-3 flex items-center gap-1 py-0.5 text-xs"
         style={{ paddingLeft: 8 + depth * 16 }}
       >
         <Loader2 className="h-3 w-3 animate-spin" />
@@ -174,7 +172,7 @@ function DirectoryChildren({
   if (!entries || entries.length === 0) {
     return (
       <div
-        className="py-0.5 text-xs text-neutral-600 italic"
+        className="text-ink-4 py-0.5 text-xs italic"
         style={{ paddingLeft: 8 + depth * 16 + 14 }}
       >
         Empty

@@ -22,7 +22,7 @@ export function DeleteWorktreeContent({
 
   if (isStatusLoading) {
     return (
-      <div className="flex items-center gap-2 py-4 text-sm text-neutral-400">
+      <div className="text-ink-2 flex items-center gap-2 py-4 text-sm">
         <Loader2 className="h-4 w-4 animate-spin" />
         Checking worktree status...
       </div>
@@ -31,9 +31,9 @@ export function DeleteWorktreeContent({
 
   return (
     <>
-      <p className="mb-3 text-sm text-neutral-400">
+      <p className="text-ink-2 mb-3 text-sm">
         This will remove the worktree directory. The branch{' '}
-        <code className="rounded bg-neutral-800 px-1.5 py-0.5 text-xs text-neutral-300">
+        <code className="bg-bg-1 text-ink-1 rounded px-1.5 py-0.5 text-xs">
           {branchName}
         </code>{' '}
         will be kept.
@@ -51,7 +51,7 @@ export function DeleteWorktreeContent({
           type="button"
           onClick={onClose}
           disabled={isPending}
-          className="flex-1 cursor-pointer rounded-md bg-neutral-700 px-3 py-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-neutral-600 disabled:opacity-50"
+          className="bg-glass-medium text-ink-1 hover:bg-bg-3 flex-1 cursor-pointer rounded-md px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50"
         >
           Cancel
         </button>
@@ -59,7 +59,7 @@ export function DeleteWorktreeContent({
           type="button"
           onClick={onConfirm}
           disabled={isPending}
-          className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="bg-status-fail flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isPending && (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />

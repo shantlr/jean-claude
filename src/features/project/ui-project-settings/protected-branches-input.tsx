@@ -31,8 +31,8 @@ export function ProtectedBranchesInput({
 
   return (
     <div>
-      <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-neutral-300">
-        <Shield className="h-4 w-4 text-amber-400" />
+      <label className="text-ink-1 mb-1 flex items-center gap-1.5 text-sm font-medium">
+        <Shield className="text-status-run h-4 w-4" />
         Protected branches
       </label>
       {protectedBranches.length > 0 && (
@@ -64,7 +64,7 @@ export function ProtectedBranchesInput({
         disabled={branchesLoading || availableBranches.length === 0}
         className="w-full justify-between"
       />
-      <p className="mt-1 text-xs text-neutral-500">
+      <p className="text-ink-3 mt-1 text-xs">
         Direct merges into protected branches are blocked
       </p>
     </div>
@@ -79,13 +79,13 @@ export function ProtectedBranchBadge({
   onRemove?: () => void;
 }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-md border border-amber-800/50 bg-amber-950/30 px-2 py-0.5 text-xs text-amber-300">
+    <span className="border-status-run/50 bg-status-run/10 text-status-run inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs">
       {branch}
       {onRemove && (
         <button
           type="button"
           onClick={onRemove}
-          className="cursor-pointer rounded p-0.5 transition-colors hover:bg-amber-800/30"
+          className="hover:bg-status-run/20 cursor-pointer rounded p-0.5 transition-colors"
         >
           <X className="h-3 w-3" />
         </button>

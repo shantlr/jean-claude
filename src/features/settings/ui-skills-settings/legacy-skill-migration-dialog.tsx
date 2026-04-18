@@ -167,14 +167,14 @@ export function LegacySkillMigrationDialog({
   }, [executeMutation, selectedIds, addToast]);
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/55">
-      <div className="flex h-[75svh] w-[78svw] max-w-[1100px] flex-col rounded-lg border border-neutral-700 bg-neutral-900">
-        <div className="flex items-center justify-between border-b border-neutral-700 px-4 py-3">
+    <div className="bg-bg-0/55 fixed inset-0 z-60 flex items-center justify-center">
+      <div className="border-glass-border bg-bg-0 flex h-[75svh] w-[78svw] max-w-[1100px] flex-col rounded-lg border">
+        <div className="border-glass-border flex items-center justify-between border-b px-4 py-3">
           <div>
-            <h3 className="text-base font-semibold text-neutral-100">
+            <h3 className="text-ink-0 text-base font-semibold">
               Migrate Manually Installed Skills
             </h3>
-            <p className="text-xs text-neutral-400">
+            <p className="text-ink-2 text-xs">
               Move manually installed skills into Jean-Claude canonical storage.
             </p>
           </div>
@@ -188,7 +188,7 @@ export function LegacySkillMigrationDialog({
 
         <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
           {previewMutation.isPending && (
-            <div className="flex items-center gap-2 rounded border border-neutral-700 bg-neutral-800/40 p-3 text-sm text-neutral-300">
+            <div className="border-glass-border bg-bg-1/40 text-ink-1 flex items-center gap-2 rounded border p-3 text-sm">
               <RefreshCw className="h-4 w-4 animate-spin" />
               Preparing migration preview...
             </div>
@@ -196,11 +196,9 @@ export function LegacySkillMigrationDialog({
 
           {!previewMutation.isPending && result && executeCounts && (
             <div className="space-y-3">
-              <div className="rounded border border-neutral-700 bg-neutral-800/40 p-3 text-sm text-neutral-300">
-                <div className="font-medium text-neutral-100">
-                  Migration Results
-                </div>
-                <div className="mt-1 text-xs text-neutral-400">
+              <div className="border-glass-border bg-bg-1/40 text-ink-1 rounded border p-3 text-sm">
+                <div className="text-ink-0 font-medium">Migration Results</div>
+                <div className="text-ink-2 mt-1 text-xs">
                   Migrated: {executeCounts.migrated} · Skipped:{' '}
                   {executeCounts.skipped} · Failed: {executeCounts.failed}
                 </div>
@@ -211,13 +209,13 @@ export function LegacySkillMigrationDialog({
                 .map((entry) => (
                   <div
                     key={entry.id}
-                    className="rounded border border-red-900/50 bg-red-950/30 p-3"
+                    className="border-status-fail/50 bg-status-fail/30 rounded border p-3"
                   >
-                    <div className="flex items-center gap-2 text-sm text-red-200">
+                    <div className="text-status-fail flex items-center gap-2 text-sm">
                       <TriangleAlert className="h-4 w-4" />
                       {entry.name || entry.id}
                     </div>
-                    <div className="mt-1 text-xs text-red-300">
+                    <div className="text-status-fail mt-1 text-xs">
                       {entry.reason}
                     </div>
                   </div>
@@ -227,7 +225,7 @@ export function LegacySkillMigrationDialog({
 
           {!previewMutation.isPending && !result && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between rounded border border-neutral-700 bg-neutral-800/40 p-3 text-xs text-neutral-300">
+              <div className="border-glass-border bg-bg-1/40 text-ink-1 flex items-center justify-between rounded border p-3 text-xs">
                 <span>
                   Selected: {counts.selected}/{counts.migrate} · Conflicts:{' '}
                   {counts.conflict} · Invalid: {counts.invalid}
@@ -252,7 +250,7 @@ export function LegacySkillMigrationDialog({
 
                 return (
                   <div key={backendType} className="space-y-2">
-                    <div className="text-xs font-semibold tracking-wide text-neutral-400 uppercase">
+                    <div className="text-ink-2 text-xs font-semibold tracking-wide uppercase">
                       {backendLabel(backendType)}
                     </div>
                     <div className="space-y-2">
@@ -263,9 +261,9 @@ export function LegacySkillMigrationDialog({
                         return (
                           <div
                             key={item.id}
-                            className={`flex gap-3 rounded border border-neutral-700 bg-neutral-900/70 p-3 ${
+                            className={`border-glass-border bg-bg-0/70 flex gap-3 rounded border p-3 ${
                               isMigratable
-                                ? 'cursor-pointer hover:border-neutral-600'
+                                ? 'hover:border-glass-border-strong cursor-pointer'
                                 : 'opacity-60'
                             }`}
                           >
@@ -279,16 +277,16 @@ export function LegacySkillMigrationDialog({
                             )}
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center justify-between gap-2">
-                                <div className="text-sm font-medium text-neutral-100">
+                                <div className="text-ink-0 text-sm font-medium">
                                   {item.name}
                                 </div>
                                 <StatusBadge status={item.status} />
                               </div>
-                              <div className="mt-1 text-xs text-neutral-500">
+                              <div className="text-ink-3 mt-1 text-xs">
                                 {item.legacyPath} → {item.targetCanonicalPath}
                               </div>
                               {item.reason && (
-                                <div className="mt-2 text-xs text-amber-300">
+                                <div className="text-status-run mt-2 text-xs">
                                   {item.reason}
                                 </div>
                               )}
@@ -304,7 +302,7 @@ export function LegacySkillMigrationDialog({
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-neutral-700 px-4 py-3">
+        <div className="border-glass-border flex items-center justify-end gap-2 border-t px-4 py-3">
           <Button type="button" onClick={onClose} size="sm">
             {result ? 'Close' : 'Cancel'}
           </Button>

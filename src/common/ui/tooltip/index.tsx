@@ -116,7 +116,7 @@ export function Tooltip({
           <div
             role="tooltip"
             className={clsx(
-              'pointer-events-none fixed z-50 rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-xs text-neutral-300 shadow-lg',
+              'border-glass-border bg-bg-1 text-ink-1 pointer-events-none fixed z-50 rounded-md border px-3 py-2 text-xs shadow-lg',
               className,
             )}
             style={{

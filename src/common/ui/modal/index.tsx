@@ -57,26 +57,24 @@ export function Modal({
     <FocusLock returnFocus>
       <RemoveScroll>
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          className="bg-bg-0/50 fixed inset-0 z-50 flex items-center justify-center"
           onClick={handleBackdropClick}
         >
           <div
             ref={contentRef}
-            className={`flex max-h-[85vh] w-full ${modalSizeClasses[size]} flex-col rounded-lg bg-neutral-800 shadow-xl`}
+            className={`flex max-h-[85vh] w-full ${modalSizeClasses[size]} bg-bg-1 flex-col rounded-lg shadow-xl`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-neutral-700 px-4 py-3">
+            <div className="border-glass-border flex items-center justify-between border-b px-4 py-3">
               {title ? (
-                <h2 className="text-lg font-semibold text-neutral-100">
-                  {title}
-                </h2>
+                <h2 className="text-ink-0 text-lg font-semibold">{title}</h2>
               ) : (
                 <div />
               )}
               <button
                 onClick={onClose}
                 aria-label="Close dialog"
-                className="rounded p-1 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200"
+                className="text-ink-2 hover:bg-glass-medium hover:text-ink-1 rounded p-1"
               >
                 <X className="h-5 w-5" aria-hidden />
               </button>

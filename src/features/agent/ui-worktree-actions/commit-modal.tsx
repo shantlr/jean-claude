@@ -105,7 +105,7 @@ export function CommitModal({
           <div className="mb-2 flex items-center justify-between">
             <label
               htmlFor="commit-message"
-              className="text-sm font-medium text-neutral-300"
+              className="text-ink-1 text-sm font-medium"
             >
               Commit message
             </label>
@@ -152,7 +152,7 @@ export function CommitModal({
         />
 
         {generateMutation.error && (
-          <div className="mb-4 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-400">
+          <div className="bg-status-fail/10 text-status-fail mb-4 rounded-md px-3 py-2 text-sm">
             Failed to generate commit message. Please enter one manually.
           </div>
         )}

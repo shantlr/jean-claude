@@ -81,7 +81,7 @@ function ProjectRunList({
 
   if (sortedRuns.length === 0) {
     return (
-      <div className="py-4 text-center text-xs text-neutral-500">
+      <div className="text-ink-3 py-4 text-center text-xs">
         No runs found for tracked pipelines in {project.name}.
       </div>
     );
@@ -117,7 +117,7 @@ export function RunList({
 
   if (filteredProjects.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center text-sm text-neutral-500">
+      <div className="text-ink-3 flex flex-1 items-center justify-center text-sm">
         No Azure-linked projects found
       </div>
     );

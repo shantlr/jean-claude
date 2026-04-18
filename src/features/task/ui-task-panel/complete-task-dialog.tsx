@@ -64,9 +64,7 @@ export function CompleteTaskDialog({
       closeOnClickOutside={!isPending}
       closeOnEscape={!isPending}
     >
-      <p className="mb-3 text-sm text-neutral-300">
-        Mark this task as completed?
-      </p>
+      <p className="text-ink-1 mb-3 text-sm">Mark this task as completed?</p>
 
       {hasWorktree && (
         <div className="mb-4">

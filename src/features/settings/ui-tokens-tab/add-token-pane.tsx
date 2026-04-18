@@ -58,9 +58,9 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
   const isValid = label.trim() && token.trim();
 
   return (
-    <div className="w-80 shrink-0 rounded-lg border border-neutral-700 bg-neutral-800/50 p-4">
+    <div className="border-glass-border bg-bg-1/50 w-80 shrink-0 rounded-lg border p-4">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="font-medium text-neutral-200">Add Token</h3>
+        <h3 className="text-ink-1 font-medium">Add Token</h3>
         <IconButton
           onClick={onClose}
           icon={<X />}
@@ -71,7 +71,7 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
 
       <div className="flex flex-col gap-4">
         <div>
-          <label className="mb-2 block text-sm font-medium text-neutral-400">
+          <label className="text-ink-2 mb-2 block text-sm font-medium">
             Provider Type
           </label>
           <Select
@@ -85,7 +85,7 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
         <div>
           <label
             htmlFor="token-label"
-            className="mb-2 block text-sm font-medium text-neutral-400"
+            className="text-ink-2 mb-2 block text-sm font-medium"
           >
             Label
           </label>
@@ -101,7 +101,7 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
         <div>
           <label
             htmlFor="token-pat"
-            className="mb-2 block text-sm font-medium text-neutral-400"
+            className="text-ink-2 mb-2 block text-sm font-medium"
           >
             Personal Access Token
           </label>
@@ -117,7 +117,7 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-neutral-400">
+          <label className="text-ink-2 mb-2 block text-sm font-medium">
             Expiration Date (optional)
           </label>
           <Input
@@ -132,7 +132,7 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
             href="https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300"
+            className="text-acc-ink hover:text-acc-ink flex items-center gap-1 text-sm"
           >
             How to create a PAT
             <ExternalLink className="h-3 w-3" aria-hidden />
@@ -140,7 +140,7 @@ export function AddTokenPane({ onClose }: { onClose: () => void }) {
         )}
 
         {error && (
-          <div className="rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+          <div className="bg-status-fail/10 text-status-fail border-status-fail/50 rounded-lg border px-3 py-2 text-sm">
             {error}
           </div>
         )}
