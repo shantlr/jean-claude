@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Button } from '@/common/ui/button';
 import { Checkbox } from '@/common/ui/checkbox';
 import { Input } from '@/common/ui/input';
-import { Select } from '@/common/ui/select';
 import {
   AVAILABLE_BACKENDS,
   getModelsForBackend,
@@ -28,7 +27,6 @@ import {
   useUpdateUsageDisplaySetting,
 } from '@/hooks/use-settings';
 import { api, type NonExistentClaudeProject } from '@/lib/api';
-import { useUISetting, useUIStore } from '@/stores/ui';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import { PRESET_EDITORS } from '@shared/types';
 import { USAGE_PROVIDERS, type UsageProviderType } from '@shared/usage-types';
@@ -167,12 +165,6 @@ export function GeneralSettings() {
 
       {/* Usage Display */}
       <UsageDisplaySettings />
-
-      {/* Divider */}
-      <div className="border-line-soft my-8 border-t" />
-
-      {/* Prompt Navigator */}
-      <PromptNavigatorSettings />
 
       {/* Divider */}
       <div className="border-line-soft my-8 border-t" />
@@ -363,70 +355,6 @@ function SummaryModelsSettings() {
             value={models.opencode}
             onChange={(model) => setModelForBackend('opencode', model)}
             models={getModelsForBackend('opencode', opencodeDynamicModels)}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const MAX_WIDTH_OPTIONS = [
-  { value: 30, label: '30%' },
-  { value: 40, label: '40%' },
-  { value: 50, label: '50%' },
-  { value: 60, label: '60%' },
-  { value: 70, label: '70%' },
-  { value: 80, label: '80%' },
-  { value: 100, label: '100% (max 56rem)' },
-];
-
-function PromptNavigatorSettings() {
-  const defaultCollapsed = useUISetting('promptNavigatorDefaultCollapsed');
-  const maxWidth = useUISetting('promptNavigatorMaxWidth');
-  const setSetting = useUIStore((s) => s.setSetting);
-  const toggleSetting = useUIStore((s) => s.toggleSetting);
-
-  return (
-    <div>
-      <h2 className="text-ink-1 text-lg font-semibold">Prompt Navigator</h2>
-      <p className="text-ink-3 mt-1 text-sm">
-        Configure the prompt navigator shown in message streams.
-      </p>
-
-      <div className="mt-4 space-y-4">
-        {/* Default collapsed state */}
-        <div
-          className={`rounded-lg border px-4 py-3 ${
-            defaultCollapsed
-              ? 'border-glass-border bg-bg-1'
-              : 'border-line-soft bg-bg-0'
-          }`}
-        >
-          <Checkbox
-            checked={defaultCollapsed}
-            onChange={() => toggleSetting('promptNavigatorDefaultCollapsed')}
-            label="Start collapsed"
-            description="Navigator starts collapsed and can be expanded per session"
-          />
-        </div>
-
-        {/* Max width */}
-        <div className="border-glass-border bg-bg-1 flex items-center justify-between rounded-lg border px-4 py-3">
-          <div>
-            <div className="text-ink-1 text-sm font-medium">Max width</div>
-            <div className="text-ink-3 text-xs">
-              Maximum width of the prompt navigator panel
-            </div>
-          </div>
-          <Select
-            value={String(maxWidth)}
-            options={MAX_WIDTH_OPTIONS.map((opt) => ({
-              value: String(opt.value),
-              label: opt.label,
-            }))}
-            onChange={(value) =>
-              setSetting('promptNavigatorMaxWidth', Number(value))
-            }
           />
         </div>
       </div>

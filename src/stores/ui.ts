@@ -4,15 +4,11 @@ import { persist } from 'zustand/middleware';
 interface UISettings {
   sidebarCollapsed: boolean;
   workItemsPanelWidth: number;
-  promptNavigatorDefaultCollapsed: boolean;
-  promptNavigatorMaxWidth: number;
 }
 
 const UI_SETTINGS_DEFAULTS: UISettings = {
   sidebarCollapsed: false,
   workItemsPanelWidth: 50,
-  promptNavigatorDefaultCollapsed: false,
-  promptNavigatorMaxWidth: 50,
 };
 
 function validateSettings(settings: UISettings): UISettings {
@@ -21,10 +17,6 @@ function validateSettings(settings: UISettings): UISettings {
     workItemsPanelWidth: Math.min(
       80,
       Math.max(20, settings.workItemsPanelWidth),
-    ),
-    promptNavigatorMaxWidth: Math.min(
-      100,
-      Math.max(30, settings.promptNavigatorMaxWidth),
     ),
   };
 }
@@ -44,11 +36,6 @@ function migrateLegacyKeys(raw: Record<string, unknown>): Partial<UISettings> {
     legacy.sidebarCollapsed = raw.sidebarCollapsed;
   if (typeof raw.workItemsPanelWidth === 'number')
     legacy.workItemsPanelWidth = raw.workItemsPanelWidth;
-  if (typeof raw.promptNavigatorDefaultCollapsed === 'boolean')
-    legacy.promptNavigatorDefaultCollapsed =
-      raw.promptNavigatorDefaultCollapsed;
-  if (typeof raw.promptNavigatorMaxWidth === 'number')
-    legacy.promptNavigatorMaxWidth = raw.promptNavigatorMaxWidth;
   return legacy;
 }
 

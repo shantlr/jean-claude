@@ -61,45 +61,31 @@ function getResultDurationMs({
 export function computePromptAndResultDurations(
   displayMessages: DisplayMessage[],
 ): {
-  promptDurationMsByPromptIndex: Map<number, number>;
   resultDurationMsByEntryId: Map<string, number>;
 } {
-  const promptDurationMsByPromptIndex = new Map<number, number>();
   const resultDurationMsByEntryId = new Map<string, number>();
 
-  let currentPromptIndex = -1;
-  let activePromptIndex: number | undefined;
   let activePromptStartedAtMs: number | undefined;
 
   for (const message of displayMessages) {
     if (isDisplayPrompt(message)) {
-      currentPromptIndex += 1;
-      activePromptIndex = currentPromptIndex;
       activePromptStartedAtMs = getPromptDateMs(message);
       continue;
     }
 
-    if (
-      message.kind === 'entry' &&
-      message.entry.type === 'result' &&
-      activePromptIndex !== undefined
-    ) {
+    if (message.kind === 'entry' && message.entry.type === 'result') {
       const durationMs = getResultDurationMs({
         resultEntry: message.entry,
         activePromptStartedAtMs,
       });
 
       if (durationMs !== undefined) {
-        if (!promptDurationMsByPromptIndex.has(activePromptIndex)) {
-          promptDurationMsByPromptIndex.set(activePromptIndex, durationMs);
-        }
         resultDurationMsByEntryId.set(message.entry.id, durationMs);
       }
     }
   }
 
   return {
-    promptDurationMsByPromptIndex,
     resultDurationMsByEntryId,
   };
 }

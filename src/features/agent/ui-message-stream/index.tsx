@@ -34,11 +34,11 @@ import {
   useMessageContextMenu,
 } from './ui-message-context-menu';
 import type { ContextMenuItem } from './ui-message-context-menu';
+import { PromptSidebar } from './ui-prompt-sidebar';
 import { QueuedPromptEntry } from './ui-queued-prompt-entry';
 import { SkillEntry } from './ui-skill-entry';
 import { SubagentEntry } from './ui-subagent-entry';
 import { TimelineEntry, CompactingEntry } from './ui-timeline-entry';
-import { TimelinePromptNavigator } from './ui-timeline-prompt-navigator';
 import { computePromptIndexMap } from './use-prompt-navigation';
 import { WorkingIndicator } from './working-indicator';
 
@@ -154,7 +154,7 @@ export const MessageStream = memo(function MessageStream({
     [displayMessages],
   );
 
-  const { promptDurationMsByPromptIndex, resultDurationMsByEntryId } = useMemo(
+  const { resultDurationMsByEntryId } = useMemo(
     () => computePromptAndResultDurations(displayMessages),
     [displayMessages],
   );
@@ -270,69 +270,86 @@ export const MessageStream = memo(function MessageStream({
   }
 
   return (
-    <div
-      ref={scrollContainerRef}
-      onScroll={handleScroll}
-      className="h-full overflow-auto"
-      style={bottomPadding > 0 ? { paddingBottom: bottomPadding } : undefined}
-    >
-      {contextMenuPortal}
-      <TimelinePromptNavigator
+    <div className="flex h-full min-h-0">
+      <PromptSidebar
         scrollContainerRef={scrollContainerRef}
         displayMessages={displayMessages}
-        promptDurationMsByPromptIndex={promptDurationMsByPromptIndex}
+        bottomPadding={bottomPadding}
       />
-      {/* Timeline vertical line */}
-      <div className="timeline-gradient-line relative ml-3">
-        {displayMessages.map((displayMessage, index) => {
-          if (displayMessage.kind === 'skill') {
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="min-w-0 flex-1 overflow-auto"
+        style={bottomPadding > 0 ? { paddingBottom: bottomPadding } : undefined}
+      >
+        {contextMenuPortal}
+        {/* Timeline vertical line */}
+        <div className="timeline-gradient-line relative ml-3">
+          {displayMessages.map((displayMessage, index) => {
+            if (displayMessage.kind === 'skill') {
+              const promptIdx = promptIndexMap.get(index);
+              return (
+                <div
+                  key={index}
+                  onContextMenu={(e) => handleContextMenu(e, displayMessage)}
+                  {...(promptIdx !== undefined
+                    ? { 'data-prompt-index': promptIdx }
+                    : {})}
+                >
+                  <SkillEntry
+                    skillToolUse={displayMessage.skillToolUse}
+                    promptEntry={displayMessage.promptEntry}
+                    onFilePathClick={onFilePathClick}
+                  />
+                </div>
+              );
+            }
+            if (displayMessage.kind === 'compacting') {
+              return (
+                <CompactingEntry
+                  key={index}
+                  isComplete={!!displayMessage.endEntry}
+                />
+              );
+            }
+            if (displayMessage.kind === 'subagent') {
+              return (
+                <div
+                  key={index}
+                  onContextMenu={(e) => handleContextMenu(e, displayMessage)}
+                >
+                  <SubagentEntry
+                    toolUse={displayMessage.toolUse}
+                    childEntries={displayMessage.childEntries}
+                    onFilePathClick={onFilePathClick}
+                    onToolDiffClick={onToolDiffClick}
+                    onEntryContextMenu={handleEntryContextMenu}
+                  />
+                </div>
+              );
+            }
             const promptIdx = promptIndexMap.get(index);
+            if (promptIdx !== undefined) {
+              return (
+                <div
+                  key={index}
+                  data-prompt-index={promptIdx}
+                  onContextMenu={(e) => handleContextMenu(e, displayMessage)}
+                >
+                  <TimelineEntry
+                    entry={displayMessage.entry}
+                    resultDurationMs={resultDurationMsByEntryId.get(
+                      displayMessage.entry.id,
+                    )}
+                    onFilePathClick={onFilePathClick}
+                    onToolDiffClick={onToolDiffClick}
+                  />
+                </div>
+              );
+            }
             return (
               <div
                 key={index}
-                onContextMenu={(e) => handleContextMenu(e, displayMessage)}
-                {...(promptIdx !== undefined
-                  ? { 'data-prompt-index': promptIdx }
-                  : {})}
-              >
-                <SkillEntry
-                  skillToolUse={displayMessage.skillToolUse}
-                  promptEntry={displayMessage.promptEntry}
-                  onFilePathClick={onFilePathClick}
-                />
-              </div>
-            );
-          }
-          if (displayMessage.kind === 'compacting') {
-            return (
-              <CompactingEntry
-                key={index}
-                isComplete={!!displayMessage.endEntry}
-              />
-            );
-          }
-          if (displayMessage.kind === 'subagent') {
-            return (
-              <div
-                key={index}
-                onContextMenu={(e) => handleContextMenu(e, displayMessage)}
-              >
-                <SubagentEntry
-                  toolUse={displayMessage.toolUse}
-                  childEntries={displayMessage.childEntries}
-                  onFilePathClick={onFilePathClick}
-                  onToolDiffClick={onToolDiffClick}
-                  onEntryContextMenu={handleEntryContextMenu}
-                />
-              </div>
-            );
-          }
-          const promptIdx = promptIndexMap.get(index);
-          if (promptIdx !== undefined) {
-            return (
-              <div
-                key={index}
-                data-prompt-index={promptIdx}
                 onContextMenu={(e) => handleContextMenu(e, displayMessage)}
               >
                 <TimelineEntry
@@ -345,80 +362,65 @@ export const MessageStream = memo(function MessageStream({
                 />
               </div>
             );
-          }
-          return (
-            <div
-              key={index}
-              onContextMenu={(e) => handleContextMenu(e, displayMessage)}
-            >
-              <TimelineEntry
-                entry={displayMessage.entry}
-                resultDurationMs={resultDurationMsByEntryId.get(
-                  displayMessage.entry.id,
-                )}
-                onFilePathClick={onFilePathClick}
-                onToolDiffClick={onToolDiffClick}
+          })}
+          {isRunning && (
+            <div className="relative pl-6">
+              <div className="absolute top-2.5 -left-1 flex h-2 w-2 items-center justify-center">
+                <span className="animate-timeline-working-ping bg-acc/20 absolute h-3 w-3 rounded-full" />
+                <span className="animate-timeline-working-core bg-acc-ink h-2 w-2 rounded-full shadow-[0_0_5px_oklch(0.82_0.17_295_/_0.35)]" />
+              </div>
+              <div className="py-1.5 pr-3">
+                <WorkingIndicator />
+              </div>
+            </div>
+          )}
+          {/* Queued prompts */}
+          {queuedPrompts.map((prompt) => (
+            <QueuedPromptEntry
+              key={prompt.id}
+              prompt={prompt}
+              onCancel={onCancelQueuedPrompt ?? (() => {})}
+            />
+          ))}
+          {/* Permission request (in-stream banner) */}
+          {pendingPermission && (
+            <div className="my-2 mr-3 ml-2 overflow-hidden rounded-lg">
+              <PermissionBar
+                request={pendingPermission.request}
+                onRespond={pendingPermission.onRespond}
+                onAllowForSession={pendingPermission.onAllowForSession}
+                onAllowForProject={pendingPermission.onAllowForProject}
+                onAllowForProjectWorktrees={
+                  pendingPermission.onAllowForProjectWorktrees
+                }
+                onAllowGlobally={pendingPermission.onAllowGlobally}
+                onSetMode={pendingPermission.onSetMode}
+                worktreePath={pendingPermission.worktreePath}
               />
             </div>
-          );
-        })}
-        {isRunning && (
-          <div className="relative pl-6">
-            <div className="absolute top-2.5 -left-1 flex h-2 w-2 items-center justify-center">
-              <span className="animate-timeline-working-ping bg-acc/20 absolute h-3 w-3 rounded-full" />
-              <span className="animate-timeline-working-core bg-acc-ink h-2 w-2 rounded-full shadow-[0_0_5px_oklch(0.82_0.17_295_/_0.35)]" />
+          )}
+          {/* Question (in-stream banner) */}
+          {pendingQuestion && (
+            <div className="my-2 mr-3 ml-2 overflow-hidden rounded-lg">
+              <QuestionOptions
+                request={pendingQuestion.request}
+                onRespond={pendingQuestion.onRespond}
+              />
             </div>
-            <div className="py-1.5 pr-3">
-              <WorkingIndicator />
-            </div>
-          </div>
-        )}
-        {/* Queued prompts */}
-        {queuedPrompts.map((prompt) => (
-          <QueuedPromptEntry
-            key={prompt.id}
-            prompt={prompt}
-            onCancel={onCancelQueuedPrompt ?? (() => {})}
+          )}
+          <div ref={bottomRef} />
+        </div>
+        {/* Single hoisted modal for "Add to permissions" */}
+        {taskId && permissionModal && (
+          <AddPermissionModal
+            isOpen
+            onClose={closePermissionModal}
+            command={permissionModal.command}
+            taskId={taskId}
+            hasWorktree={hasWorktree ?? false}
           />
-        ))}
-        {/* Permission request (in-stream banner) */}
-        {pendingPermission && (
-          <div className="my-2 mr-3 ml-2 overflow-hidden rounded-lg">
-            <PermissionBar
-              request={pendingPermission.request}
-              onRespond={pendingPermission.onRespond}
-              onAllowForSession={pendingPermission.onAllowForSession}
-              onAllowForProject={pendingPermission.onAllowForProject}
-              onAllowForProjectWorktrees={
-                pendingPermission.onAllowForProjectWorktrees
-              }
-              onAllowGlobally={pendingPermission.onAllowGlobally}
-              onSetMode={pendingPermission.onSetMode}
-              worktreePath={pendingPermission.worktreePath}
-            />
-          </div>
         )}
-        {/* Question (in-stream banner) */}
-        {pendingQuestion && (
-          <div className="my-2 mr-3 ml-2 overflow-hidden rounded-lg">
-            <QuestionOptions
-              request={pendingQuestion.request}
-              onRespond={pendingQuestion.onRespond}
-            />
-          </div>
-        )}
-        <div ref={bottomRef} />
       </div>
-      {/* Single hoisted modal for "Add to permissions" */}
-      {taskId && permissionModal && (
-        <AddPermissionModal
-          isOpen
-          onClose={closePermissionModal}
-          command={permissionModal.command}
-          taskId={taskId}
-          hasWorktree={hasWorktree ?? false}
-        />
-      )}
     </div>
   );
 });
