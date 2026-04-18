@@ -6,7 +6,6 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
-  useState,
 } from 'react';
 
 import type {
@@ -22,7 +21,6 @@ import type {
 import type { ToolUseByName } from '@shared/normalized-message-v2';
 import type { InteractionMode } from '@shared/types';
 
-import { AddPermissionModal } from '../ui-add-permission-modal';
 import { PermissionBar } from '../ui-permission-bar';
 import { QuestionOptions } from '../ui-question-options';
 
@@ -91,8 +89,7 @@ export const MessageStream = memo(function MessageStream({
   bottomPadding = 0,
   pendingPermission,
   pendingQuestion,
-  taskId,
-  hasWorktree,
+  onAddBashToPermissions,
 }: {
   messages: NormalizedEntry[];
   isRunning?: boolean;
@@ -116,31 +113,12 @@ export const MessageStream = memo(function MessageStream({
   pendingPermission?: PermissionBannerProps | null;
   /** Question request to render inline at the bottom of the stream */
   pendingQuestion?: QuestionBannerProps | null;
-  /** Task ID for permission management */
-  taskId?: string;
-  /** Whether the task has a worktree */
-  hasWorktree?: boolean;
+  /** Callback to open the "Add to permissions" modal (state managed by parent) */
+  onAddBashToPermissions?: (command: string) => void;
 }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
-
-  // Single modal state for "Add to permissions" — hoisted here so only one instance exists
-  const [permissionModal, setPermissionModal] = useState<{
-    command: string;
-  } | null>(null);
-
-  const handleAddBashToPermissions = useCallback(
-    (command: string) => {
-      if (!taskId) return;
-      setPermissionModal({ command });
-    },
-    [taskId],
-  );
-
-  const closePermissionModal = useCallback(() => {
-    setPermissionModal(null);
-  }, []);
 
   // Merge skill messages for display
   const displayMessages = useMemo(
@@ -201,16 +179,14 @@ export const MessageStream = memo(function MessageStream({
 
       // "Add to permissions" for bash tool entries
       if (
-        taskId &&
+        onAddBashToPermissions &&
         displayMessage.kind === 'entry' &&
         displayMessage.entry.type === 'tool-use' &&
         displayMessage.entry.name === 'bash'
       ) {
         const command = (displayMessage.entry as ToolUseByName<'bash'>).input
           .command;
-        items.push(
-          addBashToPermissionsItem(handleAddBashToPermissions, command),
-        );
+        items.push(addBashToPermissionsItem(onAddBashToPermissions, command));
       }
 
       // "Show in Raw Messages" for all entries
@@ -229,7 +205,7 @@ export const MessageStream = memo(function MessageStream({
 
       return items;
     },
-    [taskId, onShowRawMessage, handleAddBashToPermissions],
+    [onAddBashToPermissions, onShowRawMessage],
   );
 
   const handleContextMenu = useCallback(
@@ -245,11 +221,13 @@ export const MessageStream = memo(function MessageStream({
     (e: MouseEvent, entry: NormalizedEntry) => {
       const items: ContextMenuItem[] = [];
 
-      if (taskId && entry.type === 'tool-use' && entry.name === 'bash') {
+      if (
+        onAddBashToPermissions &&
+        entry.type === 'tool-use' &&
+        entry.name === 'bash'
+      ) {
         const command = (entry as ToolUseByName<'bash'>).input.command;
-        items.push(
-          addBashToPermissionsItem(handleAddBashToPermissions, command),
-        );
+        items.push(addBashToPermissionsItem(onAddBashToPermissions, command));
       }
 
       if (onShowRawMessage && entry.id) {
@@ -258,7 +236,7 @@ export const MessageStream = memo(function MessageStream({
 
       openContextMenu(e, items);
     },
-    [taskId, onShowRawMessage, handleAddBashToPermissions, openContextMenu],
+    [onAddBashToPermissions, onShowRawMessage, openContextMenu],
   );
 
   if (messages.length === 0) {
@@ -410,16 +388,6 @@ export const MessageStream = memo(function MessageStream({
           )}
           <div ref={bottomRef} />
         </div>
-        {/* Single hoisted modal for "Add to permissions" */}
-        {taskId && permissionModal && (
-          <AddPermissionModal
-            isOpen
-            onClose={closePermissionModal}
-            command={permissionModal.command}
-            taskId={taskId}
-            hasWorktree={hasWorktree ?? false}
-          />
-        )}
       </div>
     </div>
   );

@@ -32,6 +32,7 @@ import {
 import { IconButton } from '@/common/ui/icon-button';
 import { Kbd } from '@/common/ui/kbd';
 import { Separator } from '@/common/ui/separator';
+import { AddPermissionModal } from '@/features/agent/ui-add-permission-modal';
 import {
   AVAILABLE_BACKENDS,
   getModelsForBackend,
@@ -191,6 +192,16 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const modal = useModal();
   const { data: task } = useTask(taskId);
   const projectId = task?.projectId;
+
+  // Permission modal state — hoisted here so it survives MessageStream unmount/remount cycles
+  const [permissionModal, setPermissionModal] = useState<{
+    command: string;
+  } | null>(null);
+  const handleAddBashToPermissions = useCallback(
+    (command: string) => setPermissionModal({ command }),
+    [],
+  );
+  const closePermissionModal = useCallback(() => setPermissionModal(null), []);
   const { data: project } = useProject(projectId ?? '');
   const { data: editorSetting } = useEditorSetting();
   const deleteTask = useDeleteTask();
@@ -1284,8 +1295,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               bottomPadding={footerHeight}
               pendingPermission={permissionProps}
               pendingQuestion={questionProps}
-              taskId={task.id}
-              hasWorktree={!!task.worktreePath}
+              onAddBashToPermissions={handleAddBashToPermissions}
             />
           ) : (
             <div
@@ -1501,6 +1511,19 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         hasWorktree={!!task.worktreePath}
         isPending={completeTask.isPending}
       />
+
+      {/* Add to permissions modal — rendered here (outside the conditional
+          message-stream / loading / diff chain) so it survives MessageStream
+          unmount/remount when new messages arrive */}
+      {permissionModal && (
+        <AddPermissionModal
+          isOpen
+          onClose={closePermissionModal}
+          command={permissionModal.command}
+          taskId={task.id}
+          hasWorktree={!!task.worktreePath}
+        />
+      )}
     </div>
   );
 }
