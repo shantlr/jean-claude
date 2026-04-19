@@ -130,14 +130,14 @@ function borderClasses({
 
   switch (attention) {
     case 'errored':
-      return 'border border-status-fail/30 hover:border-status-fail/50';
+      return 'border-[1.5px] border-status-fail/30 hover:border-status-fail/50';
     case 'needs-permission':
     case 'has-question':
-      return 'border border-status-run/30 hover:border-status-run/50';
+      return 'border-[1.5px] border-status-run/30 hover:border-status-run/50';
     case 'running':
       return 'running-border';
     default:
-      return '';
+      return 'border-[1.5px] border-transparent';
   }
 }
 
@@ -280,7 +280,7 @@ export function FeedItemCard({
             }
           }}
           className={clsx(
-            'relative flex cursor-pointer flex-col gap-1 rounded-lg px-3.5 py-2.5 transition-all duration-200 ease-out',
+            'relative flex cursor-pointer flex-col gap-1 rounded-lg px-3.5 py-2.5 transition-[box-shadow,background,opacity,transform] duration-200 ease-out',
             borderClasses({
               attention: item.attention,
               hasUnread: item.hasUnread,

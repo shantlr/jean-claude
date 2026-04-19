@@ -169,7 +169,7 @@ button {
         oklch(0.65 0.20 295)
       )
       border-box;
-  border: 1px solid transparent;
+  border: 1.5px solid transparent;
   animation: gradient-rotate 1.5s linear infinite;
   box-shadow: 0 0 6px 0px oklch(0.72 0.20 295 / 0.35);
 }
@@ -323,7 +323,7 @@ button {
         oklch(0.65 0.20 295)
       )
       border-box;
-  border: 1px solid transparent;
+  border: 1.5px solid transparent;
   animation: gradient-rotate 3s linear infinite;
   box-shadow: 0 0 12px 0px oklch(0.72 0.20 295 / 0.15);
 }
@@ -362,7 +362,7 @@ button {
         oklch(0.78 0.16 75)
       )
       border-box;
-  border: 1px solid transparent;
+  border: 1.5px solid transparent;
   animation: gradient-rotate 2s linear infinite;
   box-shadow: 0 0 6px 0px oklch(0.78 0.16 75 / 0.35);
 }
@@ -401,7 +401,7 @@ button {
         oklch(0.78 0.16 195)
       )
       border-box;
-  border: 1px solid transparent;
+  border: 1.5px solid transparent;
   animation: gradient-rotate 2s linear infinite;
   box-shadow: 0 0 6px 0px oklch(0.78 0.16 205 / 0.35);
 }
@@ -452,7 +452,7 @@ button {
         oklch(0.82 0.14 160)
       )
       border-box;
-  border: 1px solid transparent;
+  border: 1.5px solid transparent;
   animation: completed-unread-breathe 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
@@ -478,7 +478,7 @@ button {
   position: relative;
   isolation: isolate;
   background: var(--color-bg-3);
-  border: 1px solid oklch(0.72 0.20 295 / 0.45);
+  border: 1.5px solid oklch(0.72 0.20 295 / 0.45);
   box-shadow:
     inset 0 0 0 1px oklch(0.72 0.20 295 / 0.15),
     0 0 24px oklch(0.72 0.20 295 / 0.10);
@@ -488,7 +488,7 @@ button {
   position: relative;
   isolation: isolate;
   background: var(--color-bg-3);
-  border: 1px solid oklch(0.72 0.18 25 / 0.60);
+  border: 1.5px solid oklch(0.72 0.18 25 / 0.60);
   box-shadow:
     inset 0 0 0 1px oklch(0.72 0.18 25 / 0.15),
     0 0 24px oklch(0.72 0.18 25 / 0.10);
@@ -498,7 +498,7 @@ button {
   position: relative;
   isolation: isolate;
   background: var(--color-bg-3);
-  border: 1px solid oklch(0.78 0.16 75 / 0.60);
+  border: 1.5px solid oklch(0.78 0.16 75 / 0.60);
   box-shadow:
     inset 0 0 0 1px oklch(0.78 0.16 75 / 0.15),
     0 0 24px oklch(0.78 0.16 75 / 0.10);
@@ -508,7 +508,7 @@ button {
   position: relative;
   isolation: isolate;
   background: var(--color-bg-3);
-  border: 1px solid oklch(0.78 0.16 75 / 0.40);
+  border: 1.5px solid oklch(0.78 0.16 75 / 0.40);
   box-shadow:
     inset 0 0 0 1px oklch(0.78 0.16 75 / 0.10),
     0 0 24px oklch(0.78 0.16 75 / 0.06);
@@ -518,7 +518,7 @@ button {
   position: relative;
   isolation: isolate;
   background: var(--color-bg-3);
-  border: 1px solid oklch(0.78 0.16 260 / 0.40);
+  border: 1.5px solid oklch(0.78 0.16 260 / 0.40);
   box-shadow:
     inset 0 0 0 1px oklch(0.78 0.16 260 / 0.15),
     0 0 24px oklch(0.78 0.16 260 / 0.10);
@@ -528,7 +528,7 @@ button {
   position: relative;
   isolation: isolate;
   background: var(--color-bg-3);
-  border: 1px solid oklch(0.78 0.16 205 / 0.60);
+  border: 1.5px solid oklch(0.78 0.16 205 / 0.60);
   box-shadow:
     inset 0 0 0 1px oklch(0.78 0.16 205 / 0.15),
     0 0 24px oklch(0.78 0.16 205 / 0.10);
