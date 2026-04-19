@@ -6,7 +6,7 @@ import type { AgentBackendType } from './agent-backend-types';
 export interface ManagedSkill {
   name: string;
   description: string;
-  source: 'user' | 'project' | 'plugin';
+  source: 'user' | 'project' | 'plugin' | 'builtin';
   /** For plugin skills, the plugin name (e.g., "superpowers") */
   pluginName?: string;
   /** Full path to the skill directory */

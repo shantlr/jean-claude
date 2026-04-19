@@ -1,6 +1,11 @@
-import { query } from '@anthropic-ai/claude-agent-sdk';
+import type { AiSkillSlotsSetting } from '@shared/types';
 
 import { dbg } from '../lib/debug';
+
+import { generateText } from './ai-generation-service';
+import { resolveAiSkillSlot } from './ai-skill-slot-resolver';
+import { getBuiltinSkillPath } from './builtin-skills-service';
+import { getSkillContent } from './skill-management-service';
 
 const TASK_NAME_TIMEOUT_MS = 10 * 60 * 1000;
 const TASK_NAME_MAX_PROMPT_LENGTH = 8000;
@@ -14,88 +19,87 @@ const TASK_NAME_SCHEMA = {
 } as const;
 
 /**
- * Generates a task name from a prompt using Claude Haiku.
- * This is a synchronous (blocking) operation used when we need the name
- * before creating a worktree, so the worktree directory can use the generated name.
+ * Generates a task name from a prompt using an AI skill slot.
+ *
+ * Resolution order:
+ * 1. Project-level slot override (via projectSlots)
+ * 2. Global slot setting
+ * 3. Fallback: claude-code backend + haiku model + builtin skill content
  *
  * @param prompt - The task prompt to generate a name from
+ * @param projectSlots - Optional project-level AI skill slot overrides
  * @returns The generated name, or null if generation fails
  */
-export async function generateTaskName(prompt: string): Promise<string | null> {
-  const abortController = new AbortController();
-  const timeout = setTimeout(() => {
-    abortController.abort();
-  }, TASK_NAME_TIMEOUT_MS);
-
+export async function generateTaskName(
+  prompt: string,
+  projectSlots?: AiSkillSlotsSetting | null,
+): Promise<string | null> {
   const truncatedPrompt = prompt.slice(0, TASK_NAME_MAX_PROMPT_LENGTH);
 
   try {
-    const generator = query({
-      prompt: `You are a task naming assistant. Given a coding task description, produce a short name (≤40 characters) that captures the essence of the task.
+    const slotConfig = await resolveAiSkillSlot('task-name', projectSlots);
 
-Rules:
-- MUST be ≤40 characters. This is a hard limit.
-- Start with a lowercase verb (add, fix, refactor, update, implement, etc.)
-- Be specific about WHAT is being done, but concise
-- NEVER copy the input verbatim. Always summarize and compress.
-- Ignore boilerplate, metadata, platform tags, ticket IDs, repro steps
-- Focus on the single core action being described
+    let backend: 'claude-code' | 'opencode';
+    let model: string;
+    let effectivePrompt: string;
+    let skillName: string | undefined;
 
-Examples:
-Input: "once a PR is associated to a task, in the task details diff view, we should have a button beside 'See PR' to be able to push new changes"
-Output: "add push changes button to PR diff view"
+    if (!slotConfig) {
+      // Unconfigured: fall back to claude-code + haiku + builtin skill content
+      backend = 'claude-code';
+      model = 'haiku';
+      const builtinContent = await getBuiltinSkillPrompt();
+      effectivePrompt = `${builtinContent}\n\nTask to name:\n${truncatedPrompt}`;
+    } else if (slotConfig.skillName === null) {
+      // Slot configured but using builtin default prompt
+      backend = slotConfig.backend;
+      model = slotConfig.model;
+      const builtinContent = await getBuiltinSkillPrompt();
+      effectivePrompt = `${builtinContent}\n\nTask to name:\n${truncatedPrompt}`;
+    } else {
+      // Slot configured with a custom skill name
+      backend = slotConfig.backend;
+      model = slotConfig.model;
+      skillName = slotConfig.skillName;
+      effectivePrompt = `Task to name:\n${truncatedPrompt}`;
+    }
 
-Input: "The station subtitle is not clearing when the user searches for a new station in the search field, it persists from the previous selection"
-Output: "fix subtitle not clearing on search"
-
-Input: "We need to add retry logic to the webhook delivery system so that failed webhooks are retried up to 3 times with exponential backoff"
-Output: "add retry logic to webhook delivery"
-
-Input: "refactor the authentication middleware to use JWT tokens instead of session-based authentication"
-Output: "refactor auth middleware to use JWT"
-
-Input: "fix race condition in checkout flow where users are sometimes double-charged"
-Output: "fix race condition in checkout flow"
-
-Task to name:
-${truncatedPrompt}`,
-      options: {
-        allowedTools: [],
-        model: 'haiku',
-        abortController,
-        outputFormat: {
-          type: 'json_schema',
-          schema: TASK_NAME_SCHEMA,
-        },
-        persistSession: false,
-      },
+    const result = await generateText({
+      backend,
+      model,
+      prompt: effectivePrompt,
+      skillName,
+      outputSchema: TASK_NAME_SCHEMA,
+      timeoutMs: TASK_NAME_TIMEOUT_MS,
     });
 
-    for await (const message of generator) {
-      const msg = message as {
-        type: string;
-        structured_output?: { name: string };
-      };
-      if (msg.type === 'result' && msg.structured_output?.name) {
-        const name = msg.structured_output.name.slice(0, 40);
-        dbg.agent('Generated task name: %s', name);
-        return name;
-      }
+    if (
+      result &&
+      typeof result === 'object' &&
+      'name' in result &&
+      typeof (result as { name: unknown }).name === 'string'
+    ) {
+      const name = (result as { name: string }).name.slice(0, 40);
+      dbg.agent('Generated task name: %s', name);
+      return name;
     }
 
     return null;
   } catch (error) {
-    if (abortController.signal.aborted) {
-      dbg.agent(
-        'Task name generation timed out after %dms',
-        TASK_NAME_TIMEOUT_MS,
-      );
-      return null;
-    }
-
     dbg.agent('Failed to generate task name: %O', error);
     return null;
-  } finally {
-    clearTimeout(timeout);
   }
+}
+
+/** Cached builtin skill content — read once, reused for the app's lifetime. */
+let cachedBuiltinPrompt: string | null = null;
+
+async function getBuiltinSkillPrompt(): Promise<string> {
+  if (cachedBuiltinPrompt !== null) {
+    return cachedBuiltinPrompt;
+  }
+  const skillPath = getBuiltinSkillPath('task-name-generation');
+  const skill = await getSkillContent({ skillPath });
+  cachedBuiltinPrompt = skill.content;
+  return cachedBuiltinPrompt;
 }

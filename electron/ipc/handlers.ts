@@ -517,7 +517,10 @@ export function registerIpcHandlers() {
         let taskName = taskData.name;
         if (!taskName) {
           dbg.ipc('Generating task name from prompt');
-          taskName = await generateTaskName(taskData.prompt);
+          taskName = await generateTaskName(
+            taskData.prompt,
+            project.aiSkillSlots,
+          );
           dbg.ipc('Generated task name: %s', taskName);
           // taskName may still be null if generation fails - that's ok
         }

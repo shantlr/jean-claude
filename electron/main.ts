@@ -11,8 +11,10 @@ import {
   decodeProxyUrl,
   fetchAuthenticatedImageStream,
 } from './services/azure-image-proxy-service';
+import { upsertBuiltinSkills } from './services/builtin-skills-service';
 import { pipelineTrackingService } from './services/pipeline-tracking-service';
 import { runCommandService } from './services/run-command-service';
+import { syncBuiltinSkillSymlinks } from './services/skill-management-service';
 import { cleanupOrphanedWorkspaces } from './services/system-project-service';
 
 // Register custom protocol scheme before app is ready
@@ -117,6 +119,11 @@ app.whenReady().then(async () => {
   dbg.main('Running database migrations...');
   await migrateDatabase();
   dbg.main('Database migrations complete');
+
+  dbg.main('Upserting builtin skills...');
+  await upsertBuiltinSkills();
+  await syncBuiltinSkillSymlinks();
+  dbg.main('Builtin skills upserted');
 
   pipelineTrackingService.start();
 

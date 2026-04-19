@@ -52,10 +52,13 @@ export function SkillsSettings() {
     },
   ]);
 
-  const { mySkills, installedSkills } = useMemo(() => {
+  const { builtinSkills, mySkills, installedSkills } = useMemo(() => {
+    const builtin = (skills ?? []).filter((s) => s.source === 'builtin');
     const my = (skills ?? []).filter((s) => s.editable);
-    const installed = (skills ?? []).filter((s) => !s.editable);
-    return { mySkills: my, installedSkills: installed };
+    const installed = (skills ?? []).filter(
+      (s) => !s.editable && s.source !== 'builtin',
+    );
+    return { builtinSkills: builtin, mySkills: my, installedSkills: installed };
   }, [skills]);
 
   const handleCreate = () => {
@@ -186,6 +189,19 @@ export function SkillsSettings() {
         </div>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-2">
+          {builtinSkills.length > 0 && (
+            <div>
+              <h3 className="text-ink-3 mb-2 text-xs font-medium tracking-wide uppercase">
+                Builtin
+              </h3>
+              <SkillCardGrid
+                skills={builtinSkills}
+                selectedPath={selectedPath}
+                onSelect={handleSelect}
+              />
+            </div>
+          )}
+
           {mySkills.length > 0 && (
             <div>
               <h3 className="text-status-done mb-2 text-xs font-medium tracking-wide uppercase">
@@ -213,11 +229,13 @@ export function SkillsSettings() {
             </div>
           )}
 
-          {mySkills.length === 0 && installedSkills.length === 0 && (
-            <p className="text-ink-3 py-8 text-center text-sm">
-              No skills found. Click &quot;Add&quot; to create one.
-            </p>
-          )}
+          {builtinSkills.length === 0 &&
+            mySkills.length === 0 &&
+            installedSkills.length === 0 && (
+              <p className="text-ink-3 py-8 text-center text-sm">
+                No skills found. Click &quot;Add&quot; to create one.
+              </p>
+            )}
         </div>
       </div>
 

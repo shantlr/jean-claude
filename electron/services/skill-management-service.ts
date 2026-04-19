@@ -20,6 +20,8 @@ import {
   parseFrontmatter,
 } from '../lib/skill-frontmatter';
 
+import { JC_BUILTIN_SKILLS_DIR } from './builtin-skills-service';
+
 // --- Jean-Claude canonical skill storage ---
 //
 // All JC-managed user skills live under:
@@ -231,6 +233,126 @@ async function discoverJcManagedUserSkills(): Promise<ManagedSkill[]> {
 }
 
 /**
+ * Scans the JC builtin skills directory.
+ * Builtin skills are read-only and managed by the application.
+ * They are symlinked into each backend's skills directory on startup
+ * so agent backends can reference them.
+ */
+async function discoverBuiltinSkills(): Promise<ManagedSkill[]> {
+  const skills: ManagedSkill[] = [];
+
+  try {
+    const entries = await fs.readdir(JC_BUILTIN_SKILLS_DIR, {
+      withFileTypes: true,
+    });
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue;
+      if (!entry.isDirectory()) continue;
+
+      const skillDir = path.join(JC_BUILTIN_SKILLS_DIR, entry.name);
+      const info = await readSkillDir(skillDir);
+      if (!info) continue;
+
+      // Check symlink state per backend (same as user skills)
+      const enabledBackends: Partial<Record<AgentBackendType, boolean>> = {};
+      for (const [backend, config] of Object.entries(SKILL_PATH_CONFIGS)) {
+        const symlinkPath = path.join(config.userSkillsDir, entry.name);
+        enabledBackends[backend as AgentBackendType] =
+          await isSymlink(symlinkPath);
+      }
+
+      skills.push({
+        ...info,
+        source: 'builtin',
+        skillPath: skillDir,
+        enabledBackends,
+        editable: false,
+      });
+    }
+  } catch (error) {
+    if (!isEnoent(error)) {
+      dbg.skill(
+        'Error reading builtin skills dir %s: %O',
+        JC_BUILTIN_SKILLS_DIR,
+        error,
+      );
+    }
+  }
+
+  return skills;
+}
+
+/**
+ * Ensures all builtin skills are symlinked into every backend's skills
+ * directory. Called on app startup after `upsertBuiltinSkills()`.
+ *
+ * Symlinks that already exist are left in place. Missing symlinks are
+ * created. Broken symlinks (pointing to a different target) are replaced.
+ */
+export async function syncBuiltinSkillSymlinks(): Promise<void> {
+  let entries: Array<{ name: string; isDirectory: () => boolean }>;
+  try {
+    entries = await fs.readdir(JC_BUILTIN_SKILLS_DIR, { withFileTypes: true });
+  } catch (error) {
+    if (!isEnoent(error)) {
+      dbg.skill('Error reading builtin skills dir for symlink sync: %O', error);
+    }
+    return;
+  }
+
+  for (const entry of entries) {
+    if (entry.name.startsWith('.')) continue;
+    if (!entry.isDirectory()) continue;
+
+    const canonicalPath = path.join(JC_BUILTIN_SKILLS_DIR, entry.name);
+
+    for (const config of Object.values(SKILL_PATH_CONFIGS)) {
+      const symlinkPath = path.join(config.userSkillsDir, entry.name);
+
+      try {
+        await fs.mkdir(config.userSkillsDir, { recursive: true });
+
+        // Check if a symlink already exists and points to the right target
+        if (await isSymlink(symlinkPath)) {
+          const target = await fs.readlink(symlinkPath);
+          if (target === canonicalPath) continue; // already correct
+          // If symlink points to a user skill, don't overwrite it
+          if (target.startsWith(JC_USER_SKILLS_DIR + path.sep)) {
+            dbg.skill(
+              'Skipping builtin symlink %s: user skill symlink exists',
+              symlinkPath,
+            );
+            continue;
+          }
+          // Points elsewhere — remove and recreate
+          await fs.unlink(symlinkPath);
+        } else if (await pathExists(symlinkPath)) {
+          // A real directory/file exists at this path — skip to avoid conflict
+          dbg.skill(
+            'Skipping builtin symlink %s: non-symlink entry exists',
+            symlinkPath,
+          );
+          continue;
+        }
+
+        await fs.symlink(canonicalPath, symlinkPath);
+        dbg.skill(
+          'Created builtin skill symlink: %s → %s',
+          symlinkPath,
+          canonicalPath,
+        );
+      } catch (error) {
+        dbg.skill(
+          'Failed to create builtin skill symlink %s: %O',
+          symlinkPath,
+          error,
+        );
+      }
+    }
+  }
+}
+
+/**
  * Scans the JC canonical directory for user skills (single backend).
  * For each skill, checks whether a symlink exists in the given backend's
  * expected skills directory to determine enabled/disabled status.
@@ -308,7 +430,8 @@ async function discoverLegacyUserSkills(
       const jcEquivalent = path.join(JC_USER_SKILLS_DIR, entry.name);
       if (await pathExists(jcEquivalent)) continue;
 
-      // For symlinks, skip JC-managed ones (target inside canonical dir)
+      // For symlinks, skip JC-managed ones (target inside canonical dir —
+      // covers both user/ and builtin/ subdirectories)
       // and resolve to actual path for reading
       let resolvedPath = skillDir;
       if (entry.isSymbolicLink()) {
@@ -318,7 +441,7 @@ async function discoverLegacyUserSkills(
           continue; // broken symlink
         }
         // If symlink points into JC canonical dir, it's JC-managed — skip
-        if (resolvedPath.startsWith(JC_USER_SKILLS_DIR + path.sep)) continue;
+        if (resolvedPath.startsWith(JC_SKILLS_BASE_DIR + path.sep)) continue;
       }
 
       const info = await readSkillDir(resolvedPath);
@@ -571,7 +694,7 @@ async function discoverLegacyMigrationCandidates({
           continue;
         }
 
-        if (resolvedPath.startsWith(JC_USER_SKILLS_DIR + path.sep)) {
+        if (resolvedPath.startsWith(JC_SKILLS_BASE_DIR + path.sep)) {
           continue;
         }
       }
@@ -693,6 +816,9 @@ async function discoverSkillsForBackend({
     results.push(...(await config.discoverExternalSkills()));
   }
 
+  // Builtin skills: managed by JC, symlinked to backends on startup
+  results.push(...(await discoverBuiltinSkills()));
+
   return results;
 }
 
@@ -720,6 +846,13 @@ export async function getAllManagedSkillsUnified({
   // JC-managed skills first (unified across all backends)
   const jcSkills = await discoverJcManagedUserSkills();
   for (const skill of jcSkills) {
+    seenPaths.add(skill.skillPath);
+    results.push(skill);
+  }
+
+  // Builtin skills (before per-backend so they win dedup races)
+  const builtinSkills = await discoverBuiltinSkills();
+  for (const skill of builtinSkills) {
     seenPaths.add(skill.skillPath);
     results.push(skill);
   }
@@ -1075,6 +1208,10 @@ export async function updateSkill({
   description?: string;
   content?: string;
 }): Promise<ManagedSkill> {
+  if (skillPath.startsWith(JC_BUILTIN_SKILLS_DIR + path.sep)) {
+    throw new Error('Cannot modify builtin skills');
+  }
+
   const current = await getSkillContent({ skillPath });
   const updatedName = name ?? current.name;
   const updatedDesc = description ?? current.description;
@@ -1120,6 +1257,10 @@ export async function deleteSkill({
   skillPath: string;
   backendType: AgentBackendType;
 }): Promise<void> {
+  if (skillPath.startsWith(JC_BUILTIN_SKILLS_DIR + path.sep)) {
+    throw new Error('Cannot delete builtin skills');
+  }
+
   const dirName = path.basename(skillPath);
 
   // If this is a JC-managed skill, remove symlinks from all backend paths

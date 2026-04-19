@@ -37,6 +37,12 @@ export const SLOT_DEFINITIONS: {
     description:
       'Auto-generate pull request title and description when creating a PR',
   },
+  {
+    key: 'task-name',
+    label: 'Task Name',
+    description:
+      'Auto-generate short task names from prompts (defaults to builtin skill with Haiku)',
+  },
 ];
 
 export function SlotRow({
@@ -87,26 +93,32 @@ export function SlotRow({
     [localBackend, dynamicModels],
   );
 
-  // Skills for the selected backend (enabled only)
+  // Skills for the selected backend (enabled or builtin)
   const { data: skills } = useManagedSkills(localBackend);
   const enabledSkills = useMemo(
     () =>
-      (skills ?? []).filter((s) => s.enabledBackends[localBackend] === true),
+      (skills ?? []).filter(
+        (s) =>
+          s.enabledBackends[localBackend] === true || s.source === 'builtin',
+      ),
     [skills, localBackend],
   );
 
-  const skillOptions = useMemo(
-    () => [
-      { value: NO_SKILL_VALUE, label: 'None' },
-      ...enabledSkills.map((s) => ({
+  const skillOptions = useMemo(() => {
+    const builtin = enabledSkills
+      .filter((s) => s.source === 'builtin')
+      .map((s) => ({
+        value: s.name,
+        label: `${s.name} (Builtin)`,
+      }));
+    const other = enabledSkills
+      .filter((s) => s.source !== 'builtin')
+      .map((s) => ({
         value: s.name,
         label: s.name,
-      })),
-    ],
-    [enabledSkills],
-  );
-
-  const hasSkillSelected = localSkillName !== null;
+      }));
+    return [{ value: NO_SKILL_VALUE, label: 'None' }, ...builtin, ...other];
+  }, [enabledSkills]);
 
   const handleBackendChange = useCallback((backend: string) => {
     const backendType = backend as AgentBackendType;
@@ -167,10 +179,8 @@ export function SlotRow({
         enabledBackends.find((b) => b.value === config.backend)?.label ??
           config.backend,
         config.model,
-        config.skillName,
-      ]
-        .filter(Boolean)
-        .join(' \u00b7 ')
+        config.skillName ?? 'Builtin',
+      ].join(' \u00b7 ')
     : 'Not configured';
 
   const backendOptions = enabledBackends.map((b) => ({
@@ -178,8 +188,8 @@ export function SlotRow({
     label: b.label,
   }));
 
-  // Can only enable the toggle when a skill is selected
-  const canEnable = hasSkillSelected;
+  // Allow enabling even without a skill (slots can use builtin/default prompt)
+  const canEnable = true;
 
   return (
     <div className="border-glass-border bg-bg-1 rounded-lg border">
@@ -251,11 +261,6 @@ export function SlotRow({
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
                 <label className="text-ink-2 text-sm">Enabled</label>
-                {!canEnable && !isEnabled && (
-                  <span className="text-ink-4 text-xs">
-                    Select a skill to enable
-                  </span>
-                )}
               </div>
               <Switch
                 checked={isEnabled}
