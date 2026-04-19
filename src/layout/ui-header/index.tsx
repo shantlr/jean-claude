@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import {
   ClipboardList,
   Loader2,
+  Menu,
   SlidersHorizontal,
   Terminal,
   Workflow,
@@ -9,6 +10,7 @@ import {
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { Dropdown, DropdownItem } from '@/common/ui/dropdown';
 import { Kbd } from '@/common/ui/kbd';
 import { useBacklogProjectId } from '@/hooks/use-backlog-project-id';
 import { useProjectTodoCount } from '@/hooks/use-project-todos';
@@ -93,67 +95,71 @@ export function Header() {
       {/* Traffic light padding on macOS */}
       {isMac && !isWindowFullscreen && <div className="w-[70px]" />}
 
-      <div className="flex min-w-0 flex-1 px-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => openOverlay('settings')}
-          icon={<SlidersHorizontal />}
-          className="mr-2 shrink-0"
-          style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
-          title="Settings"
-          aria-label="Open settings"
+      <div
+        className="flex min-w-0 flex-1 px-2"
+        style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
+      >
+        <Dropdown
+          trigger={
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<Menu />}
+              title="Menu"
+              aria-label="Open menu"
+            >
+              Menu
+            </Button>
+          }
+          align="left"
         >
-          Settings
-          <Kbd shortcut="cmd+," className="text-[9px]" />
-        </Button>
-
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => openOverlay('project-switcher')}
-          className="max-w-[320px] truncate"
-          style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
-          title={selectedProjectLabel}
-        >
-          <span className="truncate">{selectedProjectLabel}</span>
-          <Kbd shortcut="cmd+o" className="text-[9px]" />
-        </Button>
-
-        {backlogProjectId && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => openOverlay('project-backlog')}
-            icon={<ClipboardList />}
-            className="ml-2 shrink-0"
-            style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
-            title="Backlog"
-            aria-label="Open backlog"
+          <DropdownItem
+            icon={<SlidersHorizontal />}
+            onClick={() => openOverlay('settings')}
+            shortcut="cmd+,"
           >
-            Backlog
-            {typeof todoCount === 'number' && todoCount > 0 && (
-              <span className="bg-glass-medium text-ink-2 rounded-full px-1.5 py-0.5 text-[10px] leading-none">
-                {todoCount}
+            Settings
+          </DropdownItem>
+          <DropdownItem
+            onClick={() => openOverlay('project-switcher')}
+            shortcut="cmd+o"
+          >
+            {selectedProjectLabel}
+          </DropdownItem>
+          {backlogProjectId && (
+            <DropdownItem
+              icon={<ClipboardList />}
+              onClick={() => openOverlay('project-backlog')}
+              shortcut="cmd+b"
+            >
+              Backlog
+              {typeof todoCount === 'number' && todoCount > 0 && (
+                <span className="bg-glass-medium text-ink-2 ml-1 rounded-full px-1.5 py-0.5 text-[10px] leading-none">
+                  {todoCount}
+                </span>
+              )}
+            </DropdownItem>
+          )}
+          <DropdownItem
+            icon={<Workflow />}
+            onClick={() => openOverlay('pipelines')}
+            shortcut="cmd+shift+y"
+          >
+            Pipelines
+          </DropdownItem>
+          <DropdownItem
+            icon={<Terminal />}
+            onClick={() => openOverlay('running-commands')}
+            shortcut="cmd+shift+r"
+          >
+            Commands
+            {runningCommandsCount > 0 && (
+              <span className="bg-acc text-bg-0 ml-1 rounded-full px-1.5 py-0.5 text-[10px] leading-none shadow-[0_0_6px_oklch(0.6_0.2_264)]">
+                {runningCommandsCount}
               </span>
             )}
-            <Kbd shortcut="cmd+b" className="text-[9px]" />
-          </Button>
-        )}
-
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => openOverlay('pipelines')}
-          icon={<Workflow />}
-          className="ml-2 shrink-0"
-          style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
-          title="Pipelines"
-          aria-label="Open pipelines"
-        >
-          Pipelines
-          <Kbd shortcut="cmd+shift+y" className="text-[9px]" />
-        </Button>
+          </DropdownItem>
+        </Dropdown>
       </div>
 
       {/* Notification bar + Usage display */}
@@ -165,32 +171,6 @@ export function Header() {
         <RamUsageDisplay />
         <CompletionCostDisplay />
         <UsageDisplay />
-      </div>
-
-      {/* Running commands */}
-      <div style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => openOverlay('running-commands')}
-          icon={<Terminal />}
-          className={clsx(
-            'transition-all duration-500',
-            runningCommandsCount > 0
-              ? 'text-acc'
-              : 'text-ink-2 hover:text-bg-0',
-          )}
-          title="Running Commands"
-          aria-label="Open running commands"
-        >
-          Commands
-          {runningCommandsCount > 0 && (
-            <span className="bg-acc text-bg-0 rounded-full px-1.5 py-0.5 text-[10px] leading-none shadow-[0_0_6px_oklch(0.6_0.2_264)]">
-              {runningCommandsCount}
-            </span>
-          )}
-          <Kbd shortcut="cmd+shift+r" className="text-[9px]" />
-        </Button>
       </div>
 
       {/* Background jobs */}
