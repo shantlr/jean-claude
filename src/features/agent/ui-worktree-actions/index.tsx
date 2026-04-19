@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useCommands } from '@/common/hooks/use-commands';
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { Button } from '@/common/ui/button';
+import { Kbd } from '@/common/ui/kbd';
 import { Select } from '@/common/ui/select';
 import { useProject } from '@/hooks/use-projects';
 import { useAiSkillSlotsSetting } from '@/hooks/use-settings';
@@ -238,12 +239,32 @@ export function WorktreeActions({
 
   useCommands('worktree-actions', [
     {
+      label: 'Commit Changes',
+      shortcut: 'cmd+shift+k',
+      section: 'Task',
+      handler: () => {
+        if (canCommit) {
+          setIsCommitModalOpen(true);
+        }
+      },
+    },
+    {
       label: 'Merge Worktree',
       shortcut: 'cmd+shift+m',
       section: 'Task',
       handler: () => {
         if (canMerge) {
           setIsMergeConfirmOpen(true);
+        }
+      },
+    },
+    {
+      label: 'Create Pull Request',
+      shortcut: 'cmd+shift+p',
+      section: 'Task',
+      handler: () => {
+        if (hasRepoLink && !pullRequestUrl && canCreatePr) {
+          onOpenPrView();
         }
       },
     },
@@ -263,6 +284,7 @@ export function WorktreeActions({
         title={canCommit ? 'Commit changes' : 'No changes to commit'}
       >
         Commit
+        <Kbd shortcut="cmd+shift+k" className="text-[9px]" />
       </Button>
 
       {/* Merge section */}
@@ -296,6 +318,7 @@ export function WorktreeActions({
             title={canMerge ? 'Merge worktree' : 'Commit staged changes first'}
           >
             Merge
+            <Kbd shortcut="cmd+shift+m" className="text-[9px]" />
           </Button>
         )}
       </div>
@@ -344,6 +367,7 @@ export function WorktreeActions({
             title={canCreatePr ? 'Create pull request' : 'Commit changes first'}
           >
             Create PR
+            <Kbd shortcut="cmd+shift+p" className="text-[9px]" />
           </Button>
         ))}
 
