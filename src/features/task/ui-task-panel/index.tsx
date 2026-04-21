@@ -800,6 +800,21 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       },
     },
     {
+      label:
+        rightPane?.type === 'commandLogs'
+          ? 'Close Command Logs'
+          : 'Open Command Logs',
+      shortcut: 'cmd+l',
+      section: 'Task',
+      handler: () => {
+        if (rightPane?.type === 'commandLogs') {
+          closeRightPane();
+        } else {
+          openCommandLogs();
+        }
+      },
+    },
+    {
       label: 'Toggle Diff View',
       shortcut: 'cmd+d',
       section: 'Task',

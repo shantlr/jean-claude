@@ -175,6 +175,7 @@ export function RunButton({
             aria-label="Open command logs"
           >
             Logs
+            <Kbd shortcut="cmd+l" />
           </Button>
         )}
 
