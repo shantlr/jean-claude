@@ -25,6 +25,9 @@ const ACTION_NEEDED_ATTENTIONS: Set<FeedItemAttention> = new Set([
   'errored',
 ]);
 
+/** Task attentions that keep a task in the stacked (top) zone. */
+const STACKED_TASK_ATTENTIONS: Set<FeedItemAttention> = new Set(['running']);
+
 export function useFeed() {
   const pinned = useFeedStore((s) => s.pinned);
   const dismissed = useFeedStore((s) => s.dismissed);
@@ -172,9 +175,16 @@ export function useFeed() {
         // Action-needed items always surface to the top, even if marked
         // low-priority — a permission request or error needs attention.
         actionNeeded.push(item);
-      } else if (item.source === 'task') {
-        // All tasks always appear above PRs and work items.
+      } else if (
+        item.source === 'task' &&
+        STACKED_TASK_ATTENTIONS.has(item.attention)
+      ) {
+        // Only actively running tasks get the stacked treatment.
         activeTasks.push(item);
+      } else if (item.source === 'task') {
+        // Non-running tasks (waiting, completed, interrupted) are still
+        // highest priority compared to other feed items.
+        high.push(item);
       } else if (
         lowPriorityIds.has(item.id) ||
         item.projectPriority === 'low'
