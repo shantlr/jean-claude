@@ -103,7 +103,8 @@ export const ProjectRepository = {
       .values({
         ...rest,
         sortOrder: data.sortOrder ?? nextSortOrder,
-        priority: data.priority ?? 'normal',
+        prPriority: data.prPriority ?? 'normal',
+        workItemPriority: data.workItemPriority ?? 'normal',
         showWorkItemsInFeed: showWorkItemsInFeed === false ? 0 : 1,
         showPrsInFeed: showPrsInFeed === false ? 0 : 1,
         aiSkillSlots: aiSkillSlots ? JSON.stringify(aiSkillSlots) : null,

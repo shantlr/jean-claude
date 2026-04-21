@@ -114,7 +114,8 @@ export function FeedList() {
   const {
     pinnedItems,
     actionNeededItems,
-    runningItems,
+    activeTaskItems,
+    highPriorityItems,
     normalItems,
     lowPriorityItems,
     allVisibleItems,
@@ -462,7 +463,8 @@ export function FeedList() {
   const totalCount =
     pinnedItems.length +
     actionNeededItems.length +
-    runningItems.length +
+    highPriorityItems.length +
+    activeTaskItems.length +
     normalItems.length +
     lowPriorityItems.length;
 
@@ -525,7 +527,7 @@ export function FeedList() {
       {pinnedItems.length > 0 &&
         (actionNeededItems.length > 0 ||
           normalItems.length > 0 ||
-          runningItems.length > 0) && (
+          activeTaskItems.length > 0) && (
           <div className="border-line-soft mx-2 my-1 border-t border-dashed" />
         )}
 
@@ -541,20 +543,37 @@ export function FeedList() {
         />
       )}
 
-      {/* Running tasks zone - stacked, spreads on hover */}
-      {runningItems.length > 0 && (
+      {/* Active tasks zone - stacked, spreads on hover */}
+      {activeTaskItems.length > 0 && (
         <StackableZone
-          items={runningItems}
+          items={activeTaskItems}
           isItemSelected={isItemSelected}
           onDragStart={setDraggedId}
           onDragEnd={handleDragEnd}
         />
       )}
 
-      {/* Divider between running and auto-sorted */}
-      {runningItems.length > 0 && normalItems.length > 0 && (
-        <div className="border-line-soft mx-2 my-1 border-t border-dashed" />
+      {/* High priority zone */}
+      {highPriorityItems.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {highPriorityItems.map((item) => (
+            <FeedCard
+              key={item.id}
+              item={item}
+              isSelected={isItemSelected(item)}
+              isDraggable
+              onDragStart={() => setDraggedId(item.id)}
+              onDragEnd={handleDragEnd}
+            />
+          ))}
+        </div>
       )}
+
+      {/* Divider between active tasks/high-priority and auto-sorted */}
+      {(activeTaskItems.length > 0 || highPriorityItems.length > 0) &&
+        normalItems.length > 0 && (
+          <div className="border-line-soft mx-2 my-1 border-t border-dashed" />
+        )}
 
       {/* Auto-sorted zone */}
       <div className="flex flex-col gap-1.5">

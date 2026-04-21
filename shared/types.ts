@@ -189,7 +189,8 @@ export interface Project {
   completionContext: string | null;
   aiSkillSlots: AiSkillSlotsSetting | null;
   protectedBranches: string[];
-  priority: ProjectPriority;
+  prPriority: ProjectPriority;
+  workItemPriority: ProjectPriority;
   createdAt: string;
   updatedAt: string;
 }
@@ -218,7 +219,8 @@ export interface NewProject {
   completionContext?: string | null;
   aiSkillSlots?: AiSkillSlotsSetting | null;
   protectedBranches?: string[];
-  priority?: ProjectPriority;
+  prPriority?: ProjectPriority;
+  workItemPriority?: ProjectPriority;
   createdAt?: string;
   updatedAt: string;
 }
@@ -247,7 +249,8 @@ export interface UpdateProject {
   completionContext?: string | null;
   aiSkillSlots?: AiSkillSlotsSetting | null;
   protectedBranches?: string[];
-  priority?: ProjectPriority;
+  prPriority?: ProjectPriority;
+  workItemPriority?: ProjectPriority;
   updatedAt?: string;
 }
 

@@ -352,10 +352,13 @@ export function registerIpcHandlers() {
     async (_, id: string, data: UpdateProject) => {
       dbg.ipc('projects:update %s %o', id, data);
       const result = await ProjectRepository.update(id, data);
-      if (data.showWorkItemsInFeed !== undefined) {
+      if (
+        data.showWorkItemsInFeed !== undefined ||
+        data.workItemPriority !== undefined
+      ) {
         invalidateWorkItemCache();
       }
-      if (data.showPrsInFeed !== undefined) {
+      if (data.showPrsInFeed !== undefined || data.prPriority !== undefined) {
         invalidatePrCache();
       }
       return result;

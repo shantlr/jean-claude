@@ -178,11 +178,10 @@ export async function getFeedItems(): Promise<FeedItem[]> {
     const subtitle = getSubtitleFromSteps({ stepStatuses, stepNames });
 
     // The findAllActive / findAllCompleted queries join with projects table
-    // and include projectName, projectColor, projectPriority as extra fields.
+    // and include projectName, projectColor as extra fields.
     const taskWithProject = task as typeof task & {
       projectName: string;
       projectColor: string;
-      projectPriority: 'high' | 'normal' | 'low';
     };
 
     const taskFeedItem: FeedItem = {
@@ -193,7 +192,7 @@ export async function getFeedItems(): Promise<FeedItem[]> {
       projectId: task.projectId,
       projectName: taskWithProject.projectName,
       projectColor: taskWithProject.projectColor,
-      projectPriority: taskWithProject.projectPriority,
+      projectPriority: 'normal',
       title: task.name ?? task.prompt.slice(0, 80),
       subtitle,
       hasUnread: task.hasUnread,
@@ -468,7 +467,7 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
             projectId: project.id,
             projectName: project.name,
             projectColor: project.color,
-            projectPriority: project.priority as 'high' | 'normal' | 'low',
+            projectPriority: project.prPriority as 'high' | 'normal' | 'low',
             title: pr.title,
             subtitle: pr.createdBy.displayName,
             ownerName: pr.createdBy.displayName,
@@ -727,7 +726,7 @@ async function fetchWorkItemFeedItems(
           projectName: project.name,
           projectColor: project.color,
           projectPriority:
-            (project.priority as 'high' | 'normal' | 'low') ?? 'normal',
+            (project.workItemPriority as 'high' | 'normal' | 'low') ?? 'normal',
           title: wi.fields.title,
           subtitle: `${wi.fields.workItemType} #${wi.id}`,
           workItemId: wi.id,

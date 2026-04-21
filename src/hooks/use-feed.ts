@@ -134,7 +134,8 @@ export function useFeed() {
   const {
     pinnedItems,
     actionNeededItems,
-    runningItems,
+    activeTaskItems,
+    highPriorityItems,
     normalItems,
     lowPriorityItems,
     dismissedCount,
@@ -156,7 +157,8 @@ export function useFeed() {
 
     let dCount = 0;
     const actionNeeded: FeedItem[] = [];
-    const running: FeedItem[] = [];
+    const activeTasks: FeedItem[] = [];
+    const high: FeedItem[] = [];
     const rest: FeedItem[] = [];
     const low: FeedItem[] = [];
 
@@ -170,24 +172,32 @@ export function useFeed() {
         // Action-needed items always surface to the top, even if marked
         // low-priority — a permission request or error needs attention.
         actionNeeded.push(item);
-      } else if (lowPriorityIds.has(item.id)) {
+      } else if (item.source === 'task') {
+        // All tasks always appear above PRs and work items.
+        activeTasks.push(item);
+      } else if (
+        lowPriorityIds.has(item.id) ||
+        item.projectPriority === 'low'
+      ) {
         low.push(item);
-      } else if (item.attention === 'running') {
-        running.push(item);
+      } else if (item.projectPriority === 'high') {
+        high.push(item);
       } else {
         rest.push(item);
       }
     }
 
     actionNeeded.sort(bySourceThenTimestamp);
-    running.sort(bySourceThenTimestamp);
+    activeTasks.sort(bySourceThenTimestamp);
+    high.sort(bySourceThenTimestamp);
     rest.sort(bySourceThenTimestamp);
     low.sort(bySourceThenTimestamp);
 
     return {
       pinnedItems: pinnedResult,
       actionNeededItems: actionNeeded,
-      runningItems: running,
+      activeTaskItems: activeTasks,
+      highPriorityItems: high,
       normalItems: rest,
       lowPriorityItems: low,
       dismissedCount: dCount,
@@ -198,17 +208,25 @@ export function useFeed() {
     () => [
       ...pinnedItems,
       ...actionNeededItems,
-      ...runningItems,
+      ...activeTaskItems,
+      ...highPriorityItems,
       ...normalItems,
     ],
-    [pinnedItems, actionNeededItems, runningItems, normalItems],
+    [
+      pinnedItems,
+      actionNeededItems,
+      activeTaskItems,
+      highPriorityItems,
+      normalItems,
+    ],
   );
 
   return {
     ...query,
     pinnedItems,
     actionNeededItems,
-    runningItems,
+    activeTaskItems,
+    highPriorityItems,
     normalItems,
     lowPriorityItems,
     dismissedCount,

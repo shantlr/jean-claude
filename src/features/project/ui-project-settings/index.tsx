@@ -95,7 +95,9 @@ export function ProjectSettings({
   const [worktreesPath, setWorktreesPath] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [completionContext, setCompletionContext] = useState('');
-  const [priority, setPriority] = useState<ProjectPriority>('normal');
+  const [prPriority, setPrPriority] = useState<ProjectPriority>('normal');
+  const [workItemPriority, setWorkItemPriority] =
+    useState<ProjectPriority>('normal');
   const [aiSkillSlots, setAiSkillSlots] = useState<AiSkillSlotsSetting | null>(
     null,
   );
@@ -113,7 +115,8 @@ export function ProjectSettings({
       setColor(project.color);
       setDefaultBranch(project.defaultBranch ?? '');
       setDefaultAgentBackend(project.defaultAgentBackend);
-      setPriority(project.priority ?? 'normal');
+      setPrPriority(project.prPriority ?? 'normal');
+      setWorkItemPriority(project.workItemPriority ?? 'normal');
       setCompletionContext(project.completionContext ?? '');
       setWorktreesPath(project.worktreesPath ?? '');
       setProtectedBranches(project.protectedBranches ?? []);
@@ -163,7 +166,8 @@ export function ProjectSettings({
         color,
         defaultBranch: defaultBranch || null,
         defaultAgentBackend,
-        priority,
+        prPriority,
+        workItemPriority,
         completionContext: completionContext || null,
         worktreesPath: worktreesPath || null,
         protectedBranches,
@@ -206,7 +210,8 @@ export function ProjectSettings({
     color !== project.color ||
     defaultBranch !== (project.defaultBranch ?? '') ||
     defaultAgentBackend !== project.defaultAgentBackend ||
-    priority !== (project.priority ?? 'normal') ||
+    prPriority !== (project.prPriority ?? 'normal') ||
+    workItemPriority !== (project.workItemPriority ?? 'normal') ||
     completionContext !== (project.completionContext ?? '') ||
     worktreesPath !== (project.worktreesPath ?? '') ||
     !isEqual(protectedBranches, project.protectedBranches ?? []) ||
@@ -392,20 +397,41 @@ export function ProjectSettings({
 
           <div>
             <label className="text-ink-1 mb-1 block text-sm font-medium">
-              Feed priority
+              PR feed priority
             </label>
             <Select
-              value={priority}
+              value={prPriority}
               options={[
                 { value: 'high', label: 'High' },
                 { value: 'normal', label: 'Normal' },
                 { value: 'low', label: 'Low' },
               ]}
-              onChange={(value) => setPriority(value as ProjectPriority)}
+              onChange={(value) => setPrPriority(value as ProjectPriority)}
               className="w-full justify-between"
             />
             <p className="text-ink-3 mt-1 text-xs">
-              Affects how tasks from this project are ranked in the feed
+              Priority for pull requests from this project in the feed
+            </p>
+          </div>
+
+          <div>
+            <label className="text-ink-1 mb-1 block text-sm font-medium">
+              Work item feed priority
+            </label>
+            <Select
+              value={workItemPriority}
+              options={[
+                { value: 'high', label: 'High' },
+                { value: 'normal', label: 'Normal' },
+                { value: 'low', label: 'Low' },
+              ]}
+              onChange={(value) =>
+                setWorkItemPriority(value as ProjectPriority)
+              }
+              className="w-full justify-between"
+            />
+            <p className="text-ink-3 mt-1 text-xs">
+              Priority for work items from this project in the feed
             </p>
           </div>
         </div>

@@ -47,6 +47,7 @@ import * as m045 from './migrations/045_tracked_pipeline_visible';
 import * as m046 from './migrations/046_project_ai_skill_slots';
 import * as m047 from './migrations/047_task_type';
 import * as m048 from './migrations/048_project_protected_branches';
+import * as m049 from './migrations/049_per_source_feed_priority';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -96,6 +97,7 @@ const migrations: Record<string, Migration> = {
   '046_project_ai_skill_slots': m046,
   '047_task_type': m047,
   '048_project_protected_branches': m048,
+  '049_per_source_feed_priority': m049,
 };
 
 export const migrationProvider: MigrationProvider = {
