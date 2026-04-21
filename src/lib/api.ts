@@ -732,6 +732,7 @@ export interface Api {
     create: (data: NewProjectCommand) => Promise<ProjectCommand>;
     update: (id: string, data: UpdateProjectCommand) => Promise<ProjectCommand>;
     delete: (id: string) => Promise<void>;
+    reorder: (projectId: string, commandIds: string[]) => Promise<void>;
   };
   runCommands: {
     startCommand: (params: {
@@ -1302,6 +1303,7 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         delete: async () => {},
+        reorder: async () => {},
       },
       runCommands: {
         startCommand: async () => ({

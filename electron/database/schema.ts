@@ -220,6 +220,7 @@ export interface ProjectCommandTable {
   ports: string; // JSON array stored as text
   confirmBeforeRun: Generated<number>; // 0 or 1
   confirmMessage: string | null;
+  sortOrder: Generated<number>;
   createdAt: Generated<string>;
 }
 

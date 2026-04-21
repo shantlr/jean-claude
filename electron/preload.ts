@@ -472,6 +472,8 @@ contextBridge.exposeInMainWorld('api', {
     update: (id: string, data: unknown) =>
       ipcRenderer.invoke('project:commands:update', { id, data }),
     delete: (id: string) => ipcRenderer.invoke('project:commands:delete', id),
+    reorder: (projectId: string, commandIds: string[]) =>
+      ipcRenderer.invoke('project:commands:reorder', { projectId, commandIds }),
   },
   runCommands: {
     startCommand: (params: {

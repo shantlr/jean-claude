@@ -9,10 +9,14 @@ export interface ProjectCommand {
   ports: number[];
   confirmBeforeRun: boolean;
   confirmMessage: string | null;
+  sortOrder: number;
   createdAt: string;
 }
 
-export type NewProjectCommand = Omit<ProjectCommand, 'id' | 'createdAt'>;
+export type NewProjectCommand = Omit<
+  ProjectCommand,
+  'id' | 'createdAt' | 'sortOrder'
+>;
 export type UpdateProjectCommand = Partial<
   Pick<
     ProjectCommand,

@@ -1,3 +1,5 @@
+import { sql } from 'kysely';
+
 import type {
   ProjectCommand,
   NewProjectCommand,
@@ -13,6 +15,7 @@ function parseRow(row: {
   ports: string;
   confirmBeforeRun: number;
   confirmMessage: string | null;
+  sortOrder: number;
   createdAt: string;
 }): ProjectCommand {
   return {
@@ -28,6 +31,7 @@ export const ProjectCommandRepository = {
       .selectFrom('project_commands')
       .selectAll()
       .where('projectId', '=', projectId)
+      .orderBy('sortOrder', 'asc')
       .orderBy('createdAt', 'asc')
       .execute();
     return rows.map(parseRow);
@@ -44,6 +48,7 @@ export const ProjectCommandRepository = {
 
   create: async (data: NewProjectCommand): Promise<ProjectCommand> => {
     const id = crypto.randomUUID();
+
     const row = await db
       .insertInto('project_commands')
       .values({
@@ -53,6 +58,7 @@ export const ProjectCommandRepository = {
         ports: JSON.stringify(data.ports),
         confirmBeforeRun: data.confirmBeforeRun ? 1 : 0,
         confirmMessage: data.confirmMessage ?? null,
+        sortOrder: sql<number>`(SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM project_commands WHERE projectId = ${data.projectId})`,
         createdAt: new Date().toISOString(),
       })
       .returningAll()
@@ -83,5 +89,18 @@ export const ProjectCommandRepository = {
 
   delete: async (id: string): Promise<void> => {
     await db.deleteFrom('project_commands').where('id', '=', id).execute();
+  },
+
+  reorder: async (projectId: string, commandIds: string[]): Promise<void> => {
+    await db.transaction().execute(async (trx) => {
+      for (let i = 0; i < commandIds.length; i++) {
+        await trx
+          .updateTable('project_commands')
+          .set({ sortOrder: i })
+          .where('id', '=', commandIds[i])
+          .where('projectId', '=', projectId)
+          .execute();
+      }
+    });
   },
 };

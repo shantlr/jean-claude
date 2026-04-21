@@ -1,4 +1,6 @@
-import { Trash2 } from 'lucide-react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical, Trash2 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
 import { Checkbox } from '@/common/ui/checkbox';
@@ -28,6 +30,21 @@ export function CommandRow({
   );
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: command.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
   useEffect(() => {
     setLocalCommand(command.command);
@@ -79,8 +96,22 @@ export function CommandRow({
   };
 
   return (
-    <div className="border-glass-border bg-bg-1/50 rounded-lg border p-3">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`border-glass-border bg-bg-1/50 rounded-lg border p-3 ${isDragging ? 'z-50 opacity-50' : ''}`}
+    >
       <div className="flex items-start gap-2">
+        <button
+          type="button"
+          ref={setActivatorNodeRef}
+          aria-label="Reorder command"
+          className="text-ink-3 hover:text-ink-1 mt-1.5 shrink-0 cursor-grab touch-none active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
         <div className="relative min-w-0 flex-1">
           <Input
             ref={inputRef}
@@ -114,13 +145,13 @@ export function CommandRow({
           tooltip="Delete command"
         />
       </div>
-      <div className="mt-3">
+      <div className="mt-3 pl-6">
         <label className="text-ink-2 mb-1.5 block text-xs">
           Ports to check
         </label>
         <PortChipInput ports={command.ports} onChange={handlePortsChange} />
       </div>
-      <div className="mt-3">
+      <div className="mt-3 pl-6">
         <Checkbox
           size="sm"
           checked={command.confirmBeforeRun}

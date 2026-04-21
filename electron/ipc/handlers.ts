@@ -2386,6 +2386,13 @@ export function registerIpcHandlers() {
   ipcMain.handle('project:commands:delete', (_, id: string) =>
     ProjectCommandRepository.delete(id),
   );
+  ipcMain.handle(
+    'project:commands:reorder',
+    (
+      _,
+      { projectId, commandIds }: { projectId: string; commandIds: string[] },
+    ) => ProjectCommandRepository.reorder(projectId, commandIds),
+  );
 
   // Run Commands
   ipcMain.handle(

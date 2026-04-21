@@ -1,4 +1,20 @@
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
 import { Plus } from 'lucide-react';
+import { useMemo, useCallback } from 'react';
 
 import { usePackageScripts } from '@/hooks/use-package-scripts';
 import {
@@ -6,6 +22,7 @@ import {
   useCreateProjectCommand,
   useUpdateProjectCommand,
   useDeleteProjectCommand,
+  useReorderProjectCommands,
 } from '@/hooks/use-project-commands';
 import type { UpdateProjectCommand } from '@shared/run-command-types';
 
@@ -23,6 +40,19 @@ export function RunCommandsConfig({
   const createCommand = useCreateProjectCommand();
   const updateCommand = useUpdateProjectCommand();
   const deleteCommand = useDeleteProjectCommand();
+  const reorderCommands = useReorderProjectCommands();
+  const reorderMutate = reorderCommands.mutate;
+
+  const commandIds = useMemo(() => commands.map((cmd) => cmd.id), [commands]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
   const workspaceScripts =
     scriptsData?.workspacePackages?.flatMap((p) => p.scripts) ?? [];
@@ -46,6 +76,21 @@ export function RunCommandsConfig({
     deleteCommand.mutate(id);
   };
 
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const oldIndex = commandIds.indexOf(active.id as string);
+      const newIndex = commandIds.indexOf(over.id as string);
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      const newOrder = arrayMove(commandIds, oldIndex, newIndex);
+      reorderMutate({ projectId, commandIds: newOrder });
+    },
+    [commandIds, projectId, reorderMutate],
+  );
+
   return (
     <div>
       <h2 className="text-ink-0 mb-4 text-lg font-semibold">Run Commands</h2>
@@ -54,17 +99,28 @@ export function RunCommandsConfig({
         ports that will be checked before starting.
       </p>
 
-      <div className="space-y-3">
-        {commands.map((cmd) => (
-          <CommandRow
-            key={cmd.id}
-            command={cmd}
-            suggestions={suggestions}
-            onUpdate={(data) => handleUpdateCommand(cmd.id, data)}
-            onDelete={() => handleDeleteCommand(cmd.id)}
-          />
-        ))}
-      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={commandIds}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-3">
+            {commands.map((cmd) => (
+              <CommandRow
+                key={cmd.id}
+                command={cmd}
+                suggestions={suggestions}
+                onUpdate={(data) => handleUpdateCommand(cmd.id, data)}
+                onDelete={() => handleDeleteCommand(cmd.id)}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       <button
         type="button"
