@@ -5,9 +5,8 @@ import {
   Link,
   ExternalLink,
   ArrowLeft,
-  Plus,
 } from 'lucide-react';
-import { useState, useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 
 import { Button } from '@/common/ui/button';
 import { Separator } from '@/common/ui/separator';
@@ -105,7 +104,6 @@ function PrLinkingView({
   onClose: () => void;
   bottomPadding?: number;
 }) {
-  const [showCreateForm, setShowCreateForm] = useState(false);
   const { data: allPrs, isLoading: isPrsLoading } = usePullRequests(
     projectId,
     'all',
@@ -114,6 +112,11 @@ function PrLinkingView({
 
   const branchName = task?.branchName ?? null;
   const hasRepoLinked = !!project?.repoProviderId;
+  const canCreatePr =
+    !!branchName &&
+    !!project?.repoProviderId &&
+    !!project?.repoProjectId &&
+    !!project?.repoId;
 
   // Filter PRs that match the branch name
   const matchingPrs = useMemo(() => {
@@ -175,7 +178,9 @@ function PrLinkingView({
           Back
         </Button>
         <span className="text-ink-1 text-sm font-medium">
-          Link Pull Request
+          {!isPrsLoading && matchingPrs.length === 0 && canCreatePr
+            ? 'Create Pull Request'
+            : 'Link Pull Request'}
         </span>
       </div>
       <Separator />
@@ -197,16 +202,12 @@ function PrLinkingView({
             </p>
           </div>
         ) : matchingPrs.length === 0 ? (
-          showCreateForm &&
-          branchName &&
-          project?.repoProviderId &&
-          project?.repoProjectId &&
-          project?.repoId ? (
+          canCreatePr ? (
             <PrCreationForm
               taskId={taskId}
               projectId={projectId}
               onSuccess={onClose}
-              onCancel={() => setShowCreateForm(false)}
+              onCancel={onClose}
             />
           ) : (
             <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
@@ -217,23 +218,9 @@ function PrLinkingView({
                   {branchName}
                 </code>
               </p>
-              {branchName &&
-              project?.repoProviderId &&
-              project?.repoProjectId &&
-              project?.repoId ? (
-                <Button
-                  onClick={() => setShowCreateForm(true)}
-                  variant="primary"
-                  icon={<Plus />}
-                  className="mt-2"
-                >
-                  Create Pull Request
-                </Button>
-              ) : (
-                <p className="text-ink-3 text-sm">
-                  Create a pull request from the diff view or your git provider.
-                </p>
-              )}
+              <p className="text-ink-3 text-sm">
+                Create a pull request from the diff view or your git provider.
+              </p>
             </div>
           )
         ) : (
