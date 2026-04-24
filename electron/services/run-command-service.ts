@@ -25,6 +25,86 @@ function getProcessEnvWithoutNodeEnv(): typeof process.env {
   return env;
 }
 
+/**
+ * Get all descendant PIDs of a given parent PID.
+ * Uses `pgrep -P` on macOS/Linux to recursively find child processes.
+ * This is needed because complex apps (e.g. Electron) spawn child processes
+ * that may escape the process group and survive a group kill.
+ */
+async function getDescendantPids(parentPid: number): Promise<number[]> {
+  if (process.platform === 'win32') {
+    try {
+      const { stdout } = await execAsync(
+        `wmic process where (ParentProcessId=${parentPid}) get ProcessId`,
+      );
+      const childPids = stdout
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => /^\d+$/.test(line))
+        .map(Number);
+
+      const allDescendants: number[] = [];
+      for (const childPid of childPids) {
+        allDescendants.push(childPid);
+        const grandchildren = await getDescendantPids(childPid);
+        allDescendants.push(...grandchildren);
+      }
+      return allDescendants;
+    } catch {
+      return [];
+    }
+  }
+
+  // macOS / Linux: use pgrep -P
+  try {
+    const { stdout } = await execAsync(`pgrep -P ${parentPid}`);
+    const childPids = stdout
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .map(Number)
+      .filter(Number.isFinite);
+
+    const allDescendants: number[] = [];
+    for (const childPid of childPids) {
+      allDescendants.push(childPid);
+      const grandchildren = await getDescendantPids(childPid);
+      allDescendants.push(...grandchildren);
+    }
+    return allDescendants;
+  } catch {
+    // pgrep returns exit code 1 when no processes found
+    return [];
+  }
+}
+
+/**
+ * Kill a process and all its descendants. First collects the full process tree,
+ * then sends the signal to all PIDs (leaf-first to avoid orphan reparenting).
+ */
+async function killProcessTree(
+  pid: number,
+  signal: string | number,
+): Promise<void> {
+  const descendants = await getDescendantPids(pid);
+
+  // Kill descendants in reverse order (deepest children first)
+  for (const descendantPid of descendants.reverse()) {
+    try {
+      process.kill(descendantPid, signal);
+    } catch {
+      // Process may already be dead
+    }
+  }
+
+  // Kill the root process itself
+  try {
+    process.kill(pid, signal);
+  } catch {
+    // Process may already be dead
+  }
+}
+
 type StatusChangeCallback = (taskId: string, status: RunStatus) => void;
 type LogCallback = (
   taskId: string,
@@ -274,15 +354,25 @@ class RunCommandService {
         const { stdout } = await execAsync(`netstat -ano | findstr :${port}`);
         const match = stdout.match(/LISTENING\s+(\d+)/);
         if (match) {
-          dbg.runCommand('Killing PID %s on port %d', match[1], port);
-          await execAsync(`taskkill /PID ${match[1]} /F`);
+          const pid = Number(match[1]);
+          dbg.runCommand(
+            'Killing process tree for PID %d on port %d',
+            pid,
+            port,
+          );
+          // Use /T to kill the entire process tree on Windows
+          await execAsync(`taskkill /PID ${pid} /T /F`);
         }
       } else {
         const { stdout } = await execAsync(`lsof -ti:${port}`);
-        const pids = stdout.trim().split('\n').filter(Boolean);
+        const pids = stdout.trim().split('\n').filter(Boolean).map(Number);
         for (const pid of pids) {
-          dbg.runCommand('Killing PID %s on port %d', pid, port);
-          await execAsync(`kill -9 ${pid}`);
+          dbg.runCommand(
+            'Killing process tree for PID %d on port %d',
+            pid,
+            port,
+          );
+          await killProcessTree(pid, 'SIGKILL');
         }
       }
       dbg.runCommand('Port %d killed successfully', port);
@@ -467,11 +557,17 @@ class RunCommandService {
 
     if (tracked.process.pid && tracked.status === 'running') {
       let exited = false;
-      const pgid = -tracked.process.pid; // Negative PID targets the process group
+      const pid = tracked.process.pid;
+      const pgid = -pid; // Negative PID targets the process group
+
+      // Collect descendant PIDs before killing, since the tree may become
+      // partially orphaned after the process group signal
+      const descendantPids = await getDescendantPids(pid);
+
       try {
         dbg.runCommand(
           'Sending SIGTERM to process group %d (%s)',
-          tracked.process.pid,
+          pid,
           tracked.command,
         );
         process.kill(pgid, 'SIGTERM');
@@ -480,23 +576,42 @@ class RunCommandService {
         if (!exited) {
           dbg.runCommand(
             'SIGTERM timeout for process group %d, sending SIGKILL',
-            tracked.process.pid,
+            pid,
           );
           process.kill(pgid, 'SIGKILL');
           exited = await this.waitForExit({ tracked, timeoutMs: 1500 });
         }
       } catch {
-        dbg.runCommand(
-          'Process group %d may already be dead',
-          tracked.process.pid,
-        );
+        dbg.runCommand('Process group %d may already be dead', pid);
         exited = true;
+      }
+
+      // Kill any remaining descendant processes that survived the group signal.
+      // This handles apps like Electron that spawn child processes outside the
+      // process group (renderer, GPU, utility processes).
+      if (descendantPids.length > 0) {
+        dbg.runCommand(
+          'Killing %d remaining descendant processes of %d',
+          descendantPids.length,
+          pid,
+        );
+        for (const descendantPid of descendantPids.reverse()) {
+          try {
+            process.kill(descendantPid, 'SIGKILL');
+          } catch {
+            // Process may already be dead from the group kill
+          }
+        }
+
+        if (!exited) {
+          exited = await this.waitForExit({ tracked, timeoutMs: 1500 });
+        }
       }
 
       if (!exited) {
         dbg.runCommand(
           'Process %d did not exit; keeping tracked as running',
-          tracked.process.pid,
+          pid,
         );
         this.notifyStatusChange(taskId);
         return;
@@ -536,6 +651,11 @@ class RunCommandService {
    * Synchronous last-resort cleanup: sends SIGTERM to every tracked process group.
    * Registered on `process.on('exit')` so it fires even on unexpected shutdown
    * (SIGINT, SIGTERM, uncaught exception). Cannot help with SIGKILL (kill -9).
+   *
+   * NOTE: This only targets process groups, so child processes that escaped the
+   * group (e.g. Electron renderer/GPU processes) may survive. The async
+   * `stopAllCommands` method handles full tree killing — prefer calling it
+   * during graceful shutdown (e.g. `before-quit`) before this sync fallback.
    */
   killAllProcessGroupsSync(): void {
     for (const taskProcesses of this.runningProcesses.values()) {
