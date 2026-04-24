@@ -129,6 +129,52 @@ export function Dropdown({
     enabled: isOpen,
   });
 
+  // Type-ahead: pressing a letter key jumps to the first matching menu item
+  const typeAheadBufferRef = useRef('');
+  const typeAheadTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle single printable letter keys (no modifiers except shift)
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key.length !== 1 || !/[a-zA-Z]/.test(e.key)) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Accumulate characters for multi-char type-ahead
+      clearTimeout(typeAheadTimerRef.current);
+      typeAheadBufferRef.current += e.key.toLowerCase();
+      typeAheadTimerRef.current = setTimeout(() => {
+        typeAheadBufferRef.current = '';
+      }, 500);
+
+      const items = getMenuItems();
+      const search = typeAheadBufferRef.current;
+
+      // Search from after the current focused item, wrapping around
+      const startIndex = focusedIndex + 1;
+      for (let i = 0; i < items.length; i++) {
+        const index = (startIndex + i) % items.length;
+        const text = items[index].textContent?.trim().toLowerCase() ?? '';
+        if (text.startsWith(search)) {
+          focusItem(index);
+          return;
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true);
+      clearTimeout(typeAheadTimerRef.current);
+    };
+  }, [isOpen, focusedIndex, getMenuItems, focusItem]);
+
   // Register keyboard bindings when open.
   // Using { enabled: isOpen } so bindings re-register at the end of the LIFO
   // stack when the dropdown opens, giving them priority over parent bindings.

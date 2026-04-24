@@ -7,8 +7,15 @@ import {
   Terminal,
   Workflow,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 
+import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
 import { Dropdown, DropdownItem } from '@/common/ui/dropdown';
 import { Kbd } from '@/common/ui/kbd';
@@ -42,6 +49,19 @@ export function Header() {
   const runningJobsCount = useMemo(() => getRunningJobsCount(jobs), [jobs]);
 
   const runCommandRunning = useTaskMessagesStore((s) => s.runCommandRunning);
+  const menuDropdownRef = useRef<{ toggle: () => void } | null>(null);
+
+  useCommands('header-menu-trigger', [
+    {
+      shortcut: 'cmd+\\',
+      label: 'Toggle Menu',
+      section: 'General',
+      handler: () => {
+        menuDropdownRef.current?.toggle();
+      },
+    },
+  ]);
+
   const runningCommandsCount = useMemo(() => {
     let count = 0;
     for (const status of Object.values(runCommandRunning)) {
@@ -100,6 +120,7 @@ export function Header() {
         style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
       >
         <Dropdown
+          dropdownRef={menuDropdownRef}
           trigger={
             <Button
               variant="ghost"
@@ -109,6 +130,7 @@ export function Header() {
               aria-label="Open menu"
             >
               Menu
+              <Kbd shortcut="cmd+\" className="text-[9px]" />
             </Button>
           }
           align="left"
