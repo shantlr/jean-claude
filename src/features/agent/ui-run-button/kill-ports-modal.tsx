@@ -1,5 +1,7 @@
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
+import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
 import type { PortsInUseErrorData } from '@shared/run-command-types';
 
@@ -14,6 +16,13 @@ export function KillPortsModal({
   onCancel: () => void;
   isLoading: boolean;
 }) {
+  useRegisterKeyboardBindings('kill-ports-modal', {
+    'cmd+enter': () => {
+      if (isLoading) return false;
+      onConfirm();
+    },
+  });
+
   return (
     <Modal
       isOpen
@@ -51,9 +60,10 @@ export function KillPortsModal({
           type="button"
           onClick={onCancel}
           disabled={isLoading}
-          className="text-ink-2 hover:bg-glass-medium hover:text-ink-1 rounded-md px-4 py-2 text-sm disabled:opacity-50"
+          className="text-ink-2 hover:bg-glass-medium hover:text-ink-1 flex items-center gap-2 rounded-md px-4 py-2 text-sm disabled:opacity-50"
         >
           Cancel
+          <Kbd shortcut="escape" className="text-[9px]" />
         </button>
         <button
           type="button"
@@ -63,6 +73,7 @@ export function KillPortsModal({
         >
           {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
           Kill & Start
+          <Kbd shortcut="cmd+enter" className="text-[9px]" />
         </button>
       </div>
     </Modal>
