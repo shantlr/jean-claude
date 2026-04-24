@@ -14,7 +14,6 @@ export function WorkItemsEditor({
   workItemIds,
   workItemUrls,
   onUpdate,
-  onClose,
 }: {
   projectId: string;
   providerId: string;
@@ -53,27 +52,10 @@ export function WorkItemsEditor({
   }
 
   return (
-    <div className="border-glass-border bg-bg-1 rounded-lg border p-3 shadow-lg">
-      {/* Header */}
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-ink-1 text-sm font-medium">
-          Linked Work Items
-        </span>
-        <IconButton
-          onClick={(e: MouseEvent<HTMLButtonElement>) => {
-            e.stopPropagation();
-            onClose();
-          }}
-          icon={<X />}
-          size="sm"
-          variant="ghost"
-          tooltip="Close"
-        />
-      </div>
-
+    <div className="space-y-2">
       {/* Current work items */}
       {workItemIds.length > 0 ? (
-        <div className="mb-2 space-y-1">
+        <div className="space-y-1">
           {workItemIds.map((id, index) => {
             const url = workItemUrls[index];
             return (
@@ -110,7 +92,7 @@ export function WorkItemsEditor({
           })}
         </div>
       ) : (
-        <p className="text-ink-2 mb-2 text-sm">No linked work items</p>
+        <p className="text-ink-2 text-sm">No linked work items</p>
       )}
 
       {/* Add work item */}

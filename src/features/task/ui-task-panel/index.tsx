@@ -31,6 +31,7 @@ import {
 } from '@/common/ui/dropdown';
 import { IconButton } from '@/common/ui/icon-button';
 import { Kbd } from '@/common/ui/kbd';
+import { Modal } from '@/common/ui/modal';
 import { Separator } from '@/common/ui/separator';
 import { AddPermissionModal } from '@/features/agent/ui-add-permission-modal';
 import {
@@ -346,19 +347,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   useEffect(() => {
     setShowWorkItemsEditor(false);
   }, [taskId]);
-
-  // Close work items editor on Escape
-  useEffect(() => {
-    if (!showWorkItemsEditor) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        setShowWorkItemsEditor(false);
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown, true);
-    return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [showWorkItemsEditor]);
 
   // Notify backend this task is focused (dismisses completion notifications, etc.)
   useEffect(() => {
@@ -1048,32 +1036,30 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             )}
           </div>
 
-          {/* Work items editor popover */}
-          {showWorkItemsEditor && hasWorkItemsLink && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                role="presentation"
-                onClick={() => setShowWorkItemsEditor(false)}
+          {/* Work items editor modal */}
+          {hasWorkItemsLink && (
+            <Modal
+              isOpen={showWorkItemsEditor}
+              onClose={() => setShowWorkItemsEditor(false)}
+              title="Linked Work Items"
+              size="sm"
+            >
+              <WorkItemsEditor
+                projectId={project.id}
+                providerId={project.workItemProviderId!}
+                azureProjectId={project.workItemProjectId!}
+                azureProjectName={project.workItemProjectName!}
+                workItemIds={task.workItemIds ?? []}
+                workItemUrls={task.workItemUrls ?? []}
+                onUpdate={({ workItemIds, workItemUrls }) => {
+                  updateTask.mutate({
+                    id: taskId,
+                    data: { workItemIds, workItemUrls },
+                  });
+                }}
+                onClose={() => setShowWorkItemsEditor(false)}
               />
-              <div className="absolute top-12 right-4 z-50 w-80">
-                <WorkItemsEditor
-                  projectId={project.id}
-                  providerId={project.workItemProviderId!}
-                  azureProjectId={project.workItemProjectId!}
-                  azureProjectName={project.workItemProjectName!}
-                  workItemIds={task.workItemIds ?? []}
-                  workItemUrls={task.workItemUrls ?? []}
-                  onUpdate={({ workItemIds, workItemUrls }) => {
-                    updateTask.mutate({
-                      id: taskId,
-                      data: { workItemIds, workItemUrls },
-                    });
-                  }}
-                  onClose={() => setShowWorkItemsEditor(false)}
-                />
-              </div>
-            </>
+            </Modal>
           )}
 
           {/* Right: Run + Overflow menu */}
