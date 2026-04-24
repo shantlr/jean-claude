@@ -234,21 +234,6 @@ export async function getFeedItems(): Promise<FeedItem[]> {
       .map((p) => [p.pullRequestId as number, { isDraft: !!p.isDraft }]),
   );
 
-  // Propagate work item PR status to task feed items whose work items were
-  // filtered out — so the PR icon still shows on the task card.
-  const workItemPrStatusMap = new Map<
-    number,
-    { status: 'active' | 'completed' | 'abandoned'; url?: string }
-  >();
-  for (const wi of workItemItems) {
-    if (wi.workItemId && wi.workItemPrStatus) {
-      workItemPrStatusMap.set(wi.workItemId, {
-        status: wi.workItemPrStatus,
-        url: wi.workItemPrUrl,
-      });
-    }
-  }
-
   // Collect task PRs that need status fetching (not already active in feed)
   const projects = await ProjectRepository.findAll();
   const projectsById = new Map(projects.map((p) => [p.id, p]));
@@ -291,17 +276,10 @@ export async function getFeedItems(): Promise<FeedItem[]> {
       continue;
     }
 
-    // Case 2: task has no pullRequestId — propagate from linked work items
-    if (item.workItemIds) {
-      for (const wiIdStr of item.workItemIds) {
-        const prInfo = workItemPrStatusMap.get(Number(wiIdStr));
-        if (prInfo) {
-          item.workItemPrStatus = prInfo.status;
-          item.workItemPrUrl = prInfo.url;
-          break;
-        }
-      }
-    }
+    // Case 2: task has no pullRequestId — skip.
+    // Previously this propagated PR status from linked work items, but that
+    // incorrectly matched PRs when multiple tasks share the same work item.
+    // Tasks should only show PR status via their direct pullRequestId.
   }
 
   // Fetch unknown task PR statuses grouped by provider
