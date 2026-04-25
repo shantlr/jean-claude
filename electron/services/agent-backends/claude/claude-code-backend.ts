@@ -577,8 +577,12 @@ export class ClaudeCodeBackend implements AgentBackend {
     }
 
     // Check session-allowed tools (canonical format: "tool:matchValue" or "tool")
+    // Bare tool name (e.g., "read") acts as a wildcard — matches any "read:*" request
     const canonicalPermission = matchValue ? `${tool}:${matchValue}` : tool;
-    if (session.sessionAllowedTools.includes(canonicalPermission)) {
+    if (
+      session.sessionAllowedTools.includes(canonicalPermission) ||
+      (matchValue && session.sessionAllowedTools.includes(tool))
+    ) {
       dbg.agentPermission('Tool %s is session-allowed', toolName);
       return Promise.resolve({ behavior: 'allow', updatedInput: input });
     }

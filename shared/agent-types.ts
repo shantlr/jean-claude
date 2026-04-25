@@ -179,6 +179,8 @@ export interface PermissionResponse {
   message?: string;
   /** Scope for which this allow should persist (used by backends that support it) */
   allowMode?: 'session' | 'project' | 'worktree';
+  /** Override the tools to allow in the session (e.g., bare tool name for "allow all") */
+  toolsToAllow?: string[];
 }
 
 export interface QuestionResponse {

@@ -164,6 +164,9 @@ function ExitPlanModeDisplay({
   );
 }
 
+/** Tools that support "Allow All" (blanket allow for the tool, not just this file) */
+const ALLOW_ALL_TOOLS = new Set(['Read', 'Write', 'Edit']);
+
 export function PermissionBar({
   request,
   onRespond,
@@ -201,6 +204,7 @@ export function PermissionBar({
   const input = request.input;
   const isExitPlanMode = request.toolName === 'ExitPlanMode';
   const sessionAllowButton = request.sessionAllowButton;
+  const showAllowAll = ALLOW_ALL_TOOLS.has(request.toolName);
 
   const handleAllow = () => {
     if (sessionAllowButton?.setModeOnAllow) {
@@ -316,6 +320,43 @@ export function PermissionBar({
     setOtherMessage('');
   };
 
+  // "Allow All" handlers — pass empty input to get scalar "allow" (blanket permission).
+  // toolsToAllow with bare tool name (e.g., "read") tells the backend to allow ALL
+  // requests for that tool in the current session, not just this specific file.
+  const allowAllToolName = request.toolName.toLowerCase();
+
+  const handleAllowAllForSession = () => {
+    onAllowForSession?.(request.toolName, {});
+    return onRespond(request.requestId, {
+      behavior: 'allow',
+      updatedInput: input,
+      allowMode: 'session',
+      toolsToAllow: [allowAllToolName],
+    });
+  };
+
+  const handleAllowAllForProject = () => {
+    onAllowForSession?.(request.toolName, {});
+    onAllowForProject?.(request.toolName, {});
+    return onRespond(request.requestId, {
+      behavior: 'allow',
+      updatedInput: input,
+      allowMode: 'project',
+      toolsToAllow: [allowAllToolName],
+    });
+  };
+
+  const handleAllowAllForProjectWorktrees = () => {
+    onAllowForSession?.(request.toolName, {});
+    onAllowForProjectWorktrees?.(request.toolName, {});
+    return onRespond(request.requestId, {
+      behavior: 'allow',
+      updatedInput: input,
+      allowMode: 'worktree',
+      toolsToAllow: [allowAllToolName],
+    });
+  };
+
   return (
     <div className="border border-yellow-700/50 bg-yellow-900/20 px-4 py-3">
       <div className="flex flex-col gap-3">
@@ -379,77 +420,115 @@ export function PermissionBar({
             </div>
           </div>
         ) : (
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <Button
-              onClick={() => setIsOtherOpen(true)}
-              variant="ghost"
-              size="sm"
-              icon={<MessageSquare />}
-            >
-              Other
-            </Button>
-            <Button
-              onClick={handleDeny}
-              variant="secondary"
-              size="sm"
-              icon={<X />}
-            >
-              Deny
-            </Button>
-            <div className="flex-1" />
-            <Button
-              onClick={handleAllow}
-              variant="primary"
-              size="sm"
-              icon={<Check />}
-              className="bg-green-600 hover:bg-green-500"
-            >
-              Allow
-            </Button>
-            {sessionAllowButton && (
+          <>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
               <Button
-                onClick={handleAllowForSession}
+                onClick={() => setIsOtherOpen(true)}
+                variant="ghost"
+                size="sm"
+                icon={<MessageSquare />}
+              >
+                Other
+              </Button>
+              <Button
+                onClick={handleDeny}
+                variant="secondary"
+                size="sm"
+                icon={<X />}
+              >
+                Deny
+              </Button>
+              <div className="flex-1" />
+              <Button
+                onClick={handleAllow}
                 variant="primary"
                 size="sm"
-                icon={<ShieldCheck />}
+                icon={<Check />}
+                className="bg-green-600 hover:bg-green-500"
               >
-                {sessionAllowButton.label}
+                Allow
               </Button>
+              {sessionAllowButton && (
+                <Button
+                  onClick={handleAllowForSession}
+                  variant="primary"
+                  size="sm"
+                  icon={<ShieldCheck />}
+                >
+                  {sessionAllowButton.label}
+                </Button>
+              )}
+              {sessionAllowButton && (
+                <Button
+                  onClick={handleAllowForProject}
+                  variant="primary"
+                  size="sm"
+                  icon={<ShieldCheck />}
+                  className="bg-purple-600 hover:bg-purple-500"
+                >
+                  Allow for Project
+                </Button>
+              )}
+              {sessionAllowButton && worktreePath && (
+                <Button
+                  onClick={handleAllowForProjectWorktrees}
+                  variant="primary"
+                  size="sm"
+                  icon={<ShieldCheck />}
+                  className="bg-amber-600 hover:bg-amber-500"
+                >
+                  Allow for Project Worktrees
+                </Button>
+              )}
+              {sessionAllowButton && onAllowGlobally && (
+                <Button
+                  onClick={handleAllowGlobally}
+                  variant="primary"
+                  size="sm"
+                  icon={<ShieldCheck />}
+                  className="bg-teal-600 hover:bg-teal-500"
+                >
+                  Allow Globally
+                </Button>
+              )}
+            </div>
+            {showAllowAll && sessionAllowButton && (
+              <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-yellow-700/30 pt-2">
+                <span className="text-ink-2 text-xs">
+                  Allow all {request.toolName}:
+                </span>
+                <div className="flex-1" />
+                <Button
+                  onClick={handleAllowAllForSession}
+                  variant="secondary"
+                  size="sm"
+                  icon={<ShieldCheck />}
+                >
+                  Session
+                </Button>
+                <Button
+                  onClick={handleAllowAllForProject}
+                  variant="secondary"
+                  size="sm"
+                  icon={<ShieldCheck />}
+                  className="bg-purple-600/30 hover:bg-purple-500/30"
+                >
+                  Project
+                </Button>
+                {worktreePath && (
+                  <Button
+                    onClick={handleAllowAllForProjectWorktrees}
+                    variant="secondary"
+                    size="sm"
+                    icon={<ShieldCheck />}
+                    className="bg-amber-600/30 hover:bg-amber-500/30"
+                  >
+                    Worktree
+                  </Button>
+                )}
+              </div>
             )}
-            {sessionAllowButton && (
-              <Button
-                onClick={handleAllowForProject}
-                variant="primary"
-                size="sm"
-                icon={<ShieldCheck />}
-                className="bg-purple-600 hover:bg-purple-500"
-              >
-                Allow for Project
-              </Button>
-            )}
-            {sessionAllowButton && worktreePath && (
-              <Button
-                onClick={handleAllowForProjectWorktrees}
-                variant="primary"
-                size="sm"
-                icon={<ShieldCheck />}
-                className="bg-amber-600 hover:bg-amber-500"
-              >
-                Allow for Project Worktrees
-              </Button>
-            )}
-            {sessionAllowButton && onAllowGlobally && (
-              <Button
-                onClick={handleAllowGlobally}
-                variant="primary"
-                size="sm"
-                icon={<ShieldCheck />}
-                className="bg-teal-600 hover:bg-teal-500"
-              >
-                Allow Globally
-              </Button>
-            )}
-          </div>
+          </>
         )}
       </div>
     </div>

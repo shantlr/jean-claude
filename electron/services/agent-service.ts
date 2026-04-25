@@ -1038,11 +1038,17 @@ class AgentService {
 
       // Compute toolsToAllow from the pending request's tool name and input
       // so backends can update their in-memory session state.
+      // If the response includes an explicit toolsToAllow override (e.g., from
+      // "Allow All" buttons), use that instead of deriving from the request.
       let toolsToAllow: string[] | undefined;
-      if (permResponse.behavior === 'allow' && request.permissionRequest) {
-        const { toolName, input } = request.permissionRequest;
-        const { tool, matchValue } = normalizeToolRequest(toolName, input);
-        toolsToAllow = [matchValue ? `${tool}:${matchValue}` : tool];
+      if (permResponse.behavior === 'allow') {
+        if (permResponse.toolsToAllow) {
+          toolsToAllow = permResponse.toolsToAllow;
+        } else if (request.permissionRequest) {
+          const { toolName, input } = request.permissionRequest;
+          const { tool, matchValue } = normalizeToolRequest(toolName, input);
+          toolsToAllow = [matchValue ? `${tool}:${matchValue}` : tool];
+        }
       }
 
       await session.backend.respondToPermission(
