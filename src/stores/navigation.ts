@@ -101,6 +101,11 @@ const DEFAULT_TOOL_DIFF_PREVIEW_PANE_WIDTH = 520;
 const MIN_TOOL_DIFF_PREVIEW_PANE_WIDTH = 360;
 const MAX_TOOL_DIFF_PREVIEW_PANE_WIDTH = 1400;
 
+// Constants for skills rail width (settings panel)
+const DEFAULT_SKILLS_RAIL_WIDTH = 220;
+const MIN_SKILLS_RAIL_WIDTH = 160;
+const MAX_SKILLS_RAIL_WIDTH = 360;
+
 // Constants for sidebar width
 const DEFAULT_SIDEBAR_WIDTH = 256; // w-64 equivalent
 const MIN_SIDEBAR_WIDTH = 200;
@@ -136,6 +141,9 @@ interface NavigationState {
   // App-level: tool diff preview pane width (global setting)
   toolDiffPreviewPaneWidth: number;
 
+  // App-level: skills rail width in settings (global setting)
+  skillsRailWidth: number;
+
   // App-level: sidebar content tab ('tasks' or 'prs')
   sidebarTab: 'tasks' | 'prs';
 
@@ -154,6 +162,7 @@ interface NavigationState {
   setFileExplorerPaneWidth: (width: number) => void;
   setCommandLogsPaneWidth: (width: number) => void;
   setToolDiffPreviewPaneWidth: (width: number) => void;
+  setSkillsRailWidth: (width: number) => void;
   setSidebarTab: (tab: 'tasks' | 'prs') => void;
   setLastTaskForProject: (projectId: string, taskId: string) => void;
   setTaskRightPane: (taskId: string, pane: RightPane | null) => void;
@@ -181,6 +190,7 @@ const useStore = create<NavigationState>()(
       fileExplorerPaneWidth: DEFAULT_FILE_EXPLORER_PANE_WIDTH,
       commandLogsPaneWidth: DEFAULT_COMMAND_LOGS_PANE_WIDTH,
       toolDiffPreviewPaneWidth: DEFAULT_TOOL_DIFF_PREVIEW_PANE_WIDTH,
+      skillsRailWidth: DEFAULT_SKILLS_RAIL_WIDTH,
       sidebarTab: 'tasks' as 'tasks' | 'prs',
       lastTaskByProject: {},
       taskState: {},
@@ -229,6 +239,14 @@ const useStore = create<NavigationState>()(
           toolDiffPreviewPaneWidth: Math.min(
             Math.max(MIN_TOOL_DIFF_PREVIEW_PANE_WIDTH, width),
             MAX_TOOL_DIFF_PREVIEW_PANE_WIDTH,
+          ),
+        }),
+
+      setSkillsRailWidth: (width) =>
+        set({
+          skillsRailWidth: Math.min(
+            Math.max(MIN_SKILLS_RAIL_WIDTH, width),
+            MAX_SKILLS_RAIL_WIDTH,
           ),
         }),
 
@@ -851,5 +869,17 @@ export function useToolDiffPreviewPaneWidth() {
     setWidth,
     minWidth: MIN_TOOL_DIFF_PREVIEW_PANE_WIDTH,
     maxWidth: MAX_TOOL_DIFF_PREVIEW_PANE_WIDTH,
+  };
+}
+
+// Hook for skills rail width (settings panel)
+export function useSkillsRailWidth() {
+  const width = useStore((state) => state.skillsRailWidth);
+  const setWidth = useStore((state) => state.setSkillsRailWidth);
+  return {
+    width,
+    setWidth,
+    minWidth: MIN_SKILLS_RAIL_WIDTH,
+    maxWidth: MAX_SKILLS_RAIL_WIDTH,
   };
 }

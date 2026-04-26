@@ -554,20 +554,28 @@ export function ProjectSettings({
       assertNever(menuItem);
   }
 
+  const fillHeight = menuItem === 'skills';
+
   return (
-    <div className="space-y-6">
-      {content}
-      {hasChanges && (
-        <Button
-          variant="primary"
-          size="md"
-          onClick={handleSave}
-          disabled={updateProject.isPending}
-          loading={updateProject.isPending}
-          className="w-full"
-        >
-          {updateProject.isPending ? 'Saving...' : 'Save Changes'}
-        </Button>
+    <div className={fillHeight ? 'flex min-h-0 flex-1 flex-col' : 'space-y-6'}>
+      {fillHeight ? (
+        content
+      ) : (
+        <>
+          {content}
+          {hasChanges && (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={handleSave}
+              disabled={updateProject.isPending}
+              loading={updateProject.isPending}
+              className="w-full"
+            >
+              {updateProject.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          )}
+        </>
       )}
     </div>
   );

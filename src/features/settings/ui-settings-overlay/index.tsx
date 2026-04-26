@@ -183,8 +183,21 @@ const NAV_ICON_INACTIVE: React.CSSProperties = {
 
 /* ── Components ── */
 
+// Skills needs a fill-height flex layout so its columns scroll independently
+const FILL_HEIGHT_SECTIONS: GlobalMenuItem[] = ['skills'];
+const FILL_HEIGHT_PROJECT_SECTIONS: ProjectSettingsMenuItem[] = ['skills'];
+
 function GlobalContent({ menuItem }: { menuItem: GlobalMenuItem }) {
   const item = GLOBAL_MENU_ITEMS.find((i) => i.id === menuItem);
+  const fillHeight = FILL_HEIGHT_SECTIONS.includes(menuItem);
+
+  if (fillHeight) {
+    return (
+      <div className="flex h-full min-h-0 flex-1">
+        <GlobalContentInner menuItem={menuItem} />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -561,8 +574,22 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
 
               {/* Right content area */}
               <div
-                className="flex-1 overflow-y-auto"
-                style={{ padding: '20px 28px 28px' }}
+                className={
+                  (activeTab === 'global' &&
+                    FILL_HEIGHT_SECTIONS.includes(globalMenuItem)) ||
+                  (activeTab === 'project' &&
+                    FILL_HEIGHT_PROJECT_SECTIONS.includes(projectMenuItem))
+                    ? 'flex min-h-0 flex-1 flex-col'
+                    : 'flex-1 overflow-y-auto'
+                }
+                style={
+                  (activeTab === 'global' &&
+                    FILL_HEIGHT_SECTIONS.includes(globalMenuItem)) ||
+                  (activeTab === 'project' &&
+                    FILL_HEIGHT_PROJECT_SECTIONS.includes(projectMenuItem))
+                    ? { padding: 0 }
+                    : { padding: '20px 28px 28px' }
+                }
                 role={
                   activeTab === 'project' && hasProjectTab
                     ? 'tabpanel'

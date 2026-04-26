@@ -1,7 +1,8 @@
 import { useNavigate } from '@tanstack/react-router';
 import { Bot } from 'lucide-react';
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useRef } from 'react';
 
+import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
@@ -37,17 +38,13 @@ export function CreateWithAgentDialog({ onClose }: { onClose: () => void }) {
   const agentBackend = draft?.agentBackend ?? 'claude-code';
   const canSubmit = prompt.trim().length > 0;
 
-  // Close on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  // Close on Escape key (registered after settings overlay → LIFO priority wins)
+  useRegisterKeyboardBindings('create-with-agent-dialog', {
+    escape: () => {
+      onClose();
+      return true;
+    },
+  });
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit || !draft) return;
