@@ -474,14 +474,18 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const handleOpenWorktreeInEditor = useCallback(async () => {
     if (!task?.worktreePath) return;
     try {
-      await api.shell.openInEditor(task.worktreePath);
+      const targetPath =
+        isDiffViewOpen && diffSelectedFile
+          ? `${task.worktreePath}/${diffSelectedFile}`
+          : task.worktreePath;
+      await api.shell.openInEditor(targetPath);
     } catch {
       modal.error({
         title: 'Worktree Not Found',
         content: `The worktree path no longer exists:\n${task.worktreePath}\n\nThe worktree may have been deleted or moved.`,
       });
     }
-  }, [task?.worktreePath, modal]);
+  }, [task?.worktreePath, isDiffViewOpen, diffSelectedFile, modal]);
 
   const handleDeleteWorktree = useCallback(() => {
     if (!task?.worktreePath) return;
