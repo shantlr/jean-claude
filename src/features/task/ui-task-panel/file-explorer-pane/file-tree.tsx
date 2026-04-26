@@ -8,7 +8,6 @@ import {
   Loader2,
 } from 'lucide-react';
 
-import { Button } from '@/common/ui/button';
 import { useDirectoryListing } from '@/hooks/use-directory-listing';
 
 export function FileTree({
@@ -84,25 +83,23 @@ function FileTreeNode({
   if (entry.isDirectory) {
     return (
       <div>
-        <Button
+        <button
           onClick={() => onToggleDir(entry.path)}
-          className={clsx(
-            'hover:bg-glass-medium/50 flex w-full items-center gap-1 py-0.5 text-left text-sm',
-          )}
+          className="text-ink-2 hover:bg-glass-medium/50 flex w-full items-center gap-1 py-0.5 text-left text-sm"
           style={{ paddingLeft: 8 + depth * 16 }}
         >
           {isExpanded ? (
-            <ChevronDown className="text-ink-2 h-3.5 w-3.5 shrink-0" />
+            <ChevronDown className="h-3.5 w-3.5 shrink-0" />
           ) : (
-            <ChevronRight className="text-ink-2 h-3.5 w-3.5 shrink-0" />
+            <ChevronRight className="h-3.5 w-3.5 shrink-0" />
           )}
           {isExpanded ? (
-            <FolderOpen className="text-ink-2 h-3.5 w-3.5 shrink-0" />
+            <FolderOpen className="h-3.5 w-3.5 shrink-0" />
           ) : (
-            <Folder className="text-ink-2 h-3.5 w-3.5 shrink-0" />
+            <Folder className="h-3.5 w-3.5 shrink-0" />
           )}
           <span className="text-ink-1 truncate">{entry.name}</span>
-        </Button>
+        </button>
         {isExpanded && (
           <DirectoryChildren
             dirPath={entry.path}
@@ -119,7 +116,7 @@ function FileTreeNode({
   }
 
   return (
-    <Button
+    <button
       onClick={() => onSelectFile(entry.path)}
       className={clsx(
         'flex w-full items-center gap-1 py-0.5 text-left text-sm',
@@ -131,7 +128,7 @@ function FileTreeNode({
     >
       <File className="text-ink-3 h-3.5 w-3.5 shrink-0" />
       <span className="truncate">{entry.name}</span>
-    </Button>
+    </button>
   );
 }
 
