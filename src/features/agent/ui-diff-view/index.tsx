@@ -244,6 +244,10 @@ export function DiffView({
             newString={newString}
             oldTokens={state.oldTokens}
             newTokens={state.newTokens}
+            onAddCommentClick={onAddCommentClick}
+            inlineComments={inlineComments}
+            commentFormLineRange={commentFormLineRange}
+            commentForm={commentForm}
             searchMatches={matches}
             currentMatchIndex={currentMatchIndex}
           />
@@ -253,6 +257,10 @@ export function DiffView({
             newString={newString}
             diffLines={state.lines}
             newTokens={state.newTokens}
+            onAddCommentClick={onAddCommentClick}
+            inlineComments={inlineComments}
+            commentFormLineRange={commentFormLineRange}
+            commentForm={commentForm}
             searchMatches={matches}
             currentMatchIndex={currentMatchIndex}
           />

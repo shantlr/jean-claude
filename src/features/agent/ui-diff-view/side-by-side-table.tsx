@@ -1,5 +1,7 @@
-import type { MouseEvent as ReactMouseEvent } from 'react';
-import { useMemo } from 'react';
+import clsx from 'clsx';
+import { MessageSquarePlus } from 'lucide-react';
+import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { ThemedToken } from 'shiki';
 
 import {
@@ -15,11 +17,17 @@ import {
   renderWithHighlights,
 } from './utils-search-highlight';
 
+import type { InlineComment, LineRange } from './index';
+
 export function SideBySideDiffTable({
   oldString,
   newString,
   oldTokens,
   newTokens,
+  onAddCommentClick,
+  inlineComments,
+  commentFormLineRange,
+  commentForm,
   searchMatches,
   currentMatchIndex,
 }: {
@@ -27,9 +35,16 @@ export function SideBySideDiffTable({
   newString: string;
   oldTokens: ThemedToken[][];
   newTokens: ThemedToken[][];
+  onAddCommentClick?: (lineRange: LineRange) => void;
+  inlineComments?: InlineComment[];
+  commentFormLineRange?: LineRange | null;
+  commentForm?: ReactNode;
   searchMatches: SearchMatch[];
   currentMatchIndex: number;
 }) {
+  const [selectionStart, setSelectionStart] = useState<number | null>(null);
+  const [hoveredLine, setHoveredLine] = useState<number | null>(null);
+
   // Compute both the flat lines (for mapping search matches) and side-by-side rows
   const { rows, lineToRowMapping } = useMemo(() => {
     const lines = computeDiff(oldString, newString);
@@ -107,10 +122,61 @@ export function SideBySideDiffTable({
   const leftPct = `${leftFraction * 100}%`;
   const rightPct = `${(1 - leftFraction) * 100}%`;
 
+  // Comment selection handlers
+  const handleLineMouseDown = useCallback(
+    (lineNumber: number) => {
+      if (!onAddCommentClick) return;
+      setSelectionStart(lineNumber);
+    },
+    [onAddCommentClick],
+  );
+
+  const handleLineMouseUp = useCallback(
+    (lineNumber: number) => {
+      if (!onAddCommentClick || selectionStart === null) return;
+
+      const start = Math.min(selectionStart, lineNumber);
+      const end = Math.max(selectionStart, lineNumber);
+      onAddCommentClick({ start, end });
+      setSelectionStart(null);
+    },
+    [onAddCommentClick, selectionStart],
+  );
+
+  const handleMouseLeaveTable = useCallback(() => {
+    setSelectionStart(null);
+    setHoveredLine(null);
+  }, []);
+
+  const isLineInSelection = useCallback(
+    (lineNumber: number) => {
+      if (selectionStart === null || hoveredLine === null) return false;
+      const start = Math.min(selectionStart, hoveredLine);
+      const end = Math.max(selectionStart, hoveredLine);
+      return lineNumber >= start && lineNumber <= end;
+    },
+    [selectionStart, hoveredLine],
+  );
+
+  const isLineInCommentRange = useCallback(
+    (lineNumber: number) => {
+      if (!commentFormLineRange) return false;
+      return (
+        lineNumber >= commentFormLineRange.start &&
+        lineNumber <= commentFormLineRange.end
+      );
+    },
+    [commentFormLineRange],
+  );
+
+  // Track which lines we've already rendered extras for
+  const renderedNewLineNumbers = new Set<number>();
+
   return (
     <table
       ref={tableRef}
       className={`w-full border-collapse ${isDragging ? 'select-none' : ''}`}
+      onMouseLeave={handleMouseLeaveTable}
     >
       <colgroup>
         {/* Left line number */}
@@ -125,20 +191,68 @@ export function SideBySideDiffTable({
         <col style={{ width: rightPct }} />
       </colgroup>
       <tbody>
-        {rows.map((row, rowIndex) => (
-          <SideBySideRowComponent
-            key={rowIndex}
-            row={row}
-            rowIndex={rowIndex}
-            oldTokens={oldTokens}
-            newTokens={newTokens}
-            leftMatches={matchesByRowAndSide.get(`${rowIndex}-left`) ?? []}
-            rightMatches={matchesByRowAndSide.get(`${rowIndex}-right`) ?? []}
-            currentMatch={currentMatch}
-            onDividerMouseDown={handleDividerMouseDown}
-            isDragging={isDragging}
-          />
-        ))}
+        {rows.map((row, rowIndex) => {
+          // Use right side newLineNumber for comments (consistent with inline mode)
+          const newLineNumber =
+            row.right?.newLineNumber ?? row.left?.newLineNumber;
+
+          const shouldRenderExtras =
+            newLineNumber !== undefined &&
+            !renderedNewLineNumbers.has(newLineNumber);
+          if (newLineNumber !== undefined) {
+            renderedNewLineNumbers.add(newLineNumber);
+          }
+
+          const lineComments =
+            shouldRenderExtras && newLineNumber
+              ? inlineComments?.filter((c) => c.line === newLineNumber)
+              : undefined;
+
+          const showCommentForm =
+            shouldRenderExtras &&
+            commentFormLineRange &&
+            newLineNumber === commentFormLineRange.end;
+
+          const isSelected = newLineNumber
+            ? isLineInSelection(newLineNumber)
+            : false;
+          const isInCommentRange = newLineNumber
+            ? isLineInCommentRange(newLineNumber)
+            : false;
+
+          const canComment = !!onAddCommentClick && newLineNumber !== undefined;
+
+          return (
+            <SideBySideRowComponent
+              key={rowIndex}
+              row={row}
+              rowIndex={rowIndex}
+              oldTokens={oldTokens}
+              newTokens={newTokens}
+              leftMatches={matchesByRowAndSide.get(`${rowIndex}-left`) ?? []}
+              rightMatches={matchesByRowAndSide.get(`${rowIndex}-right`) ?? []}
+              currentMatch={currentMatch}
+              onDividerMouseDown={handleDividerMouseDown}
+              isDragging={isDragging}
+              canComment={canComment}
+              isHovered={hoveredLine === newLineNumber}
+              isSelected={isSelected}
+              isInCommentRange={isInCommentRange}
+              onMouseEnter={() =>
+                newLineNumber !== undefined && setHoveredLine(newLineNumber)
+              }
+              onMouseDown={() =>
+                newLineNumber !== undefined &&
+                handleLineMouseDown(newLineNumber)
+              }
+              onMouseUp={() =>
+                newLineNumber !== undefined && handleLineMouseUp(newLineNumber)
+              }
+              inlineComments={lineComments}
+              commentForm={showCommentForm ? commentForm : undefined}
+            />
+          );
+        })}
       </tbody>
     </table>
   );
@@ -154,6 +268,15 @@ function SideBySideRowComponent({
   currentMatch,
   onDividerMouseDown,
   isDragging,
+  canComment,
+  isHovered,
+  isSelected,
+  isInCommentRange,
+  onMouseEnter,
+  onMouseDown,
+  onMouseUp,
+  inlineComments,
+  commentForm,
 }: {
   row: SideBySideRow;
   rowIndex: number;
@@ -164,42 +287,95 @@ function SideBySideRowComponent({
   currentMatch: SearchMatch | null;
   onDividerMouseDown: (e: ReactMouseEvent) => void;
   isDragging: boolean;
+  canComment: boolean;
+  isHovered: boolean;
+  isSelected: boolean;
+  isInCommentRange: boolean;
+  onMouseEnter: () => void;
+  onMouseDown: () => void;
+  onMouseUp: () => void;
+  inlineComments?: InlineComment[];
+  commentForm?: ReactNode;
 }) {
   return (
-    <tr data-line-index={rowIndex}>
-      {/* Left side (old/deletions) */}
-      <SideBySideCell
-        line={row.left}
-        tokens={oldTokens}
-        side="left"
-        searchMatches={leftMatches}
-        currentMatch={currentMatch}
-      />
-      {/* Divider / drag handle */}
-      <td
-        className="group relative cursor-col-resize select-none"
-        onMouseDown={onDividerMouseDown}
+    <>
+      <tr
+        data-line-index={rowIndex}
+        className={clsx({
+          'bg-blue-500/30': isSelected,
+          'bg-blue-500/10': !isSelected && isInCommentRange,
+        })}
+        onMouseEnter={onMouseEnter}
+        onMouseDown={canComment ? onMouseDown : undefined}
+        onMouseUp={canComment ? onMouseUp : undefined}
+        style={{ cursor: canComment ? 'pointer' : undefined }}
       >
-        {/* Visible divider line */}
-        <div
-          className={`absolute inset-y-0 left-1/2 w-px -translate-x-1/2 transition-all ${
-            isDragging
-              ? 'bg-acc w-0.5'
-              : 'group-hover:bg-acc/50 bg-white/[0.06] group-hover:w-0.5'
-          }`}
+        {/* Left side (old/deletions) */}
+        <SideBySideCell
+          line={row.left}
+          tokens={oldTokens}
+          side="left"
+          searchMatches={leftMatches}
+          currentMatch={currentMatch}
+          canComment={canComment}
+          isHovered={isHovered}
+          isSelected={isSelected}
+          isInCommentRange={isInCommentRange}
         />
-        {/* Wide invisible hit target */}
-        <div className="absolute inset-y-0 -right-1.5 -left-1.5" />
-      </td>
-      {/* Right side (new/additions) */}
-      <SideBySideCell
-        line={row.right}
-        tokens={newTokens}
-        side="right"
-        searchMatches={rightMatches}
-        currentMatch={currentMatch}
-      />
-    </tr>
+        {/* Divider / drag handle */}
+        <td
+          className="group relative cursor-col-resize select-none"
+          onMouseDown={onDividerMouseDown}
+        >
+          {/* Visible divider line */}
+          <div
+            className={`absolute inset-y-0 left-1/2 w-px -translate-x-1/2 transition-all ${
+              isDragging
+                ? 'bg-acc w-0.5'
+                : 'group-hover:bg-acc/50 bg-white/[0.06] group-hover:w-0.5'
+            }`}
+          />
+          {/* Wide invisible hit target */}
+          <div className="absolute inset-y-0 -right-1.5 -left-1.5" />
+        </td>
+        {/* Right side (new/additions) */}
+        <SideBySideCell
+          line={row.right}
+          tokens={newTokens}
+          side="right"
+          searchMatches={rightMatches}
+          currentMatch={currentMatch}
+          canComment={canComment}
+          isHovered={isHovered}
+          isSelected={isSelected}
+          isInCommentRange={isInCommentRange}
+        />
+      </tr>
+
+      {/* Inline comments for this line */}
+      {inlineComments && inlineComments.length > 0 && (
+        <tr>
+          <td colSpan={5} className="p-0">
+            <div className="bg-bg-1/80 border-y border-white/[0.06] px-4 py-2">
+              {inlineComments.map((comment, i) => (
+                <div key={i}>{comment.content}</div>
+              ))}
+            </div>
+          </td>
+        </tr>
+      )}
+
+      {/* Comment form for this line */}
+      {commentForm && (
+        <tr>
+          <td colSpan={5} className="p-0">
+            <div className="border-acc/50 bg-bg-1/90 border-y px-4 py-3">
+              {commentForm}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
@@ -209,12 +385,20 @@ function SideBySideCell({
   side,
   searchMatches,
   currentMatch,
+  canComment,
+  isHovered,
+  isSelected,
+  isInCommentRange,
 }: {
   line: DiffLine | null;
   tokens: ThemedToken[][];
   side: 'left' | 'right';
   searchMatches: SearchMatch[];
   currentMatch: SearchMatch | null;
+  canComment: boolean;
+  isHovered: boolean;
+  isSelected: boolean;
+  isInCommentRange: boolean;
 }) {
   // Gap cell (no line on this side)
   if (!line) {
@@ -226,13 +410,16 @@ function SideBySideCell({
     );
   }
 
-  // Determine background and text colors based on line type
-  const bgClass =
-    line.type === 'deletion'
-      ? 'bg-red-500/20'
-      : line.type === 'addition'
-        ? 'bg-green-500/20'
-        : '';
+  // Determine background and text colors based on line type and selection state
+  const bgClass = isSelected
+    ? '' // Row-level selection handles bg
+    : isInCommentRange
+      ? '' // Row-level comment range handles bg
+      : line.type === 'deletion'
+        ? 'bg-red-500/20'
+        : line.type === 'addition'
+          ? 'bg-green-500/20'
+          : '';
 
   const lineNumClass =
     line.type === 'deletion'
@@ -267,16 +454,33 @@ function SideBySideCell({
       <span className="text-ink-1">{line.content}</span>
     );
 
+  // Show comment icon on the left side's line number column when hovered
+  const showCommentIcon = canComment && isHovered && side === 'left';
+
   return (
     <>
       {/* Line number */}
       <td
-        className={`pr-1 text-right align-top select-none ${lineNumClass} ${bgClass}`}
+        className={clsx(
+          'pr-1 text-right align-top select-none',
+          lineNumClass,
+          bgClass,
+        )}
       >
-        {lineNumber ?? ''}
+        {showCommentIcon ? (
+          <span className="text-acc-ink flex h-full w-full items-center justify-center">
+            <MessageSquarePlus className="h-3 w-3" aria-hidden />
+          </span>
+        ) : (
+          (lineNumber ?? '')
+        )}
       </td>
       {/* Content */}
-      <td className={`overflow-hidden pr-2 whitespace-pre-wrap ${bgClass}`}>
+      <td
+        className={clsx('overflow-hidden pr-2 whitespace-pre-wrap', bgClass, {
+          'select-none': canComment,
+        })}
+      >
         {renderedContent}
       </td>
     </>
