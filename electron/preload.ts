@@ -407,8 +407,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('fs:listProjectFiles', projectRoot),
   },
   shell: {
-    openInEditor: (dirPath: string) =>
-      ipcRenderer.invoke('shell:openInEditor', dirPath),
+    openInEditor: (dirPath: string, folderContext?: string) =>
+      ipcRenderer.invoke('shell:openInEditor', dirPath, folderContext),
     getAvailableEditors: () => ipcRenderer.invoke('shell:getAvailableEditors'),
   },
   agent: {

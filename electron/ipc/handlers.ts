@@ -2308,15 +2308,18 @@ export function registerIpcHandlers() {
     return results;
   });
 
-  ipcMain.handle('shell:openInEditor', async (_, dirPath: string) => {
-    if (!(await pathExists(dirPath))) {
-      throw new Error(
-        `Path does not exist: ${dirPath}. The worktree may have been deleted.`,
-      );
-    }
-    const setting = await SettingsRepository.get('editor');
-    openInEditor(dirPath, setting);
-  });
+  ipcMain.handle(
+    'shell:openInEditor',
+    async (_, dirPath: string, folderContext?: string) => {
+      if (!(await pathExists(dirPath))) {
+        throw new Error(
+          `Path does not exist: ${dirPath}. The worktree may have been deleted.`,
+        );
+      }
+      const setting = await SettingsRepository.get('editor');
+      openInEditor(dirPath, setting, folderContext);
+    },
+  );
 
   // Dialog: open application (macOS)
   ipcMain.handle('dialog:openApplication', async (event) => {
@@ -3972,24 +3975,39 @@ async function isEditorAvailable(
   }
 }
 
-// Helper: open directory in editor
-function openInEditor(dirPath: string, setting: EditorSetting): void {
+// Helper: open directory/file in editor
+// When folderContext is provided, it hints the editor to open the file
+// in the window that has that folder open (e.g. worktree folder).
+function openInEditor(
+  dirPath: string,
+  setting: EditorSetting,
+  folderContext?: string,
+): void {
+  // Build args: when a folder context is provided and differs from the target,
+  // pass the folder first so the editor targets the correct workspace window.
+  const buildArgs = (targetPath: string): string[] => {
+    if (folderContext && folderContext !== targetPath) {
+      return [folderContext, targetPath];
+    }
+    return [targetPath];
+  };
+
   if (setting.type === 'preset') {
     const editor = PRESET_EDITORS.find((e) => e.id === setting.id);
     if (editor) {
-      spawn(editor.command, [dirPath], {
+      spawn(editor.command, buildArgs(dirPath), {
         detached: true,
         stdio: 'ignore',
       }).unref();
     }
   } else if (setting.type === 'command') {
-    spawn(setting.command, [dirPath], {
+    spawn(setting.command, buildArgs(dirPath), {
       detached: true,
       stdio: 'ignore',
     }).unref();
   } else if (setting.type === 'app') {
-    // macOS: open -a "App.app" /path
-    spawn('open', ['-a', setting.path, dirPath], {
+    // macOS: open -a "App.app" /path [file]
+    spawn('open', ['-a', setting.path, ...buildArgs(dirPath)], {
       detached: true,
       stdio: 'ignore',
     }).unref();

@@ -673,7 +673,7 @@ export interface Api {
     ) => Promise<import('@shared/permission-types').PermissionScope>;
   };
   shell: {
-    openInEditor: (dirPath: string) => Promise<void>;
+    openInEditor: (dirPath: string, folderContext?: string) => Promise<void>;
     getAvailableEditors: () => Promise<{ id: string; available: boolean }[]>;
   };
   agent: {

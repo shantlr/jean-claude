@@ -478,7 +478,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         isDiffViewOpen && diffSelectedFile
           ? `${task.worktreePath}/${diffSelectedFile}`
           : task.worktreePath;
-      await api.shell.openInEditor(targetPath);
+      await api.shell.openInEditor(targetPath, task.worktreePath);
     } catch {
       modal.error({
         title: 'Worktree Not Found',
