@@ -1,7 +1,7 @@
+import { ChevronLeft } from 'lucide-react';
 import { useMemo } from 'react';
 import TurndownService from 'turndown';
 
-import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
 
@@ -158,45 +158,101 @@ export function PromptComposer({
   );
 
   return (
-    <div className="flex h-full w-full flex-col gap-4 overflow-hidden">
-      {/* Back button at top */}
-      <div className="flex shrink-0 items-center">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          &larr; Back to selection
+    <div className="flex h-full w-full flex-col overflow-hidden">
+      {/* Breadcrumb header */}
+      <div
+        className="flex shrink-0 items-center gap-2.5 px-[18px] py-3"
+        style={{ borderBottom: '1px solid oklch(1 0 0 / 0.04)' }}
+      >
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex cursor-pointer items-center gap-[5px] rounded-[5px] font-medium"
+          style={{
+            padding: '4px 9px',
+            background: 'oklch(1 0 0 / 0.04)',
+            border: '1px solid oklch(1 0 0 / 0.07)',
+            color: 'oklch(0.78 0.01 280)',
+            fontSize: '11.5px',
+          }}
+        >
+          <ChevronLeft className="h-2.5 w-2.5" />
+          Back to selection
           <Kbd shortcut="escape" />
-        </Button>
+        </button>
+        <div className="flex-1" />
+        <span className="text-ink-3 font-mono text-[10.5px] font-semibold tracking-wider uppercase">
+          {workItems.length} work item{workItems.length !== 1 ? 's' : ''}
+        </span>
+        {workItems.slice(0, 4).map((wi) => (
+          <span
+            key={wi.id}
+            className="inline-flex items-center gap-1 rounded bg-white/[0.04] px-1.5 py-0.5 font-mono text-[10.5px]"
+            style={{
+              border: '1px solid oklch(1 0 0 / 0.07)',
+              color: 'oklch(0.78 0.01 280)',
+            }}
+          >
+            #{wi.id}
+          </span>
+        ))}
       </div>
 
       {/* Two-panel layout */}
-      <div className="flex min-h-0 flex-1 gap-4">
+      <div className="flex min-h-0 flex-1">
         {/* Left: Template editor */}
-        <div className="flex w-1/2 flex-col overflow-hidden">
-          <div className="mb-2">
-            <span className="text-ink-2 text-xs font-medium uppercase">
+        <div
+          className="flex flex-1 flex-col overflow-hidden"
+          style={{ borderRight: '1px solid oklch(1 0 0 / 0.04)' }}
+        >
+          <div
+            className="flex items-center gap-1.5 px-4 py-2.5"
+            style={{ borderBottom: '1px solid oklch(1 0 0 / 0.04)' }}
+          >
+            <span className="text-ink-3 font-mono text-[10px] font-semibold tracking-wider uppercase">
               Prompt Template
             </span>
           </div>
           <textarea
             value={template}
             onChange={(e) => onTemplateChange(e.target.value)}
-            className="text-ink-1 focus:border-glass-border-strong border-glass-border bg-bg-0 flex-1 resize-none rounded border p-3 font-mono text-sm outline-none"
+            className="text-ink-1 caret-acc flex-1 resize-none border-none bg-transparent px-5 py-4 font-mono text-[13px] leading-relaxed outline-none"
             placeholder="Enter your prompt template..."
           />
-          <p className="text-ink-3 mt-2 text-xs">
-            Use {'{#id}'} placeholders to include work item details
-          </p>
+          <div
+            className="px-4 py-2"
+            style={{
+              borderTop: '1px solid oklch(1 0 0 / 0.04)',
+              background: 'oklch(0 0 0 / 0.22)',
+            }}
+          >
+            <span className="text-ink-3 font-mono text-[10px] font-semibold tracking-wider uppercase">
+              Use {'{#id}'} placeholders to include work item details
+            </span>
+          </div>
         </div>
 
         {/* Right: Preview */}
-        <div className="flex w-1/2 flex-col overflow-hidden">
-          <div className="text-ink-2 mb-2 text-xs font-medium uppercase">
-            Preview
+        <div
+          className="flex flex-1 flex-col overflow-hidden"
+          style={{ background: 'oklch(0 0 0 / 0.18)' }}
+        >
+          <div
+            className="flex items-center gap-1.5 px-4 py-2.5"
+            style={{ borderBottom: '1px solid oklch(1 0 0 / 0.04)' }}
+          >
+            <span className="text-ink-3 font-mono text-[10px] font-semibold tracking-wider uppercase">
+              Preview
+            </span>
+            <div className="flex-1" />
+            <span className="text-ink-3 font-mono text-[10px]">
+              {preview.length.toLocaleString()} chars &middot; ~
+              {Math.ceil(preview.length / 4).toLocaleString()} tokens
+            </span>
           </div>
-          <div className="bg-bg-0/50 border-glass-border flex-1 overflow-y-auto rounded border p-3">
-            <pre className="text-ink-1 font-mono text-sm whitespace-pre-wrap">
-              {preview}
-            </pre>
-          </div>
+          <pre className="text-ink-2 flex-1 overflow-y-auto px-5 py-4 font-mono text-xs leading-relaxed break-words whitespace-pre-wrap">
+            {preview}
+          </pre>
         </div>
       </div>
     </div>

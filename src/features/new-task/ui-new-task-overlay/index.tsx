@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import Fuse from 'fuse.js';
-import { ChevronRight, List, Columns3 } from 'lucide-react';
+import { ChevronRight, List, Columns3, Search } from 'lucide-react';
 import React, {
   startTransition,
   useCallback,
@@ -14,7 +14,6 @@ import React, {
 import { useCommands } from '@/common/hooks/use-commands';
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { Button } from '@/common/ui/button';
-import { Checkbox } from '@/common/ui/checkbox';
 import { Kbd } from '@/common/ui/kbd';
 import { Select } from '@/common/ui/select';
 import {
@@ -965,42 +964,64 @@ export function NewTaskOverlay({
     >
       <div
         ref={panelRef}
-        className="border-glass-border bg-bg-1 flex max-h-[80svh] w-[90svw] max-w-[1280px] flex-col overflow-hidden rounded-lg border shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5),0_0_100px_-20px_rgba(0,0,0,0.6)]"
+        className="flex max-h-[80svh] w-[90svw] max-w-[1280px] flex-col overflow-hidden rounded-[14px] border border-white/10"
+        style={{
+          background: `
+            radial-gradient(ellipse 700px 500px at 10% -10%, oklch(0.55 0.22 295 / 0.32), transparent 55%),
+            radial-gradient(ellipse 600px 420px at 110% 110%, oklch(0.55 0.18 205 / 0.25), transparent 55%),
+            oklch(0.14 0.015 280 / 0.94)
+          `,
+          backdropFilter: 'blur(40px) saturate(140%)',
+          boxShadow:
+            '0 30px 80px oklch(0 0 0 / 0.55), inset 0 0 0 1px oklch(1 0 0 / 0.04)',
+        }}
         onClick={handleModalClick}
       >
         {/* Search/Prompt input - only show in select or prompt mode */}
-        {(showSearchInput || showPromptInput) && (
-          <div className="border-glass-border flex shrink-0 items-start border-b px-4 py-3">
+        {showSearchInput && (
+          <div
+            className="flex shrink-0 items-center gap-2.5 px-[18px] py-3.5"
+            style={{ borderBottom: '1px solid oklch(1 0 0 / 0.04)' }}
+          >
+            <Search
+              className="h-3.5 w-3.5 shrink-0"
+              style={{ color: 'oklch(0.55 0.01 280)' }}
+            />
+            <textarea
+              ref={searchInputRef}
+              value={inputValue}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder={getPlaceholder({ mode: inputMode, isNoteMode })}
+              className="text-ink-1 placeholder-ink-3 field-sizing-content max-h-[40svh] min-h-[1lh] flex-1 resize-none bg-transparent text-sm outline-none"
+              style={{
+                caretColor: 'oklch(0.78 0.18 295)',
+                letterSpacing: '-0.005em',
+              }}
+            />
+          </div>
+        )}
+        {showPromptInput && (
+          <div className="flex shrink-0 flex-col px-5 pt-5 pb-3">
             <div className="flex flex-1 flex-col">
-              {showSearchInput ? (
-                <textarea
-                  ref={searchInputRef}
-                  value={inputValue}
-                  onChange={handleInputChange}
-                  onKeyDown={handleKeyDown}
-                  placeholder={getPlaceholder({ mode: inputMode, isNoteMode })}
-                  className="text-ink-1 placeholder-ink-3 field-sizing-content max-h-[40svh] min-h-[60px] flex-1 resize-none bg-transparent text-sm outline-none"
-                />
-              ) : (
-                <PromptTextarea
-                  ref={promptInputRef}
-                  value={inputValue}
-                  onChange={handlePromptChange}
-                  onKeyDown={handleKeyDown}
-                  placeholder={getPlaceholder({ mode: inputMode, isNoteMode })}
-                  skills={projectSkills}
-                  showCommands={false}
-                  maxHeight={320}
-                  projectRoot={selectedProject?.path ?? null}
-                  enableFilePathAutocomplete
-                  enableCompletion={completionSetting?.enabled ?? false}
-                  projectId={selectedProject?.id}
-                  images={draft?.images}
-                  onImageAttach={handleImageAttach}
-                  onImageRemove={handleImageRemove}
-                  className="text-ink-1 placeholder-ink-3 min-h-[60px] border-transparent bg-transparent px-0 py-0 text-sm focus:border-transparent focus:ring-0 focus:outline-none"
-                />
-              )}
+              <PromptTextarea
+                ref={promptInputRef}
+                value={inputValue}
+                onChange={handlePromptChange}
+                onKeyDown={handleKeyDown}
+                placeholder={getPlaceholder({ mode: inputMode, isNoteMode })}
+                skills={projectSkills}
+                showCommands={false}
+                maxHeight={320}
+                projectRoot={selectedProject?.path ?? null}
+                enableFilePathAutocomplete
+                enableCompletion={completionSetting?.enabled ?? false}
+                projectId={selectedProject?.id}
+                images={draft?.images}
+                onImageAttach={handleImageAttach}
+                onImageRemove={handleImageRemove}
+                className="text-ink-1 placeholder-ink-3 min-h-[60px] border-transparent bg-transparent px-0 py-0 text-[15px] leading-relaxed focus:border-transparent focus:ring-0 focus:outline-none"
+              />
             </div>
           </div>
         )}
@@ -1016,7 +1037,7 @@ export function NewTaskOverlay({
 
         {/* Main content area */}
         {inputMode === 'search' && searchStep === 'select' && (
-          <div className="border-glass-border flex h-full w-full grow flex-col overflow-hidden border-b p-2">
+          <div className="flex h-full w-full grow flex-col overflow-hidden p-2">
             <SearchModeContent
               projectId={selectedProjectId}
               project={selectedProject}
@@ -1037,7 +1058,7 @@ export function NewTaskOverlay({
         )}
 
         {inputMode === 'search' && searchStep === 'compose' && (
-          <div className="border-glass-border flex h-full w-full grow flex-col overflow-hidden border-b p-4">
+          <div className="flex h-full w-full grow flex-col overflow-hidden">
             <PromptComposer
               template={promptTemplate}
               workItems={selectedWorkItems}
@@ -1046,7 +1067,7 @@ export function NewTaskOverlay({
             />
             {/* Loading indicator while fetching work item images */}
             {isFetchingWorkItemImages && (
-              <div className="text-ink-2 flex shrink-0 items-center gap-2 px-1 pb-2 text-xs">
+              <div className="text-ink-2 flex shrink-0 items-center gap-2 px-[18px] pb-2 text-xs">
                 <span className="border-glass-border-strong border-t-ink-1 inline-block h-3 w-3 animate-spin rounded-full border-2" />
                 Extracting images from work items…
               </div>
@@ -1055,7 +1076,7 @@ export function NewTaskOverlay({
             {!isFetchingWorkItemImages &&
               draft?.images &&
               draft.images.length > 0 && (
-                <div className="flex shrink-0 gap-2 px-1 pb-2">
+                <div className="flex shrink-0 gap-2 px-[18px] pb-2">
                   {draft.images.map((image, index) => {
                     const thumbData = image.storageData ?? image.data;
                     const thumbMime = image.storageMimeType ?? image.mimeType;
@@ -1085,8 +1106,14 @@ export function NewTaskOverlay({
         )}
 
         {/* Footer */}
-        <div className="flex min-h-[50px] shrink-0 items-center justify-between overflow-hidden px-4 py-2">
-          <div className="flex items-center gap-4">
+        <div
+          className="flex min-h-[50px] shrink-0 flex-wrap items-center gap-2 overflow-hidden px-3.5 py-2.5"
+          style={{
+            borderTop: '1px solid oklch(1 0 0 / 0.06)',
+            background: 'oklch(0 0 0 / 0.28)',
+          }}
+        >
+          <div className="flex items-center gap-2">
             {/* Interaction mode selector */}
             {!isNoteMode && (
               <ModeSelector
@@ -1120,28 +1147,64 @@ export function NewTaskOverlay({
             )}
 
             {!isNoteMode && (
-              <div className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  size="sm"
-                  checked={currentCreateWorktree}
-                  onChange={toggleWorktree}
-                  label="Worktree"
-                />
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={currentCreateWorktree}
+                className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[5px] px-2.5 py-[5px] text-xs font-medium"
+                style={
+                  currentCreateWorktree
+                    ? {
+                        background:
+                          'color-mix(in oklch, oklch(0.78 0.18 295) 14%, transparent)',
+                        border:
+                          '1px solid color-mix(in oklch, oklch(0.78 0.18 295) 30%, transparent)',
+                        color: 'oklch(0.78 0.18 295)',
+                      }
+                    : {
+                        background: 'oklch(1 0 0 / 0.03)',
+                        border: '1px solid oklch(1 0 0 / 0.07)',
+                        color: 'oklch(0.78 0.01 280)',
+                      }
+                }
+                onClick={() => toggleWorktree(!currentCreateWorktree)}
+              >
+                <ToolCheckmark checked={currentCreateWorktree} />
+                Worktree
                 <Kbd shortcut="cmd+b" />
-              </div>
+              </button>
             )}
 
             {!isNoteMode && selectedWorkItems.length > 0 && (
-              <div className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  size="sm"
-                  checked={currentUpdateWorkItemStatus}
-                  onChange={(checked) =>
-                    updateDraft({ updateWorkItemStatus: checked })
-                  }
-                  label="Update work item status"
-                />
-              </div>
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={currentUpdateWorkItemStatus}
+                className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[5px] px-2.5 py-[5px] text-xs font-medium"
+                style={
+                  currentUpdateWorkItemStatus
+                    ? {
+                        background:
+                          'color-mix(in oklch, oklch(0.78 0.18 295) 14%, transparent)',
+                        border:
+                          '1px solid color-mix(in oklch, oklch(0.78 0.18 295) 30%, transparent)',
+                        color: 'oklch(0.78 0.18 295)',
+                      }
+                    : {
+                        background: 'oklch(1 0 0 / 0.03)',
+                        border: '1px solid oklch(1 0 0 / 0.07)',
+                        color: 'oklch(0.78 0.01 280)',
+                      }
+                }
+                onClick={() =>
+                  updateDraft({
+                    updateWorkItemStatus: !currentUpdateWorkItemStatus,
+                  })
+                }
+              >
+                <ToolCheckmark checked={currentUpdateWorkItemStatus} />
+                Update work item status
+              </button>
             )}
 
             {/* Source branch selector - only show when project is selected */}
@@ -1149,8 +1212,14 @@ export function NewTaskOverlay({
               currentCreateWorktree &&
               selectedProjectId &&
               branches.length > 0 && (
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-ink-2">from</span>
+                <div
+                  className="inline-flex shrink-0 items-center gap-[5px] rounded-[5px] px-2.5 py-[5px] text-xs"
+                  style={{
+                    background: 'oklch(1 0 0 / 0.03)',
+                    border: '1px solid oklch(1 0 0 / 0.07)',
+                  }}
+                >
+                  <span style={{ color: 'oklch(0.55 0.01 280)' }}>from</span>
                   <Select
                     value={currentSourceBranch ?? ''}
                     options={branches.map((branch) => ({
@@ -1165,17 +1234,25 @@ export function NewTaskOverlay({
               )}
           </div>
 
-          <div className="text-ink-3 flex items-center gap-3 text-xs whitespace-nowrap">
+          <div className="flex-1" />
+
+          <div className="text-ink-3 flex items-center gap-3 font-mono text-[10.5px] whitespace-nowrap">
             {!isNoteMode && showSearchInput && (
               <span className="flex items-center gap-1">
                 <Kbd shortcut="cmd+right" /> project
               </span>
             )}
             {!isNoteMode && canToggleMode && showSearchInput && (
-              <span className="flex items-center gap-1">
-                <Kbd shortcut="cmd+m" />{' '}
-                {inputMode === 'search' ? 'prompt' : 'search'}
-              </span>
+              <>
+                <div
+                  className="mx-1 h-[18px] w-px"
+                  style={{ background: 'oklch(1 0 0 / 0.06)' }}
+                />
+                <span className="flex items-center gap-1">
+                  <Kbd shortcut="cmd+m" />{' '}
+                  {inputMode === 'search' ? 'prompt' : 'search'}
+                </span>
+              </>
             )}
             {inputMode === 'search' && searchStep === 'select' && (
               <>
@@ -1253,19 +1330,38 @@ function ProjectGrid({
   return (
     <div
       ref={projectGridRef}
-      className="border-glass-border grid max-h-[180px] shrink-0 grid-cols-7 gap-1.5 overflow-y-auto border-b px-4 py-2 sm:grid-cols-8 lg:grid-cols-10"
+      className="grid max-h-[180px] shrink-0 grid-cols-7 gap-1 overflow-y-auto px-3 py-2 sm:grid-cols-8 lg:grid-cols-10"
+      style={{
+        borderTop: '1px solid oklch(1 0 0 / 0.04)',
+        borderBottom: '1px solid oklch(1 0 0 / 0.04)',
+        background: 'oklch(0 0 0 / 0.2)',
+      }}
     >
       <button
         data-project-tab="note"
         onClick={() => onSelectProject(null)}
-        className={clsx(
-          'flex min-w-0 items-center justify-center rounded px-2 py-1 text-xs font-medium transition-colors',
+        className="flex min-w-0 items-center gap-[7px] rounded-md px-[11px] py-[5px] text-[12.5px] tracking-tight transition-colors"
+        style={
           selectedProjectId === null
-            ? 'bg-glass-medium text-ink-0'
-            : 'text-ink-2 hover:bg-glass-light hover:text-ink-0',
-        )}
+            ? {
+                background: 'oklch(1 0 0 / 0.08)',
+                border: '1px solid oklch(1 0 0 / 0.14)',
+                color: 'oklch(0.99 0 0)',
+                fontWeight: 500,
+              }
+            : {
+                background: 'transparent',
+                border: '1px solid transparent',
+                color: 'oklch(0.78 0.01 280)',
+                fontWeight: 400,
+              }
+        }
       >
-        Note
+        <span
+          className="h-[7px] w-[7px] shrink-0 rounded-full"
+          style={{ background: 'oklch(0.55 0.01 280)' }}
+        />
+        <span className="truncate">Note</span>
       </button>
 
       {sortedProjects.map((project) => (
@@ -1273,21 +1369,67 @@ function ProjectGrid({
           key={project.id}
           data-project-tab={project.id}
           onClick={() => onSelectProject(project.id)}
-          className={clsx(
-            'flex min-w-0 items-center gap-1.5 rounded px-2 py-1 text-left text-xs font-medium transition-colors',
+          className="flex min-w-0 items-center gap-[7px] rounded-md px-[11px] py-[5px] text-left text-[12.5px] tracking-tight transition-colors"
+          style={
             selectedProjectId === project.id
-              ? 'bg-glass-medium text-ink-0'
-              : 'text-ink-2 hover:bg-glass-light hover:text-ink-0',
-          )}
+              ? {
+                  background: `color-mix(in oklch, ${project.color} 18%, transparent)`,
+                  border: `1px solid color-mix(in oklch, ${project.color} 45%, transparent)`,
+                  color: 'oklch(0.99 0 0)',
+                  fontWeight: 500,
+                }
+              : {
+                  background: 'transparent',
+                  border: '1px solid transparent',
+                  color: 'oklch(0.78 0.01 280)',
+                  fontWeight: 400,
+                }
+          }
         >
           <span
-            className="h-2 w-2 shrink-0 rounded-full"
-            style={{ backgroundColor: project.color }}
+            className="h-[7px] w-[7px] shrink-0 rounded-full"
+            style={{
+              backgroundColor: project.color,
+              boxShadow:
+                selectedProjectId === project.id
+                  ? `0 0 6px ${project.color}`
+                  : 'none',
+            }}
           />
           <span className="truncate">{project.name}</span>
         </button>
       ))}
     </div>
+  );
+}
+
+/** Themed checkbox matching the aurora-glass toolbar style. */
+function ToolCheckmark({ checked }: { checked: boolean }) {
+  return (
+    <span
+      className="inline-flex shrink-0 items-center justify-center rounded-[3px]"
+      style={{
+        width: 13,
+        height: 13,
+        background: checked ? 'oklch(0.78 0.18 295)' : 'oklch(1 0 0 / 0.05)',
+        border: `1px solid ${checked ? 'oklch(0.78 0.18 295)' : 'oklch(1 0 0 / 0.18)'}`,
+      }}
+    >
+      {checked && (
+        <svg
+          width={9}
+          height={9}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="oklch(0.12 0 0)"
+          strokeWidth={3.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M20 6L9 17l-5-5" />
+        </svg>
+      )}
+    </span>
   );
 }
 
@@ -1508,11 +1650,14 @@ function SearchModeContent({
         className="flex shrink-0 flex-col overflow-hidden"
         style={{ width: `${panelWidth}%` }}
       >
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="text-ink-2 text-xs font-medium uppercase">
+        <div
+          className="mb-0 flex items-center gap-2 px-1 py-2"
+          style={{ borderBottom: '1px solid oklch(1 0 0 / 0.04)' }}
+        >
+          <span className="text-ink-3 font-mono text-[10px] font-semibold tracking-wider uppercase">
             Work Items ({filteredWorkItems.length})
             {selectedWorkItemIds.length > 0 && (
-              <span className="text-acc-ink ml-2">
+              <span className="text-acc-ink ml-2 font-mono text-[10px] font-semibold tracking-wider uppercase">
                 {selectedWorkItemIds.length} selected
               </span>
             )}
@@ -1610,7 +1755,13 @@ function SearchModeContent({
       />
 
       {/* Work item details */}
-      <div className="border-glass-border flex-1 overflow-y-auto rounded border p-2">
+      <div
+        className="flex-1 overflow-y-auto rounded-none border-l p-3"
+        style={{
+          borderColor: 'oklch(1 0 0 / 0.04)',
+          background: 'oklch(0 0 0 / 0.22)',
+        }}
+      >
         <WorkItemDetails
           workItem={highlightedWorkItem ?? null}
           providerId={project?.workItemProviderId ?? undefined}
