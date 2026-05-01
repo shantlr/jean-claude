@@ -111,3 +111,43 @@ export function computeSideBySideDiff(
 
   return rows;
 }
+
+export interface CurrentStateLine {
+  content: string;
+  lineNumber: number;
+  isChanged: boolean;
+}
+
+/**
+ * Compute lines for the "current state" view.
+ * Shows only the new file content, marking which lines were changed (added/modified).
+ */
+export function computeCurrentStateLines(
+  oldStr: string,
+  newStr: string,
+): CurrentStateLine[] {
+  const diffLines = computeDiff(oldStr, newStr);
+  const changedNewLineNumbers = new Set<number>();
+
+  for (const line of diffLines) {
+    if (line.type === 'addition' && line.newLineNumber !== undefined) {
+      changedNewLineNumbers.add(line.newLineNumber);
+    }
+  }
+
+  const newLines = newStr.split('\n');
+  // Handle trailing empty line from split
+  if (
+    newLines.length > 1 &&
+    newLines[newLines.length - 1] === '' &&
+    !newStr.endsWith('\n\n')
+  ) {
+    newLines.pop();
+  }
+
+  return newLines.map((content, i) => ({
+    content,
+    lineNumber: i + 1,
+    isChanged: changedNewLineNumbers.has(i + 1),
+  }));
+}

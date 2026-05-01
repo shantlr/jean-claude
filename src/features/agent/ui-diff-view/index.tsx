@@ -1,10 +1,16 @@
 import clsx from 'clsx';
-import { AlignJustify, Columns2, MessageSquarePlus } from 'lucide-react';
+import {
+  AlignJustify,
+  Columns2,
+  FileText,
+  MessageSquarePlus,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
 
 import { ChangeNavigator } from './change-navigator';
+import { CurrentStateTable } from './current-state-table';
 import { DiffMinimap, type ViewportInfo } from './diff-minimap';
 import { DiffSearchBar } from './diff-search-bar';
 import { computeDiff, type DiffLine } from './diff-utils';
@@ -59,7 +65,9 @@ export function DiffView({
 }) {
   const [state, setState] = useState<DiffState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'inline' | 'side-by-side'>('inline');
+  const [viewMode, setViewMode] = useState<
+    'inline' | 'side-by-side' | 'current-state'
+  >('inline');
   const [viewport, setViewport] = useState<ViewportInfo | undefined>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -180,17 +188,27 @@ export function DiffView({
         )}
         <button
           onClick={() =>
-            setViewMode(viewMode === 'inline' ? 'side-by-side' : 'inline')
+            setViewMode(
+              viewMode === 'inline'
+                ? 'side-by-side'
+                : viewMode === 'side-by-side'
+                  ? 'current-state'
+                  : 'inline',
+            )
           }
           className="bg-glass-medium/70 text-ink-1 hover:bg-bg-3 hover:text-ink-0 rounded p-1"
           aria-label={
             viewMode === 'inline'
               ? 'Switch to side-by-side view'
-              : 'Switch to inline view'
+              : viewMode === 'side-by-side'
+                ? 'Switch to current state view'
+                : 'Switch to inline view'
           }
         >
           {viewMode === 'inline' ? (
             <Columns2 className="h-4 w-4" aria-hidden />
+          ) : viewMode === 'side-by-side' ? (
+            <FileText className="h-4 w-4" aria-hidden />
           ) : (
             <AlignJustify className="h-4 w-4" aria-hidden />
           )}
@@ -220,11 +238,20 @@ export function DiffView({
             searchMatches={matches}
             currentMatchIndex={currentMatchIndex}
           />
-        ) : (
+        ) : viewMode === 'side-by-side' ? (
           <SideBySideDiffTable
             oldString={oldString}
             newString={newString}
             oldTokens={state.oldTokens}
+            newTokens={state.newTokens}
+            searchMatches={matches}
+            currentMatchIndex={currentMatchIndex}
+          />
+        ) : (
+          <CurrentStateTable
+            oldString={oldString}
+            newString={newString}
+            diffLines={state.lines}
             newTokens={state.newTokens}
             searchMatches={matches}
             currentMatchIndex={currentMatchIndex}

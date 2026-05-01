@@ -95,7 +95,7 @@ export function useChangeNavigator({
 }: {
   lines: DiffLine[];
   scrollContainerRef: RefObject<HTMLDivElement | null>;
-  viewMode: 'inline' | 'side-by-side';
+  viewMode: 'inline' | 'side-by-side' | 'current-state';
   oldString: string;
   newString: string;
 }) {
@@ -122,18 +122,30 @@ export function useChangeNavigator({
    * Get the data-line-index value for a given hunk's start line.
    * In inline mode, data-line-index = DiffLine index.
    * In side-by-side mode, data-line-index = row index from the mapping.
+   * In current-state mode, data-line-index = newLineNumber - 1 (new file row index).
    */
   const getDataLineIndex = useCallback(
     (hunkStartLineIndex: number): number | null => {
       if (viewMode === 'inline') {
         return hunkStartLineIndex;
       }
+      if (viewMode === 'current-state') {
+        // Find the first DiffLine in/after hunk start that has a newLineNumber
+        for (let i = hunkStartLineIndex; i < lines.length; i++) {
+          if (lines[i].newLineNumber !== undefined) {
+            return lines[i].newLineNumber! - 1;
+          }
+          // Stop if we hit context (left the hunk)
+          if (i > hunkStartLineIndex && lines[i].type === 'context') break;
+        }
+        return null;
+      }
       if (lineToRowMap) {
         return lineToRowMap.get(hunkStartLineIndex) ?? null;
       }
       return null;
     },
-    [viewMode, lineToRowMap],
+    [viewMode, lineToRowMap, lines],
   );
 
   /**
