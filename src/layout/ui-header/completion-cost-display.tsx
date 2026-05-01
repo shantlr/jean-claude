@@ -76,6 +76,7 @@ export function CompletionCostDisplay() {
         />
       }
       side="bottom"
+      minWidth={240}
     >
       <div className="text-ink-2 flex items-center gap-1.5 rounded px-1.5 py-0.5">
         <span className="text-xs">FIM {formatCost(usage.costUsd)}</span>

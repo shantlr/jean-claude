@@ -3,11 +3,14 @@ import { useEffect, useState, type RefObject } from 'react';
 const PREFERRED_MAX_HEIGHT = 320;
 const GAP = 4;
 const VIEWPORT_PADDING = 8;
+/** Minimum horizontal space required before auto-flipping alignment */
+const MIN_HORIZONTAL_SPACE = 200;
 
 export interface DropdownPosition {
   top: number;
   left: number;
   actualSide: 'top' | 'bottom';
+  actualAlign: 'left' | 'right';
   maxHeight: number;
 }
 
@@ -15,17 +18,23 @@ export interface DropdownPosition {
  * Shared positioning hook for portal-based dropdowns.
  * Calculates position relative to a trigger element, auto-flips top/bottom,
  * and computes maxHeight based on available viewport space.
+ *
+ * When `autoAlign` is true, horizontally flips the alignment when there isn't
+ * enough space on the preferred side.
  */
 export function useDropdownPosition({
   isOpen,
   triggerRef,
   side = 'bottom',
   align = 'left',
+  autoAlign = false,
 }: {
   isOpen: boolean;
   triggerRef: RefObject<HTMLElement | null>;
   side?: 'top' | 'bottom';
   align?: 'left' | 'right';
+  /** When true, automatically flip horizontal alignment when space is limited */
+  autoAlign?: boolean;
 }): DropdownPosition | null {
   const [position, setPosition] = useState<DropdownPosition | null>(null);
 
@@ -54,9 +63,23 @@ export function useDropdownPosition({
       );
 
       const top = actualSide === 'bottom' ? rect.bottom + GAP : rect.top - GAP;
-      const left = align === 'right' ? rect.right : rect.left;
 
-      setPosition({ top, left, actualSide, maxHeight });
+      // Determine horizontal alignment
+      let actualAlign = align;
+      if (autoAlign) {
+        const spaceRight = window.innerWidth - rect.left - VIEWPORT_PADDING;
+        const spaceLeft = rect.right - VIEWPORT_PADDING;
+
+        if (align === 'left' && spaceRight < MIN_HORIZONTAL_SPACE) {
+          actualAlign = 'right';
+        } else if (align === 'right' && spaceLeft < MIN_HORIZONTAL_SPACE) {
+          actualAlign = 'left';
+        }
+      }
+
+      const left = actualAlign === 'right' ? rect.right : rect.left;
+
+      setPosition({ top, left, actualSide, actualAlign, maxHeight });
     };
 
     updatePosition();
@@ -71,7 +94,7 @@ export function useDropdownPosition({
       window.removeEventListener('scroll', updatePosition, true);
       window.removeEventListener('resize', updatePosition);
     };
-  }, [isOpen, side, align, triggerRef]);
+  }, [isOpen, side, align, autoAlign, triggerRef]);
 
   return position;
 }

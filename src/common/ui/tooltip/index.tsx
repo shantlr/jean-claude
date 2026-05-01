@@ -39,6 +39,7 @@ export function Tooltip({
   align = 'left',
   className,
   delay = 200,
+  minWidth,
 }: {
   children: ReactElement;
   content: ReactNode;
@@ -46,12 +47,19 @@ export function Tooltip({
   align?: 'left' | 'right';
   className?: string;
   delay?: number;
+  minWidth?: number;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLElement | null>(null);
   const delayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const position = useDropdownPosition({ isOpen, triggerRef, side, align });
+  const position = useDropdownPosition({
+    isOpen,
+    triggerRef,
+    side,
+    align,
+    autoAlign: true,
+  });
 
   // Clean up pending delay timeout on unmount
   useEffect(() => {
@@ -125,11 +133,12 @@ export function Tooltip({
                 position.actualSide === 'top'
                   ? window.innerHeight - position.top
                   : undefined,
-              left: align === 'left' ? position.left : undefined,
+              left: position.actualAlign === 'left' ? position.left : undefined,
               right:
-                align === 'right'
+                position.actualAlign === 'right'
                   ? window.innerWidth - position.left
                   : undefined,
+              minWidth,
             }}
           >
             {content}

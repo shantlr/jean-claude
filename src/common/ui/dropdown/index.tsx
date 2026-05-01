@@ -283,9 +283,9 @@ export function Dropdown({
                 position.actualSide === 'top'
                   ? window.innerHeight - position.top
                   : undefined,
-              left: align === 'left' ? position.left : undefined,
+              left: position.actualAlign === 'left' ? position.left : undefined,
               right:
-                align === 'right'
+                position.actualAlign === 'right'
                   ? window.innerWidth - position.left
                   : undefined,
               maxHeight: position.maxHeight,

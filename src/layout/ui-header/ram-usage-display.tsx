@@ -34,6 +34,7 @@ export function RamUsageDisplay() {
         </div>
       }
       side="bottom"
+      minWidth={220}
     >
       <div className="text-ink-2 flex cursor-default items-center gap-1.5 rounded px-1.5 py-0.5">
         <MemoryStick size={14} />
