@@ -1,25 +1,8 @@
 import { ChevronLeft } from 'lucide-react';
 import { useMemo } from 'react';
-import TurndownService from 'turndown';
 
 import { Kbd } from '@/common/ui/kbd';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
-
-const turndown = new TurndownService({
-  headingStyle: 'atx',
-  codeBlockStyle: 'fenced',
-});
-
-// Strip Azure DevOps attachment images from the markdown output.
-// These images are extracted separately and attached as PromptImagePart[].
-turndown.addRule('strip-azure-images', {
-  filter: (node) => {
-    if (node.nodeName !== 'IMG') return false;
-    const src = node.getAttribute('src') ?? '';
-    return AZURE_ATTACHMENT_URL_TEST.test(src);
-  },
-  replacement: () => '',
-});
 
 function escapeXml(value: string): string {
   return value
@@ -35,12 +18,6 @@ function escapeXml(value: string): string {
  */
 const AZURE_IMAGE_URL_PATTERN =
   /https:\/\/(?:dev\.azure\.com|[^\s"'<>]+\.visualstudio\.com)\/[^"'\s<>]*\/_apis\/wit\/attachments\/[^"'\s<>]*/gi;
-
-/**
- * Non-global version for Turndown filter (avoids lastIndex issues with .test()).
- */
-const AZURE_ATTACHMENT_URL_TEST =
-  /https:\/\/(?:dev\.azure\.com|[^\s"'<>]+\.visualstudio\.com)\/[^"'\s<>]*\/_apis\/wit\/attachments\//i;
 
 /** File extensions recognized as images in Azure DevOps attachment URLs. */
 const IMAGE_EXTENSIONS = /\.(png|jpe?g|gif|webp|avif|bmp|svg|tiff?)$/i;
@@ -96,27 +73,228 @@ export function generateInitialTemplate(workItemIds: string[]): string {
   return `${header}\n\n${placeholders}`;
 }
 
+/**
+ * Tags we keep from work item HTML. Everything else is stripped (content kept).
+ * - Headings: h1-h6
+ * - Inline formatting: b, strong, i, em, u, s, code
+ * - Block formatting: p, pre, blockquote
+ * - Line breaks: br converted to newline
+ * - Lists: ul/ol/li converted to markdown lists
+ * - Links: a (href preserved)
+ * - Color: span (style preserved for color)
+ */
+const ALLOWED_TAGS = new Set([
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'b',
+  'strong',
+  'i',
+  'em',
+  'u',
+  's',
+  'code',
+  'p',
+  'pre',
+  'blockquote',
+  'a',
+  'span',
+]);
+
+/** Attributes to keep per tag. Tags not listed here get all attributes stripped. */
+const ALLOWED_ATTRS: Record<string, Set<string>> = {
+  a: new Set(['href']),
+  span: new Set(['style']),
+};
+
+/**
+ * Convert HTML lists (ul/ol) to markdown-style lists.
+ * Handles nested lists by processing innermost first.
+ */
+function convertListsToMarkdown(html: string, indent = ''): string {
+  // Process innermost lists first (no nested ul/ol inside)
+  const listRegex = /<(ul|ol)\b[^>]*>((?:(?!<\/?(?:ul|ol)\b)[\s\S])*?)<\/\1>/gi;
+
+  let result = html;
+  let prev;
+  do {
+    prev = result;
+    let olCounter = 0;
+    result = result.replace(
+      listRegex,
+      (_match, listType: string, content: string) => {
+        const isOrdered = listType.toLowerCase() === 'ol';
+        olCounter = 0;
+
+        // Extract <li> contents
+        const items: string[] = [];
+        const liRegex = /<li\b[^>]*>([\s\S]*?)<\/li>/gi;
+        let liMatch;
+        while ((liMatch = liRegex.exec(content)) !== null) {
+          const itemContent = liMatch[1].trim();
+          if (isOrdered) {
+            olCounter++;
+            items.push(`${indent}${olCounter}. ${itemContent}`);
+          } else {
+            items.push(`${indent}- ${itemContent}`);
+          }
+        }
+
+        return '\n' + items.join('\n') + '\n';
+      },
+    );
+  } while (result !== prev);
+
+  return result;
+}
+
+/**
+ * Simplify work item HTML: keep only semantic tags, strip everything else.
+ * Azure attachment `<img>` tags are also removed (images extracted separately).
+ */
+function simplifyHtml(html: string): string {
+  // Convert lists to markdown before stripping tags
+  let result = convertListsToMarkdown(html);
+
+  result = result.replace(
+    /<\/?([a-z][a-z0-9]*)\b([^>]*)?\/?>/gi,
+    (match, tag: string, attrsStr: string | undefined) => {
+      const lowerTag = tag.toLowerCase();
+
+      // Always strip img tags — images extracted separately
+      if (lowerTag === 'img') return '';
+
+      // Convert <br> to newline
+      if (lowerTag === 'br') return '\n';
+
+      if (!ALLOWED_TAGS.has(lowerTag)) return '';
+
+      // Closing tag — no attrs needed
+      if (match.startsWith('</')) return `</${lowerTag}>`;
+
+      // Filter attributes to only allowed ones
+      const allowedAttrSet = ALLOWED_ATTRS[lowerTag];
+      if (!allowedAttrSet || !attrsStr?.trim()) {
+        const selfClose = match.endsWith('/>') ? ' /' : '';
+        return `<${lowerTag}${selfClose}>`;
+      }
+
+      // Parse and filter attributes
+      const keptAttrs: string[] = [];
+      const attrRegex = /([a-z-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi;
+      let attrMatch;
+      while ((attrMatch = attrRegex.exec(attrsStr)) !== null) {
+        const attrName = attrMatch[1].toLowerCase();
+        const attrValue = attrMatch[2] ?? attrMatch[3];
+        if (allowedAttrSet.has(attrName)) {
+          // For span style, only keep color-related styles
+          if (lowerTag === 'span' && attrName === 'style') {
+            const colorMatch = attrValue.match(/(?:^|;)\s*(color\s*:[^;]+)/i);
+            if (colorMatch) {
+              keptAttrs.push(`style="${colorMatch[1].trim()}"`);
+            }
+          } else {
+            keptAttrs.push(`${attrName}="${attrValue}"`);
+          }
+        }
+      }
+
+      const attrStr = keptAttrs.length > 0 ? ` ${keptAttrs.join(' ')}` : '';
+      const selfClose = match.endsWith('/>') ? ' /' : '';
+      return `<${lowerTag}${attrStr}${selfClose}>`;
+    },
+  );
+
+  // Remove bare <span>/<span> tags (no attributes = no semantic value).
+  // Walk the string tracking which spans are bare vs styled so we can
+  // correctly strip bare closing tags even when they wrap styled spans.
+  result = stripBareSpans(result);
+
+  // Decode HTML entities to plain characters
+  result = decodeHtmlEntities(result);
+
+  return result.trim();
+}
+
+/**
+ * Remove bare `<span>` / `</span>` tags while keeping styled ones.
+ * Uses a stack to track which opening spans are bare vs styled,
+ * so closing tags are correctly paired.
+ */
+function stripBareSpans(html: string): string {
+  // Stack tracks whether each open span is bare (true) or styled (false)
+  const stack: boolean[] = [];
+  return html.replace(/<\/?span\b[^>]*>/gi, (match) => {
+    if (match.startsWith('</')) {
+      // Closing tag — strip if the matching opener was bare
+      const isBare = stack.pop();
+      return isBare ? '' : match;
+    }
+    // Opening tag — bare if it's exactly `<span>`
+    const isBare = /^<span\s*>$/i.test(match);
+    stack.push(isBare);
+    return isBare ? '' : match;
+  });
+}
+
+/** Common HTML entities and their replacements. */
+const HTML_ENTITIES: Record<string, string> = {
+  '&nbsp;': ' ',
+  '&amp;': '&',
+  '&lt;': '<',
+  '&gt;': '>',
+  '&quot;': '"',
+  '&apos;': "'",
+  '&ndash;': '\u2013',
+  '&mdash;': '\u2014',
+  '&lsquo;': '\u2018',
+  '&rsquo;': '\u2019',
+  '&ldquo;': '\u201C',
+  '&rdquo;': '\u201D',
+  '&bull;': '\u2022',
+  '&hellip;': '\u2026',
+  '&copy;': '\u00A9',
+  '&reg;': '\u00AE',
+  '&trade;': '\u2122',
+};
+
+function decodeHtmlEntities(text: string): string {
+  // Named entities
+  let result = text.replace(/&[a-z]+;/gi, (entity) => {
+    return HTML_ENTITIES[entity.toLowerCase()] ?? entity;
+  });
+  // Numeric entities: &#123; or &#x1F4A9;
+  result = result.replace(/&#x([0-9a-f]+);/gi, (_m, hex: string) =>
+    String.fromCodePoint(parseInt(hex, 16)),
+  );
+  result = result.replace(/&#(\d+);/g, (_m, dec: string) =>
+    String.fromCodePoint(parseInt(dec, 10)),
+  );
+  return result;
+}
+
 // Expand a single work item placeholder to full content
 function expandWorkItem(workItem: AzureDevOpsWorkItem): string {
   const { id, fields } = workItem;
   const { title, description, reproSteps } = fields;
 
-  const markdownDescription = description
-    ? turndown.turndown(description)
-    : null;
-  const markdownReproSteps = reproSteps ? turndown.turndown(reproSteps) : null;
+  const cleanDescription = description ? simplifyHtml(description) : null;
+  const cleanReproSteps = reproSteps ? simplifyHtml(reproSteps) : null;
 
   const bodySections: string[] = [`  <title>${escapeXml(title)}</title>`];
 
-  if (markdownDescription) {
+  if (cleanDescription) {
     bodySections.push('  <description>');
-    bodySections.push(escapeXml(markdownDescription));
+    bodySections.push(cleanDescription);
     bodySections.push('  </description>');
   }
 
-  if (markdownReproSteps) {
+  if (cleanReproSteps) {
     bodySections.push('  <repro_steps>');
-    bodySections.push(escapeXml(markdownReproSteps));
+    bodySections.push(cleanReproSteps);
     bodySections.push('  </repro_steps>');
   }
 
