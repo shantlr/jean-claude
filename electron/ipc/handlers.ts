@@ -2066,6 +2066,13 @@ export function registerIpcHandlers() {
 
       // Step 4: Create PR via Azure DevOps
       const targetBranch = task.sourceBranch ?? project.defaultBranch ?? 'main';
+
+      // Only associate work items if they belong to the same project as the repo.
+      // Work items from a different project/org cannot be linked to PRs.
+      const canAssociateWorkItems =
+        project.workItemProviderId === project.repoProviderId &&
+        project.workItemProjectId === project.repoProjectId;
+
       const pr = await createPullRequest({
         providerId: project.repoProviderId,
         projectId: project.repoProjectId,
@@ -2075,7 +2082,9 @@ export function registerIpcHandlers() {
         title,
         description,
         isDraft: params.isDraft,
-        workItemIds: task.workItemIds ?? undefined,
+        workItemIds: canAssociateWorkItems
+          ? (task.workItemIds ?? undefined)
+          : undefined,
       });
 
       // Step 5: Save PR info to task
