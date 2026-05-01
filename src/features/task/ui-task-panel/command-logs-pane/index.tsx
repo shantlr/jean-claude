@@ -1,18 +1,11 @@
 import clsx from 'clsx';
 import { Trash2, X } from 'lucide-react';
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/common/ui/button';
 import { IconButton } from '@/common/ui/icon-button';
 import { Separator } from '@/common/ui/separator';
+import { InteractiveLog } from '@/features/common/interactive-log';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useProjectCommands } from '@/hooks/use-project-commands';
 import { api } from '@/lib/api';
@@ -21,108 +14,6 @@ import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { RunStatus } from '@shared/run-command-types';
 
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from '../constants';
-
-import { AnsiLine } from './ansi-line';
-
-/**
- * Convert a keyboard event to the terminal escape sequence the PTY expects.
- * Returns null for keys that should not be forwarded (e.g. modifier-only,
- * browser shortcuts like Cmd+C for copy, Cmd+V for paste).
- */
-function keyEventToTerminalInput(e: KeyboardEvent): string | null {
-  const { key, ctrlKey, metaKey, altKey } = e;
-
-  // Let browser handle Cmd+key shortcuts (copy, paste, etc.)
-  if (metaKey) return null;
-
-  // Ctrl+<letter> → control character (0x01–0x1A)
-  if (ctrlKey && key.length === 1 && /[a-zA-Z]/.test(key)) {
-    const code = key.toLowerCase().charCodeAt(0) - 96; // a=1, b=2, c=3...
-    return String.fromCharCode(code);
-  }
-
-  // Special keys → terminal escape sequences
-  switch (key) {
-    case 'Enter':
-      return '\r';
-    case 'Backspace':
-      return '\x7f';
-    case 'Tab':
-      return '\t';
-    case 'Escape':
-      return '\x1b';
-    case 'ArrowUp':
-      return '\x1b[A';
-    case 'ArrowDown':
-      return '\x1b[B';
-    case 'ArrowRight':
-      return '\x1b[C';
-    case 'ArrowLeft':
-      return '\x1b[D';
-    case 'Home':
-      return '\x1b[H';
-    case 'End':
-      return '\x1b[F';
-    case 'Delete':
-      return '\x1b[3~';
-    case 'PageUp':
-      return '\x1b[5~';
-    case 'PageDown':
-      return '\x1b[6~';
-
-    // Modifier-only or unhandled special keys — don't send
-    case 'Shift':
-    case 'Control':
-    case 'Alt':
-    case 'Meta':
-    case 'CapsLock':
-    case 'NumLock':
-    case 'ScrollLock':
-      return null;
-
-    // Function keys
-    case 'F1':
-      return '\x1bOP';
-    case 'F2':
-      return '\x1bOQ';
-    case 'F3':
-      return '\x1bOR';
-    case 'F4':
-      return '\x1bOS';
-    case 'F5':
-      return '\x1b[15~';
-    case 'F6':
-      return '\x1b[17~';
-    case 'F7':
-      return '\x1b[18~';
-    case 'F8':
-      return '\x1b[19~';
-    case 'F9':
-      return '\x1b[20~';
-    case 'F10':
-      return '\x1b[21~';
-    case 'F11':
-      return '\x1b[23~';
-    case 'F12':
-      return '\x1b[24~';
-
-    default:
-      break;
-  }
-
-  // Alt+<char> → ESC prefix
-  if (altKey && key.length === 1) {
-    return `\x1b${key}`;
-  }
-
-  // Printable character (single char keys like "i", "a", "1", " ", etc.)
-  if (key.length === 1) {
-    return key;
-  }
-
-  // Unhandled special key — don't send
-  return null;
-}
 
 export function CommandLogsPane({
   taskId,
@@ -183,53 +74,6 @@ export function CommandLogsPane({
   const isActiveRunning = !!(
     activeCommandId && runningCommandIds.has(activeCommandId)
   );
-
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const isAtBottomRef = useRef(true);
-
-  const handleScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    // Consider "at bottom" if within 32px of the bottom
-    isAtBottomRef.current =
-      el.scrollHeight - el.scrollTop - el.clientHeight < 32;
-  }, []);
-
-  // Auto-scroll to bottom when new log lines arrive (if user was at bottom)
-  const lineCount = activeLog?.lines.length ?? 0;
-  useLayoutEffect(() => {
-    const el = scrollRef.current;
-    if (el && isAtBottomRef.current) {
-      el.scrollTop = el.scrollHeight;
-    }
-  }, [lineCount, activeCommandId]);
-
-  // Forward raw keystrokes to the PTY when the log area is focused
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLDivElement>) => {
-      if (!activeCommandId || !isActiveRunning) return;
-
-      const input = keyEventToTerminalInput(e);
-      if (input === null) return;
-
-      // Prevent browser defaults for forwarded keys (e.g. Tab, arrow keys, space scroll)
-      e.preventDefault();
-
-      api.runCommands.sendInput({
-        taskId,
-        runCommandId: activeCommandId,
-        input,
-      });
-    },
-    [taskId, activeCommandId, isActiveRunning],
-  );
-
-  // Auto-focus the log area when a running command becomes active
-  useEffect(() => {
-    if (isActiveRunning && scrollRef.current) {
-      scrollRef.current.focus();
-    }
-  }, [activeCommandId, isActiveRunning]);
 
   const { width, setWidth, minWidth, maxWidth } = useCommandLogsPaneWidth();
   const { isDragging, handleMouseDown } = useHorizontalResize({
@@ -302,34 +146,13 @@ export function CommandLogsPane({
           </div>
           <Separator />
 
-          <div
-            ref={scrollRef}
-            tabIndex={0}
-            onScroll={handleScroll}
-            onKeyDown={handleKeyDown}
-            style={{
-              fontFamily:
-                'var(--font-mono), "Apple Symbols", "Segoe UI Symbol", "Noto Sans Symbols", "Noto Sans Symbols 2", sans-serif',
-            }}
-            className={clsx(
-              'flex-1 overflow-auto px-3 py-2 text-xs leading-relaxed focus:outline-none',
-              isActiveRunning && 'cursor-text',
-            )}
-          >
-            {activeLog?.lines.map((entry, index) => (
-              <div
-                key={`${entry.timestamp}-${index}`}
-                className="text-ink-1 break-words whitespace-pre-wrap"
-              >
-                <AnsiLine line={entry.line} />
-              </div>
-            ))}
-          </div>
-
-          {isActiveRunning && (
-            <div className="border-glass-border text-ink-3 border-t px-3 py-1 text-center text-xs">
-              Terminal input active — keystrokes are forwarded to the process
-            </div>
+          {activeCommandId && (
+            <InteractiveLog
+              lines={activeLog?.lines ?? []}
+              taskId={taskId}
+              runCommandId={activeCommandId}
+              isRunning={isActiveRunning}
+            />
           )}
         </>
       ) : (

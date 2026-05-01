@@ -1,10 +1,11 @@
 import clsx from 'clsx';
 import { Loader2, Square, Terminal, X } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { IconButton } from '@/common/ui/icon-button';
 import { Kbd } from '@/common/ui/kbd';
+import { InteractiveLog } from '@/features/common/interactive-log';
 import { useProjects } from '@/hooks/use-projects';
 import { useTasks } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
@@ -14,6 +15,9 @@ import type { CommandRunStatus } from '@shared/run-command-types';
 
 /** Stable empty array to avoid unstable selector references. */
 const EMPTY_ARRAY: never[] = [];
+
+/** Keys the overlay handles itself — don't forward to PTY. */
+const OVERLAY_IGNORED_KEYS = new Set(['Escape']);
 
 interface RunningCommand {
   taskId: string;
@@ -324,28 +328,9 @@ function LogViewer({
   isStopping: boolean;
   onStop: () => void;
 }) {
-  const logContainerRef = useRef<HTMLDivElement>(null);
-  const [autoScroll, setAutoScroll] = useState(true);
-
-  // Subscribe directly to the specific command's log lines to avoid
-  // re-rendering the entire overlay on every log line from any command.
   const logLines = useTaskMessagesStore(
     (s) => s.runCommandLogs[taskId]?.[runCommandId]?.lines ?? EMPTY_ARRAY,
   );
-
-  // Auto-scroll to bottom when new logs come in
-  useEffect(() => {
-    if (autoScroll && logContainerRef.current) {
-      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-    }
-  }, [logLines, autoScroll]);
-
-  const handleScroll = useCallback(() => {
-    const el = logContainerRef.current;
-    if (!el) return;
-    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-    setAutoScroll(isAtBottom);
-  }, []);
 
   return (
     <div className="flex h-full flex-col">
@@ -373,30 +358,14 @@ function LogViewer({
         </button>
       </div>
 
-      {/* Log content */}
-      <div
-        ref={logContainerRef}
-        className="bg-bg-0/50 flex-1 overflow-auto p-3 font-mono text-xs leading-5"
-        onScroll={handleScroll}
-      >
-        {logLines.length === 0 ? (
-          <p className="text-ink-4">Waiting for output...</p>
-        ) : (
-          logLines.map((entry, i) => (
-            <div
-              key={i}
-              className={clsx(
-                'break-all whitespace-pre-wrap',
-                entry.stream === 'stderr'
-                  ? 'text-status-fail/80'
-                  : 'text-ink-1',
-              )}
-            >
-              {entry.line}
-            </div>
-          ))
-        )}
-      </div>
+      <InteractiveLog
+        lines={logLines}
+        taskId={taskId}
+        runCommandId={runCommandId}
+        isRunning
+        ignoredKeys={OVERLAY_IGNORED_KEYS}
+        stopKeyPropagation
+      />
     </div>
   );
 }
