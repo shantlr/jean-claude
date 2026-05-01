@@ -1,10 +1,10 @@
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useCallback, useRef, useState } from 'react';
 
-/** Fixed-width columns: 2 × line-number (32px each) + divider (4px) */
-const FIXED_WIDTH_PX = 32 + 32 + 4;
-const MIN_FRACTION = 0.2;
-const MAX_FRACTION = 0.8;
+/** Fixed-width columns: 2 × line-number (32px each) + divider (8px) */
+const FIXED_WIDTH_PX = 32 + 32 + 8;
+const MIN_FRACTION = 0.15;
+const MAX_FRACTION = 0.85;
 
 export function useDividerResize() {
   const [leftFraction, setLeftFraction] = useState(0.5);

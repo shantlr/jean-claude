@@ -318,21 +318,18 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     setShowWorkItemsEditor(true);
   }, [task?.workItemIds, task?.workItemUrls]);
 
-  const handleWorkItemToggle = useCallback(
-    (workItem: AzureDevOpsWorkItem) => {
-      const wiId = workItem.id.toString();
-      setDraftWorkItemIds((ids) => {
-        if (ids.includes(wiId)) {
-          const idx = ids.indexOf(wiId);
-          setDraftWorkItemUrls((urls) => urls.filter((_, i) => i !== idx));
-          return ids.filter((_, i) => i !== idx);
-        }
-        setDraftWorkItemUrls((urls) => [...urls, workItem.url]);
-        return [...ids, wiId];
-      });
-    },
-    [],
-  );
+  const handleWorkItemToggle = useCallback((workItem: AzureDevOpsWorkItem) => {
+    const wiId = workItem.id.toString();
+    setDraftWorkItemIds((ids) => {
+      if (ids.includes(wiId)) {
+        const idx = ids.indexOf(wiId);
+        setDraftWorkItemUrls((urls) => urls.filter((_, i) => i !== idx));
+        return ids.filter((_, i) => i !== idx);
+      }
+      setDraftWorkItemUrls((urls) => [...urls, workItem.url]);
+      return [...ids, wiId];
+    });
+  }, []);
 
   const handleClearWorkItems = useCallback(() => {
     setDraftWorkItemIds([]);
@@ -394,7 +391,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   useEffect(() => {
     setShowWorkItemsEditor(false);
   }, [taskId]);
-
 
   // Notify backend this task is focused (dismisses completion notifications, etc.)
   useEffect(() => {

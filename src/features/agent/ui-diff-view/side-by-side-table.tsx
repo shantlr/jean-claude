@@ -118,7 +118,7 @@ export function SideBySideDiffTable({
         {/* Left content */}
         <col style={{ width: leftPct }} />
         {/* Divider */}
-        <col style={{ width: 4 }} />
+        <col style={{ width: 8 }} />
         {/* Right line number */}
         <col style={{ width: 32 }} />
         {/* Right content */}
@@ -177,9 +177,20 @@ function SideBySideRowComponent({
       />
       {/* Divider / drag handle */}
       <td
-        className={`bg-glass-medium hover:bg-acc/50 cursor-col-resize transition-colors ${isDragging ? 'bg-acc/50' : ''}`}
+        className="group relative cursor-col-resize select-none"
         onMouseDown={onDividerMouseDown}
-      />
+      >
+        {/* Visible divider line */}
+        <div
+          className={`absolute inset-y-0 left-1/2 w-px -translate-x-1/2 transition-all ${
+            isDragging
+              ? 'bg-acc w-0.5'
+              : 'group-hover:bg-acc/50 bg-white/[0.06] group-hover:w-0.5'
+          }`}
+        />
+        {/* Wide invisible hit target */}
+        <div className="absolute inset-y-0 -right-1.5 -left-1.5" />
+      </td>
       {/* Right side (new/additions) */}
       <SideBySideCell
         line={row.right}
