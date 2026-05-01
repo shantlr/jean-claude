@@ -24,12 +24,15 @@ export function DiffFileTree({
   selectedPath,
   onSelectFile,
   filesWithAnnotations,
+  commentCountByFile,
 }: {
   files: DiffFile[];
   selectedPath: string | null;
   onSelectFile: (path: string) => void;
   /** Set of file paths that have annotations */
   filesWithAnnotations?: Set<string>;
+  /** Number of unresolved review comments per file path */
+  commentCountByFile?: Record<string, number>;
 }) {
   const tree = useMemo(() => buildTree(files), [files]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => {
@@ -64,6 +67,11 @@ export function DiffFileTree({
     [filesWithAnnotations],
   );
 
+  const getCommentCount = useCallback(
+    (path: string) => commentCountByFile?.[path] ?? 0,
+    [commentCountByFile],
+  );
+
   return (
     <div className="flex flex-col overflow-auto py-2">
       {tree.map((node) => (
@@ -76,6 +84,7 @@ export function DiffFileTree({
           onSelectFile={onSelectFile}
           onToggleFolder={toggleFolder}
           hasAnnotation={hasAnnotation}
+          getCommentCount={getCommentCount}
         />
       ))}
     </div>
@@ -90,6 +99,7 @@ function TreeNodeRow({
   onSelectFile,
   onToggleFolder,
   hasAnnotation,
+  getCommentCount,
 }: {
   node: TreeNode;
   depth: number;
@@ -98,6 +108,7 @@ function TreeNodeRow({
   onSelectFile: (path: string) => void;
   onToggleFolder: (path: string) => void;
   hasAnnotation: (path: string) => boolean;
+  getCommentCount: (path: string) => number;
 }) {
   const isExpanded = expandedFolders.has(node.path);
   const isSelected = node.path === selectedPath;
@@ -131,6 +142,7 @@ function TreeNodeRow({
               onSelectFile={onSelectFile}
               onToggleFolder={onToggleFolder}
               hasAnnotation={hasAnnotation}
+              getCommentCount={getCommentCount}
             />
           ))}
       </>
@@ -140,6 +152,7 @@ function TreeNodeRow({
   // File node
   const statusIndicator = getStatusIndicatorOrEmpty(node.status);
   const fileHasAnnotation = hasAnnotation(node.path);
+  const commentCount = getCommentCount(node.path);
 
   return (
     <button
@@ -165,6 +178,15 @@ function TreeNodeRow({
           className="text-status-run/70 ml-1 h-3 w-3 shrink-0"
           aria-label="Has AI annotations"
         />
+      )}
+      {commentCount > 0 && (
+        <span
+          className="bg-acc-soft text-acc-ink ml-1 inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 font-mono text-[9.5px]"
+          aria-label={`${commentCount} review comment${commentCount !== 1 ? 's' : ''}`}
+        >
+          <MessageCircle className="h-2.5 w-2.5" />
+          {commentCount}
+        </span>
       )}
       <span className={`ml-auto shrink-0 text-xs ${statusIndicator.color}`}>
         {statusIndicator.label}

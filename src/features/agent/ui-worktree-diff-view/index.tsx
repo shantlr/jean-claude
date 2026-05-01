@@ -1,11 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { FileX, FolderX, Loader2, RefreshCw } from 'lucide-react';
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { Separator } from '@/common/ui/separator';
 import { getFilesWithAnnotations } from '@/features/agent/ui-diff-annotation';
+import { ReviewSubmitOverlay } from '@/features/agent/ui-review-comments/review-submit-overlay';
+import { ReviewSubmitBar } from '@/features/agent/ui-review-comments/review-top-bar';
 import { SummaryPanel } from '@/features/agent/ui-summary-panel';
 import { WorktreeActions } from '@/features/agent/ui-worktree-actions';
 import {
@@ -23,6 +25,14 @@ import {
 import { api, type FileAnnotation, type WorktreeDiffFile } from '@/lib/api';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useDiffFileTreeWidth } from '@/stores/navigation';
+import {
+  useReviewCommentsStore,
+  useReviewComments,
+  useReviewCommentsForFile,
+  useOpenReviewCommentCount,
+  useReviewCommentsByFile,
+  type ReviewPresetId,
+} from '@/stores/review-comments';
 
 const HEADER_HEIGHT_CLS = `h-[40px] shrink-0`;
 
@@ -40,6 +50,7 @@ export function WorktreeDiffView({
   pullRequestUrl,
   onMergeStarted,
   onOpenPrView,
+  onSubmitReview,
   bottomPadding = 0,
 }: {
   taskId: string;
@@ -55,6 +66,8 @@ export function WorktreeDiffView({
   pullRequestUrl: string | null;
   onMergeStarted: () => void;
   onOpenPrView: () => void;
+  /** Called when user submits a review. Receives the synthesized prompt. */
+  onSubmitReview?: (prompt: string) => void;
   bottomPadding?: number;
 }) {
   const { data, isLoading, error, refresh } = useWorktreeDiff(taskId, true);
@@ -89,6 +102,60 @@ export function WorktreeDiffView({
   const annotations: FileAnnotation[] = useMemo(() => {
     return summary?.annotations ?? [];
   }, [summary?.annotations]);
+
+  // Review comments state
+  const reviewComments = useReviewComments(taskId);
+  const openReviewCount = useOpenReviewCommentCount(taskId);
+  const commentCountByFile = useReviewCommentsByFile(taskId);
+  const addComment = useReviewCommentsStore((s) => s.addComment);
+  const removeComment = useReviewCommentsStore((s) => s.removeComment);
+  const resolveComment = useReviewCommentsStore((s) => s.resolveComment);
+  const [isSubmitOverlayOpen, setIsSubmitOverlayOpen] = useState(false);
+
+  const handleAddReviewComment = useCallback(
+    (params: {
+      filePath: string;
+      lineStart: number;
+      lineEnd?: number;
+      body: string;
+      presets: ReviewPresetId[];
+    }) => {
+      addComment(taskId, {
+        anchor: {
+          filePath: params.filePath,
+          lineStart: params.lineStart,
+          lineEnd: params.lineEnd,
+        },
+        body: params.body,
+        presets: params.presets,
+        status: 'open',
+        resolved: false,
+      });
+    },
+    [taskId, addComment],
+  );
+
+  const handleDeleteReviewComment = useCallback(
+    (commentId: string) => {
+      removeComment(taskId, commentId);
+    },
+    [taskId, removeComment],
+  );
+
+  const handleResolveReviewComment = useCallback(
+    (commentId: string) => {
+      resolveComment(taskId, commentId);
+    },
+    [taskId, resolveComment],
+  );
+
+  const handleSubmitReview = useCallback(
+    (prompt: string) => {
+      setIsSubmitOverlayOpen(false);
+      onSubmitReview?.(prompt);
+    },
+    [onSubmitReview],
+  );
 
   // Handle summary generation
   const handleGenerateSummary = useCallback(() => {
@@ -255,6 +322,7 @@ export function WorktreeDiffView({
             selectedPath={selectedFilePath}
             onSelectFile={onSelectFile}
             filesWithAnnotations={filesWithAnnotations}
+            commentCountByFile={commentCountByFile}
           />
           <WorktreeActions
             taskId={taskId}
@@ -280,13 +348,21 @@ export function WorktreeDiffView({
       </div>
 
       {/* Diff content */}
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Summary panel at top */}
         <SummaryPanel
           summary={summary?.summary ?? null}
           isLoading={isSummaryJobRunning || isSummaryLoading}
           onGenerate={handleGenerateSummary}
         />
+
+        {/* Review submit bar */}
+        {onSubmitReview && (
+          <ReviewSubmitBar
+            commentCount={openReviewCount}
+            onSubmit={() => setIsSubmitOverlayOpen(true)}
+          />
+        )}
 
         {/* File diff content */}
         <div
@@ -301,6 +377,11 @@ export function WorktreeDiffView({
               taskId={taskId}
               headerClassName={HEADER_HEIGHT_CLS}
               annotations={annotations}
+              onAddReviewComment={
+                onSubmitReview ? handleAddReviewComment : undefined
+              }
+              onDeleteReviewComment={handleDeleteReviewComment}
+              onResolveReviewComment={handleResolveReviewComment}
             />
           ) : (
             <div className="text-ink-3 flex h-full items-center justify-center">
@@ -308,6 +389,15 @@ export function WorktreeDiffView({
             </div>
           )}
         </div>
+
+        {/* Submit overlay */}
+        {isSubmitOverlayOpen && (
+          <ReviewSubmitOverlay
+            comments={reviewComments}
+            onSubmit={handleSubmitReview}
+            onClose={() => setIsSubmitOverlayOpen(false)}
+          />
+        )}
       </div>
     </div>
   );
@@ -318,17 +408,32 @@ function WorktreeFileDiffContent({
   headerClassName,
   taskId,
   annotations,
+  onAddReviewComment,
+  onDeleteReviewComment,
+  onResolveReviewComment,
 }: {
   file: WorktreeDiffFile;
   headerClassName?: string;
   taskId: string;
   annotations?: FileAnnotation[];
+  onAddReviewComment?: (params: {
+    filePath: string;
+    lineStart: number;
+    lineEnd?: number;
+    body: string;
+    presets: ReviewPresetId[];
+  }) => void;
+  onDeleteReviewComment?: (commentId: string) => void;
+  onResolveReviewComment?: (commentId: string) => void;
 }) {
   const { data, isLoading, error } = useWorktreeFileContent(
     taskId,
     file.path,
     file.status,
   );
+
+  // Get review comments for this specific file
+  const fileReviewComments = useReviewCommentsForFile(taskId, file.path);
 
   if (error) {
     return (
@@ -354,6 +459,10 @@ function WorktreeFileDiffContent({
       isBinary={data?.isBinary}
       headerClassName={headerClassName}
       annotations={annotations}
+      reviewComments={fileReviewComments}
+      onAddReviewComment={onAddReviewComment}
+      onDeleteReviewComment={onDeleteReviewComment}
+      onResolveReviewComment={onResolveReviewComment}
     />
   );
 }

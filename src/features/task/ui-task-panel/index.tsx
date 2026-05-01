@@ -1280,6 +1280,22 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               pullRequestUrl={task.pullRequestUrl}
               onMergeStarted={handleMergeStarted}
               onOpenPrView={openPrView}
+              onSubmitReview={(prompt) => {
+                const backend = activeStep?.agentBackend ?? 'claude-code';
+                const mode =
+                  activeStep?.interactionMode ??
+                  getDefaultInteractionModeForBackend({ backend });
+                const model = activeStep?.modelPreference ?? 'default';
+                void handleAddStep({
+                  promptTemplate: prompt,
+                  presetType: 'new-session',
+                  interactionMode: mode,
+                  agentBackend: backend,
+                  modelPreference: model,
+                  images: [],
+                  start: true,
+                });
+              }}
               bottomPadding={footerHeight}
             />
           ) : activeStep?.type === 'pr-review' ? (

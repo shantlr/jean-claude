@@ -12,10 +12,15 @@ import {
   type LineRange,
 } from '@/features/agent/ui-diff-view';
 import { MarkdownContent } from '@/features/agent/ui-markdown-content';
+import { ReviewCommentComposer } from '@/features/agent/ui-review-comments/review-comment-composer';
+import { ReviewCommentThread } from '@/features/agent/ui-review-comments/review-comment-thread';
 import type { FileAnnotation } from '@/lib/api';
+import type { ReviewComment, ReviewPresetId } from '@/stores/review-comments';
 
 import { FileDiffHeader } from './file-diff-header';
 import type { DiffFile, CommentThread } from './types';
+
+const EMPTY_INLINE_COMMENTS: InlineComment[] = [];
 
 export function FileDiffContent({
   file,
@@ -31,6 +36,12 @@ export function FileDiffContent({
   CommentForm,
   // Optional annotation support
   annotations,
+  // Optional review comment support
+  reviewComments,
+  onAddReviewComment,
+  onDeleteReviewComment,
+  showReviewStatus,
+  onResolveReviewComment,
 }: {
   file: DiffFile;
   oldContent: string;
@@ -54,6 +65,18 @@ export function FileDiffContent({
   }>;
   // Annotation props - optional
   annotations?: FileAnnotation[];
+  // Review comment props - optional
+  reviewComments?: ReviewComment[];
+  onAddReviewComment?: (params: {
+    filePath: string;
+    lineStart: number;
+    lineEnd?: number;
+    body: string;
+    presets: ReviewPresetId[];
+  }) => void;
+  onDeleteReviewComment?: (commentId: string) => void;
+  showReviewStatus?: boolean;
+  onResolveReviewComment?: (commentId: string) => void;
 }) {
   const [commentFormLineRange, setCommentFormLineRange] =
     useState<LineRange | null>(null);
@@ -91,6 +114,7 @@ export function FileDiffContent({
   );
 
   const hasCommentSupport = !!onAddComment && !!CommentForm;
+  const hasReviewSupport = !!onAddReviewComment;
 
   // Get annotation inline comments using the hook
   const { inlineComments: annotationComments } = useAnnotationsAsInlineComments(
@@ -124,10 +148,33 @@ export function FileDiffContent({
     }));
   }, [fileThreads]);
 
-  // Merge thread comments and annotation comments
+  // Convert review comments to inline comments for DiffView
+  const reviewInlineComments: InlineComment[] = useMemo(() => {
+    if (!reviewComments || reviewComments.length === 0)
+      return EMPTY_INLINE_COMMENTS;
+    return reviewComments.map((rc) => ({
+      // Anchor to the end line (or start if single-line) so thread appears after the range
+      line: rc.anchor.lineEnd ?? rc.anchor.lineStart,
+      content: (
+        <ReviewCommentThread
+          comment={rc}
+          showStatus={showReviewStatus ?? false}
+          onResolve={onResolveReviewComment}
+          onDelete={onDeleteReviewComment}
+        />
+      ),
+    }));
+  }, [
+    reviewComments,
+    showReviewStatus,
+    onResolveReviewComment,
+    onDeleteReviewComment,
+  ]);
+
+  // Merge thread comments, annotation comments, and review comments
   const inlineComments: InlineComment[] = useMemo(() => {
-    return [...threadComments, ...annotationComments];
-  }, [threadComments, annotationComments]);
+    return [...threadComments, ...annotationComments, ...reviewInlineComments];
+  }, [threadComments, annotationComments, reviewInlineComments]);
 
   // Format the line range label
   const lineRangeLabel = useMemo(() => {
@@ -138,11 +185,48 @@ export function FileDiffContent({
     return `lines ${commentFormLineRange.start}-${commentFormLineRange.end}`;
   }, [commentFormLineRange]);
 
+  // Handle review comment submission
+  const handleAddReviewComment = useCallback(
+    (body: string, presets: ReviewPresetId[]) => {
+      if (commentFormLineRange !== null && onAddReviewComment) {
+        onAddReviewComment({
+          filePath: file.path,
+          lineStart: commentFormLineRange.start,
+          lineEnd:
+            commentFormLineRange.end !== commentFormLineRange.start
+              ? commentFormLineRange.end
+              : undefined,
+          body,
+          presets,
+        });
+        setCommentFormLineRange(null);
+      }
+    },
+    [file.path, commentFormLineRange, onAddReviewComment],
+  );
+
   // Render comment form inline
   const commentFormElement = useMemo(() => {
-    if (!hasCommentSupport || commentFormLineRange === null || !CommentForm) {
-      return undefined;
+    if (commentFormLineRange === null) return undefined;
+
+    // Review composer takes priority
+    if (hasReviewSupport) {
+      return (
+        <ReviewCommentComposer
+          lineStart={commentFormLineRange.start}
+          lineEnd={
+            commentFormLineRange.end !== commentFormLineRange.start
+              ? commentFormLineRange.end
+              : undefined
+          }
+          onSubmit={handleAddReviewComment}
+          onCancel={handleCancelComment}
+        />
+      );
     }
+
+    if (!hasCommentSupport || !CommentForm) return undefined;
+
     return (
       <div>
         <div className="mb-2 flex items-center justify-between">
@@ -164,11 +248,13 @@ export function FileDiffContent({
       </div>
     );
   }, [
-    hasCommentSupport,
     commentFormLineRange,
+    hasReviewSupport,
+    hasCommentSupport,
     CommentForm,
     lineRangeLabel,
     handleAddComment,
+    handleAddReviewComment,
     handleCancelComment,
     isAddingComment,
   ]);
@@ -196,7 +282,7 @@ export function FileDiffContent({
       <FileDiffHeader
         file={file}
         className={headerClassName}
-        commentCount={fileThreads.length}
+        commentCount={fileThreads.length + (reviewComments?.length ?? 0)}
         hasAnnotations={hasAnnotations}
       />
 
@@ -208,7 +294,9 @@ export function FileDiffContent({
           newString={newContent}
           withMinimap
           onAddCommentClick={
-            hasCommentSupport ? handleAddCommentClick : undefined
+            hasReviewSupport || hasCommentSupport
+              ? handleAddCommentClick
+              : undefined
           }
           inlineComments={inlineComments}
           commentFormLineRange={commentFormLineRange}
