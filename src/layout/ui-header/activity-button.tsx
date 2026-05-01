@@ -110,6 +110,7 @@ export function ActivityButton() {
   return (
     <button
       type="button"
+      data-animation-target="jobs-button"
       onClick={() => toggle('activity-center')}
       className={clsx(
         'flex h-6 max-w-[380px] items-center overflow-hidden rounded-[5px] border text-[11px] transition-colors',
