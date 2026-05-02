@@ -255,12 +255,13 @@ function CurrentStateRow({
             isChanged ? 'text-status-done' : 'text-ink-4',
           )}
         >
-          {canComment && isHovered ? (
-            <span className="text-acc-ink flex h-full w-full items-center justify-center">
+          <span className={clsx(canComment && isHovered && 'invisible')}>
+            {lineNumber}
+          </span>
+          {canComment && isHovered && (
+            <span className="text-acc-ink absolute inset-0 flex items-center justify-center">
               <MessageSquarePlus className="h-3 w-3" aria-hidden />
             </span>
-          ) : (
-            lineNumber
           )}
         </td>
         {/* Change indicator */}
