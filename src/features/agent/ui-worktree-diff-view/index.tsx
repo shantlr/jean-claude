@@ -235,6 +235,19 @@ export function WorktreeDiffView({
     },
   ]);
 
+  // Keyboard shortcut for opening submit review overlay (cmd+enter)
+  useCommands('worktree-diff-view-submit-review', [
+    onSubmitReview && {
+      label: 'Submit Review',
+      shortcut: 'cmd+enter',
+      handler: () => {
+        if (openReviewCount > 0 && !isSubmitOverlayOpen) {
+          setIsSubmitOverlayOpen(true);
+        }
+      },
+    },
+  ]);
+
   const selectedFile = useMemo(() => {
     if (!selectedFilePath || !data?.files) return null;
     return data.files.find((f) => f.path === selectedFilePath) ?? null;

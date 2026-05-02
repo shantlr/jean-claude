@@ -1,11 +1,29 @@
 import { ChevronDown, ChevronRight, Send, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import {
+  KeyboardBindingLayer,
+  useRegisterKeyboardBindings,
+} from '@/common/context/keyboard-bindings';
 import type { ReviewComment } from '@/stores/review-comments';
 import { synthesizeReviewPrompt } from '@/stores/review-comments';
 import type { TaskStep } from '@shared/types';
 
-export function ReviewSubmitOverlay({
+export function ReviewSubmitOverlay(props: {
+  comments: ReviewComment[];
+  steps?: TaskStep[];
+  activeStepId?: string | null;
+  onSubmit: (prompt: string, targetStepId: string | null) => void;
+  onClose: () => void;
+}) {
+  return (
+    <KeyboardBindingLayer exclusive>
+      <ReviewSubmitOverlayContent {...props} />
+    </KeyboardBindingLayer>
+  );
+}
+
+function ReviewSubmitOverlayContent({
   comments,
   steps,
   activeStepId,
@@ -45,6 +63,21 @@ export function ReviewSubmitOverlay({
       onSubmit(synthesized, selectedStepId);
     }
   }, [synthesized, selectedStepId, onSubmit]);
+
+  // cmd+enter to submit, escape to close
+  useRegisterKeyboardBindings('review-submit-overlay', {
+    'cmd+enter': () => {
+      if (openComments.length > 0 && synthesized) {
+        handleSubmit();
+        return true;
+      }
+      return false;
+    },
+    escape: () => {
+      onClose();
+      return true;
+    },
+  });
 
   return (
     <div
@@ -204,7 +237,9 @@ export function ReviewSubmitOverlay({
             disabled={openComments.length === 0}
             className="bg-acc inline-flex items-center gap-1.5 rounded px-3.5 py-1.5 text-xs font-medium text-white disabled:opacity-40"
           >
-            Submit review <Send className="h-3 w-3" />
+            Submit review
+            <kbd className="ml-1 text-[10px] opacity-70">⌘↵</kbd>
+            <Send className="h-3 w-3" />
           </button>
         </div>
       </div>
