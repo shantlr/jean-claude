@@ -97,6 +97,7 @@ import {
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import { useTaskPrompt } from '@/stores/task-prompts';
 import { useToastStore } from '@/stores/toasts';
+import { DiffViewMode, useUIStore } from '@/stores/ui';
 import type {
   AgentBackendType,
   PromptImagePart,
@@ -856,6 +857,21 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       section: 'Task',
       handler: () => {
         toggleDiffView();
+      },
+    },
+    {
+      label: 'Cycle Diff Mode',
+      shortcut: 'cmd+shift+d',
+      section: 'Task',
+      handler: () => {
+        const MODES: DiffViewMode[] = [
+          'inline',
+          'side-by-side',
+          'current-state',
+        ];
+        const current = useUIStore.getState().settings.diffViewMode;
+        const next = MODES[(MODES.indexOf(current) + 1) % MODES.length];
+        useUIStore.getState().setSetting('diffViewMode', next);
       },
     },
     {
