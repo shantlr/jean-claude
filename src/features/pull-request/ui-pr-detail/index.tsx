@@ -23,6 +23,8 @@ import {
   useAddPullRequestComment,
   useAddPullRequestFileComment,
 } from '@/hooks/use-pull-requests';
+import { usePrDetailState } from '@/stores/navigation';
+import type { PrDetailTab } from '@/stores/navigation';
 import type { FeedItem } from '@shared/feed-types';
 
 import { PrCommits } from '../ui-pr-commits';
@@ -30,9 +32,7 @@ import { PrDiffView } from '../ui-pr-diff-view';
 import { PrHeader } from '../ui-pr-header';
 import { PrOverview } from '../ui-pr-overview';
 
-type Tab = 'overview' | 'files' | 'commits';
-
-const PR_DETAIL_TABS: Tab[] = ['overview', 'files', 'commits'];
+const PR_DETAIL_TABS: PrDetailTab[] = ['overview', 'files', 'commits'];
 
 export function PrDetail({
   projectId,
@@ -43,8 +43,8 @@ export function PrDetail({
   prId: number;
   bottomPadding?: number;
 }) {
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const { selectedFile, activeTab, setSelectedFile, setActiveTab } =
+    usePrDetailState(projectId, prId);
   const [fileTreeWidth, setFileTreeWidth] = useState(250);
   const queryClient = useQueryClient();
 
@@ -57,7 +57,7 @@ export function PrDetail({
           : (currentIndex - 1 + PR_DETAIL_TABS.length) % PR_DETAIL_TABS.length;
       setActiveTab(PR_DETAIL_TABS[newIndex]);
     },
-    [activeTab],
+    [activeTab, setActiveTab],
   );
 
   useCommands('pr-detail-tab-navigation', [
@@ -134,6 +134,7 @@ export function PrDetail({
   ]);
 
   const { data: pr, isLoading: isPrLoading } = usePullRequest(projectId, prId);
+
   const { data: commits = [], isLoading: isCommitsLoading } =
     usePullRequestCommits(projectId, prId);
   const { data: files = [], isLoading: isFilesLoading } = usePullRequestChanges(

@@ -3,6 +3,7 @@ import { useEffect, useMemo } from 'react';
 
 import { api } from '@/lib/api';
 import { useFeedStore } from '@/stores/feed';
+import { useNavigationStore } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { FeedItem, FeedItemAttention } from '@shared/feed-types';
 
@@ -49,6 +50,8 @@ export function useFeed() {
     refetchInterval: 3 * 60 * 1000,
   });
 
+  const reconcilePrState = useNavigationStore((s) => s.reconcilePrState);
+
   useEffect(() => {
     const items = query.data;
     if (!items) {
@@ -67,7 +70,20 @@ export function useFeed() {
     if (!sameAttention) {
       reconcile(next);
     }
-  }, [lastAttention, query.data, reconcile]);
+
+    // Reconcile persisted PR view state — prune entries for PRs that are
+    // no longer active (completed, abandoned, or gone from feed).
+    // Only reconcile on a successful fetch to avoid nuking state on errors.
+    if (!query.isError) {
+      const activePrKeys = new Set<string>();
+      for (const item of items) {
+        if (item.source === 'pull-request' && item.pullRequestId != null) {
+          activePrKeys.add(`${item.projectId}:${item.pullRequestId}`);
+        }
+      }
+      reconcilePrState(activePrKeys);
+    }
+  }, [lastAttention, query.data, query.isError, reconcile, reconcilePrState]);
 
   // Refine waiting/permission attention from in-memory pending request state.
   const refinedItems = useMemo(() => {

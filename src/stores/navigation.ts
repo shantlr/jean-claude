@@ -48,6 +48,18 @@ interface PrDraft {
   description?: string;
 }
 
+export type PrDetailTab = 'overview' | 'files' | 'commits';
+
+interface PrViewState {
+  selectedFile: string | null;
+  activeTab: PrDetailTab;
+}
+
+const defaultPrViewState: PrViewState = {
+  selectedFile: null,
+  activeTab: 'overview',
+};
+
 interface TaskState {
   rightPane: RightPane | null;
   activeView: TaskViewMode;
@@ -153,6 +165,9 @@ interface NavigationState {
   // Per-task: state including right pane
   taskState: Record<string, TaskState>; // taskId -> state
 
+  // Per-PR: view state (selected file, active tab)
+  prState: Record<string, PrViewState>; // `${projectId}:${prId}` -> state
+
   // Actions
   setLastLocation: (location: LastLocation) => void;
   setDiffFileTreeWidth: (width: number) => void;
@@ -175,6 +190,10 @@ interface NavigationState {
   toggleFileExplorerExpandedDir: (taskId: string, dirPath: string) => void;
   setActiveStepId: (taskId: string, stepId: string | null) => void;
   setPrDraft: (taskId: string, draft: PrDraft) => void;
+  setPrSelectedFile: (prKey: string, filePath: string | null) => void;
+  setPrActiveTab: (prKey: string, tab: PrDetailTab) => void;
+  clearPrNavState: (prKey: string) => void;
+  reconcilePrState: (activePrKeys: Set<string>) => void;
   clearProjectNavHistoryState: (projectId: string) => void;
   clearTaskNavHistoryState: (taskId: string) => void;
 }
@@ -194,6 +213,7 @@ const useStore = create<NavigationState>()(
       sidebarTab: 'tasks' as 'tasks' | 'prs',
       lastTaskByProject: {},
       taskState: {},
+      prState: {},
 
       setLastLocation: (location) => set({ lastLocation: location }),
 
@@ -373,6 +393,49 @@ const useStore = create<NavigationState>()(
               },
             },
           };
+        }),
+
+      setPrSelectedFile: (prKey, filePath) =>
+        set((state) => ({
+          prState: {
+            ...state.prState,
+            [prKey]: {
+              ...defaultPrViewState,
+              ...state.prState[prKey],
+              selectedFile: filePath,
+            },
+          },
+        })),
+
+      setPrActiveTab: (prKey, tab) =>
+        set((state) => ({
+          prState: {
+            ...state.prState,
+            [prKey]: {
+              ...defaultPrViewState,
+              ...state.prState[prKey],
+              activeTab: tab,
+            },
+          },
+        })),
+
+      clearPrNavState: (prKey) =>
+        set((state) => {
+          const { [prKey]: _, ...rest } = state.prState;
+          return { prState: rest };
+        }),
+
+      reconcilePrState: (activePrKeys) =>
+        set((state) => {
+          const staleKeys = Object.keys(state.prState).filter(
+            (key) => !activePrKeys.has(key),
+          );
+          if (staleKeys.length === 0) return state;
+          const next = { ...state.prState };
+          for (const key of staleKeys) {
+            delete next[key];
+          }
+          return { prState: next };
         }),
 
       clearProjectNavHistoryState: (projectId) =>
@@ -788,6 +851,38 @@ export function usePrViewState(taskId: string) {
     openPrView,
     closePrView,
   };
+}
+
+// Hook for PR detail persisted state (selected file + active tab)
+export function usePrDetailState(projectId: string, prId: number) {
+  const prKey = `${projectId}:${prId}`;
+
+  const selectedFile = useStore(
+    (state) => state.prState[prKey]?.selectedFile ?? null,
+  );
+  const activeTab = useStore(
+    (state) => state.prState[prKey]?.activeTab ?? 'overview',
+  );
+  const setPrSelectedFileAction = useStore((state) => state.setPrSelectedFile);
+  const setPrActiveTabAction = useStore((state) => state.setPrActiveTab);
+  const clearPrNavStateAction = useStore((state) => state.clearPrNavState);
+
+  const setSelectedFile = useCallback(
+    (filePath: string | null) => setPrSelectedFileAction(prKey, filePath),
+    [prKey, setPrSelectedFileAction],
+  );
+
+  const setActiveTab = useCallback(
+    (tab: PrDetailTab) => setPrActiveTabAction(prKey, tab),
+    [prKey, setPrActiveTabAction],
+  );
+
+  const clearState = useCallback(
+    () => clearPrNavStateAction(prKey),
+    [prKey, clearPrNavStateAction],
+  );
+
+  return { selectedFile, activeTab, setSelectedFile, setActiveTab, clearState };
 }
 
 // Hook for diff file tree width
