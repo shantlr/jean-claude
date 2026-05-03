@@ -251,7 +251,9 @@ export function WorktreeDiffView({
       handler: () => {
         if (openReviewCount > 0 && !isSubmitOverlayOpen) {
           setIsSubmitOverlayOpen(true);
+          return true;
         }
+        return false;
       },
     },
   ]);
