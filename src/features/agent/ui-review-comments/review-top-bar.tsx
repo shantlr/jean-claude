@@ -24,6 +24,7 @@ export function ReviewSubmitBar({
         <span className="rounded-full bg-white/20 px-1.5 font-mono text-[10px]">
           {commentCount}
         </span>
+        <kbd className="ml-0.5 font-mono text-[10px] opacity-70">⌘↵</kbd>
       </button>
     </div>
   );
