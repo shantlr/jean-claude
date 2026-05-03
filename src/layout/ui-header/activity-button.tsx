@@ -117,9 +117,7 @@ export function ActivityButton() {
         isOpen
           ? 'bg-bg-2 border-glass-border-strong'
           : 'bg-glass-subtle border-glass-border hover:bg-glass-light',
-        isRunning &&
-          !isOpen &&
-          'shadow-[inset_0_0_0_1px_oklch(var(--acc)/0.25)]',
+        isRunning && !isOpen && 'border-acc/50 bg-acc/8 animate-activity-glow',
       )}
     >
       {/* Left side - live state */}

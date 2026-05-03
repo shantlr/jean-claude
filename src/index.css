@@ -298,6 +298,23 @@ button {
   animation: jobs-pulse 0.6s ease-out;
 }
 
+/* Continuous glow pulse for activity button while jobs are running */
+@keyframes activity-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 6px oklch(var(--acc) / 0.25),
+      inset 0 0 0 1px oklch(var(--acc) / 0.2);
+  }
+  50% {
+    box-shadow: 0 0 12px oklch(var(--acc) / 0.4),
+      inset 0 0 0 1px oklch(var(--acc) / 0.35);
+  }
+}
+
+@utility animate-activity-glow {
+  animation: activity-glow 2s ease-in-out infinite;
+}
+
 /* Pulsing green glow for running command indicator */
 @keyframes command-running-pulse {
   0%,
