@@ -30,6 +30,8 @@ export interface NewTaskDraft {
   // Shared state
   createWorktree: boolean;
   sourceBranch: string | null;
+  // File explorer toggle
+  showFileExplorer: boolean;
   // Backlog conversion tracking
   backlogTodoId: string | null;
 }

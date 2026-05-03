@@ -36,6 +36,12 @@ import type { AzureDevOpsWorkItem } from '@/lib/api';
 import { compressImage } from '@/lib/image-compression';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import {
+  useComposerFileCommentCount,
+  useComposerFileComments,
+  useComposerFileCommentsStore,
+  synthesizeFileCommentsPrompt,
+} from '@/stores/composer-file-comments';
+import {
   useNewTaskDraft,
   useNewTaskDraftStore,
   type InputMode,
@@ -51,6 +57,8 @@ import {
   type Project,
 } from '@shared/types';
 
+import { ComposerCommentsChip } from '../ui-composer-comments-chip';
+import { ComposerFileExplorer } from '../ui-composer-file-explorer';
 import {
   PromptComposer,
   generateInitialTemplate,
@@ -249,6 +257,9 @@ export function NewTaskOverlay({
     updateDraft({ inputMode: newMode });
   }, [inputMode, canToggleMode, updateDraft]);
 
+  // File comments for the selected project
+  const fileCommentCount = useComposerFileCommentCount(selectedProjectId ?? '');
+  const fileComments = useComposerFileComments(selectedProjectId ?? '');
   // Check if we can advance to compose step
   const canAdvanceToCompose = useMemo(() => {
     if (inputMode !== 'search') return false;
@@ -266,9 +277,11 @@ export function NewTaskOverlay({
       return !!expanded.trim() && !!selectedProjectId;
     }
 
-    // In prompt mode, need text and a project
+    // In prompt mode, need text (or file comments) and a project
     if (inputMode === 'prompt') {
-      return !!(draft.prompt ?? '').trim() && !!selectedProjectId;
+      const hasPrompt = !!(draft.prompt ?? '').trim();
+      const hasFileComments = fileCommentCount > 0;
+      return (hasPrompt || hasFileComments) && !!selectedProjectId;
     }
 
     return false;
@@ -279,6 +292,7 @@ export function NewTaskOverlay({
     promptTemplate,
     selectedWorkItems,
     selectedProjectId,
+    fileCommentCount,
   ]);
 
   // Navigate project tabs
@@ -311,6 +325,7 @@ export function NewTaskOverlay({
   // Toggle worktree checkbox
   const currentCreateWorktree = draft?.createWorktree ?? true;
   const currentUpdateWorkItemStatus = draft?.updateWorkItemStatus ?? true;
+  const currentShowFileExplorer = draft?.showFileExplorer ?? false;
   const toggleWorktree = useCallback(
     (checked: boolean) => {
       updateDraft({ createWorktree: checked });
@@ -599,6 +614,14 @@ export function NewTaskOverlay({
         finalPrompt = draft.prompt ?? '';
       }
 
+      // Append synthesized file comments to prompt
+      const fileContext = synthesizeFileCommentsPrompt(fileComments);
+      if (fileContext) {
+        finalPrompt = finalPrompt.trim()
+          ? `${finalPrompt}\n\n${fileContext}`
+          : fileContext;
+      }
+
       const backlogTodoId = draft.backlogTodoId ?? null;
       const draftImages =
         draft.images && draft.images.length > 0 ? draft.images : undefined;
@@ -634,6 +657,12 @@ export function NewTaskOverlay({
       setIsFetchingWorkItemImages(false);
       void triggerAnimation();
       clearDraft();
+      // Clear file comments for this project
+      if (selectedProjectId) {
+        useComposerFileCommentsStore
+          .getState()
+          .clearComments(selectedProjectId);
+      }
 
       // Refocus the input for the next task
       setTimeout(() => {
@@ -699,6 +728,7 @@ export function NewTaskOverlay({
     currentCreateWorktree,
     currentUpdateWorkItemStatus,
     currentSourceBranch,
+    fileComments,
     addRunningJob,
     createTaskMutation,
     deleteBacklogTodo,
@@ -851,6 +881,14 @@ export function NewTaskOverlay({
         toggleWorktree(!currentCreateWorktree);
       },
     },
+    !isNoteMode &&
+      !!selectedProjectId && {
+        label: 'Toggle File Explorer',
+        shortcut: 'cmd+e',
+        handler: () => {
+          updateDraft({ showFileExplorer: !currentShowFileExplorer });
+        },
+      },
     {
       label: 'Next / Submit',
       shortcut: 'cmd+enter',
@@ -1000,6 +1038,14 @@ export function NewTaskOverlay({
                 onImageRemove={handleImageRemove}
                 className="text-ink-1 placeholder-ink-3 border-transparent bg-transparent px-0 py-0 text-sm focus:border-transparent focus:ring-0 focus:outline-none"
               />
+              {fileCommentCount > 0 && selectedProject && (
+                <div className="mt-2">
+                  <ComposerCommentsChip
+                    projectId={selectedProject.id}
+                    projectRoot={selectedProject.path}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1012,6 +1058,24 @@ export function NewTaskOverlay({
             onSelectProject={setSelectedProjectId}
           />
         )}
+
+        {/* File explorer (toggleable in prompt mode) */}
+        {currentShowFileExplorer &&
+          selectedProject &&
+          inputMode === 'prompt' && (
+            <div
+              className="flex flex-1 flex-col overflow-hidden"
+              style={{
+                borderTop: '1px solid oklch(1 0 0 / 0.04)',
+                minHeight: 200,
+              }}
+            >
+              <ComposerFileExplorer
+                projectId={selectedProject.id}
+                projectRoot={selectedProject.path}
+              />
+            </div>
+          )}
 
         {/* Main content area */}
         {inputMode === 'search' && searchStep === 'select' && (
@@ -1150,6 +1214,48 @@ export function NewTaskOverlay({
                 <ToolCheckmark checked={currentCreateWorktree} />
                 Worktree
                 <Kbd shortcut="cmd+b" />
+              </button>
+            )}
+
+            {!isNoteMode && selectedProjectId && (
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={currentShowFileExplorer}
+                className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[5px] px-2.5 py-[5px] text-xs font-medium"
+                style={
+                  currentShowFileExplorer
+                    ? {
+                        background:
+                          'color-mix(in oklch, oklch(0.78 0.18 295) 14%, transparent)',
+                        border:
+                          '1px solid color-mix(in oklch, oklch(0.78 0.18 295) 30%, transparent)',
+                        color: 'oklch(0.78 0.18 295)',
+                      }
+                    : {
+                        background: 'oklch(1 0 0 / 0.03)',
+                        border: '1px solid oklch(1 0 0 / 0.07)',
+                        color: 'oklch(0.78 0.01 280)',
+                      }
+                }
+                onClick={() =>
+                  updateDraft({ showFileExplorer: !currentShowFileExplorer })
+                }
+              >
+                <ToolCheckmark checked={currentShowFileExplorer} />
+                Files
+                {fileCommentCount > 0 && (
+                  <span
+                    className="rounded-full px-1.5 py-px text-[10px] leading-none font-medium"
+                    style={{
+                      background:
+                        'color-mix(in oklch, oklch(0.78 0.18 295) 24%, transparent)',
+                    }}
+                  >
+                    {fileCommentCount}
+                  </span>
+                )}
+                <Kbd shortcut="cmd+e" />
               </button>
             )}
 

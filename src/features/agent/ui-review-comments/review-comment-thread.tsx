@@ -1,6 +1,10 @@
 import clsx from 'clsx';
-import { Sparkles, Trash2 } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
+import {
+  COMMENT_ACCENT,
+  InlineCommentBubble,
+} from '@/features/common/ui-inline-comments';
 import type { ReviewComment } from '@/stores/review-comments';
 
 function StatusPill({ status }: { status: ReviewComment['status'] }) {
@@ -69,37 +73,40 @@ export function ReviewCommentThread({
   onResolve?: (commentId: string) => void;
   onDelete?: (commentId: string) => void;
 }) {
-  const lineLabel = comment.anchor.lineEnd
-    ? `L${comment.anchor.lineStart}\u2013${comment.anchor.lineEnd}`
-    : `L${comment.anchor.lineStart}`;
-
   return (
-    <div className="border-acc/50 border-l-2">
-      <div className="bg-bg-1/80 px-3 py-2">
-        {/* Header row */}
-        <div className="mb-1.5 flex items-center gap-2">
-          <div className="bg-acc-soft text-acc-ink flex h-[18px] w-[18px] items-center justify-center rounded text-[10px] font-semibold">
-            Y
-          </div>
-          <span className="text-ink-1 text-xs font-medium">You</span>
-          <span className="text-ink-4 text-[11px]">{lineLabel}</span>
-
-          {showStatus && <StatusPill status={comment.status} />}
-
-          <div className="flex-1" />
-
-          {/* Preset tags */}
-          {comment.presets.map((p) => (
-            <span
-              key={p}
-              className="bg-acc-soft text-acc-ink rounded-full px-1.5 py-px font-mono text-[9.5px]"
-            >
-              {p}
-            </span>
-          ))}
-
-          {/* Resolve / delete buttons */}
-          {showStatus && onResolve && (
+    <div
+      style={{
+        background: COMMENT_ACCENT.bg,
+        borderTop: `1px solid ${COMMENT_ACCENT.border}`,
+        borderBottom: `1px solid ${COMMENT_ACCENT.border}`,
+      }}
+    >
+      <InlineCommentBubble
+        lineStart={comment.anchor.lineStart}
+        lineEnd={comment.anchor.lineEnd}
+        body={comment.body}
+        onRemove={
+          !showStatus && onDelete ? () => onDelete(comment.id) : undefined
+        }
+        renderHeaderExtras={
+          <>
+            {showStatus && <StatusPill status={comment.status} />}
+            {comment.presets.map((p) => (
+              <span
+                key={p}
+                className="rounded-full px-1.5 py-px font-mono text-[9.5px]"
+                style={{
+                  background: COMMENT_ACCENT.chipBg,
+                  color: COMMENT_ACCENT.chipText,
+                }}
+              >
+                {p}
+              </span>
+            ))}
+          </>
+        }
+        renderActions={
+          showStatus && onResolve ? (
             <button
               onClick={() => onResolve(comment.id)}
               className={clsx(
@@ -111,35 +118,21 @@ export function ReviewCommentThread({
             >
               {comment.resolved ? '\u2713 resolved' : 'resolve'}
             </button>
-          )}
-          {!showStatus && onDelete && (
-            <button
-              onClick={() => onDelete(comment.id)}
-              className="text-ink-4 hover:text-status-fail rounded p-0.5"
-              title="Remove comment"
-            >
-              <Trash2 className="h-3 w-3" />
-            </button>
-          )}
-        </div>
-
-        {/* Comment body */}
-        <div className="text-ink-1 pl-[26px] text-xs leading-relaxed">
-          {comment.body}
-        </div>
-
-        {/* Agent response note */}
-        {comment.agentNote && (
-          <div className="border-ink-4 bg-bg-1 mt-2 ml-[26px] flex items-start gap-2 rounded-r border-l-2 px-2.5 py-2">
-            <div className="bg-bg-3 text-ink-3 flex h-4 w-4 shrink-0 items-center justify-center rounded">
-              <Sparkles className="h-2.5 w-2.5" />
+          ) : undefined
+        }
+        renderFooter={
+          comment.agentNote ? (
+            <div className="border-ink-4 bg-bg-1 mt-2 flex items-start gap-2 rounded-r border-l-2 px-2.5 py-2">
+              <div className="bg-bg-3 text-ink-3 flex h-4 w-4 shrink-0 items-center justify-center rounded">
+                <Sparkles className="h-2.5 w-2.5" />
+              </div>
+              <span className="text-ink-2 text-[11.5px]">
+                {comment.agentNote}
+              </span>
             </div>
-            <span className="text-ink-2 text-[11.5px]">
-              {comment.agentNote}
-            </span>
-          </div>
-        )}
-      </div>
+          ) : undefined
+        }
+      />
     </div>
   );
 }

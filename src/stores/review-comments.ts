@@ -1,5 +1,11 @@
 import { useRef, useMemo } from 'react';
-import { create } from 'zustand';
+import { useStore } from 'zustand';
+
+import {
+  createKeyedCommentStore,
+  createCommentSelectors,
+  type FileCommentAnchor,
+} from './utils-comment-store';
 
 // -- Types --
 
@@ -29,15 +35,12 @@ export type ReviewCommentStatus =
   | 'skipped'
   | 'resolved';
 
-export interface ReviewCommentAnchor {
-  filePath: string;
-  lineStart: number;
-  lineEnd?: number; // undefined = single line
-}
+/** @deprecated Use FileCommentAnchor from utils-comment-store instead */
+export type ReviewCommentAnchor = FileCommentAnchor;
 
 export interface ReviewComment {
   id: string;
-  anchor: ReviewCommentAnchor;
+  anchor: FileCommentAnchor;
   body: string;
   presets: ReviewPresetId[];
   status: ReviewCommentStatus;
@@ -46,13 +49,74 @@ export interface ReviewComment {
   createdAt: number;
 }
 
-// -- Store --
+// -- Store (generic base + domain-specific actions) --
 
-interface ReviewCommentsState {
-  // comments keyed by taskId
+const baseStore = createKeyedCommentStore<ReviewComment>('rc');
+
+// Domain-specific actions (stable references, not part of zustand state)
+function resolveComment(taskId: string, commentId: string) {
+  baseStore.setState((s) => ({
+    comments: {
+      ...s.comments,
+      [taskId]: (s.comments[taskId] ?? []).map((c) =>
+        c.id === commentId ? { ...c, resolved: true } : c,
+      ),
+    },
+  }));
+}
+
+function clearResolvedComments(taskId: string) {
+  baseStore.setState((s) => ({
+    comments: {
+      ...s.comments,
+      [taskId]: (s.comments[taskId] ?? []).filter((c) => !c.resolved),
+    },
+  }));
+}
+
+function resolveAllAddressed(taskId: string) {
+  baseStore.setState((s) => ({
+    comments: {
+      ...s.comments,
+      [taskId]: (s.comments[taskId] ?? []).map((c) =>
+        c.status === 'addressed' ? { ...c, resolved: true } : c,
+      ),
+    },
+  }));
+}
+
+function setCommentStatuses(
+  taskId: string,
+  updates: {
+    commentId: string;
+    status: ReviewCommentStatus;
+    agentNote?: string;
+  }[],
+) {
+  baseStore.setState((s) => {
+    const map = new Map(updates.map((u) => [u.commentId, u]));
+    return {
+      comments: {
+        ...s.comments,
+        [taskId]: (s.comments[taskId] ?? []).map((c) => {
+          const update = map.get(c.id);
+          return update
+            ? {
+                ...c,
+                status: update.status,
+                agentNote: update.agentNote ?? c.agentNote,
+              }
+            : c;
+        }),
+      },
+    };
+  });
+}
+
+// Compatibility interface that maps `comments` -> `commentsByTask` and includes
+// domain-specific actions, so existing `useReviewCommentsStore(s => s.foo)` works.
+interface ReviewCommentsCompat {
   commentsByTask: Record<string, ReviewComment[]>;
-
-  // Actions
   addComment: (
     taskId: string,
     comment: Omit<ReviewComment, 'id' | 'createdAt'>,
@@ -77,128 +141,49 @@ interface ReviewCommentsState {
   ) => void;
 }
 
-export const useReviewCommentsStore = create<ReviewCommentsState>((set) => ({
-  commentsByTask: {},
+// Cache the compat object. Actions are stable refs; only `commentsByTask`
+// changes when store state changes. This avoids creating a new object on every
+// zustand selector run.
+let cachedCompat: ReviewCommentsCompat | null = null;
+let cachedComments: Record<string, ReviewComment[]> | null = null;
 
-  addComment: (taskId, comment) => {
-    const id = `rc-${crypto.randomUUID()}`;
-    set((state) => ({
-      commentsByTask: {
-        ...state.commentsByTask,
-        [taskId]: [
-          ...(state.commentsByTask[taskId] ?? []),
-          { ...comment, id, createdAt: Date.now() },
-        ],
-      },
-    }));
-    return id;
-  },
-
-  removeComment: (taskId, commentId) => {
-    set((state) => ({
-      commentsByTask: {
-        ...state.commentsByTask,
-        [taskId]: (state.commentsByTask[taskId] ?? []).filter(
-          (c) => c.id !== commentId,
-        ),
-      },
-    }));
-  },
-
-  updateComment: (taskId, commentId, updates) => {
-    set((state) => ({
-      commentsByTask: {
-        ...state.commentsByTask,
-        [taskId]: (state.commentsByTask[taskId] ?? []).map((c) =>
-          c.id === commentId ? { ...c, ...updates } : c,
-        ),
-      },
-    }));
-  },
-
-  resolveComment: (taskId, commentId) => {
-    set((state) => ({
-      commentsByTask: {
-        ...state.commentsByTask,
-        [taskId]: (state.commentsByTask[taskId] ?? []).map((c) =>
-          c.id === commentId ? { ...c, resolved: true } : c,
-        ),
-      },
-    }));
-  },
-
-  clearComments: (taskId) => {
-    set((state) => ({
-      commentsByTask: {
-        ...state.commentsByTask,
-        [taskId]: [],
-      },
-    }));
-  },
-
-  clearResolvedComments: (taskId) => {
-    set((state) => ({
-      commentsByTask: {
-        ...state.commentsByTask,
-        [taskId]: (state.commentsByTask[taskId] ?? []).filter(
-          (c) => !c.resolved,
-        ),
-      },
-    }));
-  },
-
-  resolveAllAddressed: (taskId) => {
-    set((state) => ({
-      commentsByTask: {
-        ...state.commentsByTask,
-        [taskId]: (state.commentsByTask[taskId] ?? []).map((c) =>
-          c.status === 'addressed' ? { ...c, resolved: true } : c,
-        ),
-      },
-    }));
-  },
-
-  setCommentStatuses: (taskId, updates) => {
-    set((state) => {
-      const map = new Map(updates.map((u) => [u.commentId, u]));
-      return {
-        commentsByTask: {
-          ...state.commentsByTask,
-          [taskId]: (state.commentsByTask[taskId] ?? []).map((c) => {
-            const update = map.get(c.id);
-            return update
-              ? {
-                  ...c,
-                  status: update.status,
-                  agentNote: update.agentNote ?? c.agentNote,
-                }
-              : c;
-          }),
-        },
-      };
-    });
-  },
-}));
-
-// -- Selector hooks --
-
-const EMPTY_ARRAY: ReviewComment[] = [];
-
-export function useReviewComments(taskId: string) {
-  const comments = useReviewCommentsStore(
-    (state) => state.commentsByTask[taskId] ?? EMPTY_ARRAY,
-  );
-  return comments;
+function getCompat(
+  state: ReturnType<(typeof baseStore)['getState']>,
+): ReviewCommentsCompat {
+  if (cachedCompat && cachedComments === state.comments) {
+    return cachedCompat;
+  }
+  cachedComments = state.comments;
+  cachedCompat = {
+    commentsByTask: state.comments,
+    addComment: state.addComment,
+    removeComment: state.removeComment,
+    updateComment: state.updateComment,
+    clearComments: state.clearComments,
+    resolveComment,
+    clearResolvedComments,
+    resolveAllAddressed,
+    setCommentStatuses,
+  };
+  return cachedCompat;
 }
 
-export function useReviewCommentsForFile(taskId: string, filePath: string) {
-  const allComments = useReviewComments(taskId);
-  const filtered = useMemo(
-    () => allComments.filter((c) => c.anchor.filePath === filePath),
-    [allComments, filePath],
-  );
-  return filtered.length === 0 ? EMPTY_ARRAY : filtered;
+export function useReviewCommentsStore<T>(
+  selector: (state: ReviewCommentsCompat) => T,
+): T {
+  return useStore(baseStore, (state) => selector(getCompat(state)));
 }
+
+// -- Generic selector hooks --
+
+const {
+  useComments: useReviewComments,
+  useCommentsForFile: useReviewCommentsForFile,
+} = createCommentSelectors(baseStore);
+
+export { useReviewComments, useReviewCommentsForFile };
+
+// -- Domain-specific selector hooks --
 
 export function useOpenReviewCommentCount(taskId: string) {
   const comments = useReviewComments(taskId);

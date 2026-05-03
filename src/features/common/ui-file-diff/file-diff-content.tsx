@@ -176,6 +176,24 @@ export function FileDiffContent({
     return [...threadComments, ...annotationComments, ...reviewInlineComments];
   }, [threadComments, annotationComments, reviewInlineComments]);
 
+  // Build set of all lines covered by any comment anchor range
+  const commentedLines = useMemo(() => {
+    const set = new Set<number>();
+    // From inline comments (thread + annotation) — single line each
+    for (const c of threadComments) set.add(c.line);
+    for (const c of annotationComments) set.add(c.line);
+    // From review comments — full lineStart..lineEnd range
+    if (reviewComments) {
+      for (const rc of reviewComments) {
+        const end = rc.anchor.lineEnd ?? rc.anchor.lineStart;
+        for (let l = rc.anchor.lineStart; l <= end; l++) {
+          set.add(l);
+        }
+      }
+    }
+    return set;
+  }, [threadComments, annotationComments, reviewComments]);
+
   // Format the line range label
   const lineRangeLabel = useMemo(() => {
     if (!commentFormLineRange) return '';
@@ -299,6 +317,7 @@ export function FileDiffContent({
               : undefined
           }
           inlineComments={inlineComments}
+          commentedLines={commentedLines}
           commentFormLineRange={commentFormLineRange}
           commentForm={commentFormElement}
         />

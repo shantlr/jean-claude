@@ -20,6 +20,7 @@ export function CurrentStateTable({
   newTokens,
   onAddCommentClick,
   inlineComments,
+  commentedLines,
   commentFormLineRange,
   commentForm,
   searchMatches,
@@ -31,6 +32,7 @@ export function CurrentStateTable({
   newTokens: ThemedToken[][];
   onAddCommentClick?: (lineRange: LineRange) => void;
   inlineComments?: InlineComment[];
+  commentedLines?: Set<number>;
   commentFormLineRange?: LineRange | null;
   commentForm?: ReactNode;
   searchMatches: SearchMatch[];
@@ -192,6 +194,7 @@ export function CurrentStateTable({
               isHovered={isHovered}
               isSelected={isSelected}
               isInCommentRange={isInCommentRange}
+              hasComment={!!commentedLines?.has(lineNumber)}
               onMouseEnter={() => setHoveredLine(lineNumber)}
               onMouseDown={() => handleLineMouseDown(lineNumber)}
               onMouseUp={() => handleLineMouseUp(lineNumber)}
@@ -214,6 +217,7 @@ function CurrentStateRow({
   isHovered,
   isSelected,
   isInCommentRange,
+  hasComment,
   onMouseEnter,
   onMouseDown,
   onMouseUp,
@@ -228,6 +232,7 @@ function CurrentStateRow({
   isHovered: boolean;
   isSelected: boolean;
   isInCommentRange: boolean;
+  hasComment: boolean;
   onMouseEnter: () => void;
   onMouseDown: () => void;
   onMouseUp: () => void;
@@ -246,14 +251,31 @@ function CurrentStateRow({
         onMouseEnter={onMouseEnter}
         onMouseDown={canComment ? onMouseDown : undefined}
         onMouseUp={canComment ? onMouseUp : undefined}
-        style={{ cursor: canComment ? 'pointer' : undefined }}
+        style={{
+          cursor: canComment ? 'pointer' : undefined,
+          ...(hasComment && !isSelected && !isInCommentRange
+            ? {
+                background:
+                  'color-mix(in oklch, oklch(0.78 0.18 295) 8%, transparent)',
+              }
+            : {}),
+        }}
       >
         {/* Line number */}
         <td
           className={clsx(
             'relative w-8 pr-1 text-right align-top select-none',
-            isChanged ? 'text-status-done' : 'text-ink-4',
+            hasComment && !isSelected && !isInCommentRange
+              ? 'text-acc-ink'
+              : isChanged
+                ? 'text-status-done'
+                : 'text-ink-4',
           )}
+          style={
+            hasComment && !isSelected && !isInCommentRange
+              ? { borderLeft: '2px solid oklch(0.78 0.18 295 / 0.5)' }
+              : undefined
+          }
         >
           <span className={clsx(canComment && isHovered && 'invisible')}>
             {lineNumber}
@@ -287,7 +309,7 @@ function CurrentStateRow({
       {inlineComments && inlineComments.length > 0 && (
         <tr>
           <td colSpan={3} className="p-0">
-            <div className="bg-bg-1/80 border-y border-white/[0.06] px-4 py-2">
+            <div>
               {inlineComments.map((comment, ci) => (
                 <div key={ci}>{comment.content}</div>
               ))}
@@ -300,9 +322,7 @@ function CurrentStateRow({
       {commentForm && (
         <tr>
           <td colSpan={3} className="p-0">
-            <div className="border-acc/50 bg-bg-1/90 border-y px-4 py-3">
-              {commentForm}
-            </div>
+            {commentForm}
           </td>
         </tr>
       )}

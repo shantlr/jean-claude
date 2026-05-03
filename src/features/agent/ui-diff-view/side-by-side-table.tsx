@@ -26,6 +26,7 @@ export function SideBySideDiffTable({
   newTokens,
   onAddCommentClick,
   inlineComments,
+  commentedLines,
   commentFormLineRange,
   commentForm,
   searchMatches,
@@ -37,6 +38,7 @@ export function SideBySideDiffTable({
   newTokens: ThemedToken[][];
   onAddCommentClick?: (lineRange: LineRange) => void;
   inlineComments?: InlineComment[];
+  commentedLines?: Set<number>;
   commentFormLineRange?: LineRange | null;
   commentForm?: ReactNode;
   searchMatches: SearchMatch[];
@@ -238,6 +240,9 @@ export function SideBySideDiffTable({
               isHovered={hoveredLine === newLineNumber}
               isSelected={isSelected}
               isInCommentRange={isInCommentRange}
+              hasComment={
+                !!newLineNumber && !!commentedLines?.has(newLineNumber)
+              }
               onMouseEnter={() =>
                 newLineNumber !== undefined && setHoveredLine(newLineNumber)
               }
@@ -272,6 +277,7 @@ function SideBySideRowComponent({
   isHovered,
   isSelected,
   isInCommentRange,
+  hasComment,
   onMouseEnter,
   onMouseDown,
   onMouseUp,
@@ -291,6 +297,7 @@ function SideBySideRowComponent({
   isHovered: boolean;
   isSelected: boolean;
   isInCommentRange: boolean;
+  hasComment: boolean;
   onMouseEnter: () => void;
   onMouseDown: () => void;
   onMouseUp: () => void;
@@ -308,7 +315,15 @@ function SideBySideRowComponent({
         onMouseEnter={onMouseEnter}
         onMouseDown={canComment ? onMouseDown : undefined}
         onMouseUp={canComment ? onMouseUp : undefined}
-        style={{ cursor: canComment ? 'pointer' : undefined }}
+        style={{
+          cursor: canComment ? 'pointer' : undefined,
+          ...(hasComment && !isSelected && !isInCommentRange
+            ? {
+                background:
+                  'color-mix(in oklch, oklch(0.78 0.18 295) 8%, transparent)',
+              }
+            : {}),
+        }}
       >
         {/* Left side (old/deletions) */}
         <SideBySideCell
@@ -321,6 +336,7 @@ function SideBySideRowComponent({
           isHovered={isHovered}
           isSelected={isSelected}
           isInCommentRange={isInCommentRange}
+          hasComment={hasComment}
         />
         {/* Divider / drag handle */}
         <td
@@ -349,6 +365,7 @@ function SideBySideRowComponent({
           isHovered={isHovered}
           isSelected={isSelected}
           isInCommentRange={isInCommentRange}
+          hasComment={hasComment}
         />
       </tr>
 
@@ -356,7 +373,7 @@ function SideBySideRowComponent({
       {inlineComments && inlineComments.length > 0 && (
         <tr>
           <td colSpan={5} className="p-0">
-            <div className="bg-bg-1/80 border-y border-white/[0.06] px-4 py-2">
+            <div>
               {inlineComments.map((comment, i) => (
                 <div key={i}>{comment.content}</div>
               ))}
@@ -369,9 +386,7 @@ function SideBySideRowComponent({
       {commentForm && (
         <tr>
           <td colSpan={5} className="p-0">
-            <div className="border-acc/50 bg-bg-1/90 border-y px-4 py-3">
-              {commentForm}
-            </div>
+            {commentForm}
           </td>
         </tr>
       )}
@@ -389,6 +404,7 @@ function SideBySideCell({
   isHovered,
   isSelected,
   isInCommentRange,
+  hasComment,
 }: {
   line: DiffLine | null;
   tokens: ThemedToken[][];
@@ -399,6 +415,7 @@ function SideBySideCell({
   isHovered: boolean;
   isSelected: boolean;
   isInCommentRange: boolean;
+  hasComment: boolean;
 }) {
   // Gap cell (no line on this side)
   if (!line) {
@@ -422,11 +439,13 @@ function SideBySideCell({
           : '';
 
   const lineNumClass =
-    line.type === 'deletion'
-      ? 'text-status-fail'
-      : line.type === 'addition'
-        ? 'text-status-done'
-        : 'text-ink-4';
+    hasComment && !isSelected && !isInCommentRange
+      ? 'text-acc-ink'
+      : line.type === 'deletion'
+        ? 'text-status-fail'
+        : line.type === 'addition'
+          ? 'text-status-done'
+          : 'text-ink-4';
 
   // Get line number for this side
   const lineNumber = side === 'left' ? line.oldLineNumber : line.newLineNumber;
@@ -466,6 +485,11 @@ function SideBySideCell({
           lineNumClass,
           bgClass,
         )}
+        style={
+          hasComment && !isSelected && !isInCommentRange && side === 'left'
+            ? { borderLeft: '2px solid oklch(0.78 0.18 295 / 0.5)' }
+            : undefined
+        }
       >
         <span className={clsx(showCommentIcon && 'invisible')}>
           {lineNumber ?? ''}

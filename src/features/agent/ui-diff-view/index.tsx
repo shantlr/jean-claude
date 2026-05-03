@@ -48,6 +48,7 @@ export function DiffView({
   withMinimap,
   onAddCommentClick,
   inlineComments,
+  commentedLines,
   commentFormLineRange,
   commentForm,
 }: {
@@ -60,6 +61,8 @@ export function DiffView({
   onAddCommentClick?: (lineRange: LineRange) => void;
   /** Inline comments to render below specific lines */
   inlineComments?: InlineComment[];
+  /** Set of line numbers that have comments (for line highlighting) */
+  commentedLines?: Set<number>;
   /** Line range where comment form should be shown (shows after end line) */
   commentFormLineRange?: LineRange | null;
   /** Comment form to render inline */
@@ -235,6 +238,7 @@ export function DiffView({
             newTokens={state.newTokens}
             onAddCommentClick={onAddCommentClick}
             inlineComments={inlineComments}
+            commentedLines={commentedLines}
             commentFormLineRange={commentFormLineRange}
             commentForm={commentForm}
             searchMatches={matches}
@@ -248,6 +252,7 @@ export function DiffView({
             newTokens={state.newTokens}
             onAddCommentClick={onAddCommentClick}
             inlineComments={inlineComments}
+            commentedLines={commentedLines}
             commentFormLineRange={commentFormLineRange}
             commentForm={commentForm}
             searchMatches={matches}
@@ -261,6 +266,7 @@ export function DiffView({
             newTokens={state.newTokens}
             onAddCommentClick={onAddCommentClick}
             inlineComments={inlineComments}
+            commentedLines={commentedLines}
             commentFormLineRange={commentFormLineRange}
             commentForm={commentForm}
             searchMatches={matches}
@@ -287,6 +293,7 @@ function InlineDiffTable({
   newTokens,
   onAddCommentClick,
   inlineComments,
+  commentedLines,
   commentFormLineRange,
   commentForm,
   searchMatches,
@@ -297,6 +304,7 @@ function InlineDiffTable({
   newTokens: ThemedToken[][];
   onAddCommentClick?: (lineRange: LineRange) => void;
   inlineComments?: InlineComment[];
+  commentedLines?: Set<number>;
   commentFormLineRange?: LineRange | null;
   commentForm?: ReactNode;
   searchMatches: SearchMatch[];
@@ -408,6 +416,7 @@ function InlineDiffTable({
               isHovered={hoveredLine === lineNumber}
               isSelected={isSelected}
               isInCommentRange={isInCommentRange}
+              hasComment={!!lineNumber && !!commentedLines?.has(lineNumber)}
               onMouseEnter={() => lineNumber && setHoveredLine(lineNumber)}
               onMouseDown={() => lineNumber && handleLineMouseDown(lineNumber)}
               onMouseUp={() => lineNumber && handleLineMouseUp(lineNumber)}
@@ -432,6 +441,7 @@ function DiffLineRow({
   isHovered,
   isSelected,
   isInCommentRange,
+  hasComment,
   onMouseEnter,
   onMouseDown,
   onMouseUp,
@@ -448,6 +458,7 @@ function DiffLineRow({
   isHovered: boolean;
   isSelected: boolean;
   isInCommentRange: boolean;
+  hasComment: boolean;
   onMouseEnter: () => void;
   onMouseDown: () => void;
   onMouseUp: () => void;
@@ -502,14 +513,31 @@ function DiffLineRow({
         onMouseEnter={onMouseEnter}
         onMouseDown={canComment ? onMouseDown : undefined}
         onMouseUp={canComment ? onMouseUp : undefined}
-        style={{ cursor: canComment ? 'pointer' : undefined }}
+        style={{
+          cursor: canComment ? 'pointer' : undefined,
+          ...(hasComment && !isSelected && !isInCommentRange
+            ? {
+                background:
+                  'color-mix(in oklch, oklch(0.78 0.18 295) 8%, transparent)',
+              }
+            : {}),
+        }}
       >
         {/* Add comment button / Old line number */}
         <td
           className={clsx(
             'relative w-8 pr-1 text-right align-top select-none',
-            line.type === 'deletion' ? 'text-status-fail' : 'text-ink-4',
+            hasComment && !isSelected && !isInCommentRange
+              ? 'text-acc-ink'
+              : line.type === 'deletion'
+                ? 'text-status-fail'
+                : 'text-ink-4',
           )}
+          style={
+            hasComment && !isSelected && !isInCommentRange
+              ? { borderLeft: '2px solid oklch(0.78 0.18 295 / 0.5)' }
+              : undefined
+          }
         >
           <span className={clsx(canComment && isHovered && 'invisible')}>
             {line.oldLineNumber ?? ''}
@@ -557,7 +585,7 @@ function DiffLineRow({
       {inlineComments && inlineComments.length > 0 && (
         <tr>
           <td colSpan={4} className="p-0">
-            <div className="bg-bg-1/80 border-y border-white/[0.06] px-4 py-2">
+            <div>
               {inlineComments.map((comment, i) => (
                 <div key={i}>{comment.content}</div>
               ))}
@@ -570,9 +598,7 @@ function DiffLineRow({
       {commentForm && (
         <tr>
           <td colSpan={4} className="p-0">
-            <div className="border-acc/50 bg-bg-1/90 border-y px-4 py-3">
-              {commentForm}
-            </div>
+            {commentForm}
           </td>
         </tr>
       )}
