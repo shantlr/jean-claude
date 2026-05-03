@@ -40,12 +40,18 @@ dbg.main('Platform: %s, Arch: %s', process.platform, process.arch);
 
 // Prevent multiple instances — a second launch would run recoverStaleTasks()
 // and mark currently-running tasks as interrupted.
-const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) {
-  dbg.main(
-    'Another instance is already running. Quitting to avoid interrupting active tasks.',
-  );
-  app.quit();
+// Skip when JC_SKIP_INSTANCE_LOCK is set (dev:tmp / dev:tmp:reuse) so we
+// can run multiple dev instances side-by-side for testing.
+if (process.env.JC_SKIP_INSTANCE_LOCK) {
+  dbg.main('JC_SKIP_INSTANCE_LOCK set — skipping single-instance lock');
+} else {
+  const gotLock = app.requestSingleInstanceLock();
+  if (!gotLock) {
+    dbg.main(
+      'Another instance is already running. Quitting to avoid interrupting active tasks.',
+    );
+    app.quit();
+  }
 }
 
 // Fix PATH for packaged macOS apps launched from Finder/Dock
