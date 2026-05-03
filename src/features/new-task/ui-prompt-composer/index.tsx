@@ -1,8 +1,21 @@
-import { ChevronLeft } from 'lucide-react';
-import { useMemo } from 'react';
+import { ChevronLeft, ChevronRight, ImageIcon, X } from 'lucide-react';
+import {
+  type ChangeEvent,
+  type ClipboardEvent,
+  type DragEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { createPortal } from 'react-dom';
 
 import { Kbd } from '@/common/ui/kbd';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
+import { processImageFile, MAX_IMAGES } from '@/lib/image-utils';
+import { useToastStore } from '@/stores/toasts';
+import type { PromptImagePart } from '@shared/agent-backend-types';
 
 function escapeXml(value: string): string {
   return value
@@ -323,17 +336,142 @@ export function PromptComposer({
   workItems,
   onTemplateChange,
   onBack,
+  images,
+  isFetchingImages,
+  onImageAttach,
+  onImageRemove,
 }: {
   template: string;
   workItems: AzureDevOpsWorkItem[];
   onTemplateChange: (template: string) => void;
   onBack: () => void;
+  images?: PromptImagePart[];
+  isFetchingImages?: boolean;
+  onImageAttach?: (image: PromptImagePart) => void;
+  onImageRemove?: (index: number) => void;
 }) {
   // Expand template to preview
   const preview = useMemo(
     () => expandTemplate(template, workItems),
     [template, workItems],
   );
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const addToast = useToastStore((s) => s.addToast);
+  const showImageError = useCallback(
+    (message: string) => addToast({ message, type: 'error' }),
+    [addToast],
+  );
+
+  const handlePaste = useCallback(
+    (e: ClipboardEvent<HTMLTextAreaElement>) => {
+      if (!onImageAttach) return;
+
+      const items = Array.from(e.clipboardData.items);
+      const imageItems = items.filter((item) => item.type.startsWith('image/'));
+
+      if (imageItems.length > 0) {
+        const currentCount = images?.length ?? 0;
+        const allowed = MAX_IMAGES - currentCount;
+        if (allowed <= 0) return;
+
+        e.preventDefault();
+        for (const item of imageItems.slice(0, allowed)) {
+          const file = item.getAsFile();
+          if (file) {
+            void processImageFile(file, onImageAttach, showImageError).catch(
+              (err) => {
+                showImageError('Failed to process image');
+                console.error('Failed to process pasted image:', err);
+              },
+            );
+          }
+        }
+      }
+    },
+    [onImageAttach, images, showImageError],
+  );
+
+  const handleDragOver = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      if (!onImageAttach) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(true);
+    },
+    [onImageAttach],
+  );
+
+  const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const related = e.relatedTarget as Node | null;
+    if (related && e.currentTarget.contains(related)) return;
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+
+      if (!onImageAttach) return;
+
+      const currentCount = images?.length ?? 0;
+      const allowed = MAX_IMAGES - currentCount;
+      if (allowed <= 0) return;
+
+      const files = Array.from(e.dataTransfer.files);
+      const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+      for (const file of imageFiles.slice(0, allowed)) {
+        void processImageFile(file, onImageAttach, showImageError).catch(
+          (err) => {
+            showImageError('Failed to process image');
+            console.error('Failed to process dropped image:', err);
+          },
+        );
+      }
+    },
+    [onImageAttach, images, showImageError],
+  );
+
+  const handleFileSelect = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      if (!onImageAttach || !e.target.files) return;
+
+      const currentCount = images?.length ?? 0;
+      const allowed = MAX_IMAGES - currentCount;
+      if (allowed <= 0) return;
+
+      const files = Array.from(e.target.files);
+      for (const file of files.slice(0, allowed)) {
+        void processImageFile(file, onImageAttach, showImageError).catch(
+          (err) => {
+            showImageError('Failed to process image');
+            console.error('Failed to process selected image:', err);
+          },
+        );
+      }
+      e.target.value = '';
+    },
+    [onImageAttach, images, showImageError],
+  );
+
+  const handleTextareaDragOver = useCallback(
+    (e: DragEvent<HTMLTextAreaElement>) => {
+      if (!onImageAttach) return;
+      const hasFiles = Array.from(e.dataTransfer.types).includes('Files');
+      if (hasFiles) {
+        e.preventDefault();
+      }
+    },
+    [onImageAttach],
+  );
+
+  const canAttachMore = (images?.length ?? 0) < MAX_IMAGES;
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
@@ -380,8 +518,11 @@ export function PromptComposer({
       <div className="flex min-h-0 flex-1">
         {/* Left: Template editor */}
         <div
-          className="flex flex-1 flex-col overflow-hidden"
+          className="relative flex flex-1 flex-col overflow-hidden"
           style={{ borderRight: '1px solid oklch(1 0 0 / 0.04)' }}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
         >
           <div
             className="flex items-center gap-1.5 px-4 py-2.5"
@@ -390,10 +531,33 @@ export function PromptComposer({
             <span className="text-ink-3 font-mono text-[10px] font-semibold tracking-wider uppercase">
               Prompt Template
             </span>
+            <div className="flex-1" />
+            {onImageAttach && canAttachMore && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-ink-3 hover:bg-glass-medium hover:text-ink-1 rounded p-1"
+                  title="Attach image"
+                >
+                  <ImageIcon className="h-3.5 w-3.5" />
+                </button>
+              </>
+            )}
           </div>
           <textarea
             value={template}
             onChange={(e) => onTemplateChange(e.target.value)}
+            onPaste={handlePaste}
+            onDragOver={handleTextareaDragOver}
             className="text-ink-1 caret-acc flex-1 resize-none border-none bg-transparent px-5 py-4 font-mono text-[13px] leading-relaxed outline-none"
             placeholder="Enter your prompt template..."
           />
@@ -408,6 +572,12 @@ export function PromptComposer({
               Use {'{#id}'} placeholders to include work item details
             </span>
           </div>
+          {/* Drag overlay */}
+          {isDragOver && (
+            <div className="border-acc bg-acc-soft absolute inset-0 z-10 flex items-center justify-center rounded-lg border-2 border-dashed">
+              <span className="text-acc-ink text-sm">Drop image here</span>
+            </div>
+          )}
         </div>
 
         {/* Right: Preview */}
@@ -433,6 +603,156 @@ export function PromptComposer({
           </pre>
         </div>
       </div>
+
+      {/* Image thumbnails */}
+      {(isFetchingImages || (images && images.length > 0)) && (
+        <div
+          className="flex shrink-0 items-center gap-2 px-[18px] py-2"
+          style={{ borderTop: '1px solid oklch(1 0 0 / 0.04)' }}
+        >
+          {isFetchingImages && (
+            <div className="text-ink-2 flex items-center gap-2 text-xs">
+              <span className="border-glass-border-strong border-t-ink-1 inline-block h-3 w-3 animate-spin rounded-full border-2" />
+              Extracting images from work items…
+            </div>
+          )}
+          {images &&
+            images.length > 0 &&
+            images.map((image, index) => {
+              const thumbData = image.storageData ?? image.data;
+              const thumbMime = image.storageMimeType ?? image.mimeType;
+              return (
+                <div
+                  key={`${image.filename ?? 'img'}-${index}`}
+                  className="group relative h-12 w-12 shrink-0 overflow-hidden rounded border"
+                  style={{ borderColor: 'oklch(1 0 0 / 0.08)' }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setPreviewIndex(index)}
+                    className="h-full w-full cursor-pointer"
+                  >
+                    <img
+                      src={`data:${thumbMime};base64,${thumbData}`}
+                      alt={image.filename ?? 'Attached image'}
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
+                  {onImageRemove && (
+                    <button
+                      type="button"
+                      onClick={() => onImageRemove(index)}
+                      className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100"
+                      style={{ background: 'oklch(0 0 0 / 0.6)' }}
+                    >
+                      <X className="text-ink-0 h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+        </div>
+      )}
+
+      {/* Image preview lightbox */}
+      {previewIndex !== null && images && images.length > 0 && (
+        <ImagePreviewDialog
+          images={images}
+          initialIndex={previewIndex}
+          onClose={() => setPreviewIndex(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function ImagePreviewDialog({
+  images,
+  initialIndex,
+  onClose,
+}: {
+  images: PromptImagePart[];
+  initialIndex: number;
+  onClose: () => void;
+}) {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const img = images[currentIndex];
+
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onCloseRef.current();
+      } else if (e.key === 'ArrowLeft') {
+        setCurrentIndex((i) => Math.max(0, i - 1));
+      } else if (e.key === 'ArrowRight') {
+        setCurrentIndex((i) => Math.min(images.length - 1, i + 1));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [images.length]);
+
+  if (!img) return null;
+
+  return createPortal(
+    <div
+      className="bg-bg-0/80 fixed inset-0 z-50 flex items-center justify-center"
+      onClick={onClose}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="bg-bg-1/80 text-ink-1 hover:bg-glass-medium hover:text-ink-0 absolute top-4 right-4 rounded-full p-2"
+        aria-label="Close preview"
+      >
+        <X className="h-5 w-5" />
+      </button>
+
+      {images.length > 1 && currentIndex > 0 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setCurrentIndex((i) => i - 1);
+          }}
+          className="bg-bg-1/80 text-ink-1 hover:bg-glass-medium hover:text-ink-0 absolute left-4 rounded-full p-2"
+          aria-label="Previous image"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+      )}
+
+      <img
+        src={`data:${img.mimeType};base64,${img.data}`}
+        alt={img.filename || 'Image preview'}
+        className="max-h-[85vh] max-w-[85vw] rounded-lg object-contain"
+        onClick={(e) => e.stopPropagation()}
+      />
+
+      {images.length > 1 && currentIndex < images.length - 1 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setCurrentIndex((i) => i + 1);
+          }}
+          className="bg-bg-1/80 text-ink-1 hover:bg-glass-medium hover:text-ink-0 absolute right-4 rounded-full p-2"
+          aria-label="Next image"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      )}
+
+      {images.length > 1 && (
+        <div className="text-ink-2 absolute bottom-4 text-sm">
+          {currentIndex + 1} / {images.length}
+        </div>
+      )}
+    </div>,
+    document.body,
   );
 }

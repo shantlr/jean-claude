@@ -1116,44 +1116,11 @@ export function NewTaskOverlay({
               workItems={selectedWorkItems}
               onTemplateChange={setPromptTemplate}
               onBack={backToSelect}
+              images={draft?.images}
+              isFetchingImages={isFetchingWorkItemImages}
+              onImageAttach={handleImageAttach}
+              onImageRemove={handleImageRemove}
             />
-            {/* Loading indicator while fetching work item images */}
-            {isFetchingWorkItemImages && (
-              <div className="text-ink-2 flex shrink-0 items-center gap-2 px-[18px] pb-2 text-xs">
-                <span className="border-glass-border-strong border-t-ink-1 inline-block h-3 w-3 animate-spin rounded-full border-2" />
-                Extracting images from work items…
-              </div>
-            )}
-            {/* Image thumbnails from work item extraction */}
-            {!isFetchingWorkItemImages &&
-              draft?.images &&
-              draft.images.length > 0 && (
-                <div className="flex shrink-0 gap-2 px-[18px] pb-2">
-                  {draft.images.map((image, index) => {
-                    const thumbData = image.storageData ?? image.data;
-                    const thumbMime = image.storageMimeType ?? image.mimeType;
-                    return (
-                      <div
-                        key={index}
-                        className="group border-glass-border relative h-12 w-12 shrink-0 overflow-hidden rounded border"
-                      >
-                        <img
-                          src={`data:${thumbMime};base64,${thumbData}`}
-                          alt={image.filename ?? 'Work item image'}
-                          className="h-full w-full object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleImageRemove(index)}
-                          className="bg-bg-0/60 absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100"
-                        >
-                          <span className="text-ink-0 text-xs">✕</span>
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
           </div>
         )}
 
