@@ -38,6 +38,16 @@ dbg.main(
 );
 dbg.main('Platform: %s, Arch: %s', process.platform, process.arch);
 
+// Prevent multiple instances — a second launch would run recoverStaleTasks()
+// and mark currently-running tasks as interrupted.
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  dbg.main(
+    'Another instance is already running. Quitting to avoid interrupting active tasks.',
+  );
+  app.quit();
+}
+
 // Fix PATH for packaged macOS apps launched from Finder/Dock
 // Only needed when NOT running from terminal (which already has correct PATH)
 // Note: fixPath can cause issues with fish shell + jenv/volta configurations
@@ -91,6 +101,16 @@ function createWindow() {
     mainWindow.loadFile(htmlPath);
   }
 }
+
+// When a second instance is launched, focus the existing window instead
+app.on('second-instance', () => {
+  const windows = BrowserWindow.getAllWindows();
+  if (windows.length > 0) {
+    const mainWindow = windows[0];
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
 
 app.whenReady().then(async () => {
   dbg.main('App ready, initializing...');
