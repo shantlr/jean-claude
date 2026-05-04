@@ -1,4 +1,4 @@
-import { exec, execFile } from 'child_process';
+import { exec, execFile, spawn } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { promisify } from 'util';
@@ -1170,8 +1170,14 @@ export async function checkMergeConflicts(
   }
 }
 
+const SSH_PASSPHRASE_PATTERN = /Enter passphrase for key/i;
+// Matches "user@host's password:" but not error messages like "Permission denied (password)"
+const SSH_PASSWORD_PATTERN = /\S+@\S+'s password:/i;
+
 /**
  * Pushes the current branch to a remote.
+ * Detects SSH passphrase/password prompts and shows a global prompt dialog
+ * so users can enter their credentials interactively.
  */
 export async function pushBranch(params: {
   worktreePath: string;
@@ -1180,10 +1186,89 @@ export async function pushBranch(params: {
 }): Promise<void> {
   const remote = params.remote ?? 'origin';
   dbg.worktree('pushBranch: %s to %s', params.branchName, remote);
-  await execAsync(`git push -u ${remote} ${params.branchName}`, {
-    cwd: params.worktreePath,
+
+  return new Promise<void>((resolve, reject) => {
+    const child = spawn('git', ['push', '-u', remote, params.branchName], {
+      cwd: params.worktreePath,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: {
+        ...process.env,
+        SSH_ASKPASS: '',
+        GIT_ASKPASS: '',
+        SSH_ASKPASS_REQUIRE: 'never',
+      },
+    });
+
+    let stderrOutput = '';
+    let promptHandled = false;
+
+    child.stderr?.on('data', async (data: Buffer) => {
+      const text = data.toString();
+      stderrOutput += text;
+      dbg.worktree('pushBranch stderr: %s', text.trim());
+
+      if (promptHandled) return;
+
+      // Test accumulated output to handle patterns split across chunks
+      const isPassphrase = SSH_PASSPHRASE_PATTERN.test(stderrOutput);
+      const isPassword = SSH_PASSWORD_PATTERN.test(stderrOutput);
+
+      if (isPassphrase || isPassword) {
+        promptHandled = true;
+        dbg.worktree('SSH authentication prompt detected');
+
+        try {
+          const { sendGlobalPromptToWindow } =
+            await import('./global-prompt-service');
+          const prompt = {
+            title: 'SSH Authentication Required',
+            message: stderrOutput.trim(),
+            inputType: 'password' as const,
+            acceptLabel: 'Submit',
+            rejectLabel: 'Cancel',
+          };
+          // Cast needed: dynamic imports lose overload resolution.
+          // When inputType is set, the function returns { accepted, inputValue }.
+          const result = (await sendGlobalPromptToWindow(
+            prompt,
+          )) as unknown as {
+            accepted: boolean;
+            inputValue?: string;
+          };
+
+          if (result.accepted && result.inputValue != null) {
+            child.stdin?.write(result.inputValue + '\n');
+          } else {
+            dbg.worktree('SSH authentication cancelled by user');
+            child.kill();
+          }
+        } catch (err) {
+          dbg.worktree('Failed to show SSH prompt: %O', err);
+          child.kill();
+        }
+      }
+    });
+
+    let stdoutOutput = '';
+    child.stdout?.on('data', (data: Buffer) => {
+      stdoutOutput += data.toString();
+    });
+
+    child.on('error', (err) => {
+      reject(new Error(`Failed to spawn git push: ${err.message}`));
+    });
+
+    child.on('close', (code) => {
+      if (code === 0) {
+        dbg.worktree('Push successful');
+        resolve();
+      } else {
+        const errorMessage =
+          stderrOutput.trim() || stdoutOutput.trim() || `Exit code ${code}`;
+        reject(new Error(`git push failed: ${errorMessage}`));
+      }
+    });
   });
-  dbg.worktree('Push successful');
 }
 
 /**

@@ -5,9 +5,12 @@ export interface GlobalPrompt {
   details?: string;
   acceptLabel?: string;
   rejectLabel?: string;
+  inputType?: 'text' | 'password';
+  inputPlaceholder?: string;
 }
 
 export interface GlobalPromptResponse {
   id: string;
   accepted: boolean;
+  inputValue?: string;
 }
