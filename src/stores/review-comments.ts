@@ -246,9 +246,6 @@ export function synthesizeReviewPrompt(
     textLines.push('');
   }
 
-  textLines.push('Address the following inline comments from the diff review:');
-  textLines.push('');
-
   openComments.forEach((c, i) => {
     const lineLabel = c.anchor.lineEnd
       ? `L${c.anchor.lineStart}-${c.anchor.lineEnd}`
@@ -269,10 +266,6 @@ export function synthesizeReviewPrompt(
       imageParts.push(...c.images);
     }
   });
-
-  textLines.push(
-    "Keep changes scoped to the comments. Don't refactor unrelated code.",
-  );
 
   const result: PromptPart[] = [{ type: 'text', text: textLines.join('\n') }];
 
