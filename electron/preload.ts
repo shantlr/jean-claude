@@ -802,5 +802,9 @@ contextBridge.exposeInMainWorld('api', {
       return () => ipcRenderer.removeListener('debug:log-batch', handler);
     },
   },
+  codeFolding: {
+    getFoldRanges: (content: string, language: string) =>
+      ipcRenderer.invoke('codeFolding:getFoldRanges', content, language),
+  },
 });
 console.log('Preload script loaded');

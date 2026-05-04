@@ -3910,6 +3910,16 @@ export function registerIpcHandlers() {
       });
     },
   );
+
+  // Code folding (tree-sitter)
+  ipcMain.handle(
+    'codeFolding:getFoldRanges',
+    async (_, content: string, language: string) => {
+      const { computeFoldRanges } =
+        await import('../services/tree-sitter-fold-service');
+      return computeFoldRanges(content, language);
+    },
+  );
 }
 
 function safeJsonParse(value: string | null): Record<string, unknown> | null {

@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { MessageSquarePlus } from 'lucide-react';
+import { ChevronDown, ChevronRight, MessageSquarePlus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import type { ThemedToken } from 'shiki';
@@ -11,7 +11,7 @@ import {
   renderWithHighlights,
 } from './utils-search-highlight';
 
-import type { InlineComment, LineRange } from './index';
+import type { CodeFoldingState, InlineComment, LineRange } from './index';
 
 export function CurrentStateTable({
   oldString,
@@ -25,6 +25,7 @@ export function CurrentStateTable({
   commentForm,
   searchMatches,
   currentMatchIndex,
+  folding,
 }: {
   oldString: string;
   newString: string;
@@ -37,6 +38,7 @@ export function CurrentStateTable({
   commentForm?: ReactNode;
   searchMatches: SearchMatch[];
   currentMatchIndex: number;
+  folding: CodeFoldingState;
 }) {
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [hoveredLine, setHoveredLine] = useState<number | null>(null);
@@ -132,6 +134,13 @@ export function CurrentStateTable({
     >
       <tbody>
         {lines.map((line, i) => {
+          const lineNumber = line.lineNumber;
+
+          // Check if this line is hidden by a collapsed fold
+          if (folding.isLineHidden(lineNumber)) {
+            return null;
+          }
+
           const tokenLineIndex = line.lineNumber - 1;
           const tokens = newTokens[tokenLineIndex] || [];
 
@@ -170,7 +179,6 @@ export function CurrentStateTable({
               <span className="text-ink-1">{line.content}</span>
             );
 
-          const lineNumber = line.lineNumber;
           const canComment = !!onAddCommentClick;
           const isSelected = isLineInSelection(lineNumber);
           const isInCommentRange = isLineInCommentRange(lineNumber);
@@ -182,6 +190,11 @@ export function CurrentStateTable({
 
           const showCommentForm =
             commentFormLineRange && lineNumber === commentFormLineRange.end;
+
+          // Code folding state
+          const isFoldable = folding.isFoldStart(lineNumber);
+          const isFoldCollapsed = folding.isFoldCollapsed(lineNumber);
+          const foldRange = folding.getFoldRange(lineNumber);
 
           return (
             <CurrentStateRow
@@ -200,6 +213,10 @@ export function CurrentStateTable({
               onMouseUp={() => handleLineMouseUp(lineNumber)}
               inlineComments={lineComments}
               commentForm={showCommentForm ? commentForm : undefined}
+              isFoldable={isFoldable}
+              isFoldCollapsed={isFoldCollapsed}
+              foldRange={foldRange}
+              onToggleFold={() => folding.toggleFold(lineNumber)}
             />
           );
         })}
@@ -223,6 +240,10 @@ function CurrentStateRow({
   onMouseUp,
   inlineComments,
   commentForm,
+  isFoldable,
+  isFoldCollapsed,
+  foldRange,
+  onToggleFold,
 }: {
   lineIndex: number;
   lineNumber: number;
@@ -238,6 +259,10 @@ function CurrentStateRow({
   onMouseUp: () => void;
   inlineComments?: InlineComment[];
   commentForm?: ReactNode;
+  isFoldable?: boolean;
+  isFoldCollapsed?: boolean;
+  foldRange?: { startLine: number; endLine: number };
+  onToggleFold?: () => void;
 }) {
   return (
     <>
@@ -261,6 +286,28 @@ function CurrentStateRow({
             : {}),
         }}
       >
+        {/* Fold gutter */}
+        <td className="w-4 align-top select-none">
+          {isFoldable && (
+            <button
+              className="text-ink-4 hover:text-ink-1 flex h-full w-full items-center justify-center transition-colors"
+              onMouseDown={(e) => e.stopPropagation()}
+              onMouseUp={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFold?.();
+              }}
+              aria-label={isFoldCollapsed ? 'Expand scope' : 'Collapse scope'}
+              aria-expanded={!isFoldCollapsed}
+            >
+              {isFoldCollapsed ? (
+                <ChevronRight className="h-3 w-3" aria-hidden />
+              ) : (
+                <ChevronDown className="h-3 w-3" aria-hidden />
+              )}
+            </button>
+          )}
+        </td>
         {/* Line number */}
         <td
           className={clsx(
@@ -302,13 +349,24 @@ function CurrentStateRow({
           })}
         >
           {renderedContent}
+          {isFoldCollapsed && foldRange && (
+            <span
+              className="text-ink-4 bg-bg-2 ml-2 inline-block cursor-pointer rounded px-1.5 py-0 text-[10px] leading-4"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFold?.();
+              }}
+            >
+              {foldRange.endLine - foldRange.startLine} lines
+            </span>
+          )}
         </td>
       </tr>
 
       {/* Inline comments for this line */}
       {inlineComments && inlineComments.length > 0 && (
         <tr>
-          <td colSpan={3} className="p-0">
+          <td colSpan={4} className="p-0">
             <div>
               {inlineComments.map((comment, ci) => (
                 <div key={ci}>{comment.content}</div>
@@ -321,7 +379,7 @@ function CurrentStateRow({
       {/* Comment form for this line */}
       {commentForm && (
         <tr>
-          <td colSpan={3} className="p-0">
+          <td colSpan={4} className="p-0">
             {commentForm}
           </td>
         </tr>

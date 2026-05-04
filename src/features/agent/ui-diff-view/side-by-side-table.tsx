@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { MessageSquarePlus } from 'lucide-react';
+import { ChevronDown, ChevronRight, MessageSquarePlus } from 'lucide-react';
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import type { ThemedToken } from 'shiki';
@@ -17,7 +17,7 @@ import {
   renderWithHighlights,
 } from './utils-search-highlight';
 
-import type { InlineComment, LineRange } from './index';
+import type { CodeFoldingState, InlineComment, LineRange } from './index';
 
 export function SideBySideDiffTable({
   oldString,
@@ -31,6 +31,7 @@ export function SideBySideDiffTable({
   commentForm,
   searchMatches,
   currentMatchIndex,
+  folding,
 }: {
   oldString: string;
   newString: string;
@@ -43,6 +44,7 @@ export function SideBySideDiffTable({
   commentForm?: ReactNode;
   searchMatches: SearchMatch[];
   currentMatchIndex: number;
+  folding: CodeFoldingState;
 }) {
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [hoveredLine, setHoveredLine] = useState<number | null>(null);
@@ -181,6 +183,8 @@ export function SideBySideDiffTable({
       onMouseLeave={handleMouseLeaveTable}
     >
       <colgroup>
+        {/* Fold gutter */}
+        <col style={{ width: 16 }} />
         {/* Left line number */}
         <col style={{ width: 32 }} />
         {/* Left content */}
@@ -197,6 +201,11 @@ export function SideBySideDiffTable({
           // Use right side newLineNumber for comments (consistent with inline mode)
           const newLineNumber =
             row.right?.newLineNumber ?? row.left?.newLineNumber;
+
+          // Check if this line is hidden by a collapsed fold
+          if (newLineNumber && folding.isLineHidden(newLineNumber)) {
+            return null;
+          }
 
           const shouldRenderExtras =
             newLineNumber !== undefined &&
@@ -223,6 +232,17 @@ export function SideBySideDiffTable({
             : false;
 
           const canComment = !!onAddCommentClick && newLineNumber !== undefined;
+
+          // Code folding state
+          const isFoldable = newLineNumber
+            ? folding.isFoldStart(newLineNumber)
+            : false;
+          const isFoldCollapsed = newLineNumber
+            ? folding.isFoldCollapsed(newLineNumber)
+            : false;
+          const foldRange = newLineNumber
+            ? folding.getFoldRange(newLineNumber)
+            : undefined;
 
           return (
             <SideBySideRowComponent
@@ -255,6 +275,14 @@ export function SideBySideDiffTable({
               }
               inlineComments={lineComments}
               commentForm={showCommentForm ? commentForm : undefined}
+              isFoldable={isFoldable}
+              isFoldCollapsed={isFoldCollapsed}
+              foldRange={foldRange}
+              onToggleFold={
+                newLineNumber
+                  ? () => folding.toggleFold(newLineNumber)
+                  : undefined
+              }
             />
           );
         })}
@@ -283,6 +311,10 @@ function SideBySideRowComponent({
   onMouseUp,
   inlineComments,
   commentForm,
+  isFoldable,
+  isFoldCollapsed,
+  foldRange,
+  onToggleFold,
 }: {
   row: SideBySideRow;
   rowIndex: number;
@@ -303,6 +335,10 @@ function SideBySideRowComponent({
   onMouseUp: () => void;
   inlineComments?: InlineComment[];
   commentForm?: ReactNode;
+  isFoldable?: boolean;
+  isFoldCollapsed?: boolean;
+  foldRange?: { startLine: number; endLine: number };
+  onToggleFold?: () => void;
 }) {
   return (
     <>
@@ -325,6 +361,28 @@ function SideBySideRowComponent({
             : {}),
         }}
       >
+        {/* Fold gutter */}
+        <td className="w-4 align-top select-none">
+          {isFoldable && (
+            <button
+              className="text-ink-4 hover:text-ink-1 flex h-full w-full items-center justify-center transition-colors"
+              onMouseDown={(e) => e.stopPropagation()}
+              onMouseUp={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFold?.();
+              }}
+              aria-label={isFoldCollapsed ? 'Expand scope' : 'Collapse scope'}
+              aria-expanded={!isFoldCollapsed}
+            >
+              {isFoldCollapsed ? (
+                <ChevronRight className="h-3 w-3" aria-hidden />
+              ) : (
+                <ChevronDown className="h-3 w-3" aria-hidden />
+              )}
+            </button>
+          )}
+        </td>
         {/* Left side (old/deletions) */}
         <SideBySideCell
           line={row.left}
@@ -366,13 +424,16 @@ function SideBySideRowComponent({
           isSelected={isSelected}
           isInCommentRange={isInCommentRange}
           hasComment={hasComment}
+          isFoldCollapsed={isFoldCollapsed}
+          foldRange={foldRange}
+          onToggleFold={onToggleFold}
         />
       </tr>
 
       {/* Inline comments for this line */}
       {inlineComments && inlineComments.length > 0 && (
         <tr>
-          <td colSpan={5} className="p-0">
+          <td colSpan={6} className="p-0">
             <div>
               {inlineComments.map((comment, i) => (
                 <div key={i}>{comment.content}</div>
@@ -385,7 +446,7 @@ function SideBySideRowComponent({
       {/* Comment form for this line */}
       {commentForm && (
         <tr>
-          <td colSpan={5} className="p-0">
+          <td colSpan={6} className="p-0">
             {commentForm}
           </td>
         </tr>
@@ -405,6 +466,9 @@ function SideBySideCell({
   isSelected,
   isInCommentRange,
   hasComment,
+  isFoldCollapsed,
+  foldRange,
+  onToggleFold,
 }: {
   line: DiffLine | null;
   tokens: ThemedToken[][];
@@ -416,6 +480,9 @@ function SideBySideCell({
   isSelected: boolean;
   isInCommentRange: boolean;
   hasComment: boolean;
+  isFoldCollapsed?: boolean;
+  foldRange?: { startLine: number; endLine: number };
+  onToggleFold?: () => void;
 }) {
   // Gap cell (no line on this side)
   if (!line) {
@@ -507,6 +574,17 @@ function SideBySideCell({
         })}
       >
         {renderedContent}
+        {side === 'right' && isFoldCollapsed && foldRange && (
+          <span
+            className="text-ink-4 bg-bg-2 ml-2 inline-block cursor-pointer rounded px-1.5 py-0 text-[10px] leading-4"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFold?.();
+            }}
+          >
+            {foldRange.endLine - foldRange.startLine} lines
+          </span>
+        )}
       </td>
     </>
   );

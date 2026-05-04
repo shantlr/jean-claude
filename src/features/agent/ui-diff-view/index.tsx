@@ -1,6 +1,8 @@
 import clsx from 'clsx';
 import {
   AlignJustify,
+  ChevronDown,
+  ChevronRight,
   Columns2,
   FileText,
   MessageSquarePlus,
@@ -19,6 +21,7 @@ import { computeDiff, type DiffLine } from './diff-utils';
 import { getLanguageFromPath } from './language-utils';
 import { SideBySideDiffTable } from './side-by-side-table';
 import { useChangeNavigator } from './use-change-navigator';
+import { useCodeFolding } from './use-code-folding';
 import { useDiffSearch, type SearchMatch } from './use-diff-search';
 import {
   renderTokensWithHighlights,
@@ -166,6 +169,9 @@ export function DiffView({
     newString,
   });
 
+  // Code folding based on new file content (tree-sitter in main process)
+  const folding = useCodeFolding(newString, language, filePath);
+
   if (isLoading || !state) {
     return (
       <div className="flex items-center justify-center rounded bg-black/30 p-2">
@@ -243,6 +249,7 @@ export function DiffView({
             commentForm={commentForm}
             searchMatches={matches}
             currentMatchIndex={currentMatchIndex}
+            folding={folding}
           />
         ) : viewMode === 'side-by-side' ? (
           <SideBySideDiffTable
@@ -257,6 +264,7 @@ export function DiffView({
             commentForm={commentForm}
             searchMatches={matches}
             currentMatchIndex={currentMatchIndex}
+            folding={folding}
           />
         ) : (
           <CurrentStateTable
@@ -271,6 +279,7 @@ export function DiffView({
             commentForm={commentForm}
             searchMatches={matches}
             currentMatchIndex={currentMatchIndex}
+            folding={folding}
           />
         )}
       </div>
@@ -287,6 +296,38 @@ export function DiffView({
   );
 }
 
+export interface CodeFoldingState {
+  isLineHidden: (lineNumber: number) => boolean;
+  isFoldStart: (lineNumber: number) => boolean;
+  isFoldCollapsed: (lineNumber: number) => boolean;
+  toggleFold: (lineNumber: number) => void;
+  getFoldRange: (
+    lineNumber: number,
+  ) => { startLine: number; endLine: number } | undefined;
+}
+
+/**
+ * Find the nearest newLineNumber by scanning in the given direction.
+ * Used to determine if a deletion line (which has no newLineNumber)
+ * falls inside a collapsed fold.
+ */
+function findNearestNewLineNumber(
+  lines: DiffLine[],
+  fromIndex: number,
+  direction: -1 | 1,
+): number | null {
+  for (
+    let j = fromIndex + direction;
+    j >= 0 && j < lines.length;
+    j += direction
+  ) {
+    if (lines[j].newLineNumber !== undefined) {
+      return lines[j].newLineNumber!;
+    }
+  }
+  return null;
+}
+
 function InlineDiffTable({
   lines,
   oldTokens,
@@ -298,6 +339,7 @@ function InlineDiffTable({
   commentForm,
   searchMatches,
   currentMatchIndex,
+  folding,
 }: {
   lines: DiffLine[];
   oldTokens: ThemedToken[][];
@@ -309,6 +351,7 @@ function InlineDiffTable({
   commentForm?: ReactNode;
   searchMatches: SearchMatch[];
   currentMatchIndex: number;
+  folding: CodeFoldingState;
 }) {
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [hoveredLine, setHoveredLine] = useState<number | null>(null);
@@ -374,6 +417,25 @@ function InlineDiffTable({
           // Use newLineNumber for comments (the line in the new version)
           const lineNumber = line.newLineNumber;
 
+          // Check if this line is hidden by a collapsed fold.
+          // For deletion lines (no newLineNumber), check if the surrounding
+          // context lines are hidden — meaning this deletion is inside a collapsed scope.
+          if (lineNumber && folding.isLineHidden(lineNumber)) {
+            return null;
+          }
+          if (line.type === 'deletion' && lineNumber === undefined) {
+            // Find the nearest context/addition line's newLineNumber
+            // by looking at the previous and next non-deletion lines
+            const prevNewLine = findNearestNewLineNumber(lines, i, -1);
+            const nextNewLine = findNearestNewLineNumber(lines, i, 1);
+            const isInsideCollapsedFold =
+              (prevNewLine !== null && folding.isLineHidden(prevNewLine)) ||
+              (nextNewLine !== null && folding.isLineHidden(nextNewLine));
+            if (isInsideCollapsedFold) {
+              return null;
+            }
+          }
+
           // Skip rendering comments/form for lines we've already processed
           // This prevents duplicate forms when deletion+addition have same effective position
           const shouldRenderExtras =
@@ -405,6 +467,17 @@ function InlineDiffTable({
             ? searchMatches[currentMatchIndex]
             : null;
 
+          // Code folding state
+          const isFoldable = lineNumber
+            ? folding.isFoldStart(lineNumber)
+            : false;
+          const isCollapsed = lineNumber
+            ? folding.isFoldCollapsed(lineNumber)
+            : false;
+          const foldRange = lineNumber
+            ? folding.getFoldRange(lineNumber)
+            : undefined;
+
           return (
             <DiffLineRow
               key={i}
@@ -424,6 +497,12 @@ function InlineDiffTable({
               commentForm={showCommentForm ? commentForm : undefined}
               searchMatches={lineMatches}
               currentMatch={currentMatchInLine}
+              isFoldable={isFoldable}
+              isFoldCollapsed={isCollapsed}
+              foldRange={foldRange}
+              onToggleFold={
+                lineNumber ? () => folding.toggleFold(lineNumber) : undefined
+              }
             />
           );
         })}
@@ -449,6 +528,10 @@ function DiffLineRow({
   commentForm,
   searchMatches,
   currentMatch,
+  isFoldable,
+  isFoldCollapsed,
+  foldRange,
+  onToggleFold,
 }: {
   lineIndex: number;
   line: DiffLine;
@@ -466,6 +549,10 @@ function DiffLineRow({
   commentForm?: ReactNode;
   searchMatches: SearchMatch[];
   currentMatch: SearchMatch | null;
+  isFoldable?: boolean;
+  isFoldCollapsed?: boolean;
+  foldRange?: { startLine: number; endLine: number };
+  onToggleFold?: () => void;
 }) {
   // Get tokens for this line based on type
   // For deletions, use old tokens; for additions, use new tokens; for context, prefer new
@@ -523,6 +610,28 @@ function DiffLineRow({
             : {}),
         }}
       >
+        {/* Fold gutter */}
+        <td className="w-4 align-top select-none">
+          {isFoldable && (
+            <button
+              className="text-ink-4 hover:text-ink-1 flex h-full w-full items-center justify-center transition-colors"
+              onMouseDown={(e) => e.stopPropagation()}
+              onMouseUp={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFold?.();
+              }}
+              aria-label={isFoldCollapsed ? 'Expand scope' : 'Collapse scope'}
+              aria-expanded={!isFoldCollapsed}
+            >
+              {isFoldCollapsed ? (
+                <ChevronRight className="h-3 w-3" aria-hidden />
+              ) : (
+                <ChevronDown className="h-3 w-3" aria-hidden />
+              )}
+            </button>
+          )}
+        </td>
         {/* Add comment button / Old line number */}
         <td
           className={clsx(
@@ -578,13 +687,24 @@ function DiffLineRow({
           })}
         >
           {renderedContent}
+          {isFoldCollapsed && foldRange && (
+            <span
+              className="text-ink-4 bg-bg-2 ml-2 inline-block cursor-pointer rounded px-1.5 py-0 text-[10px] leading-4"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFold?.();
+              }}
+            >
+              {foldRange.endLine - foldRange.startLine} lines
+            </span>
+          )}
         </td>
       </tr>
 
       {/* Inline comments for this line */}
       {inlineComments && inlineComments.length > 0 && (
         <tr>
-          <td colSpan={4} className="p-0">
+          <td colSpan={5} className="p-0">
             <div>
               {inlineComments.map((comment, i) => (
                 <div key={i}>{comment.content}</div>
@@ -597,7 +717,7 @@ function DiffLineRow({
       {/* Comment form for this line */}
       {commentForm && (
         <tr>
-          <td colSpan={4} className="p-0">
+          <td colSpan={5} className="p-0">
             {commentForm}
           </td>
         </tr>

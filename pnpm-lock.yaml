@@ -110,12 +110,18 @@ importers:
       shiki:
         specifier: ^3.21.0
         version: 3.21.0
+      tree-sitter-wasms:
+        specifier: ^0.1.13
+        version: 0.1.13
       turndown:
         specifier: ^7.2.2
         version: 7.2.2
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
+      web-tree-sitter:
+        specifier: ^0.26.8
+        version: 0.26.8
       write-file-atomic:
         specifier: ^7.0.1
         version: 7.0.1
@@ -4783,6 +4789,9 @@ packages:
     resolution: {integrity: sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA==}
     engines: {node: '>=0.6'}
 
+  tree-sitter-wasms@0.1.13:
+    resolution: {integrity: sha512-wT+cR6DwaIz80/vho3AvSF0N4txuNx/5bcRKoXouOfClpxh/qqrF4URNLQXbbt8MaAxeksZcZd1j8gcGjc+QxQ==}
+
   trim-lines@3.0.1:
     resolution: {integrity: sha512-kRj8B+YHZCc9kQYdWfJB2/oUl9rA99qbowYYBtr4ui4mZyAQ2JpvVBd/6U2YloATfqBhBTSMhTpgBHtU0Mf3Rg==}
 
@@ -5016,6 +5025,9 @@ packages:
 
   wcwidth@1.0.1:
     resolution: {integrity: sha512-XHPEwS0q6TaxcvG85+8EYkbiCux2XtWG2mkc47Ng2A77BQu9+DqIOJldST4HgPkuea7dvKSj5VgX3P1d4rW8Tg==}
+
+  web-tree-sitter@0.26.8:
+    resolution: {integrity: sha512-4sUwi7ZyOrIk5KLgYLkc2A/F0LFMQnBhfb+2Cdl7ik4ePJ6JD+fk4ofI2sA5eGawBKBaK4Vntt7Ww5KcEsay4A==}
 
   webpack-virtual-modules@0.6.2:
     resolution: {integrity: sha512-66/V2i5hQanC51vBQKPH4aI8NMAcBW59FVBs+rC7eGHupMyfn34q7rZIE+ETlJ+XTevqfUhVVBgSUNSW2flEUQ==}
@@ -10284,6 +10296,8 @@ snapshots:
 
   toidentifier@1.0.1: {}
 
+  tree-sitter-wasms@0.1.13: {}
+
   trim-lines@3.0.1: {}
 
   trough@2.2.0: {}
@@ -10548,6 +10562,8 @@ snapshots:
   wcwidth@1.0.1:
     dependencies:
       defaults: 1.0.4
+
+  web-tree-sitter@0.26.8: {}
 
   webpack-virtual-modules@0.6.2: {}
 

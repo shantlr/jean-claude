@@ -15,6 +15,7 @@ import type {
 } from '@shared/azure-devops-types';
 import type { DebugLogEntry } from '@shared/debug-log-types';
 import type { FeedItem, FeedNote, ProjectPriority } from '@shared/feed-types';
+import type { FoldRange } from '@shared/fold-types';
 import type {
   GlobalPrompt,
   GlobalPromptResponse,
@@ -1028,6 +1029,9 @@ export interface Api {
   debugLogs: {
     onBatch: (callback: (entries: DebugLogEntry[]) => void) => () => void;
   };
+  codeFolding: {
+    getFoldRanges: (content: string, language: string) => Promise<FoldRange[]>;
+  };
 }
 
 declare global {
@@ -1513,5 +1517,8 @@ export const api: Api = hasWindowApi
       },
       debugLogs: {
         onBatch: () => () => {},
+      },
+      codeFolding: {
+        getFoldRanges: async () => [],
       },
     } as Api);
