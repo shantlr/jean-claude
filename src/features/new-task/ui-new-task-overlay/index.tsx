@@ -618,7 +618,10 @@ export function NewTaskOverlay({
         draft.images && draft.images.length > 0 ? draft.images : undefined;
 
       // Append synthesized file comments to prompt
-      const fileContextParts = synthesizeFileCommentsPrompt(fileComments);
+      const fileContextParts = synthesizeFileCommentsPrompt(
+        fileComments,
+        selectedProject?.path,
+      );
       if (fileContextParts) {
         const textPart = fileContextParts.find((p) => p.type === 'text');
         if (textPart && textPart.type === 'text') {
@@ -732,6 +735,7 @@ export function NewTaskOverlay({
     promptTemplate,
     selectedWorkItems,
     selectedProject?.name,
+    selectedProject?.path,
     currentBackend,
     currentInteractionMode,
     currentModelPreference,

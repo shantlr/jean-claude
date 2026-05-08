@@ -57,6 +57,7 @@ export const useComposerFileCommentActions = selectors.useCommentActions;
 /** Synthesize a structured prompt from file comments. Returns null if no comments. */
 export function synthesizeFileCommentsPrompt(
   comments: ComposerFileComment[],
+  projectRoot?: string,
 ): PromptPart[] | null {
   if (comments.length === 0) return null;
 
@@ -75,7 +76,11 @@ export function synthesizeFileCommentsPrompt(
   const imageParts: PromptImagePart[] = [];
 
   for (const [filePath, fileComments] of byFile) {
-    textLines.push(`### ${filePath}`);
+    const displayPath =
+      projectRoot && filePath.startsWith(projectRoot)
+        ? filePath.slice(projectRoot.length).replace(/^\//, '')
+        : filePath;
+    textLines.push(`### ${displayPath}`);
 
     // Sort by line number within each file
     const sorted = [...fileComments].sort(

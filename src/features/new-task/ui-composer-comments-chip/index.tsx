@@ -31,8 +31,8 @@ export function ComposerCommentsChip({
   const { updateDraft } = useNewTaskDraft();
 
   const synthesizedParts = useMemo(
-    () => synthesizeFileCommentsPrompt(comments),
-    [comments],
+    () => synthesizeFileCommentsPrompt(comments, projectRoot),
+    [comments, projectRoot],
   );
   const synthesizedPrompt = useMemo(() => {
     if (!synthesizedParts) return null;
