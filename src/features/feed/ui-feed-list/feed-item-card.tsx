@@ -34,6 +34,7 @@ import {
   useRunningBackgroundJobsForTask,
 } from '@/stores/background-jobs';
 import { useFeedStore } from '@/stores/feed';
+import { useOpenReviewCommentCount } from '@/stores/review-comments';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { FeedItem, FeedItemAttention } from '@shared/feed-types';
 
@@ -176,6 +177,7 @@ export function FeedItemCard({
     [runCommandStatus],
   );
   const runningBgJobs = useRunningBackgroundJobsForTask(item.taskId ?? null);
+  const pendingCommentCount = useOpenReviewCommentCount(item.taskId ?? '');
   const isDeleting = runningBgJobs.some((j) => j.type === 'task-deletion');
   const hasNonDeleteBgJob =
     runningBgJobs.length > 0 &&
@@ -415,6 +417,16 @@ export function FeedItemCard({
             <div className="text-status-run flex items-center gap-1 text-xs">
               <MessageSquare className="h-3 w-3 shrink-0" />
               <span className="min-w-0 truncate">{item.pendingMessage}</span>
+            </div>
+          )}
+
+          {item.source === 'task' && pendingCommentCount > 0 && (
+            <div className="bg-status-pr/10 ring-status-pr/20 flex items-center gap-1.5 rounded-md px-2 py-1 ring-1">
+              <MessageSquare className="text-status-pr h-3 w-3 shrink-0" />
+              <span className="text-status-pr text-[11px] font-medium">
+                {pendingCommentCount} pending{' '}
+                {pendingCommentCount === 1 ? 'comment' : 'comments'}
+              </span>
             </div>
           )}
 
