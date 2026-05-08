@@ -349,6 +349,17 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     setShowWorkItemsEditor(false);
   }, [taskId, updateTask, draftWorkItemIds, draftWorkItemUrls]);
 
+  useCommands('work-items-editor', [
+    showWorkItemsEditor && {
+      label: 'Save Work Items',
+      shortcut: 'cmd+enter',
+      hideInCommandPalette: true,
+      handler: () => {
+        handleSubmitWorkItems();
+      },
+    },
+  ]);
+
   const createStep = useCreateStep();
   // Ref for the task panel container (used by shrink-to-target animation)
   const taskPanelRef = useRef<HTMLDivElement>(null);
@@ -1135,6 +1146,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                     onClick={handleSubmitWorkItems}
                   >
                     Save
+                    <Kbd shortcut="cmd+enter" />
                   </Button>
                 </div>
               </div>
