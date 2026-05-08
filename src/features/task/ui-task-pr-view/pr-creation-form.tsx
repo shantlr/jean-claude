@@ -16,6 +16,7 @@ import { useProject } from '@/hooks/use-projects';
 import { useAiSkillSlotsSetting } from '@/hooks/use-settings';
 import { useGenerateSummary, useTaskSummary } from '@/hooks/use-task-summary';
 import { useTask } from '@/hooks/use-tasks';
+import { useWorktreeStatus } from '@/hooks/use-worktree-diff';
 import type { FileAnnotation } from '@/lib/api';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { usePrDraftState } from '@/stores/navigation';
@@ -51,9 +52,13 @@ export function PrCreationForm({
   const [annotationStates, setAnnotationStates] = useState<
     Array<{ annotation: FileAnnotation; checked: boolean }>
   >([]);
+  const [commitUnstaged, setCommitUnstaged] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [formFilledFromSummary, setFormFilledFromSummary] = useState(false);
   const submittedRef = useRef(false);
+
+  const { data: worktreeStatus } = useWorktreeStatus(taskId);
+  const hasUncommittedChanges = worktreeStatus?.hasUncommittedChanges ?? false;
 
   function handleTitleChange(newTitle: string) {
     setTitle(newTitle);
@@ -169,6 +174,7 @@ export function PrCreationForm({
         title,
         description,
         isDraft,
+        commitUnstaged: hasUncommittedChanges ? commitUnstaged : undefined,
       })
       .then(async (result) => {
         // Post comments for checked annotations
@@ -209,7 +215,10 @@ export function PrCreationForm({
   }
 
   // Allow submit when title is provided, OR when AI generation is configured
-  const canSubmit = !!title.trim() || canAutoGeneratePrDescription;
+  // Block submit if uncommitted changes exist and checkbox not checked
+  const canSubmit =
+    (!!title.trim() || canAutoGeneratePrDescription) &&
+    (!hasUncommittedChanges || commitUnstaged);
 
   useCommands('pr-creation-form', [
     canSubmit && {
@@ -360,6 +369,15 @@ export function PrCreationForm({
             onChange={setIsDraft}
             label="Create as draft"
           />
+
+          {/* Commit unstaged checkbox — shown when uncommitted changes exist */}
+          {hasUncommittedChanges && (
+            <Checkbox
+              checked={commitUnstaged}
+              onChange={setCommitUnstaged}
+              label="Commit unstaged changes before creating PR"
+            />
+          )}
 
           {/* Work item reference */}
           {workItemId && (

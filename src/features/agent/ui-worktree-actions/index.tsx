@@ -127,7 +127,7 @@ export function WorktreeActions({
   const isSelectedBranchProtected = protectedBranches.includes(selectedBranch);
   const canMerge =
     !status?.hasStagedChanges && !isStatusLoading && !isSelectedBranchProtected;
-  const canCreatePr = !status?.hasUncommittedChanges && !isStatusLoading;
+  const canCreatePr = !isStatusLoading;
 
   // Set default branch when branches load
   // Priority: sourceBranch > defaultBranch > main > master > first branch
@@ -357,7 +357,7 @@ export function WorktreeActions({
             size="md"
             icon={<GitPullRequest />}
             className="w-full bg-green-700 hover:bg-green-600"
-            title={canCreatePr ? 'Create pull request' : 'Commit changes first'}
+            title="Create pull request"
           >
             Create PR
             <Kbd shortcut="cmd+shift+p" className="text-[9px]" />

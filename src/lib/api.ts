@@ -457,6 +457,7 @@ export interface Api {
       description: string;
       isDraft: boolean;
       deleteWorktree?: boolean;
+      commitUnstaged?: boolean;
     }) => Promise<{ id: number; url: string }>;
     createPrReview: (params: {
       projectId: string;

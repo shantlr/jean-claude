@@ -2016,6 +2016,7 @@ export function registerIpcHandlers() {
         description: string;
         isDraft: boolean;
         deleteWorktree?: boolean;
+        commitUnstaged?: boolean;
       },
     ) => {
       const task = await TaskRepository.findById(params.taskId);
@@ -2036,12 +2037,20 @@ export function registerIpcHandlers() {
         );
       }
 
-      // Step 1: Check for uncommitted changes
+      // Step 1: Check for uncommitted changes — commit them if requested
       const status = await getWorktreeStatus(task.worktreePath);
       if (status.hasUncommittedChanges) {
-        throw new Error(
-          'You have uncommitted changes. Please commit your changes before creating a pull request.',
-        );
+        if (params.commitUnstaged) {
+          await commitWorktreeChanges({
+            worktreePath: task.worktreePath,
+            message: 'chore: commit unstaged changes before PR creation',
+            stageAll: true,
+          });
+        } else {
+          throw new Error(
+            'You have uncommitted changes. Please commit your changes before creating a pull request.',
+          );
+        }
       }
 
       // Step 2: Push branch to remote

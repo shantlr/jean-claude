@@ -11,6 +11,7 @@ export function useCreatePullRequest() {
       description: string;
       isDraft: boolean;
       deleteWorktree?: boolean;
+      commitUnstaged?: boolean;
     }) => api.tasks.createPullRequest(params),
     onSuccess: (_, params) => {
       queryClient.invalidateQueries({ queryKey: ['tasks', params.taskId] });
