@@ -201,6 +201,10 @@ export function useFeed() {
         // Non-running tasks (waiting, completed, interrupted) are still
         // highest priority compared to other feed items.
         high.push(item);
+      } else if (item.source === 'note') {
+        // Notes are high priority — below pinned and active tasks, but
+        // above work-items and pull-requests.
+        high.push(item);
       } else if (
         lowPriorityIds.has(item.id) ||
         item.projectPriority === 'low'
