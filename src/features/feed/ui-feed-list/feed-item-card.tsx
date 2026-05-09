@@ -142,6 +142,29 @@ function borderClasses({
   }
 }
 
+function selectedAccentClasses(attention: FeedItemAttention): string {
+  switch (attention) {
+    case 'errored':
+      return 'bg-status-fail/85 shadow-[0_0_12px_oklch(0.72_0.18_25_/_0.22)]';
+    case 'needs-permission':
+    case 'has-question':
+    case 'interrupted':
+      return 'bg-status-run/85 shadow-[0_0_12px_oklch(0.78_0.16_75_/_0.22)]';
+    case 'review-requested':
+    case 'pr-comments':
+      return 'bg-status-pr/80 shadow-[0_0_12px_oklch(0.78_0.16_260_/_0.2)]';
+    case 'assigned-work-item':
+      return 'bg-status-azure/85 shadow-[0_0_12px_oklch(0.78_0.16_205_/_0.22)]';
+    case 'running':
+    case 'pr-approved-by-me':
+    case 'completed':
+    case 'note':
+    case 'waiting':
+    default:
+      return 'bg-acc/80 shadow-[0_0_12px_oklch(var(--acc)_/_0.22)]';
+  }
+}
+
 export function FeedItemCard({
   item,
   isSelected,
@@ -282,7 +305,8 @@ export function FeedItemCard({
             }
           }}
           className={clsx(
-            'relative flex cursor-pointer flex-col gap-1 rounded-lg px-3.5 py-2.5 transition-[box-shadow,background,opacity,transform] duration-200 ease-out',
+            'relative flex cursor-pointer flex-col gap-1 rounded-lg px-3.5 py-2.5 transition-[box-shadow,background,opacity,transform,padding] duration-200 ease-out',
+            isSelected && 'translate-x-2 pl-5',
             borderClasses({
               attention: item.attention,
               hasUnread: item.hasUnread,
@@ -292,9 +316,24 @@ export function FeedItemCard({
             !isSelected && 'hover:bg-glass-light hover:translate-x-0.5',
           )}
         >
+          <span
+            aria-hidden="true"
+            className={clsx(
+              'pointer-events-none absolute top-1 bottom-1 -left-2.5 w-1 rounded-full transition-[opacity,transform] duration-200 ease-out',
+              isSelected
+                ? 'translate-x-0 scale-y-100 opacity-100'
+                : '-translate-x-1 scale-y-60 opacity-0',
+              selectedAccentClasses(item.attention),
+            )}
+          />
           {/* New activity accent bar */}
           {item.hasNewActivity && (
-            <span className="bg-acc absolute top-2 bottom-2 left-0 w-[3px] rounded-full" />
+            <span
+              className={clsx(
+                'bg-acc absolute top-2 bottom-2 w-[3px] rounded-full',
+                isSelected ? 'left-4.5' : 'left-0',
+              )}
+            />
           )}
           <div className="flex items-center gap-2">
             {item.taskType === 'skill-creation' && (
