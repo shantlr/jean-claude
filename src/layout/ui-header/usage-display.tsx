@@ -110,6 +110,10 @@ function formatFetchedAt(fetchedAtMs: number): string {
   return `${diffMinutes} min ago`;
 }
 
+function formatUsageRatio(ratio: number): string {
+  return Number.isFinite(ratio) ? `${ratio.toFixed(1)}x` : 'inf';
+}
+
 function TooltipRangeRow({
   label,
   range,
@@ -135,10 +139,7 @@ function TooltipRangeRow({
       </div>
       <div className="text-ink-3 flex items-center justify-between gap-4">
         <span>
-          Ratio:{' '}
-          <span className={ratioColor}>
-            {Number.isFinite(ratio) ? ratio.toFixed(1) : '∞'}
-          </span>
+          Ratio: <span className={ratioColor}>{formatUsageRatio(ratio)}</span>
         </span>
         <span>Resets {range.timeUntilReset}</span>
       </div>
@@ -235,6 +236,7 @@ function ProviderUsageChip({
   const displayPercentage = isExhausted
     ? '100'
     : Math.min(primary.range.utilization, 100).toFixed(0);
+  const displayRate = formatUsageRatio(usageRatio);
 
   return (
     <Tooltip
@@ -259,10 +261,15 @@ function ProviderUsageChip({
         ) : (
           <div className={clsx('h-1.5 w-1.5 rounded-full', dotColor)} />
         )}
-        <span className={clsx('text-xs font-medium', textColor)}>
-          {Icon ? '' : `${meta.shortLabel} `}
-          {displayPercentage}%
-        </span>
+        <div className="flex flex-col leading-none">
+          <span className={clsx('text-xs font-medium', textColor)}>
+            {Icon ? '' : `${meta.shortLabel} `}
+            {displayPercentage}%
+          </span>
+          <span className={clsx('text-[10px]', textColor)}>
+            rate {displayRate}
+          </span>
+        </div>
       </div>
     </Tooltip>
   );
