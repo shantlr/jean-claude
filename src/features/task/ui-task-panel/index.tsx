@@ -1038,7 +1038,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           </div>
 
           {/* Center: Branch, PR badge, Work items */}
-          <div className="flex shrink items-center gap-2">
+          <div className="flex min-w-0 shrink items-center gap-2">
             {/* Backend chip */}
             <Chip size="sm" className="max-w-40">
               {backendLabel}
@@ -1047,19 +1047,24 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             {/* Branch chip */}
             {task.worktreePath ? (
               <Chip
-                size="sm"
                 icon={<GitBranch />}
                 onClick={() => {
                   void handleOpenWorktreeInEditor();
                 }}
-                title="Open worktree in editor"
-                className="max-w-48"
+                title={`Open worktree in editor: ${task.branchName ?? getBranchFromWorktreePath(task.worktreePath)}`}
+                size="xs"
+                className="max-w-28 sm:max-w-36"
               >
                 {task.branchName ??
                   getBranchFromWorktreePath(task.worktreePath)}
               </Chip>
             ) : task.branchName ? (
-              <Chip size="sm" icon={<GitBranch />} className="max-w-48">
+              <Chip
+                size="xs"
+                icon={<GitBranch />}
+                title={task.branchName}
+                className="max-w-28 sm:max-w-36"
+              >
                 {task.branchName}
               </Chip>
             ) : null}
