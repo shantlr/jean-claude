@@ -1,4 +1,10 @@
-import { ChevronLeft, ChevronRight, ImageIcon, X } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ImageIcon,
+  MessageSquare,
+  X,
+} from 'lucide-react';
 import {
   type ChangeEvent,
   type ClipboardEvent,
@@ -12,10 +18,16 @@ import {
 import { createPortal } from 'react-dom';
 
 import { Kbd } from '@/common/ui/kbd';
-import type { AzureDevOpsWorkItem } from '@/lib/api';
+import type { AzureDevOpsWorkItem, WorkItemComment } from '@/lib/api';
 import { processImageFile, MAX_IMAGES } from '@/lib/image-utils';
 import { useToastStore } from '@/stores/toasts';
 import type { PromptImagePart } from '@shared/agent-backend-types';
+
+export function getWorkItemCommentSelectionId(
+  comment: WorkItemComment,
+): string {
+  return `${comment.workItemId}:${comment.id}`;
+}
 
 function escapeXml(value: string): string {
   return value
@@ -290,7 +302,10 @@ function decodeHtmlEntities(text: string): string {
 }
 
 // Expand a single work item placeholder to full content
-function expandWorkItem(workItem: AzureDevOpsWorkItem): string {
+function expandWorkItem(
+  workItem: AzureDevOpsWorkItem,
+  comments?: WorkItemComment[],
+): string {
   const { id, fields } = workItem;
   const { title, description, reproSteps } = fields;
 
@@ -311,6 +326,35 @@ function expandWorkItem(workItem: AzureDevOpsWorkItem): string {
     bodySections.push('  </repro_steps>');
   }
 
+  const workItemComments = comments?.filter(
+    (c) => c.workItemId === workItem.id,
+  );
+  if (workItemComments && workItemComments.length > 0) {
+    bodySections.push('  <comments>');
+    for (const comment of workItemComments) {
+      const cleanComment = simplifyHtml(comment.text);
+      const dateStr = comment.createdDate
+        ? new Date(comment.createdDate).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+          })
+        : '';
+      bodySections.push(
+        `    <comment by="${escapeXml(comment.createdBy)}" date="${dateStr}">`,
+      );
+      // Indent each line of the comment body
+      const indentedComment = cleanComment
+        .split('\n')
+        .map((line) => (line.trim() ? `      ${line}` : ''))
+        .filter(Boolean)
+        .join('\n');
+      bodySections.push(indentedComment);
+      bodySections.push('    </comment>');
+    }
+    bodySections.push('  </comments>');
+  }
+
   return [`<work_item id="${id}">`, ...bodySections, '</work_item>'].join('\n');
 }
 
@@ -318,6 +362,7 @@ function expandWorkItem(workItem: AzureDevOpsWorkItem): string {
 export function expandTemplate(
   template: string,
   workItems: AzureDevOpsWorkItem[],
+  comments?: WorkItemComment[],
 ): string {
   const workItemMap = new Map(workItems.map((wi) => [wi.id.toString(), wi]));
 
@@ -327,7 +372,7 @@ export function expandTemplate(
     if (!workItem) {
       return match; // Keep placeholder if work item not found
     }
-    return expandWorkItem(workItem);
+    return expandWorkItem(workItem, comments);
   });
 }
 
@@ -340,6 +385,12 @@ export function PromptComposer({
   isFetchingImages,
   onImageAttach,
   onImageRemove,
+  comments,
+  selectedCommentIds,
+  onCommentToggle,
+  onSelectAllComments,
+  onDeselectAllComments,
+  isLoadingComments,
 }: {
   template: string;
   workItems: AzureDevOpsWorkItem[];
@@ -349,11 +400,28 @@ export function PromptComposer({
   isFetchingImages?: boolean;
   onImageAttach?: (image: PromptImagePart) => void;
   onImageRemove?: (index: number) => void;
+  comments?: WorkItemComment[];
+  selectedCommentIds?: string[];
+  onCommentToggle?: (commentSelectionId: string) => void;
+  onSelectAllComments?: () => void;
+  onDeselectAllComments?: () => void;
+  isLoadingComments?: boolean;
 }) {
+  const [showComments, setShowComments] = useState(false);
+
+  // Filter to selected comments for preview
+  const selectedComments = useMemo(
+    () =>
+      comments?.filter((c) =>
+        selectedCommentIds?.includes(getWorkItemCommentSelectionId(c)),
+      ) ?? [],
+    [comments, selectedCommentIds],
+  );
+
   // Expand template to preview
   const preview = useMemo(
-    () => expandTemplate(template, workItems),
-    [template, workItems],
+    () => expandTemplate(template, workItems, selectedComments),
+    [template, workItems, selectedComments],
   );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -513,6 +581,107 @@ export function PromptComposer({
           </span>
         ))}
       </div>
+
+      {/* Comment selection */}
+      {comments && comments.length > 0 && (
+        <div style={{ borderBottom: '1px solid oklch(1 0 0 / 0.04)' }}>
+          <button
+            type="button"
+            onClick={() => setShowComments(!showComments)}
+            className="flex w-full items-center gap-2 px-[18px] py-2 text-left"
+            style={{
+              background: showComments ? 'oklch(1 0 0 / 0.02)' : 'transparent',
+            }}
+          >
+            <MessageSquare className="text-ink-3 h-3.5 w-3.5" />
+            <span className="text-ink-2 text-xs font-medium">Comments</span>
+            <span className="text-ink-3 font-mono text-[10.5px]">
+              {selectedCommentIds?.length ?? 0}/{comments.length} selected
+            </span>
+            <div className="flex-1" />
+            <ChevronRight
+              className="text-ink-3 h-3 w-3 transition-transform"
+              style={{
+                transform: showComments ? 'rotate(90deg)' : undefined,
+              }}
+            />
+          </button>
+
+          {showComments && (
+            <div className="max-h-[200px] overflow-y-auto px-[18px] pb-3">
+              {/* Select all / none buttons */}
+              <div className="mb-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={onSelectAllComments}
+                  className="text-ink-3 hover:text-ink-1 text-[10.5px] font-medium"
+                >
+                  Select all
+                </button>
+                <span className="text-ink-3 text-[10.5px]">&middot;</span>
+                <button
+                  type="button"
+                  onClick={onDeselectAllComments}
+                  className="text-ink-3 hover:text-ink-1 text-[10.5px] font-medium"
+                >
+                  Select none
+                </button>
+              </div>
+
+              {comments.map((comment) => {
+                const commentSelectionId =
+                  getWorkItemCommentSelectionId(comment);
+                const isSelected =
+                  selectedCommentIds?.includes(commentSelectionId) ?? false;
+                const cleanText = simplifyHtml(comment.text)
+                  .replace(/<[^>]*>/g, '')
+                  .replace(/[ \t]+/g, ' ')
+                  .replace(/\n{3,}/g, '\n\n')
+                  .trim();
+                return (
+                  <label
+                    key={commentSelectionId}
+                    className="flex cursor-pointer items-start gap-2 rounded px-1 py-1.5 hover:bg-white/[0.03]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => onCommentToggle?.(commentSelectionId)}
+                      className="accent-acc mt-0.5 h-3.5 w-3.5 shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-ink-2 text-[11px] font-medium">
+                          {comment.createdBy}
+                        </span>
+                        <span className="text-ink-3 text-[10px]">
+                          {new Date(comment.createdDate).toLocaleDateString()}
+                        </span>
+                        <span className="text-ink-3 font-mono text-[10px]">
+                          #{comment.workItemId}
+                        </span>
+                      </div>
+                      <p className="text-ink-3 mt-0.5 text-[11px] leading-snug whitespace-pre-wrap">
+                        {cleanText}
+                      </p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {isLoadingComments && (
+        <div
+          className="flex items-center gap-2 px-[18px] py-2"
+          style={{ borderBottom: '1px solid oklch(1 0 0 / 0.04)' }}
+        >
+          <span className="border-glass-border-strong border-t-ink-1 inline-block h-3 w-3 animate-spin rounded-full border-2" />
+          <span className="text-ink-3 text-xs">Loading comments…</span>
+        </div>
+      )}
 
       {/* Two-panel layout */}
       <div className="flex min-h-0 flex-1">

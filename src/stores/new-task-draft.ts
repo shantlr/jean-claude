@@ -23,6 +23,8 @@ export interface NewTaskDraft {
   workItemsFilter: string;
   searchStep: SearchStep; // NEW: which step in search mode
   workItemsViewMode: WorkItemsViewMode;
+  /** Selected work item/comment composite IDs to include in prompt. */
+  selectedCommentIds: string[];
   // Prompt mode state
   prompt: string;
   /** Image attachments for the initial prompt (transient, not persisted) */

@@ -1773,6 +1773,20 @@ export function registerIpcHandlers() {
     },
   );
 
+  console.log('[IPC] Registering azureDevOps:getWorkItemComments handler');
+  ipcMain.handle(
+    'azureDevOps:getWorkItemComments',
+    async (
+      _event,
+      params: { providerId: string; projectName: string; workItemId: number },
+    ) => {
+      console.log('[IPC] getWorkItemComments called', params);
+      const { getWorkItemComments } =
+        await import('../services/azure-devops-service');
+      return getWorkItemComments(params);
+    },
+  );
+
   ipcMain.handle(
     'azureDevOps:getIterations',
     (

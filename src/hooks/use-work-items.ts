@@ -5,6 +5,7 @@ import {
   type AzureDevOpsWorkItem,
   type AzureDevOpsUser,
   type AzureDevOpsIteration,
+  type WorkItemComment,
 } from '@/lib/api';
 
 export function useWorkItems(params: {
@@ -57,6 +58,44 @@ export function useWorkItemById(params: {
       }),
     enabled: !!params.providerId && !!params.workItemId,
     staleTime: 5 * 60_000,
+  });
+}
+
+export function useWorkItemComments(params: {
+  providerId: string | null;
+  projectName: string | null;
+  workItemIds: number[];
+}) {
+  return useQuery<WorkItemComment[]>({
+    queryKey: [
+      'work-item-comments',
+      params.providerId,
+      params.projectName,
+      params.workItemIds,
+    ],
+    queryFn: async () => {
+      if (
+        !params.providerId ||
+        !params.projectName ||
+        params.workItemIds.length === 0
+      )
+        return [];
+      const results = await Promise.all(
+        params.workItemIds.map((workItemId) =>
+          api.azureDevOps.getWorkItemComments({
+            providerId: params.providerId!,
+            projectName: params.projectName!,
+            workItemId,
+          }),
+        ),
+      );
+      return results.flat();
+    },
+    enabled:
+      !!params.providerId &&
+      !!params.projectName &&
+      params.workItemIds.length > 0,
+    staleTime: 60_000,
   });
 }
 

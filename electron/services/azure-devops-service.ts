@@ -681,6 +681,63 @@ export async function getWorkItemById(params: {
   };
 }
 
+export async function getWorkItemComments(params: {
+  providerId: string;
+  projectName: string;
+  workItemId: number;
+}): Promise<
+  {
+    id: number;
+    workItemId: number;
+    text: string;
+    createdBy: string;
+    createdDate: string;
+  }[]
+> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const response = await fetch(
+    `https://dev.azure.com/${orgName}/${encodeURIComponent(params.projectName)}/_apis/wit/workItems/${params.workItemId}/comments?api-version=7.0-preview.4&$top=50&order=desc`,
+    {
+      headers: { Authorization: authHeader },
+    },
+  );
+
+  if (!response.ok) {
+    if (response.status === 404) return [];
+    const error = await response.text();
+    throw new Error(
+      `Failed to fetch comments for work item ${params.workItemId}: ${error}`,
+    );
+  }
+
+  const data = await response.json();
+  console.log(
+    '[getWorkItemComments]',
+    `workItem=${params.workItemId}`,
+    `keys=${Object.keys(data).join(',')}`,
+    `totalCount=${data.totalCount}`,
+    `count=${data.count}`,
+    `commentsLength=${(data.comments ?? []).length}`,
+  );
+
+  return (data.comments ?? []).map(
+    (c: {
+      id: number;
+      workItemId: number;
+      text: string;
+      createdBy?: { displayName?: string };
+      createdDate?: string;
+    }) => ({
+      id: c.id,
+      workItemId: c.workItemId,
+      text: c.text ?? '',
+      createdBy: c.createdBy?.displayName ?? 'Unknown',
+      createdDate: c.createdDate ?? '',
+    }),
+  );
+}
+
 export async function getIterations(params: {
   providerId: string;
   projectName: string;

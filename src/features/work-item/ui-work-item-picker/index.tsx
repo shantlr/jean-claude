@@ -370,6 +370,7 @@ export function WorkItemPicker({
         <WorkItemDetails
           workItem={highlightedWorkItem}
           providerId={providerId}
+          projectName={projectName}
         />
       </div>
     </div>

@@ -31,7 +31,7 @@ import { useProjects, useProjectBranches } from '@/hooks/use-projects';
 import { useBackendsSetting, useCompletionSetting } from '@/hooks/use-settings';
 import { useProjectSkills } from '@/hooks/use-skills';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
-import { useWorkItems } from '@/hooks/use-work-items';
+import { useWorkItems, useWorkItemComments } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
 import { compressImage } from '@/lib/image-compression';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
@@ -62,6 +62,7 @@ import { ComposerFileExplorer } from '../ui-composer-file-explorer';
 import {
   PromptComposer,
   generateInitialTemplate,
+  getWorkItemCommentSelectionId,
   expandTemplate,
   extractWorkItemImageUrls,
 } from '../ui-prompt-composer';
@@ -236,6 +237,55 @@ export function NewTaskOverlay({
     const ids = draft?.workItemIds ?? [];
     return workItems.filter((wi) => ids.includes(wi.id.toString()));
   }, [workItems, draft?.workItemIds]);
+
+  // Fetch comments for selected work items
+  const workItemIdNumbers = useMemo(
+    () => (draft?.workItemIds ?? []).map(Number).filter((n) => !isNaN(n)),
+    [draft?.workItemIds],
+  );
+
+  const { data: workItemComments = [], isLoading: isLoadingComments } =
+    useWorkItemComments({
+      providerId: selectedProject?.workItemProviderId ?? null,
+      projectName: selectedProject?.workItemProjectName ?? null,
+      workItemIds: workItemIdNumbers,
+    });
+
+  const selectedWorkItemIdsSignature = useMemo(
+    () => [...(draft?.workItemIds ?? [])].sort().join(','),
+    [draft?.workItemIds],
+  );
+  const previousSelectedWorkItemIdsSignatureRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (previousSelectedWorkItemIdsSignatureRef.current === null) {
+      previousSelectedWorkItemIdsSignatureRef.current =
+        selectedWorkItemIdsSignature;
+      return;
+    }
+
+    if (
+      previousSelectedWorkItemIdsSignatureRef.current !==
+      selectedWorkItemIdsSignature
+    ) {
+      previousSelectedWorkItemIdsSignatureRef.current =
+        selectedWorkItemIdsSignature;
+      updateDraft({ selectedCommentIds: undefined });
+    }
+  }, [selectedWorkItemIdsSignature, updateDraft]);
+
+  // Auto-select all comments when they first load
+  useEffect(() => {
+    if (
+      workItemComments.length > 0 &&
+      (draft?.selectedCommentIds === undefined ||
+        draft?.selectedCommentIds === null)
+    ) {
+      updateDraft({
+        selectedCommentIds: workItemComments.map(getWorkItemCommentSelectionId),
+      });
+    }
+  }, [workItemComments, draft?.selectedCommentIds, updateDraft]);
 
   // Input mode from draft, constrained by selection capabilities
   // - note selected: force prompt mode
@@ -595,6 +645,28 @@ export function NewTaskOverlay({
     updateDraft({ searchStep: 'select' });
   }, [updateDraft]);
 
+  // Comment selection handlers
+  const handleCommentToggle = useCallback(
+    (commentSelectionId: string) => {
+      const current = draft?.selectedCommentIds ?? [];
+      const next = current.includes(commentSelectionId)
+        ? current.filter((id) => id !== commentSelectionId)
+        : [...current, commentSelectionId];
+      updateDraft({ selectedCommentIds: next });
+    },
+    [draft?.selectedCommentIds, updateDraft],
+  );
+
+  const handleSelectAllComments = useCallback(() => {
+    updateDraft({
+      selectedCommentIds: workItemComments.map(getWorkItemCommentSelectionId),
+    });
+  }, [workItemComments, updateDraft]);
+
+  const handleDeselectAllComments = useCallback(() => {
+    updateDraft({ selectedCommentIds: [] });
+  }, [updateDraft]);
+
   // Start task handler
   const handleStartTask = useCallback(async () => {
     if (!canStartTask || !draft || !selectedProjectId) return;
@@ -607,7 +679,16 @@ export function NewTaskOverlay({
 
       if (inputMode === 'search' && searchStep === 'compose') {
         // Expand the template to get the final prompt
-        finalPrompt = expandTemplate(promptTemplate, selectedWorkItems);
+        const selectedComments = workItemComments.filter((c) =>
+          (draft.selectedCommentIds ?? []).includes(
+            getWorkItemCommentSelectionId(c),
+          ),
+        );
+        finalPrompt = expandTemplate(
+          promptTemplate,
+          selectedWorkItems,
+          selectedComments,
+        );
         workItemIds = draft.workItemIds ?? null;
         workItemUrls = selectedWorkItems.map((wi) => wi.url);
       } else {
@@ -734,6 +815,7 @@ export function NewTaskOverlay({
     searchStep,
     promptTemplate,
     selectedWorkItems,
+    workItemComments,
     selectedProject?.name,
     selectedProject?.path,
     currentBackend,
@@ -1124,6 +1206,12 @@ export function NewTaskOverlay({
               isFetchingImages={isFetchingWorkItemImages}
               onImageAttach={handleImageAttach}
               onImageRemove={handleImageRemove}
+              comments={workItemComments}
+              selectedCommentIds={draft?.selectedCommentIds ?? []}
+              onCommentToggle={handleCommentToggle}
+              onSelectAllComments={handleSelectAllComments}
+              onDeselectAllComments={handleDeselectAllComments}
+              isLoadingComments={isLoadingComments}
             />
           </div>
         )}

@@ -209,6 +209,14 @@ export interface AzureDevOpsWorkItem {
   linkedPrs?: Array<{ prId: number; projectId: string; repoId: string }>;
 }
 
+export interface WorkItemComment {
+  id: number;
+  workItemId: number;
+  text: string;
+  createdBy: string;
+  createdDate: string;
+}
+
 export interface AzureDevOpsIteration {
   id: string;
   name: string;
@@ -515,6 +523,11 @@ export interface Api {
       providerId: string;
       workItemId: number;
     }) => Promise<AzureDevOpsWorkItem | null>;
+    getWorkItemComments: (params: {
+      providerId: string;
+      projectName: string;
+      workItemId: number;
+    }) => Promise<WorkItemComment[]>;
     getIterations: (params: {
       providerId: string;
       projectName: string;
@@ -1208,6 +1221,7 @@ export const api: Api = hasWindowApi
         },
         queryWorkItems: async () => [],
         getWorkItemById: async () => null,
+        getWorkItemComments: async () => [],
         getIterations: async () => [],
         createPullRequest: async () => {
           throw new Error('API not available');

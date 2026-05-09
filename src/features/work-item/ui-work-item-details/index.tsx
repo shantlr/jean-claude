@@ -1,5 +1,6 @@
 import { Kbd } from '@/common/ui/kbd';
 import { AzureHtmlContent } from '@/features/common/ui-azure-html-content';
+import { useWorkItemComments } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
 
 import { WorkItemTypeIcon } from '../ui-work-item-shared';
@@ -7,10 +8,20 @@ import { WorkItemTypeIcon } from '../ui-work-item-shared';
 export function WorkItemDetails({
   workItem,
   providerId,
+  projectName,
 }: {
   workItem: AzureDevOpsWorkItem | null;
   providerId?: string;
+  projectName?: string;
 }) {
+  const workItemId = workItem?.id ?? null;
+  const { data: comments = [], isLoading: isLoadingComments } =
+    useWorkItemComments({
+      providerId: providerId ?? null,
+      projectName: projectName ?? null,
+      workItemIds: workItemId ? [workItemId] : [],
+    });
+
   // Empty state when no work item is selected
   if (!workItem) {
     return (
@@ -24,7 +35,7 @@ export function WorkItemDetails({
   const { title, workItemType, state, assignedTo } = fields;
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto">
       {/* Header: Type icon + ID + open hint */}
       <div className="flex items-center gap-2">
         <WorkItemTypeIcon type={workItemType} />
@@ -62,8 +73,48 @@ export function WorkItemDetails({
         <AzureHtmlContent
           html={fields.description}
           providerId={providerId}
-          className="text-ink-2 min-h-0 flex-1 overflow-y-auto text-xs"
+          className="text-ink-2 text-xs"
         />
+      )}
+
+      {(isLoadingComments || comments.length > 0) && (
+        <div className="border-glass-border my-3 border-t" />
+      )}
+
+      {isLoadingComments && (
+        <p className="text-ink-3 text-xs">Loading comments...</p>
+      )}
+
+      {comments.length > 0 && (
+        <div className="flex flex-col gap-3 pb-2">
+          <div className="text-ink-3 text-[11px] font-medium tracking-wide uppercase">
+            Comments
+          </div>
+          {comments.map((comment) => (
+            <div
+              key={comment.id}
+              className="rounded-md border px-3 py-2"
+              style={{
+                borderColor: 'oklch(1 0 0 / 0.06)',
+                background: 'oklch(1 0 0 / 0.02)',
+              }}
+            >
+              <div className="mb-1 flex items-center gap-2 text-[11px]">
+                <span className="text-ink-2 font-medium">
+                  {comment.createdBy}
+                </span>
+                <span className="text-ink-3">
+                  {new Date(comment.createdDate).toLocaleDateString()}
+                </span>
+              </div>
+              <AzureHtmlContent
+                html={comment.text}
+                providerId={providerId}
+                className="text-ink-2 text-xs"
+              />
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
