@@ -299,6 +299,9 @@ export const MessageStream = memo(function MessageStream({
             // Prompt groups render as collapsible entries
             if (streamMessage.kind === 'prompt-group') {
               const promptIdx = promptIndexMap.get(index);
+              // Show separator before non-first prompt groups
+              const showSeparator =
+                index > 0 && streamMessages[index - 1]?.kind === 'prompt-group';
               return (
                 <div
                   key={index}
@@ -307,6 +310,16 @@ export const MessageStream = memo(function MessageStream({
                     ? { 'data-prompt-index': promptIdx }
                     : {})}
                 >
+                  {showSeparator && (
+                    <div
+                      className="mx-4 my-1"
+                      style={{
+                        height: '1px',
+                        background:
+                          'linear-gradient(to right, transparent, oklch(1 0 0 / 0.12), transparent)',
+                      }}
+                    />
+                  )}
                   <PromptGroupEntry
                     group={streamMessage}
                     isLast={index === lastPromptGroupIndex}

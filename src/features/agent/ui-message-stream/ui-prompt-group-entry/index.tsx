@@ -716,7 +716,7 @@ export function PromptGroupEntry({
   }, [group.childMessages]);
 
   return (
-    <div className="mb-4">
+    <div className="mb-5">
       {/* Part 1: Prompt section */}
       <PromptSection group={group} onFilePathClick={onFilePathClick} />
 
@@ -749,7 +749,7 @@ export function PromptGroupEntry({
           className="min-w-0 flex-1 rounded-md"
           style={{
             background: 'oklch(0.06 0.01 280 / 0.5)',
-            border: '1px solid oklch(1 0 0 / 0.06)',
+            border: '1px solid oklch(1 0 0 / 0.10)',
           }}
         >
           {/* Header bar */}
