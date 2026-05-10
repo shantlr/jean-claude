@@ -402,7 +402,10 @@ export function FeedItemCard({
               'group/row relative flex cursor-pointer transition-colors',
               !showRail && 'border-b',
               isRunning
-                ? 'feed-running-row border-transparent'
+                ? [
+                    'feed-running-row border-transparent',
+                    isSelected && 'feed-running-row-focused',
+                  ]
                 : needsPermission
                   ? 'feed-permission-row border-transparent'
                   : hasQuestion
@@ -828,6 +831,7 @@ function SubtaskRow({
       className={clsx(
         'relative flex cursor-pointer transition-colors',
         isRunning && 'feed-running-row',
+        isRunning && isSelected && 'feed-running-row-focused',
         child.hasUnread && !isRunning && 'feed-unread-row',
         !isRunning && childNeedsPermission && 'feed-permission-row',
         !isRunning && childHasQuestion && 'feed-question-row',
