@@ -81,6 +81,11 @@ export interface LinkedPr {
   repoId: string; // GUID from vstfs URL
 }
 
+export interface TestStep {
+  action: string;
+  expectedResult: string;
+}
+
 export interface AzureDevOpsWorkItem {
   id: number;
   url: string;
@@ -93,8 +98,10 @@ export interface AzureDevOpsWorkItem {
     reproSteps?: string;
     changedDate?: string;
   };
+  testSteps?: TestStep[];
   parentId?: number;
   linkedPrs?: LinkedPr[];
+  relatedTestCaseIds?: number[];
 }
 
 export interface AzureDevOpsIteration {
@@ -131,6 +138,7 @@ interface WorkItemsBatchResponse {
       'System.AssignedTo'?: { displayName: string };
       'System.Description'?: string;
       'Microsoft.VSTS.TCM.ReproSteps'?: string;
+      'Microsoft.VSTS.TCM.Steps'?: string;
       'System.ChangedDate'?: string;
     };
     relations?: WorkItemRelation[];
@@ -299,6 +307,35 @@ export async function getTokenExpiration(
   }
 }
 
+/**
+ * Lowercase all HTML/XML tag names so Turndown (HTML→Markdown) can parse them.
+ * Azure DevOps TCM content uses uppercase tags like <DIV>, <P>, <STRONG>.
+ */
+function lowercaseHtmlTags(html: string): string {
+  return html.replace(/<\/?[A-Z][A-Z0-9]*\b[^>]*>/g, (tag) =>
+    tag.toLowerCase(),
+  );
+}
+
+/**
+ * Parse Azure DevOps TCM Steps XML into structured test steps.
+ * Each step has two parameterizedString elements (action + expected result)
+ * containing HTML content.
+ */
+function parseTestSteps(stepsXml: string): TestStep[] {
+  const stepRegex =
+    /<step[^>]*>[\s\S]*?<parameterizedString[^>]*>([\s\S]*?)<\/parameterizedString>(?:[\s\S]*?<parameterizedString[^>]*>([\s\S]*?)<\/parameterizedString>)?[\s\S]*?<\/step>/gi;
+  const steps: TestStep[] = [];
+  let match;
+  while ((match = stepRegex.exec(stepsXml)) !== null) {
+    steps.push({
+      action: lowercaseHtmlTags((match[1] || '').trim()),
+      expectedResult: lowercaseHtmlTags((match[2] || '').trim()),
+    });
+  }
+  return steps;
+}
+
 /** Escape single quotes for WIQL query string interpolation. */
 function escapeWiql(value: string): string {
   return value.replace(/'/g, "''");
@@ -341,6 +378,27 @@ function extractLinkedPrs(relations?: WorkItemRelation[]): LinkedPr[] {
     }
   }
   return prs;
+}
+
+/** Extract linked test case IDs from a work item's relations array.
+ * Test case links use rel "Microsoft.VSTS.Common.TestedBy-Forward" (work item → test case)
+ * and "Microsoft.VSTS.Common.TestedBy-Reverse" (test case → work item).
+ */
+function extractLinkedTestCaseIds(relations?: WorkItemRelation[]): number[] {
+  if (!relations) return [];
+  const testRelations = relations.filter(
+    (r) =>
+      r.rel === 'Microsoft.VSTS.Common.TestedBy-Forward' ||
+      r.rel === 'Microsoft.VSTS.Common.TestedBy-Reverse',
+  );
+  const ids: number[] = [];
+  for (const r of testRelations) {
+    const match = r.url.match(/\/workItems\/(\d+)$/i);
+    if (match) {
+      ids.push(parseInt(match[1], 10));
+    }
+  }
+  return ids;
 }
 
 /**
@@ -568,6 +626,7 @@ export async function queryWorkItems(params: {
       changedDate: wi.fields['System.ChangedDate'],
     },
     parentId: extractParentId(wi.relations),
+    relatedTestCaseIds: extractLinkedTestCaseIds(wi.relations),
   }));
 }
 
@@ -639,6 +698,7 @@ export async function queryAssignedWorkItems(params: {
     },
     parentId: extractParentId(wi.relations),
     linkedPrs: extractLinkedPrs(wi.relations),
+    relatedTestCaseIds: extractLinkedTestCaseIds(wi.relations),
   }));
 }
 
@@ -678,7 +738,97 @@ export async function getWorkItemById(params: {
       changedDate: wi.fields['System.ChangedDate'],
     },
     parentId: extractParentId(wi.relations),
+    relatedTestCaseIds: extractLinkedTestCaseIds(wi.relations),
   };
+}
+
+/**
+ * Fetch test cases related to a work item using a WIQL link query.
+ * Uses WorkItemLinks query mode with Microsoft.VSTS.Common.TestedBy-Forward
+ * to find test cases linked via the "Tested By" relationship.
+ */
+export async function getRelatedTestCases(params: {
+  providerId: string;
+  projectName: string;
+  workItemId: number;
+}): Promise<AzureDevOpsWorkItem[]> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  // WIQL link query to find test cases linked to this work item
+  const wiqlQuery = `SELECT [System.Id] FROM WorkItemLinks WHERE ([Source].[System.Id] = ${params.workItemId}) AND ([System.Links.LinkType] = 'Microsoft.VSTS.Common.TestedBy-Forward') AND ([Target].[System.WorkItemType] = 'Test Case') MODE (MustContain)`;
+
+  const wiqlResponse = await fetch(
+    `https://dev.azure.com/${orgName}/${encodeURIComponent(params.projectName)}/_apis/wit/wiql?api-version=7.0`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: authHeader,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query: wiqlQuery }),
+    },
+  );
+
+  if (!wiqlResponse.ok) {
+    const error = await wiqlResponse.text();
+    console.error(
+      `[azure] Failed to query related test cases for work item ${params.workItemId}:`,
+      error,
+    );
+    return [];
+  }
+
+  const wiqlData = await wiqlResponse.json();
+
+  // WorkItemLinks query returns { workItemRelations: [{ source, target, rel }] }
+  // target contains the linked test case IDs; source is null for the root item
+  const targetIds: number[] = (wiqlData.workItemRelations ?? [])
+    .filter(
+      (r: { target?: { id: number } }) =>
+        r.target && r.target.id !== params.workItemId,
+    )
+    .map((r: { target: { id: number } }) => r.target.id);
+
+  if (targetIds.length === 0) {
+    return [];
+  }
+
+  // Batch-fetch the test case work item details
+  const batchResponse = await fetch(
+    `https://dev.azure.com/${orgName}/_apis/wit/workitems?ids=${targetIds.join(',')}&api-version=7.0`,
+    {
+      headers: { Authorization: authHeader },
+    },
+  );
+
+  if (!batchResponse.ok) {
+    const error = await batchResponse.text();
+    console.error(`[azure] Failed to fetch test case details:`, error);
+    return [];
+  }
+
+  const batchData: WorkItemsBatchResponse = await batchResponse.json();
+
+  return batchData.value.map((wi) => {
+    const testSteps = wi.fields['Microsoft.VSTS.TCM.Steps']
+      ? parseTestSteps(wi.fields['Microsoft.VSTS.TCM.Steps'])
+      : undefined;
+
+    return {
+      id: wi.id,
+      url: `https://dev.azure.com/${orgName}/${encodeURIComponent(params.projectName)}/_workitems/edit/${wi.id}`,
+      fields: {
+        title: wi.fields['System.Title'],
+        workItemType: wi.fields['System.WorkItemType'],
+        state: wi.fields['System.State'],
+        assignedTo: wi.fields['System.AssignedTo']?.displayName,
+        description: wi.fields['System.Description'],
+        reproSteps: wi.fields['Microsoft.VSTS.TCM.ReproSteps'],
+        changedDate: wi.fields['System.ChangedDate'],
+      },
+      testSteps,
+    };
+  });
 }
 
 export async function getWorkItemComments(params: {

@@ -99,6 +99,29 @@ export function useWorkItemComments(params: {
   });
 }
 
+export function useRelatedTestCases(params: {
+  providerId: string | null;
+  projectName: string | null;
+  workItemId: number | null;
+}) {
+  return useQuery<AzureDevOpsWorkItem[]>({
+    queryKey: [
+      'related-test-cases',
+      params.providerId,
+      params.projectName,
+      params.workItemId,
+    ],
+    queryFn: () =>
+      api.azureDevOps.getRelatedTestCases({
+        providerId: params.providerId!,
+        projectName: params.projectName!,
+        workItemId: params.workItemId!,
+      }),
+    enabled: !!params.providerId && !!params.projectName && !!params.workItemId,
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function useCurrentAzureUser(providerId: string | null) {
   return useQuery<AzureDevOpsUser>({
     queryKey: ['azure-current-user', providerId],

@@ -1,6 +1,12 @@
+import { ChevronRight, FlaskConical } from 'lucide-react';
+import { useState } from 'react';
+
 import { Kbd } from '@/common/ui/kbd';
 import { AzureHtmlContent } from '@/features/common/ui-azure-html-content';
-import { useWorkItemComments } from '@/hooks/use-work-items';
+import {
+  useRelatedTestCases,
+  useWorkItemComments,
+} from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
 
 import { WorkItemTypeIcon } from '../ui-work-item-shared';
@@ -20,6 +26,13 @@ export function WorkItemDetails({
       providerId: providerId ?? null,
       projectName: projectName ?? null,
       workItemIds: workItemId ? [workItemId] : [],
+    });
+
+  const { data: relatedTestCases = [], isLoading: isLoadingTestCases } =
+    useRelatedTestCases({
+      providerId: providerId ?? null,
+      projectName: projectName ?? null,
+      workItemId,
     });
 
   // Empty state when no work item is selected
@@ -114,6 +127,123 @@ export function WorkItemDetails({
               />
             </div>
           ))}
+        </div>
+      )}
+
+      {(isLoadingTestCases || relatedTestCases.length > 0) && (
+        <div className="border-glass-border my-3 border-t" />
+      )}
+
+      {isLoadingTestCases && (
+        <p className="text-ink-3 text-xs">Loading test cases...</p>
+      )}
+
+      {relatedTestCases.length > 0 && (
+        <div className="flex flex-col gap-1 pb-2">
+          <div className="text-ink-3 text-[11px] font-medium tracking-wide uppercase">
+            Related Test Cases
+          </div>
+          {relatedTestCases.map((tc) => (
+            <ExpandableTestCase
+              key={tc.id}
+              testCase={tc}
+              providerId={providerId}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExpandableTestCase({
+  testCase,
+  providerId,
+}: {
+  testCase: AzureDevOpsWorkItem;
+  providerId?: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const description = testCase.fields.description || testCase.fields.reproSteps;
+  const hasSteps = testCase.testSteps && testCase.testSteps.length > 0;
+  const hasContent = !!description || hasSteps;
+
+  return (
+    <div
+      className="rounded-md border"
+      style={{
+        borderColor: 'oklch(1 0 0 / 0.06)',
+        background: 'oklch(1 0 0 / 0.02)',
+      }}
+    >
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <ChevronRight
+          className={`text-ink-3 h-3 w-3 shrink-0 transition-transform ${expanded ? 'rotate-90' : ''}`}
+        />
+        <FlaskConical className="h-3.5 w-3.5 shrink-0 text-purple-400" />
+        <span className="text-ink-2 text-xs font-medium">#{testCase.id}</span>
+        <span className="text-ink-1 min-w-0 truncate text-xs">
+          {testCase.fields.title}
+        </span>
+        <span className="text-ink-3 ml-auto shrink-0 text-[11px]">
+          {testCase.fields.state}
+        </span>
+      </button>
+      {expanded && (
+        <div
+          className="border-t px-3 py-2"
+          style={{ borderColor: 'oklch(1 0 0 / 0.06)' }}
+        >
+          {description && (
+            <AzureHtmlContent
+              html={description}
+              providerId={providerId}
+              className="text-ink-2 text-xs"
+            />
+          )}
+          {hasSteps && (
+            <div className="mt-1">
+              {testCase.testSteps!.map((step, i) => (
+                <div
+                  key={i}
+                  className="border-b py-1.5 last:border-b-0"
+                  style={{ borderColor: 'oklch(1 0 0 / 0.04)' }}
+                >
+                  <div className="flex gap-2">
+                    <span className="text-ink-3 w-4 shrink-0 text-[10px]">
+                      {i + 1}.
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <AzureHtmlContent
+                        html={step.action}
+                        providerId={providerId}
+                        className="text-ink-1 text-xs"
+                      />
+                      {step.expectedResult && (
+                        <div className="text-ink-3 mt-0.5">
+                          <span className="text-[10px] font-medium">
+                            Expected:{' '}
+                          </span>
+                          <AzureHtmlContent
+                            html={step.expectedResult}
+                            providerId={providerId}
+                            className="text-ink-3 inline text-xs"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {!hasContent && (
+            <p className="text-ink-3 text-xs italic">No description.</p>
+          )}
         </div>
       )}
     </div>

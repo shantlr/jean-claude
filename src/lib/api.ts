@@ -193,6 +193,11 @@ export interface ProviderDetails {
   }>;
 }
 
+export interface TestStep {
+  action: string;
+  expectedResult: string;
+}
+
 export interface AzureDevOpsWorkItem {
   id: number;
   url: string;
@@ -205,8 +210,10 @@ export interface AzureDevOpsWorkItem {
     reproSteps?: string;
     changedDate?: string;
   };
+  testSteps?: TestStep[];
   parentId?: number;
   linkedPrs?: Array<{ prId: number; projectId: string; repoId: string }>;
+  relatedTestCaseIds?: number[];
 }
 
 export interface WorkItemComment {
@@ -523,6 +530,11 @@ export interface Api {
       providerId: string;
       workItemId: number;
     }) => Promise<AzureDevOpsWorkItem | null>;
+    getRelatedTestCases: (params: {
+      providerId: string;
+      projectName: string;
+      workItemId: number;
+    }) => Promise<AzureDevOpsWorkItem[]>;
     getWorkItemComments: (params: {
       providerId: string;
       projectName: string;
@@ -1221,6 +1233,7 @@ export const api: Api = hasWindowApi
         },
         queryWorkItems: async () => [],
         getWorkItemById: async () => null,
+        getRelatedTestCases: async () => [],
         getWorkItemComments: async () => [],
         getIterations: async () => [],
         createPullRequest: async () => {
