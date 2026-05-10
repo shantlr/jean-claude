@@ -1024,7 +1024,60 @@ export async function cleanupMissingWorktree(params: {
  * Merges a worktree branch into target branch and deletes the worktree.
  * Supports both regular merge and squash merge with custom commit message.
  */
-export async function mergeWorktree(
+/**
+ * Per-repo mutex to serialize merge operations. Prevents concurrent merges
+ * from racing on the same target branch ref (both within Jean-Claude and
+ * against external git operations, via the CAS check in update-ref).
+ *
+ * The chain promise always resolves (never rejects) so a failing `fn` can
+ * never poison the queue. Callers receive a separate promise that carries
+ * the actual result or rejection.
+ */
+const repoMergeLocks = new Map<string, Promise<void>>();
+
+function withRepoLock<T>(
+  projectPath: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const prev = repoMergeLocks.get(projectPath) ?? Promise.resolve();
+
+  // Caller-facing promise that preserves fn's result/rejection.
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const callerPromise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  // Chain promise always resolves — fn errors are forwarded to callerPromise
+  // but never propagate through the queue.
+  const next = prev.then(async () => {
+    try {
+      resolve(await fn());
+    } catch (err) {
+      reject(err);
+    }
+  });
+
+  repoMergeLocks.set(projectPath, next);
+
+  // Clean up entry when queue drains to avoid unbounded growth
+  void next.then(() => {
+    if (repoMergeLocks.get(projectPath) === next) {
+      repoMergeLocks.delete(projectPath);
+    }
+  });
+
+  return callerPromise;
+}
+
+export function mergeWorktree(
+  params: MergeWorktreeParams,
+): Promise<MergeWorktreeResult> {
+  return withRepoLock(params.projectPath, () => mergeWorktreeInner(params));
+}
+
+async function mergeWorktreeInner(
   params: MergeWorktreeParams,
 ): Promise<MergeWorktreeResult> {
   const {
@@ -1060,33 +1113,73 @@ export async function mergeWorktree(
     const worktreeBranch = branchOutput.trim();
     dbg.worktree('Merging branch %s into %s', worktreeBranch, targetBranch);
 
-    // Switch to target branch in main repo
-    dbg.worktree('Checking out target branch %s', targetBranch);
-    await execAsync(`git checkout ${JSON.stringify(targetBranch)}`, {
-      cwd: projectPath,
-      encoding: 'utf-8',
-    });
+    // Use git plumbing to merge without checkout. `git checkout` refuses to
+    // switch to a branch that is already checked out in another worktree, so
+    // we compute the merge tree, create the commit, and update the ref
+    // directly — no working directory is touched.
 
-    if (squash) {
-      // Squash merge: combine all commits into staged changes, then commit with custom message
-      dbg.worktree('Performing squash merge');
-      await execAsync(`git merge --squash ${JSON.stringify(worktreeBranch)}`, {
-        cwd: projectPath,
-        encoding: 'utf-8',
-      });
+    // Snapshot the current target ref for the CAS check later.
+    const { stdout: oldTargetHash } = await execFileAsync(
+      'git',
+      ['rev-parse', targetBranch],
+      { cwd: projectPath, encoding: 'utf-8' },
+    );
 
-      // Commit the squashed changes with the provided message
-      const message =
-        commitMessage || `Squash merge branch '${worktreeBranch}'`;
-      await gitCommit({ cwd: projectPath, message });
-    } else {
-      // Regular merge
-      dbg.worktree('Performing regular merge');
-      await execAsync(`git merge ${JSON.stringify(worktreeBranch)}`, {
-        cwd: projectPath,
-        encoding: 'utf-8',
-      });
+    // Compute merged tree (exits non-zero on conflicts)
+    dbg.worktree('Computing merge tree');
+    const { stdout: treeHash } = await execFileAsync(
+      'git',
+      ['merge-tree', '--write-tree', targetBranch, worktreeBranch],
+      { cwd: projectPath, encoding: 'utf-8' },
+    );
+
+    const message =
+      commitMessage ||
+      (squash
+        ? `Squash merge branch '${worktreeBranch}'`
+        : `Merge branch '${worktreeBranch}' into ${targetBranch}`);
+
+    // Create the merge commit.
+    // Squash: single parent (targetBranch) — flattens history.
+    // Regular: two parents — preserves branch topology.
+    const commitTreeArgs = ['commit-tree', treeHash.trim(), '-p', targetBranch];
+    if (!squash) {
+      commitTreeArgs.push('-p', worktreeBranch);
     }
+    commitTreeArgs.push('-m', message);
+
+    const { stdout: newCommitHash } = await execFileAsync(
+      'git',
+      commitTreeArgs,
+      { cwd: projectPath, encoding: 'utf-8' },
+    );
+
+    // Atomically update the target branch ref. The --old flag acts as a
+    // compare-and-swap: the update fails if targetBranch has moved since we
+    // read it (e.g. an external push/merge or a concurrent Jean-Claude merge
+    // that somehow bypassed the mutex). This prevents silently dropping
+    // commits.
+    try {
+      await execFileAsync(
+        'git',
+        [
+          'update-ref',
+          `refs/heads/${targetBranch}`,
+          newCommitHash.trim(),
+          oldTargetHash.trim(),
+        ],
+        { cwd: projectPath, encoding: 'utf-8' },
+      );
+    } catch (casError) {
+      const casMsg =
+        casError instanceof Error ? casError.message : String(casError);
+      dbg.worktree('CAS failed on update-ref: %s', casMsg);
+      return {
+        success: false,
+        error: `Branch "${targetBranch}" was updated by another process during the merge. Please try again.`,
+      };
+    }
+
     dbg.worktree('Merge successful');
 
     await cleanupWorktree({
@@ -1099,7 +1192,9 @@ export async function mergeWorktree(
     dbg.worktree('Merge complete, worktree cleaned up');
     return { success: true };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    // Use getExecErrorMessage to capture stdout/stderr — merge-tree --write-tree
+    // reports conflict details in stdout, not in the Error message field.
+    const errorMessage = getExecErrorMessage(error);
     dbg.worktree('Merge failed: %s', errorMessage);
 
     // Check if it's a merge conflict
