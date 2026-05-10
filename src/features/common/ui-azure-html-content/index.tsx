@@ -21,6 +21,8 @@ export function AzureHtmlContent({
   html,
   providerId,
   className,
+  imageClassName,
+  enableImageModal,
 }: {
   /** The HTML content from Azure DevOps */
   html: string;
@@ -28,6 +30,10 @@ export function AzureHtmlContent({
   providerId?: string;
   /** Optional className for the wrapper */
   className?: string;
+  /** Optional className for rendered markdown images */
+  imageClassName?: string;
+  /** Whether rendered images should open in a modal when clicked */
+  enableImageModal?: boolean;
 }) {
   const markdown = useMemo(() => {
     if (!html) return '';
@@ -46,7 +52,11 @@ export function AzureHtmlContent({
 
   return (
     <div className={className}>
-      <MarkdownContent content={markdown} />
+      <MarkdownContent
+        content={markdown}
+        imageClassName={imageClassName}
+        enableImageModal={enableImageModal}
+      />
     </div>
   );
 }
@@ -62,6 +72,8 @@ export function AzureMarkdownContent({
   markdown,
   providerId,
   className,
+  imageClassName,
+  enableImageModal,
 }: {
   /** The Markdown content from Azure DevOps */
   markdown: string;
@@ -69,6 +81,10 @@ export function AzureMarkdownContent({
   providerId?: string;
   /** Optional className for the wrapper */
   className?: string;
+  /** Optional className for rendered markdown images */
+  imageClassName?: string;
+  /** Whether rendered images should open in a modal when clicked */
+  enableImageModal?: boolean;
 }) {
   const processedMarkdown = useMemo(() => {
     if (!markdown) return '';
@@ -83,7 +99,11 @@ export function AzureMarkdownContent({
 
   return (
     <div className={className}>
-      <MarkdownContent content={processedMarkdown} />
+      <MarkdownContent
+        content={processedMarkdown}
+        imageClassName={imageClassName}
+        enableImageModal={enableImageModal}
+      />
     </div>
   );
 }

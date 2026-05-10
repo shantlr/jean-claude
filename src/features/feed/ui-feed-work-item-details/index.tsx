@@ -163,6 +163,8 @@ export function FeedWorkItemDetails({
             html={description}
             providerId={providerId ?? undefined}
             className="text-ink-1 text-sm"
+            imageClassName="max-h-96 w-auto object-contain"
+            enableImageModal
           />
         ) : (
           <p className="text-ink-3 text-sm italic">No description provided.</p>

@@ -1,7 +1,10 @@
+import clsx from 'clsx';
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { codeToHtml } from 'shiki';
+
+import { Modal } from '@/common/ui/modal';
 
 // Pattern to match file paths like src/foo.ts:42-50 or just src/foo.ts:42 or src/foo.ts
 const FILE_PATH_PATTERN =
@@ -181,6 +184,8 @@ function customUrlTransform(url: string): string {
 export function MarkdownContent({
   content,
   onFilePathClick,
+  imageClassName,
+  enableImageModal = false,
 }: {
   content: string;
   onFilePathClick?: (
@@ -188,124 +193,189 @@ export function MarkdownContent({
     lineStart?: number,
     lineEnd?: number,
   ) => void;
+  imageClassName?: string;
+  enableImageModal?: boolean;
 }) {
+  const [selectedImage, setSelectedImage] = useState<{
+    src: string;
+    alt: string;
+  } | null>(null);
+
   return (
-    <div className="break-words">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        urlTransform={customUrlTransform}
-        components={{
-          p: ({ children }) => (
-            <p className="mb-3 whitespace-pre-line last:mb-0">
-              {typeof children === 'string' ? (
-                <TextWithFilePaths
-                  text={children}
-                  onFilePathClick={onFilePathClick}
-                />
-              ) : (
-                children
-              )}
-            </p>
-          ),
-          code: ({ className, children, ...props }) => {
-            const matchLang = /language-(\w+)/.exec(className || '');
-            const isInline =
-              !matchLang &&
-              (typeof children !== 'string' || !children.includes('\n'));
+    <>
+      <div className="break-words">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          urlTransform={customUrlTransform}
+          components={{
+            p: ({ children }) => (
+              <p className="mb-3 whitespace-pre-line last:mb-0">
+                {typeof children === 'string' ? (
+                  <TextWithFilePaths
+                    text={children}
+                    onFilePathClick={onFilePathClick}
+                  />
+                ) : (
+                  children
+                )}
+              </p>
+            ),
+            code: ({ className, children, ...props }) => {
+              const matchLang = /language-(\w+)/.exec(className || '');
+              const isInline =
+                !matchLang &&
+                (typeof children !== 'string' || !children.includes('\n'));
 
-            if (isInline) {
+              if (isInline) {
+                return (
+                  <code
+                    className="border-glass-border bg-bg-1 rounded border px-1 py-0.5"
+                    {...props}
+                  >
+                    {children}
+                  </code>
+                );
+              }
+
               return (
-                <code
-                  className="border-glass-border bg-bg-1 rounded border px-1 py-0.5"
-                  {...props}
-                >
-                  {children}
-                </code>
+                <CodeBlock
+                  language={matchLang ? matchLang[1] : 'text'}
+                  code={String(children).replace(/\n$/, '')}
+                />
               );
-            }
+            },
+            pre: ({ children }) => <>{children}</>,
+            a: ({ href, children }) => (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-acc-ink hover:text-acc-ink underline"
+              >
+                {children}
+              </a>
+            ),
+            ul: ({ children }) => (
+              <ul className="mb-3 list-inside list-disc space-y-1">
+                {children}
+              </ul>
+            ),
+            ol: ({ children }) => (
+              <ol className="mb-3 list-inside list-decimal space-y-1">
+                {children}
+              </ol>
+            ),
+            li: ({ children }) => (
+              <li className="ml-2 [&>*:first-child]:inline">{children}</li>
+            ),
+            h1: ({ children }) => (
+              <h1 className="mb-3 font-bold" style={{ fontSize: '1.5em' }}>
+                {children}
+              </h1>
+            ),
+            h2: ({ children }) => (
+              <h2 className="mb-3 font-bold" style={{ fontSize: '1.25em' }}>
+                {children}
+              </h2>
+            ),
+            h3: ({ children }) => (
+              <h3 className="mb-2 font-semibold" style={{ fontSize: '1.1em' }}>
+                {children}
+              </h3>
+            ),
+            blockquote: ({ children }) => (
+              <blockquote className="border-glass-border text-ink-2 mb-3 border-l-4 pl-4 italic">
+                {children}
+              </blockquote>
+            ),
+            table: ({ children }) => (
+              <div className="mb-3 overflow-x-auto">
+                <table className="min-w-full border-collapse">{children}</table>
+              </div>
+            ),
+            th: ({ children }) => (
+              <th className="border-glass-border bg-bg-1 border px-3 py-2 text-left font-semibold">
+                {children}
+              </th>
+            ),
+            td: ({ children }) => (
+              <td className="border-glass-border border px-3 py-2">
+                {children}
+              </td>
+            ),
+            hr: () => <hr className="border-glass-border my-4" />,
+            img: ({ src, alt, ...props }) => {
+              // Don't render if src is empty or undefined
+              if (!src) {
+                console.log('[MarkdownContent] Skipping img with empty src');
+                return null;
+              }
 
-            return (
-              <CodeBlock
-                language={matchLang ? matchLang[1] : 'text'}
-                code={String(children).replace(/\n$/, '')}
-              />
-            );
-          },
-          pre: ({ children }) => <>{children}</>,
-          a: ({ href, children }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-acc-ink hover:text-acc-ink underline"
-            >
-              {children}
-            </a>
-          ),
-          ul: ({ children }) => (
-            <ul className="mb-3 list-inside list-disc space-y-1">{children}</ul>
-          ),
-          ol: ({ children }) => (
-            <ol className="mb-3 list-inside list-decimal space-y-1">
-              {children}
-            </ol>
-          ),
-          li: ({ children }) => (
-            <li className="ml-2 [&>*:first-child]:inline">{children}</li>
-          ),
-          h1: ({ children }) => (
-            <h1 className="mb-3 font-bold" style={{ fontSize: '1.5em' }}>
-              {children}
-            </h1>
-          ),
-          h2: ({ children }) => (
-            <h2 className="mb-3 font-bold" style={{ fontSize: '1.25em' }}>
-              {children}
-            </h2>
-          ),
-          h3: ({ children }) => (
-            <h3 className="mb-2 font-semibold" style={{ fontSize: '1.1em' }}>
-              {children}
-            </h3>
-          ),
-          blockquote: ({ children }) => (
-            <blockquote className="border-glass-border text-ink-2 mb-3 border-l-4 pl-4 italic">
-              {children}
-            </blockquote>
-          ),
-          table: ({ children }) => (
-            <div className="mb-3 overflow-x-auto">
-              <table className="min-w-full border-collapse">{children}</table>
-            </div>
-          ),
-          th: ({ children }) => (
-            <th className="border-glass-border bg-bg-1 border px-3 py-2 text-left font-semibold">
-              {children}
-            </th>
-          ),
-          td: ({ children }) => (
-            <td className="border-glass-border border px-3 py-2">{children}</td>
-          ),
-          hr: () => <hr className="border-glass-border my-4" />,
-          img: ({ src, alt, ...props }) => {
-            // Don't render if src is empty or undefined
-            if (!src) {
-              console.log('[MarkdownContent] Skipping img with empty src');
-              return null;
-            }
-            return (
-              <img
-                src={src}
-                alt={alt || ''}
-                className="my-2 block max-w-full rounded"
-                {...props}
-              />
-            );
-          },
-        }}
+              const resolvedAlt = alt || '';
+              const interactive = enableImageModal;
+
+              return (
+                <img
+                  src={src}
+                  alt={resolvedAlt}
+                  className={clsx(
+                    'my-2 block max-w-full rounded',
+                    interactive && 'cursor-zoom-in',
+                    imageClassName,
+                  )}
+                  aria-label={
+                    interactive
+                      ? resolvedAlt || 'Open image preview'
+                      : undefined
+                  }
+                  role={interactive ? 'button' : undefined}
+                  tabIndex={interactive ? 0 : undefined}
+                  onClick={
+                    interactive
+                      ? (event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setSelectedImage({ src, alt: resolvedAlt });
+                        }
+                      : undefined
+                  }
+                  onKeyDown={
+                    interactive
+                      ? (event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setSelectedImage({ src, alt: resolvedAlt });
+                          }
+                        }
+                      : undefined
+                  }
+                  {...props}
+                />
+              );
+            },
+          }}
+        >
+          {content}
+        </ReactMarkdown>
+      </div>
+
+      <Modal
+        isOpen={selectedImage !== null}
+        onClose={() => setSelectedImage(null)}
+        title={selectedImage?.alt || 'Image preview'}
+        size="xl"
       >
-        {content}
-      </ReactMarkdown>
-    </div>
+        {selectedImage && (
+          <div className="flex max-h-[75vh] items-center justify-center">
+            <img
+              src={selectedImage.src}
+              alt={selectedImage.alt}
+              className="max-h-[75vh] max-w-full object-contain"
+            />
+          </div>
+        )}
+      </Modal>
+    </>
   );
 }
