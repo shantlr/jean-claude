@@ -57,6 +57,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('tasks:createWithWorktree', data),
     update: (id: string, data: unknown) =>
       ipcRenderer.invoke('tasks:update', id, data),
+    updatePendingMessage: (id: string, pendingMessage: string | null) =>
+      ipcRenderer.invoke('tasks:updatePendingMessage', id, pendingMessage),
     delete: (id: string, options?: { deleteWorktree?: boolean }) =>
       ipcRenderer.invoke('tasks:delete', id, options),
     toggleUserCompleted: (id: string) =>

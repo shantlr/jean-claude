@@ -328,6 +328,20 @@ export const TaskRepository = {
     return toTask(row);
   },
 
+  updatePendingMessage: async (
+    id: string,
+    pendingMessage: string | null,
+  ): Promise<Task> => {
+    dbg.db('tasks.updatePendingMessage id=%s', id);
+    const row = await db
+      .updateTable('tasks')
+      .set({ pendingMessage })
+      .where('id', '=', id)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    return toTask(row) as Task;
+  },
+
   delete: (id: string) => {
     dbg.db('tasks.delete id=%s', id);
     return db.deleteFrom('tasks').where('id', '=', id).execute();

@@ -841,6 +841,11 @@ export function registerIpcHandlers() {
     TaskRepository.update(id, data),
   );
   ipcMain.handle(
+    'tasks:updatePendingMessage',
+    (_, id: string, pendingMessage: string | null) =>
+      TaskRepository.updatePendingMessage(id, pendingMessage),
+  );
+  ipcMain.handle(
     'tasks:delete',
     async (
       _,

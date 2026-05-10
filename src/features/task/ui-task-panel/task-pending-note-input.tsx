@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { Input } from '@/common/ui/input';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
-import { useUpdateTask } from '@/hooks/use-tasks';
+import { useUpdateTaskPendingMessage } from '@/hooks/use-tasks';
 
 /**
  * Self-contained pending-note input. Use with `key={taskId}` at the call site
@@ -16,7 +16,7 @@ export function TaskPendingNoteInput({
   pendingMessage: string | null;
 }) {
   const { mutate: updatePendingMessage, isPending: isUpdatingPendingMessage } =
-    useUpdateTask();
+    useUpdateTaskPendingMessage();
   const [value, setValue] = useState(pendingMessage ?? '');
   const debouncedValue = useDebouncedValue(value, 500);
   const lastSubmittedValueRef = useRef(pendingMessage ?? '');
@@ -45,9 +45,7 @@ export function TaskPendingNoteInput({
     lastSubmittedValueRef.current = debouncedValue;
     updatePendingMessage({
       id: taskId,
-      data: {
-        pendingMessage: debouncedValue.length > 0 ? debouncedValue : null,
-      },
+      pendingMessage: debouncedValue.length > 0 ? debouncedValue : null,
     });
   }, [debouncedValue, pendingMessage, taskId, updatePendingMessage, value]);
 

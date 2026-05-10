@@ -373,6 +373,10 @@ export interface Api {
       },
     ) => Promise<Task>;
     update: (id: string, data: UpdateTask) => Promise<Task>;
+    updatePendingMessage: (
+      id: string,
+      pendingMessage: string | null,
+    ) => Promise<Task>;
     delete: (
       id: string,
       options?: { deleteWorktree?: boolean },
@@ -1108,6 +1112,9 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         update: async () => {
+          throw new Error('API not available');
+        },
+        updatePendingMessage: async () => {
           throw new Error('API not available');
         },
         delete: async () => {},

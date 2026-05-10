@@ -122,6 +122,27 @@ export function useUpdateTask() {
   });
 }
 
+export function useUpdateTaskPendingMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      pendingMessage,
+    }: {
+      id: string;
+      pendingMessage: string | null;
+    }) => api.tasks.updatePendingMessage(id, pendingMessage),
+    onSuccess: (task, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', id] });
+      queryClient.invalidateQueries({
+        queryKey: ['tasks', { projectId: task.projectId }],
+      });
+      invalidateFeedItems(queryClient);
+    },
+  });
+}
+
 export function useDeleteTask() {
   const queryClient = useQueryClient();
   const clearAllRunCommandLogs = useTaskMessagesStore(
