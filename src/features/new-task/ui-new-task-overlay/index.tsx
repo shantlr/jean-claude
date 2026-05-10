@@ -10,7 +10,10 @@ import React, {
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
-import { BranchSelect } from '@/common/ui/branch-select';
+import {
+  BranchOrTaskSelect,
+  type BranchOrTaskSelection,
+} from '@/common/ui/branch-or-task-select';
 import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
 import {
@@ -30,7 +33,7 @@ import { useDeleteProjectTodo } from '@/hooks/use-project-todos';
 import { useProjects, useProjectBranches } from '@/hooks/use-projects';
 import { useBackendsSetting, useCompletionSetting } from '@/hooks/use-settings';
 import { useProjectSkills } from '@/hooks/use-skills';
-import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
+import { useCreateTaskWithWorktree, useProjectTasks } from '@/hooks/use-tasks';
 import { useWorkItems, useWorkItemComments } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
 import { compressImage } from '@/lib/image-compression';
@@ -232,6 +235,17 @@ export function NewTaskOverlay({
   const { data: branchInfos = [] } = useProjectBranches(selectedProjectId);
   const branches = useMemo(() => branchInfos.map((b) => b.name), [branchInfos]);
 
+  // Fetch active tasks for the selected project (for parent task selection)
+  const { data: projectTasks = [] } = useProjectTasks(selectedProjectId ?? '');
+  const activeProjectTasks = useMemo(
+    () =>
+      projectTasks.filter(
+        (t) =>
+          t.status !== 'completed' && t.status !== 'errored' && t.branchName,
+      ),
+    [projectTasks],
+  );
+
   // Get selected work items objects
   const selectedWorkItems = useMemo(() => {
     const ids = draft?.workItemIds ?? [];
@@ -379,6 +393,24 @@ export function NewTaskOverlay({
   const toggleWorktree = useCallback(
     (checked: boolean) => {
       updateDraft({ createWorktree: checked });
+    },
+    [updateDraft],
+  );
+
+  // Handle branch or parent task selection
+  const handleBranchOrTaskChange = useCallback(
+    (selection: BranchOrTaskSelection) => {
+      if (selection.type === 'task') {
+        updateDraft({
+          parentTaskId: selection.taskId,
+          sourceBranch: selection.taskBranch || null,
+        });
+      } else {
+        updateDraft({
+          parentTaskId: null,
+          sourceBranch: selection.branch,
+        });
+      }
     },
     [updateDraft],
   );
@@ -780,6 +812,7 @@ export function NewTaskOverlay({
           workItemIds,
           workItemUrls,
           updateWorkItemStatus: currentUpdateWorkItemStatus,
+          parentTaskId: draft?.parentTaskId ?? null,
           updatedAt: new Date().toISOString(),
           autoStart: true,
         })
@@ -1360,11 +1393,11 @@ export function NewTaskOverlay({
               </button>
             )}
 
-            {/* Source branch selector - only show when project is selected */}
+            {/* Source branch / parent task selector */}
             {!isNoteMode &&
               currentCreateWorktree &&
               selectedProjectId &&
-              branches.length > 0 && (
+              (branches.length > 0 || activeProjectTasks.length > 0) && (
                 <div
                   className="inline-flex shrink-0 items-center gap-[5px] rounded-[5px] px-2.5 py-[5px] text-xs"
                   style={{
@@ -1372,14 +1405,18 @@ export function NewTaskOverlay({
                     border: '1px solid oklch(1 0 0 / 0.07)',
                   }}
                 >
-                  <span style={{ color: 'oklch(0.55 0.01 280)' }}>from</span>
-                  <BranchSelect
+                  <span style={{ color: 'oklch(0.55 0.01 280)' }}>
+                    {draft?.parentTaskId ? 'child of' : 'from'}
+                  </span>
+                  <BranchOrTaskSelect
                     branches={branchInfos}
                     favoriteBranches={selectedProject?.favoriteBranches}
                     defaultBranch={selectedProject?.defaultBranch}
+                    activeTasks={activeProjectTasks}
                     value={currentSourceBranch ?? undefined}
-                    onChange={(branch) => updateDraft({ sourceBranch: branch })}
-                    label="Source branch"
+                    selectedTaskId={draft?.parentTaskId}
+                    onChange={handleBranchOrTaskChange}
+                    label="Source branch or parent task"
                     side="top"
                     size="xs"
                   />

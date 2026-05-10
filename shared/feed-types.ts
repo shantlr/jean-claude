@@ -33,6 +33,8 @@ export interface FeedItem {
   isDraft?: boolean;
   taskId?: string;
   taskType?: string; // TaskType — present when source === 'task'
+  parentTaskId?: string;
+  children?: FeedItem[];
   pendingMessage?: string;
   pullRequestId?: number;
   pullRequestUrl?: string;

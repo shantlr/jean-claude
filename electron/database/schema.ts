@@ -123,6 +123,7 @@ export interface TaskTable {
   pullRequestId: string | null;
   pullRequestUrl: string | null;
   pendingMessage: string | null;
+  parentTaskId: string | null;
   createdAt: Generated<string>;
   updatedAt: string;
 }

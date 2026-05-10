@@ -25,6 +25,7 @@ interface CreateTaskInput {
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
   pendingMessage?: string | null;
+  parentTaskId?: string | null;
   createdAt?: string;
   updatedAt: string;
 }
@@ -46,6 +47,7 @@ interface UpdateTaskInput {
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
   pendingMessage?: string | null;
+  parentTaskId?: string | null;
   updatedAt?: string;
 }
 
@@ -195,7 +197,41 @@ export const TaskRepository = {
         'projects.color as projectColor',
       ])
       .where('tasks.userCompleted', '=', 0)
+      .where('tasks.parentTaskId', 'is', null)
       .orderBy('tasks.createdAt', 'desc')
+      .execute();
+    return rows.map(toTask);
+  },
+
+  findChildrenForTasks: async (parentTaskIds: string[]) => {
+    if (parentTaskIds.length === 0) return {};
+    const rows = await db
+      .selectFrom('tasks')
+      .innerJoin('projects', 'projects.id', 'tasks.projectId')
+      .selectAll('tasks')
+      .select([
+        'projects.name as projectName',
+        'projects.color as projectColor',
+      ])
+      .where('tasks.parentTaskId', 'in', parentTaskIds)
+      .orderBy('tasks.sortOrder', 'asc')
+      .execute();
+
+    const grouped: Record<string, (typeof rows)[number][]> = {};
+    for (const row of rows) {
+      const pid = row.parentTaskId!;
+      if (!grouped[pid]) grouped[pid] = [];
+      grouped[pid].push(row);
+    }
+    return grouped;
+  },
+
+  findByParentTaskId: async (parentTaskId: string) => {
+    const rows = await db
+      .selectFrom('tasks')
+      .selectAll()
+      .where('parentTaskId', '=', parentTaskId)
+      .orderBy('sortOrder', 'asc')
       .execute();
     return rows.map(toTask);
   },

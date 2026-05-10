@@ -50,6 +50,7 @@ import * as m048 from './migrations/048_project_protected_branches';
 import * as m049 from './migrations/049_per_source_feed_priority';
 import * as m050 from './migrations/050_command_sort_order';
 import * as m051 from './migrations/051_project_favorite_branches';
+import * as m052 from './migrations/052_task_parent_task_id';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -102,6 +103,7 @@ const migrations: Record<string, Migration> = {
   '049_per_source_feed_priority': m049,
   '050_command_sort_order': m050,
   '051_project_favorite_branches': m051,
+  '052_task_parent_task_id': m052,
 };
 
 export const migrationProvider: MigrationProvider = {

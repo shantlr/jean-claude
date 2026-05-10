@@ -36,6 +36,8 @@ export interface NewTaskDraft {
   showFileExplorer: boolean;
   // Backlog conversion tracking
   backlogTodoId: string | null;
+  // Sub-task creation
+  parentTaskId: string | null;
 }
 
 interface NewTaskDraftState {

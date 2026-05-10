@@ -281,6 +281,7 @@ export interface Task {
   pullRequestId: string | null;
   pullRequestUrl: string | null;
   pendingMessage: string | null;
+  parentTaskId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -307,6 +308,7 @@ export interface NewTask {
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
   pendingMessage?: string | null;
+  parentTaskId?: string | null;
   createdAt?: string;
   updatedAt: string;
 }
@@ -328,6 +330,7 @@ export interface UpdateTask {
   pullRequestId?: string | null;
   pullRequestUrl?: string | null;
   pendingMessage?: string | null;
+  parentTaskId?: string | null;
   updatedAt?: string;
 }
 

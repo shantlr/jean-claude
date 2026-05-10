@@ -16,6 +16,7 @@ interface NewTaskFormDraft {
   workItemIds: string[] | null;
   workItemUrls: string[] | null;
   updateWorkItemStatus: boolean;
+  parentTaskId: string | null;
 }
 
 interface WorkItemsFilters {
@@ -34,6 +35,7 @@ const defaultDraft: NewTaskFormDraft = {
   workItemIds: null,
   workItemUrls: null,
   updateWorkItemStatus: true,
+  parentTaskId: null,
 };
 
 const defaultWorkItemsFilters: WorkItemsFilters = {

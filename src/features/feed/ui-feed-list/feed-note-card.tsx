@@ -113,6 +113,7 @@ export function FeedNoteCard({
       trigger={({ triggerRef }) => (
         <div
           ref={triggerRef as React.Ref<HTMLDivElement>}
+          role="link"
           tabIndex={0}
           draggable={isDraggable}
           onDragStart={onDragStart}
@@ -133,45 +134,53 @@ export function FeedNoteCard({
             }
           }}
           className={clsx(
-            'relative flex cursor-pointer flex-col gap-1 rounded-lg px-3.5 py-2.5 transition-[box-shadow,background,transform,padding] duration-200 ease-out',
+            'group/row relative flex cursor-pointer border-b transition-colors',
+            'border-line-soft',
             isSelected
-              ? 'border-acc/45 bg-glass-strong translate-x-2 border pl-5 shadow-[inset_0_0_0_1px_oklch(0.72_0.20_295_/_0.15),0_0_24px_oklch(0.72_0.20_295_/_0.10)]'
-              : 'hover:bg-glass-light border border-transparent hover:translate-x-0.5',
+              ? 'border-l-2 border-l-[var(--color-acc)]'
+              : 'border-l-2 border-l-transparent',
+            !isSelected && 'hover:bg-glass-light',
           )}
+          style={{ minHeight: 50 }}
         >
-          <span
-            aria-hidden="true"
-            className={clsx(
-              'bg-acc/80 pointer-events-none absolute top-1 bottom-1 -left-2.5 w-1 rounded-full shadow-[0_0_12px_oklch(var(--acc)_/_0.22)] transition-[opacity,transform] duration-200 ease-out',
-              isSelected
-                ? 'translate-x-0 scale-y-100 opacity-100'
-                : '-translate-x-1 scale-y-60 opacity-0',
-            )}
-          />
-          <div className="flex items-start gap-2">
-            <StickyNote className="text-status-done/50 mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-ink-1 min-w-0 flex-1 truncate text-sm">
-                  {notePreview.title}
-                </span>
-                <span className="text-ink-3 shrink-0 text-[11px] tabular-nums">
-                  {formatRelativeTime(item.timestamp)}
-                </span>
-              </div>
-              {notePreview.contentLines.length > 0 && (
-                <div className="text-ink-3 mt-0.5 text-xs leading-snug">
-                  {notePreview.contentLines.map((line, i) => (
-                    <div key={i} className="truncate">
-                      {line}
-                    </div>
-                  ))}
-                  {notePreview.hasMore && (
-                    <span className="text-ink-3/60 text-[11px]">…</span>
-                  )}
-                </div>
-              )}
+          {/* Icon column */}
+          <div
+            className="flex shrink-0 items-center justify-center"
+            style={{ width: 32 }}
+          >
+            <StickyNote className="text-ink-3 h-3.5 w-3.5" />
+          </div>
+
+          {/* Content column */}
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-2.5 pr-3.5">
+            {/* Title + time */}
+            <div className="flex items-start gap-1.5">
+              <span
+                className={clsx(
+                  'min-w-0 flex-1 truncate text-[12.5px] leading-snug',
+                  isSelected ? 'text-ink-0 font-medium' : 'text-ink-1',
+                )}
+              >
+                {notePreview.title}
+              </span>
+              <span className="text-ink-3 mt-0.5 shrink-0 font-mono text-[9.5px]">
+                {formatRelativeTime(item.timestamp)}
+              </span>
             </div>
+
+            {/* Content preview */}
+            {notePreview.contentLines.length > 0 && (
+              <div className="text-ink-3 text-[11px] leading-snug">
+                {notePreview.contentLines.map((line, i) => (
+                  <div key={i} className="truncate">
+                    {line}
+                  </div>
+                ))}
+                {notePreview.hasMore && (
+                  <span className="text-ink-3/60 text-[10px]">…</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

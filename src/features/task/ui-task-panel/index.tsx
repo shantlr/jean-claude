@@ -1272,6 +1272,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                       sourceBranch: task.branchName,
                       createWorktree: true,
                       inputMode: 'prompt',
+                      parentTaskId: task.id,
                     });
                     useOverlaysStore.getState().open('new-task');
                   }}

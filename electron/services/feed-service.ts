@@ -209,6 +209,64 @@ export async function getFeedItems(): Promise<FeedItem[]> {
     feedItems.push(taskFeedItem);
   }
 
+  // Fetch child tasks and nest them into parent feed items
+  const parentTaskIds = activeTasks.map((t) => t.id);
+  const childrenByParent =
+    await TaskRepository.findChildrenForTasks(parentTaskIds);
+
+  // Load steps for all child tasks
+  const allChildTasks = Object.values(childrenByParent).flat();
+  const childStepsByTaskId = await TaskStepRepository.findByTaskIds(
+    allChildTasks.map((c) => c.id),
+  );
+
+  for (const item of feedItems) {
+    if (item.source !== 'task' || !item.taskId) continue;
+    const children = childrenByParent[item.taskId];
+    if (!children?.length) continue;
+
+    item.children = children.map((childRow) => {
+      const child = childRow as typeof childRow & {
+        projectName: string;
+        projectColor: string;
+      };
+      const steps = childStepsByTaskId[child.id] ?? [];
+      const childAttention = deriveTaskAttention({
+        taskStatus: child.status as TaskStatus,
+        steps,
+      });
+      const childSubtitle = getSubtitleFromSteps({
+        stepStatuses: steps.map((s) => s.status),
+        stepNames: steps.map((s) => s.name),
+      });
+
+      return {
+        id: `task:${child.id}`,
+        source: 'task' as const,
+        attention: childAttention,
+        timestamp: child.updatedAt,
+        projectId: child.projectId,
+        projectName: child.projectName,
+        projectColor: child.projectColor,
+        projectPriority: 'normal' as const,
+        title: child.name ?? (child.prompt as string).slice(0, 80),
+        subtitle: childSubtitle,
+        hasUnread: Boolean(child.hasUnread),
+        taskId: child.id,
+        taskType: (child.type ?? 'agent') as string,
+        parentTaskId: child.parentTaskId ?? undefined,
+        pendingMessage: child.pendingMessage ?? undefined,
+        pullRequestId: child.pullRequestId
+          ? parseInt(child.pullRequestId, 10)
+          : undefined,
+        pullRequestUrl: child.pullRequestUrl ?? undefined,
+        workItemIds: child.workItemIds
+          ? JSON.parse(child.workItemIds as string)
+          : undefined,
+      };
+    });
+  }
+
   // Fetch PR items (with cache to avoid hammering Azure DevOps API)
   const prItems = await fetchPrFeedItems();
 

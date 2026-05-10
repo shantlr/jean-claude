@@ -770,3 +770,87 @@ button {
 @utility panel-edge-shadow-r {
   box-shadow: inset -1px 0 0 0 oklch(1 0 0 / 0.04);
 }
+
+/* ─── Feed Graph V3a Animations ───────────────────────────────── */
+
+/* Pulsing glow on running task nodes */
+@keyframes feed-node-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--color-status-run) 55%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 7px color-mix(in oklch, var(--color-status-run) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--color-status-run) 0%, transparent);
+  }
+}
+
+.feed-node-pulse {
+  animation: feed-node-pulse 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Flowing dashes on the rail for running tasks */
+@keyframes feed-rail-flow {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 -14px;
+  }
+}
+
+.feed-running-rail {
+  background-image: linear-gradient(
+    to bottom,
+    var(--color-status-run) 0 6px,
+    color-mix(in oklch, var(--color-status-run) 18%, transparent) 6px 14px
+  ) !important;
+  background-size: 100% 14px !important;
+  background-repeat: repeat-y !important;
+  opacity: 0.85 !important;
+  animation: feed-rail-flow 0.9s linear infinite;
+}
+
+/* Running row sweep gradient */
+@keyframes feed-row-flow {
+  0% {
+    background-position: 200% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.feed-running-row {
+  position: relative;
+  isolation: isolate;
+  box-shadow:
+    inset 3px 0 0 var(--color-status-run),
+    inset 0 0 28px -2px color-mix(in oklch, var(--color-status-run) 32%, transparent);
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--color-status-run) 6%, transparent) 0%,
+    color-mix(in oklch, var(--color-status-run) 30%, transparent) 18%,
+    color-mix(in oklch, var(--color-status-run) 6%, transparent) 38%,
+    color-mix(in oklch, var(--color-status-run) 6%, transparent) 50%,
+    color-mix(in oklch, var(--color-status-run) 30%, transparent) 68%,
+    color-mix(in oklch, var(--color-status-run) 6%, transparent) 88%,
+    color-mix(in oklch, var(--color-status-run) 6%, transparent) 100%
+  ) !important;
+  background-size: 200% 100% !important;
+  background-repeat: repeat !important;
+  animation: feed-row-flow 6s linear infinite !important;
+}
+
+/* Animated dashes on branch line for running sub-tasks */
+@keyframes feed-dash-flow {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+
+.feed-running-branch {
+  stroke-dasharray: 4 4;
+  animation: feed-dash-flow 0.9s linear infinite;
+}

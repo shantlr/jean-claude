@@ -5,7 +5,7 @@ import {
   ChevronRight,
   ListTodo,
   Loader2,
-  Pin,
+  Plus,
 } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useCommands } from '@/common/hooks/use-commands';
 import { useFeed } from '@/hooks/use-feed';
 import { useFeedStore } from '@/stores/feed';
+import { useOverlaysStore } from '@/stores/overlays';
 import type { FeedItem } from '@shared/feed-types';
 
 import { FeedItemCard } from './feed-item-card';
@@ -123,6 +124,7 @@ export function FeedList() {
   } = useFeed();
   const reorderPinned = useFeedStore((s) => s.reorderPinned);
   const pinned = useFeedStore((s) => s.pinned);
+  const openOverlay = useOverlaysStore((s) => s.open);
   const pin = useFeedStore((s) => s.pin);
   const unpin = useFeedStore((s) => s.unpin);
   const dismiss = useFeedStore((s) => s.dismiss);
@@ -470,7 +472,7 @@ export function FeedList() {
 
   return (
     <div
-      className="flex h-full flex-col overflow-y-auto overscroll-contain px-2 py-2.5"
+      className="flex h-full flex-col overflow-y-auto overscroll-contain"
       style={{
         maskImage:
           'linear-gradient(to bottom, transparent 0px, black 8px, black calc(100% - 8px), transparent 100%)',
@@ -492,6 +494,22 @@ export function FeedList() {
         </div>
       )}
 
+      {/* Section header with + button */}
+      {totalCount > 0 && (
+        <div className="flex items-center justify-between px-3 pb-1">
+          <span className="text-ink-3 text-[10px] font-semibold tracking-wider uppercase">
+            {pinnedItems.length > 0 ? 'Pinned' : 'Feed'}
+          </span>
+          <button
+            type="button"
+            onClick={() => openOverlay('new-task')}
+            className="text-ink-3 hover:bg-glass-medium hover:text-ink-1 flex h-5 w-5 items-center justify-center rounded transition-colors"
+          >
+            <Plus size={13} strokeWidth={2.5} />
+          </button>
+        </div>
+      )}
+
       {/* Pinned zone - visible when items are pinned or when dragging */}
       {(pinnedItems.length > 0 || draggedId) && (
         <div
@@ -499,14 +517,10 @@ export function FeedList() {
           onDragLeave={handlePinZoneDragLeave}
           onDrop={handlePinZoneDrop}
           className={clsx(
-            'flex flex-col gap-1.5 rounded-md p-1 transition-colors',
+            'flex flex-col transition-colors',
             dragOverPinZone && 'bg-acc/10',
           )}
         >
-          <div className="flex items-center gap-1.5 px-1.5 py-1">
-            <Pin size={12} className="text-ink-3" />
-            <span className="text-ink-3 text-xs font-medium">Pinned</span>
-          </div>
           {pinnedItems.map((item) => (
             <FeedCard
               key={item.id}
@@ -528,7 +542,7 @@ export function FeedList() {
         (actionNeededItems.length > 0 ||
           normalItems.length > 0 ||
           activeTaskItems.length > 0) && (
-          <div className="border-line-soft mx-2 my-1 border-t border-dashed" />
+          <div className="border-line-soft my-1 border-t border-dashed" />
         )}
 
       {/* Action needed zone - permissions, questions, errors (sticky + stacked) */}
@@ -555,7 +569,7 @@ export function FeedList() {
 
       {/* High priority zone */}
       {highPriorityItems.length > 0 && (
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col">
           {highPriorityItems.map((item) => (
             <FeedCard
               key={item.id}
@@ -572,11 +586,11 @@ export function FeedList() {
       {/* Divider between active tasks/high-priority and auto-sorted */}
       {(activeTaskItems.length > 0 || highPriorityItems.length > 0) &&
         normalItems.length > 0 && (
-          <div className="border-line-soft mx-2 my-1 border-t border-dashed" />
+          <div className="border-line-soft my-1 border-t border-dashed" />
         )}
 
       {/* Auto-sorted zone */}
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col">
         {normalItems.map((item) => (
           <FeedCard
             key={item.id}
@@ -594,7 +608,7 @@ export function FeedList() {
         <div className="mt-2">
           <button
             onClick={() => setLowPriorityExpanded((prev) => !prev)}
-            className="text-ink-3 hover:bg-glass-light/50 hover:text-ink-2 flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs transition-colors"
+            className="text-ink-3 hover:bg-glass-light/50 hover:text-ink-2 flex w-full items-center gap-1.5 px-3 py-1.5 text-xs transition-colors"
           >
             {lowPriorityExpanded ? (
               <ChevronDown size={12} />
@@ -604,7 +618,7 @@ export function FeedList() {
             {lowPriorityItems.length} low priority
           </button>
           {lowPriorityExpanded && (
-            <div className="flex flex-col gap-1.5 pt-1 opacity-60">
+            <div className="flex flex-col pt-1 opacity-60">
               {lowPriorityItems.map((item) => (
                 <FeedCard
                   key={item.id}
