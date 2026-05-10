@@ -1,0 +1,841 @@
+import { AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import type { MouseEvent } from 'react';
+import { useCallback, useState, useMemo } from 'react';
+
+import { formatModelName } from '@/hooks/use-model';
+import { formatNumber } from '@/lib/number';
+import { formatDuration } from '@/lib/time';
+import type {
+  NormalizedEntry,
+  NormalizedToolUse,
+  ToolUseByName,
+} from '@shared/normalized-message-v2';
+
+import { MarkdownContent } from '../../ui-markdown-content';
+import type { DisplayMessage, PromptGroup } from '../message-merger';
+import { SkillEntry } from '../ui-skill-entry';
+import { SubagentEntry } from '../ui-subagent-entry';
+import {
+  getToolActivitySummary,
+  getLastActivitySummary,
+  getTodoProgress,
+} from '../ui-subagent-entry/last-activity';
+import { TimelineEntry } from '../ui-timeline-entry';
+
+// ── Helpers ────────────────────────────────────────────────────────────
+
+const PROMPT_MAX_CHARS = 300;
+
+/**
+ * Get live activity for a running prompt group:
+ * active subagents, active skills, latest todo, latest message.
+ */
+function getRunningActivity(childMessages: DisplayMessage[]): {
+  subagents: Array<{
+    id: string;
+    name: string;
+    kind: string;
+    step: string | null;
+    model: string | null;
+  }>;
+  todos: Array<{
+    text: string;
+    done: boolean;
+    current: boolean;
+  }>;
+  latestMessage: string | null;
+} {
+  const subagents: Array<{
+    id: string;
+    name: string;
+    kind: string;
+    step: string | null;
+    model: string | null;
+  }> = [];
+  let latestMessage: string | null = null;
+
+  // Collect active subagents
+  for (const dm of childMessages) {
+    if (dm.kind === 'subagent' && !dm.toolUse.result) {
+      const subAgent =
+        dm.toolUse.name === 'sub-agent'
+          ? (dm.toolUse as ToolUseByName<'sub-agent'>)
+          : undefined;
+      const innerActivity = getLastActivitySummary(dm.childEntries);
+      // Get model from child entries
+      let model: string | null = null;
+      for (let i = dm.childEntries.length - 1; i >= 0; i--) {
+        if (dm.childEntries[i].model) {
+          model = dm.childEntries[i].model ?? null;
+          break;
+        }
+      }
+      subagents.push({
+        id: dm.toolUse.toolId,
+        name: subAgent?.input.description ?? 'Sub-agent',
+        kind: subAgent?.input.agentType ?? 'Agent',
+        step: innerActivity,
+        model,
+      });
+    }
+  }
+
+  // Collect latest todo state from most recent todo-write in ALL child messages
+  const allEntries: NormalizedEntry[] = [];
+  for (const dm of childMessages) {
+    if (dm.kind === 'entry') allEntries.push(dm.entry);
+    if (dm.kind === 'subagent') allEntries.push(...dm.childEntries);
+    if (dm.kind === 'skill') allEntries.push(...dm.childEntries);
+  }
+  const todoProgress = getTodoProgress(allEntries);
+  const todos: Array<{ text: string; done: boolean; current: boolean }> = [];
+
+  if (todoProgress) {
+    // Re-extract actual todo items from the most recent todo-write
+    for (let i = allEntries.length - 1; i >= 0; i--) {
+      const entry = allEntries[i];
+      if (entry.type !== 'tool-use' || entry.name !== 'todo-write') continue;
+      const todoEntry = entry as ToolUseByName<'todo-write'>;
+      const todoItems = todoEntry.result?.newTodos ?? todoEntry.input.todos;
+      if (todoItems && todoItems.length > 0) {
+        for (const t of todoItems) {
+          todos.push({
+            text: t.description ?? t.content,
+            done: t.status === 'completed',
+            current: t.status === 'in_progress',
+          });
+        }
+        break;
+      }
+    }
+  }
+
+  // Latest message (fallback when no subagents)
+  if (subagents.length === 0) {
+    for (let i = childMessages.length - 1; i >= 0; i--) {
+      const dm = childMessages[i];
+      if (dm.kind === 'entry') {
+        if (dm.entry.type === 'tool-use') {
+          latestMessage = getToolActivitySummary(dm.entry as NormalizedToolUse);
+          break;
+        }
+        if (dm.entry.type === 'assistant-message' && dm.entry.value.trim()) {
+          const preview = dm.entry.value.slice(0, 100);
+          latestMessage =
+            preview.length < dm.entry.value.length ? `${preview}...` : preview;
+          break;
+        }
+        if (dm.entry.type === 'thinking') {
+          latestMessage = 'Thinking...';
+          break;
+        }
+      }
+      if (dm.kind === 'subagent' && dm.toolUse.result) {
+        const sa =
+          dm.toolUse.name === 'sub-agent'
+            ? (dm.toolUse as ToolUseByName<'sub-agent'>)
+            : undefined;
+        latestMessage = `Completed: ${sa?.input.description ?? 'Sub-agent'}`;
+        break;
+      }
+    }
+    if (!latestMessage) latestMessage = 'Working...';
+  }
+
+  return { subagents, todos, latestMessage };
+}
+
+// ── Sub-components ─────────────────────────────────────────────────────
+
+/** Prompt section — glass card, expand/collapse for long prompts only */
+function PromptSection({
+  group,
+  onFilePathClick,
+}: {
+  group: PromptGroup;
+  onFilePathClick?: (
+    filePath: string,
+    lineStart?: number,
+    lineEnd?: number,
+  ) => void;
+}) {
+  const promptText = group.promptEntry.value;
+  const isLong = promptText.length > PROMPT_MAX_CHARS;
+  const [open, setOpen] = useState(false);
+  const displayText =
+    open || !isLong
+      ? promptText
+      : promptText.slice(0, PROMPT_MAX_CHARS).trimEnd();
+
+  return (
+    <div
+      className="group/prompt border-glass-border bg-glass-light relative rounded-md border transition-colors duration-100"
+      style={isLong ? { cursor: 'pointer' } : undefined}
+      onClick={isLong ? () => setOpen(!open) : undefined}
+      onMouseOver={
+        isLong
+          ? (e) => {
+              e.currentTarget.style.background = 'oklch(1 0 0 / 0.06)';
+            }
+          : undefined
+      }
+      onMouseOut={
+        isLong
+          ? (e) => {
+              e.currentTarget.style.background = '';
+            }
+          : undefined
+      }
+    >
+      <div className="px-3.5 pt-2.5 pb-2.5">
+        {/* Timestamp */}
+        {group.promptEntry.date && (
+          <div className="text-ink-4 pointer-events-none absolute top-2.5 right-3 font-mono text-[10px]">
+            {new Date(group.promptEntry.date).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </div>
+        )}
+
+        {/* Prompt text */}
+        <div className="text-ink-1 pr-14 text-[12.5px] leading-relaxed">
+          <MarkdownContent
+            content={displayText}
+            onFilePathClick={onFilePathClick}
+          />
+          {isLong && !open && <span className="text-ink-3">&hellip;</span>}
+        </div>
+
+        {/* Show more / less toggle */}
+        {isLong && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(!open);
+            }}
+            className="text-ink-3 hover:text-ink-1 mt-1.5 flex items-center gap-1 font-mono text-[10.5px]"
+          >
+            {open ? (
+              <ChevronDown className="h-2.5 w-2.5" />
+            ) : (
+              <ChevronRight className="h-2.5 w-2.5" />
+            )}
+            {open ? 'collapse' : 'show more'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Subagent card — shimmer sweep + pulse-ring indicator */
+function SubagentCard({
+  sa,
+}: {
+  sa: {
+    id: string;
+    name: string;
+    kind: string;
+    step: string | null;
+    model: string | null;
+  };
+}) {
+  return (
+    <div
+      className="relative flex items-center gap-2.5 overflow-hidden rounded-md border px-2.5 py-1.5"
+      style={{
+        background: `linear-gradient(135deg,
+          color-mix(in oklch, var(--color-acc) 14%, transparent) 0%,
+          color-mix(in oklch, var(--color-acc) 4%, transparent) 45%,
+          oklch(1 0 0 / 0.02) 100%)`,
+        borderColor: `color-mix(in oklch, var(--color-acc) 28%, transparent)`,
+        boxShadow: `0 0 24px -8px color-mix(in oklch, var(--color-acc) 60%, transparent), inset 0 1px 0 oklch(1 0 0 / 0.04)`,
+      }}
+    >
+      {/* Shimmer sweep */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: `linear-gradient(110deg,
+            transparent 0%, transparent 40%,
+            color-mix(in oklch, var(--color-acc) 22%, transparent) 50%,
+            transparent 60%, transparent 100%)`,
+          animation: 'rg-shimmer-sweep 3.2s ease-in-out infinite',
+        }}
+      />
+
+      {/* Pulse-ring indicator */}
+      <div className="relative h-2.5 w-2.5 shrink-0">
+        <span
+          className="bg-acc absolute inset-0 rounded-full"
+          style={{ opacity: 0.85, boxShadow: '0 0 8px var(--color-acc)' }}
+        />
+        <span
+          className="border-acc absolute inset-0 rounded-full border"
+          style={{ animation: 'rg-pulse-ring 1.8s ease-out infinite' }}
+        />
+      </div>
+
+      {/* Content */}
+      <div className="relative flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="text-ink-1 flex items-baseline gap-2 overflow-hidden font-mono text-xs">
+          <span className="truncate">{sa.name}</span>
+          <span className="text-ink-3 shrink-0 rounded bg-white/[0.06] px-1.5 py-px text-[9.5px] font-semibold tracking-wide uppercase">
+            {sa.kind}
+          </span>
+        </div>
+        {sa.step && (
+          <div className="text-ink-3 flex items-center gap-2 font-mono text-[10.5px]">
+            <span className="opacity-85" style={{ color: 'var(--color-acc)' }}>
+              ›
+            </span>
+            <span className="min-w-0 flex-1 truncate">
+              {sa.step}
+              <span className="rg-caret">▍</span>
+            </span>
+            {sa.model && (
+              <span className="text-ink-4 shrink-0">
+                {formatModelName(sa.model)}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Todo row — checkbox with accent styling */
+function TodoRow({
+  todo,
+}: {
+  todo: { text: string; done: boolean; current: boolean };
+}) {
+  return (
+    <div
+      className="flex items-center gap-2 rounded px-1.5 py-0.5 font-mono text-xs"
+      style={
+        todo.current
+          ? {
+              background: `color-mix(in oklch, var(--color-acc) 8%, transparent)`,
+            }
+          : undefined
+      }
+    >
+      {/* Checkbox */}
+      <span
+        className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm"
+        style={{
+          border: todo.done
+            ? '1px solid var(--color-acc)'
+            : todo.current
+              ? '1px solid color-mix(in oklch, var(--color-acc) 60%, transparent)'
+              : '1px solid oklch(1 0 0 / 0.18)',
+          background: todo.done ? 'var(--color-acc)' : 'transparent',
+          boxShadow:
+            todo.current && !todo.done
+              ? '0 0 8px -2px var(--color-acc)'
+              : 'none',
+        }}
+      >
+        {todo.done && (
+          <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+            <path
+              d="M2.5 6.5L5 9l4.5-5.5"
+              stroke="oklch(0.1 0 0)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
+        {todo.current && !todo.done && (
+          <span
+            className="bg-acc h-1.5 w-1.5 rounded-full"
+            style={{ animation: 'rg-pulse-glow 1.4s ease-in-out infinite' }}
+          />
+        )}
+      </span>
+
+      {/* Text */}
+      <span
+        className="min-w-0 flex-1 truncate"
+        style={{
+          color: todo.done
+            ? 'var(--color-ink-3)'
+            : todo.current
+              ? 'var(--color-ink-1)'
+              : 'var(--color-ink-2)',
+          textDecoration: todo.done ? 'line-through' : 'none',
+          textDecorationColor: 'oklch(1 0 0 / 0.25)',
+        }}
+      >
+        {todo.text}
+      </span>
+
+      {/* NOW label */}
+      {todo.current && (
+        <span className="text-acc-ink shrink-0 font-mono text-[9px] font-semibold tracking-wide uppercase">
+          now
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Result block — ✓ checkmark + text + bullets + cost line */
+function ResultBlock({
+  resultText,
+  stats,
+  isError,
+  onFilePathClick,
+}: {
+  resultText: string | null;
+  stats: string | null;
+  isError: boolean;
+  onFilePathClick?: (
+    filePath: string,
+    lineStart?: number,
+    lineEnd?: number,
+  ) => void;
+}) {
+  if (isError) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-red-400">
+        <AlertCircle className="h-3 w-3 shrink-0" />
+        <span>{resultText || 'Unknown error'}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="text-ink-1 font-mono text-xs leading-relaxed">
+      <div className="flex items-baseline gap-2">
+        <span className="text-acc-ink w-3 shrink-0 text-center">✓</span>
+        <div className="min-w-0 flex-1">
+          {resultText && (
+            <div className="mb-0.5">
+              <MarkdownContent
+                content={resultText}
+                onFilePathClick={onFilePathClick}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+      {stats && (
+        <div className="text-ink-4 mt-2 flex gap-3.5 pl-5 font-mono text-[10.5px]">
+          {stats}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Running summary — subagent cards, todo checklist, latest message */
+function RunningSummary({
+  activity,
+}: {
+  activity: ReturnType<typeof getRunningActivity>;
+}) {
+  return (
+    <div className="text-ink-1 flex flex-col gap-2.5 font-mono text-xs">
+      {/* Subagents */}
+      {activity.subagents.length > 0 && (
+        <div>
+          <div className="text-ink-4 mb-1.5 flex items-center gap-1.5 font-mono text-[10px] tracking-wider uppercase">
+            <span className="text-acc-ink">◆</span>
+            <span>subagents</span>
+            <span
+              className="text-acc-ink inline-flex items-center gap-1 rounded-full px-1.5 py-px text-[9.5px] font-semibold tracking-normal"
+              style={{
+                background:
+                  'color-mix(in oklch, var(--color-acc) 18%, transparent)',
+              }}
+            >
+              <span
+                className="bg-acc h-1 w-1 rounded-full"
+                style={{
+                  animation: 'rg-pulse-glow 1.4s ease-in-out infinite',
+                }}
+              />
+              {activity.subagents.length} live
+            </span>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {activity.subagents.map((sa) => (
+              <SubagentCard key={sa.id} sa={sa} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Todo list */}
+      {activity.todos.length > 0 && (
+        <div>
+          <div className="text-ink-4 mb-1.5 flex items-center gap-1.5 font-mono text-[10px] tracking-wider uppercase">
+            <span>todo</span>
+            <span className="text-ink-3 rounded-full bg-white/[0.06] px-1.5 py-px text-[9.5px] font-semibold tracking-normal">
+              {activity.todos.filter((t) => t.done).length}/
+              {activity.todos.length}
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            {activity.todos.map((td, i) => (
+              <TodoRow key={i} todo={td} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Latest message */}
+      {activity.latestMessage && (
+        <div>
+          <div className="text-ink-4 mb-1 font-mono text-[10px] tracking-wider uppercase">
+            latest
+          </div>
+          <div className="text-ink-2 flex items-baseline gap-2">
+            <span className="text-ink-4 w-3 shrink-0 text-center">·</span>
+            <span className="flex-1">
+              {activity.latestMessage}
+              <span className="rg-caret">▍</span>
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────
+
+/**
+ * Renders a prompt group as two sections:
+ *
+ * 1. **Prompt section** — glass card, expand/collapse for long prompts
+ * 2. **Agent section** — dark glass container with header bar + collapsible body
+ *    - Running: shimmer text header, subagent cards, todos, latest message
+ *    - Completed: result block with ✓, stats, bullets
+ *    - Error/Interrupted: starts expanded
+ */
+export function PromptGroupEntry({
+  group,
+  isLast = false,
+  onFilePathClick,
+  onToolDiffClick,
+  onEntryContextMenu,
+}: {
+  group: PromptGroup;
+  isLast?: boolean;
+  onFilePathClick?: (
+    filePath: string,
+    lineStart?: number,
+    lineEnd?: number,
+  ) => void;
+  onToolDiffClick?: (
+    filePath: string,
+    oldString: string,
+    newString: string,
+  ) => void;
+  onEntryContextMenu?: (e: MouseEvent, entry: NormalizedEntry) => void;
+}) {
+  const isError = group.status === 'error';
+  const isInterrupted = group.status === 'interrupted';
+  const isRunning = group.status === 'running';
+  // Details expand/collapse:
+  // - error/interrupted on last group: start expanded
+  // - previous (non-last) groups: always default collapsed
+  // - user can still manually toggle any group
+  const [detailsToggled, setDetailsToggled] = useState<boolean | null>(null);
+  const defaultDetailsExpanded = isLast && (isError || isInterrupted);
+  const detailsExpanded = detailsToggled ?? defaultDetailsExpanded;
+
+  // Result summary
+  const resultSummary = useMemo(() => {
+    if (!group.resultEntry) return null;
+    const entry = group.resultEntry;
+    if (entry.isError) {
+      return {
+        isError: true,
+        stats: null,
+        text: entry.value || 'Unknown error',
+      };
+    }
+    const cost = entry.cost?.toFixed(2) || '0.00';
+    const tokens = formatNumber(
+      (entry.usage?.inputTokens ?? 0) + (entry.usage?.outputTokens ?? 0),
+    );
+    const durationMs = group.durationMs ?? entry.durationMs ?? 0;
+    return {
+      isError: false,
+      stats: `${tokens} tok · ${formatDuration(durationMs)} · $${cost}`,
+      text: entry.value || null,
+    };
+  }, [group.resultEntry, group.durationMs]);
+
+  // Activity for running state
+  const activity = useMemo(() => {
+    if (!isRunning) return null;
+    return getRunningActivity(group.childMessages);
+  }, [isRunning, group.childMessages]);
+
+  const toggleDetails = useCallback(
+    () =>
+      setDetailsToggled((prev) => {
+        const current = prev ?? defaultDetailsExpanded;
+        return !current;
+      }),
+    [defaultDetailsExpanded],
+  );
+
+  // Compute step count and elapsed time for header
+  const stepCount = group.childMessages.length;
+  const elapsed = useMemo(() => {
+    if (!isRunning || !group.promptEntry.date) return null;
+    const startMs = new Date(group.promptEntry.date).getTime();
+    const nowMs = Date.now();
+    const sec = Math.floor((nowMs - startMs) / 1000);
+    const min = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${min}:${String(s).padStart(2, '0')}`;
+  }, [isRunning, group.promptEntry.date]);
+
+  // Compute file edit/write stats from child messages
+  const fileStats = useMemo(() => {
+    const files = new Set<string>();
+    let added = 0;
+    let removed = 0;
+
+    function countLines(s: string): number {
+      if (!s) return 0;
+      return s.split('\n').length;
+    }
+
+    function processEntries(entries: NormalizedEntry[]) {
+      for (const entry of entries) {
+        if (entry.type !== 'tool-use') continue;
+        if (entry.name === 'edit') {
+          const e = entry as ToolUseByName<'edit'>;
+          files.add(e.input.filePath);
+          const oldLines = countLines(e.input.oldString);
+          const newLines = countLines(e.input.newString);
+          if (newLines > oldLines) added += newLines - oldLines;
+          else removed += oldLines - newLines;
+        } else if (entry.name === 'write') {
+          const w = entry as ToolUseByName<'write'>;
+          files.add(w.input.filePath);
+          added += countLines(w.input.value);
+        }
+      }
+    }
+
+    for (const dm of group.childMessages) {
+      if (dm.kind === 'entry') processEntries([dm.entry]);
+      if (dm.kind === 'subagent') processEntries(dm.childEntries);
+      if (dm.kind === 'skill') processEntries(dm.childEntries);
+    }
+
+    if (files.size === 0) return null;
+    return { fileCount: files.size, added, removed };
+  }, [group.childMessages]);
+
+  return (
+    <div className="mb-4">
+      {/* Part 1: Prompt section */}
+      <PromptSection group={group} onFilePathClick={onFilePathClick} />
+
+      {/* Part 2: Agent section — flex row with optional sticky collapse gutter */}
+      <div className={`mt-2 flex ${detailsExpanded ? 'gap-0' : ''}`}>
+        {/* Sticky collapse gutter — only when expanded */}
+        {detailsExpanded && (
+          <div className="relative w-5 shrink-0">
+            <button
+              type="button"
+              onClick={toggleDetails}
+              className="sticky top-[50vh] z-10 -mr-1 flex h-6 w-5 -translate-y-1/2 cursor-pointer items-center justify-center rounded-sm transition-opacity duration-150"
+              style={{
+                background: 'oklch(1 0 0 / 0.06)',
+                border: '1px solid oklch(1 0 0 / 0.08)',
+                opacity: 0.4,
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.opacity = '0.4';
+              }}
+              aria-label="Collapse timeline"
+            >
+              <ChevronDown className="text-ink-2 h-3 w-3" />
+            </button>
+          </div>
+        )}
+
+        <div
+          className="min-w-0 flex-1 rounded-md"
+          style={{
+            background: 'oklch(0.06 0.01 280 / 0.5)',
+            border: '1px solid oklch(1 0 0 / 0.06)',
+          }}
+        >
+          {/* Header bar */}
+          <div
+            className="text-ink-3 flex cursor-pointer items-center gap-2 px-3 py-1.5 font-mono text-[10.5px] tracking-wide uppercase select-none"
+            style={{
+              borderBottom: detailsExpanded
+                ? '1px solid oklch(1 0 0 / 0.06)'
+                : 'none',
+              background: 'oklch(1 0 0 / 0.02)',
+            }}
+            onClick={toggleDetails}
+          >
+            {detailsExpanded ? (
+              <ChevronDown className="h-2.5 w-2.5" />
+            ) : (
+              <ChevronRight className="h-2.5 w-2.5" />
+            )}
+
+            {isRunning ? (
+              <>
+                <span className="inline-flex items-center gap-1.5">
+                  <span
+                    className="bg-acc h-1.5 w-1.5 rounded-full"
+                    style={{
+                      boxShadow:
+                        '0 0 8px var(--color-acc), 0 0 14px color-mix(in oklch, var(--color-acc) 60%, transparent)',
+                      animation: 'rg-pulse-glow 1.4s ease-in-out infinite',
+                    }}
+                  />
+                  <span className="rg-running-text uppercase">
+                    running
+                    <span className="rg-running-dots">
+                      <span>.</span>
+                      <span>.</span>
+                      <span>.</span>
+                    </span>
+                  </span>
+                </span>
+                {elapsed && (
+                  <span className="text-ink-4 ml-1.5">{elapsed}</span>
+                )}
+              </>
+            ) : (
+              <>
+                <span className="text-ink-2">{stepCount} steps</span>
+                {resultSummary?.stats && (
+                  <span className="text-ink-4 ml-1.5 tracking-normal normal-case">
+                    {resultSummary.stats}
+                  </span>
+                )}
+              </>
+            )}
+
+            <div className="flex-1" />
+            <span className="text-ink-4 tracking-normal normal-case">
+              {detailsExpanded ? 'hide timeline' : 'show timeline'}
+            </span>
+          </div>
+
+          {/* Body */}
+          <div className="px-3.5 py-2.5">
+            {detailsExpanded ? (
+              /* Expanded: full child timeline */
+              <div className="flex flex-col gap-0.5">
+                {group.childMessages.map((dm, index) => {
+                  if (dm.kind === 'skill') {
+                    return (
+                      <SkillEntry
+                        key={index}
+                        skillToolUse={dm.skillToolUse}
+                        promptEntry={dm.promptEntry}
+                        onFilePathClick={onFilePathClick}
+                      />
+                    );
+                  }
+                  if (dm.kind === 'compacting') return null;
+                  if (dm.kind === 'subagent') {
+                    return (
+                      <SubagentEntry
+                        key={index}
+                        toolUse={dm.toolUse}
+                        childEntries={dm.childEntries}
+                        onFilePathClick={onFilePathClick}
+                        onToolDiffClick={onToolDiffClick}
+                        onEntryContextMenu={onEntryContextMenu}
+                      />
+                    );
+                  }
+                  return (
+                    <div
+                      key={index}
+                      onContextMenu={
+                        onEntryContextMenu
+                          ? (e) => onEntryContextMenu(e, dm.entry)
+                          : undefined
+                      }
+                    >
+                      <TimelineEntry
+                        entry={dm.entry}
+                        onFilePathClick={onFilePathClick}
+                        onToolDiffClick={onToolDiffClick}
+                      />
+                    </div>
+                  );
+                })}
+                {/* Append result or running summary at bottom when expanded */}
+                {!isRunning && group.resultEntry && (
+                  <div className="mt-2.5 border-t border-dashed border-white/[0.08] pt-2.5">
+                    <ResultBlock
+                      resultText={resultSummary?.text ?? null}
+                      stats={resultSummary?.stats ?? null}
+                      isError={resultSummary?.isError ?? false}
+                      onFilePathClick={onFilePathClick}
+                    />
+                  </div>
+                )}
+                {isRunning && activity && (
+                  <div className="mt-2.5 border-t border-dashed border-white/[0.08] pt-2.5">
+                    <RunningSummary activity={activity} />
+                  </div>
+                )}
+              </div>
+            ) : isRunning && activity ? (
+              /* Collapsed running: live summary */
+              <RunningSummary activity={activity} />
+            ) : resultSummary ? (
+              /* Collapsed done: result block */
+              <ResultBlock
+                resultText={resultSummary.text}
+                stats={resultSummary.stats}
+                isError={resultSummary.isError}
+                onFilePathClick={onFilePathClick}
+              />
+            ) : isInterrupted ? (
+              <span className="text-ink-3 text-xs">Interrupted</span>
+            ) : null}
+          </div>
+
+          {/* Changes summary — bottom of agent section */}
+          {fileStats && (
+            <div
+              className="text-ink-4 flex items-center gap-3 px-3.5 py-1.5 font-mono text-[10.5px]"
+              style={{ borderTop: '1px solid oklch(1 0 0 / 0.06)' }}
+            >
+              <span>
+                {fileStats.fileCount}{' '}
+                {fileStats.fileCount === 1 ? 'file' : 'files'} changed
+              </span>
+              {fileStats.added > 0 && (
+                <span className="text-status-done">+{fileStats.added}</span>
+              )}
+              {fileStats.removed > 0 && (
+                <span className="text-status-fail">−{fileStats.removed}</span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

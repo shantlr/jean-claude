@@ -996,3 +996,73 @@ button {
     transparent
   ) !important;
 }
+
+/* ── Request Group: running shimmer text ── */
+@keyframes rg-text-shimmer {
+  0%   { background-position: -120% 0; }
+  100% { background-position: 220% 0; }
+}
+
+@utility rg-running-text {
+  background: linear-gradient(100deg,
+    oklch(0.55 0.04 280) 0%,
+    oklch(0.55 0.04 280) 28%,
+    oklch(0.95 0.02 280) 42%,
+    var(--color-acc-ink) 50%,
+    oklch(0.95 0.02 280) 58%,
+    oklch(0.55 0.04 280) 72%,
+    oklch(0.55 0.04 280) 100%);
+  background-size: 240% 100%;
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+  animation: rg-text-shimmer 2s linear infinite;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-shadow: 0 0 18px color-mix(in oklch, var(--color-acc-ink) 35%, transparent);
+  filter: drop-shadow(0 0 4px color-mix(in oklch, var(--color-acc-ink) 30%, transparent));
+}
+
+/* ── Request Group: bouncing dots ── */
+@keyframes rg-dot-bounce {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40%           { opacity: 1;    transform: translateY(-2px); }
+}
+
+.rg-running-dots span {
+  display: inline-block;
+  animation: rg-dot-bounce 1.2s ease-in-out infinite;
+}
+.rg-running-dots span:nth-child(2) { animation-delay: 0.15s; }
+.rg-running-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+/* ── Request Group: shimmer sweep for subagent cards ── */
+@keyframes rg-shimmer-sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+/* ── Request Group: pulse ring for subagent indicator ── */
+@keyframes rg-pulse-ring {
+  0%   { transform: scale(0.85); opacity: 0.9; }
+  80%  { transform: scale(1.8);  opacity: 0; }
+  100% { transform: scale(1.8);  opacity: 0; }
+}
+
+/* ── Request Group: pulse glow for dots/checkboxes ── */
+@keyframes rg-pulse-glow {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+
+/* ── Request Group: blinking caret ── */
+@keyframes rg-blink {
+  50% { opacity: 0; }
+}
+
+.rg-caret {
+  display: inline-block;
+  margin-left: 2px;
+  color: var(--color-acc-ink);
+  animation: rg-blink 1s steps(2, start) infinite;
+}

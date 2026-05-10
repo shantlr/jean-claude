@@ -2,7 +2,7 @@ import type { RefObject } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import type { DisplayMessage } from '../message-merger';
+import type { StreamMessage } from '../message-merger';
 import { usePromptNavigation } from '../use-prompt-navigation';
 
 function ChipTooltip({
@@ -83,18 +83,28 @@ function PromptChip({
 
 export function PromptSidebar({
   scrollContainerRef,
-  displayMessages,
+  streamMessages,
   bottomPadding = 0,
 }: {
   scrollContainerRef: RefObject<HTMLDivElement | null>;
-  displayMessages: DisplayMessage[];
+  streamMessages: StreamMessage[];
   bottomPadding?: number;
 }) {
   const prompts = useMemo(() => {
     const items: Array<{ index: number; text: string }> = [];
     let promptIndex = 0;
 
-    for (const message of displayMessages) {
+    for (const message of streamMessages) {
+      // Prompt groups are the primary prompt source
+      if (message.kind === 'prompt-group') {
+        const text = message.promptEntry.value.trim();
+        if (!text) continue;
+        items.push({ index: promptIndex, text });
+        promptIndex++;
+        continue;
+      }
+
+      // Standalone prompts (before first group)
       if (message.kind === 'entry' && message.entry.type === 'user-prompt') {
         const text = message.entry.value.trim();
         if (!text) continue;
@@ -121,7 +131,7 @@ export function PromptSidebar({
     }
 
     return items;
-  }, [displayMessages]);
+  }, [streamMessages]);
 
   const totalPrompts = prompts.length;
 
@@ -147,7 +157,7 @@ export function PromptSidebar({
 
   return (
     <div
-      className="no-scrollbar flex shrink-0 flex-col items-center gap-0 overflow-y-auto py-4 pr-0.5 pl-1.5"
+      className="no-scrollbar flex shrink-0 flex-col items-center gap-0 overflow-y-auto py-4 pr-1.5 pl-1.5"
       style={
         bottomPadding > 0 ? { marginBottom: bottomPadding + 8 } : undefined
       }
@@ -172,7 +182,7 @@ export function PromptSidebar({
             {/* Connector line above (except first) */}
             {prompt.index > 0 && (
               <div
-                className={`h-3 w-px ${
+                className={`h-5 w-px ${
                   prompt.index <= currentIndex
                     ? 'bg-acc/40'
                     : 'border-l border-dashed border-white/15'

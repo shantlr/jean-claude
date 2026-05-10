@@ -24,21 +24,20 @@ import type { InteractionMode } from '@shared/types';
 import { PermissionBar } from '../ui-permission-bar';
 import { QuestionOptions } from '../ui-question-options';
 
-import { mergeSkillMessages } from './message-merger';
-import { computePromptAndResultDurations } from './prompt-duration';
+import { groupByPrompts, mergeSkillMessages } from './message-merger';
+import type { StreamMessage } from './message-merger';
 import {
   addBashToPermissionsItem,
   showRawMessageItem,
   useMessageContextMenu,
 } from './ui-message-context-menu';
 import type { ContextMenuItem } from './ui-message-context-menu';
+import { PromptGroupEntry } from './ui-prompt-group-entry';
 import { PromptSidebar } from './ui-prompt-sidebar';
 import { QueuedPromptEntry } from './ui-queued-prompt-entry';
 import { SkillEntry } from './ui-skill-entry';
 import { SubagentEntry } from './ui-subagent-entry';
 import { TimelineEntry, CompactingEntry } from './ui-timeline-entry';
-import { computePromptIndexMap } from './use-prompt-navigation';
-import { WorkingIndicator } from './working-indicator';
 
 // Threshold in pixels - if user is within this distance from bottom, auto-scroll
 const SCROLL_THRESHOLD = 10;
@@ -120,22 +119,43 @@ export const MessageStream = memo(function MessageStream({
   const bottomRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
 
-  // Merge skill messages for display
+  // Merge skill messages, then group by prompts
   const displayMessages = useMemo(
     () => mergeSkillMessages(messages),
     [messages],
   );
 
-  // Prompt index map for data-prompt-index attributes (used by navigator's scroll tracking)
-  const promptIndexMap = useMemo(
-    () => computePromptIndexMap(displayMessages),
-    [displayMessages],
+  const streamMessages = useMemo(
+    () => groupByPrompts(displayMessages, isRunning),
+    [displayMessages, isRunning],
   );
 
-  const { resultDurationMsByEntryId } = useMemo(
-    () => computePromptAndResultDurations(displayMessages),
-    [displayMessages],
-  );
+  // Prompt index map for data-prompt-index attributes (used by navigator's scroll tracking)
+  // Now computed from streamMessages — prompt groups count as prompts
+  // Also track the last prompt group index so we can auto-collapse previous ones
+  const { promptIndexMap, lastPromptGroupIndex } = useMemo(() => {
+    const map = new Map<number, number>();
+    let counter = 0;
+    let lastPgIdx = -1;
+    for (let i = 0; i < streamMessages.length; i++) {
+      const sm = streamMessages[i];
+      if (sm.kind === 'prompt-group') {
+        map.set(i, counter);
+        counter++;
+        lastPgIdx = i;
+      } else if (
+        (sm.kind === 'entry' &&
+          sm.entry.type === 'user-prompt' &&
+          sm.entry.value.trim() !== '') ||
+        sm.kind === 'skill'
+      ) {
+        // Standalone prompts (before first group) — unlikely but handle gracefully
+        map.set(i, counter);
+        counter++;
+      }
+    }
+    return { promptIndexMap: map, lastPromptGroupIndex: lastPgIdx };
+  }, [streamMessages]);
 
   // Check if scroll position is near bottom
   const checkIfNearBottom = useCallback(() => {
@@ -167,24 +187,34 @@ export const MessageStream = memo(function MessageStream({
     if (isNearBottomRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: 'instant' });
     }
-  }, [displayMessages.length, queuedPrompts.length, hasPendingBanner]);
+  }, [streamMessages.length, queuedPrompts.length, hasPendingBanner]);
 
   const { openMenu: openContextMenu, portal: contextMenuPortal } =
     useMessageContextMenu();
 
-  // Build context menu items for a display message
+  // Build context menu items for a stream message
   const buildContextMenuItems = useCallback(
-    (displayMessage: (typeof displayMessages)[number]): ContextMenuItem[] => {
+    (streamMessage: StreamMessage): ContextMenuItem[] => {
       const items: ContextMenuItem[] = [];
+
+      // Prompt groups use their promptEntry id for context menu
+      if (streamMessage.kind === 'prompt-group') {
+        if (onShowRawMessage) {
+          items.push(
+            showRawMessageItem(onShowRawMessage, streamMessage.promptEntry.id),
+          );
+        }
+        return items;
+      }
 
       // "Add to permissions" for bash tool entries
       if (
         onAddBashToPermissions &&
-        displayMessage.kind === 'entry' &&
-        displayMessage.entry.type === 'tool-use' &&
-        displayMessage.entry.name === 'bash'
+        streamMessage.kind === 'entry' &&
+        streamMessage.entry.type === 'tool-use' &&
+        streamMessage.entry.name === 'bash'
       ) {
-        const command = (displayMessage.entry as ToolUseByName<'bash'>).input
+        const command = (streamMessage.entry as ToolUseByName<'bash'>).input
           .command;
         items.push(addBashToPermissionsItem(onAddBashToPermissions, command));
       }
@@ -192,11 +222,11 @@ export const MessageStream = memo(function MessageStream({
       // "Show in Raw Messages" for all entries
       if (onShowRawMessage) {
         let entryId: string | null = null;
-        if (displayMessage.kind === 'entry') entryId = displayMessage.entry.id;
-        else if (displayMessage.kind === 'skill')
-          entryId = displayMessage.skillToolUse.toolId;
-        else if (displayMessage.kind === 'subagent')
-          entryId = displayMessage.toolUse.toolId;
+        if (streamMessage.kind === 'entry') entryId = streamMessage.entry.id;
+        else if (streamMessage.kind === 'skill')
+          entryId = streamMessage.skillToolUse.toolId;
+        else if (streamMessage.kind === 'subagent')
+          entryId = streamMessage.toolUse.toolId;
 
         if (entryId) {
           items.push(showRawMessageItem(onShowRawMessage, entryId));
@@ -209,8 +239,8 @@ export const MessageStream = memo(function MessageStream({
   );
 
   const handleContextMenu = useCallback(
-    (e: MouseEvent, displayMessage: (typeof displayMessages)[number]) => {
-      const items = buildContextMenuItems(displayMessage);
+    (e: MouseEvent, streamMessage: StreamMessage) => {
+      const items = buildContextMenuItems(streamMessage);
       openContextMenu(e, items);
     },
     [buildContextMenuItems, openContextMenu],
@@ -251,7 +281,7 @@ export const MessageStream = memo(function MessageStream({
     <div className="flex h-full min-h-0">
       <PromptSidebar
         scrollContainerRef={scrollContainerRef}
-        displayMessages={displayMessages}
+        streamMessages={streamMessages}
         bottomPadding={bottomPadding}
       />
       <div
@@ -261,44 +291,22 @@ export const MessageStream = memo(function MessageStream({
         style={bottomPadding > 0 ? { paddingBottom: bottomPadding } : undefined}
       >
         {contextMenuPortal}
-        {/* Timeline vertical line */}
-        <div className="timeline-gradient-line relative ml-3">
-          {displayMessages.map((displayMessage, index) => {
-            if (displayMessage.kind === 'skill') {
+        <div className="relative">
+          {streamMessages.map((streamMessage, index) => {
+            // Prompt groups render as collapsible entries
+            if (streamMessage.kind === 'prompt-group') {
               const promptIdx = promptIndexMap.get(index);
               return (
                 <div
                   key={index}
-                  onContextMenu={(e) => handleContextMenu(e, displayMessage)}
+                  onContextMenu={(e) => handleContextMenu(e, streamMessage)}
                   {...(promptIdx !== undefined
                     ? { 'data-prompt-index': promptIdx }
                     : {})}
                 >
-                  <SkillEntry
-                    skillToolUse={displayMessage.skillToolUse}
-                    promptEntry={displayMessage.promptEntry}
-                    onFilePathClick={onFilePathClick}
-                  />
-                </div>
-              );
-            }
-            if (displayMessage.kind === 'compacting') {
-              return (
-                <CompactingEntry
-                  key={index}
-                  isComplete={!!displayMessage.endEntry}
-                />
-              );
-            }
-            if (displayMessage.kind === 'subagent') {
-              return (
-                <div
-                  key={index}
-                  onContextMenu={(e) => handleContextMenu(e, displayMessage)}
-                >
-                  <SubagentEntry
-                    toolUse={displayMessage.toolUse}
-                    childEntries={displayMessage.childEntries}
+                  <PromptGroupEntry
+                    group={streamMessage}
+                    isLast={index === lastPromptGroupIndex}
                     onFilePathClick={onFilePathClick}
                     onToolDiffClick={onToolDiffClick}
                     onEntryContextMenu={handleEntryContextMenu}
@@ -306,21 +314,46 @@ export const MessageStream = memo(function MessageStream({
                 </div>
               );
             }
-            const promptIdx = promptIndexMap.get(index);
-            if (promptIdx !== undefined) {
+
+            // Standalone messages (before first prompt)
+            if (streamMessage.kind === 'skill') {
+              const promptIdx = promptIndexMap.get(index);
               return (
                 <div
                   key={index}
-                  data-prompt-index={promptIdx}
-                  onContextMenu={(e) => handleContextMenu(e, displayMessage)}
+                  onContextMenu={(e) => handleContextMenu(e, streamMessage)}
+                  {...(promptIdx !== undefined
+                    ? { 'data-prompt-index': promptIdx }
+                    : {})}
                 >
-                  <TimelineEntry
-                    entry={displayMessage.entry}
-                    resultDurationMs={resultDurationMsByEntryId.get(
-                      displayMessage.entry.id,
-                    )}
+                  <SkillEntry
+                    skillToolUse={streamMessage.skillToolUse}
+                    promptEntry={streamMessage.promptEntry}
+                    onFilePathClick={onFilePathClick}
+                  />
+                </div>
+              );
+            }
+            if (streamMessage.kind === 'compacting') {
+              return (
+                <CompactingEntry
+                  key={index}
+                  isComplete={!!streamMessage.endEntry}
+                />
+              );
+            }
+            if (streamMessage.kind === 'subagent') {
+              return (
+                <div
+                  key={index}
+                  onContextMenu={(e) => handleContextMenu(e, streamMessage)}
+                >
+                  <SubagentEntry
+                    toolUse={streamMessage.toolUse}
+                    childEntries={streamMessage.childEntries}
                     onFilePathClick={onFilePathClick}
                     onToolDiffClick={onToolDiffClick}
+                    onEntryContextMenu={handleEntryContextMenu}
                   />
                 </div>
               );
@@ -328,30 +361,16 @@ export const MessageStream = memo(function MessageStream({
             return (
               <div
                 key={index}
-                onContextMenu={(e) => handleContextMenu(e, displayMessage)}
+                onContextMenu={(e) => handleContextMenu(e, streamMessage)}
               >
                 <TimelineEntry
-                  entry={displayMessage.entry}
-                  resultDurationMs={resultDurationMsByEntryId.get(
-                    displayMessage.entry.id,
-                  )}
+                  entry={streamMessage.entry}
                   onFilePathClick={onFilePathClick}
                   onToolDiffClick={onToolDiffClick}
                 />
               </div>
             );
           })}
-          {isRunning && (
-            <div className="relative pl-6">
-              <div className="absolute top-2.5 -left-1 flex h-2 w-2 items-center justify-center">
-                <span className="animate-timeline-working-ping bg-acc/20 absolute h-3 w-3 rounded-full" />
-                <span className="animate-timeline-working-core bg-acc-ink h-2 w-2 rounded-full shadow-[0_0_5px_oklch(0.82_0.17_295_/_0.35)]" />
-              </div>
-              <div className="py-1.5 pr-3">
-                <WorkingIndicator />
-              </div>
-            </div>
-          )}
           {/* Queued prompts */}
           {queuedPrompts.map((prompt) => (
             <QueuedPromptEntry

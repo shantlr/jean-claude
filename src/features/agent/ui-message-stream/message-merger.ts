@@ -25,6 +25,26 @@ export type DisplayMessage =
       childEntries: NormalizedEntry[];
     };
 
+/**
+ * A group of messages initiated by a user prompt.
+ * Contains all work (tool calls, assistant messages, etc.) until the next prompt or result.
+ */
+export type PromptGroup = {
+  kind: 'prompt-group';
+  promptEntry: NormalizedEntry & { type: 'user-prompt' };
+  childMessages: DisplayMessage[];
+  resultEntry?: NormalizedEntry & { type: 'result' };
+  /** Duration in ms from prompt to result, computed from timestamps */
+  durationMs?: number;
+  status: 'running' | 'completed' | 'error' | 'interrupted';
+};
+
+/**
+ * Top-level stream message: either a prompt group or a standalone display message
+ * (for messages that appear before the first prompt, e.g. system status).
+ */
+export type StreamMessage = PromptGroup | DisplayMessage;
+
 // --- Helpers ---
 
 function isCompactingStartEntry(entry: NormalizedEntry): boolean {
@@ -196,6 +216,128 @@ export function mergeSkillMessages(
     // Regular entry
     result.push({ kind: 'entry', entry: current });
     processedIndices.add(i);
+  }
+
+  return result;
+}
+
+// --- Stage 2: Group display messages by user prompts ---
+
+function isUserPromptMessage(
+  dm: DisplayMessage,
+): dm is { kind: 'entry'; entry: NormalizedEntry & { type: 'user-prompt' } } {
+  return (
+    dm.kind === 'entry' &&
+    dm.entry.type === 'user-prompt' &&
+    dm.entry.value.trim() !== ''
+  );
+}
+
+function isResultMessage(
+  dm: DisplayMessage,
+): dm is { kind: 'entry'; entry: NormalizedEntry & { type: 'result' } } {
+  return dm.kind === 'entry' && dm.entry.type === 'result';
+}
+
+function parseDateMs(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const ms = Date.parse(value);
+  return Number.isNaN(ms) ? undefined : ms;
+}
+
+function computeGroupDuration(
+  promptEntry: NormalizedEntry,
+  resultEntry: NormalizedEntry,
+): number | undefined {
+  // Prefer the result's own durationMs if available
+  if (
+    resultEntry.type === 'result' &&
+    typeof resultEntry.durationMs === 'number' &&
+    Number.isFinite(resultEntry.durationMs) &&
+    resultEntry.durationMs >= 0
+  ) {
+    return resultEntry.durationMs;
+  }
+  // Fall back to timestamp difference
+  const startMs = parseDateMs(promptEntry.date);
+  const endMs = parseDateMs(resultEntry.date);
+  if (startMs !== undefined && endMs !== undefined && endMs >= startMs) {
+    return endMs - startMs;
+  }
+  return undefined;
+}
+
+/**
+ * Group display messages by user prompts.
+ * Each user-prompt starts a new PromptGroup that collects all following messages
+ * until the next user-prompt or a result entry.
+ *
+ * Messages before the first prompt pass through as standalone DisplayMessages.
+ *
+ * @param isRunning Whether the task is currently running (affects last group status)
+ */
+export function groupByPrompts(
+  displayMessages: DisplayMessage[],
+  isRunning?: boolean,
+): StreamMessage[] {
+  const result: StreamMessage[] = [];
+  let currentGroup: PromptGroup | null = null;
+
+  for (const dm of displayMessages) {
+    // A user prompt starts a new group
+    if (isUserPromptMessage(dm)) {
+      // Finalize previous group if any
+      if (currentGroup) {
+        // No result was found before next prompt — mark as interrupted
+        if (currentGroup.status === 'running') {
+          currentGroup.status = 'interrupted';
+        }
+        result.push(currentGroup);
+      }
+
+      currentGroup = {
+        kind: 'prompt-group',
+        promptEntry: dm.entry as NormalizedEntry & { type: 'user-prompt' },
+        childMessages: [],
+        status: 'running', // will be finalized when result is found
+      };
+      continue;
+    }
+
+    // A result entry closes the current group
+    if (isResultMessage(dm) && currentGroup) {
+      const resultEntry = dm.entry as NormalizedEntry & { type: 'result' };
+      currentGroup.resultEntry = resultEntry;
+      currentGroup.durationMs = computeGroupDuration(
+        currentGroup.promptEntry,
+        resultEntry,
+      );
+      currentGroup.status = resultEntry.isError ? 'error' : 'completed';
+      result.push(currentGroup);
+      currentGroup = null;
+      continue;
+    }
+
+    // Compacting entries always render at the top level, outside groups
+    if (dm.kind === 'compacting') {
+      result.push(dm);
+      continue;
+    }
+
+    // Inside a group: collect as child
+    if (currentGroup) {
+      currentGroup.childMessages.push(dm);
+      continue;
+    }
+
+    // No active group: pass through standalone
+    result.push(dm);
+  }
+
+  // Finalize last group if still open (task is running or was interrupted)
+  if (currentGroup) {
+    currentGroup.status = isRunning ? 'running' : 'interrupted';
+    result.push(currentGroup);
   }
 
   return result;

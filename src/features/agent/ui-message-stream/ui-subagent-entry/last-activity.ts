@@ -11,7 +11,7 @@ function extractFilename(path: string): string {
 /**
  * Generate a short summary for a tool use.
  */
-function getToolActivitySummary(toolUse: NormalizedToolUse): string {
+export function getToolActivitySummary(toolUse: NormalizedToolUse): string {
   switch (toolUse.name) {
     case 'read': {
       const t = toolUse as ToolUseByName<'read'>;
