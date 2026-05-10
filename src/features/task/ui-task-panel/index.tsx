@@ -1462,6 +1462,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               pendingPermission={permissionProps}
               pendingQuestion={questionProps}
               onAddBashToPermissions={handleAddBashToPermissions}
+              rootPath={taskRootPath}
             />
           ) : (
             <div

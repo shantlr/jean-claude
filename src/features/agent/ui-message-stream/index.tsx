@@ -89,6 +89,7 @@ export const MessageStream = memo(function MessageStream({
   pendingPermission,
   pendingQuestion,
   onAddBashToPermissions,
+  rootPath,
 }: {
   messages: NormalizedEntry[];
   isRunning?: boolean;
@@ -114,6 +115,8 @@ export const MessageStream = memo(function MessageStream({
   pendingQuestion?: QuestionBannerProps | null;
   /** Callback to open the "Add to permissions" modal (state managed by parent) */
   onAddBashToPermissions?: (command: string) => void;
+  /** Root path (worktree or project) used to relativize file paths in diff modals */
+  rootPath?: string | null;
 }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -310,6 +313,7 @@ export const MessageStream = memo(function MessageStream({
                     onFilePathClick={onFilePathClick}
                     onToolDiffClick={onToolDiffClick}
                     onEntryContextMenu={handleEntryContextMenu}
+                    rootPath={rootPath}
                   />
                 </div>
               );

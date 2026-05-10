@@ -23,6 +23,8 @@ import {
 } from '../ui-subagent-entry/last-activity';
 import { TimelineEntry } from '../ui-timeline-entry';
 
+import { PromptGroupDiffModal } from './prompt-group-diff-modal';
+
 // ── Helpers ────────────────────────────────────────────────────────────
 
 const PROMPT_MAX_CHARS = 300;
@@ -592,6 +594,7 @@ export function PromptGroupEntry({
   onFilePathClick,
   onToolDiffClick,
   onEntryContextMenu,
+  rootPath,
 }: {
   group: PromptGroup;
   isLast?: boolean;
@@ -606,10 +609,12 @@ export function PromptGroupEntry({
     newString: string,
   ) => void;
   onEntryContextMenu?: (e: MouseEvent, entry: NormalizedEntry) => void;
+  rootPath?: string | null;
 }) {
   const isError = group.status === 'error';
   const isInterrupted = group.status === 'interrupted';
   const isRunning = group.status === 'running';
+  const [diffModalOpen, setDiffModalOpen] = useState(false);
   // Details expand/collapse:
   // - error/interrupted on last group: start expanded
   // - previous (non-last) groups: always default collapsed
@@ -885,10 +890,12 @@ export function PromptGroupEntry({
             ) : null}
           </div>
 
-          {/* Changes summary — bottom of agent section */}
+          {/* Changes summary — bottom of agent section (clickable) */}
           {fileStats && (
-            <div
-              className="text-ink-4 flex items-center gap-3 px-3.5 py-1.5 font-mono text-[10.5px]"
+            <button
+              type="button"
+              onClick={() => setDiffModalOpen(true)}
+              className="text-ink-4 hover:text-ink-2 flex w-full cursor-pointer items-center gap-3 px-3.5 py-1.5 font-mono text-[10.5px] transition-colors"
               style={{ borderTop: '1px solid oklch(1 0 0 / 0.06)' }}
             >
               <span>
@@ -901,10 +908,21 @@ export function PromptGroupEntry({
               {fileStats.removed > 0 && (
                 <span className="text-status-fail">−{fileStats.removed}</span>
               )}
-            </div>
+              <span className="text-ink-4 ml-auto text-[9.5px]">view diff</span>
+            </button>
           )}
         </div>
       </div>
+
+      {/* Diff modal */}
+      {fileStats && (
+        <PromptGroupDiffModal
+          isOpen={diffModalOpen}
+          onClose={() => setDiffModalOpen(false)}
+          childMessages={group.childMessages}
+          rootPath={rootPath}
+        />
+      )}
     </div>
   );
 }
