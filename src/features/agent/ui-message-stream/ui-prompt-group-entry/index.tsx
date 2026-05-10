@@ -653,17 +653,15 @@ export function PromptGroupEntry({
             <button
               type="button"
               onClick={toggleDetails}
-              className="sticky top-[50vh] z-10 -mr-1 flex h-6 w-5 -translate-y-1/2 cursor-pointer items-center justify-center rounded-sm transition-opacity duration-150"
+              className="text-ink-2 hover:text-ink-1 sticky top-[50vh] z-10 -mr-1 flex h-7 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md border border-white/12 bg-white/10 shadow-[0_6px_18px_rgba(0,0,0,0.22)] backdrop-blur-[6px] transition-all duration-150 hover:border-white/20 hover:bg-white/16 hover:shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
               style={{
-                background: 'oklch(1 0 0 / 0.06)',
-                border: '1px solid oklch(1 0 0 / 0.08)',
-                opacity: 0.4,
+                opacity: 0.72,
               }}
               onMouseOver={(e) => {
                 e.currentTarget.style.opacity = '1';
               }}
               onMouseOut={(e) => {
-                e.currentTarget.style.opacity = '0.4';
+                e.currentTarget.style.opacity = '0.72';
               }}
               aria-label="Collapse timeline"
             >
