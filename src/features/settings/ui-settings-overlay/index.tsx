@@ -1,7 +1,6 @@
 import {
   AlertTriangle,
   Box,
-  ChevronDown,
   Cpu,
   Diamond,
   FileText,
@@ -18,13 +17,14 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
 import { RemoveScroll } from 'react-remove-scroll';
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
 import { Kbd } from '@/common/ui/kbd';
+import { Select, type SelectOption } from '@/common/ui/select';
 import {
   ProjectSettings,
   type ProjectSettingsMenuItem,
@@ -273,6 +273,14 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
     useState<ProjectSettingsMenuItem>('details');
 
   const hasProjectTab = projects.length > 0;
+  const projectOptions = useMemo<SelectOption<string>[]>(
+    () =>
+      projects.map((project) => ({
+        value: project.id,
+        label: project.name,
+      })),
+    [projects],
+  );
 
   const handleProjectChange = useCallback((projectId: string) => {
     setSelectedProjectId(projectId);
@@ -427,7 +435,7 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
               {/* Project chip with dropdown */}
               {hasProjectTab && resolvedProject && activeTab === 'project' && (
                 <div
-                  className="relative inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs transition-opacity"
+                  className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs transition-opacity"
                   style={{
                     color: 'oklch(0.8 0.01 280)',
                   }}
@@ -441,23 +449,13 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                   >
                     {resolvedProject.name.charAt(0).toUpperCase()}
                   </span>
-                  <select
-                    className="max-w-[120px] cursor-pointer appearance-none truncate bg-transparent pr-4 outline-none"
-                    style={{ color: 'inherit' }}
-                    value={resolvedProjectId ?? ''}
-                    onChange={(e) => handleProjectChange(e.target.value)}
-                    aria-label="Select project"
-                  >
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    size={12}
-                    className="pointer-events-none absolute right-2"
-                    style={{ color: 'oklch(0.6 0.01 280)' }}
+                  <Select
+                    value={resolvedProjectId ?? resolvedProject.id}
+                    options={projectOptions}
+                    onChange={handleProjectChange}
+                    label="Select project"
+                    size="xs"
+                    className="max-w-[160px] bg-transparent px-0 py-0 text-xs hover:bg-transparent"
                   />
                 </div>
               )}
