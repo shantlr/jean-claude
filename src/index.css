@@ -855,3 +855,49 @@ button {
   stroke-dasharray: 4 4;
   animation: feed-dash-flow 0.9s linear infinite;
 }
+
+/* ─── Permission / Question waiting indicators ─────────────────── */
+
+/* Permission node pulse (yellow/orange — same hue as status-run) */
+@keyframes feed-node-pulse-permission {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--color-status-run) 60%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in oklch, var(--color-status-run) 0%, transparent);
+  }
+}
+
+.feed-node-pulse-permission {
+  animation: feed-node-pulse-permission 2s ease-in-out infinite;
+}
+
+/* Question node pulse (teal — status-azure hue) */
+@keyframes feed-node-pulse-question {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--color-status-azure) 60%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in oklch, var(--color-status-azure) 0%, transparent);
+  }
+}
+
+.feed-node-pulse-question {
+  animation: feed-node-pulse-question 2s ease-in-out infinite;
+}
+
+/* Permission row glow (amber/yellow tint) */
+.feed-permission-row {
+  box-shadow:
+    inset 3px 0 0 var(--color-status-run),
+    inset 0 0 20px -4px color-mix(in oklch, var(--color-status-run) 20%, transparent);
+  background: color-mix(in oklch, var(--color-status-run) 5%, transparent) !important;
+}
+
+/* Question row glow (teal tint) */
+.feed-question-row {
+  box-shadow:
+    inset 3px 0 0 var(--color-status-azure),
+    inset 0 0 20px -4px color-mix(in oklch, var(--color-status-azure) 20%, transparent);
+  background: color-mix(in oklch, var(--color-status-azure) 5%, transparent) !important;
+}

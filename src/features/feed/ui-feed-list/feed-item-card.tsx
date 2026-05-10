@@ -4,6 +4,7 @@ import {
   ArrowDownNarrowWide,
   Bug,
   Bot,
+  CircleHelp,
   ClipboardList,
   FolderOpen,
   GitMerge,
@@ -12,6 +13,8 @@ import {
   Loader2,
   MessageSquare,
   Pin,
+  ShieldAlert,
+  ShieldQuestion,
   PinOff,
   StickyNote,
   Terminal,
@@ -42,10 +45,12 @@ import type { FeedItem, FeedItemAttention } from '@shared/feed-types';
 function statusColor(attention: FeedItemAttention): string {
   switch (attention) {
     case 'running':
-    case 'needs-permission':
-    case 'has-question':
     case 'interrupted':
       return 'var(--color-status-run)';
+    case 'needs-permission':
+      return 'var(--color-status-run)';
+    case 'has-question':
+      return 'var(--color-status-azure)';
     case 'completed':
       return 'var(--color-status-done)';
     case 'errored':
@@ -67,7 +72,7 @@ function statusColor(attention: FeedItemAttention): string {
 const RAIL_W = 32; // rail column width in px
 const NODE_X = 16; // center X of main node
 
-// ─── Graph Node (circle) ─────────────────────────────────────────
+// ─── Graph Node (circle or attention icon) ──────────────────────
 function GraphNode({
   attention,
   isRunning,
@@ -78,12 +83,46 @@ function GraphNode({
   isSubtask?: boolean;
 }) {
   const color = statusColor(attention);
+  const needsPermission = attention === 'needs-permission';
+  const hasQuestion = attention === 'has-question';
+  const needsAttention = needsPermission || hasQuestion;
+
+  // For attention states on main tasks, render icon instead of circle
+  if (needsAttention && !isSubtask) {
+    const iconSize = 14;
+    return (
+      <div
+        className={clsx(
+          needsPermission
+            ? 'feed-node-pulse-permission'
+            : 'feed-node-pulse-question',
+        )}
+        style={{
+          position: 'absolute',
+          left: NODE_X - iconSize / 2,
+          top: 14 - 1,
+          width: iconSize,
+          height: iconSize,
+          zIndex: 2,
+          color,
+          borderRadius: 3,
+        }}
+      >
+        {needsPermission ? (
+          <ShieldAlert style={{ width: iconSize, height: iconSize }} />
+        ) : (
+          <CircleHelp style={{ width: iconSize, height: iconSize }} />
+        )}
+      </div>
+    );
+  }
+
   const size = isSubtask ? 8 : 11;
   const left = isSubtask ? RAIL_W - 9 : NODE_X - 5;
 
   return (
     <div
-      className={clsx(isRunning && !isSubtask && 'feed-node-pulse')}
+      className={clsx(!isSubtask && isRunning && 'feed-node-pulse')}
       style={{
         position: 'absolute',
         left,
@@ -198,6 +237,9 @@ export function FeedItemCard({
 
   const isTask = item.source === 'task';
   const isRunning = item.attention === 'running';
+  const needsPermission = item.attention === 'needs-permission';
+  const hasQuestion = item.attention === 'has-question';
+  const needsAttention = needsPermission || hasQuestion;
   const hasChildren = !isSubtask && (item.children?.length ?? 0) > 0;
   const hasPr = isTask && !!item.pullRequestId;
   const prMerged = item.workItemPrStatus === 'completed';
@@ -355,11 +397,18 @@ export function FeedItemCard({
               !showRail && 'border-b',
               isRunning
                 ? 'feed-running-row border-transparent'
-                : !showRail && 'border-line-soft',
+                : needsPermission
+                  ? 'feed-permission-row border-transparent'
+                  : hasQuestion
+                    ? 'feed-question-row border-transparent'
+                    : !showRail && 'border-line-soft',
               isSelected
                 ? 'border-l-2 border-l-[var(--color-acc)]'
                 : 'border-l-2 border-l-transparent',
-              !isSelected && !isRunning && 'hover:bg-glass-light',
+              !isSelected &&
+                !isRunning &&
+                !needsAttention &&
+                'hover:bg-glass-light',
             )}
             style={{ minHeight: isSubtask ? 36 : 50 }}
           >
@@ -517,13 +566,46 @@ export function FeedItemCard({
 
               {/* Pending message */}
               {item.source === 'task' && item.pendingMessage && (
-                <div className="text-status-run flex items-center gap-1 pt-0.5 text-[11px]">
-                  <MessageSquare className="h-3 w-3 shrink-0" />
+                <div
+                  className={clsx(
+                    'flex items-center gap-1 pt-0.5 text-[11px]',
+                    hasQuestion ? 'text-status-azure' : 'text-status-run',
+                  )}
+                >
+                  {needsPermission ? (
+                    <ShieldQuestion className="h-3 w-3 shrink-0" />
+                  ) : (
+                    <MessageSquare className="h-3 w-3 shrink-0" />
+                  )}
                   <span className="min-w-0 truncate">
                     {item.pendingMessage}
                   </span>
                 </div>
               )}
+
+              {/* Permission/question indicator when no pending message text */}
+              {item.source === 'task' &&
+                !item.pendingMessage &&
+                needsAttention && (
+                  <div
+                    className={clsx(
+                      'flex items-center gap-1 pt-0.5 text-[11px]',
+                      hasQuestion ? 'text-status-azure' : 'text-status-run',
+                    )}
+                  >
+                    {needsPermission ? (
+                      <>
+                        <ShieldQuestion className="h-3 w-3 shrink-0" />
+                        <span>Waiting for permission</span>
+                      </>
+                    ) : (
+                      <>
+                        <MessageSquare className="h-3 w-3 shrink-0" />
+                        <span>Waiting for answer</span>
+                      </>
+                    )}
+                  </div>
+                )}
 
               {/* Pending review comments */}
               {item.source === 'task' && pendingCommentCount > 0 && (
@@ -720,13 +802,22 @@ function SubtaskRow({
     [navigate, child.projectId],
   );
 
+  const childNeedsPermission = child.attention === 'needs-permission';
+  const childHasQuestion = child.attention === 'has-question';
+  const childNeedsAttention = childNeedsPermission || childHasQuestion;
+
   return (
     <div
       onClick={handleClick}
       className={clsx(
         'relative flex cursor-pointer transition-colors',
         isRunning && 'feed-running-row',
-        !isRunning && !isSelected && 'hover:bg-glass-light',
+        !isRunning && childNeedsPermission && 'feed-permission-row',
+        !isRunning && childHasQuestion && 'feed-question-row',
+        !isRunning &&
+          !childNeedsAttention &&
+          !isSelected &&
+          'hover:bg-glass-light',
         isSelected
           ? 'border-l-2 border-l-[var(--color-acc)]'
           : 'border-l-2 border-l-transparent',
