@@ -47,6 +47,40 @@ export type StreamMessage = PromptGroup | DisplayMessage;
 
 // --- Helpers ---
 
+function hasPendingToolWork(message: DisplayMessage): boolean {
+  if (message.kind === 'entry') {
+    return message.entry.type === 'tool-use' && !message.entry.result;
+  }
+
+  if (message.kind === 'subagent') {
+    return !message.toolUse.result;
+  }
+
+  return false;
+}
+
+function hasAssistantCompletionMessage(messages: DisplayMessage[]): boolean {
+  let sawAssistantMessage = false;
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+
+    if (hasPendingToolWork(message)) {
+      return false;
+    }
+
+    if (
+      message.kind === 'entry' &&
+      message.entry.type === 'assistant-message' &&
+      message.entry.value.trim()
+    ) {
+      sawAssistantMessage = true;
+    }
+  }
+
+  return sawAssistantMessage;
+}
+
 function isCompactingStartEntry(entry: NormalizedEntry): boolean {
   return entry.type === 'system-status' && entry.status === 'compacting';
 }
@@ -270,7 +304,8 @@ function computeGroupDuration(
 /**
  * Group display messages by user prompts.
  * Each user-prompt starts a new PromptGroup that collects all following messages
- * until the next user-prompt or a result entry.
+ * until the next user-prompt. A result entry marks the group as complete, but
+ * later trailing messages still stay attached to that same group.
  *
  * Messages before the first prompt pass through as standalone DisplayMessages.
  *
@@ -283,17 +318,36 @@ export function groupByPrompts(
   const result: StreamMessage[] = [];
   let currentGroup: PromptGroup | null = null;
 
+  function finalizeCurrentGroup({
+    hasNextPrompt,
+  }: {
+    hasNextPrompt: boolean;
+  }): void {
+    if (!currentGroup) return;
+
+    if (!currentGroup.resultEntry) {
+      const completedWithoutResult = hasAssistantCompletionMessage(
+        currentGroup.childMessages,
+      );
+
+      currentGroup.status = completedWithoutResult
+        ? 'completed'
+        : hasNextPrompt
+          ? 'interrupted'
+          : isRunning
+            ? 'running'
+            : 'interrupted';
+    }
+
+    result.push(currentGroup);
+    currentGroup = null;
+  }
+
   for (const dm of displayMessages) {
     // A user prompt starts a new group
     if (isUserPromptMessage(dm)) {
       // Finalize previous group if any
-      if (currentGroup) {
-        // No result was found before next prompt — mark as interrupted
-        if (currentGroup.status === 'running') {
-          currentGroup.status = 'interrupted';
-        }
-        result.push(currentGroup);
-      }
+      finalizeCurrentGroup({ hasNextPrompt: true });
 
       currentGroup = {
         kind: 'prompt-group',
@@ -304,7 +358,7 @@ export function groupByPrompts(
       continue;
     }
 
-    // A result entry closes the current group
+    // A result entry marks the current group as complete
     if (isResultMessage(dm) && currentGroup) {
       const resultEntry = dm.entry as NormalizedEntry & { type: 'result' };
       currentGroup.resultEntry = resultEntry;
@@ -313,8 +367,6 @@ export function groupByPrompts(
         resultEntry,
       );
       currentGroup.status = resultEntry.isError ? 'error' : 'completed';
-      result.push(currentGroup);
-      currentGroup = null;
       continue;
     }
 
@@ -334,11 +386,8 @@ export function groupByPrompts(
     result.push(dm);
   }
 
-  // Finalize last group if still open (task is running or was interrupted)
-  if (currentGroup) {
-    currentGroup.status = isRunning ? 'running' : 'interrupted';
-    result.push(currentGroup);
-  }
+  // Finalize last group if still open
+  finalizeCurrentGroup({ hasNextPrompt: false });
 
   return result;
 }

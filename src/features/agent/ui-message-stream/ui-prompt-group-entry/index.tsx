@@ -145,6 +145,23 @@ function getRunningActivity(childMessages: DisplayMessage[]): {
   return { subagents, todos, latestMessage };
 }
 
+function getLastAssistantMessageText(
+  childMessages: DisplayMessage[],
+): string | null {
+  for (let i = childMessages.length - 1; i >= 0; i--) {
+    const dm = childMessages[i];
+    if (
+      dm.kind === 'entry' &&
+      dm.entry.type === 'assistant-message' &&
+      dm.entry.value.trim()
+    ) {
+      return dm.entry.value;
+    }
+  }
+
+  return null;
+}
+
 // ── Sub-components ─────────────────────────────────────────────────────
 
 /** Prompt section — glass card, expand/collapse for long prompts only */
@@ -553,7 +570,19 @@ export function PromptGroupEntry({
 
   // Result summary
   const resultSummary = useMemo(() => {
-    if (!group.resultEntry) return null;
+    if (!group.resultEntry) {
+      if (group.status !== 'completed') return null;
+
+      const text = getLastAssistantMessageText(group.childMessages);
+      if (!text) return null;
+
+      return {
+        isError: false,
+        stats: null,
+        text,
+      };
+    }
+
     const entry = group.resultEntry;
     if (entry.isError) {
       return {
@@ -572,7 +601,7 @@ export function PromptGroupEntry({
       stats: `${tokens} tok · ${formatDuration(durationMs)} · $${cost}`,
       text: entry.value || null,
     };
-  }, [group.resultEntry, group.durationMs]);
+  }, [group.childMessages, group.durationMs, group.resultEntry, group.status]);
 
   // Activity for running state
   const activity = useMemo(() => {
