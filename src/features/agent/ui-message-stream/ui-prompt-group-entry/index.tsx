@@ -43,7 +43,16 @@ function getRunningActivity(childMessages: DisplayMessage[]): {
     done: boolean;
     current: boolean;
   }>;
-  latestMessage: string | null;
+  latestMessage:
+    | {
+        kind: 'text';
+        text: string;
+      }
+    | {
+        kind: 'bash';
+        command: string;
+      }
+    | null;
 } {
   const subagents: Array<{
     id: string;
@@ -52,7 +61,16 @@ function getRunningActivity(childMessages: DisplayMessage[]): {
     step: string | null;
     model: string | null;
   }> = [];
-  let latestMessage: string | null = null;
+  let latestMessage:
+    | {
+        kind: 'text';
+        text: string;
+      }
+    | {
+        kind: 'bash';
+        command: string;
+      }
+    | null = null;
 
   // Collect active subagents
   for (const dm of childMessages) {
@@ -116,17 +134,36 @@ function getRunningActivity(childMessages: DisplayMessage[]): {
       const dm = childMessages[i];
       if (dm.kind === 'entry') {
         if (dm.entry.type === 'tool-use') {
-          latestMessage = getToolActivitySummary(dm.entry as NormalizedToolUse);
+          if (dm.entry.name === 'bash') {
+            const bashEntry = dm.entry as ToolUseByName<'bash'>;
+            const firstLine = bashEntry.input.command.split('\n')[0];
+            const command = firstLine.slice(0, 80);
+            latestMessage = {
+              kind: 'bash',
+              command:
+                command.length < firstLine.length ? `${command}...` : command,
+            };
+          } else {
+            latestMessage = {
+              kind: 'text',
+              text: getToolActivitySummary(dm.entry as NormalizedToolUse),
+            };
+          }
           break;
         }
         if (dm.entry.type === 'assistant-message' && dm.entry.value.trim()) {
           const preview = dm.entry.value.slice(0, 100);
-          latestMessage =
-            preview.length < dm.entry.value.length ? `${preview}...` : preview;
+          latestMessage = {
+            kind: 'text',
+            text:
+              preview.length < dm.entry.value.length
+                ? `${preview}...`
+                : preview,
+          };
           break;
         }
         if (dm.entry.type === 'thinking') {
-          latestMessage = 'Thinking...';
+          latestMessage = { kind: 'text', text: 'Thinking...' };
           break;
         }
       }
@@ -135,11 +172,14 @@ function getRunningActivity(childMessages: DisplayMessage[]): {
           dm.toolUse.name === 'sub-agent'
             ? (dm.toolUse as ToolUseByName<'sub-agent'>)
             : undefined;
-        latestMessage = `Completed: ${sa?.input.description ?? 'Sub-agent'}`;
+        latestMessage = {
+          kind: 'text',
+          text: `Completed: ${sa?.input.description ?? 'Sub-agent'}`,
+        };
         break;
       }
     }
-    if (!latestMessage) latestMessage = 'Working...';
+    if (!latestMessage) latestMessage = { kind: 'text', text: 'Working...' };
   }
 
   return { subagents, todos, latestMessage };
@@ -515,7 +555,16 @@ function RunningSummary({
           <div className="text-ink-2 flex items-baseline gap-2">
             <span className="text-ink-4 w-3 shrink-0 text-center">·</span>
             <span className="flex-1">
-              {activity.latestMessage}
+              {activity.latestMessage.kind === 'bash' ? (
+                <span className="inline-flex items-baseline gap-1">
+                  <span className="text-acc-ink">$</span>
+                  <span className="text-ink-2">
+                    {activity.latestMessage.command}
+                  </span>
+                </span>
+              ) : (
+                activity.latestMessage.text
+              )}
               <span className="rg-caret">▍</span>
             </span>
           </div>
