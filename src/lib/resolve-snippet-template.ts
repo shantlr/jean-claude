@@ -1,3 +1,5 @@
+import Handlebars from 'handlebars';
+
 import type { PromptSnippet } from '@shared/types';
 
 export type SnippetVariableContext = {
@@ -12,36 +14,48 @@ export type SnippetVariableContext = {
     name?: string | null;
     path?: string | null;
   };
+  workItems?: Array<{
+    id: string | number;
+    title?: string;
+    description?: string;
+    comments?: Array<{
+      author?: string;
+      date?: string;
+      body?: string;
+    }>;
+    testCases?: string[];
+  }>;
 };
 
-const VARIABLE_MAP: Record<
-  string,
-  (ctx: SnippetVariableContext) => string | null | undefined
-> = {
-  'task.worktree.path': (ctx) => ctx.task?.worktreePath,
-  'task.name': (ctx) => ctx.task?.name,
-  'task.note': (ctx) => ctx.task?.note,
-  'task.sourceBranch': (ctx) => ctx.task?.sourceBranch,
-  'task.branch.name': (ctx) => ctx.task?.branchName,
-  'project.name': (ctx) => ctx.project?.name,
-  'project.path': (ctx) => ctx.project?.path,
-};
+// Register custom helpers
+Handlebars.registerHelper(
+  'ifPresent',
+  function (this: unknown, value: unknown, options: Handlebars.HelperOptions) {
+    return value ? options.fn(this) : options.inverse(this);
+  },
+);
+
+export type SnippetResolveResult =
+  | { ok: true; output: string }
+  | { ok: false; output: string; error: string };
 
 export function resolveSnippetTemplate(
   template: string,
   context: SnippetVariableContext,
-): string {
-  return template.replace(/\{([^}]+)\}/g, (match, key: string) => {
-    const resolver = VARIABLE_MAP[key];
-    if (!resolver) return match;
-    const value = resolver(context);
-    return value ?? match;
-  });
+): SnippetResolveResult {
+  try {
+    const compiled = Handlebars.compile(template, { noEscape: true });
+    return { ok: true, output: compiled(context) };
+  } catch (e) {
+    const error =
+      e instanceof Error ? e.message : 'Template compilation failed';
+    return { ok: false, output: template, error };
+  }
 }
 
 export function resolvePromptSnippet(
   snippet: PromptSnippet,
   context: SnippetVariableContext,
-): string {
+): SnippetResolveResult {
   return resolveSnippetTemplate(snippet.template, context);
 }

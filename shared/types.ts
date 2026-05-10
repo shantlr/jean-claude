@@ -664,16 +664,49 @@ export function isAiSkillSlotsSetting(v: unknown): v is AiSkillSlotsSetting {
 }
 
 // Prompt Snippets
+export type PromptSnippetContext = {
+  newTask: boolean;
+  newTaskStep: boolean;
+};
+
+export type PromptSnippetAutocomplete = {
+  enabled: boolean;
+  slugs: string[];
+};
+
 export type PromptSnippet = {
   id: string;
   name: string;
-  trigger: string;
+  description: string;
   template: string;
   enabled: boolean;
-  builtin: boolean;
+  contexts: PromptSnippetContext;
+  autocomplete: PromptSnippetAutocomplete;
 };
 
 export type PromptSnippetsSetting = PromptSnippet[];
+
+export function migratePromptSnippet(
+  raw: Record<string, unknown>,
+): PromptSnippet {
+  // If already has 'contexts' field, assume new format
+  if (raw.contexts && typeof raw.contexts === 'object') {
+    return raw as unknown as PromptSnippet;
+  }
+  // Migrate from old format
+  return {
+    id: (raw.id as string) ?? crypto.randomUUID(),
+    name: (raw.name as string) ?? '',
+    description: (raw.description as string) ?? '',
+    template: (raw.template as string) ?? '',
+    enabled: (raw.enabled as boolean) ?? true,
+    contexts: { newTask: true, newTaskStep: true },
+    autocomplete: {
+      enabled: true,
+      slugs: raw.trigger ? [raw.trigger as string] : [],
+    },
+  };
+}
 
 function isPromptSnippetsSetting(
   value: unknown,
@@ -685,10 +718,17 @@ function isPromptSnippetsSetting(
       item !== null &&
       typeof item.id === 'string' &&
       typeof item.name === 'string' &&
-      typeof item.trigger === 'string' &&
+      typeof item.description === 'string' &&
       typeof item.template === 'string' &&
       typeof item.enabled === 'boolean' &&
-      typeof item.builtin === 'boolean',
+      typeof item.contexts === 'object' &&
+      item.contexts !== null &&
+      typeof item.contexts.newTask === 'boolean' &&
+      typeof item.contexts.newTaskStep === 'boolean' &&
+      typeof item.autocomplete === 'object' &&
+      item.autocomplete !== null &&
+      typeof item.autocomplete.enabled === 'boolean' &&
+      Array.isArray(item.autocomplete.slugs),
   );
 }
 

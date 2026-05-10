@@ -41,7 +41,10 @@ import { useCreateTaskWithWorktree, useProjectTasks } from '@/hooks/use-tasks';
 import { useWorkItems, useWorkItemComments } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
 import { compressImage } from '@/lib/image-compression';
-import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
+import {
+  resolveSnippetTemplate,
+  type SnippetVariableContext,
+} from '@/lib/resolve-snippet-template';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import {
   useComposerFileCommentCount,
@@ -725,16 +728,30 @@ export function NewTaskOverlay({
 
       if (inputMode === 'search' && searchStep === 'compose') {
         // Expand the template to get the final prompt
-        const selectedComments = workItemComments.filter((c) =>
-          (draft.selectedCommentIds ?? []).includes(
-            getWorkItemCommentSelectionId(c),
-          ),
-        );
-        finalPrompt = expandTemplate(
-          promptTemplate,
-          selectedWorkItems,
-          selectedComments,
-        );
+        // Use Handlebars if template contains `{{`, otherwise use old {#id} regex
+        if (promptTemplate.includes('{{')) {
+          const workItemsContext = selectedWorkItems.map((wi) => ({
+            id: wi.id.toString(),
+            title: wi.fields.title,
+            description: wi.fields.description ?? '',
+          }));
+          const result = resolveSnippetTemplate(promptTemplate, {
+            ...snippetVariableContext,
+            workItems: workItemsContext,
+          });
+          finalPrompt = result.output;
+        } else {
+          const selectedComments = workItemComments.filter((c) =>
+            (draft.selectedCommentIds ?? []).includes(
+              getWorkItemCommentSelectionId(c),
+            ),
+          );
+          finalPrompt = expandTemplate(
+            promptTemplate,
+            selectedWorkItems,
+            selectedComments,
+          );
+        }
         workItemIds = draft.workItemIds ?? null;
         workItemUrls = selectedWorkItems.map((wi) => wi.url);
       } else {
@@ -863,6 +880,7 @@ export function NewTaskOverlay({
     promptTemplate,
     selectedWorkItems,
     workItemComments,
+    snippetVariableContext,
     selectedProject?.name,
     selectedProject?.path,
     currentBackend,
@@ -1261,6 +1279,7 @@ export function NewTaskOverlay({
               onSelectAllComments={handleSelectAllComments}
               onDeselectAllComments={handleDeselectAllComments}
               isLoadingComments={isLoadingComments}
+              snippets={promptSnippets}
             />
           </div>
         )}

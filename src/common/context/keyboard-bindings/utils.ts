@@ -58,7 +58,9 @@ export function isTypingInInput(event: KeyboardEvent): boolean {
   const isEditable = target.isContentEditable;
   const isInput =
     tagName === 'input' || tagName === 'textarea' || tagName === 'select';
-  return isEditable || isInput;
+  // Monaco Editor uses internal elements that may not be standard inputs
+  const isInMonaco = target.closest?.('.monaco-editor') != null;
+  return isEditable || isInput || isInMonaco;
 }
 
 // Format for display (e.g., "cmd+shift+p" -> "⌘⇧P")

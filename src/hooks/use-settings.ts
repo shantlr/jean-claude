@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 
 import { api } from '@/lib/api';
+import { BUILTIN_SNIPPETS } from '@/lib/builtin-snippets';
 import type {
   AiSkillSlotsSetting,
   AppSettings,
@@ -152,8 +154,20 @@ export function useCompletionDailyUsage() {
 }
 
 // Convenience hooks for prompt snippets setting
+// Merges built-in snippets with user snippets. Built-in snippets respect
+// user's enabled/disabled state if they've been saved to settings.
 export function usePromptSnippetsSetting() {
-  return useSetting('promptSnippets');
+  const query = useSetting('promptSnippets');
+  const data = useMemo(() => {
+    const userSnippets = query.data ?? [];
+    const userSnippetIds = new Set(userSnippets.map((s) => s.id));
+    // Add built-ins that user hasn't overridden
+    const builtinsToAdd = BUILTIN_SNIPPETS.filter(
+      (b) => !userSnippetIds.has(b.id),
+    );
+    return [...builtinsToAdd, ...userSnippets];
+  }, [query.data]);
+  return { ...query, data };
 }
 
 export function useUpdatePromptSnippetsSetting() {

@@ -1,4 +1,5 @@
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ImageIcon,
@@ -17,11 +18,14 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 
+import { HandlebarsEditor } from '@/common/ui/handlebars-editor';
 import { Kbd } from '@/common/ui/kbd';
 import type { AzureDevOpsWorkItem, WorkItemComment } from '@/lib/api';
 import { processImageFile, MAX_IMAGES } from '@/lib/image-utils';
+import { resolveSnippetTemplate } from '@/lib/resolve-snippet-template';
 import { useToastStore } from '@/stores/toasts';
 import type { PromptImagePart } from '@shared/agent-backend-types';
+import type { PromptSnippet } from '@shared/types';
 
 export function getWorkItemCommentSelectionId(
   comment: WorkItemComment,
@@ -391,6 +395,7 @@ export function PromptComposer({
   onSelectAllComments,
   onDeselectAllComments,
   isLoadingComments,
+  snippets,
 }: {
   template: string;
   workItems: AzureDevOpsWorkItem[];
@@ -406,8 +411,37 @@ export function PromptComposer({
   onSelectAllComments?: () => void;
   onDeselectAllComments?: () => void;
   isLoadingComments?: boolean;
+  snippets?: PromptSnippet[];
 }) {
   const [showComments, setShowComments] = useState(false);
+  const [selectedSnippetId, setSelectedSnippetId] = useState<string | null>(
+    null,
+  );
+  const [showSnippetDropdown, setShowSnippetDropdown] = useState(false);
+
+  // Filter snippets to only enabled ones with newTask context
+  const availableSnippets = useMemo(
+    () => (snippets ?? []).filter((s) => s.enabled && s.contexts.newTask),
+    [snippets],
+  );
+
+  const handleSnippetSelect = useCallback(
+    (snippetId: string | null) => {
+      setSelectedSnippetId(snippetId);
+      setShowSnippetDropdown(false);
+      if (snippetId) {
+        const snippet = availableSnippets.find((s) => s.id === snippetId);
+        if (snippet) {
+          onTemplateChange(snippet.template);
+        }
+      } else {
+        // Reset to default template
+        const ids = workItems.map((wi) => wi.id.toString());
+        onTemplateChange(generateInitialTemplate(ids));
+      }
+    },
+    [availableSnippets, onTemplateChange, workItems],
+  );
 
   // Filter to selected comments for preview
   const selectedComments = useMemo(
@@ -418,11 +452,19 @@ export function PromptComposer({
     [comments, selectedCommentIds],
   );
 
-  // Expand template to preview
-  const preview = useMemo(
-    () => expandTemplate(template, workItems, selectedComments),
-    [template, workItems, selectedComments],
-  );
+  // Expand template to preview — use Handlebars if template contains `{{`, else old {#id} regex
+  const preview = useMemo(() => {
+    if (template.includes('{{')) {
+      const workItemsContext = workItems.map((wi) => ({
+        id: wi.id.toString(),
+        title: wi.fields.title,
+        description: wi.fields.description ?? '',
+      }));
+      return resolveSnippetTemplate(template, { workItems: workItemsContext })
+        .output;
+    }
+    return expandTemplate(template, workItems, selectedComments);
+  }, [template, workItems, selectedComments]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -433,7 +475,7 @@ export function PromptComposer({
   );
 
   const handlePaste = useCallback(
-    (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    (e: ClipboardEvent<HTMLElement>) => {
       if (!onImageAttach) return;
 
       const items = Array.from(e.clipboardData.items);
@@ -528,7 +570,7 @@ export function PromptComposer({
   );
 
   const handleTextareaDragOver = useCallback(
-    (e: DragEvent<HTMLTextAreaElement>) => {
+    (e: DragEvent<HTMLElement>) => {
       if (!onImageAttach) return;
       const hasFiles = Array.from(e.dataTransfer.types).includes('Files');
       if (hasFiles) {
@@ -700,6 +742,81 @@ export function PromptComposer({
             <span className="text-ink-3 font-mono text-[10px] font-semibold tracking-wider uppercase">
               Prompt Template
             </span>
+            {availableSnippets.length > 0 && (
+              <div className="relative ml-2">
+                <button
+                  type="button"
+                  onClick={() => setShowSnippetDropdown(!showSnippetDropdown)}
+                  className="inline-flex items-center gap-1 rounded-[5px] px-2 py-1 text-[11px] font-medium"
+                  style={{
+                    background: selectedSnippetId
+                      ? 'color-mix(in oklch, oklch(0.78 0.18 295) 14%, transparent)'
+                      : 'oklch(1 0 0 / 0.04)',
+                    border: selectedSnippetId
+                      ? '1px solid color-mix(in oklch, oklch(0.78 0.18 295) 30%, transparent)'
+                      : '1px solid oklch(1 0 0 / 0.07)',
+                    color: selectedSnippetId
+                      ? 'oklch(0.78 0.18 295)'
+                      : 'oklch(0.78 0.01 280)',
+                  }}
+                >
+                  {selectedSnippetId
+                    ? (availableSnippets.find((s) => s.id === selectedSnippetId)
+                        ?.name ?? 'Snippet')
+                    : 'Use snippet'}
+                  <ChevronDown className="h-2.5 w-2.5" />
+                </button>
+                {showSnippetDropdown && (
+                  <div
+                    className="absolute top-full left-0 z-20 mt-1 min-w-[180px] overflow-hidden rounded-lg border py-1"
+                    style={{
+                      background: 'oklch(0.16 0.015 280)',
+                      borderColor: 'oklch(1 0 0 / 0.1)',
+                      boxShadow: '0 8px 24px oklch(0 0 0 / 0.4)',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleSnippetSelect(null)}
+                      className="flex w-full items-center px-3 py-1.5 text-left text-[11.5px] hover:bg-white/[0.05]"
+                      style={{
+                        color:
+                          selectedSnippetId === null
+                            ? 'oklch(0.78 0.18 295)'
+                            : 'oklch(0.78 0.01 280)',
+                      }}
+                    >
+                      Default template
+                    </button>
+                    {availableSnippets.map((snippet) => (
+                      <button
+                        key={snippet.id}
+                        type="button"
+                        onClick={() => handleSnippetSelect(snippet.id)}
+                        className="flex w-full flex-col items-start px-3 py-1.5 text-left hover:bg-white/[0.05]"
+                      >
+                        <span
+                          className="text-[11.5px] font-medium"
+                          style={{
+                            color:
+                              selectedSnippetId === snippet.id
+                                ? 'oklch(0.78 0.18 295)'
+                                : 'oklch(0.88 0.01 280)',
+                          }}
+                        >
+                          {snippet.name}
+                        </span>
+                        {snippet.description && (
+                          <span className="text-ink-3 text-[10px]">
+                            {snippet.description}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="flex-1" />
             {onImageAttach && canAttachMore && (
               <>
@@ -722,14 +839,20 @@ export function PromptComposer({
               </>
             )}
           </div>
-          <textarea
-            value={template}
-            onChange={(e) => onTemplateChange(e.target.value)}
+          <div
+            className="flex-1"
             onPaste={handlePaste}
             onDragOver={handleTextareaDragOver}
-            className="text-ink-1 caret-acc flex-1 resize-none border-none bg-transparent px-5 py-4 font-mono text-[13px] leading-relaxed outline-none"
-            placeholder="Enter your prompt template..."
-          />
+          >
+            <HandlebarsEditor
+              value={template}
+              onChange={onTemplateChange}
+              placeholder="Enter your prompt template..."
+              className="h-full"
+              minHeight="200px"
+              maxHeight="500px"
+            />
+          </div>
           <div
             className="px-4 py-2"
             style={{
@@ -738,7 +861,9 @@ export function PromptComposer({
             }}
           >
             <span className="text-ink-3 font-mono text-[10px] font-semibold tracking-wider uppercase">
-              Use {'{#id}'} placeholders to include work item details
+              {selectedSnippetId
+                ? 'Handlebars template — use {{#each workItems}} to iterate'
+                : "Use {'{#id}'} placeholders to include work item details"}
             </span>
           </div>
           {/* Drag overlay */}

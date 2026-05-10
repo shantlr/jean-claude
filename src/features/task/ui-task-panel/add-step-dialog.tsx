@@ -31,7 +31,10 @@ import {
 } from '@/hooks/use-settings';
 import { useSkills } from '@/hooks/use-skills';
 import { useTask } from '@/hooks/use-tasks';
-import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
+import {
+  resolvePromptSnippet,
+  type SnippetVariableContext,
+} from '@/lib/resolve-snippet-template';
 import type {
   AgentBackendType,
   PromptImagePart,
@@ -312,6 +315,33 @@ export function AddStepDialog({
             side="top"
           />
         </div>
+        {(() => {
+          const stepSnippets = promptSnippets.filter(
+            (s) => s.enabled && s.contexts.newTaskStep,
+          );
+          if (stepSnippets.length === 0) return null;
+          return (
+            <div className="flex flex-wrap gap-1.5">
+              {stepSnippets.map((snippet) => (
+                <button
+                  key={snippet.id}
+                  type="button"
+                  className="bg-bg-2 text-ink-2 hover:bg-bg-3 hover:text-ink-1 rounded-full px-2.5 py-0.5 text-xs transition-colors"
+                  onClick={() => {
+                    const { output } = resolvePromptSnippet(
+                      snippet,
+                      snippetVariableContext,
+                    );
+                    setPromptTemplate(output);
+                    setTimeout(() => textareaRef.current?.focus(), 0);
+                  }}
+                >
+                  {snippet.name}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
         <PromptTextarea
           ref={textareaRef}
           value={promptTemplate}

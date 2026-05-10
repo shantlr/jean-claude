@@ -267,14 +267,17 @@ export const PromptTextarea = forwardRef<
       }
     }
 
-    // Fuzzy filter prompt snippets (only enabled ones with a trigger)
+    // Fuzzy filter prompt snippets (only enabled ones with autocomplete on)
     const enabledSnippets = promptSnippets.filter(
-      (s) => s.enabled && s.trigger.trim(),
+      (s) =>
+        s.enabled &&
+        s.autocomplete.enabled &&
+        s.autocomplete.slugs.some((slug) => slug.trim()),
     );
     if (enabledSnippets.length > 0) {
       const matchedSnippets = searchText
         ? new Fuse(enabledSnippets, {
-            keys: ['trigger', 'name'],
+            keys: ['autocomplete.slugs', 'name'],
             threshold: 0.4,
             ignoreLocation: true,
           })
@@ -382,11 +385,11 @@ export const PromptTextarea = forwardRef<
           textareaRef.current.selectionEnd = nextCursorPosition;
         });
       } else if (item.type === 'snippet') {
-        const resolved = resolvePromptSnippet(
+        const { output } = resolvePromptSnippet(
           item.snippet,
           snippetVariableContext ?? {},
         );
-        onChange(resolved);
+        onChange(output);
       } else {
         const command =
           item.type === 'command' ? item.command : `/${item.skill.name}`;
@@ -789,10 +792,21 @@ export const PromptTextarea = forwardRef<
                       : 'hover:bg-glass-medium',
                   )}
                 >
-                  <div className="text-ink-1 text-xs font-medium">
-                    /{snippet.trigger}
+                  <div className="flex items-center gap-2">
+                    <span className="text-ink-1 text-xs font-medium">
+                      /
+                      {snippet.autocomplete.slugs.find((s) => s.trim()) ??
+                        snippet.name}
+                    </span>
+                    {snippet.name && (
+                      <span className="text-ink-3 text-xs">{snippet.name}</span>
+                    )}
                   </div>
-                  <div className="text-ink-2 text-xs">{snippet.name}</div>
+                  {snippet.description && (
+                    <div className="text-ink-3 text-[11px]">
+                      {snippet.description}
+                    </div>
+                  )}
                 </button>
               );
             })}
