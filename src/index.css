@@ -825,6 +825,7 @@ button {
 .feed-running-row {
   position: relative;
   isolation: isolate;
+  background-color: var(--color-bg-0);
   box-shadow:
     inset 3px 0 0 var(--color-status-run),
     inset 0 0 28px -2px color-mix(in oklch, var(--color-status-run) 32%, transparent);
