@@ -5,16 +5,33 @@ import {
   KeyboardBindingLayer,
   useRegisterKeyboardBindings,
 } from '@/common/context/keyboard-bindings';
+import {
+  BackendSelector,
+  getModelLabel,
+  getModelsForBackend,
+} from '@/features/agent/ui-backend-selector';
+import { ModelSelector } from '@/features/agent/ui-model-selector';
+import { useBackendModels } from '@/hooks/use-backend-models';
+import { useBackendsSetting } from '@/hooks/use-settings';
 import type { ReviewComment } from '@/stores/review-comments';
 import { synthesizeReviewPrompt } from '@/stores/review-comments';
-import type { PromptPart } from '@shared/agent-backend-types';
-import type { TaskStep } from '@shared/types';
+import type { AgentBackendType, PromptPart } from '@shared/agent-backend-types';
+import type { ModelPreference, TaskStep } from '@shared/types';
+
+export interface ReviewSubmitTargetConfig {
+  agentBackend: AgentBackendType;
+  modelPreference: ModelPreference;
+}
 
 export function ReviewSubmitOverlay(props: {
   comments: ReviewComment[];
   steps?: TaskStep[];
   activeStepId?: string | null;
-  onSubmit: (parts: PromptPart[], targetStepId: string | null) => void;
+  onSubmit: (
+    parts: PromptPart[],
+    targetStepId: string | null,
+    targetConfig?: ReviewSubmitTargetConfig,
+  ) => void;
   onClose: () => void;
 }) {
   return (
@@ -34,20 +51,108 @@ function ReviewSubmitOverlayContent({
   comments: ReviewComment[];
   steps?: TaskStep[];
   activeStepId?: string | null;
-  onSubmit: (parts: PromptPart[], targetStepId: string | null) => void;
+  onSubmit: (
+    parts: PromptPart[],
+    targetStepId: string | null,
+    targetConfig?: ReviewSubmitTargetConfig,
+  ) => void;
   onClose: () => void;
 }) {
   const [globalIntent, setGlobalIntent] = useState('');
   const [showPromptPreview, setShowPromptPreview] = useState(false);
-  // null means "New step"
-  const [selectedStepId, setSelectedStepId] = useState<string | null>(
-    activeStepId ?? null,
+  const activeStep = useMemo(
+    () => steps?.find((step) => step.id === activeStepId) ?? null,
+    [activeStepId, steps],
   );
+  const [newStepBackendOverride, setNewStepBackendOverride] =
+    useState<AgentBackendType | null>(null);
+  const [newStepModelOverride, setNewStepModelOverride] =
+    useState<ModelPreference | null>(null);
+  const [targetSelection, setTargetSelection] = useState<
+    | { type: 'follow-active' }
+    | { type: 'existing'; stepId: string }
+    | { type: 'new' }
+  >(activeStepId ? { type: 'follow-active' } : { type: 'new' });
+  const selectedStepId =
+    targetSelection.type === 'follow-active'
+      ? (activeStepId ?? null)
+      : targetSelection.type === 'existing'
+        ? targetSelection.stepId
+        : null;
+  const backendsSettingQuery = useBackendsSetting();
+  const backendsSetting = backendsSettingQuery.data;
+  const enabledBackends = useMemo(
+    () =>
+      backendsSetting?.enabledBackends ??
+      ([activeStep?.agentBackend ?? 'claude-code'] as AgentBackendType[]),
+    [activeStep?.agentBackend, backendsSetting?.enabledBackends],
+  );
+  const defaultNewStepBackend = useMemo(() => {
+    const activeBackend = activeStep?.agentBackend ?? 'claude-code';
+    if (enabledBackends.includes(activeBackend)) {
+      return activeBackend;
+    }
 
-  // Sync if activeStepId changes while overlay is open
+    return enabledBackends[0] ?? 'claude-code';
+  }, [activeStep?.agentBackend, enabledBackends]);
+  const effectiveNewStepBackend =
+    newStepBackendOverride ?? defaultNewStepBackend;
+  const backendModelsQuery = useBackendModels(effectiveNewStepBackend);
+  const dynamicModels = backendModelsQuery.data;
+  const availableModels = useMemo(
+    () => getModelsForBackend(effectiveNewStepBackend, dynamicModels),
+    [dynamicModels, effectiveNewStepBackend],
+  );
+  const defaultNewStepModel =
+    effectiveNewStepBackend === defaultNewStepBackend
+      ? (activeStep?.modelPreference ?? 'default')
+      : 'default';
+  const effectiveNewStepModel = newStepModelOverride ?? defaultNewStepModel;
+  const modelOptions = useMemo(() => {
+    if (
+      availableModels.some((model) => model.value === effectiveNewStepModel)
+    ) {
+      return availableModels;
+    }
+
+    return [
+      {
+        value: effectiveNewStepModel,
+        label: getModelLabel(
+          effectiveNewStepModel,
+          effectiveNewStepBackend,
+          dynamicModels,
+        ),
+        description: backendModelsQuery.isFetched
+          ? 'Previously selected model'
+          : 'Loading available models',
+      },
+      ...availableModels,
+    ];
+  }, [
+    availableModels,
+    backendModelsQuery.isFetched,
+    dynamicModels,
+    effectiveNewStepBackend,
+    effectiveNewStepModel,
+  ]);
+
   useEffect(() => {
-    setSelectedStepId(activeStepId ?? null);
-  }, [activeStepId]);
+    const hasResolvedModels =
+      effectiveNewStepBackend === 'claude-code' || backendModelsQuery.isFetched;
+
+    if (
+      hasResolvedModels &&
+      !availableModels.some((model) => model.value === effectiveNewStepModel)
+    ) {
+      setNewStepModelOverride('default');
+    }
+  }, [
+    availableModels,
+    backendModelsQuery.isFetched,
+    effectiveNewStepBackend,
+    effectiveNewStepModel,
+  ]);
 
   const openComments = useMemo(
     () => comments.filter((c) => !c.resolved),
@@ -65,11 +170,36 @@ function ReviewSubmitOverlayContent({
     return textPart?.type === 'text' ? textPart.text : null;
   }, [synthesized]);
 
+  const isNewStepConfigReady =
+    backendsSettingQuery.isFetched &&
+    (effectiveNewStepBackend === 'claude-code' ||
+      backendModelsQuery.isFetched) &&
+    availableModels.some((model) => model.value === effectiveNewStepModel);
+  const canSubmit =
+    openComments.length > 0 &&
+    (selectedStepId !== null || isNewStepConfigReady);
+
   const handleSubmit = useCallback(() => {
-    if (synthesized) {
-      onSubmit(synthesized, selectedStepId);
+    if (synthesized && canSubmit) {
+      onSubmit(
+        synthesized,
+        selectedStepId,
+        selectedStepId
+          ? undefined
+          : {
+              agentBackend: effectiveNewStepBackend,
+              modelPreference: effectiveNewStepModel,
+            },
+      );
     }
-  }, [synthesized, selectedStepId, onSubmit]);
+  }, [
+    canSubmit,
+    synthesized,
+    selectedStepId,
+    onSubmit,
+    effectiveNewStepBackend,
+    effectiveNewStepModel,
+  ]);
 
   // cmd+enter to submit, escape to close
   useRegisterKeyboardBindings('review-submit-overlay', {
@@ -134,15 +264,33 @@ function ReviewSubmitOverlayContent({
               Send to step
             </div>
             <select
-              value={selectedStepId ?? '__new__'}
-              onChange={(e) =>
-                setSelectedStepId(
-                  e.target.value === '__new__' ? null : e.target.value,
-                )
+              value={
+                targetSelection.type === 'follow-active'
+                  ? '__active__'
+                  : (selectedStepId ?? '__new__')
               }
+              onChange={(e) => {
+                if (e.target.value === '__new__') {
+                  setTargetSelection({ type: 'new' });
+                  return;
+                }
+
+                if (e.target.value === '__active__') {
+                  setTargetSelection({ type: 'follow-active' });
+                  return;
+                }
+
+                setTargetSelection({
+                  type: 'existing',
+                  stepId: e.target.value,
+                });
+              }}
               className="border-line bg-bg-0 text-ink-1 focus:border-acc-line w-full rounded border px-2.5 py-2 text-xs outline-none"
             >
               <option value="__new__">+ New step</option>
+              {activeStepId && (
+                <option value="__active__">Current active step</option>
+              )}
               {steps.map((step) => (
                 <option key={step.id} value={step.id}>
                   {step.name}
@@ -150,6 +298,42 @@ function ReviewSubmitOverlayContent({
                 </option>
               ))}
             </select>
+          </div>
+        )}
+
+        {selectedStepId === null && (
+          <div className="border-line-soft border-b px-4 py-3.5">
+            <div className="text-ink-4 mb-1.5 text-[10.5px] font-medium tracking-wider uppercase">
+              New step settings
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <BackendSelector
+                value={effectiveNewStepBackend}
+                onChange={(backend) => {
+                  setNewStepBackendOverride(backend);
+                  setNewStepModelOverride('default');
+                }}
+                side="top"
+              />
+              <ModelSelector
+                value={effectiveNewStepModel}
+                onChange={setNewStepModelOverride}
+                models={modelOptions}
+                side="top"
+              />
+            </div>
+            {!backendsSettingQuery.isFetched ? (
+              <div className="text-ink-4 mt-2 text-[11px]">
+                Loading backend settings...
+              </div>
+            ) : (
+              effectiveNewStepBackend !== 'claude-code' &&
+              backendModelsQuery.isLoading && (
+                <div className="text-ink-4 mt-2 text-[11px]">
+                  Loading models for the selected backend...
+                </div>
+              )
+            )}
           </div>
         )}
 
@@ -242,7 +426,7 @@ function ReviewSubmitOverlayContent({
           <span className="text-ink-3 text-[11px]">
             {selectedStepId
               ? `Prompt will be sent to "${steps?.find((s) => s.id === selectedStepId)?.name ?? 'step'}".`
-              : 'A new step will be created from this review.'}
+              : `A new ${effectiveNewStepBackend === 'opencode' ? 'OpenCode' : 'Claude Code'} step will be created from this review.`}
           </span>
           <div className="flex-1" />
           <button
@@ -253,7 +437,7 @@ function ReviewSubmitOverlayContent({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={openComments.length === 0}
+            disabled={!canSubmit}
             className="bg-acc inline-flex items-center gap-1.5 rounded px-3.5 py-1.5 text-xs font-medium text-white disabled:opacity-40"
           >
             Submit review

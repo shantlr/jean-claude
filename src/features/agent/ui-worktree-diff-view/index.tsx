@@ -7,6 +7,7 @@ import { useCommands } from '@/common/hooks/use-commands';
 import { Separator } from '@/common/ui/separator';
 import { getFilesWithAnnotations } from '@/features/agent/ui-diff-annotation';
 import { ReviewSubmitOverlay } from '@/features/agent/ui-review-comments/review-submit-overlay';
+import type { ReviewSubmitTargetConfig } from '@/features/agent/ui-review-comments/review-submit-overlay';
 import { ReviewSubmitBar } from '@/features/agent/ui-review-comments/review-top-bar';
 import { SummaryPanel } from '@/features/agent/ui-summary-panel';
 import { WorktreeActions } from '@/features/agent/ui-worktree-actions';
@@ -71,7 +72,11 @@ export function WorktreeDiffView({
   onMergeStarted: () => void;
   onOpenPrView: () => void;
   /** Called when user submits a review. Receives the synthesized prompt parts and target step ID (null = new step). */
-  onSubmitReview?: (parts: PromptPart[], targetStepId: string | null) => void;
+  onSubmitReview?: (
+    parts: PromptPart[],
+    targetStepId: string | null,
+    targetConfig?: ReviewSubmitTargetConfig,
+  ) => void;
   bottomPadding?: number;
   /** Set of collapsed folder paths in the diff file tree */
   collapsedFolders?: Set<string>;
@@ -178,9 +183,13 @@ export function WorktreeDiffView({
   );
 
   const handleSubmitReview = useCallback(
-    (parts: PromptPart[], targetStepId: string | null) => {
+    (
+      parts: PromptPart[],
+      targetStepId: string | null,
+      targetConfig?: ReviewSubmitTargetConfig,
+    ) => {
       setIsSubmitOverlayOpen(false);
-      onSubmitReview?.(parts, targetStepId);
+      onSubmitReview?.(parts, targetStepId, targetConfig);
 
       // Resolve all open comments after submission
       for (const comment of reviewComments) {

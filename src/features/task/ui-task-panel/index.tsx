@@ -113,6 +113,7 @@ import type {
 import type { NormalizedEntry } from '@shared/normalized-message-v2';
 import {
   getDefaultInteractionModeForBackend,
+  normalizeInteractionModeForBackend,
   type InteractionMode,
   type ModelPreference,
   type TaskStep,
@@ -1401,7 +1402,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               pullRequestUrl={task.pullRequestUrl}
               onMergeStarted={handleMergeStarted}
               onOpenPrView={openPrView}
-              onSubmitReview={(parts, targetStepId) => {
+              onSubmitReview={(parts, targetStepId, targetConfig) => {
                 if (targetStepId) {
                   // Send to existing step (may differ from activeStepId)
                   if (targetStepId !== activeStepId) {
@@ -1414,11 +1415,20 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                   const imageParts = parts.filter(
                     (p): p is PromptImagePart => p.type === 'image',
                   );
-                  const backend = activeStep?.agentBackend ?? 'claude-code';
-                  const mode =
-                    activeStep?.interactionMode ??
-                    getDefaultInteractionModeForBackend({ backend });
-                  const model = activeStep?.modelPreference ?? 'default';
+                  const backend =
+                    targetConfig?.agentBackend ??
+                    activeStep?.agentBackend ??
+                    'claude-code';
+                  const mode = normalizeInteractionModeForBackend({
+                    backend,
+                    mode:
+                      activeStep?.interactionMode ??
+                      getDefaultInteractionModeForBackend({ backend }),
+                  });
+                  const model =
+                    targetConfig?.modelPreference ??
+                    activeStep?.modelPreference ??
+                    'default';
                   void handleAddStep({
                     promptTemplate:
                       textPart?.type === 'text' ? textPart.text : '',
