@@ -12,9 +12,19 @@ import { useNewTaskDraftStore } from '@/stores/new-task-draft';
 import { useOverlaysStore } from '@/stores/overlays';
 import type { FeedItem } from '@shared/feed-types';
 
-function getFirstLine(text: string): string {
-  const firstLine = text.split('\n')[0]?.trim() ?? '';
-  return firstLine || text.trim().slice(0, 100);
+function parseNotePreview(text: string): {
+  title: string;
+  contentLines: string[];
+  hasMore: boolean;
+} {
+  const lines = text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+  const title = lines[0] ?? text.trim().slice(0, 100);
+  const contentLines = lines.slice(1, 3);
+  const hasMore = lines.length > 3;
+  return { title, contentLines, hasMore };
 }
 
 export function FeedNoteCard({
@@ -50,7 +60,7 @@ export function FeedNoteCard({
   );
   const openOverlay = useOverlaysStore((s) => s.open);
 
-  const firstLine = useMemo(() => getFirstLine(item.title), [item.title]);
+  const notePreview = useMemo(() => parseNotePreview(item.title), [item.title]);
 
   const openNote = useCallback(() => {
     if (item.noteId) {
@@ -138,14 +148,30 @@ export function FeedNoteCard({
                 : '-translate-x-1 scale-y-60 opacity-0',
             )}
           />
-          <div className="flex items-center gap-2">
-            <StickyNote className="text-status-done/50 h-3.5 w-3.5 shrink-0" />
-            <span className="text-ink-1 min-w-0 flex-1 truncate text-sm">
-              {firstLine}
-            </span>
-            <span className="text-ink-3 shrink-0 text-[11px] tabular-nums">
-              {formatRelativeTime(item.timestamp)}
-            </span>
+          <div className="flex items-start gap-2">
+            <StickyNote className="text-status-done/50 mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-ink-1 min-w-0 flex-1 truncate text-sm">
+                  {notePreview.title}
+                </span>
+                <span className="text-ink-3 shrink-0 text-[11px] tabular-nums">
+                  {formatRelativeTime(item.timestamp)}
+                </span>
+              </div>
+              {notePreview.contentLines.length > 0 && (
+                <div className="text-ink-3 mt-0.5 text-xs leading-snug">
+                  {notePreview.contentLines.map((line, i) => (
+                    <div key={i} className="truncate">
+                      {line}
+                    </div>
+                  ))}
+                  {notePreview.hasMore && (
+                    <span className="text-ink-3/60 text-[11px]">…</span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
