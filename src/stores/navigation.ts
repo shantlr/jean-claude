@@ -118,6 +118,11 @@ const DEFAULT_TOOL_DIFF_PREVIEW_PANE_WIDTH = 520;
 const MIN_TOOL_DIFF_PREVIEW_PANE_WIDTH = 360;
 const MAX_TOOL_DIFF_PREVIEW_PANE_WIDTH = 1400;
 
+// Constants for work item comments pane width
+const DEFAULT_WORK_ITEM_COMMENTS_PANE_WIDTH = 360;
+const MIN_WORK_ITEM_COMMENTS_PANE_WIDTH = 280;
+const MAX_WORK_ITEM_COMMENTS_PANE_WIDTH = 720;
+
 // Constants for skills rail width (settings panel)
 const DEFAULT_SKILLS_RAIL_WIDTH = 220;
 const MIN_SKILLS_RAIL_WIDTH = 160;
@@ -158,6 +163,9 @@ interface NavigationState {
   // App-level: tool diff preview pane width (global setting)
   toolDiffPreviewPaneWidth: number;
 
+  // App-level: work item comments pane width (global setting)
+  workItemCommentsPaneWidth: number;
+
   // App-level: skills rail width in settings (global setting)
   skillsRailWidth: number;
 
@@ -182,6 +190,7 @@ interface NavigationState {
   setFileExplorerPaneWidth: (width: number) => void;
   setCommandLogsPaneWidth: (width: number) => void;
   setToolDiffPreviewPaneWidth: (width: number) => void;
+  setWorkItemCommentsPaneWidth: (width: number) => void;
   setSkillsRailWidth: (width: number) => void;
   setSidebarTab: (tab: 'tasks' | 'prs') => void;
   setLastTaskForProject: (projectId: string, taskId: string) => void;
@@ -215,6 +224,7 @@ const useStore = create<NavigationState>()(
       fileExplorerPaneWidth: DEFAULT_FILE_EXPLORER_PANE_WIDTH,
       commandLogsPaneWidth: DEFAULT_COMMAND_LOGS_PANE_WIDTH,
       toolDiffPreviewPaneWidth: DEFAULT_TOOL_DIFF_PREVIEW_PANE_WIDTH,
+      workItemCommentsPaneWidth: DEFAULT_WORK_ITEM_COMMENTS_PANE_WIDTH,
       skillsRailWidth: DEFAULT_SKILLS_RAIL_WIDTH,
       sidebarTab: 'tasks' as 'tasks' | 'prs',
       lastTaskByProject: {},
@@ -265,6 +275,14 @@ const useStore = create<NavigationState>()(
           toolDiffPreviewPaneWidth: Math.min(
             Math.max(MIN_TOOL_DIFF_PREVIEW_PANE_WIDTH, width),
             MAX_TOOL_DIFF_PREVIEW_PANE_WIDTH,
+          ),
+        }),
+
+      setWorkItemCommentsPaneWidth: (width) =>
+        set({
+          workItemCommentsPaneWidth: Math.min(
+            Math.max(MIN_WORK_ITEM_COMMENTS_PANE_WIDTH, width),
+            MAX_WORK_ITEM_COMMENTS_PANE_WIDTH,
           ),
         }),
 
@@ -1050,6 +1068,18 @@ export function useToolDiffPreviewPaneWidth() {
     setWidth,
     minWidth: MIN_TOOL_DIFF_PREVIEW_PANE_WIDTH,
     maxWidth: MAX_TOOL_DIFF_PREVIEW_PANE_WIDTH,
+  };
+}
+
+// Hook for work item comments pane width
+export function useWorkItemCommentsPaneWidth() {
+  const width = useStore((state) => state.workItemCommentsPaneWidth);
+  const setWidth = useStore((state) => state.setWorkItemCommentsPaneWidth);
+  return {
+    width,
+    setWidth,
+    minWidth: MIN_WORK_ITEM_COMMENTS_PANE_WIDTH,
+    maxWidth: MAX_WORK_ITEM_COMMENTS_PANE_WIDTH,
   };
 }
 

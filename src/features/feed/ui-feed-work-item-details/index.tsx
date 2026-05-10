@@ -1,3 +1,4 @@
+import clsx from 'clsx';
 import {
   Bug,
   BookOpen,
@@ -12,9 +13,16 @@ import { useState } from 'react';
 
 import { Chip } from '@/common/ui/chip';
 import { AzureHtmlContent } from '@/features/common/ui-azure-html-content';
+import { WorkItemComments } from '@/features/work-item/ui-work-item-comments';
+import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useProject } from '@/hooks/use-projects';
-import { useRelatedTestCases, useWorkItemById } from '@/hooks/use-work-items';
+import {
+  useRelatedTestCases,
+  useWorkItemById,
+  useWorkItemComments,
+} from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
+import { useWorkItemCommentsPaneWidth } from '@/stores/navigation';
 
 function WorkItemTypeIcon({
   type,
@@ -69,6 +77,13 @@ export function FeedWorkItemDetails({
 }) {
   const { data: project } = useProject(projectId);
   const providerId = project?.workItemProviderId ?? null;
+  const projectName = project?.workItemProjectName ?? null;
+  const {
+    width: commentsPaneWidth,
+    setWidth: setCommentsPaneWidth,
+    minWidth: minCommentsPaneWidth,
+    maxWidth: maxCommentsPaneWidth,
+  } = useWorkItemCommentsPaneWidth();
 
   const {
     data: workItem,
@@ -78,14 +93,35 @@ export function FeedWorkItemDetails({
     providerId,
     workItemId,
   });
-
-  const projectName = project?.workItemProjectName ?? null;
+  const {
+    data: comments = [],
+    isLoading: isLoadingComments,
+    error: commentsError,
+  } = useWorkItemComments({
+    providerId,
+    projectName,
+    workItemIds: [workItemId],
+  });
   const { data: relatedTestCases = [], isLoading: isLoadingTestCases } =
     useRelatedTestCases({
       providerId,
       projectName,
       workItemId,
     });
+  const { containerRef, isDragging, handleMouseDown } = useHorizontalResize({
+    initialWidth: commentsPaneWidth,
+    minWidth: minCommentsPaneWidth,
+    maxWidth: maxCommentsPaneWidth,
+    maxWidthFraction: 0.6,
+    direction: 'left',
+    onWidthChange: setCommentsPaneWidth,
+  });
+
+  const effectiveCommentsPaneWidth = Math.min(
+    commentsPaneWidth,
+    maxCommentsPaneWidth,
+    Math.floor((containerRef.current?.offsetWidth ?? window.innerWidth) * 0.6),
+  );
 
   if (isLoading || !project) {
     return (
@@ -110,7 +146,6 @@ export function FeedWorkItemDetails({
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* Header */}
       <div className="border-glass-border/50 shrink-0 border-b px-6 py-4">
         <div className="flex items-center gap-3">
           <WorkItemTypeIcon type={fields.workItemType} size="lg" />
@@ -140,7 +175,6 @@ export function FeedWorkItemDetails({
           )}
         </div>
 
-        {/* Metadata row */}
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <StateBadge state={fields.state} />
           <div className="flex items-center gap-1.5 text-xs">
@@ -156,44 +190,75 @@ export function FeedWorkItemDetails({
         </div>
       </div>
 
-      {/* Content (scrollable) */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
-        {description ? (
-          <AzureHtmlContent
-            html={description}
-            providerId={providerId ?? undefined}
-            className="text-ink-1 text-sm"
-            imageClassName="max-h-96 w-auto object-contain"
-            enableImageModal
-          />
-        ) : (
-          <p className="text-ink-3 text-sm italic">No description provided.</p>
+      <div
+        ref={containerRef}
+        className={clsx(
+          'flex min-h-0 flex-1 overflow-hidden',
+          isDragging && 'select-none',
         )}
+      >
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-6 py-4">
+          {description ? (
+            <AzureHtmlContent
+              html={description}
+              providerId={providerId ?? undefined}
+              className="text-ink-1 text-sm"
+              imageClassName="max-h-96 w-auto object-contain"
+              enableImageModal
+            />
+          ) : (
+            <p className="text-ink-3 text-sm italic">
+              No description provided.
+            </p>
+          )}
 
-        {/* Related Test Cases */}
-        {(isLoadingTestCases || relatedTestCases.length > 0) && (
-          <div className="border-glass-border mt-4 border-t pt-4">
-            <div className="text-ink-3 mb-3 text-xs font-medium tracking-wide uppercase">
-              Related Test Cases
-            </div>
-
-            {isLoadingTestCases && (
-              <p className="text-ink-3 text-sm">Loading test cases...</p>
-            )}
-
-            {relatedTestCases.length > 0 && (
-              <div className="flex flex-col gap-2">
-                {relatedTestCases.map((tc) => (
-                  <ExpandableTestCase
-                    key={tc.id}
-                    testCase={tc}
-                    providerId={providerId ?? undefined}
-                  />
-                ))}
+          {(isLoadingTestCases || relatedTestCases.length > 0) && (
+            <div className="border-glass-border mt-4 border-t pt-4">
+              <div className="text-ink-3 mb-3 text-xs font-medium tracking-wide uppercase">
+                Related Test Cases
               </div>
-            )}
-          </div>
-        )}
+
+              {isLoadingTestCases && (
+                <p className="text-ink-3 text-sm">Loading test cases...</p>
+              )}
+
+              {relatedTestCases.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {relatedTestCases.map((tc) => (
+                    <ExpandableTestCase
+                      key={tc.id}
+                      testCase={tc}
+                      providerId={providerId ?? undefined}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div
+          onMouseDown={handleMouseDown}
+          className={clsx(
+            'hover:bg-acc/30 h-full w-1 shrink-0 cursor-col-resize transition-colors',
+            isDragging && 'bg-acc/30',
+          )}
+        />
+
+        <aside
+          className="border-glass-border/50 bg-bg-1/20 min-w-0 shrink-0 border-l px-5 py-4"
+          style={{ width: effectiveCommentsPaneWidth }}
+        >
+          <WorkItemComments
+            comments={comments}
+            isLoading={isLoadingComments}
+            error={
+              commentsError instanceof Error ? commentsError.message : null
+            }
+            providerId={providerId ?? undefined}
+            emptyMessage="No comments on this work item yet."
+          />
+        </aside>
       </div>
     </div>
   );
