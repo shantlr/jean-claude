@@ -2,6 +2,7 @@ import { useNavigate, useParams } from '@tanstack/react-router';
 import clsx from 'clsx';
 import {
   ArrowDownNarrowWide,
+  Bug,
   Bot,
   ClipboardList,
   FolderOpen,
@@ -391,9 +392,12 @@ export function FeedItemCard({
                 className="flex shrink-0 items-center justify-center"
                 style={{ width: RAIL_W }}
               >
-                {item.source === 'work-item' && (
-                  <ClipboardList className="text-status-azure h-3.5 w-3.5" />
-                )}
+                {item.source === 'work-item' &&
+                  (item.workItemType === 'Bug' ? (
+                    <Bug className="text-status-fail h-3.5 w-3.5" />
+                  ) : (
+                    <ClipboardList className="text-status-azure h-3.5 w-3.5" />
+                  ))}
                 {item.source === 'pull-request' && (
                   <GitPullRequest className="text-status-pr h-3.5 w-3.5" />
                 )}
