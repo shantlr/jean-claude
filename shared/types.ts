@@ -663,6 +663,35 @@ export function isAiSkillSlotsSetting(v: unknown): v is AiSkillSlotsSetting {
   });
 }
 
+// Prompt Snippets
+export type PromptSnippet = {
+  id: string;
+  name: string;
+  trigger: string;
+  template: string;
+  enabled: boolean;
+  builtin: boolean;
+};
+
+export type PromptSnippetsSetting = PromptSnippet[];
+
+function isPromptSnippetsSetting(
+  value: unknown,
+): value is PromptSnippetsSetting {
+  if (!Array.isArray(value)) return false;
+  return value.every(
+    (item) =>
+      typeof item === 'object' &&
+      item !== null &&
+      typeof item.id === 'string' &&
+      typeof item.name === 'string' &&
+      typeof item.trigger === 'string' &&
+      typeof item.template === 'string' &&
+      typeof item.enabled === 'boolean' &&
+      typeof item.builtin === 'boolean',
+  );
+}
+
 export const SETTINGS_DEFINITIONS = {
   editor: {
     defaultValue: { type: 'preset', id: 'vscode' } as EditorSetting,
@@ -702,6 +731,10 @@ export const SETTINGS_DEFINITIONS = {
   aiSkillSlots: {
     defaultValue: {} as AiSkillSlotsSetting,
     validate: isAiSkillSlotsSetting,
+  },
+  promptSnippets: {
+    defaultValue: [] as PromptSnippetsSetting,
+    validate: isPromptSnippetsSetting,
   },
 } satisfies Record<string, SettingDefinition<unknown>>;
 

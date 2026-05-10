@@ -36,6 +36,7 @@ import { DebugDatabase } from '@/features/settings/ui-debug-database';
 import { GeneralSettings } from '@/features/settings/ui-general-settings';
 import { GlobalPermissionsSettings } from '@/features/settings/ui-global-permissions-settings';
 import { McpServersSettings } from '@/features/settings/ui-mcp-servers-settings';
+import { PromptSnippetsSettings } from '@/features/settings/ui-prompt-snippets-settings';
 import { SkillsSettings } from '@/features/settings/ui-skills-settings';
 import { TokensTab } from '@/features/settings/ui-tokens-tab';
 
@@ -46,6 +47,7 @@ type GlobalMenuItem =
   | 'ai-generation'
   | 'permissions'
   | 'skills'
+  | 'prompt-snippets'
   | 'mcp-servers'
   | 'tokens'
   | 'azure-devops'
@@ -86,6 +88,13 @@ const GLOBAL_MENU_ITEMS: {
     icon: Box,
     title: 'Skills',
     subtitle: 'Manage and discover agent skills',
+  },
+  {
+    id: 'prompt-snippets',
+    label: 'Snippets',
+    icon: Terminal,
+    title: 'Prompt Snippets',
+    subtitle: 'Reusable prompt templates with variables',
   },
   {
     id: 'mcp-servers',
@@ -238,6 +247,8 @@ function GlobalContentInner({ menuItem }: { menuItem: GlobalMenuItem }) {
       return <GlobalPermissionsSettings />;
     case 'skills':
       return <SkillsSettings />;
+    case 'prompt-snippets':
+      return <PromptSnippetsSettings />;
     case 'mcp-servers':
       return <McpServersSettings />;
     case 'tokens':

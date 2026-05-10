@@ -31,12 +31,17 @@ import { useBackendModels } from '@/hooks/use-backend-models';
 import { useCreateFeedNote } from '@/hooks/use-feed-notes';
 import { useDeleteProjectTodo } from '@/hooks/use-project-todos';
 import { useProjects, useProjectBranches } from '@/hooks/use-projects';
-import { useBackendsSetting, useCompletionSetting } from '@/hooks/use-settings';
+import {
+  useBackendsSetting,
+  useCompletionSetting,
+  usePromptSnippetsSetting,
+} from '@/hooks/use-settings';
 import { useProjectSkills } from '@/hooks/use-skills';
 import { useCreateTaskWithWorktree, useProjectTasks } from '@/hooks/use-tasks';
 import { useWorkItems, useWorkItemComments } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
 import { compressImage } from '@/lib/image-compression';
+import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import {
   useComposerFileCommentCount,
@@ -168,6 +173,7 @@ export function NewTaskOverlay({
   const markJobFailed = useBackgroundJobsStore((state) => state.markJobFailed);
 
   const { data: completionSetting } = useCompletionSetting();
+  const { data: promptSnippets = [] } = usePromptSnippetsSetting();
 
   const searchInputRef = useRef<HTMLTextAreaElement>(null);
   const promptInputRef = useRef<PromptTextareaRef>(null);
@@ -215,6 +221,14 @@ export function NewTaskOverlay({
         ? (projects.find((p) => p.id === selectedProjectId) ?? null)
         : null,
     [selectedProjectId, projects],
+  );
+  const snippetVariableContext: SnippetVariableContext = useMemo(
+    () => ({
+      project: selectedProject
+        ? { name: selectedProject.name, path: selectedProject.path }
+        : undefined,
+    }),
+    [selectedProject],
   );
   const { data: projectSkills = [] } = useProjectSkills(
     selectedProjectId ?? undefined,
@@ -1165,6 +1179,8 @@ export function NewTaskOverlay({
                 images={draft?.images}
                 onImageAttach={handleImageAttach}
                 onImageRemove={handleImageRemove}
+                promptSnippets={promptSnippets}
+                snippetVariableContext={snippetVariableContext}
                 className="text-ink-1 placeholder-ink-3 border-transparent bg-transparent px-0 py-0 text-sm focus:border-transparent focus:ring-0 focus:outline-none"
               />
               {fileCommentCount > 0 && selectedProject && (

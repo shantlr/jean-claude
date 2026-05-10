@@ -11,8 +11,10 @@ import {
   PromptTextareaRef,
 } from '@/features/common/ui-prompt-textarea';
 import { useCompletionSetting } from '@/hooks/use-settings';
+import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
 import type { PromptPart, PromptImagePart } from '@shared/agent-backend-types';
 import type { Skill } from '@shared/skill-types';
+import type { PromptSnippet } from '@shared/types';
 
 const DOUBLE_ESCAPE_THRESHOLD = 300; // ms
 
@@ -32,6 +34,8 @@ export function MessageInput({
   projectId,
   getCompletionContextBeforePrompt,
   onFocusChange,
+  promptSnippets,
+  snippetVariableContext,
 }: {
   onSend: (parts: PromptPart[]) => void;
   onQueue?: (parts: PromptPart[]) => void;
@@ -52,6 +56,10 @@ export function MessageInput({
   getCompletionContextBeforePrompt?: () => string;
   /** Callback when textarea focus state changes */
   onFocusChange?: (focused: boolean) => void;
+  /** Prompt snippets from settings */
+  promptSnippets?: PromptSnippet[];
+  /** Context for resolving snippet variables */
+  snippetVariableContext?: SnippetVariableContext;
 }) {
   const { data: completionSetting } = useCompletionSetting();
   const [internalValue, setInternalValue] = useState('');
@@ -149,6 +157,8 @@ export function MessageInput({
         images={supportsImages ? images : undefined}
         onImageAttach={supportsImages ? handleImageAttach : undefined}
         onImageRemove={supportsImages ? handleImageRemove : undefined}
+        promptSnippets={promptSnippets}
+        snippetVariableContext={snippetVariableContext}
         placeholder={
           isRunning
             ? 'Type to queue a follow-up... (Esc twice to stop)'

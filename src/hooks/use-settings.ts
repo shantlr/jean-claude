@@ -6,6 +6,7 @@ import type {
   AppSettings,
   BackendsSetting,
   EditorSetting,
+  PromptSnippetsSetting,
   SummaryModelsSetting,
   UsageDisplaySetting,
 } from '@shared/types';
@@ -147,5 +148,23 @@ export function useCompletionDailyUsage() {
     enabled,
     refetchInterval: 120_000,
     staleTime: 60_000,
+  });
+}
+
+// Convenience hooks for prompt snippets setting
+export function usePromptSnippetsSetting() {
+  return useSetting('promptSnippets');
+}
+
+export function useUpdatePromptSnippetsSetting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: PromptSnippetsSetting) =>
+      api.settings.set('promptSnippets', value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings', 'promptSnippets'],
+      });
+    },
   });
 }

@@ -36,9 +36,12 @@ import {
   useProjectFilePaths,
 } from '@/hooks/use-project-file-paths';
 import { processImageFile, MAX_IMAGES } from '@/lib/image-utils';
+import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
+import { resolvePromptSnippet } from '@/lib/resolve-snippet-template';
 import { useToastStore } from '@/stores/toasts';
 import type { PromptImagePart } from '@shared/agent-backend-types';
 import type { Skill } from '@shared/skill-types';
+import type { PromptSnippet } from '@shared/types';
 
 const COMMANDS = [
   { command: '/init', description: 'Initialize CLAUDE.md in project' },
@@ -91,7 +94,8 @@ function getActiveMentionToken({
 type DropdownItem =
   | { type: 'command'; command: string; description: string }
   | { type: 'skill'; skill: Skill }
-  | { type: 'file'; filePath: string };
+  | { type: 'file'; filePath: string }
+  | { type: 'snippet'; snippet: PromptSnippet };
 
 type MentionToken = {
   start: number;
@@ -133,6 +137,10 @@ export interface PromptTextareaProps extends Omit<
   onImageAttach?: (image: PromptImagePart) => void;
   /** Called when user removes an attached image */
   onImageRemove?: (index: number) => void;
+  /** Prompt snippets from settings */
+  promptSnippets?: PromptSnippet[];
+  /** Context for resolving snippet variables */
+  snippetVariableContext?: SnippetVariableContext;
 }
 
 export const PromptTextarea = forwardRef<
@@ -154,6 +162,8 @@ export const PromptTextarea = forwardRef<
     images,
     onImageAttach,
     onImageRemove,
+    promptSnippets = [],
+    snippetVariableContext,
     className,
     onKeyDown: externalOnKeyDown,
     ...textareaProps
@@ -257,6 +267,25 @@ export const PromptTextarea = forwardRef<
       }
     }
 
+    // Fuzzy filter prompt snippets (only enabled ones with a trigger)
+    const enabledSnippets = promptSnippets.filter(
+      (s) => s.enabled && s.trigger.trim(),
+    );
+    if (enabledSnippets.length > 0) {
+      const matchedSnippets = searchText
+        ? new Fuse(enabledSnippets, {
+            keys: ['trigger', 'name'],
+            threshold: 0.4,
+            ignoreLocation: true,
+          })
+            .search(searchText)
+            .map((r) => r.item)
+        : enabledSnippets;
+      for (const snippet of matchedSnippets) {
+        items.push({ type: 'snippet', snippet });
+      }
+    }
+
     // Fuzzy filter skills
     const matchedSkills = searchText
       ? new Fuse(skills, {
@@ -279,6 +308,7 @@ export const PromptTextarea = forwardRef<
     searchText,
     skills,
     showCommands,
+    promptSnippets,
   ]);
 
   // Reset selected index when filtered items change
@@ -351,6 +381,12 @@ export const PromptTextarea = forwardRef<
           textareaRef.current.selectionStart = nextCursorPosition;
           textareaRef.current.selectionEnd = nextCursorPosition;
         });
+      } else if (item.type === 'snippet') {
+        const resolved = resolvePromptSnippet(
+          item.snippet,
+          snippetVariableContext ?? {},
+        );
+        onChange(resolved);
       } else {
         const command =
           item.type === 'command' ? item.command : `/${item.skill.name}`;
@@ -360,7 +396,7 @@ export const PromptTextarea = forwardRef<
       setDropdownDismissed(true);
       textareaRef.current?.focus();
     },
-    [activeMentionToken, onChange, value],
+    [activeMentionToken, onChange, value, snippetVariableContext],
   );
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -608,17 +644,22 @@ export const PromptTextarea = forwardRef<
   // Separate item types for grouped display
   const fileItems = filteredItems.filter((item) => item.type === 'file');
   const commandItems = filteredItems.filter((item) => item.type === 'command');
+  const snippetItems = filteredItems.filter((item) => item.type === 'snippet');
   const skillItems = filteredItems.filter((item) => item.type === 'skill');
   const needsTrailingPadding = !!onImageAttach;
 
   // Get the flat index for an item (used for selection highlighting)
   const getItemIndex = (
-    type: 'file' | 'command' | 'skill',
+    type: 'file' | 'command' | 'snippet' | 'skill',
     localIndex: number,
   ) => {
     if (type === 'file') return localIndex;
     if (type === 'command') return fileItems.length + localIndex;
-    return fileItems.length + commandItems.length + localIndex;
+    if (type === 'snippet')
+      return fileItems.length + commandItems.length + localIndex;
+    return (
+      fileItems.length + commandItems.length + snippetItems.length + localIndex
+    );
   };
 
   return (
@@ -717,10 +758,50 @@ export const PromptTextarea = forwardRef<
               );
             })}
 
-            {/* Divider between commands and skills */}
-            {commandItems.length > 0 && skillItems.length > 0 && (
+            {/* Divider between commands and snippets */}
+            {commandItems.length > 0 && snippetItems.length > 0 && (
               <div className="border-glass-border my-1 border-t" />
             )}
+
+            {/* Snippets section header */}
+            {snippetItems.length > 0 && (
+              <div className="text-ink-3 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium">
+                Snippets
+              </div>
+            )}
+
+            {/* Snippets */}
+            {snippetItems.map((item, localIndex) => {
+              if (item.type !== 'snippet') return null;
+              const index = getItemIndex('snippet', localIndex);
+              const { snippet } = item;
+              return (
+                <button
+                  key={snippet.id}
+                  type="button"
+                  data-index={index}
+                  onClick={() => selectItem(item)}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                  className={clsx(
+                    'w-full px-3 py-1.5 text-left',
+                    index === selectedIndex
+                      ? 'bg-glass-medium'
+                      : 'hover:bg-glass-medium',
+                  )}
+                >
+                  <div className="text-ink-1 text-xs font-medium">
+                    /{snippet.trigger}
+                  </div>
+                  <div className="text-ink-2 text-xs">{snippet.name}</div>
+                </button>
+              );
+            })}
+
+            {/* Divider before skills */}
+            {(commandItems.length > 0 || snippetItems.length > 0) &&
+              skillItems.length > 0 && (
+                <div className="border-glass-border my-1 border-t" />
+              )}
 
             {/* Skills section header */}
             {skillItems.length > 0 && (

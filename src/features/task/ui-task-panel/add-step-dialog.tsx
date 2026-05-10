@@ -24,8 +24,14 @@ import {
   type PromptTextareaRef,
 } from '@/features/common/ui-prompt-textarea';
 import { useBackendModels } from '@/hooks/use-backend-models';
-import { useBackendsSetting } from '@/hooks/use-settings';
+import { useProject } from '@/hooks/use-projects';
+import {
+  useBackendsSetting,
+  usePromptSnippetsSetting,
+} from '@/hooks/use-settings';
 import { useSkills } from '@/hooks/use-skills';
+import { useTask } from '@/hooks/use-tasks';
+import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
 import type {
   AgentBackendType,
   PromptImagePart,
@@ -177,6 +183,26 @@ export function AddStepDialog({
     taskId,
     stepId: activeStepId,
   });
+  const { data: promptSnippets = [] } = usePromptSnippetsSetting();
+  const { data: stepTask } = useTask(taskId);
+  const { data: stepProject } = useProject(projectId ?? '');
+  const snippetVariableContext: SnippetVariableContext = useMemo(
+    () => ({
+      task: stepTask
+        ? {
+            worktreePath: stepTask.worktreePath,
+            name: stepTask.name,
+            note: stepTask.prompt,
+            sourceBranch: stepTask.sourceBranch,
+            branchName: stepTask.branchName,
+          }
+        : undefined,
+      project: stepProject
+        ? { name: stepProject.name, path: stepProject.path }
+        : undefined,
+    }),
+    [stepTask, stepProject],
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -305,6 +331,8 @@ export function AddStepDialog({
           images={images}
           onImageAttach={handleImageAttach}
           onImageRemove={handleImageRemove}
+          promptSnippets={promptSnippets}
+          snippetVariableContext={snippetVariableContext}
         />
         {presetType === 'review-changes' && (
           <div className="space-y-2">

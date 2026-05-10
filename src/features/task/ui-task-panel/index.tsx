@@ -61,7 +61,11 @@ import { useBackendModels } from '@/hooks/use-backend-models';
 import { useContextUsage, type ContextUsage } from '@/hooks/use-context-usage';
 import { useModel, formatModelName } from '@/hooks/use-model';
 import { useProject } from '@/hooks/use-projects';
-import { getEditorLabel, useEditorSetting } from '@/hooks/use-settings';
+import {
+  getEditorLabel,
+  useEditorSetting,
+  usePromptSnippetsSetting,
+} from '@/hooks/use-settings';
 import { useSkills } from '@/hooks/use-skills';
 import {
   useCreateStep,
@@ -86,6 +90,7 @@ import {
 } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
+import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
 import { getBranchFromWorktreePath } from '@/lib/worktree';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import {
@@ -1720,11 +1725,31 @@ const TaskInputFooter = memo(function TaskInputFooter({
   getCompletionContextBeforePrompt: () => string;
 }) {
   const { data: task } = useTask(taskId);
+  const { data: footerProject } = useProject(task?.projectId ?? '');
   const { data: activeStep } = useStep(activeStepId ?? '');
   const { data: skills } = useSkills({
     taskId,
     stepId: activeStepId ?? undefined,
   });
+  const { data: footerSnippets = [] } = usePromptSnippetsSetting();
+
+  const snippetVariableContext: SnippetVariableContext = useMemo(
+    () => ({
+      task: task
+        ? {
+            worktreePath: task.worktreePath,
+            name: task.name,
+            note: task.prompt,
+            sourceBranch: task.sourceBranch,
+            branchName: task.branchName,
+          }
+        : undefined,
+      project: footerProject
+        ? { name: footerProject.name, path: footerProject.path }
+        : undefined,
+    }),
+    [task, footerProject],
+  );
 
   // Use step values for backend/mode/model (these live on steps now)
   const effectiveBackend = activeStep?.agentBackend ?? 'claude-code';
@@ -1818,6 +1843,8 @@ const TaskInputFooter = memo(function TaskInputFooter({
         projectId={task?.projectId}
         getCompletionContextBeforePrompt={getCompletionContextBeforePrompt}
         onFocusChange={setInputFocused}
+        promptSnippets={footerSnippets}
+        snippetVariableContext={snippetVariableContext}
       />
     </div>
   );
