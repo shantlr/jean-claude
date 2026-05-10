@@ -891,7 +891,6 @@ button {
 
 .feed-running-row-focused {
   box-shadow:
-    inset 3px 0 0 var(--color-status-run),
     inset 0 0 28px -2px
       color-mix(in oklch, var(--color-status-run) 32%, transparent);
 }
