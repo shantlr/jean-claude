@@ -150,6 +150,26 @@ export function useFeed() {
     });
   }, [query.data, taskSteps, pendingRequestsByTaskId]);
 
+  // Collect PR IDs already shown in a task's rail so we can hide the
+  // standalone PR feed item (the rail already surfaces it).
+  const taskOwnedPrIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const item of refinedItems) {
+      if (item.source === 'task' && item.pullRequestId != null) {
+        ids.add(item.pullRequestId);
+      }
+      // Also check children (subtasks) that own PRs
+      if (item.children) {
+        for (const child of item.children) {
+          if (child.source === 'task' && child.pullRequestId != null) {
+            ids.add(child.pullRequestId);
+          }
+        }
+      }
+    }
+    return ids;
+  }, [refinedItems]);
+
   const {
     pinnedItems,
     actionNeededItems,
@@ -169,9 +189,16 @@ export function useFeed() {
     const pinnedResult: FeedItem[] = [];
     for (const p of [...pinned].sort((a, b) => a.order - b.order)) {
       const item = itemsById.get(p.id);
-      if (item) {
-        pinnedResult.push(item);
+      if (!item) continue;
+      // Skip PR items already shown in a task's rail
+      if (
+        item.source === 'pull-request' &&
+        item.pullRequestId != null &&
+        taskOwnedPrIds.has(item.pullRequestId)
+      ) {
+        continue;
       }
+      pinnedResult.push(item);
     }
 
     let dCount = 0;
@@ -182,6 +209,14 @@ export function useFeed() {
     const low: FeedItem[] = [];
 
     for (const item of items) {
+      // Hide standalone PR items when the PR is already shown in a task's rail.
+      if (
+        item.source === 'pull-request' &&
+        item.pullRequestId != null &&
+        taskOwnedPrIds.has(item.pullRequestId)
+      ) {
+        continue;
+      }
       if (pinnedIds.has(item.id)) continue;
       if (dismissedIds.has(item.id)) {
         dCount++;
@@ -232,7 +267,14 @@ export function useFeed() {
       lowPriorityItems: low,
       dismissedCount: dCount,
     };
-  }, [refinedItems, pinned, pinnedIds, dismissedIds, lowPriorityIds]);
+  }, [
+    refinedItems,
+    pinned,
+    pinnedIds,
+    dismissedIds,
+    lowPriorityIds,
+    taskOwnedPrIds,
+  ]);
 
   const allVisibleItems = useMemo(
     () => [
