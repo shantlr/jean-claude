@@ -140,6 +140,40 @@ const ALLOWED_ATTRS: Record<string, Set<string>> = {
 };
 
 /**
+ * CSS properties with semantic/visual meaning worth preserving.
+ * Layout/box-model properties (box-sizing, padding, margin, display, float,
+ * position, width, height, etc.) are stripped — they're presentation artifacts
+ * from the source editor, not meaningful content styling.
+ */
+const SEMANTIC_STYLE_PROPS = new Set([
+  'color',
+  'background-color',
+  'font-weight',
+  'font-style',
+  'text-decoration',
+  'text-decoration-line',
+  'text-align',
+]);
+
+/**
+ * Filter an inline style string to only semantic CSS properties.
+ * Returns the filtered style string, or empty string if nothing survives.
+ */
+function filterSemanticStyles(style: string): string {
+  const kept: string[] = [];
+  // Split on semicolons and check each declaration
+  for (const decl of style.split(';')) {
+    const colonIdx = decl.indexOf(':');
+    if (colonIdx === -1) continue;
+    const prop = decl.slice(0, colonIdx).trim().toLowerCase();
+    if (SEMANTIC_STYLE_PROPS.has(prop)) {
+      kept.push(decl.trim());
+    }
+  }
+  return kept.join('; ');
+}
+
+/**
  * Convert HTML lists (ul/ol) to markdown-style lists.
  * Handles nested lists by processing innermost first.
  */
@@ -188,6 +222,9 @@ function simplifyHtml(html: string): string {
   // Convert lists to markdown before stripping tags
   let result = convertListsToMarkdown(html);
 
+  // Remove <style> and <script> blocks entirely (tag + content)
+  result = result.replace(/<(style|script)\b[^>]*>[\s\S]*?<\/\1>/gi, '');
+
   result = result.replace(
     /<\/?([a-z][a-z0-9]*)\b([^>]*)?\/?>/gi,
     (match, tag: string, attrsStr: string | undefined) => {
@@ -219,11 +256,10 @@ function simplifyHtml(html: string): string {
         const attrName = attrMatch[1].toLowerCase();
         const attrValue = attrMatch[2] ?? attrMatch[3];
         if (allowedAttrSet.has(attrName)) {
-          // For span style, only keep color-related styles
-          if (lowerTag === 'span' && attrName === 'style') {
-            const colorMatch = attrValue.match(/(?:^|;)\s*(color\s*:[^;]+)/i);
-            if (colorMatch) {
-              keptAttrs.push(`style="${colorMatch[1].trim()}"`);
+          if (attrName === 'style') {
+            const filtered = filterSemanticStyles(attrValue);
+            if (filtered) {
+              keptAttrs.push(`style="${filtered}"`);
             }
           } else {
             keptAttrs.push(`${attrName}="${attrValue}"`);
@@ -458,7 +494,9 @@ export function PromptComposer({
       const workItemsContext = workItems.map((wi) => ({
         id: wi.id.toString(),
         title: wi.fields.title,
-        description: wi.fields.description ?? '',
+        description: wi.fields.description
+          ? simplifyHtml(wi.fields.description)
+          : '',
       }));
       return resolveSnippetTemplate(template, { workItems: workItemsContext })
         .output;
