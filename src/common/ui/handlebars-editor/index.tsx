@@ -286,6 +286,7 @@ export function HandlebarsEditor({
         }}
         options={{
           theme: 'handlebars-dark',
+          fixedOverflowWidgets: true,
           minimap: { enabled: false },
           lineNumbers: 'off',
           glyphMargin: false,

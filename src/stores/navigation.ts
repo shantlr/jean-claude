@@ -128,6 +128,11 @@ const DEFAULT_SKILLS_RAIL_WIDTH = 220;
 const MIN_SKILLS_RAIL_WIDTH = 160;
 const MAX_SKILLS_RAIL_WIDTH = 360;
 
+// Constants for snippets rail width (settings panel)
+const DEFAULT_SNIPPETS_RAIL_WIDTH = 280;
+const MIN_SNIPPETS_RAIL_WIDTH = 180;
+const MAX_SNIPPETS_RAIL_WIDTH = 400;
+
 // Constants for sidebar width
 const DEFAULT_SIDEBAR_WIDTH = 256; // w-64 equivalent
 const MIN_SIDEBAR_WIDTH = 200;
@@ -169,6 +174,9 @@ interface NavigationState {
   // App-level: skills rail width in settings (global setting)
   skillsRailWidth: number;
 
+  // App-level: snippets rail width in settings (global setting)
+  snippetsRailWidth: number;
+
   // App-level: sidebar content tab ('tasks' or 'prs')
   sidebarTab: 'tasks' | 'prs';
 
@@ -192,6 +200,7 @@ interface NavigationState {
   setToolDiffPreviewPaneWidth: (width: number) => void;
   setWorkItemCommentsPaneWidth: (width: number) => void;
   setSkillsRailWidth: (width: number) => void;
+  setSnippetsRailWidth: (width: number) => void;
   setSidebarTab: (tab: 'tasks' | 'prs') => void;
   setLastTaskForProject: (projectId: string, taskId: string) => void;
   setTaskRightPane: (taskId: string, pane: RightPane | null) => void;
@@ -226,6 +235,7 @@ const useStore = create<NavigationState>()(
       toolDiffPreviewPaneWidth: DEFAULT_TOOL_DIFF_PREVIEW_PANE_WIDTH,
       workItemCommentsPaneWidth: DEFAULT_WORK_ITEM_COMMENTS_PANE_WIDTH,
       skillsRailWidth: DEFAULT_SKILLS_RAIL_WIDTH,
+      snippetsRailWidth: DEFAULT_SNIPPETS_RAIL_WIDTH,
       sidebarTab: 'tasks' as 'tasks' | 'prs',
       lastTaskByProject: {},
       taskState: {},
@@ -291,6 +301,14 @@ const useStore = create<NavigationState>()(
           skillsRailWidth: Math.min(
             Math.max(MIN_SKILLS_RAIL_WIDTH, width),
             MAX_SKILLS_RAIL_WIDTH,
+          ),
+        }),
+
+      setSnippetsRailWidth: (width) =>
+        set({
+          snippetsRailWidth: Math.min(
+            Math.max(MIN_SNIPPETS_RAIL_WIDTH, width),
+            MAX_SNIPPETS_RAIL_WIDTH,
           ),
         }),
 
@@ -1092,5 +1110,17 @@ export function useSkillsRailWidth() {
     setWidth,
     minWidth: MIN_SKILLS_RAIL_WIDTH,
     maxWidth: MAX_SKILLS_RAIL_WIDTH,
+  };
+}
+
+// Hook for snippets rail width (settings panel)
+export function useSnippetsRailWidth() {
+  const width = useStore((state) => state.snippetsRailWidth);
+  const setWidth = useStore((state) => state.setSnippetsRailWidth);
+  return {
+    width,
+    setWidth,
+    minWidth: MIN_SNIPPETS_RAIL_WIDTH,
+    maxWidth: MAX_SNIPPETS_RAIL_WIDTH,
   };
 }

@@ -193,7 +193,7 @@ const NAV_ICON_INACTIVE: React.CSSProperties = {
 /* ── Components ── */
 
 // Skills needs a fill-height flex layout so its columns scroll independently
-const FILL_HEIGHT_SECTIONS: GlobalMenuItem[] = ['skills'];
+const FILL_HEIGHT_SECTIONS: GlobalMenuItem[] = ['skills', 'prompt-snippets'];
 const FILL_HEIGHT_PROJECT_SECTIONS: ProjectSettingsMenuItem[] = ['skills'];
 
 function GlobalContent({ menuItem }: { menuItem: GlobalMenuItem }) {
