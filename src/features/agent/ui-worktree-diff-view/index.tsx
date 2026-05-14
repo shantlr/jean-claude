@@ -138,6 +138,7 @@ export function WorktreeDiffView({
       filePath: string;
       lineStart: number;
       lineEnd?: number;
+      selectedText?: string;
       body: string;
       presets: ReviewPresetId[];
       images?: PromptImagePart[];
@@ -147,6 +148,7 @@ export function WorktreeDiffView({
           filePath: params.filePath,
           lineStart: params.lineStart,
           lineEnd: params.lineEnd,
+          selectedText: params.selectedText,
         },
         body: params.body,
         images: params.images,
@@ -493,6 +495,7 @@ function WorktreeFileDiffContent({
     filePath: string;
     lineStart: number;
     lineEnd?: number;
+    selectedText?: string;
     body: string;
     presets: ReviewPresetId[];
     images?: PromptImagePart[];

@@ -7,6 +7,7 @@ export interface FileCommentAnchor {
   filePath: string;
   lineStart: number;
   lineEnd?: number;
+  selectedText?: string;
 }
 
 // -- Keyed-collection store factory --

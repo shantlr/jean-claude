@@ -14,6 +14,7 @@ import {
   useComposerFileCommentActions,
   useComposerFileCommentsForFile,
 } from '@/stores/composer-file-comments';
+import { getSelectedTextForRange } from '@/stores/utils-comment-prompt';
 import {
   getCommentedLineSet,
   groupCommentsByLine,
@@ -155,7 +156,7 @@ export function CommentableFileViewer({
 
   const handleComposerSubmit = useCallback(
     (body: string, images: PromptImagePart[]) => {
-      if (!composerLineRange) return;
+      if (!composerLineRange || !fileData?.content) return;
       addComment({
         anchor: {
           filePath,
@@ -164,13 +165,20 @@ export function CommentableFileViewer({
             composerLineRange.start !== composerLineRange.end
               ? composerLineRange.end
               : undefined,
+          selectedText: getSelectedTextForRange(
+            fileData.content,
+            composerLineRange.start,
+            composerLineRange.start !== composerLineRange.end
+              ? composerLineRange.end
+              : undefined,
+          ),
         },
         body,
         images: images.length > 0 ? images : undefined,
       });
       setComposerLineRange(null);
     },
-    [composerLineRange, addComment, filePath],
+    [composerLineRange, addComment, fileData, filePath],
   );
 
   const handleComposerCancel = useCallback(() => {

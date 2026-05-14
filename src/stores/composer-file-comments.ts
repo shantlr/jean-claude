@@ -3,6 +3,10 @@ import { useStore } from 'zustand';
 import type { PromptImagePart, PromptPart } from '@shared/agent-backend-types';
 
 import {
+  escapePromptTagContent,
+  formatPromptLineRange,
+} from './utils-comment-prompt';
+import {
   createCommentSelectors,
   createKeyedCommentStore,
   type FileCommentAnchor,
@@ -75,12 +79,14 @@ export function synthesizeFileCommentsPrompt(
   const textLines: string[] = [];
   const imageParts: PromptImagePart[] = [];
 
+  textLines.push('<file_context_comments>');
+
   for (const [filePath, fileComments] of byFile) {
     const displayPath =
       projectRoot && filePath.startsWith(projectRoot)
         ? filePath.slice(projectRoot.length).replace(/^\//, '')
         : filePath;
-    textLines.push(`### ${displayPath}`);
+    textLines.push(`<file path="${escapePromptTagContent(displayPath)}">`);
 
     // Sort by line number within each file
     const sorted = [...fileComments].sort(
@@ -88,20 +94,35 @@ export function synthesizeFileCommentsPrompt(
     );
 
     for (const c of sorted) {
-      const lineLabel = c.anchor.lineEnd
-        ? `L${c.anchor.lineStart}-${c.anchor.lineEnd}`
-        : `L${c.anchor.lineStart}`;
-      const imageTag =
-        c.images && c.images.length > 0 ? ' [see attached image]' : '';
-      textLines.push(`- ${lineLabel}: ${c.body}${imageTag}`);
+      const lineLabel = formatPromptLineRange(
+        c.anchor.lineStart,
+        c.anchor.lineEnd,
+      );
+      textLines.push(`  <comment line_range="${lineLabel}">`);
+      if (c.anchor.selectedText?.trim()) {
+        textLines.push('    <selected_lines>');
+        textLines.push(escapePromptTagContent(c.anchor.selectedText));
+        textLines.push('    </selected_lines>');
+      }
+      textLines.push('    <instruction>');
+      textLines.push(escapePromptTagContent(c.body));
+      if (c.images && c.images.length > 0) {
+        textLines.push('    [see attached image]');
+      }
+      textLines.push('    </instruction>');
+      textLines.push('  </comment>');
+      textLines.push('');
 
       if (c.images) {
         imageParts.push(...c.images);
       }
     }
 
+    textLines.push('</file>');
     textLines.push('');
   }
+
+  textLines.push('</file_context_comments>');
 
   const result: PromptPart[] = [
     { type: 'text', text: textLines.join('\n').trimEnd() },

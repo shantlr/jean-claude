@@ -4,6 +4,10 @@ import { useStore } from 'zustand';
 import type { PromptImagePart, PromptPart } from '@shared/agent-backend-types';
 
 import {
+  escapePromptTagContent,
+  formatPromptLineRange,
+} from './utils-comment-prompt';
+import {
   createKeyedCommentStore,
   createCommentSelectors,
   type FileCommentAnchor,
@@ -242,30 +246,51 @@ export function synthesizeReviewPrompt(
   const imageParts: PromptImagePart[] = [];
 
   if (globalIntent?.trim()) {
-    textLines.push(globalIntent.trim());
+    textLines.push('<overall_intent>');
+    textLines.push(escapePromptTagContent(globalIntent.trim()));
+    textLines.push('</overall_intent>');
     textLines.push('');
   }
 
+  textLines.push('<inline_review_comments>');
+
   openComments.forEach((c, i) => {
-    const lineLabel = c.anchor.lineEnd
-      ? `L${c.anchor.lineStart}-${c.anchor.lineEnd}`
-      : `L${c.anchor.lineStart}`;
-    const anchor = `${c.anchor.filePath}:${lineLabel}`;
-    const tags = c.presets.length > 0 ? ` [${c.presets.join(', ')}]` : '';
-    const imageTag =
-      c.images && c.images.length > 0 ? ' [see attached image]' : '';
-    textLines.push(`${i + 1}. ${anchor}${tags}`);
+    const lineLabel = formatPromptLineRange(
+      c.anchor.lineStart,
+      c.anchor.lineEnd,
+    );
+    textLines.push(
+      `<comment index="${i + 1}" file_path="${escapePromptTagContent(c.anchor.filePath)}" line_range="${lineLabel}">`,
+    );
+    if (c.presets.length > 0) {
+      textLines.push(
+        `  <tags>${escapePromptTagContent(c.presets.join(', '))}</tags>`,
+      );
+    }
+    if (c.anchor.selectedText?.trim()) {
+      textLines.push('  <selected_lines>');
+      textLines.push(escapePromptTagContent(c.anchor.selectedText));
+      textLines.push('  </selected_lines>');
+    }
     // When body is empty but presets exist, generate instruction from presets
     const body =
       c.body ||
       (c.presets.length > 0 ? `${c.presets.join(' and ')} this code` : '');
-    textLines.push(`   \u2192 ${body}${imageTag}`);
+    textLines.push('  <instruction>');
+    textLines.push(escapePromptTagContent(body));
+    if (c.images && c.images.length > 0) {
+      textLines.push('  [see attached image]');
+    }
+    textLines.push('  </instruction>');
+    textLines.push('</comment>');
     textLines.push('');
 
     if (c.images) {
       imageParts.push(...c.images);
     }
   });
+
+  textLines.push('</inline_review_comments>');
 
   const result: PromptPart[] = [{ type: 'text', text: textLines.join('\n') }];
 

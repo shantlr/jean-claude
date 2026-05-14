@@ -16,6 +16,7 @@ import { ReviewCommentComposer } from '@/features/agent/ui-review-comments/revie
 import { ReviewCommentThread } from '@/features/agent/ui-review-comments/review-comment-thread';
 import type { FileAnnotation } from '@/lib/api';
 import type { ReviewComment, ReviewPresetId } from '@/stores/review-comments';
+import { getSelectedTextForRange } from '@/stores/utils-comment-prompt';
 import type { PromptImagePart } from '@shared/agent-backend-types';
 
 import { FileDiffHeader } from './file-diff-header';
@@ -73,6 +74,7 @@ export function FileDiffContent({
     filePath: string;
     lineStart: number;
     lineEnd?: number;
+    selectedText?: string;
     body: string;
     presets: ReviewPresetId[];
     images?: PromptImagePart[];
@@ -224,6 +226,13 @@ export function FileDiffContent({
             commentFormLineRange.end !== commentFormLineRange.start
               ? commentFormLineRange.end
               : undefined,
+          selectedText: getSelectedTextForRange(
+            newContent,
+            commentFormLineRange.start,
+            commentFormLineRange.end !== commentFormLineRange.start
+              ? commentFormLineRange.end
+              : undefined,
+          ),
           body,
           presets,
           images: images.length > 0 ? images : undefined,
@@ -231,7 +240,7 @@ export function FileDiffContent({
         setCommentFormLineRange(null);
       }
     },
-    [file.path, commentFormLineRange, onAddReviewComment],
+    [file.path, commentFormLineRange, newContent, onAddReviewComment],
   );
 
   // Render comment form inline
