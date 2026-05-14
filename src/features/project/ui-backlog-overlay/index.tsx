@@ -30,6 +30,7 @@ import {
 } from '@/hooks/use-project-todos';
 import { useProjects } from '@/hooks/use-projects';
 import { useBackgroundNewTaskJobForBacklogItem } from '@/stores/background-jobs';
+import { useBacklogOverlayDraftStore } from '@/stores/backlog-overlay-draft';
 import { useNewTaskDraftStore } from '@/stores/new-task-draft';
 import { useOverlaysStore } from '@/stores/overlays';
 import type { ProjectTodo } from '@shared/types';
@@ -195,11 +196,10 @@ export function BacklogOverlay({
     (nextProjectId: string) => {
       setProjectId(nextProjectId);
       setSelectedIndex(-1);
-      setInputValue('');
       // Re-focus input after project switch
       requestAnimationFrame(() => inputRef.current?.focus());
     },
-    // setSelectedIndex and setInputValue are stable setState dispatchers
+    // setSelectedIndex is a stable setState dispatcher
 
     [],
   );
@@ -207,7 +207,6 @@ export function BacklogOverlay({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
-  const [inputValue, setInputValue] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -220,6 +219,11 @@ export function BacklogOverlay({
   const updateTodo = useUpdateProjectTodo();
   const deleteTodo = useDeleteProjectTodo();
   const reorderTodos = useReorderProjectTodos();
+  const {
+    draft: inputValue,
+    setDraft: setInputValue,
+    clearDraft: clearInputValue,
+  } = useBacklogOverlayDraftStore(projectId);
   const modal = useModal();
   const openOverlay = useOverlaysStore((s) => s.open);
   const setDraft = useNewTaskDraftStore((s) => s.setDraft);
@@ -231,6 +235,12 @@ export function BacklogOverlay({
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (!inputRef.current) return;
+    inputRef.current.style.height = 'auto';
+    inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+  }, [inputValue]);
 
   // Scroll selected item into view
   useEffect(() => {
@@ -406,9 +416,9 @@ export function BacklogOverlay({
     const content = inputValue.trim();
     if (!content) return;
     createTodo.mutate({ projectId, content });
-    setInputValue('');
+    clearInputValue();
     inputRef.current?.focus();
-  }, [inputValue, projectId, createTodo]);
+  }, [clearInputValue, createTodo, inputValue, projectId]);
 
   // Start inline edit
   const startEdit = useCallback((todo: ProjectTodo) => {
