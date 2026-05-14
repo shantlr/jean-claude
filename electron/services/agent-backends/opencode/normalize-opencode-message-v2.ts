@@ -473,7 +473,11 @@ function normalizeToolPartToEntry(
   const state = part.state;
   if (!state) return [];
 
-  const mapped = mapOpenCodeTool(part.tool, state.input);
+  const stateMetadata =
+    state.status === 'completed' || state.status === 'running'
+      ? (state.metadata as Record<string, unknown> | undefined)
+      : undefined;
+  const mapped = mapOpenCodeTool(part.tool, state.input, stateMetadata);
   const entryId = `${messageId}:${part.id}`;
   const isUpdate = ctx.emittedEntryIds.has(entryId);
   const events: NormalizationEvent[] = [];
@@ -597,6 +601,7 @@ function normalizeCompactionPartToEntry(
 function mapOpenCodeTool(
   toolName: string,
   input: Record<string, unknown>,
+  metadata?: Record<string, unknown>,
 ): Omit<NormalizedToolUse, 'type' | 'toolId' | 'parentToolId'> {
   // Normalize the tool name for matching (OpenCode may use different casing/naming)
   const name = toolName.toLowerCase();
@@ -675,15 +680,47 @@ function mapOpenCodeTool(
       } as Omit<NormalizedToolUse, 'type' | 'toolId' | 'parentToolId'>;
 
     case 'apply_patch': {
+      // Prefer structured metadata (available on completed/running states)
+      // over parsing raw patchText content
+      const file = extractFirstPatchFile(metadata);
+      if (file) {
+        if (file.type === 'add') {
+          return {
+            name: 'write',
+            input: {
+              filePath: file.filePath,
+              value: file.after ?? '',
+            },
+          };
+        }
+        return {
+          name: 'edit',
+          input: {
+            filePath: file.filePath,
+            oldString: file.before ?? '',
+            newString: file.after ?? '',
+          },
+        };
+      }
+
+      // Fallback: extract file path and operation from patchText header
+      // (no hunk parsing — just enough to identify the file for display)
       const patchText = str(input.patchText ?? input.patch);
-      const parsed = parsePatchText(patchText);
+      const headerMatch = patchText.match(
+        /\*\*\*\s+(Update|Add|Delete)\s+File:\s+(.+)/,
+      );
+      const operation = headerMatch?.[1]?.toLowerCase() ?? 'update';
+      const filePath = headerMatch?.[2]?.trim() ?? '';
+
+      if (operation === 'add') {
+        return {
+          name: 'write',
+          input: { filePath, value: '' },
+        };
+      }
       return {
         name: 'edit',
-        input: {
-          filePath: parsed.filePath,
-          oldString: parsed.oldString,
-          newString: parsed.newString,
-        },
+        input: { filePath, oldString: '', newString: '' },
       };
     }
 
@@ -852,73 +889,29 @@ function strOrUndefined(value: unknown): string | undefined {
 }
 
 /**
- * Parse an apply_patch patchText into filePath, oldString, and newString.
+ * Extract the first file entry from apply_patch metadata.
  *
- * The patch format looks like:
- *   *** Begin Patch
- *   *** Update File: /path/to/file.ts
- *   @@
- *      context line (leading space)
- *   -  removed line
- *   +  added line
- *      context line
- *   *** End Patch
- *
- * Lines prefixed with `-` are removed (old), `+` are added (new),
- * and lines with a leading space are context (present in both).
+ * The metadata.files array (provided by OpenCode on completed tool state) contains
+ * structured file info: filePath, type (add/update/delete), before, after, diff.
+ * This is much more reliable than parsing the raw patchText content.
  */
-function parsePatchText(patchText: string): {
-  filePath: string;
-  oldString: string;
-  newString: string;
-} {
-  const fileMatch = patchText.match(
-    /\*\*\*\s+(?:Update|Add|Delete)\s+File:\s+(.+)/,
-  );
-  const filePath = fileMatch?.[1]?.trim() ?? '';
+function extractFirstPatchFile(
+  metadata: Record<string, unknown> | undefined,
+): { filePath: string; type: string; before?: string; after?: string } | null {
+  if (!metadata) return null;
 
-  const lines = patchText.split('\n');
-  const oldLines: string[] = [];
-  const newLines: string[] = [];
-  let inHunk = false;
+  const files = metadata.files;
+  if (!Array.isArray(files) || files.length === 0) return null;
 
-  for (const line of lines) {
-    // Start of a hunk
-    if (line.startsWith('@@')) {
-      inHunk = true;
-      continue;
-    }
-    // End markers — stop parsing
-    if (
-      line.startsWith('*** End Patch') ||
-      line.startsWith('*** Update File:') ||
-      line.startsWith('*** Add File:') ||
-      line.startsWith('*** Delete File:')
-    ) {
-      // If we hit another file header, stop at the first file
-      if (inHunk) break;
-      continue;
-    }
-    if (!inHunk) continue;
-
-    if (line.startsWith('-')) {
-      // Removed line — only in old
-      oldLines.push(line.slice(1));
-    } else if (line.startsWith('+')) {
-      // Added line — only in new
-      newLines.push(line.slice(1));
-    } else {
-      // Context line (leading space) — in both old and new
-      const content = line.startsWith(' ') ? line.slice(1) : line;
-      oldLines.push(content);
-      newLines.push(content);
-    }
-  }
+  const first = files[0] as Record<string, unknown>;
+  const filePath = str(first.filePath ?? first.relativePath);
+  if (!filePath) return null;
 
   return {
     filePath,
-    oldString: oldLines.join('\n'),
-    newString: newLines.join('\n'),
+    type: str(first.type ?? 'update'),
+    before: first.before != null ? str(first.before) : undefined,
+    after: first.after != null ? str(first.after) : undefined,
   };
 }
 

@@ -284,110 +284,92 @@ The pending state has an empty `input: {}` — the `filePath` only appears in th
 
 ## apply_patch tool use
 
-OpenCode uses `apply_patch` instead of Claude's `edit` tool. It takes a `patchText` input containing a unified-style patch format.
-We normalize this to the `edit` tool type, extracting the file path from the patch header.
+OpenCode uses `apply_patch` for all file mutations (Claude has separate `Edit` and `Write` tools).
+Normalized based on operation: `*** Update File:` → `edit`, `*** Add File:` → `write`, `*** Delete File:` → `edit`.
 
-### Pending state
+### Normalization strategy
+
+- **Running**: no metadata yet — extract file path + operation from `patchText` header only (no hunk parsing). Content fields empty.
+- **Completed**: use `state.metadata.files[]` for structured `filePath`, `type`, `before`, `after`.
+
+### Update File (completed)
 
 ```json
 {
-  "type": "message.part.updated",
   "properties": {
     "part": {
-      "id": "prt_c62e93f00001Mm0ZU0Z2DWLLdb",
-      "sessionID": "ses_39d1c2ad1ffeQ7vNhlc4DRFn1K",
-      "messageID": "msg_c62e934b6001w5MeZ6Cw6vhSl5",
       "type": "tool",
-      "callID": "call_L1zasmSpM62JMyjkQEwXcDGE",
       "tool": "apply_patch",
       "state": {
-        "status": "pending",
-        "input": {},
-        "raw": ""
+        "status": "completed",
+        "input": {
+          "patchText": "*** Begin Patch\n*** Update File: src/utils.ts\n@@\n-export function add(a, b) {\n+export function add(a: number, b: number): number {\n*** End Patch"
+        },
+        "output": "Success. Updated the following files:\nM src/utils.ts",
+        "metadata": {
+          "files": [
+            {
+              "filePath": "/abs/path/src/utils.ts",
+              "relativePath": "src/utils.ts",
+              "type": "update",
+              "diff": "--- src/utils.ts\n+++ src/utils.ts\n@@ -1,1 +1,1 @@\n-export function add(a, b) {\n+export function add(a: number, b: number): number {\n",
+              "before": "export function add(a, b) {\n  return a + b;\n}\n",
+              "after": "export function add(a: number, b: number): number {\n  return a + b;\n}\n",
+              "additions": 1,
+              "deletions": 1
+            }
+          ]
+        }
       }
     }
   }
 }
 ```
 
-### Running state
+→ `{ name: 'edit', input: { filePath: '…/utils.ts', oldString: '<before>', newString: '<after>' } }`
+
+### Add File (completed)
 
 ```json
 {
-  "type": "message.part.updated",
   "properties": {
     "part": {
-      "id": "prt_c62e93f00001Mm0ZU0Z2DWLLdb",
-      "sessionID": "ses_39d1c2ad1ffeQ7vNhlc4DRFn1K",
-      "messageID": "msg_c62e934b6001w5MeZ6Cw6vhSl5",
       "type": "tool",
-      "callID": "call_L1zasmSpM62JMyjkQEwXcDGE",
-      "tool": "apply_patch",
-      "state": {
-        "status": "running",
-        "input": {
-          "patchText": "*** Begin Patch\n*** Update File: /home/user/projects/my-app/src/server/handlers.ts\n@@\n   handle(\n     'checkConflicts',\n-    async (_, id: string, branch: string) => {\n+    async (_, id: string, params: { branch: string }) => {\n       const item = await Repository.findById(id);\n*** End Patch"
-        },
-        "time": { "start": 1771185981948 }
-      },
-      "metadata": { "openai": { "itemId": "fc_0b19..." } }
-    }
-  }
-}
-```
-
-### Completed state
-
-```json
-{
-  "type": "message.part.updated",
-  "properties": {
-    "part": {
-      "id": "prt_c62e93f00001Mm0ZU0Z2DWLLdb",
-      "sessionID": "ses_39d1c2ad1ffeQ7vNhlc4DRFn1K",
-      "messageID": "msg_c62e934b6001w5MeZ6Cw6vhSl5",
-      "type": "tool",
-      "callID": "call_L1zasmSpM62JMyjkQEwXcDGE",
       "tool": "apply_patch",
       "state": {
         "status": "completed",
         "input": {
-          "patchText": "*** Begin Patch\n*** Update File: /home/user/projects/my-app/src/server/handlers.ts\n@@\n   handle(\n     'checkConflicts',\n-    async (_, id: string, branch: string) => {\n+    async (_, id: string, params: { branch: string }) => {\n       const item = await Repository.findById(id);\n*** End Patch"
+          "patchText": "*** Begin Patch\n*** Add File: src/helpers.ts\n+export function greet(name: string) {\n+  return `Hello ${name}`;\n+}\n*** End Patch"
         },
-        "output": "Success. Updated the following files:\nM src/server/handlers.ts",
-        "title": "Success. Updated the following files:\nM src/server/handlers.ts",
+        "output": "Success. Created the following files:\nA src/helpers.ts",
         "metadata": {
-          "diff": "Index: /home/user/projects/my-app/src/server/handlers.ts\n===================================================================\n--- src/server/handlers.ts\n+++ src/server/handlers.ts\n@@ -603,7 +603,7 @@\n handle(\n   'checkConflicts',\n-  async (_, id: string, branch: string) => {\n+  async (_, id: string, params: { branch: string }) => {\n",
           "files": [
             {
-              "filePath": "/home/user/projects/my-app/src/server/handlers.ts",
-              "relativePath": "src/server/handlers.ts",
-              "type": "update",
-              "diff": "...",
-              "before": "...",
-              "after": "...",
-              "additions": 2,
-              "deletions": 2
+              "filePath": "/abs/path/src/helpers.ts",
+              "relativePath": "src/helpers.ts",
+              "type": "add",
+              "before": "",
+              "after": "export function greet(name: string) {\n  return `Hello ${name}`;\n}\n",
+              "additions": 3,
+              "deletions": 0
             }
-          ],
-          "diagnostics": {},
-          "truncated": false
-        },
-        "time": { "start": 1771185981948, "end": 1771185982560 }
-      },
-      "metadata": { "openai": { "itemId": "fc_0b19..." } }
+          ]
+        }
+      }
     }
   }
 }
 ```
 
-### Key differences from Claude's Edit
+→ `{ name: 'write', input: { filePath: '…/helpers.ts', value: '<after>' } }`
 
-- OpenCode uses `apply_patch` tool name (Claude uses `Edit` / `edit`)
-- Input is a single `patchText` string with a custom patch format (`*** Begin Patch` / `*** Update File:` / `*** End Patch`)
-- Completed `metadata.files` array contains structured per-file data: `filePath`, `relativePath`, `type` (update/add/delete), `diff`, `before`/`after` content, `additions`/`deletions` counts
-- Completed `metadata.diff` contains the full unified diff output
-- We normalize to `edit` by extracting the file path from the `*** Update File:` line in the patch
+### Key differences from Claude's Edit/Write
+
+- Single `apply_patch` tool covers add/update/delete (Claude has separate `Edit`/`Write`)
+- Input: `patchText` string with `*** Begin Patch` / `*** (Update|Add|Delete) File:` / `*** End Patch`
+- `state.metadata.files[]`: `filePath`, `relativePath`, `type`, `diff`, `before`/`after`, `additions`/`deletions`
+- We normalize from `metadata.files[0]`: `type: "add"` → `write`, otherwise → `edit`
+- Running state: file path from patchText header only, content empty until metadata arrives
 
 ## Question tool use
 
