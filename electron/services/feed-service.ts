@@ -204,6 +204,7 @@ export async function getFeedItems(): Promise<FeedItem[]> {
         : undefined,
       pullRequestUrl: task.pullRequestUrl ?? undefined,
       workItemIds: task.workItemIds ?? undefined,
+      workItemUrls: task.workItemUrls ?? undefined,
     };
 
     feedItems.push(taskFeedItem);
@@ -260,6 +261,9 @@ export async function getFeedItems(): Promise<FeedItem[]> {
           ? parseInt(child.pullRequestId, 10)
           : undefined,
         pullRequestUrl: child.pullRequestUrl ?? undefined,
+        workItemUrls: child.workItemUrls
+          ? JSON.parse(child.workItemUrls as string)
+          : undefined,
         workItemIds: child.workItemIds
           ? JSON.parse(child.workItemIds as string)
           : undefined,

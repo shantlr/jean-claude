@@ -73,6 +73,16 @@ const RAIL_W = 32; // rail column width in px
 const NODE_X = 16; // center X of main node
 const FEED_RAIL_COLOR = 'var(--color-ink-4)';
 
+function isModifiedClick(e: React.MouseEvent): boolean {
+  return e.metaKey || e.ctrlKey;
+}
+
+function openExternalUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  window.open(url, '_blank', 'noopener,noreferrer');
+  return true;
+}
+
 // ─── Graph Node (circle or attention icon) ──────────────────────
 function GraphNode({
   attention,
@@ -248,30 +258,51 @@ export function FeedItemCard({
   const prMerged = item.workItemPrStatus === 'completed';
   const showRail = isTask && !isSubtask && (hasChildren || hasPr);
   const isPrFocused = hasPr && currentPrId === String(item.pullRequestId);
-  const handleClick = useCallback(() => {
-    if (item.source === 'work-item' && item.workItemId) {
-      navigate({
-        to: '/all/work-items/$projectId/$workItemId',
-        params: {
-          projectId: item.projectId,
-          workItemId: String(item.workItemId),
-        },
-      });
-    } else if (item.source === 'pull-request' && item.pullRequestId) {
-      navigate({
-        to: '/all/prs/$projectId/$prId',
-        params: {
-          projectId: item.projectId,
-          prId: String(item.pullRequestId),
-        },
-      });
-    } else if (item.taskId) {
-      navigate({
-        to: '/all/$taskId',
-        params: { taskId: item.taskId },
-      });
-    }
-  }, [navigate, item]);
+  const handleClick = useCallback(
+    (e?: React.MouseEvent) => {
+      if (
+        e &&
+        item.source === 'work-item' &&
+        isModifiedClick(e) &&
+        openExternalUrl(item.workItemUrl)
+      ) {
+        return;
+      }
+
+      if (
+        e &&
+        item.source === 'pull-request' &&
+        isModifiedClick(e) &&
+        openExternalUrl(item.pullRequestUrl)
+      ) {
+        return;
+      }
+
+      if (item.source === 'work-item' && item.workItemId) {
+        navigate({
+          to: '/all/work-items/$projectId/$workItemId',
+          params: {
+            projectId: item.projectId,
+            workItemId: String(item.workItemId),
+          },
+        });
+      } else if (item.source === 'pull-request' && item.pullRequestId) {
+        navigate({
+          to: '/all/prs/$projectId/$prId',
+          params: {
+            projectId: item.projectId,
+            prId: String(item.pullRequestId),
+          },
+        });
+      } else if (item.taskId) {
+        navigate({
+          to: '/all/$taskId',
+          params: { taskId: item.taskId },
+        });
+      }
+    },
+    [navigate, item],
+  );
 
   const openMenu = useCallback((e: React.MouseEvent | React.KeyboardEvent) => {
     e.preventDefault();
@@ -333,6 +364,9 @@ export function FeedItemCard({
   const handlePrClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
+      if (isModifiedClick(e) && openExternalUrl(item.pullRequestUrl)) {
+        return;
+      }
       if (item.pullRequestId) {
         navigate({
           to: '/all/prs/$projectId/$prId',
@@ -343,12 +377,15 @@ export function FeedItemCard({
         });
       }
     },
-    [navigate, item.projectId, item.pullRequestId],
+    [navigate, item.projectId, item.pullRequestId, item.pullRequestUrl],
   );
 
   const handleWorkItemClick = useCallback(
-    (e: React.MouseEvent, workItemId: string) => {
+    (e: React.MouseEvent, workItemId: string, workItemUrl?: string) => {
       e.stopPropagation();
+      if (isModifiedClick(e) && openExternalUrl(workItemUrl)) {
+        return;
+      }
       navigate({
         to: '/all/work-items/$projectId/$workItemId',
         params: {
@@ -478,12 +515,14 @@ export function FeedItemCard({
               {/* Work item chips row */}
               {item.workItemIds && item.workItemIds.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1 pb-0.5">
-                  {item.workItemIds.map((wiId) => (
+                  {item.workItemIds.map((wiId, index) => (
                     <WorkItemChip
                       key={wiId}
                       label={`#${wiId}`}
                       isFocused={currentWorkItemId === wiId}
-                      onClick={(e) => handleWorkItemClick(e, wiId)}
+                      onClick={(e) =>
+                        handleWorkItemClick(e, wiId, item.workItemUrls?.[index])
+                      }
                     />
                   ))}
                 </div>
@@ -813,8 +852,11 @@ function SubtaskRow({
   }, [navigate, child.taskId]);
 
   const handleWorkItemClick = useCallback(
-    (e: React.MouseEvent, workItemId: string) => {
+    (e: React.MouseEvent, workItemId: string, workItemUrl?: string) => {
       e.stopPropagation();
+      if (isModifiedClick(e) && openExternalUrl(workItemUrl)) {
+        return;
+      }
       navigate({
         to: '/all/work-items/$projectId/$workItemId',
         params: {
@@ -931,11 +973,13 @@ function SubtaskRow({
         {/* Sub-task work items */}
         {child.workItemIds && child.workItemIds.length > 0 && (
           <div className="mt-0.5 flex flex-wrap gap-1">
-            {child.workItemIds.map((wiId) => (
+            {child.workItemIds.map((wiId, index) => (
               <WorkItemChip
                 key={wiId}
                 label={`#${wiId}`}
-                onClick={(e) => handleWorkItemClick(e, wiId)}
+                onClick={(e) =>
+                  handleWorkItemClick(e, wiId, child.workItemUrls?.[index])
+                }
               />
             ))}
           </div>
