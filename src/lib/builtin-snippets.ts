@@ -19,7 +19,16 @@ export const BUILTIN_SNIPPETS: PromptSnippet[] = [
 {{#if this.testCases}}
   <test_cases>
 {{#each this.testCases}}
-    - {{this}}
+    <test_case id="{{this.id}}" title="{{this.title}}">
+{{#if this.steps}}
+{{#each this.steps}}
+      <step>
+        <action>{{this.action}}</action>
+        <expected_result>{{this.expectedResult}}</expected_result>
+      </step>
+{{/each}}
+{{/if}}
+    </test_case>
 {{/each}}
   </test_cases>
 {{/if}}
@@ -31,9 +40,19 @@ For each work item, produce a recap with:
 - MISMATCH: requirements that are missing or incorrectly implemented
 - NOT TESTED: test cases that could not be verified
 
-End with a summary table:
-| Work Item | Status | Mismatches |
-|-----------|--------|------------|`,
+End with the following summary tables:
+
+**Results per User Story:**
+| Work Item | Title | Status | Mismatches |
+|-----------|-------|--------|------------|
+(one row per work item — Status is ✅ PASS, ⚠️ PARTIAL, or ❌ FAIL)
+
+{{#if (any workItems "testCases")}}
+**Results per Test Case:**
+| Work Item | Test Case | Status | Notes |
+|-----------|-----------|--------|-------|
+(one row per test case — Status is ✅ PASS, ❌ FAIL, or ⬚ NOT TESTED. Notes = brief reason when not PASS)
+{{/if}}`,
     enabled: true,
     contexts: { newTask: true, newTaskStep: true },
     autocomplete: { enabled: false, slugs: [] },

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { api } from '@/lib/api';
-import { BUILTIN_SNIPPETS } from '@/lib/builtin-snippets';
+import { BUILTIN_SNIPPETS, BUILTIN_SNIPPET_IDS } from '@/lib/builtin-snippets';
 import type {
   AiSkillSlotsSetting,
   AppSettings,
@@ -160,12 +160,18 @@ export function usePromptSnippetsSetting() {
   const query = useSetting('promptSnippets');
   const data = useMemo(() => {
     const userSnippets = query.data ?? [];
-    const userSnippetIds = new Set(userSnippets.map((s) => s.id));
-    // Add built-ins that user hasn't overridden
-    const builtinsToAdd = BUILTIN_SNIPPETS.filter(
-      (b) => !userSnippetIds.has(b.id),
+    const userSnippetMap = new Map(userSnippets.map((s) => [s.id, s]));
+    // Built-in snippets always use latest template, but respect user's enabled state
+    const mergedBuiltins = BUILTIN_SNIPPETS.map((builtin) => {
+      const userCopy = userSnippetMap.get(builtin.id);
+      if (!userCopy) return builtin;
+      return { ...builtin, enabled: userCopy.enabled };
+    });
+    // User snippets that are not built-ins
+    const customSnippets = userSnippets.filter(
+      (s) => !BUILTIN_SNIPPET_IDS.has(s.id),
     );
-    return [...builtinsToAdd, ...userSnippets];
+    return [...mergedBuiltins, ...customSnippets];
   }, [query.data]);
   return { ...query, data };
 }

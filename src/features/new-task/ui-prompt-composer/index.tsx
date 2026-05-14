@@ -432,6 +432,7 @@ export function PromptComposer({
   onDeselectAllComments,
   isLoadingComments,
   snippets,
+  testCasesByWorkItem,
 }: {
   template: string;
   workItems: AzureDevOpsWorkItem[];
@@ -448,6 +449,14 @@ export function PromptComposer({
   onDeselectAllComments?: () => void;
   isLoadingComments?: boolean;
   snippets?: PromptSnippet[];
+  testCasesByWorkItem?: Record<
+    number,
+    Array<{
+      id: number;
+      title: string;
+      steps?: Array<{ action: string; expectedResult: string }>;
+    }>
+  >;
 }) {
   const [showComments, setShowComments] = useState(false);
   const [selectedSnippetId, setSelectedSnippetId] = useState<string | null>(
@@ -497,12 +506,13 @@ export function PromptComposer({
         description: wi.fields.description
           ? simplifyHtml(wi.fields.description)
           : '',
+        testCases: testCasesByWorkItem?.[wi.id] ?? [],
       }));
       return resolveSnippetTemplate(template, { workItems: workItemsContext })
         .output;
     }
     return expandTemplate(template, workItems, selectedComments);
-  }, [template, workItems, selectedComments]);
+  }, [template, workItems, selectedComments, testCasesByWorkItem]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);

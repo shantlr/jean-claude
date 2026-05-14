@@ -23,7 +23,14 @@ export type SnippetVariableContext = {
       date?: string;
       body?: string;
     }>;
-    testCases?: string[];
+    testCases?: Array<{
+      id: string | number;
+      title: string;
+      steps?: Array<{
+        action: string;
+        expectedResult: string;
+      }>;
+    }>;
   }>;
 };
 
@@ -32,6 +39,23 @@ Handlebars.registerHelper(
   'ifPresent',
   function (this: unknown, value: unknown, options: Handlebars.HelperOptions) {
     return value ? options.fn(this) : options.inverse(this);
+  },
+);
+
+Handlebars.registerHelper(
+  'any',
+  function (
+    array: Array<Record<string, unknown>> | undefined,
+    property: string,
+  ) {
+    if (!Array.isArray(array)) return false;
+    return array.some(
+      (item) =>
+        item[property] !== undefined &&
+        item[property] !== null &&
+        (!Array.isArray(item[property]) ||
+          (item[property] as unknown[]).length > 0),
+    );
   },
 );
 

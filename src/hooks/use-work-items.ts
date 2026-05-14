@@ -122,6 +122,62 @@ export function useRelatedTestCases(params: {
   });
 }
 
+export type TestCaseWithSteps = {
+  id: number;
+  title: string;
+  steps?: Array<{ action: string; expectedResult: string }>;
+};
+
+/**
+ * Fetch related test cases for multiple work items at once.
+ * Returns a map of workItemId -> test cases with their steps.
+ */
+export function useRelatedTestCasesForWorkItems(params: {
+  providerId: string | null;
+  projectName: string | null;
+  workItemIds: number[];
+}) {
+  return useQuery<Record<number, TestCaseWithSteps[]>>({
+    queryKey: [
+      'related-test-cases-batch',
+      params.providerId,
+      params.projectName,
+      params.workItemIds,
+    ],
+    queryFn: async () => {
+      if (
+        !params.providerId ||
+        !params.projectName ||
+        params.workItemIds.length === 0
+      )
+        return {};
+      const results = await Promise.all(
+        params.workItemIds.map(async (workItemId) => {
+          const testCases = await api.azureDevOps.getRelatedTestCases({
+            providerId: params.providerId!,
+            projectName: params.projectName!,
+            workItemId,
+          });
+          return [
+            workItemId,
+            testCases.map((tc) => ({
+              id: tc.id,
+              title: tc.fields.title,
+              steps: tc.testSteps,
+            })),
+          ] as const;
+        }),
+      );
+      return Object.fromEntries(results);
+    },
+    enabled:
+      !!params.providerId &&
+      !!params.projectName &&
+      params.workItemIds.length > 0,
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function useCurrentAzureUser(providerId: string | null) {
   return useQuery<AzureDevOpsUser>({
     queryKey: ['azure-current-user', providerId],

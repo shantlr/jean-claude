@@ -38,7 +38,11 @@ import {
 } from '@/hooks/use-settings';
 import { useProjectSkills } from '@/hooks/use-skills';
 import { useCreateTaskWithWorktree, useProjectTasks } from '@/hooks/use-tasks';
-import { useWorkItems, useWorkItemComments } from '@/hooks/use-work-items';
+import {
+  useWorkItems,
+  useWorkItemComments,
+  useRelatedTestCasesForWorkItems,
+} from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
 import { compressImage } from '@/lib/image-compression';
 import {
@@ -281,6 +285,13 @@ export function NewTaskOverlay({
       projectName: selectedProject?.workItemProjectName ?? null,
       workItemIds: workItemIdNumbers,
     });
+
+  // Fetch related test cases for selected work items (used in snippet context)
+  const { data: testCasesByWorkItem = {} } = useRelatedTestCasesForWorkItems({
+    providerId: selectedProject?.workItemProviderId ?? null,
+    projectName: selectedProject?.workItemProjectName ?? null,
+    workItemIds: workItemIdNumbers,
+  });
 
   const selectedWorkItemIdsSignature = useMemo(
     () => [...(draft?.workItemIds ?? [])].sort().join(','),
@@ -734,6 +745,7 @@ export function NewTaskOverlay({
             id: wi.id.toString(),
             title: wi.fields.title,
             description: wi.fields.description ?? '',
+            testCases: testCasesByWorkItem[wi.id] ?? [],
           }));
           const result = resolveSnippetTemplate(promptTemplate, {
             ...snippetVariableContext,
@@ -881,6 +893,7 @@ export function NewTaskOverlay({
     selectedWorkItems,
     workItemComments,
     snippetVariableContext,
+    testCasesByWorkItem,
     selectedProject?.name,
     selectedProject?.path,
     currentBackend,
@@ -1280,6 +1293,7 @@ export function NewTaskOverlay({
               onDeselectAllComments={handleDeselectAllComments}
               isLoadingComments={isLoadingComments}
               snippets={promptSnippets}
+              testCasesByWorkItem={testCasesByWorkItem}
             />
           </div>
         )}

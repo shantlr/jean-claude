@@ -63,7 +63,23 @@ const PREVIEW_CONTEXT: SnippetVariableContext = {
       id: '12345',
       title: 'Example work item',
       description: 'Implement the feature',
-      testCases: ['AC1: it works', 'AC2: no regressions'],
+      testCases: [
+        {
+          id: '99001',
+          title: 'Verify feature works end-to-end',
+          steps: [
+            {
+              action: 'Open the app',
+              expectedResult: 'App loads successfully',
+            },
+            { action: 'Click the button', expectedResult: 'Action completes' },
+          ],
+        },
+        {
+          id: '99002',
+          title: 'Verify no regressions',
+        },
+      ],
     },
   ],
 };
