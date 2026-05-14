@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
-import { NewProject, UpdateProject } from '@shared/types';
+import { NewProject, Project, UpdateProject } from '@shared/types';
 
 export function useProjects() {
   return useQuery({
@@ -66,7 +66,35 @@ export function useReorderProjects() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (orderedIds: string[]) => api.projects.reorder(orderedIds),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects'] }),
+    onMutate: async (orderedIds) => {
+      await queryClient.cancelQueries({ queryKey: ['projects'] });
+
+      const previousProjects = queryClient.getQueryData<Project[]>([
+        'projects',
+      ]);
+
+      if (previousProjects) {
+        const projectMap = new Map(
+          previousProjects.map((project) => [project.id, project]),
+        );
+        const reordered = orderedIds.flatMap((id) => {
+          const project = projectMap.get(id);
+          return project ? [project] : [];
+        });
+
+        if (reordered.length === previousProjects.length) {
+          queryClient.setQueryData(['projects'], reordered);
+        }
+      }
+
+      return { previousProjects };
+    },
+    onError: (_error, _orderedIds, context) => {
+      if (context?.previousProjects) {
+        queryClient.setQueryData(['projects'], context.previousProjects);
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['projects'] }),
   });
 }
 

@@ -734,6 +734,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('tracked-pipelines:toggle', id, enabled),
     toggleVisible: (id: string, visible: boolean) =>
       ipcRenderer.invoke('tracked-pipelines:toggleVisible', id, visible),
+    reorder: (projectId: string, orderedIds: string[]) =>
+      ipcRenderer.invoke('tracked-pipelines:reorder', projectId, orderedIds),
     discover: (projectId: string) =>
       ipcRenderer.invoke('tracked-pipelines:discover', projectId),
   },

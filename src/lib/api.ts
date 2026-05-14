@@ -980,6 +980,7 @@ export interface Api {
     listAll: () => Promise<TrackedPipeline[]>;
     toggle: (id: string, enabled: boolean) => Promise<void>;
     toggleVisible: (id: string, visible: boolean) => Promise<void>;
+    reorder: (projectId: string, orderedIds: string[]) => Promise<void>;
     discover: (projectId: string) => Promise<TrackedPipeline[]>;
   };
   pipelines: {
@@ -1505,6 +1506,7 @@ export const api: Api = hasWindowApi
         listAll: async () => [],
         toggle: async () => {},
         toggleVisible: async () => {},
+        reorder: async () => {},
         discover: async () => [],
       },
       pipelines: {

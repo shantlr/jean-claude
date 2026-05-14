@@ -335,6 +335,7 @@ export interface TrackedPipelineTable {
   azurePipelineId: number;
   kind: string;
   name: string;
+  sortOrder: number;
   enabled: number;
   visible: Generated<number>;
   lastCheckedRunId: number | null;

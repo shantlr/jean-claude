@@ -8,7 +8,7 @@ import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings'
 import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
 import { Separator } from '@/common/ui/separator';
-import { useProjects } from '@/hooks/use-projects';
+import { useProjects, useReorderProjects } from '@/hooks/use-projects';
 import { useAllTrackedPipelinesGrouped } from '@/hooks/use-tracked-pipelines';
 import { useOverlaysStore } from '@/stores/overlays';
 import type { TrackedPipeline } from '@shared/pipeline-types';
@@ -67,6 +67,7 @@ function findNavIndex(items: NavItem[], filter: SidebarFilter): number {
 
 export function PipelinesOverlay({ onClose }: { onClose: () => void }) {
   const { data: allProjects = [] } = useProjects();
+  const reorderProjects = useReorderProjects();
 
   const azureLinkedProjects = useMemo(
     () =>
@@ -78,6 +79,15 @@ export function PipelinesOverlay({ onClose }: { onClose: () => void }) {
 
   const { data: pipelineMap } = useAllTrackedPipelinesGrouped();
 
+  const sidebarProjects = useMemo(
+    () =>
+      azureLinkedProjects.filter((project) => {
+        const pipelines = pipelineMap.get(project.id);
+        return pipelines !== undefined && pipelines.length > 0;
+      }),
+    [azureLinkedProjects, pipelineMap],
+  );
+
   const [filter, setFilter] = useState<SidebarFilter>({ type: 'all' });
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(
     () => new Set(azureLinkedProjects.map((p) => p.id)),
@@ -88,8 +98,8 @@ export function PipelinesOverlay({ onClose }: { onClose: () => void }) {
   } | null>(null);
 
   const navItems = useMemo(
-    () => buildNavItems(azureLinkedProjects, pipelineMap, expandedProjects),
-    [azureLinkedProjects, pipelineMap, expandedProjects],
+    () => buildNavItems(sidebarProjects, pipelineMap, expandedProjects),
+    [sidebarProjects, pipelineMap, expandedProjects],
   );
 
   const handleToggleExpanded = useCallback((projectId: string) => {
@@ -103,6 +113,24 @@ export function PipelinesOverlay({ onClose }: { onClose: () => void }) {
       return next;
     });
   }, []);
+
+  const handleReorderProjects = useCallback(
+    (orderedProjectIds: string[]) => {
+      const orderedProjectIdSet = new Set(orderedProjectIds);
+      let nextOrderedProjectIndex = 0;
+      const allOrderedIds = allProjects.map((project) => {
+        if (!orderedProjectIdSet.has(project.id)) return project.id;
+
+        const nextProjectId =
+          orderedProjectIds[nextOrderedProjectIndex] ?? project.id;
+        nextOrderedProjectIndex += 1;
+        return nextProjectId;
+      });
+
+      reorderProjects.mutate(allOrderedIds);
+    },
+    [allProjects, reorderProjects],
+  );
 
   const navigate = useCallback(
     (direction: -1 | 1) => {
@@ -197,11 +225,12 @@ export function PipelinesOverlay({ onClose }: { onClose: () => void }) {
             {/* Main body: sidebar + content */}
             <div className="flex min-h-0 flex-1">
               <Sidebar
-                projects={azureLinkedProjects}
+                projects={sidebarProjects}
                 filter={filter}
                 expandedProjects={expandedProjects}
                 onToggleExpanded={handleToggleExpanded}
                 onFilterChange={setFilter}
+                onReorderProjects={handleReorderProjects}
                 onTriggerRun={handleTriggerRun}
               />
 

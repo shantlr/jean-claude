@@ -1,3 +1,21 @@
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import clsx from 'clsx';
 import {
   ChevronDown,
@@ -10,6 +28,7 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import {
+  Fragment,
   useCallback,
   useEffect,
   useId,
@@ -25,6 +44,7 @@ import { Button } from '@/common/ui/button';
 import { IconButton } from '@/common/ui/icon-button';
 import { Separator } from '@/common/ui/separator';
 import {
+  useReorderTrackedPipelines,
   useToggleTrackedPipelineVisible,
   useTrackedPipelines,
 } from '@/hooks/use-tracked-pipelines';
@@ -44,14 +64,14 @@ function usePipelineGroups(projectId: string) {
   return useMemo(() => {
     const visible: TrackedPipeline[] = [];
     const hidden: TrackedPipeline[] = [];
-    for (const p of pipelines) {
-      if (p.visible) {
-        visible.push(p);
+    for (const pipeline of pipelines) {
+      if (pipeline.visible) {
+        visible.push(pipeline);
       } else {
-        hidden.push(p);
+        hidden.push(pipeline);
       }
     }
-    return { visible, hidden };
+    return { pipelines, visible, hidden };
   }, [pipelines]);
 }
 
@@ -89,8 +109,6 @@ function PipelineContextMenu({
   const { menuRef, pos } = useClampedPosition(state.x, state.y);
   const toggleVisible = useToggleTrackedPipelineVisible(state.projectId);
 
-  // Use the app's keyboard binding system so Escape is consumed
-  // before reaching the parent overlay's handler (LIFO priority)
   useRegisterKeyboardBindings(`pipeline-ctx-menu-${id}`, {
     escape: () => {
       onClose();
@@ -102,14 +120,12 @@ function PipelineContextMenu({
     },
   });
 
-  // Use the app's overlay system for click-outside detection
   useRegisterOverlay({
     id: `pipeline-ctx-menu-${id}`,
     refs: [menuRef],
     onClose,
   });
 
-  // Auto-focus the first menu item on mount
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       const item =
@@ -172,6 +188,53 @@ function PipelineItem({
   onContextMenu: (e: React.MouseEvent, pipeline: TrackedPipeline) => void;
   dimmed?: boolean;
 }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: pipeline.id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={clsx(isDragging && 'opacity-0')}
+      {...attributes}
+      {...listeners}
+      onContextMenu={(e) => onContextMenu(e, pipeline)}
+    >
+      <PipelineRowContent
+        pipeline={pipeline}
+        project={project}
+        filter={filter}
+        onFilterChange={onFilterChange}
+        onTriggerRun={onTriggerRun}
+        dimmed={dimmed}
+      />
+    </div>
+  );
+}
+
+function PipelineRowContent({
+  pipeline,
+  project,
+  filter,
+  onFilterChange,
+  onTriggerRun,
+  dimmed,
+  overlay = false,
+}: {
+  pipeline: TrackedPipeline;
+  project: Project;
+  filter: SidebarFilter;
+  onFilterChange: (filter: SidebarFilter) => void;
+  onTriggerRun: (project: Project, pipeline: TrackedPipeline) => void;
+  dimmed?: boolean;
+  overlay?: boolean;
+}) {
   const isSelected =
     filter.type === 'definition' &&
     filter.projectId === project.id &&
@@ -179,8 +242,12 @@ function PipelineItem({
 
   return (
     <div
-      className={clsx('group flex items-center', dimmed && 'opacity-50')}
-      onContextMenu={(e) => onContextMenu(e, pipeline)}
+      className={clsx(
+        'group flex items-center gap-0.5',
+        dimmed && 'opacity-50',
+        overlay &&
+          'border-glass-border bg-bg-0/95 rounded-md border px-1 py-0.5 shadow-lg',
+      )}
     >
       <Button
         variant="ghost"
@@ -200,7 +267,9 @@ function PipelineItem({
         icon={pipeline.kind === 'build' ? <Hammer /> : <Rocket />}
         className={clsx(
           'flex-1 justify-start truncate',
-          isSelected ? 'text-ink-0 bg-glass-medium font-medium' : 'text-ink-2',
+          isSelected
+            ? 'bg-acc/8 text-ink-0 ring-acc/30 font-medium ring-1'
+            : 'text-ink-2',
         )}
       >
         <span className="truncate">{pipeline.name}</span>
@@ -211,8 +280,59 @@ function PipelineItem({
         onClick={() => onTriggerRun(project, pipeline)}
         icon={<Play />}
         tooltip={`Trigger ${pipeline.name}`}
-        className="shrink-0 opacity-0 group-hover:opacity-100"
+        className={clsx(
+          'shrink-0',
+          overlay ? 'opacity-0' : 'opacity-0 group-hover:opacity-100',
+        )}
       />
+    </div>
+  );
+}
+
+function ProjectRowContent({
+  project,
+  expanded,
+  filter,
+  onFilterChange,
+  onToggleExpanded,
+  overlay = false,
+}: {
+  project: Project;
+  expanded: boolean;
+  filter: SidebarFilter;
+  onFilterChange: (filter: SidebarFilter) => void;
+  onToggleExpanded: () => void;
+  overlay?: boolean;
+}) {
+  const isProjectSelected =
+    filter.type === 'project' && filter.projectId === project.id;
+
+  return (
+    <div
+      className={clsx(
+        'flex items-center gap-0.5',
+        overlay &&
+          'border-glass-border bg-bg-0/95 rounded-md border px-1 py-0.5 shadow-lg',
+      )}
+    >
+      <Button
+        variant="ghost"
+        size="sm"
+        data-nav-id={getNavId({ type: 'project', projectId: project.id })}
+        onClick={() => {
+          onFilterChange({ type: 'project', projectId: project.id });
+          onToggleExpanded();
+        }}
+        icon={expanded ? <ChevronDown /> : <ChevronRight />}
+        className={clsx(
+          'w-full justify-start',
+          isProjectSelected
+            ? 'text-ink-0 bg-glass-medium font-medium'
+            : 'text-ink-2',
+        )}
+      >
+        <span className="truncate">{project.name}</span>
+      </Button>
     </div>
   );
 }
@@ -238,8 +358,44 @@ function ProjectGroup({
     projectId: string,
   ) => void;
 }) {
-  const { visible, hidden } = usePipelineGroups(project.id);
+  const { pipelines, visible, hidden } = usePipelineGroups(project.id);
+  const reorderTrackedPipelines = useReorderTrackedPipelines(project.id);
   const [showHidden, setShowHidden] = useState(false);
+  const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
+  const [activePipelineWidth, setActivePipelineWidth] = useState<number | null>(
+    null,
+  );
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: project.id });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { delay: 200, tolerance: 6 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const visiblePipelineIds = useMemo(
+    () => visible.map((pipeline) => pipeline.id),
+    [visible],
+  );
+  const pipelineIds = useMemo(
+    () => pipelines.map((pipeline) => pipeline.id),
+    [pipelines],
+  );
+  const firstHiddenIndex = useMemo(
+    () => pipelines.findIndex((pipeline) => !pipeline.visible),
+    [pipelines],
+  );
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, pipeline: TrackedPipeline) => {
@@ -248,72 +404,170 @@ function ProjectGroup({
     [onPipelineContextMenu, project.id],
   );
 
-  const isProjectSelected =
-    filter.type === 'project' && filter.projectId === project.id;
+  const handlePipelineDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      setActivePipelineId(null);
+      setActivePipelineWidth(null);
+      if (!over || active.id === over.id) return;
 
-  if (visible.length === 0 && hidden.length === 0) return null;
+      if (showHidden) {
+        const oldIndex = pipelineIds.indexOf(active.id as string);
+        const newIndex = pipelineIds.indexOf(over.id as string);
+        if (oldIndex === -1 || newIndex === -1) return;
+
+        reorderTrackedPipelines.mutate(
+          arrayMove(pipelineIds, oldIndex, newIndex),
+        );
+        return;
+      }
+
+      const activeVisibleIndex = visiblePipelineIds.indexOf(
+        active.id as string,
+      );
+      const overVisibleIndex = visiblePipelineIds.indexOf(over.id as string);
+
+      if (activeVisibleIndex !== -1 && overVisibleIndex !== -1) {
+        const reorderedVisibleIds = arrayMove(
+          visiblePipelineIds,
+          activeVisibleIndex,
+          overVisibleIndex,
+        );
+        let nextVisibleIndex = 0;
+        const nextPipelineIds = pipelines.map((pipeline) => {
+          if (!pipeline.visible) return pipeline.id;
+
+          const nextPipelineId =
+            reorderedVisibleIds[nextVisibleIndex] ?? pipeline.id;
+          nextVisibleIndex += 1;
+          return nextPipelineId;
+        });
+
+        reorderTrackedPipelines.mutate(nextPipelineIds);
+      }
+    },
+    [
+      pipelineIds,
+      pipelines,
+      reorderTrackedPipelines,
+      showHidden,
+      visiblePipelineIds,
+    ],
+  );
+
+  const activePipeline = useMemo(
+    () =>
+      pipelines.find((pipeline) => pipeline.id === activePipelineId) ?? null,
+    [activePipelineId, pipelines],
+  );
+
+  const handlePipelineDragStart = useCallback((event: DragStartEvent) => {
+    setActivePipelineId(event.active.id as string);
+    setActivePipelineWidth(event.active.rect.current.initial?.width ?? null);
+  }, []);
+
+  const handlePipelineDragFinish = useCallback(() => {
+    setActivePipelineId(null);
+    setActivePipelineWidth(null);
+  }, []);
 
   return (
-    <div>
-      <Button
-        variant="ghost"
-        size="sm"
-        data-nav-id={getNavId({ type: 'project', projectId: project.id })}
-        onClick={() => {
-          onFilterChange({ type: 'project', projectId: project.id });
-          onToggleExpanded();
-        }}
-        icon={expanded ? <ChevronDown /> : <ChevronRight />}
-        className={clsx(
-          'w-full justify-start',
-          isProjectSelected
-            ? 'text-ink-0 bg-glass-medium font-medium'
-            : 'text-ink-2',
-        )}
-      >
-        <span className="truncate">{project.name}</span>
-      </Button>
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={clsx(isDragging && 'opacity-0')}
+      {...attributes}
+      {...listeners}
+    >
+      <ProjectRowContent
+        project={project}
+        expanded={expanded}
+        filter={filter}
+        onFilterChange={onFilterChange}
+        onToggleExpanded={onToggleExpanded}
+      />
 
       {expanded && (
-        <div className="mt-0.5 ml-3 flex flex-col gap-0.5">
-          {visible.map((pipeline) => (
-            <PipelineItem
-              key={pipeline.id}
-              pipeline={pipeline}
-              project={project}
-              filter={filter}
-              onFilterChange={onFilterChange}
-              onTriggerRun={onTriggerRun}
-              onContextMenu={handleContextMenu}
-            />
-          ))}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handlePipelineDragStart}
+          onDragEnd={handlePipelineDragEnd}
+          onDragCancel={handlePipelineDragFinish}
+        >
+          <div className="mt-0.5 ml-2.5 flex flex-col gap-px">
+            <SortableContext
+              items={showHidden ? pipelineIds : visiblePipelineIds}
+              strategy={verticalListSortingStrategy}
+            >
+              {showHidden
+                ? pipelines.map((pipeline, index) => {
+                    return (
+                      <Fragment key={pipeline.id}>
+                        {hidden.length > 0 && index === firstHiddenIndex && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowHidden(false)}
+                            icon={<EyeOff />}
+                            className="mb-0.5"
+                          >
+                            Hide {hidden.length} hidden
+                          </Button>
+                        )}
+                        <PipelineItem
+                          pipeline={pipeline}
+                          project={project}
+                          filter={filter}
+                          onFilterChange={onFilterChange}
+                          onTriggerRun={onTriggerRun}
+                          onContextMenu={handleContextMenu}
+                          dimmed={!pipeline.visible}
+                        />
+                      </Fragment>
+                    );
+                  })
+                : visible.map((pipeline) => (
+                    <PipelineItem
+                      key={pipeline.id}
+                      pipeline={pipeline}
+                      project={project}
+                      filter={filter}
+                      onFilterChange={onFilterChange}
+                      onTriggerRun={onTriggerRun}
+                      onContextMenu={handleContextMenu}
+                    />
+                  ))}
+            </SortableContext>
 
-          {hidden.length > 0 && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowHidden((prev) => !prev)}
-                icon={<EyeOff />}
-              >
-                {showHidden ? 'Hide' : 'Show'} {hidden.length} hidden
-              </Button>
-              {showHidden &&
-                hidden.map((pipeline) => (
-                  <PipelineItem
-                    key={pipeline.id}
-                    pipeline={pipeline}
+            <DragOverlay>
+              {activePipeline ? (
+                <div style={{ width: activePipelineWidth ?? undefined }}>
+                  <PipelineRowContent
+                    pipeline={activePipeline}
                     project={project}
                     filter={filter}
                     onFilterChange={onFilterChange}
                     onTriggerRun={onTriggerRun}
-                    onContextMenu={handleContextMenu}
-                    dimmed
+                    dimmed={!activePipeline.visible}
+                    overlay
                   />
-                ))}
-            </>
-          )}
-        </div>
+                </div>
+              ) : null}
+            </DragOverlay>
+
+            {!showHidden && hidden.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowHidden(true)}
+                icon={<EyeOff />}
+              >
+                Show {hidden.length} hidden
+              </Button>
+            )}
+          </div>
+        </DndContext>
       )}
     </div>
   );
@@ -325,6 +579,7 @@ export function Sidebar({
   expandedProjects,
   onToggleExpanded,
   onFilterChange,
+  onReorderProjects,
   onTriggerRun,
 }: {
   projects: Project[];
@@ -332,9 +587,30 @@ export function Sidebar({
   expandedProjects: Set<string>;
   onToggleExpanded: (projectId: string) => void;
   onFilterChange: (filter: SidebarFilter) => void;
+  onReorderProjects: (orderedProjectIds: string[]) => void;
   onTriggerRun: (project: Project, pipeline: TrackedPipeline) => void;
 }) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [activeProjectWidth, setActiveProjectWidth] = useState<number | null>(
+    null,
+  );
+  const projectIds = useMemo(
+    () => projects.map((project) => project.id),
+    [projects],
+  );
+  const activeProject = useMemo(
+    () => projects.find((project) => project.id === activeProjectId) ?? null,
+    [activeProjectId, projects],
+  );
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { delay: 200, tolerance: 6 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
   const handlePipelineContextMenu = useCallback(
     (e: React.MouseEvent, pipeline: TrackedPipeline, projectId: string) => {
@@ -345,43 +621,97 @@ export function Sidebar({
     [],
   );
 
+  const handleProjectDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      setActiveProjectId(null);
+      setActiveProjectWidth(null);
+      if (!over || active.id === over.id) return;
+
+      const oldIndex = projectIds.indexOf(active.id as string);
+      const newIndex = projectIds.indexOf(over.id as string);
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      onReorderProjects(arrayMove(projectIds, oldIndex, newIndex));
+    },
+    [onReorderProjects, projectIds],
+  );
+
+  const handleProjectDragStart = useCallback((event: DragStartEvent) => {
+    setActiveProjectId(event.active.id as string);
+    setActiveProjectWidth(event.active.rect.current.initial?.width ?? null);
+  }, []);
+
+  const handleProjectDragCancel = useCallback(() => {
+    setActiveProjectId(null);
+    setActiveProjectWidth(null);
+  }, []);
+
   const handleCloseContextMenu = useCallback(() => {
     setContextMenu(null);
   }, []);
 
   return (
     <div className="flex w-56 shrink-0 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          data-nav-id="nav-all"
-          onClick={() => onFilterChange({ type: 'all' })}
-          className={clsx(
-            'w-full justify-start',
-            filter.type === 'all'
-              ? 'text-ink-0 bg-glass-medium font-medium'
-              : 'text-ink-2',
-          )}
-        >
-          All Projects
-        </Button>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleProjectDragStart}
+        onDragEnd={handleProjectDragEnd}
+        onDragCancel={handleProjectDragCancel}
+      >
+        <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            data-nav-id="nav-all"
+            onClick={() => onFilterChange({ type: 'all' })}
+            className={clsx(
+              'w-full justify-start',
+              filter.type === 'all'
+                ? 'text-ink-0 bg-glass-medium font-medium'
+                : 'text-ink-2',
+            )}
+          >
+            All Projects
+          </Button>
 
-        <Separator className="my-1" />
+          <Separator className="my-1" />
 
-        {projects.map((project) => (
-          <ProjectGroup
-            key={project.id}
-            project={project}
-            expanded={expandedProjects.has(project.id)}
-            onToggleExpanded={() => onToggleExpanded(project.id)}
-            filter={filter}
-            onFilterChange={onFilterChange}
-            onTriggerRun={onTriggerRun}
-            onPipelineContextMenu={handlePipelineContextMenu}
-          />
-        ))}
-      </div>
+          <SortableContext
+            items={projectIds}
+            strategy={verticalListSortingStrategy}
+          >
+            {projects.map((project) => (
+              <ProjectGroup
+                key={project.id}
+                project={project}
+                expanded={expandedProjects.has(project.id)}
+                onToggleExpanded={() => onToggleExpanded(project.id)}
+                filter={filter}
+                onFilterChange={onFilterChange}
+                onTriggerRun={onTriggerRun}
+                onPipelineContextMenu={handlePipelineContextMenu}
+              />
+            ))}
+          </SortableContext>
+        </div>
+
+        <DragOverlay>
+          {activeProject ? (
+            <div style={{ width: activeProjectWidth ?? undefined }}>
+              <ProjectRowContent
+                project={activeProject}
+                expanded={expandedProjects.has(activeProject.id)}
+                filter={filter}
+                onFilterChange={onFilterChange}
+                onToggleExpanded={() => {}}
+                overlay
+              />
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       {contextMenu && (
         <PipelineContextMenu

@@ -3644,6 +3644,13 @@ export function registerIpcHandlers() {
     },
   );
 
+  ipcMain.handle(
+    'tracked-pipelines:reorder',
+    async (_, projectId: string, orderedIds: string[]) => {
+      await TrackedPipelineRepository.reorder(projectId, orderedIds);
+    },
+  );
+
   ipcMain.handle('tracked-pipelines:discover', async (_, projectId: string) => {
     const rows = await pipelineTrackingService.discoverPipelines(projectId);
     return rows.map((row) => ({

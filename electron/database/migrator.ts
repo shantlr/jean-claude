@@ -52,6 +52,7 @@ import * as m050 from './migrations/050_command_sort_order';
 import * as m051 from './migrations/051_project_favorite_branches';
 import * as m052 from './migrations/052_task_parent_task_id';
 import * as m053 from './migrations/053_migrate_prompt_snippets_format';
+import * as m054 from './migrations/054_tracked_pipeline_sort_order';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -106,6 +107,7 @@ const migrations: Record<string, Migration> = {
   '051_project_favorite_branches': m051,
   '052_task_parent_task_id': m052,
   '053_migrate_prompt_snippets_format': m053,
+  '054_tracked_pipeline_sort_order': m054,
 };
 
 export const migrationProvider: MigrationProvider = {

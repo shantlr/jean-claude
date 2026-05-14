@@ -6,6 +6,7 @@ export interface TrackedPipeline {
   azurePipelineId: number;
   kind: TrackedPipelineKind;
   name: string;
+  sortOrder: number;
   enabled: boolean;
   visible: boolean;
   lastCheckedRunId: number | null;
