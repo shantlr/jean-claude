@@ -367,11 +367,11 @@ export function MarkdownContent({
         size="xl"
       >
         {selectedImage && (
-          <div className="flex max-h-[75vh] items-center justify-center">
+          <div className="flex max-h-[75vh] w-full items-center justify-center">
             <img
               src={selectedImage.src}
               alt={selectedImage.alt}
-              className="max-h-[75vh] max-w-full object-contain"
+              className="max-h-[75vh] w-full object-contain"
             />
           </div>
         )}

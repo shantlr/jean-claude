@@ -72,6 +72,8 @@ function CommentsContent({
             html={comment.text}
             providerId={providerId}
             className="text-ink-2 text-xs"
+            imageClassName="max-h-72 w-auto object-contain"
+            enableImageModal
           />
         </div>
       ))}
