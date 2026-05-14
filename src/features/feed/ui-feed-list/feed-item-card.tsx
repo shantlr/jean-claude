@@ -456,6 +456,10 @@ export function FeedItemCard({
                 !needsAttention &&
                 !hasUnread &&
                 'hover:bg-glass-light',
+              hasUnread &&
+                !isRunning &&
+                !needsAttention &&
+                'completed-unread-glow',
             )}
             style={{ minHeight: isSubtask ? 36 : 50 }}
           >
@@ -545,12 +549,6 @@ export function FeedItemCard({
                 >
                   {item.title}
                 </span>
-                {hasUnread && !isRunning && !needsAttention && (
-                  <span
-                    className="feed-unread-node-pulse mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full"
-                    style={{ background: 'var(--color-status-done)' }}
-                  />
-                )}
                 <span className="text-ink-3 mt-0.5 shrink-0 font-mono text-[9.5px]">
                   {formatRelativeTime(item.timestamp)}
                 </span>
@@ -891,6 +889,10 @@ function SubtaskRow({
           !child.hasUnread &&
           !isSelected &&
           'hover:bg-glass-light',
+        child.hasUnread &&
+          !isRunning &&
+          !childNeedsAttention &&
+          'completed-unread-glow',
         isSelected
           ? 'border-l-2 border-l-[var(--color-acc)]'
           : 'border-l-2 border-l-transparent',
@@ -939,12 +941,6 @@ function SubtaskRow({
           <span className="text-ink-2 min-w-0 flex-1 truncate text-[11.5px]">
             {child.title}
           </span>
-          {child.hasUnread && !isRunning && !childNeedsAttention && (
-            <span
-              className="feed-unread-node-pulse h-1.5 w-1.5 shrink-0 rounded-full"
-              style={{ background: 'var(--color-status-done)' }}
-            />
-          )}
           <span className="text-ink-4 shrink-0 font-mono text-[9px]">
             {formatRelativeTime(child.timestamp)}
           </span>

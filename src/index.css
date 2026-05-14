@@ -456,36 +456,8 @@ button {
   }
 }
 
-/* Pulsing border for completed-but-unread tasks (emerald-to-cyan) */
-@utility completed-unread-border {
-  position: relative;
-  isolation: isolate;
-  background:
-    linear-gradient(var(--color-bg-1), var(--color-bg-1)) padding-box,
-    linear-gradient(
-        120deg,
-        oklch(0.78 0.16 155),
-        oklch(0.78 0.16 205),
-        oklch(0.82 0.14 160)
-      )
-      border-box;
-  border: 1.5px solid transparent;
-  animation: completed-unread-breathe 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
-@utility completed-unread-border-selected {
-  position: relative;
-  isolation: isolate;
-  background:
-    linear-gradient(var(--color-bg-3), var(--color-bg-3)) padding-box,
-    linear-gradient(
-        120deg,
-        oklch(0.84 0.18 155),
-        oklch(0.84 0.18 205),
-        oklch(0.88 0.16 160)
-      )
-      border-box;
-  border: 1.5px solid transparent;
+/* Subtle glow for completed-but-unread tasks (no border) */
+@utility completed-unread-glow {
   animation: completed-unread-breathe 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
@@ -804,24 +776,6 @@ button {
   animation: feed-node-pulse 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
-@keyframes feed-unread-node-pulse {
-  0% {
-    box-shadow: 0 0 0 0
-      color-mix(in oklch, var(--color-status-done) 45%, transparent);
-  }
-  70% {
-    box-shadow: 0 0 0 7px
-      color-mix(in oklch, var(--color-status-done) 0%, transparent);
-  }
-  100% {
-    box-shadow: 0 0 0 0
-      color-mix(in oklch, var(--color-status-done) 0%, transparent);
-  }
-}
-
-.feed-unread-node-pulse {
-  animation: feed-unread-node-pulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
 
 /* Flowing dashes on the rail for running tasks */
 @keyframes feed-rail-flow {
