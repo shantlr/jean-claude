@@ -114,13 +114,9 @@ export function TaskSummaryCard({
               ? isSelected
                 ? 'running-border-selected'
                 : 'running-border'
-              : task.hasUnread && task.status === 'completed'
-                ? isSelected
-                  ? 'completed-unread-border-selected'
-                  : 'completed-unread-border'
-                : isSelected
-                  ? 'focused-border'
-                  : 'hover:bg-glass-light border-[1.5px] border-transparent hover:translate-x-0.5',
+              : isSelected
+                ? 'focused-border'
+                : 'hover:bg-glass-light border-[1.5px] border-transparent hover:translate-x-0.5',
       )}
     >
       {/* Top row: status, name, number badge */}

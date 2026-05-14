@@ -414,9 +414,7 @@ export function FeedItemCard({
                   ? 'feed-permission-row border-transparent'
                   : hasQuestion
                     ? 'feed-question-row border-transparent'
-                    : hasUnread
-                      ? 'feed-unread-row border-transparent'
-                      : !showRail && 'border-line-soft',
+                    : !showRail && 'border-line-soft',
               isSelected
                 ? 'border-l-2 border-l-[var(--color-acc)]'
                 : 'border-l-2 border-l-transparent',
@@ -842,13 +840,8 @@ function SubtaskRow({
         'relative flex cursor-pointer transition-colors',
         isRunning && 'feed-running-row',
         isRunning && isSelected && 'feed-running-row-focused',
-        child.hasUnread && !isRunning && 'feed-unread-row',
         !isRunning && childNeedsPermission && 'feed-permission-row',
         !isRunning && childHasQuestion && 'feed-question-row',
-        !isRunning &&
-          child.hasUnread &&
-          !childNeedsAttention &&
-          'feed-unread-row',
         !isRunning &&
           !childNeedsAttention &&
           !child.hasUnread &&
