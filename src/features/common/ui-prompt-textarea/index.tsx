@@ -97,6 +97,10 @@ type DropdownItem =
   | { type: 'file'; filePath: string }
   | { type: 'snippet'; snippet: PromptSnippet };
 
+type RankedDropdownItem = DropdownItem & {
+  matchScore: number | null;
+};
+
 type MentionToken = {
   start: number;
   end: number;
@@ -238,14 +242,18 @@ export const PromptTextarea = forwardRef<
   });
 
   // Filter slash commands/skills or @file path suggestions
-  const filteredItems = useMemo((): DropdownItem[] => {
+  const filteredItems = useMemo((): RankedDropdownItem[] => {
     if (showMentionDropdown) {
-      return fileSuggestions.map((filePath) => ({ type: 'file', filePath }));
+      return fileSuggestions.map((filePath) => ({
+        type: 'file',
+        filePath,
+        matchScore: null,
+      }));
     }
 
     if (!showSlashDropdown) return [];
 
-    const items: DropdownItem[] = [];
+    const items: RankedDropdownItem[] = [];
 
     // Fuzzy filter built-in commands
     if (showCommands) {
@@ -254,15 +262,15 @@ export const PromptTextarea = forwardRef<
             keys: ['command'],
             threshold: 0.4,
             ignoreLocation: true,
-          })
-            .search(searchText)
-            .map((r) => r.item)
-        : COMMANDS;
+            includeScore: true,
+          }).search(searchText)
+        : COMMANDS.map((item) => ({ item, score: null }));
       for (const cmd of matchedCommands) {
         items.push({
           type: 'command',
-          command: cmd.command,
-          description: cmd.description,
+          command: cmd.item.command,
+          description: cmd.item.description,
+          matchScore: cmd.score ?? null,
         });
       }
     }
@@ -280,12 +288,15 @@ export const PromptTextarea = forwardRef<
             keys: ['autocomplete.slugs', 'name'],
             threshold: 0.4,
             ignoreLocation: true,
-          })
-            .search(searchText)
-            .map((r) => r.item)
-        : enabledSnippets;
+            includeScore: true,
+          }).search(searchText)
+        : enabledSnippets.map((item) => ({ item, score: null }));
       for (const snippet of matchedSnippets) {
-        items.push({ type: 'snippet', snippet });
+        items.push({
+          type: 'snippet',
+          snippet: snippet.item,
+          matchScore: snippet.score ?? null,
+        });
       }
     }
 
@@ -295,12 +306,15 @@ export const PromptTextarea = forwardRef<
           keys: ['name'],
           threshold: 0.4,
           ignoreLocation: true,
-        })
-          .search(searchText)
-          .map((r) => r.item)
-      : skills;
+          includeScore: true,
+        }).search(searchText)
+      : skills.map((item) => ({ item, score: null }));
     for (const skill of matchedSkills) {
-      items.push({ type: 'skill', skill });
+      items.push({
+        type: 'skill',
+        skill: skill.item,
+        matchScore: skill.score ?? null,
+      });
     }
 
     return items;
@@ -314,10 +328,28 @@ export const PromptTextarea = forwardRef<
     promptSnippets,
   ]);
 
+  const defaultSelectedIndex = useMemo(() => {
+    if (filteredItems.length === 0) return 0;
+    if (showMentionDropdown || !searchText) return 0;
+
+    let bestIndex = 0;
+    let bestScore = Number.POSITIVE_INFINITY;
+
+    filteredItems.forEach((item, index) => {
+      if (item.matchScore === null) return;
+      if (item.matchScore < bestScore) {
+        bestScore = item.matchScore;
+        bestIndex = index;
+      }
+    });
+
+    return bestIndex;
+  }, [filteredItems, searchText, showMentionDropdown]);
+
   // Reset selected index when filtered items change
   useEffect(() => {
-    setSelectedIndex(0);
-  }, [filteredItems.length]);
+    setSelectedIndex(defaultSelectedIndex);
+  }, [defaultSelectedIndex, filteredItems]);
 
   // Auto-scroll to selected item in dropdown
   useEffect(() => {
@@ -450,7 +482,9 @@ export const PromptTextarea = forwardRef<
       }
       if (e.key === 'Enter' && !e.shiftKey && !e.altKey) {
         e.preventDefault();
-        selectItem(filteredItems[selectedIndex]);
+        const selectedItem = filteredItems[selectedIndex];
+        if (!selectedItem) return;
+        selectItem(selectedItem);
         return;
       }
       if (e.key === 'Escape') {
