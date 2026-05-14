@@ -133,6 +133,12 @@ export function FeedList() {
     () => new Set(pinned.map((item) => item.id)),
     [pinned],
   );
+  const hasUnpinnedItems =
+    actionNeededItems.length > 0 ||
+    activeTaskItems.length > 0 ||
+    highPriorityItems.length > 0 ||
+    normalItems.length > 0 ||
+    lowPriorityItems.length > 0;
 
   const [lowPriorityExpanded, setLowPriorityExpanded] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -553,13 +559,10 @@ export function FeedList() {
         </div>
       )}
 
-      {/* Dashed divider between pinned and auto-sorted */}
-      {pinnedItems.length > 0 &&
-        (actionNeededItems.length > 0 ||
-          normalItems.length > 0 ||
-          activeTaskItems.length > 0) && (
-          <div className="border-line-soft my-1 border-t border-dashed" />
-        )}
+      {/* Slightly stronger divider between pinned and rest of feed */}
+      {pinnedItems.length > 0 && hasUnpinnedItems && (
+        <div className="border-acc/20 border-t-4" />
+      )}
 
       {/* Action needed zone - permissions, questions, errors (sticky + stacked) */}
       {actionNeededItems.length > 0 && (
