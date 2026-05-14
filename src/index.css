@@ -895,7 +895,6 @@ button {
 
 .feed-command-running-row {
   box-shadow:
-    inset 3px 0 0 color-mix(in oklch, var(--color-status-done) 90%, white 10%),
     inset 0 0 32px -3px
       color-mix(in oklch, var(--color-status-done) 28%, transparent),
     0 0 0 1px color-mix(in oklch, var(--color-status-done) 18%, transparent);
