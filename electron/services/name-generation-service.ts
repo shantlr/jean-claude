@@ -9,6 +9,7 @@ import { getSkillContent } from './skill-management-service';
 
 const TASK_NAME_TIMEOUT_MS = 10 * 60 * 1000;
 const TASK_NAME_MAX_PROMPT_LENGTH = 8000;
+const TASK_NAME_MAX_LENGTH = 40;
 
 const TASK_NAME_SCHEMA = {
   type: 'object',
@@ -79,7 +80,12 @@ export async function generateTaskName(
       'name' in result &&
       typeof (result as { name: unknown }).name === 'string'
     ) {
-      const name = (result as { name: string }).name.slice(0, 40);
+      const name = normalizeGeneratedTaskName(
+        (result as { name: string }).name,
+      );
+      if (!name) {
+        return null;
+      }
       dbg.agent('Generated task name: %s', name);
       return name;
     }
@@ -102,4 +108,14 @@ async function getBuiltinSkillPrompt(): Promise<string> {
   const skill = await getSkillContent({ skillPath });
   cachedBuiltinPrompt = skill.content;
   return cachedBuiltinPrompt;
+}
+
+function normalizeGeneratedTaskName(name: string): string {
+  return name
+    .trim()
+    .replace(/^['"`]+|['"`]+$/g, '')
+    .replace(/[.!?:;,]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .slice(0, TASK_NAME_MAX_LENGTH)
+    .trim();
 }

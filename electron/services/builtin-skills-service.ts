@@ -32,31 +32,38 @@ const BUILTIN_SKILLS: BuiltinSkillDefinition[] = [
     dirName: 'task-name-generation',
     name: 'task-name-generation',
     description: 'Generate concise task names from prompts',
-    content: `You are a task naming assistant. Given a coding task description, produce a short name (≤40 characters) that captures the essence of the task.
+    content: `You are a task naming assistant. Given a coding task description, produce a caveman-short task name (≤40 characters) that captures the essence of the work.
 
 Rules:
 - MUST be ≤40 characters. This is a hard limit.
-- Start with a lowercase verb (add, fix, refactor, update, implement, etc.)
-- Be specific about WHAT is being done, but concise
+- Return plain text only. No quotes.
+- Start with a lowercase verb (add, fix, refactor, update, remove, rename, switch, etc.)
+- Prefer 2-5 words when possible
+- Keep the strongest nouns only
+- Drop filler words like the, a, an, to, for, with, of, when possible
+- Omit boilerplate words like issue, bug, task, feature, support, improvement
+- Use terse product/code terms when natural: auth, deps, docs, UI, PR, DB
+- Keep technical punctuation only when it is part of a real identifier like Next.js, C++, CI/CD, .env
+- Be specific about WHAT is changing, but use caveman compression
 - NEVER copy the input verbatim. Always summarize and compress.
 - Ignore boilerplate, metadata, platform tags, ticket IDs, repro steps
 - Focus on the single core action being described
 
 Examples:
 Input: "once a PR is associated to a task, in the task details diff view, we should have a button beside 'See PR' to be able to push new changes"
-Output: "add push changes button to PR diff view"
+Output: "add PR diff push button"
 
 Input: "The station subtitle is not clearing when the user searches for a new station in the search field, it persists from the previous selection"
-Output: "fix subtitle not clearing on search"
+Output: "fix stale station subtitle"
 
 Input: "We need to add retry logic to the webhook delivery system so that failed webhooks are retried up to 3 times with exponential backoff"
-Output: "add retry logic to webhook delivery"
+Output: "add webhook retry backoff"
 
 Input: "refactor the authentication middleware to use JWT tokens instead of session-based authentication"
-Output: "refactor auth middleware to use JWT"
+Output: "switch auth middleware to JWT"
 
 Input: "fix race condition in checkout flow where users are sometimes double-charged"
-Output: "fix race condition in checkout flow"`,
+Output: "fix checkout double charge race"`,
   },
 ];
 
