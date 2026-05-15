@@ -18,10 +18,11 @@ import {
   PinOff,
   StickyNote,
   Terminal,
+  CheckCircle2,
   XCircle,
 } from 'lucide-react';
 import type React from 'react';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import {
   Dropdown,
@@ -29,6 +30,8 @@ import {
   DropdownInfo,
   DropdownItem,
 } from '@/common/ui/dropdown';
+import { CompleteTaskDialog } from '@/features/task/ui-task-panel/complete-task-dialog';
+import { useCompleteTask, useTask } from '@/hooks/use-tasks';
 import { formatRelativeTime } from '@/lib/time';
 import {
   bgJobLabel,
@@ -197,6 +200,43 @@ function WorkItemChip({
   );
 }
 
+// ─── Complete Task Button (isolated to avoid hooks in every card) ─
+function CompleteTaskButton({ taskId }: { taskId: string }) {
+  const completeTask = useCompleteTask();
+  const { data: taskData } = useTask(taskId);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const handleConfirm = useCallback(
+    ({ cleanupWorktree }: { cleanupWorktree: boolean }) => {
+      setIsDialogOpen(false);
+      completeTask.mutate({ id: taskId, cleanupWorktree });
+    },
+    [taskId, completeTask],
+  );
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsDialogOpen(true);
+        }}
+        className="text-status-done hover:bg-status-done/15 ml-auto flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors"
+      >
+        <CheckCircle2 className="h-3 w-3" />
+        Complete
+      </button>
+      <CompleteTaskDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        onConfirm={handleConfirm}
+        hasWorktree={!!taskData?.worktreePath}
+        isPending={completeTask.isPending}
+      />
+    </>
+  );
+}
+
 // ─── Main FeedItemCard ───────────────────────────────────────────
 export function FeedItemCard({
   item,
@@ -258,6 +298,10 @@ export function FeedItemCard({
   const prMerged = item.workItemPrStatus === 'completed';
   const showRail = isTask && !isSubtask && (hasChildren || hasPr);
   const isPrFocused = hasPr && currentPrId === String(item.pullRequestId);
+
+  // Complete task (for merged PRs)
+  const canComplete = isTask && prMerged && !!item.taskId && !item.isCompleted;
+
   const handleClick = useCallback(
     (e?: React.MouseEvent) => {
       if (
@@ -765,6 +809,7 @@ export function FeedItemCard({
                     </span>
                   </span>
                 )}
+                {canComplete && <CompleteTaskButton taskId={item.taskId!} />}
               </div>
             </div>
           )}
