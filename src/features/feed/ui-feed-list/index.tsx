@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { useFeed } from '@/hooks/use-feed';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useFeedStore } from '@/stores/feed';
 import { useOverlaysStore } from '@/stores/overlays';
 import type { FeedItem } from '@shared/feed-types';
@@ -125,6 +126,12 @@ export function FeedList() {
   const reorderPinned = useFeedStore((s) => s.reorderPinned);
   const pinned = useFeedStore((s) => s.pinned);
   const openOverlay = useOverlaysStore((s) => s.open);
+  const runningTaskCreationCount = useBackgroundJobsStore(
+    (state) =>
+      state.jobs.filter(
+        (job) => job.type === 'task-creation' && job.status === 'running',
+      ).length,
+  );
   const pin = useFeedStore((s) => s.pin);
   const unpin = useFeedStore((s) => s.unpin);
   const dismiss = useFeedStore((s) => s.dismiss);
@@ -509,7 +516,7 @@ export function FeedList() {
       )}
 
       {/* Empty state */}
-      {!isLoading && totalCount === 0 && (
+      {!isLoading && totalCount === 0 && runningTaskCreationCount === 0 && (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 py-12 text-center">
           <ListTodo className="text-ink-3 h-6 w-6" />
           <span className="text-ink-2 text-sm">No active tasks or notes</span>
@@ -562,6 +569,23 @@ export function FeedList() {
       {/* Slightly stronger divider between pinned and rest of feed */}
       {pinnedItems.length > 0 && hasUnpinnedItems && (
         <div className="border-acc/20 border-t-4" />
+      )}
+
+      {runningTaskCreationCount > 0 && (
+        <div className="px-2 py-1.5">
+          <button
+            type="button"
+            onClick={() => openOverlay('activity-center')}
+            className="bg-acc/[0.08] border-acc/20 text-acc-ink hover:bg-acc/[0.12] flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-xs transition-colors"
+          >
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+            <span className="min-w-0 flex-1 truncate font-medium">
+              Creating {runningTaskCreationCount}{' '}
+              {runningTaskCreationCount === 1 ? 'task' : 'tasks'} in the
+              background
+            </span>
+          </button>
+        </div>
       )}
 
       {/* Action needed zone - permissions, questions, errors (sticky + stacked) */}
