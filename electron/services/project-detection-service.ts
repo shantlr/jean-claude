@@ -134,7 +134,11 @@ async function findJsonlFiles(dir: string): Promise<string[]> {
       }
     }
   } catch (err) {
-    dbg.ipc('findJsonlFiles: skipping unreadable dir %s: %O', dir, err);
+    if (err instanceof Error && 'code' in err && err.code === 'ENOENT') {
+      dbg.ipc('findJsonlFiles: dir does not exist, skipping %s', dir);
+    } else {
+      dbg.ipc('findJsonlFiles: skipping unreadable dir %s: %O', dir, err);
+    }
   }
   return results;
 }
