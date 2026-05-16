@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef } from 'react';
 import { create, type StoreApi, useStore } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 // -- Base types --
 
@@ -29,8 +30,12 @@ export type KeyedCommentStore<T extends { id: string; createdAt: number }> =
 
 export function createKeyedCommentStore<
   T extends { id: string; createdAt: number },
->(idPrefix: string): KeyedCommentStore<T> {
-  return create<KeyedCommentState<T>>((set) => ({
+>(idPrefix: string, options?: { persistName?: string }): KeyedCommentStore<T> {
+  const storeCreator = (
+    set: (
+      fn: (state: KeyedCommentState<T>) => Partial<KeyedCommentState<T>>,
+    ) => void,
+  ): KeyedCommentState<T> => ({
     comments: {},
 
     addComment: (key, comment) => {
@@ -80,7 +85,19 @@ export function createKeyedCommentStore<
         comments: {},
       }));
     },
-  }));
+  });
+
+  if (options?.persistName) {
+    return create<KeyedCommentState<T>>()(
+      persist(storeCreator, {
+        name: options.persistName,
+        version: 1,
+        partialize: (state) => ({ comments: state.comments }),
+      }),
+    );
+  }
+
+  return create<KeyedCommentState<T>>()(storeCreator);
 }
 
 // -- Selector hooks factory --

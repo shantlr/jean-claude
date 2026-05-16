@@ -50,6 +50,21 @@ const useStore = create<TaskPromptsState>()(
   ),
 );
 
+/** Imperative cleanup — call outside React to clear a task's prompt draft */
+export function clearTaskPromptDraft(taskId: string) {
+  useStore.getState().clearDraft(taskId);
+}
+
+/** Remove persisted prompt drafts for tasks that no longer exist or are completed. */
+export function pruneOrphanedTaskPrompts(activeTaskIds: Set<string>) {
+  const state = useStore.getState();
+  for (const taskId of Object.keys(state.drafts)) {
+    if (!activeTaskIds.has(taskId)) {
+      state.clearDraft(taskId);
+    }
+  }
+}
+
 export function useTaskPrompt(taskId: string) {
   const text = useStore((state) => state.drafts[taskId]?.text ?? '');
   const setDraftAction = useStore((state) => state.setDraft);

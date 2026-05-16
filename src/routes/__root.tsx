@@ -22,10 +22,16 @@ import { SettingsOverlay } from '@/features/settings/ui-settings-overlay';
 import { useBacklogProjectId } from '@/hooks/use-backlog-project-id';
 import { Header } from '@/layout/ui-header';
 import { MainSidebar } from '@/layout/ui-main-sidebar';
+import { api } from '@/lib/api';
 import { resolveLastLocationRedirect } from '@/lib/navigation';
-import { useCurrentVisibleProject } from '@/stores/navigation';
+import {
+  useCurrentVisibleProject,
+  useNavigationStore,
+} from '@/stores/navigation';
 import { useNewTaskDraft } from '@/stores/new-task-draft';
 import { useOverlaysStore } from '@/stores/overlays';
+import { pruneOrphanedReviewComments } from '@/stores/review-comments';
+import { pruneOrphanedTaskPrompts } from '@/stores/task-prompts';
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -304,7 +310,36 @@ function PipelinesOverlayContainer() {
   return <PipelinesOverlay onClose={() => close('pipelines')} />;
 }
 
+/** Clean up persisted store data for tasks that no longer exist or are completed */
+function useCleanupNonActiveTasks() {
+  useEffect(() => {
+    void api.tasks.findAll().then((tasks) => {
+      const activeIds = new Set(
+        tasks.filter((t) => t.status !== 'completed').map((t) => t.id),
+      );
+
+      // Prune review comments
+      pruneOrphanedReviewComments(activeIds);
+
+      // Prune task prompt drafts
+      pruneOrphanedTaskPrompts(activeIds);
+
+      // Prune navigation task state
+      // Note: clearTaskNavHistoryState also calls clearReviewCommentsForTask
+      // internally, but pruneOrphanedReviewComments above already handled that.
+      const navState = useNavigationStore.getState();
+      for (const taskId of Object.keys(navState.taskState)) {
+        if (!activeIds.has(taskId)) {
+          navState.clearTaskNavHistoryState(taskId);
+        }
+      }
+    });
+  }, []);
+}
+
 function RootLayout() {
+  useCleanupNonActiveTasks();
+
   return (
     <div className="aurora-app-bg flex h-screen w-screen overflow-hidden">
       <TaskMessageManager />

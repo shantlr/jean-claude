@@ -58,7 +58,9 @@ export interface ReviewComment {
 
 // -- Store (generic base + domain-specific actions) --
 
-const baseStore = createKeyedCommentStore<ReviewComment>('rc');
+const baseStore = createKeyedCommentStore<ReviewComment>('rc', {
+  persistName: 'jean-claude-review-comments',
+});
 
 // Domain-specific actions (stable references, not part of zustand state)
 function resolveComment(taskId: string, commentId: string) {
@@ -206,6 +208,18 @@ export { useReviewComments, useReviewCommentsForFile };
 /** Clear all review comments for a task. Call during task state cleanup. */
 export function clearReviewCommentsForTask(taskId: string) {
   baseStore.getState().clearComments(taskId);
+}
+
+/** Remove persisted comments for tasks that no longer exist or are completed.
+ *  Call once on app startup. */
+export function pruneOrphanedReviewComments(activeTaskIds: Set<string>) {
+  const state = baseStore.getState();
+  const storedTaskIds = Object.keys(state.comments);
+  for (const taskId of storedTaskIds) {
+    if (!activeTaskIds.has(taskId)) {
+      state.clearComments(taskId);
+    }
+  }
 }
 
 // -- Domain-specific selector hooks --

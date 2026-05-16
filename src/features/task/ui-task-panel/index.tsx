@@ -21,6 +21,10 @@ import {
 import { useEffect, useState, useCallback, useMemo, useRef, memo } from 'react';
 
 import { useModal } from '@/common/context/modal';
+import {
+  ReviewProvider,
+  type ReviewCommentParams,
+} from '@/common/context/review-context';
 import { useCommands } from '@/common/hooks/use-commands';
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { Button } from '@/common/ui/button';
@@ -51,6 +55,10 @@ import { PrBadge } from '@/features/agent/ui-pr-badge';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
 import { RunButton } from '@/features/agent/ui-run-button';
 import { WorktreeDiffView } from '@/features/agent/ui-worktree-diff-view';
+import {
+  ReviewPillsQueue,
+  reviewCommentToPill,
+} from '@/features/common/ui-review-pills';
 import { PrReviewValidation } from '@/features/task/ui-pr-review-validation';
 import { SkillPublishAction } from '@/features/task/ui-skill-publish-action';
 import { StepFlowBar } from '@/features/task/ui-step-flow-bar';
@@ -101,6 +109,12 @@ import {
 } from '@/stores/navigation';
 import { useNewTaskDraftStore } from '@/stores/new-task-draft';
 import { useOverlaysStore } from '@/stores/overlays';
+import {
+  useReviewComments,
+  useReviewCommentsStore,
+  synthesizeReviewPrompt,
+  type ReviewPresetId,
+} from '@/stores/review-comments';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import { useTaskPrompt } from '@/stores/task-prompts';
 import { useToastStore } from '@/stores/toasts';
@@ -113,7 +127,6 @@ import type {
 import type { NormalizedEntry } from '@shared/normalized-message-v2';
 import {
   getDefaultInteractionModeForBackend,
-  normalizeInteractionModeForBackend,
   type InteractionMode,
   type ModelPreference,
   type TaskStep,
@@ -990,6 +1003,53 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       },
   ]);
 
+  // Review context — allows children (diff view, message stream) to add comments
+  // Must be before any early return to satisfy Rules of Hooks.
+  const addReviewCommentAction = useReviewCommentsStore((s) => s.addComment);
+  const removeReviewCommentAction = useReviewCommentsStore(
+    (s) => s.removeComment,
+  );
+  const reviewContextValue = useMemo(
+    () => ({
+      addComment: (params: ReviewCommentParams) => {
+        if (params.kind === 'diff') {
+          return addReviewCommentAction(taskId, {
+            anchor: {
+              filePath: params.filePath,
+              lineStart: params.lineStart,
+              lineEnd: params.lineEnd,
+              selectedText: params.selectedText,
+            },
+            body: params.body,
+            images: params.images,
+            presets: params.presets as ReviewPresetId[],
+            status: 'open',
+            resolved: false,
+          });
+        }
+        // Message comment — store anchor info in the filePath field as a
+        // synthetic path so it flows through the existing comment store.
+        return addReviewCommentAction(taskId, {
+          anchor: {
+            filePath: `__message__:${params.entryId}`,
+            lineStart: 0,
+            selectedText: params.selectedText,
+          },
+          body: params.body,
+          images: params.images,
+          presets: params.presets as ReviewPresetId[],
+          status: 'open',
+          resolved: false,
+        });
+      },
+      removeComment: (commentId: string) => {
+        removeReviewCommentAction(taskId, commentId);
+      },
+      enabled: true,
+    }),
+    [taskId, addReviewCommentAction, removeReviewCommentAction],
+  );
+
   if (!task || !project) {
     return (
       <div className="text-ink-3 flex h-full items-center justify-center">
@@ -1020,682 +1080,648 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const taskTitle = getTaskTitle({ name: task.name, prompt: task.prompt });
 
   return (
-    <div
-      ref={taskPanelRef}
-      className="bg-bg-0 flex h-full w-full overflow-hidden rounded-tl-xl"
-    >
-      {/* Main content */}
+    <ReviewProvider value={reviewContextValue}>
       <div
-        className={clsx(
-          'relative flex min-w-0 flex-1 flex-col',
-          rightPane && 'mr-2',
-        )}
+        ref={taskPanelRef}
+        className="bg-bg-0 flex h-full w-full overflow-hidden rounded-tl-xl"
       >
-        {/* Header */}
+        {/* Main content */}
         <div
           className={clsx(
-            'flex items-center gap-3 px-3',
-            TASK_PANEL_HEADER_HEIGHT_CLS,
+            'relative flex min-w-0 flex-1 flex-col',
+            rightPane && 'mr-2',
           )}
         >
-          {/* Left: Task title and note input */}
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <TaskNameEditor
-              key={`task-name-${taskId}`}
-              taskId={taskId}
-              name={task.name}
-              prompt={task.prompt}
-            />
-            <TaskPendingNoteInput
-              key={`task-note-${taskId}`}
-              taskId={taskId}
-              pendingMessage={task.pendingMessage}
-            />
-          </div>
-
-          {/* Center: Branch, PR badge, Work items */}
-          <div className="flex min-w-0 shrink items-center gap-2">
-            {/* Backend chip */}
-            <Chip size="sm" className="max-w-40">
-              {backendLabel}
-            </Chip>
-
-            {/* Branch chip */}
-            {task.worktreePath ? null : task.branchName ? (
-              <Chip
-                size="xs"
-                icon={<GitBranch />}
-                title={task.branchName}
-                className="max-w-28 sm:max-w-36"
-              >
-                {task.branchName}
-              </Chip>
-            ) : null}
-
-            {/* PR badge */}
-            {task.pullRequestId && task.pullRequestUrl && (
-              <PrBadge
-                pullRequestId={task.pullRequestId}
-                pullRequestUrl={task.pullRequestUrl}
+          {/* Header */}
+          <div
+            className={clsx(
+              'flex items-center gap-3 px-3',
+              TASK_PANEL_HEADER_HEIGHT_CLS,
+            )}
+          >
+            {/* Left: Task title and note input */}
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <TaskNameEditor
+                key={`task-name-${taskId}`}
+                taskId={taskId}
+                name={task.name}
+                prompt={task.prompt}
               />
+              <TaskPendingNoteInput
+                key={`task-note-${taskId}`}
+                taskId={taskId}
+                pendingMessage={task.pendingMessage}
+              />
+            </div>
+
+            {/* Center: Branch, PR badge, Work items */}
+            <div className="flex min-w-0 shrink items-center gap-2">
+              {/* Backend chip */}
+              <Chip size="sm" className="max-w-40">
+                {backendLabel}
+              </Chip>
+
+              {/* Branch chip */}
+              {task.worktreePath ? null : task.branchName ? (
+                <Chip
+                  size="xs"
+                  icon={<GitBranch />}
+                  title={task.branchName}
+                  className="max-w-28 sm:max-w-36"
+                >
+                  {task.branchName}
+                </Chip>
+              ) : null}
+
+              {/* PR badge */}
+              {task.pullRequestId && task.pullRequestUrl && (
+                <PrBadge
+                  pullRequestId={task.pullRequestId}
+                  pullRequestUrl={task.pullRequestUrl}
+                />
+              )}
+
+              {/* Work item badges */}
+              {task.workItemIds &&
+                task.workItemIds.length > 0 &&
+                task.workItemIds.map((workItemId, index) => {
+                  const workItemUrl = task.workItemUrls?.[index];
+                  return (
+                    <Chip
+                      key={workItemId}
+                      size="sm"
+                      color="blue"
+                      onClick={
+                        workItemUrl
+                          ? () => window.open(workItemUrl, '_blank')
+                          : undefined
+                      }
+                      disabled={!workItemUrl}
+                      title={
+                        workItemUrl
+                          ? `Open work item #${workItemId} in browser`
+                          : `Work item #${workItemId}`
+                      }
+                    >
+                      #{workItemId}
+                    </Chip>
+                  );
+                })}
+            </div>
+
+            {/* Work items editor modal */}
+            {hasWorkItemsLink && (
+              <Modal
+                isOpen={showWorkItemsEditor}
+                onClose={() => setShowWorkItemsEditor(false)}
+                title="Linked Work Items"
+                size="xl"
+              >
+                <div className="flex flex-col" style={{ height: '60vh' }}>
+                  {/* Search input */}
+                  <div className="mb-2 shrink-0 px-1">
+                    <Input
+                      type="text"
+                      value={workItemsFilter}
+                      onChange={(e) => setWorkItemsFilter(e.target.value)}
+                      placeholder="Search work items..."
+                      size="sm"
+                      icon={<Search />}
+                    />
+                  </div>
+
+                  {/* Picker */}
+                  <div className="min-h-0 flex-1">
+                    <WorkItemPicker
+                      providerId={project.workItemProviderId!}
+                      projectId={project.workItemProjectId!}
+                      projectName={project.workItemProjectName!}
+                      selectedWorkItemIds={draftWorkItemIds}
+                      onToggleSelect={handleWorkItemToggle}
+                      onClearSelection={handleClearWorkItems}
+                      filter={workItemsFilter}
+                    />
+                  </div>
+
+                  {/* Footer with submit */}
+                  <div className="border-glass-border flex items-center justify-end gap-2 border-t pt-3">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setShowWorkItemsEditor(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleSubmitWorkItems}
+                    >
+                      Save
+                      <Kbd shortcut="cmd+enter" />
+                    </Button>
+                  </div>
+                </div>
+              </Modal>
             )}
 
-            {/* Work item badges */}
-            {task.workItemIds &&
-              task.workItemIds.length > 0 &&
-              task.workItemIds.map((workItemId, index) => {
-                const workItemUrl = task.workItemUrls?.[index];
-                return (
-                  <Chip
-                    key={workItemId}
-                    size="sm"
-                    color="blue"
-                    onClick={
-                      workItemUrl
-                        ? () => window.open(workItemUrl, '_blank')
-                        : undefined
-                    }
-                    disabled={!workItemUrl}
-                    title={
-                      workItemUrl
-                        ? `Open work item #${workItemId} in browser`
-                        : `Work item #${workItemId}`
-                    }
-                  >
-                    #{workItemId}
-                  </Chip>
-                );
-              })}
-          </div>
-
-          {/* Work items editor modal */}
-          {hasWorkItemsLink && (
-            <Modal
-              isOpen={showWorkItemsEditor}
-              onClose={() => setShowWorkItemsEditor(false)}
-              title="Linked Work Items"
-              size="xl"
-            >
-              <div className="flex flex-col" style={{ height: '60vh' }}>
-                {/* Search input */}
-                <div className="mb-2 shrink-0 px-1">
-                  <Input
-                    type="text"
-                    value={workItemsFilter}
-                    onChange={(e) => setWorkItemsFilter(e.target.value)}
-                    placeholder="Search work items..."
-                    size="sm"
-                    icon={<Search />}
-                  />
-                </div>
-
-                {/* Picker */}
-                <div className="min-h-0 flex-1">
-                  <WorkItemPicker
-                    providerId={project.workItemProviderId!}
-                    projectId={project.workItemProjectId!}
-                    projectName={project.workItemProjectName!}
-                    selectedWorkItemIds={draftWorkItemIds}
-                    onToggleSelect={handleWorkItemToggle}
-                    onClearSelection={handleClearWorkItems}
-                    filter={workItemsFilter}
-                  />
-                </div>
-
-                {/* Footer with submit */}
-                <div className="border-glass-border flex items-center justify-end gap-2 border-t pt-3">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setShowWorkItemsEditor(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleSubmitWorkItems}
-                  >
-                    Save
-                    <Kbd shortcut="cmd+enter" />
-                  </Button>
-                </div>
-              </div>
-            </Modal>
-          )}
-
-          {/* Right: Run + Overflow menu */}
-          <div className="flex shrink-0 items-center gap-2">
-            <RunButton
-              taskId={taskId}
-              projectId={project.id}
-              workingDir={taskRootPath}
-              dropdownRef={runButtonRef}
-              onToggleLogs={() => {
-                if (rightPane?.type === 'commandLogs') {
-                  closeRightPane();
-                } else {
-                  openCommandLogs();
-                }
-              }}
-              onRunCommand={(runCommandId) => {
-                openCommandLogs(runCommandId);
-              }}
-              isLogsPaneOpen={rightPane?.type === 'commandLogs'}
-            />
-
-            {/* Overflow menu */}
-            <Dropdown
-              trigger={
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  icon={<MoreHorizontal />}
-                  title="Task menu (\u2318M)"
-                >
-                  <Kbd shortcut="cmd+m" />
-                </Button>
-              }
-              align="right"
-              dropdownRef={overflowMenuRef}
-            >
-              {/* Group 1: View toggles */}
-              <DropdownItem
-                icon={<FolderTree />}
-                onClick={() => {
-                  if (rightPane?.type === 'fileExplorer') {
+            {/* Right: Run + Overflow menu */}
+            <div className="flex shrink-0 items-center gap-2">
+              <RunButton
+                taskId={taskId}
+                projectId={project.id}
+                workingDir={taskRootPath}
+                dropdownRef={runButtonRef}
+                onToggleLogs={() => {
+                  if (rightPane?.type === 'commandLogs') {
                     closeRightPane();
                   } else {
-                    openFileExplorer();
+                    openCommandLogs();
                   }
                 }}
-                checked={rightPane?.type === 'fileExplorer'}
-                shortcut="cmd+e"
-              >
-                Files
-              </DropdownItem>
-              {task.worktreePath && (
-                <DropdownItem
-                  icon={<GitCompare />}
-                  onClick={toggleDiffView}
-                  checked={isDiffViewOpen}
-                  shortcut="cmd+d"
-                >
-                  Diff
-                </DropdownItem>
-              )}
-              {task.worktreePath && hasRepoLink && (
-                <DropdownItem
-                  icon={<GitPullRequest />}
-                  onClick={togglePrView}
-                  checked={isPrViewOpen}
-                >
-                  Pull Request
-                </DropdownItem>
-              )}
-              {hasWorkItemsLink && (
-                <DropdownItem
-                  icon={<ListTodo />}
-                  onClick={() => openWorkItemsEditor()}
-                >
-                  {task.workItemIds?.length
-                    ? 'Edit Work Items'
-                    : 'Link Work Items'}
-                </DropdownItem>
-              )}
+                onRunCommand={(runCommandId) => {
+                  openCommandLogs(runCommandId);
+                }}
+                isLogsPaneOpen={rightPane?.type === 'commandLogs'}
+              />
 
-              <DropdownDivider />
-
-              {/* Group 2: Actions */}
-              <DropdownItem
-                icon={<ExternalLink />}
-                onClick={handleOpenInEditor}
-                shortcut="cmd+shift+e"
+              {/* Overflow menu */}
+              <Dropdown
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    icon={<MoreHorizontal />}
+                    title="Task menu (\u2318M)"
+                  >
+                    <Kbd shortcut="cmd+m" />
+                  </Button>
+                }
+                align="right"
+                dropdownRef={overflowMenuRef}
               >
-                Open in{' '}
-                {editorSetting ? getEditorLabel(editorSetting) : 'Editor'}
-              </DropdownItem>
-              {task.worktreePath && (
+                {/* Group 1: View toggles */}
+                <DropdownItem
+                  icon={<FolderTree />}
+                  onClick={() => {
+                    if (rightPane?.type === 'fileExplorer') {
+                      closeRightPane();
+                    } else {
+                      openFileExplorer();
+                    }
+                  }}
+                  checked={rightPane?.type === 'fileExplorer'}
+                  shortcut="cmd+e"
+                >
+                  Files
+                </DropdownItem>
+                {task.worktreePath && (
+                  <DropdownItem
+                    icon={<GitCompare />}
+                    onClick={toggleDiffView}
+                    checked={isDiffViewOpen}
+                    shortcut="cmd+d"
+                  >
+                    Diff
+                  </DropdownItem>
+                )}
+                {task.worktreePath && hasRepoLink && (
+                  <DropdownItem
+                    icon={<GitPullRequest />}
+                    onClick={togglePrView}
+                    checked={isPrViewOpen}
+                  >
+                    Pull Request
+                  </DropdownItem>
+                )}
+                {hasWorkItemsLink && (
+                  <DropdownItem
+                    icon={<ListTodo />}
+                    onClick={() => openWorkItemsEditor()}
+                  >
+                    {task.workItemIds?.length
+                      ? 'Edit Work Items'
+                      : 'Link Work Items'}
+                  </DropdownItem>
+                )}
+
+                <DropdownDivider />
+
+                {/* Group 2: Actions */}
                 <DropdownItem
                   icon={<ExternalLink />}
-                  onClick={handleOpenWorktreeInEditor}
-                  shortcut="cmd+w"
+                  onClick={handleOpenInEditor}
+                  shortcut="cmd+shift+e"
                 >
-                  Open Worktree in Editor
+                  Open in{' '}
+                  {editorSetting ? getEditorLabel(editorSetting) : 'Editor'}
                 </DropdownItem>
-              )}
-              {task.branchName && (
+                {task.worktreePath && (
+                  <DropdownItem
+                    icon={<ExternalLink />}
+                    onClick={handleOpenWorktreeInEditor}
+                    shortcut="cmd+w"
+                  >
+                    Open Worktree in Editor
+                  </DropdownItem>
+                )}
+                {task.branchName && (
+                  <DropdownItem
+                    icon={<GitFork />}
+                    onClick={() => {
+                      overflowMenuRef.current?.toggle();
+                      const draftStore = useNewTaskDraftStore.getState();
+                      draftStore.setSelectedProjectId(task.projectId);
+                      draftStore.setDraft(task.projectId, {
+                        sourceBranch: task.branchName,
+                        createWorktree: true,
+                        inputMode: 'prompt',
+                        parentTaskId: task.id,
+                      });
+                      useOverlaysStore.getState().open('new-task');
+                    }}
+                  >
+                    Sub Task
+                  </DropdownItem>
+                )}
                 <DropdownItem
-                  icon={<GitFork />}
-                  onClick={() => {
-                    overflowMenuRef.current?.toggle();
-                    const draftStore = useNewTaskDraftStore.getState();
-                    draftStore.setSelectedProjectId(task.projectId);
-                    draftStore.setDraft(task.projectId, {
-                      sourceBranch: task.branchName,
-                      createWorktree: true,
-                      inputMode: 'prompt',
-                      parentTaskId: task.id,
-                    });
-                    useOverlaysStore.getState().open('new-task');
-                  }}
+                  icon={<Settings />}
+                  onClick={handleToggleSettingsPane}
+                  checked={rightPane?.type === 'settings'}
                 >
-                  Sub Task
+                  Task Settings
                 </DropdownItem>
-              )}
-              <DropdownItem
-                icon={<Settings />}
-                onClick={handleToggleSettingsPane}
-                checked={rightPane?.type === 'settings'}
-              >
-                Task Settings
-              </DropdownItem>
-              <DropdownItem
-                icon={<Bug />}
-                onClick={handleToggleDebugMessagesPane}
-                checked={rightPane?.type === 'debugMessages'}
-              >
-                Raw Messages
-              </DropdownItem>
-              {task.worktreePath && (
                 <DropdownItem
-                  icon={<FolderSymlink />}
-                  onClick={() => setIsChangeWorktreePathDialogOpen(true)}
+                  icon={<Bug />}
+                  onClick={handleToggleDebugMessagesPane}
+                  checked={rightPane?.type === 'debugMessages'}
                 >
-                  Change Worktree Path
+                  Raw Messages
                 </DropdownItem>
-              )}
-              {task.worktreePath && !isRunning && (
-                <DropdownItem
-                  icon={<Trash2 />}
-                  variant="danger"
-                  onClick={handleDeleteWorktree}
-                >
-                  Delete Worktree
-                </DropdownItem>
-              )}
-              {!isRunning && (
-                <DropdownItem
-                  icon={<Trash2 />}
-                  variant="danger"
-                  onClick={() => setIsDeleteDialogOpen(true)}
-                >
-                  Delete Task
-                </DropdownItem>
-              )}
+                {task.worktreePath && (
+                  <DropdownItem
+                    icon={<FolderSymlink />}
+                    onClick={() => setIsChangeWorktreePathDialogOpen(true)}
+                  >
+                    Change Worktree Path
+                  </DropdownItem>
+                )}
+                {task.worktreePath && !isRunning && (
+                  <DropdownItem
+                    icon={<Trash2 />}
+                    variant="danger"
+                    onClick={handleDeleteWorktree}
+                  >
+                    Delete Worktree
+                  </DropdownItem>
+                )}
+                {!isRunning && (
+                  <DropdownItem
+                    icon={<Trash2 />}
+                    variant="danger"
+                    onClick={() => setIsDeleteDialogOpen(true)}
+                  >
+                    Delete Task
+                  </DropdownItem>
+                )}
 
-              {/* Group 3: Info (only when session data exists) */}
-              {(activeStep?.sessionId || model || task.worktreePath) && (
-                <>
-                  <DropdownDivider />
-                  {task.worktreePath && (
-                    <DropdownInfo
-                      label="Worktree"
-                      value={task.worktreePath}
-                      valueClassName="max-w-56 whitespace-normal break-all text-right"
-                    />
-                  )}
-                  {model && (
-                    <DropdownInfo
-                      label="Model"
-                      value={formatModelName(model)}
-                    />
-                  )}
-                  {activeStep?.sessionId && (
-                    <DropdownInfo
-                      label="Session"
-                      value={`${activeStep.sessionId.slice(0, 8)}...`}
-                      onClick={handleCopySessionId}
-                    />
-                  )}
-                </>
-              )}
-            </Dropdown>
-          </div>
-        </div>
-
-        {/* Step flow bar — hide add-step for skill-creation tasks */}
-        <StepFlowBar
-          taskId={taskId}
-          onAddStepAtEnd={
-            isSkillCreationTask
-              ? undefined
-              : () => {
-                  setAddStepAtEnd(true);
-                  setAddStepAfterStepId(null);
-                  setIsAddStepDialogOpen(true);
-                }
-          }
-          onAddStepAfter={
-            isSkillCreationTask
-              ? undefined
-              : (afterStepId) => {
-                  setAddStepAtEnd(false);
-                  setAddStepAfterStepId(afterStepId);
-                  setIsAddStepDialogOpen(true);
-                }
-          }
-        />
-        <Separator />
-
-        {/* Main content area: PR view OR Diff view OR Message stream */}
-        <div className="min-h-0 flex-1">
-          {isPrViewOpen ? (
-            <TaskPrView
-              taskId={taskId}
-              projectId={project.id}
-              onClose={closePrView}
-              bottomPadding={footerHeight}
-            />
-          ) : isDiffViewOpen && task.worktreePath ? (
-            <WorktreeDiffView
-              taskId={taskId}
-              projectId={project.id}
-              selectedFilePath={diffSelectedFile}
-              onSelectFile={selectDiffFile}
-              collapsedFolders={diffCollapsedFolders}
-              onToggleFolder={toggleDiffCollapsedFolder}
-              branchName={
-                task.branchName ?? getBranchFromWorktreePath(task.worktreePath)
-              }
-              sourceBranch={task.sourceBranch}
-              defaultBranch={project.defaultBranch}
-              protectedBranches={project.protectedBranches}
-              taskName={task.name}
-              hasRepoLink={hasRepoLink}
-              pullRequestUrl={task.pullRequestUrl}
-              onMergeStarted={handleMergeStarted}
-              onOpenPrView={openPrView}
-              onSubmitReview={(parts, targetStepId, targetConfig) => {
-                if (targetStepId) {
-                  // Send to existing step (may differ from activeStepId)
-                  if (targetStepId !== activeStepId) {
-                    setActiveStepId(targetStepId);
-                  }
-                  void api.agent.sendMessage(targetStepId, parts);
-                } else {
-                  // Create new step
-                  const textPart = parts.find((p) => p.type === 'text');
-                  const imageParts = parts.filter(
-                    (p): p is PromptImagePart => p.type === 'image',
-                  );
-                  const backend =
-                    targetConfig?.agentBackend ??
-                    activeStep?.agentBackend ??
-                    'claude-code';
-                  const mode = normalizeInteractionModeForBackend({
-                    backend,
-                    mode:
-                      activeStep?.interactionMode ??
-                      getDefaultInteractionModeForBackend({ backend }),
-                  });
-                  const model =
-                    targetConfig?.modelPreference ??
-                    activeStep?.modelPreference ??
-                    'default';
-                  void handleAddStep({
-                    promptTemplate:
-                      textPart?.type === 'text' ? textPart.text : '',
-                    presetType: 'new-session',
-                    interactionMode: mode,
-                    agentBackend: backend,
-                    modelPreference: model,
-                    images: imageParts,
-                    start: true,
-                  });
-                }
-              }}
-              bottomPadding={footerHeight}
-            />
-          ) : activeStep?.type === 'pr-review' ? (
-            <PrReviewValidation step={activeStep} />
-          ) : agentState.isLoading ? (
-            <div className="flex h-full items-center justify-center">
-              <Loader2 className="text-ink-3 h-6 w-6 animate-spin" />
+                {/* Group 3: Info (only when session data exists) */}
+                {(activeStep?.sessionId || model || task.worktreePath) && (
+                  <>
+                    <DropdownDivider />
+                    {task.worktreePath && (
+                      <DropdownInfo
+                        label="Worktree"
+                        value={task.worktreePath}
+                        valueClassName="max-w-56 whitespace-normal break-all text-right"
+                      />
+                    )}
+                    {model && (
+                      <DropdownInfo
+                        label="Model"
+                        value={formatModelName(model)}
+                      />
+                    )}
+                    {activeStep?.sessionId && (
+                      <DropdownInfo
+                        label="Session"
+                        value={`${activeStep.sessionId.slice(0, 8)}...`}
+                        onClick={handleCopySessionId}
+                      />
+                    )}
+                  </>
+                )}
+              </Dropdown>
             </div>
-          ) : hasMessages ? (
-            <MessageStream
-              messages={agentState.messages}
-              isRunning={isRunning}
-              queuedPrompts={agentState.queuedPrompts}
-              onFilePathClick={handleFilePathClick}
-              onToolDiffClick={handleToolDiffClick}
-              onCancelQueuedPrompt={cancelQueuedPrompt}
-              onShowRawMessage={openDebugMessages}
-              bottomPadding={footerHeight}
-              pendingPermission={permissionProps}
-              pendingQuestion={questionProps}
-              onAddBashToPermissions={handleAddBashToPermissions}
-              rootPath={taskRootPath}
-            />
-          ) : (
+          </div>
+
+          {/* Step flow bar — hide add-step for skill-creation tasks */}
+          <StepFlowBar
+            taskId={taskId}
+            onAddStepAtEnd={
+              isSkillCreationTask
+                ? undefined
+                : () => {
+                    setAddStepAtEnd(true);
+                    setAddStepAfterStepId(null);
+                    setIsAddStepDialogOpen(true);
+                  }
+            }
+            onAddStepAfter={
+              isSkillCreationTask
+                ? undefined
+                : (afterStepId) => {
+                    setAddStepAtEnd(false);
+                    setAddStepAfterStepId(afterStepId);
+                    setIsAddStepDialogOpen(true);
+                  }
+            }
+          />
+          <Separator />
+
+          {/* Main content area: PR view OR Diff view OR Message stream */}
+          <div className="min-h-0 flex-1">
+            {isPrViewOpen ? (
+              <TaskPrView
+                taskId={taskId}
+                projectId={project.id}
+                onClose={closePrView}
+                bottomPadding={footerHeight}
+              />
+            ) : isDiffViewOpen && task.worktreePath ? (
+              <WorktreeDiffView
+                taskId={taskId}
+                projectId={project.id}
+                selectedFilePath={diffSelectedFile}
+                onSelectFile={selectDiffFile}
+                collapsedFolders={diffCollapsedFolders}
+                onToggleFolder={toggleDiffCollapsedFolder}
+                branchName={
+                  task.branchName ??
+                  getBranchFromWorktreePath(task.worktreePath)
+                }
+                sourceBranch={task.sourceBranch}
+                defaultBranch={project.defaultBranch}
+                protectedBranches={project.protectedBranches}
+                taskName={task.name}
+                hasRepoLink={hasRepoLink}
+                pullRequestUrl={task.pullRequestUrl}
+                onMergeStarted={handleMergeStarted}
+                onOpenPrView={openPrView}
+                bottomPadding={footerHeight}
+              />
+            ) : activeStep?.type === 'pr-review' ? (
+              <PrReviewValidation step={activeStep} />
+            ) : agentState.isLoading ? (
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className="text-ink-3 h-6 w-6 animate-spin" />
+              </div>
+            ) : hasMessages ? (
+              <MessageStream
+                messages={agentState.messages}
+                isRunning={isRunning}
+                queuedPrompts={agentState.queuedPrompts}
+                onFilePathClick={handleFilePathClick}
+                onToolDiffClick={handleToolDiffClick}
+                onCancelQueuedPrompt={cancelQueuedPrompt}
+                onShowRawMessage={openDebugMessages}
+                bottomPadding={footerHeight}
+                pendingPermission={permissionProps}
+                pendingQuestion={questionProps}
+                onAddBashToPermissions={handleAddBashToPermissions}
+                rootPath={taskRootPath}
+              />
+            ) : (
+              <div
+                className="h-full overflow-y-auto p-6"
+                style={
+                  footerHeight > 0 ? { paddingBottom: footerHeight } : undefined
+                }
+              >
+                <div className="text-ink-2 mb-2 text-sm font-medium">
+                  {activeStep?.name ?? 'Prompt'}
+                </div>
+                <div className="border-glass-border bg-bg-1 rounded-lg border p-4">
+                  <pre className="overflow-x-hidden font-sans text-xs whitespace-pre-wrap">
+                    {activeStep?.promptTemplate ?? task.prompt}
+                  </pre>
+                </div>
+                {isRunning ? (
+                  <div className="border-glass-border mt-6 flex items-center justify-center gap-2 rounded-lg border border-dashed p-8">
+                    <Loader2 className="text-ink-2 h-4 w-4 animate-spin" />
+                    <p className="text-ink-2">Starting agent...</p>
+                  </div>
+                ) : activeStep?.status === 'ready' ? (
+                  <div className="border-glass-border mt-6 flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-8">
+                    <Button
+                      onClick={() => void start()}
+                      disabled={isStarting}
+                      loading={isStarting}
+                      variant="primary"
+                      icon={<Play />}
+                    >
+                      {isStarting ? 'Starting...' : 'Start Step'}
+                    </Button>
+                  </div>
+                ) : activeStep?.status === 'pending' ? (
+                  <div className="border-glass-border mt-6 flex items-center justify-center rounded-lg border border-dashed p-8">
+                    <p className="text-ink-3 text-sm">
+                      Waiting for dependencies to complete
+                    </p>
+                  </div>
+                ) : (
+                  <div className="border-glass-border mt-6 flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-8">
+                    <p className="text-ink-2">No messages loaded</p>
+                    <Button
+                      onClick={agentState.refetch}
+                      variant="secondary"
+                      icon={<RefreshCw />}
+                    >
+                      Reload messages
+                    </Button>
+                  </div>
+                )}
+                {/* Fallback banners when no messages yet */}
+                {agentState.pendingPermission && (
+                  <div className="mt-4 overflow-hidden rounded-lg">
+                    <PermissionBar
+                      request={agentState.pendingPermission}
+                      onRespond={respondToPermission}
+                      onAllowForSession={handleAllowToolsForSession}
+                      onAllowForProject={handleAllowForProject}
+                      onAllowForProjectWorktrees={
+                        handleAllowForProjectWorktrees
+                      }
+                      onAllowGlobally={handleAllowGlobally}
+                      onSetMode={handleSetMode}
+                      worktreePath={task.worktreePath}
+                    />
+                  </div>
+                )}
+                {agentState.pendingQuestion && (
+                  <div className="mt-4 overflow-hidden rounded-lg">
+                    <QuestionOptions
+                      request={agentState.pendingQuestion}
+                      onRespond={respondToQuestion}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Message input — floats above content so messages scroll underneath */}
+          {(canSendMessage || isWaiting || hasMessages) && (
             <div
-              className="h-full overflow-y-auto p-6"
-              style={
-                footerHeight > 0 ? { paddingBottom: footerHeight } : undefined
-              }
+              ref={footerRef}
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
             >
-              <div className="text-ink-2 mb-2 text-sm font-medium">
-                {activeStep?.name ?? 'Prompt'}
+              <div className="pointer-events-auto">
+                {/* Skill publish action for skill-creation steps */}
+                {activeStep?.type === 'skill-creation' && (
+                  <SkillPublishAction step={activeStep} />
+                )}
+                <TaskInputFooter
+                  taskId={taskId}
+                  activeStepId={activeStepId}
+                  isRunning={isRunning}
+                  isStopping={isStopping}
+                  canSendMessage={!!canSendMessage}
+                  onSend={sendMessage}
+                  onQueue={queuePrompt}
+                  onStop={handleStop}
+                  contextUsage={contextUsage}
+                  projectRoot={taskRootPath}
+                  getCompletionContextBeforePrompt={
+                    getCompletionContextBeforePrompt
+                  }
+                />
               </div>
-              <div className="border-glass-border bg-bg-1 rounded-lg border p-4">
-                <pre className="overflow-x-hidden font-sans text-xs whitespace-pre-wrap">
-                  {activeStep?.promptTemplate ?? task.prompt}
-                </pre>
-              </div>
-              {isRunning ? (
-                <div className="border-glass-border mt-6 flex items-center justify-center gap-2 rounded-lg border border-dashed p-8">
-                  <Loader2 className="text-ink-2 h-4 w-4 animate-spin" />
-                  <p className="text-ink-2">Starting agent...</p>
-                </div>
-              ) : activeStep?.status === 'ready' ? (
-                <div className="border-glass-border mt-6 flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-8">
-                  <Button
-                    onClick={() => void start()}
-                    disabled={isStarting}
-                    loading={isStarting}
-                    variant="primary"
-                    icon={<Play />}
-                  >
-                    {isStarting ? 'Starting...' : 'Start Step'}
-                  </Button>
-                </div>
-              ) : activeStep?.status === 'pending' ? (
-                <div className="border-glass-border mt-6 flex items-center justify-center rounded-lg border border-dashed p-8">
-                  <p className="text-ink-3 text-sm">
-                    Waiting for dependencies to complete
-                  </p>
-                </div>
-              ) : (
-                <div className="border-glass-border mt-6 flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-8">
-                  <p className="text-ink-2">No messages loaded</p>
-                  <Button
-                    onClick={agentState.refetch}
-                    variant="secondary"
-                    icon={<RefreshCw />}
-                  >
-                    Reload messages
-                  </Button>
-                </div>
-              )}
-              {/* Fallback banners when no messages yet */}
-              {agentState.pendingPermission && (
-                <div className="mt-4 overflow-hidden rounded-lg">
-                  <PermissionBar
-                    request={agentState.pendingPermission}
-                    onRespond={respondToPermission}
-                    onAllowForSession={handleAllowToolsForSession}
-                    onAllowForProject={handleAllowForProject}
-                    onAllowForProjectWorktrees={handleAllowForProjectWorktrees}
-                    onAllowGlobally={handleAllowGlobally}
-                    onSetMode={handleSetMode}
-                    worktreePath={task.worktreePath}
-                  />
-                </div>
-              )}
-              {agentState.pendingQuestion && (
-                <div className="mt-4 overflow-hidden rounded-lg">
-                  <QuestionOptions
-                    request={agentState.pendingQuestion}
-                    onRespond={respondToQuestion}
-                  />
-                </div>
-              )}
             </div>
           )}
         </div>
 
-        {/* Message input — floats above content so messages scroll underneath */}
-        {(canSendMessage || isWaiting || hasMessages) && (
-          <div
-            ref={footerRef}
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
-          >
-            <div className="pointer-events-auto">
-              {/* Skill publish action for skill-creation steps */}
-              {activeStep?.type === 'skill-creation' && (
-                <SkillPublishAction step={activeStep} />
-              )}
-              <TaskInputFooter
-                taskId={taskId}
-                activeStepId={activeStepId}
-                isRunning={isRunning}
-                isStopping={isStopping}
-                canSendMessage={!!canSendMessage}
-                onSend={sendMessage}
-                onQueue={queuePrompt}
-                onStop={handleStop}
-                contextUsage={contextUsage}
-                projectRoot={taskRootPath}
-                getCompletionContextBeforePrompt={
-                  getCompletionContextBeforePrompt
-                }
-              />
-            </div>
-          </div>
+        {/* File preview pane */}
+        {rightPane?.type === 'filePreview' && (
+          <FilePreviewPane
+            filePath={rightPane.filePath}
+            projectPath={project.path}
+            lineStart={rightPane.lineStart}
+            lineEnd={rightPane.lineEnd}
+            onClose={closeRightPane}
+          />
         )}
-      </div>
 
-      {/* File preview pane */}
-      {rightPane?.type === 'filePreview' && (
-        <FilePreviewPane
-          filePath={rightPane.filePath}
-          projectPath={project.path}
-          lineStart={rightPane.lineStart}
-          lineEnd={rightPane.lineEnd}
-          onClose={closeRightPane}
-        />
-      )}
+        {rightPane?.type === 'toolDiffPreview' && (
+          <ToolDiffPreviewPane
+            filePath={rightPane.filePath}
+            oldString={rightPane.oldString}
+            newString={rightPane.newString}
+            onClose={closeRightPane}
+          />
+        )}
 
-      {rightPane?.type === 'toolDiffPreview' && (
-        <ToolDiffPreviewPane
-          filePath={rightPane.filePath}
-          oldString={rightPane.oldString}
-          newString={rightPane.newString}
-          onClose={closeRightPane}
-        />
-      )}
+        {/* Task settings pane */}
+        {rightPane?.type === 'settings' && (
+          <TaskSettingsPane
+            sessionRules={task.sessionRules ?? {}}
+            sourceBranch={task.sourceBranch}
+            sourceCommit={task.startCommitHash}
+            taskId={taskId}
+            stepId={activeStepId ?? undefined}
+            onRemoveTool={handleRemoveSessionAllowedTool}
+            onClose={closeRightPane}
+            onOpenDebugMessages={openDebugMessages}
+          />
+        )}
 
-      {/* Task settings pane */}
-      {rightPane?.type === 'settings' && (
-        <TaskSettingsPane
-          sessionRules={task.sessionRules ?? {}}
-          sourceBranch={task.sourceBranch}
-          sourceCommit={task.startCommitHash}
+        {/* Debug messages pane */}
+        {rightPane?.type === 'debugMessages' && (
+          <DebugMessagesPane
+            taskId={taskId}
+            stepId={activeStepId}
+            scrollToEntryId={rightPane.scrollToEntryId}
+            onClose={closeRightPane}
+          />
+        )}
+
+        {/* File explorer pane */}
+        {rightPane?.type === 'fileExplorer' && (
+          <FileExplorerPane taskId={taskId} onClose={closeRightPane} />
+        )}
+
+        {/* Command logs pane */}
+        {rightPane?.type === 'commandLogs' && (
+          <CommandLogsPane
+            taskId={taskId}
+            projectId={project.id}
+            selectedCommandId={rightPane.selectedCommandId}
+            onSelectCommand={selectCommandLogsTab}
+            onClose={closeRightPane}
+          />
+        )}
+
+        {/* Add step modal */}
+        <AddStepDialog
+          isOpen={isAddStepDialogOpen}
+          onClose={() => {
+            setIsAddStepDialogOpen(false);
+            setAddStepAfterStepId(null);
+            setAddStepAtEnd(false);
+          }}
+          onConfirm={(data) => void handleAddStep(data)}
+          defaultBackend={activeStep?.agentBackend ?? 'claude-code'}
+          defaultModel={activeStep?.modelPreference ?? 'default'}
           taskId={taskId}
-          stepId={activeStepId ?? undefined}
-          onRemoveTool={handleRemoveSessionAllowedTool}
-          onClose={closeRightPane}
-          onOpenDebugMessages={openDebugMessages}
-        />
-      )}
-
-      {/* Debug messages pane */}
-      {rightPane?.type === 'debugMessages' && (
-        <DebugMessagesPane
-          taskId={taskId}
-          stepId={activeStepId}
-          scrollToEntryId={rightPane.scrollToEntryId}
-          onClose={closeRightPane}
-        />
-      )}
-
-      {/* File explorer pane */}
-      {rightPane?.type === 'fileExplorer' && (
-        <FileExplorerPane taskId={taskId} onClose={closeRightPane} />
-      )}
-
-      {/* Command logs pane */}
-      {rightPane?.type === 'commandLogs' && (
-        <CommandLogsPane
-          taskId={taskId}
+          activeStepId={activeStepId ?? undefined}
+          projectRoot={taskRootPath}
           projectId={project.id}
-          selectedCommandId={rightPane.selectedCommandId}
-          onSelectCommand={selectCommandLogsTab}
-          onClose={closeRightPane}
         />
-      )}
 
-      {/* Add step modal */}
-      <AddStepDialog
-        isOpen={isAddStepDialogOpen}
-        onClose={() => {
-          setIsAddStepDialogOpen(false);
-          setAddStepAfterStepId(null);
-          setAddStepAtEnd(false);
-        }}
-        onConfirm={(data) => void handleAddStep(data)}
-        defaultBackend={activeStep?.agentBackend ?? 'claude-code'}
-        defaultModel={activeStep?.modelPreference ?? 'default'}
-        taskId={taskId}
-        activeStepId={activeStepId ?? undefined}
-        projectRoot={taskRootPath}
-        projectId={project.id}
-      />
+        {/* Change worktree path dialog */}
+        {task.worktreePath && (
+          <ChangeWorktreePathDialog
+            isOpen={isChangeWorktreePathDialogOpen}
+            onClose={() => setIsChangeWorktreePathDialogOpen(false)}
+            onConfirm={handleChangeWorktreePath}
+            currentPath={task.worktreePath}
+            isPending={updateTask.isPending}
+          />
+        )}
 
-      {/* Change worktree path dialog */}
-      {task.worktreePath && (
-        <ChangeWorktreePathDialog
-          isOpen={isChangeWorktreePathDialogOpen}
-          onClose={() => setIsChangeWorktreePathDialogOpen(false)}
-          onConfirm={handleChangeWorktreePath}
-          currentPath={task.worktreePath}
-          isPending={updateTask.isPending}
+        {/* Delete confirmation modal */}
+        <DeleteTaskDialog
+          isOpen={isDeleteDialogOpen}
+          onClose={() => setIsDeleteDialogOpen(false)}
+          onConfirm={handleDeleteConfirm}
+          taskName={taskTitle}
+          hasWorktree={!!task.worktreePath}
+          isPending={false}
         />
-      )}
 
-      {/* Delete confirmation modal */}
-      <DeleteTaskDialog
-        isOpen={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        onConfirm={handleDeleteConfirm}
-        taskName={taskTitle}
-        hasWorktree={!!task.worktreePath}
-        isPending={false}
-      />
+        {/* Complete task with worktree cleanup dialog */}
+        <CompleteTaskDialog
+          isOpen={isCompleteDialogOpen}
+          onClose={() => setIsCompleteDialogOpen(false)}
+          onConfirm={handleCompleteConfirm}
+          hasWorktree={!!task.worktreePath}
+          isPending={completeTask.isPending}
+        />
 
-      {/* Complete task with worktree cleanup dialog */}
-      <CompleteTaskDialog
-        isOpen={isCompleteDialogOpen}
-        onClose={() => setIsCompleteDialogOpen(false)}
-        onConfirm={handleCompleteConfirm}
-        hasWorktree={!!task.worktreePath}
-        isPending={completeTask.isPending}
-      />
-
-      {/* Add to permissions modal — rendered here (outside the conditional
+        {/* Add to permissions modal — rendered here (outside the conditional
           message-stream / loading / diff chain) so it survives MessageStream
           unmount/remount when new messages arrive */}
-      {permissionModal && (
-        <AddPermissionModal
-          isOpen
-          onClose={closePermissionModal}
-          command={permissionModal.command}
-          taskId={task.id}
-          hasWorktree={!!task.worktreePath}
-        />
-      )}
-    </div>
+        {permissionModal && (
+          <AddPermissionModal
+            isOpen
+            onClose={closePermissionModal}
+            command={permissionModal.command}
+            taskId={task.id}
+            hasWorktree={!!task.worktreePath}
+          />
+        )}
+      </div>
+    </ReviewProvider>
   );
 }
 
@@ -1783,6 +1809,58 @@ const TaskInputFooter = memo(function TaskInputFooter({
     clearDraft: clearPromptDraft,
   } = useTaskPrompt(taskId);
 
+  // Review comments — pending pills in composer
+  const reviewComments = useReviewComments(taskId);
+  const removeComment = useReviewCommentsStore((s) => s.removeComment);
+  const resolveComment = useReviewCommentsStore((s) => s.resolveComment);
+  const clearResolvedComments = useReviewCommentsStore(
+    (s) => s.clearResolvedComments,
+  );
+
+  const openReviewComments = useMemo(
+    () => reviewComments.filter((c) => !c.resolved),
+    [reviewComments],
+  );
+
+  const reviewPills = useMemo(
+    () => openReviewComments.map(reviewCommentToPill),
+    [openReviewComments],
+  );
+
+  const handleRemovePill = useCallback(
+    (commentId: string) => {
+      removeComment(taskId, commentId);
+    },
+    [taskId, removeComment],
+  );
+
+  const [showPreview, setShowPreview] = useState(false);
+
+  const previewText = useMemo(() => {
+    if (!showPreview || openReviewComments.length === 0) return '';
+    return (
+      synthesizeReviewPrompt(openReviewComments)
+        ?.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+        .map((p) => p.text)
+        .join('\n') ?? 'No review comments'
+    );
+  }, [showPreview, openReviewComments]);
+
+  const handlePillClick = useCallback(
+    (commentId: string) => {
+      const comment = openReviewComments.find((c) => c.id === commentId);
+      if (!comment) return;
+      // Diff comments — navigate to file in diff view
+      if (!comment.anchor.filePath.startsWith('__message__:')) {
+        const navStore = useNavigationStore.getState();
+        navStore.setTaskViewMode(taskId, 'diff');
+        navStore.setDiffViewSelectedFile(taskId, comment.anchor.filePath);
+      }
+      // message kind: no navigation yet (future)
+    },
+    [taskId, openReviewComments],
+  );
+
   const handleModeChange = useCallback(
     (mode: InteractionMode) => {
       if (activeStepId) {
@@ -1807,10 +1885,34 @@ const TaskInputFooter = memo(function TaskInputFooter({
       if (task?.userCompleted) {
         clearUserCompleted.mutate(taskId);
       }
+
+      // Append synthesized review comments to prompt
+      let finalParts = parts;
+      if (openReviewComments.length > 0) {
+        const reviewParts = synthesizeReviewPrompt(openReviewComments);
+        if (reviewParts) {
+          finalParts = [...parts, ...reviewParts];
+        }
+        // Resolve and clear all open comments after send
+        for (const comment of openReviewComments) {
+          resolveComment(taskId, comment.id);
+        }
+        clearResolvedComments(taskId);
+      }
+
       clearPromptDraft();
-      onSend(parts);
+      onSend(finalParts);
     },
-    [task?.userCompleted, taskId, clearUserCompleted, clearPromptDraft, onSend],
+    [
+      task?.userCompleted,
+      taskId,
+      clearUserCompleted,
+      clearPromptDraft,
+      onSend,
+      openReviewComments,
+      resolveComment,
+      clearResolvedComments,
+    ],
   );
 
   const handleQueuePrompt = useCallback(
@@ -1823,44 +1925,72 @@ const TaskInputFooter = memo(function TaskInputFooter({
 
   const [inputFocused, setInputFocused] = useState(false);
 
+  // Allow send with just pills (no typed text)
+  const effectiveCanSend = canSendMessage || openReviewComments.length > 0;
+
   return (
     <div
       className={clsx(
-        'mx-3 mb-3 flex items-center gap-2 rounded-xl p-2 px-3 transition-shadow duration-300',
+        'mx-3 mb-3 flex flex-col rounded-xl transition-shadow duration-300',
         inputFocused ? 'prompt-input-border-focused' : 'prompt-input-border',
       )}
     >
-      <ContextUsageDisplay contextUsage={contextUsage} />
-      <ModeSelector
-        value={effectiveMode}
-        onChange={handleModeChange}
-        backend={effectiveBackend}
-        disabled={isRunning}
+      {/* Review comment pills */}
+      <ReviewPillsQueue
+        pills={reviewPills}
+        onRemove={handleRemovePill}
+        onPillClick={handlePillClick}
+        onPreview={
+          openReviewComments.length > 0 ? () => setShowPreview(true) : undefined
+        }
       />
-      <ModelSelector
-        value={effectiveModel}
-        onChange={handleModelChange}
-        models={getModelsForBackend(effectiveBackend, dynamicModels)}
-      />
-      <MessageInput
-        onSend={handleSendMessage}
-        onQueue={handleQueuePrompt}
-        onStop={onStop}
-        disabled={!canSendMessage}
-        placeholder="Send a follow-up message..."
-        isRunning={isRunning}
-        isStopping={isStopping}
-        skills={skills}
-        projectRoot={projectRoot}
-        value={promptDraft}
-        onValueChange={setPromptDraft}
-        supportsImages={backendSupportsImages(activeStep?.agentBackend)}
-        projectId={task?.projectId}
-        getCompletionContextBeforePrompt={getCompletionContextBeforePrompt}
-        onFocusChange={setInputFocused}
-        promptSnippets={footerSnippets}
-        snippetVariableContext={snippetVariableContext}
-      />
+      {/* Input row */}
+      <div className="flex items-center gap-2 p-2 px-3">
+        <ContextUsageDisplay contextUsage={contextUsage} />
+        <ModeSelector
+          value={effectiveMode}
+          onChange={handleModeChange}
+          backend={effectiveBackend}
+          disabled={isRunning}
+        />
+        <ModelSelector
+          value={effectiveModel}
+          onChange={handleModelChange}
+          models={getModelsForBackend(effectiveBackend, dynamicModels)}
+        />
+        <MessageInput
+          onSend={handleSendMessage}
+          onQueue={handleQueuePrompt}
+          onStop={onStop}
+          disabled={!effectiveCanSend}
+          allowEmptySubmit={openReviewComments.length > 0}
+          placeholder="Send a follow-up message..."
+          isRunning={isRunning}
+          isStopping={isStopping}
+          skills={skills}
+          projectRoot={projectRoot}
+          value={promptDraft}
+          onValueChange={setPromptDraft}
+          supportsImages={backendSupportsImages(activeStep?.agentBackend)}
+          projectId={task?.projectId}
+          getCompletionContextBeforePrompt={getCompletionContextBeforePrompt}
+          onFocusChange={setInputFocused}
+          promptSnippets={footerSnippets}
+          snippetVariableContext={snippetVariableContext}
+        />
+      </div>
+      {showPreview && (
+        <Modal
+          isOpen={showPreview}
+          onClose={() => setShowPreview(false)}
+          title="Review prompt preview"
+          size="lg"
+        >
+          <pre className="bg-bg-2 text-ink-1 max-h-[60vh] overflow-auto rounded-lg p-4 text-xs leading-relaxed whitespace-pre-wrap">
+            {previewText}
+          </pre>
+        </Modal>
+      )}
     </div>
   );
 });

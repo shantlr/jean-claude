@@ -1,14 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { FileX, FolderX, Loader2, RefreshCw } from 'lucide-react';
-import { useMemo, useCallback, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { Separator } from '@/common/ui/separator';
 import { getFilesWithAnnotations } from '@/features/agent/ui-diff-annotation';
-import { ReviewSubmitOverlay } from '@/features/agent/ui-review-comments/review-submit-overlay';
-import type { ReviewSubmitTargetConfig } from '@/features/agent/ui-review-comments/review-submit-overlay';
-import { ReviewSubmitBar } from '@/features/agent/ui-review-comments/review-top-bar';
 import { SummaryPanel } from '@/features/agent/ui-summary-panel';
 import { WorktreeActions } from '@/features/agent/ui-worktree-actions';
 import {
@@ -18,7 +15,6 @@ import {
 } from '@/features/common/ui-file-diff';
 import type { DiffFile } from '@/features/common/ui-file-diff';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
-import { useSteps } from '@/hooks/use-steps';
 import { useTaskSummary } from '@/hooks/use-task-summary';
 import {
   useWorktreeDiff,
@@ -26,16 +22,14 @@ import {
 } from '@/hooks/use-worktree-diff';
 import { api, type FileAnnotation, type WorktreeDiffFile } from '@/lib/api';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
-import { useDiffFileTreeWidth, useTaskState } from '@/stores/navigation';
+import { useDiffFileTreeWidth } from '@/stores/navigation';
 import {
   useReviewCommentsStore,
-  useReviewComments,
   useReviewCommentsForFile,
-  useOpenReviewCommentCount,
   useReviewCommentsByFile,
   type ReviewPresetId,
 } from '@/stores/review-comments';
-import type { PromptImagePart, PromptPart } from '@shared/agent-backend-types';
+import type { PromptImagePart } from '@shared/agent-backend-types';
 
 const HEADER_HEIGHT_CLS = `h-[40px] shrink-0`;
 
@@ -53,7 +47,6 @@ export function WorktreeDiffView({
   pullRequestUrl,
   onMergeStarted,
   onOpenPrView,
-  onSubmitReview,
   bottomPadding = 0,
   collapsedFolders,
   onToggleFolder,
@@ -71,12 +64,6 @@ export function WorktreeDiffView({
   pullRequestUrl: string | null;
   onMergeStarted: () => void;
   onOpenPrView: () => void;
-  /** Called when user submits a review. Receives the synthesized prompt parts and target step ID (null = new step). */
-  onSubmitReview?: (
-    parts: PromptPart[],
-    targetStepId: string | null,
-    targetConfig?: ReviewSubmitTargetConfig,
-  ) => void;
   bottomPadding?: number;
   /** Set of collapsed folder paths in the diff file tree */
   collapsedFolders?: Set<string>;
@@ -116,23 +103,12 @@ export function WorktreeDiffView({
     return summary?.annotations ?? [];
   }, [summary?.annotations]);
 
-  // Steps & active step for review submission target
-  const { data: stepsList } = useSteps(taskId);
-  const { activeStepId } = useTaskState(taskId);
-
   // Review comments state
-  const reviewComments = useReviewComments(taskId);
-  const openReviewCount = useOpenReviewCommentCount(taskId);
   const commentCountByFile = useReviewCommentsByFile(taskId);
   const addComment = useReviewCommentsStore((s) => s.addComment);
   const removeComment = useReviewCommentsStore((s) => s.removeComment);
   const updateComment = useReviewCommentsStore((s) => s.updateComment);
   const resolveComment = useReviewCommentsStore((s) => s.resolveComment);
-  const clearOpenComments = useReviewCommentsStore((s) => s.clearOpenComments);
-  const clearResolvedComments = useReviewCommentsStore(
-    (s) => s.clearResolvedComments,
-  );
-  const [isSubmitOverlayOpen, setIsSubmitOverlayOpen] = useState(false);
 
   const handleAddReviewComment = useCallback(
     (params: {
@@ -183,44 +159,6 @@ export function WorktreeDiffView({
       resolveComment(taskId, commentId);
     },
     [taskId, resolveComment],
-  );
-
-  const handleClearAllComments = useCallback(() => {
-    const confirmed = window.confirm(
-      'Clear all pending review comments for this task?',
-    );
-    if (!confirmed) {
-      return;
-    }
-
-    clearOpenComments(taskId);
-  }, [clearOpenComments, taskId]);
-
-  const handleSubmitReview = useCallback(
-    (
-      parts: PromptPart[],
-      targetStepId: string | null,
-      targetConfig?: ReviewSubmitTargetConfig,
-    ) => {
-      setIsSubmitOverlayOpen(false);
-      onSubmitReview?.(parts, targetStepId, targetConfig);
-
-      // Resolve all open comments after submission
-      for (const comment of reviewComments) {
-        if (!comment.resolved) {
-          resolveComment(taskId, comment.id);
-        }
-      }
-      // Clean up resolved comments from store
-      clearResolvedComments(taskId);
-    },
-    [
-      onSubmitReview,
-      reviewComments,
-      resolveComment,
-      clearResolvedComments,
-      taskId,
-    ],
   );
 
   // Handle summary generation
@@ -279,20 +217,6 @@ export function WorktreeDiffView({
   ]);
 
   // Keyboard shortcut for opening submit review overlay (cmd+enter)
-  useCommands('worktree-diff-view-submit-review', [
-    onSubmitReview && {
-      label: 'Submit Review',
-      shortcut: 'cmd+enter',
-      handler: () => {
-        if (openReviewCount > 0 && !isSubmitOverlayOpen) {
-          setIsSubmitOverlayOpen(true);
-          return true;
-        }
-        return false;
-      },
-    },
-  ]);
-
   const selectedFile = useMemo(() => {
     if (!selectedFilePath || !data?.files) return null;
     return data.files.find((f) => f.path === selectedFilePath) ?? null;
@@ -439,15 +363,6 @@ export function WorktreeDiffView({
           onGenerate={handleGenerateSummary}
         />
 
-        {/* Review submit bar */}
-        {onSubmitReview && (
-          <ReviewSubmitBar
-            commentCount={openReviewCount}
-            onClearAllComments={handleClearAllComments}
-            onSubmit={() => setIsSubmitOverlayOpen(true)}
-          />
-        )}
-
         {/* File diff content */}
         <div
           className="flex-1 overflow-auto"
@@ -461,9 +376,7 @@ export function WorktreeDiffView({
               taskId={taskId}
               headerClassName={HEADER_HEIGHT_CLS}
               annotations={annotations}
-              onAddReviewComment={
-                onSubmitReview ? handleAddReviewComment : undefined
-              }
+              onAddReviewComment={handleAddReviewComment}
               onDeleteReviewComment={handleDeleteReviewComment}
               onEditReviewComment={handleEditReviewComment}
               onResolveReviewComment={handleResolveReviewComment}
@@ -474,17 +387,6 @@ export function WorktreeDiffView({
             </div>
           )}
         </div>
-
-        {/* Submit overlay */}
-        {isSubmitOverlayOpen && (
-          <ReviewSubmitOverlay
-            comments={reviewComments}
-            steps={stepsList}
-            activeStepId={activeStepId}
-            onSubmit={handleSubmitReview}
-            onClose={() => setIsSubmitOverlayOpen(false)}
-          />
-        )}
       </div>
     </div>
   );

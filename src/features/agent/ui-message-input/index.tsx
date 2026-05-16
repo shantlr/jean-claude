@@ -41,6 +41,7 @@ export function MessageInput({
   onFocusChange,
   promptSnippets,
   snippetVariableContext,
+  allowEmptySubmit = false,
 }: {
   onSend: (parts: PromptPart[]) => void;
   onQueue?: (parts: PromptPart[]) => void;
@@ -65,6 +66,8 @@ export function MessageInput({
   promptSnippets?: PromptSnippet[];
   /** Context for resolving snippet variables */
   snippetVariableContext?: SnippetVariableContext;
+  /** When true, allow submitting even with empty text (e.g. when review pills are attached) */
+  allowEmptySubmit?: boolean;
 }) {
   const { data: completionSetting } = useCompletionSetting();
   const [internalValue, setInternalValue] = useState('');
@@ -102,7 +105,13 @@ export function MessageInput({
 
   const handleSubmit = useCallback(() => {
     const trimmed = value.trim();
-    if (!trimmed && images.length === 0 && attachedFiles.length === 0) return;
+    if (
+      !trimmed &&
+      images.length === 0 &&
+      attachedFiles.length === 0 &&
+      !allowEmptySubmit
+    )
+      return;
 
     const parts: PromptPart[] = [];
     if (trimmed) parts.push({ type: 'text', text: trimmed });
@@ -142,6 +151,7 @@ export function MessageInput({
     onSend,
     onQueue,
     setValue,
+    allowEmptySubmit,
   ]);
 
   const handleEnterKey = useCallback(
@@ -214,7 +224,8 @@ export function MessageInput({
         disabled={
           (!value.trim() &&
             images.length === 0 &&
-            attachedFiles.length === 0) ||
+            attachedFiles.length === 0 &&
+            !allowEmptySubmit) ||
           (disabled && !isRunning)
         }
         size="lg"
