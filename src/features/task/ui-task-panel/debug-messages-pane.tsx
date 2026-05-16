@@ -10,6 +10,7 @@ import {
   Copy,
   Check,
   FolderArchive,
+  Download,
 } from 'lucide-react';
 import type { Ref } from 'react';
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -23,6 +24,7 @@ import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useMessagesWithRawData } from '@/hooks/use-messages-with-raw-data';
 import { api } from '@/lib/api';
 import type { DebugMessageWithRawData } from '@/lib/api';
+import { downloadMessageMapping } from '@/lib/utils-download-message-mapping';
 import { useDebugMessagesPaneWidth } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 
@@ -597,6 +599,14 @@ export function DebugMessagesPane({
               }
               label="Copy All Normalized"
             />
+            <Button
+              onClick={() => downloadMessageMapping(debugMessages, taskId)}
+              className="bg-glass-medium/50 text-ink-2 hover:text-ink-1 hover:bg-glass-medium inline-flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors"
+              title="Download raw↔normalized mapping as JSON"
+            >
+              <Download className="h-3 w-3" />
+              <span>Export Mapping</span>
+            </Button>
           </div>
         )}
       </div>
