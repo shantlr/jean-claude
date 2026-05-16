@@ -5,6 +5,9 @@ import { Sparkline } from '@/common/ui/sparkline';
 import { useUsageHistory } from '@/hooks/use-usage-history';
 import type { UsageProviderType } from '@shared/usage-types';
 
+const HISTORY_LOOKBACK_MS = 10 * 60 * 60 * 1000;
+const OVER_PACE_COLOR = 'var(--color-status-fail)';
+
 const LEVEL_COLORS: Record<string, string> = {
   excellent: 'var(--color-acc)',
   low: 'var(--color-status-done)',
@@ -25,16 +28,14 @@ function getColorForUtilization(utilization: number): string {
 export function UsageHistoryChart({
   provider,
   limitKey,
-  resetsAt,
   windowDurationMs,
 }: {
   provider: UsageProviderType;
   limitKey: string;
-  resetsAt: Date;
   windowDurationMs: number;
 }) {
-  const windowStartMs = resetsAt.getTime() - windowDurationMs;
   const nowMs = Date.now();
+  const windowStartMs = nowMs - HISTORY_LOOKBACK_MS;
 
   const since = useMemo(() => {
     const d = new Date(windowStartMs);
@@ -74,7 +75,7 @@ export function UsageHistoryChart({
   return (
     <div className="space-y-1">
       <div className="text-ink-3 flex items-center justify-between text-[10px]">
-        <span>{formatHistoryWindowLabel(windowDurationMs)}</span>
+        <span>{formatHistoryWindowLabel(HISTORY_LOOKBACK_MS)}</span>
         <span>
           {minVal.toFixed(0)}% – {maxVal.toFixed(0)}%
         </span>
@@ -88,7 +89,10 @@ export function UsageHistoryChart({
         height={36}
         color={color}
         max={100}
-        fillOpacity={0.15}
+        fillOpacity={0.1}
+        referenceColor={OVER_PACE_COLOR}
+        positiveDeltaFillColor={OVER_PACE_COLOR}
+        positiveDeltaFillOpacity={0.25}
         className={clsx('w-full')}
       />
       <div className="text-ink-3 flex items-center justify-between text-[10px]">

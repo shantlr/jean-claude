@@ -181,7 +181,6 @@ function TooltipContent({
           <UsageHistoryChart
             provider={providerType}
             limitKey={primaryLimit.key}
-            resetsAt={primaryLimit.range.resetsAt}
             windowDurationMs={primaryLimit.range.windowDurationMs}
           />
         </div>
