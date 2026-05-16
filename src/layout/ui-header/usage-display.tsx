@@ -14,6 +14,8 @@ import type {
 } from '@shared/usage-types';
 import { USAGE_PROVIDERS } from '@shared/usage-types';
 
+import { UsageHistoryChart } from './usage-history-chart';
+
 function getUsageRatio({
   utilization,
   resetsAt,
@@ -158,6 +160,7 @@ function TooltipContent({
 }) {
   const meta = getProviderMeta(providerType);
   const fetchedAt = new Date(fetchedAtMs);
+  const primaryLimit = data.limits.find((l) => l.isPrimary) ?? data.limits[0];
 
   return (
     <div className="space-y-1.5">
@@ -173,6 +176,14 @@ function TooltipContent({
           range={limit.range}
         />
       ))}
+      {primaryLimit && (
+        <div className="border-glass-border border-t pt-1.5">
+          <UsageHistoryChart
+            provider={providerType}
+            limitKey={primaryLimit.key}
+          />
+        </div>
+      )}
     </div>
   );
 }

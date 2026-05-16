@@ -61,3 +61,12 @@ export const USAGE_PROVIDERS: {
 
 // Per-provider usage results
 export type UsageProviderMap = Partial<Record<UsageProviderType, UsageResult>>;
+
+export interface UsageSnapshot {
+  id: string;
+  provider: UsageProviderType;
+  limitKey: string;
+  utilization: number;
+  resetsAt: string;
+  recordedAt: string;
+}

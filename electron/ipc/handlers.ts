@@ -60,6 +60,7 @@ import { ProjectCommandRepository } from '../database/repositories/project-comma
 import { ProjectMcpOverrideRepository } from '../database/repositories/project-mcp-overrides';
 import { TaskStepRepository } from '../database/repositories/task-steps';
 import { TrackedPipelineRepository } from '../database/repositories/tracked-pipelines';
+import { UsageSnapshotRepository } from '../database/repositories/usage-snapshots';
 import {
   NewProject,
   NewTask,
@@ -2525,6 +2526,21 @@ export function registerIpcHandlers() {
     if (process.env.JC_DISABLE_USAGE_TRACKING) return {};
     return agentUsageService.getUsage(providers as UsageProviderType[]);
   });
+
+  ipcMain.handle(
+    'agent:usage:getHistory',
+    (
+      _,
+      params: {
+        provider: string;
+        limitKey: string;
+        since: string;
+        until?: string;
+      },
+    ) => {
+      return UsageSnapshotRepository.getHistory(params);
+    },
+  );
 
   // Backend models
   ipcMain.handle('agent:getBackendModels', (_, backend: string) =>

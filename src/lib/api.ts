@@ -86,7 +86,7 @@ import type {
   AppSettings,
   ProjectTodo,
 } from '@shared/types';
-import type { UsageProviderMap } from '@shared/usage-types';
+import type { UsageProviderMap, UsageSnapshot } from '@shared/usage-types';
 
 export type {
   AzureDevOpsPullRequest,
@@ -783,6 +783,12 @@ export interface Api {
   };
   usage: {
     getAll: (providers: string[]) => Promise<UsageProviderMap>;
+    getHistory: (params: {
+      provider: string;
+      limitKey: string;
+      since: string;
+      until?: string;
+    }) => Promise<UsageSnapshot[]>;
   };
   projectCommands: {
     findByProjectId: (projectId: string) => Promise<ProjectCommand[]>;
@@ -1373,6 +1379,7 @@ export const api: Api = hasWindowApi
       },
       usage: {
         getAll: async () => ({}),
+        getHistory: async () => [],
       },
       projectCommands: {
         findByProjectId: async () => [],

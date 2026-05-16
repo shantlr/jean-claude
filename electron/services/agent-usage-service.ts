@@ -1,8 +1,13 @@
+import { randomUUID } from 'crypto';
+
 import type {
+  UsageDisplayData,
   UsageProviderMap,
   UsageProviderType,
   UsageResult,
 } from '@shared/usage-types';
+
+import { UsageSnapshotRepository } from '../database/repositories/usage-snapshots';
 
 import { ClaudeUsageProvider } from './usage-providers/claude-usage-provider';
 import { CodexUsageProvider } from './usage-providers/codex-usage-provider';
@@ -15,9 +20,12 @@ class AgentUsageService {
     { value: UsageResult; cachedAt: number }
   >();
   private inFlight = new Map<UsageProviderType, Promise<UsageResult>>();
+  private lastCleanupAt = 0;
 
   private static readonly DEFAULT_CACHE_TTL_MS = 2 * 60 * 1000;
   private static readonly CLAUDE_CACHE_TTL_MS = 7 * 60 * 1000;
+  private static readonly RETENTION_DAYS = 90;
+  private static readonly CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
   async getUsage(
     providerTypes: UsageProviderType[],
@@ -72,6 +80,14 @@ class AgentUsageService {
       const provider = this.getOrCreateProvider(providerType);
       const value = await provider.getUsage();
       this.cache.set(providerType, { value, cachedAt: Date.now() });
+
+      if (value.data) {
+        this.persistSnapshots(providerType, value.data).catch((err) => {
+          console.warn('[usage-snapshots] Failed to persist:', err);
+        });
+        this.maybeCleanupOldSnapshots();
+      }
+
       return value;
     })();
 
@@ -101,6 +117,38 @@ class AgentUsageService {
       this.providers.set(providerType, provider);
     }
     return provider;
+  }
+
+  private async persistSnapshots(
+    provider: UsageProviderType,
+    data: UsageDisplayData,
+  ): Promise<void> {
+    const now = new Date().toISOString();
+    const snapshots = data.limits.map((limit) => ({
+      id: randomUUID(),
+      provider,
+      limitKey: limit.key,
+      utilization: limit.range.utilization,
+      resetsAt: limit.range.resetsAt.toISOString(),
+      recordedAt: now,
+    }));
+    await UsageSnapshotRepository.record(snapshots);
+  }
+
+  private maybeCleanupOldSnapshots(): void {
+    const now = Date.now();
+    if (now - this.lastCleanupAt < AgentUsageService.CLEANUP_INTERVAL_MS) {
+      return;
+    }
+    this.lastCleanupAt = now;
+
+    const cutoff = new Date(
+      now - AgentUsageService.RETENTION_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString();
+
+    UsageSnapshotRepository.deleteOlderThan(cutoff).catch((err) => {
+      console.warn('[usage-snapshots] Failed to cleanup:', err);
+    });
   }
 
   private createProvider(

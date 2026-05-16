@@ -45,6 +45,7 @@ export interface Database {
   pr_view_snapshots: PrViewSnapshotTable;
   notifications: NotificationTable;
   tracked_pipelines: TrackedPipelineTable;
+  usage_snapshots: UsageSnapshotTable;
 }
 
 export interface TokenTable {
@@ -345,3 +346,15 @@ export interface TrackedPipelineTable {
 export type TrackedPipelineRow = Selectable<TrackedPipelineTable>;
 export type NewTrackedPipelineRow = Insertable<TrackedPipelineTable>;
 export type UpdateTrackedPipelineRow = Updateable<TrackedPipelineTable>;
+
+export interface UsageSnapshotTable {
+  id: Generated<string>;
+  provider: string;
+  limitKey: string;
+  utilization: number;
+  resetsAt: string;
+  recordedAt: string;
+}
+
+export type UsageSnapshotRow = Selectable<UsageSnapshotTable>;
+export type NewUsageSnapshotRow = Insertable<UsageSnapshotTable>;

@@ -501,6 +501,12 @@ contextBridge.exposeInMainWorld('api', {
   usage: {
     getAll: (backends: string[]) =>
       ipcRenderer.invoke('agent:usage:getAll', backends),
+    getHistory: (params: {
+      provider: string;
+      limitKey: string;
+      since: string;
+      until?: string;
+    }) => ipcRenderer.invoke('agent:usage:getHistory', params),
   },
   projectCommands: {
     findByProjectId: (projectId: string) =>
