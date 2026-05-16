@@ -17,6 +17,7 @@ import type {
 import type {
   NormalizedEntry,
   NormalizedPermissionRequest,
+  NormalizedToolUse,
 } from '@shared/normalized-message-v2';
 import type { ToolUseByName } from '@shared/normalized-message-v2';
 import type { InteractionMode } from '@shared/types';
@@ -249,9 +250,8 @@ export const MessageStream = memo(function MessageStream({
     [buildContextMenuItems, openContextMenu],
   );
 
-  // Context menu handler for individual entries inside subagents
-  const handleEntryContextMenu = useCallback(
-    (e: MouseEvent, entry: NormalizedEntry) => {
+  const buildEntryContextMenuItems = useCallback(
+    (entry: NormalizedEntry): ContextMenuItem[] => {
       const items: ContextMenuItem[] = [];
 
       if (
@@ -267,9 +267,41 @@ export const MessageStream = memo(function MessageStream({
         items.push(showRawMessageItem(onShowRawMessage, entry.id));
       }
 
-      openContextMenu(e, items);
+      return items;
     },
-    [onAddBashToPermissions, onShowRawMessage, openContextMenu],
+    [onAddBashToPermissions, onShowRawMessage],
+  );
+
+  const buildToolUseContextMenuItems = useCallback(
+    (toolUse: NormalizedToolUse): ContextMenuItem[] => {
+      const items: ContextMenuItem[] = [];
+
+      if (onAddBashToPermissions && toolUse.name === 'bash') {
+        const command = (toolUse as ToolUseByName<'bash'>).input.command;
+        items.push(addBashToPermissionsItem(onAddBashToPermissions, command));
+      }
+
+      if (onShowRawMessage && toolUse.toolId) {
+        items.push(showRawMessageItem(onShowRawMessage, toolUse.toolId));
+      }
+
+      return items;
+    },
+    [onAddBashToPermissions, onShowRawMessage],
+  );
+
+  const handleEntryContextMenu = useCallback(
+    (e: MouseEvent, entry: NormalizedEntry) => {
+      openContextMenu(e, buildEntryContextMenuItems(entry));
+    },
+    [buildEntryContextMenuItems, openContextMenu],
+  );
+
+  const handleToolUseContextMenu = useCallback(
+    (e: MouseEvent, toolUse: NormalizedToolUse) => {
+      openContextMenu(e, buildToolUseContextMenuItems(toolUse));
+    },
+    [buildToolUseContextMenuItems, openContextMenu],
   );
 
   if (messages.length === 0) {
@@ -314,7 +346,6 @@ export const MessageStream = memo(function MessageStream({
               return (
                 <div
                   key={index}
-                  onContextMenu={(e) => handleContextMenu(e, streamMessage)}
                   {...(promptIdx !== undefined
                     ? { 'data-prompt-index': promptIdx }
                     : {})}
@@ -336,7 +367,10 @@ export const MessageStream = memo(function MessageStream({
                     previousPromptDate={previousPromptDate}
                     onFilePathClick={onFilePathClick}
                     onToolDiffClick={onToolDiffClick}
+                    onPromptContextMenu={handleEntryContextMenu}
                     onEntryContextMenu={handleEntryContextMenu}
+                    onToolUseContextMenu={handleToolUseContextMenu}
+                    onResultContextMenu={handleEntryContextMenu}
                     rootPath={rootPath}
                   />
                 </div>

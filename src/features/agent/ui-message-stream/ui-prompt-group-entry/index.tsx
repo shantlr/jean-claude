@@ -239,6 +239,7 @@ function getRunningStartDate({
 function PromptSection({
   group,
   onFilePathClick,
+  onContextMenu,
 }: {
   group: PromptGroup;
   onFilePathClick?: (
@@ -246,6 +247,7 @@ function PromptSection({
     lineStart?: number,
     lineEnd?: number,
   ) => void;
+  onContextMenu?: (e: MouseEvent, entry: NormalizedEntry) => void;
 }) {
   const promptText = group.promptEntry.value;
   const promptContent = useMemo(
@@ -261,6 +263,9 @@ function PromptSection({
       className="group/prompt border-glass-border bg-glass-light relative rounded-md border transition-colors duration-100"
       style={isLong ? { cursor: 'pointer' } : undefined}
       onClick={isLong ? () => setOpen(!open) : undefined}
+      onContextMenu={
+        onContextMenu ? (e) => onContextMenu(e, group.promptEntry) : undefined
+      }
       onMouseOver={
         isLong
           ? (e) => {
@@ -627,7 +632,10 @@ export function PromptGroupEntry({
   previousPromptDate,
   onFilePathClick,
   onToolDiffClick,
+  onPromptContextMenu,
   onEntryContextMenu,
+  onToolUseContextMenu,
+  onResultContextMenu,
   rootPath,
 }: {
   group: PromptGroup;
@@ -645,7 +653,10 @@ export function PromptGroupEntry({
     oldString: string,
     newString: string,
   ) => void;
+  onPromptContextMenu?: (e: MouseEvent, entry: NormalizedEntry) => void;
   onEntryContextMenu?: (e: MouseEvent, entry: NormalizedEntry) => void;
+  onToolUseContextMenu?: (e: MouseEvent, toolUse: NormalizedToolUse) => void;
+  onResultContextMenu?: (e: MouseEvent, entry: NormalizedEntry) => void;
   rootPath?: string | null;
 }) {
   const isError = group.status === 'error';
@@ -806,7 +817,11 @@ export function PromptGroupEntry({
   return (
     <div className="mb-5">
       {/* Part 1: Prompt section */}
-      <PromptSection group={group} onFilePathClick={onFilePathClick} />
+      <PromptSection
+        group={group}
+        onFilePathClick={onFilePathClick}
+        onContextMenu={onPromptContextMenu}
+      />
 
       {/* Part 2: Agent section with floating sticky collapse control */}
       <div className="relative mt-2">
@@ -852,6 +867,11 @@ export function PromptGroupEntry({
               background: 'oklch(1 0 0 / 0.02)',
             }}
             onClick={toggleDetails}
+            onContextMenu={
+              onPromptContextMenu
+                ? (e) => onPromptContextMenu(e, group.promptEntry)
+                : undefined
+            }
           >
             {detailsExpanded ? (
               <ChevronDown className="h-2.5 w-2.5" />
@@ -914,25 +934,41 @@ export function PromptGroupEntry({
                 {group.childMessages.map((dm, index) => {
                   if (dm.kind === 'skill') {
                     return (
-                      <SkillEntry
+                      <div
                         key={index}
-                        skillToolUse={dm.skillToolUse}
-                        promptEntry={dm.promptEntry}
-                        onFilePathClick={onFilePathClick}
-                      />
+                        onContextMenu={
+                          onToolUseContextMenu
+                            ? (e) => onToolUseContextMenu(e, dm.skillToolUse)
+                            : undefined
+                        }
+                      >
+                        <SkillEntry
+                          skillToolUse={dm.skillToolUse}
+                          promptEntry={dm.promptEntry}
+                          onFilePathClick={onFilePathClick}
+                        />
+                      </div>
                     );
                   }
                   if (dm.kind === 'compacting') return null;
                   if (dm.kind === 'subagent') {
                     return (
-                      <SubagentEntry
+                      <div
                         key={index}
-                        toolUse={dm.toolUse}
-                        childEntries={dm.childEntries}
-                        onFilePathClick={onFilePathClick}
-                        onToolDiffClick={onToolDiffClick}
-                        onEntryContextMenu={onEntryContextMenu}
-                      />
+                        onContextMenu={
+                          onToolUseContextMenu
+                            ? (e) => onToolUseContextMenu(e, dm.toolUse)
+                            : undefined
+                        }
+                      >
+                        <SubagentEntry
+                          toolUse={dm.toolUse}
+                          childEntries={dm.childEntries}
+                          onFilePathClick={onFilePathClick}
+                          onToolDiffClick={onToolDiffClick}
+                          onEntryContextMenu={onEntryContextMenu}
+                        />
+                      </div>
                     );
                   }
                   return (
@@ -954,7 +990,14 @@ export function PromptGroupEntry({
                 })}
                 {/* Append result or running summary at bottom when expanded */}
                 {!isRunning && group.resultEntry && (
-                  <div className="mt-2.5 border-t border-dashed border-white/[0.08] pt-2.5">
+                  <div
+                    className="mt-2.5 border-t border-dashed border-white/[0.08] pt-2.5"
+                    onContextMenu={
+                      onResultContextMenu
+                        ? (e) => onResultContextMenu(e, group.resultEntry!)
+                        : undefined
+                    }
+                  >
                     <ResultBlock
                       resultText={resultSummary?.text ?? null}
                       stats={resultSummary?.stats ?? null}
