@@ -8,6 +8,11 @@ interface MinimapMarker {
   heightPercent: number;
 }
 
+interface CommentMarker {
+  startPercent: number;
+  heightPercent: number;
+}
+
 export interface ViewportInfo {
   scrollTop: number;
   scrollHeight: number;
@@ -50,14 +55,61 @@ function computeMarkers(lines: DiffLine[]): MinimapMarker[] {
   return markers;
 }
 
+/**
+ * Compute comment markers by finding lines with comments and merging consecutive ones.
+ */
+function computeCommentMarkers(
+  lines: DiffLine[],
+  commentedLines: Set<number>,
+): CommentMarker[] {
+  if (lines.length === 0 || commentedLines.size === 0) return [];
+
+  const markers: CommentMarker[] = [];
+  const totalLines = lines.length;
+
+  let i = 0;
+  while (i < totalLines) {
+    const lineNum = lines[i].newLineNumber;
+    if (lineNum !== undefined && commentedLines.has(lineNum)) {
+      const startIndex = i;
+
+      // Merge consecutive commented lines
+      while (i < totalLines) {
+        const num = lines[i].newLineNumber;
+        if (num !== undefined && commentedLines.has(num)) {
+          i++;
+        } else {
+          break;
+        }
+      }
+
+      const lineCount = i - startIndex;
+      const startPercent = (startIndex / totalLines) * 100;
+      const heightPercent = Math.max(0.5, (lineCount / totalLines) * 100);
+
+      markers.push({ startPercent, heightPercent });
+    } else {
+      i++;
+    }
+  }
+
+  return markers;
+}
+
 export function DiffMinimap({
   lines,
   viewport,
+  commentedLines,
 }: {
   lines: DiffLine[];
   viewport?: ViewportInfo;
+  commentedLines?: Set<number>;
 }) {
   const markers = useMemo(() => computeMarkers(lines), [lines]);
+  const commentMarkers = useMemo(
+    () => (commentedLines ? computeCommentMarkers(lines, commentedLines) : []),
+    [lines, commentedLines],
+  );
 
   // Calculate viewport indicator position and size
   const viewportIndicator = useMemo(() => {
@@ -71,13 +123,29 @@ export function DiffMinimap({
     return { topPercent, heightPercent };
   }, [viewport]);
 
-  if (markers.length === 0) {
+  if (markers.length === 0 && commentMarkers.length === 0) {
     return null;
   }
 
   return (
     <div className="absolute top-0 right-0 h-full w-2.5 border-b-4">
-      {/* Change markers */}
+      {/* Comment markers (left side) */}
+      {commentMarkers.map((marker, i) => (
+        <div
+          key={`comment-${i}`}
+          style={{
+            position: 'absolute',
+            top: `${marker.startPercent}%`,
+            height: `${marker.heightPercent}%`,
+            left: 0,
+            width: '3px',
+            minHeight: '2px',
+            background: 'oklch(0.78 0.18 295)',
+          }}
+        />
+      ))}
+
+      {/* Change markers (right side) */}
       {markers.map((marker, i) => (
         <div
           key={i}
@@ -86,7 +154,7 @@ export function DiffMinimap({
             position: 'absolute',
             top: `${marker.startPercent}%`,
             height: `${marker.heightPercent}%`,
-            left: 0,
+            left: commentMarkers.length > 0 ? '4px' : 0,
             right: 0,
             minHeight: '2px',
           }}

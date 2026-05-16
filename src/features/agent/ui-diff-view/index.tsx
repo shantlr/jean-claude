@@ -303,7 +303,13 @@ export function DiffView({
           />
         )}
       </div>
-      {!!withMinimap && <DiffMinimap lines={state.lines} viewport={viewport} />}
+      {!!withMinimap && (
+        <DiffMinimap
+          lines={state.lines}
+          viewport={viewport}
+          commentedLines={commentedLines}
+        />
+      )}
       {isScrollable && totalHunks > 0 && (
         <ChangeNavigator
           currentHunk={currentHunkIndex + 1}
