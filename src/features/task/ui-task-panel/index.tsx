@@ -127,6 +127,7 @@ import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
 import { DebugMessagesPane } from './debug-messages-pane';
 import { DeleteTaskDialog } from './delete-task-dialog';
 import { FileExplorerPane } from './file-explorer-pane';
+import { getTaskTitle, TaskNameEditor } from './task-name-editor';
 import { TaskPendingNoteInput } from './task-pending-note-input';
 import { TaskSettingsPane } from './task-settings-pane';
 import { ToolDiffPreviewPane } from './tool-diff-preview-pane';
@@ -1016,6 +1017,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     AVAILABLE_BACKENDS.find(
       (backend) => backend.value === activeStep?.agentBackend,
     )?.label ?? 'Claude Code';
+  const taskTitle = getTaskTitle({ name: task.name, prompt: task.prompt });
 
   return (
     <div
@@ -1038,11 +1040,14 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         >
           {/* Left: Task title and note input */}
           <div className="flex min-w-0 flex-1 items-center gap-2">
-            <h1 className="text-ink-1 min-w-0 shrink truncate text-sm font-semibold">
-              {task.name ?? task.prompt.split('\n')[0]}
-            </h1>
+            <TaskNameEditor
+              key={`task-name-${taskId}`}
+              taskId={taskId}
+              name={task.name}
+              prompt={task.prompt}
+            />
             <TaskPendingNoteInput
-              key={taskId}
+              key={`task-note-${taskId}`}
               taskId={taskId}
               pendingMessage={task.pendingMessage}
             />
@@ -1664,7 +1669,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleDeleteConfirm}
-        taskName={task.name ?? task.prompt.split('\n')[0]}
+        taskName={taskTitle}
         hasWorktree={!!task.worktreePath}
         isPending={false}
       />

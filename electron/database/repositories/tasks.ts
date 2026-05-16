@@ -319,9 +319,15 @@ export const TaskRepository = {
       id,
       Object.keys(data),
     );
+    const changedKeys = Object.keys(data).filter((key) => key !== 'updatedAt');
+    const shouldUpdateTimestamp =
+      changedKeys.length !== 1 || changedKeys[0] !== 'name';
     const row = await db
       .updateTable('tasks')
-      .set({ ...toDbUpdateValues(data), updatedAt: new Date().toISOString() })
+      .set({
+        ...toDbUpdateValues(data),
+        ...(shouldUpdateTimestamp && { updatedAt: new Date().toISOString() }),
+      })
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirstOrThrow();

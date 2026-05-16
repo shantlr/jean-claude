@@ -71,7 +71,7 @@ export function TaskPendingNoteInput({
         setValue(event.target.value);
       }}
       placeholder="Add note..."
-      className="w-48 max-w-full"
+      className="w-full max-w-40 flex-none"
       title="Task note"
       aria-label="Task note"
     />
