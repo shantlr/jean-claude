@@ -1,5 +1,6 @@
 import { forwardRef, useMemo } from 'react';
 
+import type { KeyboardLayer } from '@/common/context/keyboard-bindings';
 import type { BindingKey } from '@/common/context/keyboard-bindings/types';
 import { Select, type SelectOption, type SelectRef } from '@/common/ui/select';
 import type { ModelPreference } from '@shared/types';
@@ -44,6 +45,7 @@ export const ModelSelector = forwardRef<
     shortcutBehavior?: 'cycle' | 'open';
     side?: 'top' | 'bottom';
     className?: string;
+    layer?: KeyboardLayer;
   }
 >(function ModelSelector(
   {
@@ -55,6 +57,7 @@ export const ModelSelector = forwardRef<
     shortcutBehavior,
     side,
     className,
+    layer,
   },
   ref,
 ) {
@@ -82,6 +85,7 @@ export const ModelSelector = forwardRef<
       shortcutBehavior={shortcutBehavior}
       side={side}
       className={className}
+      layer={layer}
     />
   );
 });

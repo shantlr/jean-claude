@@ -1,7 +1,10 @@
 import { Loader2, Sparkles } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
-import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
+import {
+  KeyboardLayerProvider,
+  useKeyboardLayer,
+} from '@/common/context/keyboard-bindings';
 import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
 import { Checkbox } from '@/common/ui/checkbox';
@@ -98,93 +101,95 @@ export function CommitModal({
     : !!message.trim() && !isGenerating;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Commit Changes"
-      closeOnClickOutside={!isGenerating}
-      closeOnEscape={!isGenerating}
-      contentRef={contentRef}
-    >
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <div className="mb-2 flex items-center justify-between">
-            <label
-              htmlFor="commit-message"
-              className="text-ink-1 text-sm font-medium"
-            >
-              Commit message
-            </label>
-            {canAutoGenerate && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleGenerate}
-                disabled={isGenerating}
-                icon={
-                  isGenerating ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Sparkles />
-                  )
-                }
+    <KeyboardLayerProvider layer={layer}>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Commit Changes"
+        closeOnClickOutside={!isGenerating}
+        closeOnEscape={!isGenerating}
+        contentRef={contentRef}
+      >
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <div className="mb-2 flex items-center justify-between">
+              <label
+                htmlFor="commit-message"
+                className="text-ink-1 text-sm font-medium"
               >
-                Generate
-              </Button>
-            )}
+                Commit message
+              </label>
+              {canAutoGenerate && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleGenerate}
+                  disabled={isGenerating}
+                  icon={
+                    isGenerating ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Sparkles />
+                    )
+                  }
+                >
+                  Generate
+                </Button>
+              )}
+            </div>
+            <Textarea
+              id="commit-message"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder={
+                canAutoGenerate
+                  ? 'Leave empty to auto-generate, or describe your changes'
+                  : 'Describe your changes'
+              }
+              rows={3}
+              autoComplete="off"
+              size="sm"
+              autoFocus
+            />
           </div>
-          <Textarea
-            id="commit-message"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder={
-              canAutoGenerate
-                ? 'Leave empty to auto-generate, or describe your changes'
-                : 'Describe your changes'
-            }
-            rows={3}
-            autoComplete="off"
-            size="sm"
-            autoFocus
+
+          <Checkbox
+            checked={stageAll}
+            onChange={setStageAll}
+            label="Stage all changes"
+            className="mb-4"
           />
-        </div>
 
-        <Checkbox
-          checked={stageAll}
-          onChange={setStageAll}
-          label="Stage all changes"
-          className="mb-4"
-        />
+          {generateMutation.error && (
+            <div className="bg-status-fail/10 text-status-fail mb-4 rounded-md px-3 py-2 text-sm">
+              Failed to generate commit message. Please enter one manually.
+            </div>
+          )}
 
-        {generateMutation.error && (
-          <div className="bg-status-fail/10 text-status-fail mb-4 rounded-md px-3 py-2 text-sm">
-            Failed to generate commit message. Please enter one manually.
+          <div className="flex justify-end gap-3">
+            <Button
+              type="button"
+              onClick={onClose}
+              disabled={isGenerating}
+              variant="ghost"
+              size="md"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={!canSubmit}
+              loading={isGenerating}
+              variant="primary"
+              size="md"
+            >
+              {isGenerating ? 'Generating...' : 'Commit'}
+              <Kbd shortcut="cmd+enter" />
+            </Button>
           </div>
-        )}
-
-        <div className="flex justify-end gap-3">
-          <Button
-            type="button"
-            onClick={onClose}
-            disabled={isGenerating}
-            variant="ghost"
-            size="md"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            disabled={!canSubmit}
-            loading={isGenerating}
-            variant="primary"
-            size="md"
-          >
-            {isGenerating ? 'Generating...' : 'Commit'}
-            <Kbd shortcut="cmd+enter" />
-          </Button>
-        </div>
-      </form>
-    </Modal>
+        </form>
+      </Modal>
+    </KeyboardLayerProvider>
   );
 }

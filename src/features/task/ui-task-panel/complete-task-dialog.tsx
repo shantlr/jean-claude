@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 
-import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
+import {
+  KeyboardLayerProvider,
+  useKeyboardLayer,
+} from '@/common/context/keyboard-bindings';
 import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
 import { Checkbox } from '@/common/ui/checkbox';
@@ -63,47 +66,49 @@ export function CompleteTaskDialog({
   if (!isOpen) return null;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Complete Task"
-      closeOnClickOutside={!isPending}
-      closeOnEscape={!isPending}
-    >
-      <p className="text-ink-1 mb-3 text-sm">Mark this task as completed?</p>
+    <KeyboardLayerProvider layer={layer}>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Complete Task"
+        closeOnClickOutside={!isPending}
+        closeOnEscape={!isPending}
+      >
+        <p className="text-ink-1 mb-3 text-sm">Mark this task as completed?</p>
 
-      {hasWorktree && (
-        <div className="mb-4">
-          <Checkbox
-            checked={cleanupWorktree}
-            onChange={setCleanupWorktree}
-            label="Delete associated worktree and branch"
-            description="Clean up the worktree directory and git branch after completing."
-          />
-          <Kbd shortcut="cmd+shift+w" className="mt-0.5 ml-6 text-[9px]" />
+        {hasWorktree && (
+          <div className="mb-4">
+            <Checkbox
+              checked={cleanupWorktree}
+              onChange={setCleanupWorktree}
+              label="Delete associated worktree and branch"
+              description="Clean up the worktree directory and git branch after completing."
+            />
+            <Kbd shortcut="cmd+shift+w" className="mt-0.5 ml-6 text-[9px]" />
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            variant="ghost"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleConfirm}
+            loading={isPending}
+            disabled={isPending}
+            variant="primary"
+          >
+            Complete
+            <Kbd shortcut="cmd+enter" />
+          </Button>
         </div>
-      )}
-
-      <div className="flex justify-end gap-3">
-        <Button
-          type="button"
-          onClick={onClose}
-          disabled={isPending}
-          variant="ghost"
-        >
-          Cancel
-        </Button>
-        <Button
-          type="button"
-          onClick={handleConfirm}
-          loading={isPending}
-          disabled={isPending}
-          variant="primary"
-        >
-          Complete
-          <Kbd shortcut="cmd+enter" />
-        </Button>
-      </div>
-    </Modal>
+      </Modal>
+    </KeyboardLayerProvider>
   );
 }

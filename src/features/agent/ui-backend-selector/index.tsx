@@ -1,5 +1,6 @@
 import { forwardRef, useCallback, useMemo } from 'react';
 
+import type { KeyboardLayer } from '@/common/context/keyboard-bindings';
 import type { BindingKey } from '@/common/context/keyboard-bindings/types';
 import { Select, type SelectRef } from '@/common/ui/select';
 import type { BackendModel } from '@/hooks/use-backend-models';
@@ -195,9 +196,19 @@ export const BackendSelector = forwardRef<
     shortcutBehavior?: 'cycle' | 'open';
     side?: 'top' | 'bottom';
     className?: string;
+    layer?: KeyboardLayer;
   }
 >(function BackendSelector(
-  { value, onChange, disabled, shortcut, shortcutBehavior, side, className },
+  {
+    value,
+    onChange,
+    disabled,
+    shortcut,
+    shortcutBehavior,
+    side,
+    className,
+    layer,
+  },
   ref,
 ) {
   const { visible, visibleBackends } = useBackendSelector({
@@ -225,6 +236,7 @@ export const BackendSelector = forwardRef<
       shortcutBehavior={shortcutBehavior}
       side={side}
       className={className}
+      layer={layer}
     />
   );
 });

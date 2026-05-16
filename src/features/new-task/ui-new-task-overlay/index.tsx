@@ -10,7 +10,10 @@ import React, {
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
 
-import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
+import {
+  KeyboardLayerProvider,
+  useKeyboardLayer,
+} from '@/common/context/keyboard-bindings';
 import { useCommands } from '@/common/hooks/use-commands';
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import {
@@ -1184,402 +1187,414 @@ export function NewTaskOverlay({
   );
 
   return createPortal(
-    <FocusLock returnFocus>
-      <div
-        className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
-        onClick={handleOverlayClick}
-      >
+    <KeyboardLayerProvider layer={layer}>
+      <FocusLock returnFocus>
         <div
-          ref={panelRef}
-          className="flex max-h-[80svh] w-[90svw] max-w-[1280px] flex-col overflow-hidden rounded-[14px] border border-white/10"
-          style={{
-            background: `
+          className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
+          onClick={handleOverlayClick}
+        >
+          <div
+            ref={panelRef}
+            className="flex max-h-[80svh] w-[90svw] max-w-[1280px] flex-col overflow-hidden rounded-[14px] border border-white/10"
+            style={{
+              background: `
             radial-gradient(ellipse 700px 500px at 10% -10%, oklch(0.55 0.22 295 / 0.32), transparent 55%),
             radial-gradient(ellipse 600px 420px at 110% 110%, oklch(0.55 0.18 205 / 0.25), transparent 55%),
             oklch(0.14 0.015 280 / 0.94)
           `,
-            backdropFilter: 'blur(40px) saturate(140%)',
-            boxShadow:
-              '0 30px 80px oklch(0 0 0 / 0.55), inset 0 0 0 1px oklch(1 0 0 / 0.04)',
-          }}
-          onClick={handleModalClick}
-        >
-          {/* Search/Prompt input - only show in select or prompt mode */}
-          {showSearchInput && (
-            <div
-              className="flex shrink-0 items-center gap-2.5 px-[18px] py-3.5"
-              style={{ borderBottom: '1px solid oklch(1 0 0 / 0.04)' }}
-            >
-              <Search
-                className="h-3.5 w-3.5 shrink-0"
-                style={{ color: 'oklch(0.55 0.01 280)' }}
-              />
-              <textarea
-                ref={searchInputRef}
-                value={inputValue}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                placeholder={getPlaceholder({ mode: inputMode, isNoteMode })}
-                className="text-ink-1 placeholder-ink-3 field-sizing-content max-h-[40svh] min-h-[1lh] flex-1 resize-none bg-transparent text-sm outline-none"
-                style={{
-                  caretColor: 'oklch(0.78 0.18 295)',
-                  letterSpacing: '-0.005em',
-                }}
-              />
-            </div>
-          )}
-          {showPromptInput && (
-            <div className="flex shrink-0 flex-col px-[18px] py-3.5">
-              <div className="flex flex-1 flex-col">
-                <PromptTextarea
-                  ref={promptInputRef}
+              backdropFilter: 'blur(40px) saturate(140%)',
+              boxShadow:
+                '0 30px 80px oklch(0 0 0 / 0.55), inset 0 0 0 1px oklch(1 0 0 / 0.04)',
+            }}
+            onClick={handleModalClick}
+          >
+            {/* Search/Prompt input - only show in select or prompt mode */}
+            {showSearchInput && (
+              <div
+                className="flex shrink-0 items-center gap-2.5 px-[18px] py-3.5"
+                style={{ borderBottom: '1px solid oklch(1 0 0 / 0.04)' }}
+              >
+                <Search
+                  className="h-3.5 w-3.5 shrink-0"
+                  style={{ color: 'oklch(0.55 0.01 280)' }}
+                />
+                <textarea
+                  ref={searchInputRef}
                   value={inputValue}
-                  onChange={handlePromptChange}
+                  onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
                   placeholder={getPlaceholder({ mode: inputMode, isNoteMode })}
-                  skills={projectSkills}
-                  showCommands={false}
-                  maxHeight={320}
-                  projectRoot={selectedProject?.path ?? null}
-                  enableFilePathAutocomplete
-                  enableCompletion={completionSetting?.enabled ?? false}
-                  projectId={selectedProject?.id}
+                  className="text-ink-1 placeholder-ink-3 field-sizing-content max-h-[40svh] min-h-[1lh] flex-1 resize-none bg-transparent text-sm outline-none"
+                  style={{
+                    caretColor: 'oklch(0.78 0.18 295)',
+                    letterSpacing: '-0.005em',
+                  }}
+                />
+              </div>
+            )}
+            {showPromptInput && (
+              <div className="flex shrink-0 flex-col px-[18px] py-3.5">
+                <div className="flex flex-1 flex-col">
+                  <PromptTextarea
+                    ref={promptInputRef}
+                    value={inputValue}
+                    onChange={handlePromptChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder={getPlaceholder({
+                      mode: inputMode,
+                      isNoteMode,
+                    })}
+                    skills={projectSkills}
+                    showCommands={false}
+                    maxHeight={320}
+                    projectRoot={selectedProject?.path ?? null}
+                    enableFilePathAutocomplete
+                    enableCompletion={completionSetting?.enabled ?? false}
+                    projectId={selectedProject?.id}
+                    images={draft?.images}
+                    onImageAttach={handleImageAttach}
+                    onImageRemove={handleImageRemove}
+                    files={draft?.files}
+                    onFileAttach={handleFileAttach}
+                    onFileRemove={handleFileRemove}
+                    promptSnippets={promptSnippets}
+                    snippetVariableContext={snippetVariableContext}
+                    className="text-ink-1 placeholder-ink-3 border-transparent bg-transparent px-0 py-0 text-sm focus:border-transparent focus:ring-0 focus:outline-none"
+                  />
+                  {fileCommentCount > 0 && selectedProject && (
+                    <div className="mt-2">
+                      <ComposerCommentsChip
+                        projectId={selectedProject.id}
+                        projectRoot={selectedProject.path}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Project grid - only show in select or prompt mode */}
+            {(showSearchInput || showPromptInput) && (
+              <ProjectGrid
+                sortedProjects={sortedProjects}
+                selectedProjectId={selectedProjectId}
+                onSelectProject={setSelectedProjectId}
+              />
+            )}
+
+            {/* File explorer (toggleable in prompt mode) */}
+            {currentShowFileExplorer &&
+              selectedProject &&
+              inputMode === 'prompt' && (
+                <div
+                  className="flex flex-1 flex-col overflow-hidden"
+                  style={{
+                    borderTop: '1px solid oklch(1 0 0 / 0.04)',
+                    minHeight: 200,
+                  }}
+                >
+                  <ComposerFileExplorer
+                    projectId={selectedProject.id}
+                    projectRoot={selectedProject.path}
+                  />
+                </div>
+              )}
+
+            {/* Main content area */}
+            {inputMode === 'search' && searchStep === 'select' && (
+              <div className="flex h-full w-full grow flex-col overflow-hidden p-2">
+                <SearchModeContent
+                  project={selectedProject}
+                  filter={draft?.workItemsFilter ?? ''}
+                  selectedWorkItemIds={draft?.workItemIds ?? []}
+                  viewMode={draft?.workItemsViewMode ?? 'board'}
+                  onViewModeChange={(mode: WorkItemsViewMode) =>
+                    updateDraft({ workItemsViewMode: mode })
+                  }
+                  onWorkItemToggle={handleWorkItemToggle}
+                  onClearSelectedWorkItems={handleClearSelectedWorkItems}
+                  onHighlightChange={setHighlightedWorkItemId}
+                  panelWidth={workItemsPanelWidth}
+                  onPanelWidthChange={handlePanelWidthChange}
+                  onAdvanceToCompose={advanceToCompose}
+                  canAdvance={canAdvanceToCompose}
+                />
+              </div>
+            )}
+
+            {inputMode === 'search' && searchStep === 'compose' && (
+              <div className="flex h-full w-full grow flex-col overflow-hidden">
+                <PromptComposer
+                  template={promptTemplate}
+                  workItems={selectedWorkItems}
+                  onTemplateChange={setPromptTemplate}
+                  onBack={backToSelect}
                   images={draft?.images}
+                  isFetchingImages={isFetchingWorkItemImages}
                   onImageAttach={handleImageAttach}
                   onImageRemove={handleImageRemove}
                   files={draft?.files}
                   onFileAttach={handleFileAttach}
                   onFileRemove={handleFileRemove}
-                  promptSnippets={promptSnippets}
-                  snippetVariableContext={snippetVariableContext}
-                  className="text-ink-1 placeholder-ink-3 border-transparent bg-transparent px-0 py-0 text-sm focus:border-transparent focus:ring-0 focus:outline-none"
-                />
-                {fileCommentCount > 0 && selectedProject && (
-                  <div className="mt-2">
-                    <ComposerCommentsChip
-                      projectId={selectedProject.id}
-                      projectRoot={selectedProject.path}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Project grid - only show in select or prompt mode */}
-          {(showSearchInput || showPromptInput) && (
-            <ProjectGrid
-              sortedProjects={sortedProjects}
-              selectedProjectId={selectedProjectId}
-              onSelectProject={setSelectedProjectId}
-            />
-          )}
-
-          {/* File explorer (toggleable in prompt mode) */}
-          {currentShowFileExplorer &&
-            selectedProject &&
-            inputMode === 'prompt' && (
-              <div
-                className="flex flex-1 flex-col overflow-hidden"
-                style={{
-                  borderTop: '1px solid oklch(1 0 0 / 0.04)',
-                  minHeight: 200,
-                }}
-              >
-                <ComposerFileExplorer
-                  projectId={selectedProject.id}
-                  projectRoot={selectedProject.path}
+                  projectRoot={selectedProject?.path ?? null}
+                  comments={workItemComments}
+                  selectedCommentIds={draft?.selectedCommentIds ?? []}
+                  onCommentToggle={handleCommentToggle}
+                  onSelectAllComments={handleSelectAllComments}
+                  onDeselectAllComments={handleDeselectAllComments}
+                  isLoadingComments={isLoadingComments}
+                  snippets={promptSnippets}
+                  testCasesByWorkItem={testCasesByWorkItem}
                 />
               </div>
             )}
 
-          {/* Main content area */}
-          {inputMode === 'search' && searchStep === 'select' && (
-            <div className="flex h-full w-full grow flex-col overflow-hidden p-2">
-              <SearchModeContent
-                project={selectedProject}
-                filter={draft?.workItemsFilter ?? ''}
-                selectedWorkItemIds={draft?.workItemIds ?? []}
-                viewMode={draft?.workItemsViewMode ?? 'board'}
-                onViewModeChange={(mode: WorkItemsViewMode) =>
-                  updateDraft({ workItemsViewMode: mode })
-                }
-                onWorkItemToggle={handleWorkItemToggle}
-                onClearSelectedWorkItems={handleClearSelectedWorkItems}
-                onHighlightChange={setHighlightedWorkItemId}
-                panelWidth={workItemsPanelWidth}
-                onPanelWidthChange={handlePanelWidthChange}
-                onAdvanceToCompose={advanceToCompose}
-                canAdvance={canAdvanceToCompose}
-              />
-            </div>
-          )}
+            {/* Footer */}
+            <div
+              className="flex min-h-[50px] shrink-0 flex-wrap items-center gap-2 overflow-hidden px-3.5 py-2.5"
+              style={{
+                borderTop: '1px solid oklch(1 0 0 / 0.06)',
+                background: 'oklch(0 0 0 / 0.28)',
+              }}
+            >
+              <div className="flex items-center gap-2">
+                {/* Interaction mode selector */}
+                {!isNoteMode && (
+                  <ModeSelector
+                    value={currentInteractionMode}
+                    onChange={(mode) => updateDraft({ interactionMode: mode })}
+                    backend={currentBackend}
+                    shortcut="cmd+i"
+                    side="top"
+                    layer={layer}
+                  />
+                )}
 
-          {inputMode === 'search' && searchStep === 'compose' && (
-            <div className="flex h-full w-full grow flex-col overflow-hidden">
-              <PromptComposer
-                template={promptTemplate}
-                workItems={selectedWorkItems}
-                onTemplateChange={setPromptTemplate}
-                onBack={backToSelect}
-                images={draft?.images}
-                isFetchingImages={isFetchingWorkItemImages}
-                onImageAttach={handleImageAttach}
-                onImageRemove={handleImageRemove}
-                files={draft?.files}
-                onFileAttach={handleFileAttach}
-                onFileRemove={handleFileRemove}
-                projectRoot={selectedProject?.path ?? null}
-                comments={workItemComments}
-                selectedCommentIds={draft?.selectedCommentIds ?? []}
-                onCommentToggle={handleCommentToggle}
-                onSelectAllComments={handleSelectAllComments}
-                onDeselectAllComments={handleDeselectAllComments}
-                isLoadingComments={isLoadingComments}
-                snippets={promptSnippets}
-                testCasesByWorkItem={testCasesByWorkItem}
-              />
-            </div>
-          )}
+                {/* Model selector */}
+                {!isNoteMode && (
+                  <ModelSelector
+                    value={currentModelPreference}
+                    onChange={(model) =>
+                      updateDraft({ modelPreference: model })
+                    }
+                    models={getModelsForBackend(currentBackend, dynamicModels)}
+                    shortcut="cmd+l"
+                    side="top"
+                    layer={layer}
+                  />
+                )}
 
-          {/* Footer */}
-          <div
-            className="flex min-h-[50px] shrink-0 flex-wrap items-center gap-2 overflow-hidden px-3.5 py-2.5"
-            style={{
-              borderTop: '1px solid oklch(1 0 0 / 0.06)',
-              background: 'oklch(0 0 0 / 0.28)',
-            }}
-          >
-            <div className="flex items-center gap-2">
-              {/* Interaction mode selector */}
-              {!isNoteMode && (
-                <ModeSelector
-                  value={currentInteractionMode}
-                  onChange={(mode) => updateDraft({ interactionMode: mode })}
-                  backend={currentBackend}
-                  shortcut="cmd+i"
-                  side="top"
-                />
-              )}
+                {/* Agent backend selector — only show when multiple backends enabled */}
+                {!isNoteMode && (
+                  <BackendSelector
+                    value={currentBackend}
+                    onChange={handleBackendChange}
+                    shortcut="cmd+j"
+                    side="top"
+                    layer={layer}
+                  />
+                )}
 
-              {/* Model selector */}
-              {!isNoteMode && (
-                <ModelSelector
-                  value={currentModelPreference}
-                  onChange={(model) => updateDraft({ modelPreference: model })}
-                  models={getModelsForBackend(currentBackend, dynamicModels)}
-                  shortcut="cmd+l"
-                  side="top"
-                />
-              )}
+                {!isNoteMode && (
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={currentCreateWorktree}
+                    className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[5px] px-2.5 py-[5px] text-xs font-medium"
+                    style={
+                      currentCreateWorktree
+                        ? {
+                            background:
+                              'color-mix(in oklch, oklch(0.78 0.18 295) 14%, transparent)',
+                            border:
+                              '1px solid color-mix(in oklch, oklch(0.78 0.18 295) 30%, transparent)',
+                            color: 'oklch(0.78 0.18 295)',
+                          }
+                        : {
+                            background: 'oklch(1 0 0 / 0.03)',
+                            border: '1px solid oklch(1 0 0 / 0.07)',
+                            color: 'oklch(0.78 0.01 280)',
+                          }
+                    }
+                    onClick={() => toggleWorktree(!currentCreateWorktree)}
+                  >
+                    <ToolCheckmark checked={currentCreateWorktree} />
+                    Worktree
+                    <Kbd shortcut="cmd+b" />
+                  </button>
+                )}
 
-              {/* Agent backend selector — only show when multiple backends enabled */}
-              {!isNoteMode && (
-                <BackendSelector
-                  value={currentBackend}
-                  onChange={handleBackendChange}
-                  shortcut="cmd+j"
-                  side="top"
-                />
-              )}
-
-              {!isNoteMode && (
-                <button
-                  type="button"
-                  role="checkbox"
-                  aria-checked={currentCreateWorktree}
-                  className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[5px] px-2.5 py-[5px] text-xs font-medium"
-                  style={
-                    currentCreateWorktree
-                      ? {
+                {!isNoteMode && selectedProjectId && (
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={currentShowFileExplorer}
+                    className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[5px] px-2.5 py-[5px] text-xs font-medium"
+                    style={
+                      currentShowFileExplorer
+                        ? {
+                            background:
+                              'color-mix(in oklch, oklch(0.78 0.18 295) 14%, transparent)',
+                            border:
+                              '1px solid color-mix(in oklch, oklch(0.78 0.18 295) 30%, transparent)',
+                            color: 'oklch(0.78 0.18 295)',
+                          }
+                        : {
+                            background: 'oklch(1 0 0 / 0.03)',
+                            border: '1px solid oklch(1 0 0 / 0.07)',
+                            color: 'oklch(0.78 0.01 280)',
+                          }
+                    }
+                    onClick={() =>
+                      updateDraft({
+                        showFileExplorer: !currentShowFileExplorer,
+                      })
+                    }
+                  >
+                    <ToolCheckmark checked={currentShowFileExplorer} />
+                    Files
+                    {fileCommentCount > 0 && (
+                      <span
+                        className="rounded-full px-1.5 py-px text-[10px] leading-none font-medium"
+                        style={{
                           background:
-                            'color-mix(in oklch, oklch(0.78 0.18 295) 14%, transparent)',
-                          border:
-                            '1px solid color-mix(in oklch, oklch(0.78 0.18 295) 30%, transparent)',
-                          color: 'oklch(0.78 0.18 295)',
-                        }
-                      : {
-                          background: 'oklch(1 0 0 / 0.03)',
-                          border: '1px solid oklch(1 0 0 / 0.07)',
-                          color: 'oklch(0.78 0.01 280)',
-                        }
-                  }
-                  onClick={() => toggleWorktree(!currentCreateWorktree)}
-                >
-                  <ToolCheckmark checked={currentCreateWorktree} />
-                  Worktree
-                  <Kbd shortcut="cmd+b" />
-                </button>
-              )}
+                            'color-mix(in oklch, oklch(0.78 0.18 295) 24%, transparent)',
+                        }}
+                      >
+                        {fileCommentCount}
+                      </span>
+                    )}
+                    <Kbd shortcut="cmd+e" />
+                  </button>
+                )}
 
-              {!isNoteMode && selectedProjectId && (
-                <button
-                  type="button"
-                  role="checkbox"
-                  aria-checked={currentShowFileExplorer}
-                  className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[5px] px-2.5 py-[5px] text-xs font-medium"
-                  style={
-                    currentShowFileExplorer
-                      ? {
-                          background:
-                            'color-mix(in oklch, oklch(0.78 0.18 295) 14%, transparent)',
-                          border:
-                            '1px solid color-mix(in oklch, oklch(0.78 0.18 295) 30%, transparent)',
-                          color: 'oklch(0.78 0.18 295)',
-                        }
-                      : {
-                          background: 'oklch(1 0 0 / 0.03)',
-                          border: '1px solid oklch(1 0 0 / 0.07)',
-                          color: 'oklch(0.78 0.01 280)',
-                        }
-                  }
-                  onClick={() =>
-                    updateDraft({ showFileExplorer: !currentShowFileExplorer })
-                  }
-                >
-                  <ToolCheckmark checked={currentShowFileExplorer} />
-                  Files
-                  {fileCommentCount > 0 && (
-                    <span
-                      className="rounded-full px-1.5 py-px text-[10px] leading-none font-medium"
+                {!isNoteMode && selectedWorkItems.length > 0 && (
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={currentUpdateWorkItemStatus}
+                    className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[5px] px-2.5 py-[5px] text-xs font-medium"
+                    style={
+                      currentUpdateWorkItemStatus
+                        ? {
+                            background:
+                              'color-mix(in oklch, oklch(0.78 0.18 295) 14%, transparent)',
+                            border:
+                              '1px solid color-mix(in oklch, oklch(0.78 0.18 295) 30%, transparent)',
+                            color: 'oklch(0.78 0.18 295)',
+                          }
+                        : {
+                            background: 'oklch(1 0 0 / 0.03)',
+                            border: '1px solid oklch(1 0 0 / 0.07)',
+                            color: 'oklch(0.78 0.01 280)',
+                          }
+                    }
+                    onClick={() =>
+                      updateDraft({
+                        updateWorkItemStatus: !currentUpdateWorkItemStatus,
+                      })
+                    }
+                  >
+                    <ToolCheckmark checked={currentUpdateWorkItemStatus} />
+                    Update work item status
+                  </button>
+                )}
+
+                {/* Source branch / parent task selector */}
+                {!isNoteMode &&
+                  currentCreateWorktree &&
+                  selectedProjectId &&
+                  (branches.length > 0 || activeProjectTasks.length > 0) && (
+                    <div
+                      className="inline-flex shrink-0 items-center gap-[5px] rounded-[5px] px-2.5 py-[5px] text-xs"
                       style={{
-                        background:
-                          'color-mix(in oklch, oklch(0.78 0.18 295) 24%, transparent)',
+                        background: 'oklch(1 0 0 / 0.03)',
+                        border: '1px solid oklch(1 0 0 / 0.07)',
                       }}
                     >
-                      {fileCommentCount}
-                    </span>
+                      <span style={{ color: 'oklch(0.55 0.01 280)' }}>
+                        {draft?.parentTaskId ? 'child of' : 'from'}
+                      </span>
+                      <BranchOrTaskSelect
+                        branches={branchInfos}
+                        favoriteBranches={selectedProject?.favoriteBranches}
+                        defaultBranch={selectedProject?.defaultBranch}
+                        activeTasks={activeProjectTasks}
+                        value={currentSourceBranch ?? undefined}
+                        selectedTaskId={draft?.parentTaskId}
+                        onChange={handleBranchOrTaskChange}
+                        label="Source branch or parent task"
+                        side="top"
+                        size="xs"
+                      />
+                    </div>
                   )}
-                  <Kbd shortcut="cmd+e" />
-                </button>
-              )}
+              </div>
 
-              {!isNoteMode && selectedWorkItems.length > 0 && (
-                <button
-                  type="button"
-                  role="checkbox"
-                  aria-checked={currentUpdateWorkItemStatus}
-                  className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[5px] px-2.5 py-[5px] text-xs font-medium"
-                  style={
-                    currentUpdateWorkItemStatus
-                      ? {
-                          background:
-                            'color-mix(in oklch, oklch(0.78 0.18 295) 14%, transparent)',
-                          border:
-                            '1px solid color-mix(in oklch, oklch(0.78 0.18 295) 30%, transparent)',
-                          color: 'oklch(0.78 0.18 295)',
-                        }
-                      : {
-                          background: 'oklch(1 0 0 / 0.03)',
-                          border: '1px solid oklch(1 0 0 / 0.07)',
-                          color: 'oklch(0.78 0.01 280)',
-                        }
-                  }
-                  onClick={() =>
-                    updateDraft({
-                      updateWorkItemStatus: !currentUpdateWorkItemStatus,
-                    })
-                  }
-                >
-                  <ToolCheckmark checked={currentUpdateWorkItemStatus} />
-                  Update work item status
-                </button>
-              )}
+              <div className="flex-1" />
 
-              {/* Source branch / parent task selector */}
-              {!isNoteMode &&
-                currentCreateWorktree &&
-                selectedProjectId &&
-                (branches.length > 0 || activeProjectTasks.length > 0) && (
-                  <div
-                    className="inline-flex shrink-0 items-center gap-[5px] rounded-[5px] px-2.5 py-[5px] text-xs"
-                    style={{
-                      background: 'oklch(1 0 0 / 0.03)',
-                      border: '1px solid oklch(1 0 0 / 0.07)',
-                    }}
-                  >
-                    <span style={{ color: 'oklch(0.55 0.01 280)' }}>
-                      {draft?.parentTaskId ? 'child of' : 'from'}
-                    </span>
-                    <BranchOrTaskSelect
-                      branches={branchInfos}
-                      favoriteBranches={selectedProject?.favoriteBranches}
-                      defaultBranch={selectedProject?.defaultBranch}
-                      activeTasks={activeProjectTasks}
-                      value={currentSourceBranch ?? undefined}
-                      selectedTaskId={draft?.parentTaskId}
-                      onChange={handleBranchOrTaskChange}
-                      label="Source branch or parent task"
-                      side="top"
-                      size="xs"
-                    />
-                  </div>
+              <div className="text-ink-3 flex items-center gap-3 font-mono text-[10.5px] whitespace-nowrap">
+                {!isNoteMode && showSearchInput && (
+                  <span className="flex items-center gap-1">
+                    <Kbd shortcut="cmd+right" /> project
+                  </span>
                 )}
-            </div>
-
-            <div className="flex-1" />
-
-            <div className="text-ink-3 flex items-center gap-3 font-mono text-[10.5px] whitespace-nowrap">
-              {!isNoteMode && showSearchInput && (
-                <span className="flex items-center gap-1">
-                  <Kbd shortcut="cmd+right" /> project
-                </span>
-              )}
-              {!isNoteMode && canToggleMode && showSearchInput && (
-                <>
-                  <div
-                    className="mx-1 h-[18px] w-px"
-                    style={{ background: 'oklch(1 0 0 / 0.06)' }}
-                  />
-                  <span className="flex items-center gap-1">
-                    <Kbd shortcut="cmd+m" />{' '}
-                    {inputMode === 'search' ? 'prompt' : 'search'}
-                  </span>
-                </>
-              )}
-              {inputMode === 'search' && searchStep === 'select' && (
-                <>
-                  <span className="flex items-center gap-1">
-                    <Kbd shortcut="up" /> <Kbd shortcut="down" /> navigate
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Kbd shortcut="enter" /> select
-                  </span>
-                  {canAdvanceToCompose && (
+                {!isNoteMode && canToggleMode && showSearchInput && (
+                  <>
+                    <div
+                      className="mx-1 h-[18px] w-px"
+                      style={{ background: 'oklch(1 0 0 / 0.06)' }}
+                    />
                     <span className="flex items-center gap-1">
-                      <Kbd shortcut="cmd+enter" /> next
+                      <Kbd shortcut="cmd+m" />{' '}
+                      {inputMode === 'search' ? 'prompt' : 'search'}
                     </span>
-                  )}
-                </>
-              )}
-              {inputMode === 'search' && searchStep === 'compose' && (
-                <>
+                  </>
+                )}
+                {inputMode === 'search' && searchStep === 'select' && (
+                  <>
+                    <span className="flex items-center gap-1">
+                      <Kbd shortcut="up" /> <Kbd shortcut="down" /> navigate
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Kbd shortcut="enter" /> select
+                    </span>
+                    {canAdvanceToCompose && (
+                      <span className="flex items-center gap-1">
+                        <Kbd shortcut="cmd+enter" /> next
+                      </span>
+                    )}
+                  </>
+                )}
+                {inputMode === 'search' && searchStep === 'compose' && (
+                  <>
+                    <span className="flex items-center gap-1">
+                      <Kbd shortcut="escape" /> back
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Kbd shortcut="cmd+enter" /> start
+                    </span>
+                  </>
+                )}
+                {isNoteMode && (
                   <span className="flex items-center gap-1">
-                    <Kbd shortcut="escape" /> back
+                    <Kbd shortcut="cmd+enter" /> create note
                   </span>
+                )}
+                {!isNoteMode && inputMode === 'prompt' && (
                   <span className="flex items-center gap-1">
                     <Kbd shortcut="cmd+enter" /> start
                   </span>
-                </>
-              )}
-              {isNoteMode && (
+                )}
                 <span className="flex items-center gap-1">
-                  <Kbd shortcut="cmd+enter" /> create note
+                  <Kbd shortcut="cmd+shift+escape" /> discard
                 </span>
-              )}
-              {!isNoteMode && inputMode === 'prompt' && (
-                <span className="flex items-center gap-1">
-                  <Kbd shortcut="cmd+enter" /> start
-                </span>
-              )}
-              <span className="flex items-center gap-1">
-                <Kbd shortcut="cmd+shift+escape" /> discard
-              </span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </FocusLock>,
+      </FocusLock>
+    </KeyboardLayerProvider>,
     document.body,
   );
 }

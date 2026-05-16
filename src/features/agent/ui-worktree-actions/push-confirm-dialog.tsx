@@ -1,4 +1,7 @@
-import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
+import {
+  KeyboardLayerProvider,
+  useKeyboardLayer,
+} from '@/common/context/keyboard-bindings';
 import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
@@ -49,49 +52,52 @@ export function PushConfirmDialog({
   if (!isOpen) return null;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Commit and Push Changes"
-      closeOnClickOutside={!isPending}
-      closeOnEscape={!isPending}
-    >
-      <p className="text-ink-1 mb-4 text-sm">
-        You have uncommitted changes. Commit all current changes with an
-        automatic message and then push this branch to update the pull request?
-      </p>
+    <KeyboardLayerProvider layer={layer}>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Commit and Push Changes"
+        closeOnClickOutside={!isPending}
+        closeOnEscape={!isPending}
+      >
+        <p className="text-ink-1 mb-4 text-sm">
+          You have uncommitted changes. Commit all current changes with an
+          automatic message and then push this branch to update the pull
+          request?
+        </p>
 
-      <div className="flex justify-end gap-3">
-        <Button
-          onClick={onClose}
-          disabled={isPending}
-          variant="ghost"
-          size="md"
-        >
-          Cancel
-        </Button>
-        {showPushOnly && onPushOnly ? (
+        <div className="flex justify-end gap-3">
           <Button
-            onClick={handlePushOnly}
-            loading={isPending}
+            onClick={onClose}
             disabled={isPending}
-            variant="secondary"
+            variant="ghost"
             size="md"
           >
-            Push Existing Commits
+            Cancel
           </Button>
-        ) : null}
-        <Button
-          onClick={handleCommitAndPush}
-          loading={isPending}
-          disabled={isPending}
-          variant="primary"
-          size="md"
-        >
-          Commit & Push
-          <Kbd shortcut="cmd+enter" />
-        </Button>
-      </div>
-    </Modal>
+          {showPushOnly && onPushOnly ? (
+            <Button
+              onClick={handlePushOnly}
+              loading={isPending}
+              disabled={isPending}
+              variant="secondary"
+              size="md"
+            >
+              Push Existing Commits
+            </Button>
+          ) : null}
+          <Button
+            onClick={handleCommitAndPush}
+            loading={isPending}
+            disabled={isPending}
+            variant="primary"
+            size="md"
+          >
+            Commit & Push
+            <Kbd shortcut="cmd+enter" />
+          </Button>
+        </div>
+      </Modal>
+    </KeyboardLayerProvider>
   );
 }

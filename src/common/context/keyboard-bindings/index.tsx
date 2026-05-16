@@ -110,6 +110,29 @@ export function RootKeyboardBindings({ children }: { children: ReactNode }) {
       const key = formatKeyboardEvent(event);
       const inInput = isTypingInInput(event);
 
+      const tryHandleBinding = (entry: {
+        id: string;
+        bindings: RefObject<Bindings>;
+        layerId?: string;
+      }) => {
+        const binding = entry.bindings.current?.[key];
+        if (!binding) return false;
+
+        const config: BindingConfig =
+          typeof binding === 'function' ? { handler: binding } : binding;
+
+        if (config.ignoreIfInput && inInput) return false;
+
+        const handled = config.handler(event);
+        if (handled === true || handled === undefined) {
+          event.preventDefault();
+          event.stopPropagation();
+          return true;
+        }
+
+        return false;
+      };
+
       // Find topmost exclusive layer (last in array = most recent mount)
       let topmostExclusive: (typeof layersRef.current)[number] | null = null;
       for (let i = layersRef.current.length - 1; i >= 0; i--) {
@@ -119,10 +142,8 @@ export function RootKeyboardBindings({ children }: { children: ReactNode }) {
         }
       }
 
-      // Build set of allowed layer IDs
-      let allowedLayerIds: Set<string> | null = null;
       if (topmostExclusive) {
-        allowedLayerIds = new Set<string>([topmostExclusive.id]);
+        const allowedLayerIds = new Set<string>([topmostExclusive.id]);
         if (topmostExclusive.passthrough) {
           // Passthrough matches by layer NAME
           for (const layer of layersRef.current) {
@@ -131,31 +152,35 @@ export function RootKeyboardBindings({ children }: { children: ReactNode }) {
             }
           }
         }
+
+        const prioritizedLayerIds = [topmostExclusive.id];
+        for (let i = layersRef.current.length - 1; i >= 0; i--) {
+          const layer = layersRef.current[i];
+          if (
+            layer.id !== topmostExclusive.id &&
+            allowedLayerIds.has(layer.id) &&
+            !prioritizedLayerIds.includes(layer.id)
+          ) {
+            prioritizedLayerIds.push(layer.id);
+          }
+        }
+
+        for (const layerId of prioritizedLayerIds) {
+          for (let i = bindingsRef.current.length - 1; i >= 0; i--) {
+            const entry = bindingsRef.current[i];
+            if (entry.layerId !== layerId) continue;
+            if (tryHandleBinding(entry)) {
+              return;
+            }
+          }
+        }
+
+        return;
       }
 
       // Loop LIFO (most recently registered first)
       for (let i = bindingsRef.current.length - 1; i >= 0; i--) {
-        const entry = bindingsRef.current[i];
-
-        // If exclusive layer active, filter
-        if (allowedLayerIds) {
-          if (!entry.layerId || !allowedLayerIds.has(entry.layerId)) {
-            continue;
-          }
-        }
-
-        const binding = entry.bindings.current?.[key];
-        if (!binding) continue;
-
-        const config: BindingConfig =
-          typeof binding === 'function' ? { handler: binding } : binding;
-
-        if (config.ignoreIfInput && inInput) continue;
-
-        const handled = config.handler(event);
-        if (handled === true || handled === undefined) {
-          event.preventDefault();
-          event.stopPropagation();
+        if (tryHandleBinding(bindingsRef.current[i])) {
           return;
         }
       }

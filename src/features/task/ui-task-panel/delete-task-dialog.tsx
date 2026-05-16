@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 
-import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
+import {
+  KeyboardLayerProvider,
+  useKeyboardLayer,
+} from '@/common/context/keyboard-bindings';
 import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
 import { Checkbox } from '@/common/ui/checkbox';
@@ -65,54 +68,56 @@ export function DeleteTaskDialog({
   if (!isOpen) return null;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Delete Task"
-      closeOnClickOutside={!isPending}
-      closeOnEscape={!isPending}
-    >
-      <p className="text-ink-1 mb-3 text-sm">
-        Are you sure you want to delete{' '}
-        <span className="text-ink-0 font-medium">{taskName}</span>? This action
-        cannot be undone.
-      </p>
+    <KeyboardLayerProvider layer={layer}>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Delete Task"
+        closeOnClickOutside={!isPending}
+        closeOnEscape={!isPending}
+      >
+        <p className="text-ink-1 mb-3 text-sm">
+          Are you sure you want to delete{' '}
+          <span className="text-ink-0 font-medium">{taskName}</span>? This
+          action cannot be undone.
+        </p>
 
-      {hasWorktree && (
-        <div className="mb-4">
-          <Checkbox
-            checked={deleteWorktree}
-            onChange={setDeleteWorktree}
-            label="Delete associated worktree and branch"
-            description="If unchecked, the worktree is kept unless it has no changes."
-          />
-          <Kbd shortcut="cmd+shift+w" className="mt-0.5 ml-6 text-[9px]" />
+        {hasWorktree && (
+          <div className="mb-4">
+            <Checkbox
+              checked={deleteWorktree}
+              onChange={setDeleteWorktree}
+              label="Delete associated worktree and branch"
+              description="If unchecked, the worktree is kept unless it has no changes."
+            />
+            <Kbd shortcut="cmd+shift+w" className="mt-0.5 ml-6 text-[9px]" />
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            variant="ghost"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleConfirm}
+            loading={isPending}
+            disabled={isPending}
+            variant="danger"
+          >
+            Delete
+            <span className="inline-flex items-center gap-1">
+              <Kbd shortcut="cmd+enter" />
+              <Kbd shortcut="cmd+backspace" />
+            </span>
+          </Button>
         </div>
-      )}
-
-      <div className="flex justify-end gap-3">
-        <Button
-          type="button"
-          onClick={onClose}
-          disabled={isPending}
-          variant="ghost"
-        >
-          Cancel
-        </Button>
-        <Button
-          type="button"
-          onClick={handleConfirm}
-          loading={isPending}
-          disabled={isPending}
-          variant="danger"
-        >
-          Delete
-          <span className="inline-flex items-center gap-1">
-            <Kbd shortcut="cmd+enter" />
-            <Kbd shortcut="cmd+backspace" />
-          </span>
-        </Button>
-      </div>
-    </Modal>
+      </Modal>
+    </KeyboardLayerProvider>
   );
 }

@@ -3,7 +3,10 @@ import { nanoid } from 'nanoid';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 
-import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
+import {
+  KeyboardLayerProvider,
+  useKeyboardLayer,
+} from '@/common/context/keyboard-bindings';
 import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
 import { Checkbox } from '@/common/ui/checkbox';
@@ -310,218 +313,231 @@ export function AddStepDialog({
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add Step" size="lg">
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Select
-            value={presetType}
-            onChange={(value) => setPresetType(value as AddStepPresetType)}
-            options={[...STEP_PRESET_OPTIONS]}
-            shortcut="cmd+t"
-            side="top"
+    <KeyboardLayerProvider layer={layer}>
+      <Modal isOpen={isOpen} onClose={onClose} title="Add Step" size="lg">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Select
+              value={presetType}
+              onChange={(value) => setPresetType(value as AddStepPresetType)}
+              options={[...STEP_PRESET_OPTIONS]}
+              shortcut="cmd+t"
+              side="top"
+            />
+          </div>
+          {(() => {
+            const stepSnippets = promptSnippets.filter(
+              (s) => s.enabled && s.contexts.newTaskStep,
+            );
+            if (stepSnippets.length === 0) return null;
+            return (
+              <div className="flex flex-wrap gap-1.5">
+                {stepSnippets.map((snippet) => (
+                  <button
+                    key={snippet.id}
+                    type="button"
+                    className="bg-bg-2 text-ink-2 hover:bg-bg-3 hover:text-ink-1 rounded-full px-2.5 py-0.5 text-xs transition-colors"
+                    onClick={() => {
+                      const { output } = resolvePromptSnippet(
+                        snippet,
+                        snippetVariableContext,
+                      );
+                      setPromptTemplate(output);
+                      setTimeout(() => textareaRef.current?.focus(), 0);
+                    }}
+                  >
+                    {snippet.name}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
+          <PromptTextarea
+            ref={textareaRef}
+            value={promptTemplate}
+            onChange={setPromptTemplate}
+            onEnterKey={handleEnterKey}
+            placeholder={
+              presetType === 'review-changes'
+                ? 'Optional: add any extra review focus...'
+                : 'Describe what this step should do...'
+            }
+            maxHeight={200}
+            showCommands
+            skills={skills}
+            enableFilePathAutocomplete={!!projectRoot}
+            projectRoot={projectRoot}
+            projectId={projectId}
+            images={images}
+            onImageAttach={handleImageAttach}
+            onImageRemove={handleImageRemove}
+            promptSnippets={promptSnippets}
+            snippetVariableContext={snippetVariableContext}
           />
-        </div>
-        {(() => {
-          const stepSnippets = promptSnippets.filter(
-            (s) => s.enabled && s.contexts.newTaskStep,
-          );
-          if (stepSnippets.length === 0) return null;
-          return (
-            <div className="flex flex-wrap gap-1.5">
-              {stepSnippets.map((snippet) => (
-                <button
-                  key={snippet.id}
+          {presetType === 'review-changes' && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-ink-1 text-xs font-medium">
+                  Reviewers
+                </span>
+                <Button
                   type="button"
-                  className="bg-bg-2 text-ink-2 hover:bg-bg-3 hover:text-ink-1 rounded-full px-2.5 py-0.5 text-xs transition-colors"
-                  onClick={() => {
-                    const { output } = resolvePromptSnippet(
-                      snippet,
-                      snippetVariableContext,
-                    );
-                    setPromptTemplate(output);
-                    setTimeout(() => textareaRef.current?.focus(), 0);
-                  }}
+                  onClick={() =>
+                    setReviewers((prev) => [
+                      ...prev,
+                      {
+                        id: nanoid(),
+                        label: '',
+                        focusPrompt: '',
+                        backend,
+                        model: 'default',
+                      },
+                    ])
+                  }
+                  variant="ghost"
+                  size="sm"
+                  icon={<Plus />}
                 >
-                  {snippet.name}
-                </button>
-              ))}
-            </div>
-          );
-        })()}
-        <PromptTextarea
-          ref={textareaRef}
-          value={promptTemplate}
-          onChange={setPromptTemplate}
-          onEnterKey={handleEnterKey}
-          placeholder={
-            presetType === 'review-changes'
-              ? 'Optional: add any extra review focus...'
-              : 'Describe what this step should do...'
-          }
-          maxHeight={200}
-          showCommands
-          skills={skills}
-          enableFilePathAutocomplete={!!projectRoot}
-          projectRoot={projectRoot}
-          projectId={projectId}
-          images={images}
-          onImageAttach={handleImageAttach}
-          onImageRemove={handleImageRemove}
-          promptSnippets={promptSnippets}
-          snippetVariableContext={snippetVariableContext}
-        />
-        {presetType === 'review-changes' && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-ink-1 text-xs font-medium">Reviewers</span>
-              <Button
-                type="button"
-                onClick={() =>
-                  setReviewers((prev) => [
-                    ...prev,
-                    {
-                      id: nanoid(),
-                      label: '',
-                      focusPrompt: '',
-                      backend,
-                      model: 'default',
-                    },
-                  ])
-                }
-                variant="ghost"
-                size="sm"
-                icon={<Plus />}
-              >
-                Add reviewer
-              </Button>
-            </div>
-            <div className="max-h-[240px] space-y-2 overflow-y-auto">
-              {reviewers.map((reviewer, idx) => (
-                <div
-                  key={reviewer.id}
-                  className="bg-bg-1/50 border-glass-border rounded-md border p-2"
-                >
-                  <div className="mb-1.5 flex items-center gap-2">
-                    <Input
+                  Add reviewer
+                </Button>
+              </div>
+              <div className="max-h-[240px] space-y-2 overflow-y-auto">
+                {reviewers.map((reviewer, idx) => (
+                  <div
+                    key={reviewer.id}
+                    className="bg-bg-1/50 border-glass-border rounded-md border p-2"
+                  >
+                    <div className="mb-1.5 flex items-center gap-2">
+                      <Input
+                        size="sm"
+                        value={reviewer.label}
+                        onChange={(e) =>
+                          setReviewers((prev) =>
+                            prev.map((r, i) =>
+                              i === idx ? { ...r, label: e.target.value } : r,
+                            ),
+                          )
+                        }
+                        placeholder="Reviewer label"
+                        className="flex-1"
+                      />
+                      <Select
+                        value={reviewer.backend}
+                        onChange={(value) =>
+                          setReviewers((prev) =>
+                            prev.map((r, i) =>
+                              i === idx
+                                ? {
+                                    ...r,
+                                    backend: value as AgentBackendType,
+                                    model: 'default',
+                                  }
+                                : r,
+                            ),
+                          )
+                        }
+                        options={reviewerBackendOptions}
+                        side="top"
+                        className="w-[130px]"
+                      />
+                      <ReviewerModelSelect
+                        reviewer={reviewer}
+                        onChange={(model) =>
+                          setReviewers((prev) =>
+                            prev.map((r, i) =>
+                              i === idx ? { ...r, model } : r,
+                            ),
+                          )
+                        }
+                      />
+                      <IconButton
+                        onClick={() =>
+                          setReviewers((prev) =>
+                            prev.filter((_, i) => i !== idx),
+                          )
+                        }
+                        size="sm"
+                        icon={<Trash2 />}
+                        tooltip="Remove reviewer"
+                      />
+                    </div>
+                    <Textarea
                       size="sm"
-                      value={reviewer.label}
+                      value={reviewer.focusPrompt}
                       onChange={(e) =>
                         setReviewers((prev) =>
                           prev.map((r, i) =>
-                            i === idx ? { ...r, label: e.target.value } : r,
-                          ),
-                        )
-                      }
-                      placeholder="Reviewer label"
-                      className="flex-1"
-                    />
-                    <Select
-                      value={reviewer.backend}
-                      onChange={(value) =>
-                        setReviewers((prev) =>
-                          prev.map((r, i) =>
                             i === idx
-                              ? {
-                                  ...r,
-                                  backend: value as AgentBackendType,
-                                  model: 'default',
-                                }
+                              ? { ...r, focusPrompt: e.target.value }
                               : r,
                           ),
                         )
                       }
-                      options={reviewerBackendOptions}
-                      side="top"
-                      className="w-[130px]"
-                    />
-                    <ReviewerModelSelect
-                      reviewer={reviewer}
-                      onChange={(model) =>
-                        setReviewers((prev) =>
-                          prev.map((r, i) => (i === idx ? { ...r, model } : r)),
-                        )
-                      }
-                    />
-                    <IconButton
-                      onClick={() =>
-                        setReviewers((prev) => prev.filter((_, i) => i !== idx))
-                      }
-                      size="sm"
-                      icon={<Trash2 />}
-                      tooltip="Remove reviewer"
+                      placeholder="Focus prompt for this reviewer..."
+                      rows={2}
                     />
                   </div>
-                  <Textarea
-                    size="sm"
-                    value={reviewer.focusPrompt}
-                    onChange={(e) =>
-                      setReviewers((prev) =>
-                        prev.map((r, i) =>
-                          i === idx ? { ...r, focusPrompt: e.target.value } : r,
-                        ),
-                      )
-                    }
-                    placeholder="Focus prompt for this reviewer..."
-                    rows={2}
-                  />
-                </div>
-              ))}
+                ))}
+              </div>
+              {!canSubmit && (
+                <p className="text-status-run text-xs">
+                  Add at least one reviewer and fill every label/focus prompt.
+                </p>
+              )}
             </div>
-            {!canSubmit && (
-              <p className="text-status-run text-xs">
-                Add at least one reviewer and fill every label/focus prompt.
-              </p>
-            )}
-          </div>
-        )}
-        <div className="flex flex-wrap items-center gap-3">
-          <ModeSelector
-            value={interactionMode}
-            onChange={setInteractionMode}
-            backend={backend}
-            shortcut="cmd+i"
-            side="top"
-          />
-          <BackendSelector
-            value={backend}
-            onChange={handleBackendChange}
-            shortcut="cmd+j"
-            side="top"
-          />
-          <ModelSelector
-            value={model}
-            onChange={setModel}
-            models={getModelsForBackend(backend, dynamicModels)}
-            shortcut="cmd+l"
-            side="top"
-          />
-        </div>
-        <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-2">
-            <Checkbox
-              size="sm"
-              checked={autoStart}
-              onChange={setAutoStart}
-              label="Auto-start"
+          )}
+          <div className="flex flex-wrap items-center gap-3">
+            <ModeSelector
+              value={interactionMode}
+              onChange={setInteractionMode}
+              backend={backend}
+              shortcut="cmd+i"
+              side="top"
+              layer={layer}
             />
-            <Kbd shortcut="cmd+shift+s" />
+            <BackendSelector
+              value={backend}
+              onChange={handleBackendChange}
+              shortcut="cmd+j"
+              side="top"
+              layer={layer}
+            />
+            <ModelSelector
+              value={model}
+              onChange={setModel}
+              models={getModelsForBackend(backend, dynamicModels)}
+              shortcut="cmd+l"
+              side="top"
+              layer={layer}
+            />
           </div>
-          <div className="flex gap-3">
-            <Button type="button" onClick={onClose} variant="ghost">
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleSubmit}
-              disabled={!canSubmit}
-              variant="primary"
-            >
-              Add Step
-              <Kbd shortcut="cmd+enter" className="ml-1" />
-            </Button>
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                size="sm"
+                checked={autoStart}
+                onChange={setAutoStart}
+                label="Auto-start"
+              />
+              <Kbd shortcut="cmd+shift+s" />
+            </div>
+            <div className="flex gap-3">
+              <Button type="button" onClick={onClose} variant="ghost">
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!canSubmit}
+                variant="primary"
+              >
+                Add Step
+                <Kbd shortcut="cmd+enter" className="ml-1" />
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
-    </Modal>
+      </Modal>
+    </KeyboardLayerProvider>
   );
 }

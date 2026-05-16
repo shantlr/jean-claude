@@ -1,6 +1,9 @@
 import { useState } from 'react';
 
-import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
+import {
+  KeyboardLayerProvider,
+  useKeyboardLayer,
+} from '@/common/context/keyboard-bindings';
 import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
 import { Input } from '@/common/ui/input';
@@ -56,63 +59,65 @@ export function ChangeWorktreePathDialog({
   const hasChanged = selectedPath !== currentPath;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Change Worktree Path"
-      closeOnClickOutside={!isPending}
-      closeOnEscape={!isPending}
-    >
-      <p className="text-ink-1 mb-4 text-sm">
-        Select the new location for the worktree directory. Use this to
-        reconnect a task to a worktree that has been moved.
-      </p>
+    <KeyboardLayerProvider layer={layer}>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Change Worktree Path"
+        closeOnClickOutside={!isPending}
+        closeOnEscape={!isPending}
+      >
+        <p className="text-ink-1 mb-4 text-sm">
+          Select the new location for the worktree directory. Use this to
+          reconnect a task to a worktree that has been moved.
+        </p>
 
-      <div className="mb-4">
-        <label className="text-ink-2 mb-1.5 block text-xs font-medium">
-          Worktree Path
-        </label>
-        <div className="flex items-center gap-2">
-          <Input
-            value={selectedPath}
-            onChange={(e) => setSelectedPath(e.target.value)}
-            disabled={isPending}
-            placeholder="/path/to/worktree"
-            spellCheck={false}
-            className="min-w-0 flex-1"
-          />
+        <div className="mb-4">
+          <label className="text-ink-2 mb-1.5 block text-xs font-medium">
+            Worktree Path
+          </label>
+          <div className="flex items-center gap-2">
+            <Input
+              value={selectedPath}
+              onChange={(e) => setSelectedPath(e.target.value)}
+              disabled={isPending}
+              placeholder="/path/to/worktree"
+              spellCheck={false}
+              className="min-w-0 flex-1"
+            />
+            <Button
+              type="button"
+              onClick={handleBrowse}
+              disabled={isPending}
+              variant="secondary"
+              className="shrink-0"
+            >
+              Browse...
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3">
           <Button
             type="button"
-            onClick={handleBrowse}
+            onClick={onClose}
             disabled={isPending}
-            variant="secondary"
-            className="shrink-0"
+            variant="ghost"
           >
-            Browse...
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleConfirm}
+            loading={isPending}
+            disabled={isPending || !hasChanged}
+            variant="primary"
+          >
+            Change Path
+            <Kbd shortcut="cmd+enter" />
           </Button>
         </div>
-      </div>
-
-      <div className="flex justify-end gap-3">
-        <Button
-          type="button"
-          onClick={onClose}
-          disabled={isPending}
-          variant="ghost"
-        >
-          Cancel
-        </Button>
-        <Button
-          type="button"
-          onClick={handleConfirm}
-          loading={isPending}
-          disabled={isPending || !hasChanged}
-          variant="primary"
-        >
-          Change Path
-          <Kbd shortcut="cmd+enter" />
-        </Button>
-      </div>
-    </Modal>
+      </Modal>
+    </KeyboardLayerProvider>
   );
 }

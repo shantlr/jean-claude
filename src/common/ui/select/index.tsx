@@ -11,7 +11,10 @@ import React, {
 } from 'react';
 import { createPortal } from 'react-dom';
 
-import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import {
+  useRegisterKeyboardBindings,
+  type KeyboardLayer,
+} from '@/common/context/keyboard-bindings';
 import type { BindingKey } from '@/common/context/keyboard-bindings/types';
 import { useRegisterOverlay } from '@/common/context/overlay';
 import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
@@ -45,6 +48,7 @@ export const Select = forwardRef<
     className?: string;
     shortcut?: BindingKey | BindingKey[];
     shortcutBehavior?: 'cycle' | 'open';
+    layer?: KeyboardLayer;
   }
 >(function Select(
   {
@@ -59,6 +63,7 @@ export const Select = forwardRef<
     className,
     shortcut,
     shortcutBehavior = 'cycle',
+    layer,
   },
   ref,
 ) {
@@ -200,7 +205,7 @@ export const Select = forwardRef<
         return true;
       },
     },
-    { enabled: isOpen },
+    { enabled: isOpen, layer },
   );
 
   // Shortcut bindings (always active when mounted, ignoreIfInput)
@@ -227,6 +232,7 @@ export const Select = forwardRef<
   );
   useRegisterKeyboardBindings(`select-shortcut-${id}`, shortcutBindings, {
     enabled: shortcutKeys.length > 0 && !disabled,
+    layer,
   });
 
   // Resolve display shortcut (first one for <Kbd>)
@@ -349,5 +355,6 @@ export const Select = forwardRef<
   className?: string;
   shortcut?: BindingKey | BindingKey[];
   shortcutBehavior?: 'cycle' | 'open';
+  layer?: KeyboardLayer;
   ref?: React.Ref<SelectRef>;
 }) => React.ReactElement;

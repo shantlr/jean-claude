@@ -1,7 +1,10 @@
 import { Loader2 } from 'lucide-react';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 
-import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
+import {
+  KeyboardLayerProvider,
+  useKeyboardLayer,
+} from '@/common/context/keyboard-bindings';
 import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
 import { Checkbox } from '@/common/ui/checkbox';
@@ -192,117 +195,119 @@ export function MergeConfirmDialog({
   if (!isOpen) return null;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Merge Worktree"
-      closeOnClickOutside={!isPending && !isSubmitting}
-      closeOnEscape={!isPending && !isSubmitting}
-      contentRef={contentRef}
-    >
-      <p className="text-ink-1 mb-4">
-        Merge branch{' '}
-        <span className="text-acc-ink font-mono">{branchName}</span> into{' '}
-        <span className="text-status-done font-mono">{targetBranch}</span>?
-      </p>
+    <KeyboardLayerProvider layer={layer}>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Merge Worktree"
+        closeOnClickOutside={!isPending && !isSubmitting}
+        closeOnEscape={!isPending && !isSubmitting}
+        contentRef={contentRef}
+      >
+        <p className="text-ink-1 mb-4">
+          Merge branch{' '}
+          <span className="text-acc-ink font-mono">{branchName}</span> into{' '}
+          <span className="text-status-done font-mono">{targetBranch}</span>?
+        </p>
 
-      {isCheckingConflicts && (
-        <div className="border-glass-border bg-bg-0 text-ink-1 mb-4 flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Checking for merge conflicts...
-        </div>
-      )}
+        {isCheckingConflicts && (
+          <div className="border-glass-border bg-bg-0 text-ink-1 mb-4 flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Checking for merge conflicts...
+          </div>
+        )}
 
-      {hasConflicts && (
-        <div className="mb-4 rounded-md border border-red-700 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-          Merge conflicts were detected with this target branch. Resolve them
-          before merging.
-        </div>
-      )}
+        {hasConflicts && (
+          <div className="mb-4 rounded-md border border-red-700 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+            Merge conflicts were detected with this target branch. Resolve them
+            before merging.
+          </div>
+        )}
 
-      {checkError && (
-        <div className="mb-4 rounded-md border border-amber-700 bg-amber-950/40 px-3 py-2 text-sm text-amber-200">
-          Unable to check merge conflicts: {checkError}
-        </div>
-      )}
+        {checkError && (
+          <div className="mb-4 rounded-md border border-amber-700 bg-amber-950/40 px-3 py-2 text-sm text-amber-200">
+            Unable to check merge conflicts: {checkError}
+          </div>
+        )}
 
-      {submitError && (
-        <div className="mb-4 rounded-md border border-red-700 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-          {submitError}
-        </div>
-      )}
+        {submitError && (
+          <div className="mb-4 rounded-md border border-red-700 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+            {submitError}
+          </div>
+        )}
 
-      {hasUnstagedChanges && (
+        {hasUnstagedChanges && (
+          <Checkbox
+            checked={commitAllUnstaged}
+            onChange={setCommitAllUnstaged}
+            label="Commit all unstaged files before merge"
+            className="mb-4"
+          />
+        )}
+
+        {/* Squash option */}
         <Checkbox
-          checked={commitAllUnstaged}
-          onChange={setCommitAllUnstaged}
-          label="Commit all unstaged files before merge"
+          checked={squash}
+          onChange={setSquash}
+          label="Squash commits"
           className="mb-4"
         />
-      )}
 
-      {/* Squash option */}
-      <Checkbox
-        checked={squash}
-        onChange={setSquash}
-        label="Squash commits"
-        className="mb-4"
-      />
+        {/* Commit message (shown when squash is enabled) */}
+        {squash && (
+          <div className="mb-4">
+            <label className="text-ink-2 mb-1.5 block text-xs font-medium">
+              Commit message
+            </label>
+            <Textarea
+              ref={commitMessageRef}
+              value={commitMessage}
+              onChange={(e) => setCommitMessage(e.target.value)}
+              placeholder={
+                canAutoGenerateCommitMessage
+                  ? 'Leave empty to auto-generate from changes'
+                  : 'Enter commit message...'
+              }
+              rows={3}
+              size="sm"
+            />
+          </div>
+        )}
 
-      {/* Commit message (shown when squash is enabled) */}
-      {squash && (
-        <div className="mb-4">
-          <label className="text-ink-2 mb-1.5 block text-xs font-medium">
-            Commit message
-          </label>
-          <Textarea
-            ref={commitMessageRef}
-            value={commitMessage}
-            onChange={(e) => setCommitMessage(e.target.value)}
-            placeholder={
-              canAutoGenerateCommitMessage
-                ? 'Leave empty to auto-generate from changes'
-                : 'Enter commit message...'
-            }
-            rows={3}
-            size="sm"
-          />
+        <div className="bg-bg-0 text-ink-2 mb-4 rounded-md p-3 text-sm">
+          <p className="mb-2">This will:</p>
+          <ul className="list-inside list-disc space-y-1">
+            {squash ? (
+              <li>Squash all commits into a single commit on {targetBranch}</li>
+            ) : (
+              <li>Merge all commits into {targetBranch}</li>
+            )}
+            <li>Delete the worktree and branch</li>
+            <li>Mark the task as completed</li>
+          </ul>
         </div>
-      )}
 
-      <div className="bg-bg-0 text-ink-2 mb-4 rounded-md p-3 text-sm">
-        <p className="mb-2">This will:</p>
-        <ul className="list-inside list-disc space-y-1">
-          {squash ? (
-            <li>Squash all commits into a single commit on {targetBranch}</li>
-          ) : (
-            <li>Merge all commits into {targetBranch}</li>
-          )}
-          <li>Delete the worktree and branch</li>
-          <li>Mark the task as completed</li>
-        </ul>
-      </div>
-
-      <div className="flex justify-end gap-3">
-        <Button
-          onClick={onClose}
-          disabled={isPending || isSubmitting}
-          variant="ghost"
-          size="md"
-        >
-          Cancel
-        </Button>
-        <Button
-          onClick={handleConfirm}
-          disabled={!canConfirm}
-          loading={isPending || isSubmitting}
-          variant="primary"
-          size="md"
-        >
-          {squash ? 'Squash & Merge' : 'Merge'}
-          <Kbd shortcut="cmd+enter" />
-        </Button>
-      </div>
-    </Modal>
+        <div className="flex justify-end gap-3">
+          <Button
+            onClick={onClose}
+            disabled={isPending || isSubmitting}
+            variant="ghost"
+            size="md"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirm}
+            disabled={!canConfirm}
+            loading={isPending || isSubmitting}
+            variant="primary"
+            size="md"
+          >
+            {squash ? 'Squash & Merge' : 'Merge'}
+            <Kbd shortcut="cmd+enter" />
+          </Button>
+        </div>
+      </Modal>
+    </KeyboardLayerProvider>
   );
 }

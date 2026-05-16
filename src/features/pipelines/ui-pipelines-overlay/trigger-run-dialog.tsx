@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
 
 import {
+  KeyboardLayerProvider,
   useKeyboardLayer,
   useRegisterKeyboardBindings,
 } from '@/common/context/keyboard-bindings';
@@ -98,6 +99,7 @@ export function TriggerRunDialog({
   pipeline: TrackedPipeline;
   onClose: () => void;
 }) {
+  const layer = useKeyboardLayer('dialog', { exclusive: true });
   const isBuild = pipeline.kind === 'build';
   const providerId = project.repoProviderId;
   const azureProjectId = project.repoProjectId;
@@ -107,27 +109,29 @@ export function TriggerRunDialog({
   // Guard: all required project fields must be present
   if (!providerId || !azureProjectId || !repoId) {
     return createPortal(
-      <FocusLock returnFocus>
-        <div
-          className="bg-bg-0/40 fixed inset-0 z-[60] flex items-center justify-center"
-          onClick={onClose}
-        >
+      <KeyboardLayerProvider layer={layer}>
+        <FocusLock returnFocus>
           <div
-            className="text-ink-1 border-glass-border bg-bg-1 w-full max-w-md rounded-lg border p-6 text-sm"
-            onClick={(e) => e.stopPropagation()}
+            className="bg-bg-0/40 fixed inset-0 z-[60] flex items-center justify-center"
+            onClick={onClose}
           >
-            <p className="text-status-fail">
-              Project is missing repository configuration. Please link a
-              repository first.
-            </p>
-            <div className="mt-4 flex justify-end">
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                Close
-              </Button>
+            <div
+              className="text-ink-1 border-glass-border bg-bg-1 w-full max-w-md rounded-lg border p-6 text-sm"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-status-fail">
+                Project is missing repository configuration. Please link a
+                repository first.
+              </p>
+              <div className="mt-4 flex justify-end">
+                <Button variant="ghost" size="sm" onClick={onClose}>
+                  Close
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      </FocusLock>,
+        </FocusLock>
+      </KeyboardLayerProvider>,
       document.body,
     );
   }
@@ -418,153 +422,155 @@ function TriggerRunDialogInner({
     uniqueOverridableVars.length > 0;
 
   return createPortal(
-    <FocusLock returnFocus>
-      <div
-        className="bg-bg-0/40 fixed inset-0 z-[60] flex items-center justify-center"
-        onClick={onClose}
-      >
+    <KeyboardLayerProvider layer={layer}>
+      <FocusLock returnFocus>
         <div
-          className="text-ink-1 border-glass-border bg-bg-1 w-full max-w-md rounded-lg border p-6 text-sm"
-          onClick={(e) => e.stopPropagation()}
+          className="bg-bg-0/40 fixed inset-0 z-[60] flex items-center justify-center"
+          onClick={onClose}
         >
-          {/* Title */}
-          <h3 className="text-ink-0 mb-4 text-base font-medium">
-            Run {pipelineName}
-          </h3>
+          <div
+            className="text-ink-1 border-glass-border bg-bg-1 w-full max-w-md rounded-lg border p-6 text-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Title */}
+            <h3 className="text-ink-0 mb-4 text-base font-medium">
+              Run {pipelineName}
+            </h3>
 
-          {/* Branch selector (build only) */}
-          {isBuild && (
-            <div className="mb-4">
-              <label className="text-ink-2 mb-1 block text-xs">Branch</label>
-              <BranchSelect
-                branches={pipelineBranchInfos}
-                value={branchFilter || undefined}
-                onChange={(branch) => setBranchFilter(branch)}
-                placeholder="Select branch..."
-              />
-            </div>
-          )}
-
-          {/* Parameters section (build only) */}
-          {isBuild && hasParams && (
-            <div className="mb-4">
-              <label className="text-ink-2 mb-2 block text-xs">
-                Parameters
-              </label>
-              <div className="space-y-3">
-                {/* Classic pipeline process parameters */}
-                {processInputs.map((input) => (
-                  <div key={input.name}>
-                    <ParameterField
-                      name={input.name}
-                      label={input.label || input.name}
-                      type={
-                        input.type === 'boolean'
-                          ? 'boolean'
-                          : (input.type === 'pickList' ||
-                                input.type === 'radio') &&
-                              input.options
-                            ? 'select'
-                            : 'text'
-                      }
-                      value={parameters[input.name] ?? ''}
-                      options={
-                        input.options
-                          ? Object.entries(input.options).map(
-                              ([value, optLabel]) => ({
-                                value,
-                                label: optLabel,
-                              }),
-                            )
-                          : undefined
-                      }
-                      onChange={handleParamChange}
-                    />
-                  </div>
-                ))}
-                {/* YAML pipeline parameters */}
-                {uniqueYamlParams.map((param) => (
-                  <div key={param.name}>
-                    <ParameterField
-                      name={param.name}
-                      label={param.name}
-                      type={
-                        param.type === 'boolean'
-                          ? 'boolean'
-                          : param.values && param.values.length > 0
-                            ? 'select'
-                            : 'text'
-                      }
-                      value={parameters[param.name] ?? ''}
-                      options={param.values?.map((val) => ({
-                        value: val,
-                        label: val,
-                      }))}
-                      onChange={handleParamChange}
-                    />
-                  </div>
-                ))}
-                {/* Overridable variables */}
-                {uniqueOverridableVars.map((variable) => (
-                  <div key={variable.name}>
-                    <ParameterField
-                      name={variable.name}
-                      label={variable.name}
-                      type="text"
-                      value={parameters[variable.name] ?? ''}
-                      onChange={handleParamChange}
-                    />
-                  </div>
-                ))}
+            {/* Branch selector (build only) */}
+            {isBuild && (
+              <div className="mb-4">
+                <label className="text-ink-2 mb-1 block text-xs">Branch</label>
+                <BranchSelect
+                  branches={pipelineBranchInfos}
+                  value={branchFilter || undefined}
+                  onChange={(branch) => setBranchFilter(branch)}
+                  placeholder="Select branch..."
+                />
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Release description (release only) */}
-          {!isBuild && (
-            <div className="mb-4">
-              <label className="text-ink-2 mb-1 block text-xs">
-                Description
-              </label>
-              <Input
+            {/* Parameters section (build only) */}
+            {isBuild && hasParams && (
+              <div className="mb-4">
+                <label className="text-ink-2 mb-2 block text-xs">
+                  Parameters
+                </label>
+                <div className="space-y-3">
+                  {/* Classic pipeline process parameters */}
+                  {processInputs.map((input) => (
+                    <div key={input.name}>
+                      <ParameterField
+                        name={input.name}
+                        label={input.label || input.name}
+                        type={
+                          input.type === 'boolean'
+                            ? 'boolean'
+                            : (input.type === 'pickList' ||
+                                  input.type === 'radio') &&
+                                input.options
+                              ? 'select'
+                              : 'text'
+                        }
+                        value={parameters[input.name] ?? ''}
+                        options={
+                          input.options
+                            ? Object.entries(input.options).map(
+                                ([value, optLabel]) => ({
+                                  value,
+                                  label: optLabel,
+                                }),
+                              )
+                            : undefined
+                        }
+                        onChange={handleParamChange}
+                      />
+                    </div>
+                  ))}
+                  {/* YAML pipeline parameters */}
+                  {uniqueYamlParams.map((param) => (
+                    <div key={param.name}>
+                      <ParameterField
+                        name={param.name}
+                        label={param.name}
+                        type={
+                          param.type === 'boolean'
+                            ? 'boolean'
+                            : param.values && param.values.length > 0
+                              ? 'select'
+                              : 'text'
+                        }
+                        value={parameters[param.name] ?? ''}
+                        options={param.values?.map((val) => ({
+                          value: val,
+                          label: val,
+                        }))}
+                        onChange={handleParamChange}
+                      />
+                    </div>
+                  ))}
+                  {/* Overridable variables */}
+                  {uniqueOverridableVars.map((variable) => (
+                    <div key={variable.name}>
+                      <ParameterField
+                        name={variable.name}
+                        label={variable.name}
+                        type="text"
+                        value={parameters[variable.name] ?? ''}
+                        onChange={handleParamChange}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Release description (release only) */}
+            {!isBuild && (
+              <div className="mb-4">
+                <label className="text-ink-2 mb-1 block text-xs">
+                  Description
+                </label>
+                <Input
+                  size="sm"
+                  placeholder="Triggered from Jean-Claude"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+            )}
+
+            {/* Error */}
+            {error && (
+              <div className="text-status-fail bg-status-fail/40 mb-4 rounded px-3 py-2 text-xs">
+                {error}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
                 size="sm"
-                placeholder="Triggered from Jean-Claude"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
+                onClick={handleSubmit}
+                disabled={isPending}
+                loading={isPending}
+                icon={<Play />}
+              >
+                {isPending
+                  ? 'Queuing...'
+                  : isBuild
+                    ? 'Queue Build'
+                    : 'Create Release'}
+              </Button>
             </div>
-          )}
-
-          {/* Error */}
-          {error && (
-            <div className="text-status-fail bg-status-fail/40 mb-4 rounded px-3 py-2 text-xs">
-              {error}
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleSubmit}
-              disabled={isPending}
-              loading={isPending}
-              icon={<Play />}
-            >
-              {isPending
-                ? 'Queuing...'
-                : isBuild
-                  ? 'Queue Build'
-                  : 'Create Release'}
-            </Button>
           </div>
         </div>
-      </div>
-    </FocusLock>,
+      </FocusLock>
+    </KeyboardLayerProvider>,
     document.body,
   );
 }
