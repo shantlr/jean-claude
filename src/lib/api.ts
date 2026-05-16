@@ -12,6 +12,7 @@ import type {
   AzureDevOpsFileChange,
   AzureDevOpsCommentThread,
   AzureDevOpsComment,
+  AzureDevOpsPolicyEvaluation,
 } from '@shared/azure-devops-types';
 import type { DebugLogEntry } from '@shared/debug-log-types';
 import type { FeedItem, FeedNote, ProjectPriority } from '@shared/feed-types';
@@ -94,6 +95,7 @@ export type {
   AzureDevOpsFileChange,
   AzureDevOpsCommentThread,
   AzureDevOpsComment,
+  AzureDevOpsPolicyEvaluation,
 };
 
 export interface PackageJson {
@@ -639,6 +641,16 @@ export interface Api {
       providerId: string;
       imageUrl: string;
     }) => Promise<{ data: string; mimeType: string } | null>;
+    getPullRequestPolicyEvaluations: (params: {
+      providerId: string;
+      projectId: string;
+      pullRequestId: number;
+    }) => Promise<AzureDevOpsPolicyEvaluation[]>;
+    requeuePolicyEvaluation: (params: {
+      providerId: string;
+      projectId: string;
+      evaluationId: string;
+    }) => Promise<void>;
   };
   dialog: {
     openDirectory: () => Promise<string | null>;
@@ -1284,6 +1296,8 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         fetchImageAsBase64: async () => null,
+        getPullRequestPolicyEvaluations: async () => [],
+        requeuePolicyEvaluation: async () => {},
       },
       dialog: {
         openDirectory: async () => null,

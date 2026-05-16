@@ -84,6 +84,8 @@ import {
   listPullRequests,
   getPullRequest,
   getPullRequestWorkItems,
+  getPullRequestPolicyEvaluations,
+  requeuePolicyEvaluation,
   getPullRequestCommits,
   getPullRequestChanges,
   getPullRequestFileContent,
@@ -2014,6 +2016,30 @@ export function registerIpcHandlers() {
         status: string;
       },
     ) => updateThreadStatus(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:getPullRequestPolicyEvaluations',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        pullRequestId: number;
+      },
+    ) => getPullRequestPolicyEvaluations(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:requeuePolicyEvaluation',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        evaluationId: string;
+      },
+    ) => requeuePolicyEvaluation(params),
   );
 
   ipcMain.handle(

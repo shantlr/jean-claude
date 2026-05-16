@@ -334,6 +334,17 @@ contextBridge.exposeInMainWorld('api', {
     }) => ipcRenderer.invoke('azureDevOps:updateThreadStatus', params),
     fetchImageAsBase64: (params: { providerId: string; imageUrl: string }) =>
       ipcRenderer.invoke('azureDevOps:fetchImageAsBase64', params),
+    getPullRequestPolicyEvaluations: (params: {
+      providerId: string;
+      projectId: string;
+      pullRequestId: number;
+    }) =>
+      ipcRenderer.invoke('azureDevOps:getPullRequestPolicyEvaluations', params),
+    requeuePolicyEvaluation: (params: {
+      providerId: string;
+      projectId: string;
+      evaluationId: string;
+    }) => ipcRenderer.invoke('azureDevOps:requeuePolicyEvaluation', params),
   },
   dialog: {
     openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),

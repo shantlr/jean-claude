@@ -8,6 +8,7 @@ import {
   type AzureDevOpsFileChange,
   type AzureDevOpsCommentThread,
   type AzureDevOpsComment,
+  type AzureDevOpsPolicyEvaluation,
 } from '@/lib/api';
 
 import { useProject } from './use-projects';
@@ -292,6 +293,46 @@ export function useUpdateThreadStatus(projectId: string, prId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['pull-request-threads', projectId, prId],
+      });
+    },
+  });
+}
+
+export function usePullRequestPolicyEvaluations(
+  projectId: string,
+  prId: number,
+  options?: { refetchInterval?: number | false },
+) {
+  const repoInfo = useProjectRepoInfo(projectId);
+
+  return useQuery<AzureDevOpsPolicyEvaluation[]>({
+    queryKey: ['pull-request-policy-evaluations', projectId, prId],
+    queryFn: () =>
+      api.azureDevOps.getPullRequestPolicyEvaluations({
+        providerId: repoInfo!.providerId,
+        projectId: repoInfo!.projectId,
+        pullRequestId: prId,
+      }),
+    enabled: !!repoInfo && prId > 0,
+    staleTime: 30_000,
+    refetchInterval: options?.refetchInterval,
+  });
+}
+
+export function useRequeuePolicyEvaluation(projectId: string, prId: number) {
+  const queryClient = useQueryClient();
+  const repoInfo = useProjectRepoInfo(projectId);
+
+  return useMutation<void, Error, { evaluationId: string }>({
+    mutationFn: (params) =>
+      api.azureDevOps.requeuePolicyEvaluation({
+        providerId: repoInfo!.providerId,
+        projectId: repoInfo!.projectId,
+        ...params,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['pull-request-policy-evaluations', projectId, prId],
       });
     },
   });

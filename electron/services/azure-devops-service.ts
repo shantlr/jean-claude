@@ -1567,6 +1567,178 @@ export async function getPullRequest(params: {
   };
 }
 
+export async function getPullRequestPolicyEvaluations(params: {
+  providerId: string;
+  projectId: string;
+  pullRequestId: number;
+}): Promise<
+  import('@shared/azure-devops-types').AzureDevOpsPolicyEvaluation[]
+> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const artifactId = encodeURIComponent(
+    `vstfs:///CodeReview/CodeReviewId/${params.projectId}/${params.pullRequestId}`,
+  );
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/policy/evaluations?artifactId=${artifactId}&api-version=7.0-preview`;
+
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader },
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to get policy evaluations: ${error}`);
+  }
+
+  const data: {
+    value: Array<{
+      evaluationId: string;
+      status: string;
+      configuration: {
+        id: number;
+        isEnabled: boolean;
+        isBlocking: boolean;
+        type: { id: string; displayName: string };
+        settings: Record<string, unknown>;
+      };
+      context?: Record<string, unknown>;
+    }>;
+  } = await response.json();
+
+  dbg.azure(
+    'policy-evaluations:raw',
+    data.value.map((e) => ({
+      id: e.evaluationId,
+      status: e.status,
+      type: e.configuration.type.displayName,
+      isEnabled: e.configuration.isEnabled,
+      isBlocking: e.configuration.isBlocking,
+      settings: e.configuration.settings,
+      context: e.context,
+    })),
+  );
+
+  const enabledEvals = data.value.filter((e) => e.configuration.isEnabled);
+
+  // Resolve build definition names for policies that have a buildDefinitionId
+  // but no displayName set
+  const buildDefIds = [
+    ...new Set(
+      enabledEvals
+        .filter(
+          (e) =>
+            e.configuration.settings.buildDefinitionId &&
+            !e.configuration.settings.displayName,
+        )
+        .map((e) => e.configuration.settings.buildDefinitionId as number),
+    ),
+  ];
+
+  const buildDefNames = new Map<number, string>();
+  if (buildDefIds.length > 0) {
+    try {
+      const defsUrl = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/build/definitions?definitionIds=${buildDefIds.join(',')}&api-version=7.0`;
+      const defsResponse = await fetch(defsUrl, {
+        headers: { Authorization: authHeader },
+      });
+      if (defsResponse.ok) {
+        const defsData: {
+          value: Array<{ id: number; name: string }>;
+        } = await defsResponse.json();
+        for (const def of defsData.value) {
+          buildDefNames.set(def.id, def.name);
+        }
+      }
+    } catch {
+      // Fallback to type.displayName if build def lookup fails
+    }
+  }
+
+  const validStatuses = new Set([
+    'approved',
+    'rejected',
+    'running',
+    'queued',
+    'notApplicable',
+    'broken',
+  ]);
+
+  return enabledEvals.map((e) => {
+    const buildDefId = e.configuration.settings.buildDefinitionId as
+      | number
+      | undefined;
+    const resolvedName =
+      (e.configuration.settings.displayName as string | undefined) ??
+      (buildDefId ? buildDefNames.get(buildDefId) : undefined) ??
+      e.configuration.type.displayName;
+
+    const status = validStatuses.has(e.status)
+      ? (e.status as import('@shared/azure-devops-types').AzureDevOpsPolicyEvaluation['status'])
+      : 'broken';
+
+    return {
+      evaluationId: e.evaluationId,
+      status,
+      isBlocking: e.configuration.isBlocking,
+      configuration: {
+        id: e.configuration.id,
+        isEnabled: e.configuration.isEnabled,
+        isBlocking: e.configuration.isBlocking,
+        type: e.configuration.type,
+        settings: {
+          ...e.configuration.settings,
+          buildDefinitionId: buildDefId,
+          displayName: resolvedName,
+        },
+      },
+      context: e.context
+        ? {
+            buildId: e.context.buildId as number | undefined,
+            buildDefinitionId: e.context.buildDefinitionId as
+              | number
+              | undefined,
+            isExpired: e.context.isExpired as boolean | undefined,
+          }
+        : undefined,
+    };
+  });
+}
+
+export async function requeuePolicyEvaluation(params: {
+  providerId: string;
+  projectId: string;
+  evaluationId: string;
+}): Promise<void> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/policy/evaluations/${params.evaluationId}?api-version=7.0-preview`;
+
+  dbg.azure('policy-requeue:request', {
+    evaluationId: params.evaluationId,
+    url,
+  });
+
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Authorization: authHeader,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ status: 'queued' }),
+  });
+
+  const responseText = await response.text();
+  dbg.azure('policy-requeue:response', {
+    status: response.status,
+    ok: response.ok,
+    body: responseText,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to requeue policy evaluation: ${responseText}`);
+  }
+}
+
 export async function getPullRequestWorkItems(params: {
   providerId: string;
   projectId: string;

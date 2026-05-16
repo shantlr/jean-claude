@@ -1,5 +1,38 @@
 // Azure DevOps Pull Request types
 
+// Policy evaluation types (PR checks / build validation)
+export interface AzureDevOpsPolicyEvaluation {
+  evaluationId: string;
+  status:
+    | 'approved'
+    | 'rejected'
+    | 'running'
+    | 'queued'
+    | 'notApplicable'
+    | 'broken';
+  isBlocking: boolean;
+  configuration: {
+    id: number;
+    isEnabled: boolean;
+    isBlocking: boolean;
+    type: {
+      id: string;
+      displayName: string;
+    };
+    settings: {
+      buildDefinitionId?: number;
+      displayName?: string;
+      minimumApproverCount?: number;
+      [key: string]: unknown;
+    };
+  };
+  context?: {
+    buildId?: number;
+    buildDefinitionId?: number;
+    isExpired?: boolean;
+  };
+}
+
 export type ReviewerVoteStatus =
   | 'approved'
   | 'approved-with-suggestions'
