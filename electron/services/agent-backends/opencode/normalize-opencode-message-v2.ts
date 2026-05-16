@@ -736,6 +736,16 @@ function mapOpenCodeTool(
         input: { todos: extractOpenCodeTodos(input) },
       };
 
+    case 'task':
+      return {
+        name: 'sub-agent',
+        input: {
+          agentType: String(input.subagent_type ?? ''),
+          description: String(input.description ?? ''),
+          prompt: String(input.prompt ?? ''),
+        },
+      };
+
     case 'question':
     case 'ask-user-question':
     case 'askuserquestion':
