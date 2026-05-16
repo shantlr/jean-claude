@@ -108,8 +108,15 @@ export function useBuildTimeline(params: {
   azureProjectId: string;
   buildId: number;
   enabled?: boolean;
+  refetchInterval?: number | false;
 }) {
-  const { providerId, azureProjectId, buildId, enabled = true } = params;
+  const {
+    providerId,
+    azureProjectId,
+    buildId,
+    enabled = true,
+    refetchInterval = 15_000,
+  } = params;
 
   return useQuery<AzureBuildTimeline>({
     queryKey: ['build-timeline', providerId, azureProjectId, buildId],
@@ -117,7 +124,7 @@ export function useBuildTimeline(params: {
       api.pipelines.getBuildTimeline({ providerId, azureProjectId, buildId }),
     enabled,
     staleTime: 15_000,
-    refetchInterval: 15_000,
+    refetchInterval,
   });
 }
 

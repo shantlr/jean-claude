@@ -161,12 +161,16 @@ export function PrChecks({
   onRequeue,
   onQueueAll,
   isRequeuing,
+  onCheckClick,
+  selectedBuildId,
 }: {
   evaluations: EvaluationWithOptimistic[];
   isLoading?: boolean;
   onRequeue?: (evaluationId: string) => void;
   onQueueAll?: (ids: string[]) => void;
   isRequeuing?: boolean;
+  onCheckClick?: (buildId: number) => void;
+  selectedBuildId?: number | null;
 }) {
   const [expanded, setExpanded] = useState(true);
 
@@ -285,6 +289,8 @@ export function PrChecks({
               evaluation={evaluation}
               onRequeue={onRequeue}
               isAnyRequeuing={isRequeuing}
+              onCheckClick={onCheckClick}
+              selectedBuildId={selectedBuildId}
             />
           ))}
         </div>
@@ -297,18 +303,39 @@ function CheckRow({
   evaluation,
   onRequeue,
   isAnyRequeuing,
+  onCheckClick,
+  selectedBuildId,
 }: {
   evaluation: EvaluationWithOptimistic;
   onRequeue?: (evaluationId: string) => void;
   isAnyRequeuing?: boolean;
+  onCheckClick?: (buildId: number) => void;
+  selectedBuildId?: number | null;
 }) {
   const name = getDisplayName(evaluation);
   const showQueue = canQueue(evaluation) && onRequeue;
   const queueLabel = getQueueLabel(evaluation);
   const pending = isPending(evaluation);
 
+  const buildId = evaluation.context?.buildId;
+  const isClickable = !!buildId && !!onCheckClick;
+  const isSelected = buildId != null && buildId === selectedBuildId;
+
+  const handleRowClick = () => {
+    if (isClickable) {
+      onCheckClick(buildId);
+    }
+  };
+
   return (
-    <div className="flex items-center gap-3 border-b border-white/5 px-3 py-2 last:border-b-0">
+    <div
+      className={clsx(
+        'flex items-center gap-3 border-b border-white/5 px-3 py-2 last:border-b-0',
+        isClickable && 'hover:bg-glass-light cursor-pointer',
+        isSelected && 'bg-glass-medium',
+      )}
+      onClick={handleRowClick}
+    >
       {/* Status icon */}
       <span className="shrink-0">{getStatusIcon(evaluation)}</span>
 
@@ -331,7 +358,10 @@ function CheckRow({
       {showQueue && (
         <button
           type="button"
-          onClick={() => onRequeue(evaluation.evaluationId)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRequeue(evaluation.evaluationId);
+          }}
           disabled={isAnyRequeuing}
           title={queueLabel}
           className="text-ink-3 hover:text-ink-1 hover:bg-glass-medium shrink-0 rounded px-2 py-0.5 text-xs font-medium transition-colors disabled:opacity-50"

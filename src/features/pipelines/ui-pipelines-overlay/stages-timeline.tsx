@@ -233,10 +233,38 @@ export function StagesTimeline({
     const jobs = records.filter((r) => r.type === 'Job');
     const tasks = records.filter((r) => r.type === 'Task');
 
+    // Build a set of all record IDs for ancestry lookup
+    const recordById = new Map(records.map((r) => [r.id, r]));
+
+    // Check if a record is a descendant of a given ancestor ID
+    // (handles intermediate Phase/Checkpoint records between Stage and Job)
+    const isDescendantOf = (
+      recordId: string | null,
+      ancestorId: string,
+    ): boolean => {
+      let currentId = recordId;
+      const visited = new Set<string>();
+      while (currentId) {
+        if (currentId === ancestorId) return true;
+        if (visited.has(currentId)) return false;
+        visited.add(currentId);
+        const current = recordById.get(currentId);
+        currentId = current?.parentId ?? null;
+      }
+      return false;
+    };
+
     return stages.map<StageGroup>((stage) => {
-      const stageJobs = jobs
-        .filter((j) => j.parentId === stage.id)
-        .sort((a, b) => a.order - b.order);
+      // First try direct children
+      let stageJobs = jobs.filter((j) => j.parentId === stage.id);
+
+      // If no direct children, look for jobs that are descendants of this stage
+      // (handles Phase/Checkpoint intermediate records)
+      if (stageJobs.length === 0) {
+        stageJobs = jobs.filter((j) => isDescendantOf(j.parentId, stage.id));
+      }
+
+      stageJobs.sort((a, b) => a.order - b.order);
 
       const jobGroups = stageJobs.map<JobGroup>((job) => ({
         job,

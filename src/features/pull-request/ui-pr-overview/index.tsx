@@ -14,12 +14,14 @@ import type {
 import { PrChecks } from '../ui-pr-checks';
 import { PrCommentForm } from '../ui-pr-comment-form';
 import { PrComments } from '../ui-pr-comments';
+import { PipelineDetailsPane } from '../ui-pr-pipeline-pane';
 
 export function PrOverview({
   pr,
   projectId,
   prId,
   providerId,
+  azureProjectId,
   threads = [],
   onAddComment,
   isAddingComment,
@@ -29,11 +31,23 @@ export function PrOverview({
   projectId: string;
   prId: number;
   providerId?: string;
+  azureProjectId?: string;
   threads?: AzureDevOpsCommentThread[];
   onAddComment?: (content: string) => void;
   isAddingComment?: boolean;
   bottomPadding?: number;
 }) {
+  // Track which build is open in the pipeline details pane
+  const [selectedBuildId, setSelectedBuildId] = useState<number | null>(null);
+
+  const handleCheckClick = useCallback((buildId: number) => {
+    setSelectedBuildId((prev) => (prev === buildId ? null : buildId));
+  }, []);
+
+  const handlePaneClose = useCallback(() => {
+    setSelectedBuildId(null);
+  }, []);
+
   // Track which evaluations were recently queued by the user
   const [queuedIds, setQueuedIds] = useState<Set<string>>(new Set());
 
@@ -131,56 +145,73 @@ export function PrOverview({
   );
 
   return (
-    <div className="flex h-full flex-col">
-      <div
-        className="flex-1 overflow-y-auto p-4"
-        style={bottomPadding > 0 ? { paddingBottom: bottomPadding } : undefined}
-      >
-        <div className="max-w-3xl min-w-0">
-          {/* Checks */}
-          <PrChecks
-            evaluations={evaluationsWithOptimistic}
-            isLoading={isChecksLoading}
-            onRequeue={handleRequeue}
-            onQueueAll={handleQueueAll}
-            isRequeuing={requeueMutation.isPending}
-          />
-
-          {/* Description */}
-          <h2 className="text-ink-2 mb-4 text-sm font-medium">Description</h2>
-          {pr.description.trim() ? (
-            <AzureMarkdownContent
-              markdown={pr.description}
-              providerId={providerId}
-              className="text-ink-1 text-sm"
+    <div className="flex h-full">
+      {/* Main content */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div
+          className="flex-1 overflow-y-auto p-4"
+          style={
+            bottomPadding > 0 ? { paddingBottom: bottomPadding } : undefined
+          }
+        >
+          <div className="max-w-3xl min-w-0">
+            {/* Checks */}
+            <PrChecks
+              evaluations={evaluationsWithOptimistic}
+              isLoading={isChecksLoading}
+              onRequeue={handleRequeue}
+              onQueueAll={handleQueueAll}
+              isRequeuing={requeueMutation.isPending}
+              onCheckClick={providerId ? handleCheckClick : undefined}
+              selectedBuildId={selectedBuildId}
             />
-          ) : (
-            <p className="text-ink-3 text-sm italic">No description</p>
-          )}
 
-          {/* Comments */}
-          <div className="mt-8">
-            <PrComments
-              threads={threads}
-              providerId={providerId}
-              projectId={projectId}
-              prId={prId}
-            />
+            {/* Description */}
+            <h2 className="text-ink-2 mb-4 text-sm font-medium">Description</h2>
+            {pr.description.trim() ? (
+              <AzureMarkdownContent
+                markdown={pr.description}
+                providerId={providerId}
+                className="text-ink-1 text-sm"
+              />
+            ) : (
+              <p className="text-ink-3 text-sm italic">No description</p>
+            )}
+
+            {/* Comments */}
+            <div className="mt-8">
+              <PrComments
+                threads={threads}
+                providerId={providerId}
+                projectId={projectId}
+                prId={prId}
+              />
+            </div>
           </div>
         </div>
+
+        {/* Add comment form */}
+        {onAddComment && (
+          <>
+            <Separator />
+            <div className="p-4">
+              <PrCommentForm
+                onSubmit={onAddComment}
+                isSubmitting={isAddingComment}
+              />
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Add comment form */}
-      {onAddComment && (
-        <>
-          <Separator />
-          <div className="p-4">
-            <PrCommentForm
-              onSubmit={onAddComment}
-              isSubmitting={isAddingComment}
-            />
-          </div>
-        </>
+      {/* Pipeline details pane */}
+      {selectedBuildId != null && providerId && azureProjectId && (
+        <PipelineDetailsPane
+          providerId={providerId}
+          azureProjectId={azureProjectId}
+          buildId={selectedBuildId}
+          onClose={handlePaneClose}
+        />
       )}
     </div>
   );
