@@ -1,4 +1,11 @@
-import { Check, FolderOpen, Search, Star, Trash2 } from 'lucide-react';
+import {
+  Check,
+  FolderOpen,
+  GitBranch,
+  Search,
+  Star,
+  Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/common/ui/button';
@@ -171,6 +178,12 @@ export function GeneralSettings() {
 
       {/* Claude Projects Cleanup */}
       <ClaudeProjectsCleanup />
+
+      {/* Divider */}
+      <div className="border-line-soft my-8 border-t" />
+
+      {/* Global Gitignore */}
+      <GlobalGitignoreSetup />
     </div>
   );
 }
@@ -527,6 +540,71 @@ function ClaudeProjectsCleanup() {
           }`}
         >
           <span className="text-sm">{cleanupMessage.text}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GlobalGitignoreSetup() {
+  const [status, setStatus] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
+  const [isPending, setIsPending] = useState(false);
+
+  const handleSetup = async () => {
+    setIsPending(true);
+    setStatus(null);
+    try {
+      const result = await api.shell.setupGlobalGitignore();
+      setStatus({
+        type: 'success',
+        text: `Global gitignore updated: ${result.path}`,
+      });
+    } catch (err) {
+      setStatus({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Failed to update gitignore',
+      });
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return (
+    <div>
+      <h2 className="text-ink-1 text-lg font-semibold">Global Gitignore</h2>
+      <p className="text-ink-3 mt-1 text-sm">
+        Add Jean-Claude managed files to your global gitignore so they are never
+        accidentally committed.
+      </p>
+      <p className="text-ink-4 mt-1 font-mono text-xs">
+        **/.jean-claude/settings.local.json
+        <br />
+        **/.jean-claude/tmp/
+      </p>
+
+      <div className="mt-4">
+        <Button
+          onClick={handleSetup}
+          disabled={isPending}
+          loading={isPending}
+          icon={<GitBranch />}
+        >
+          Setup Global Gitignore
+        </Button>
+      </div>
+
+      {status && (
+        <div
+          className={`mt-4 rounded-lg border px-4 py-3 ${
+            status.type === 'success'
+              ? 'text-status-done border-status-done bg-status-done/30'
+              : 'text-status-fail border-status-fail bg-status-fail/30'
+          }`}
+        >
+          <span className="text-sm">{status.text}</span>
         </div>
       )}
     </div>

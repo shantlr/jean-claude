@@ -731,6 +731,7 @@ export interface Api {
   shell: {
     openInEditor: (dirPath: string, folderContext?: string) => Promise<void>;
     getAvailableEditors: () => Promise<{ id: string; available: boolean }[]>;
+    setupGlobalGitignore: () => Promise<{ success: boolean; path: string }>;
   };
   agent: {
     start: (stepId: string) => Promise<void>;
@@ -1341,6 +1342,7 @@ export const api: Api = hasWindowApi
       shell: {
         openInEditor: async () => {},
         getAvailableEditors: async () => [],
+        setupGlobalGitignore: async () => ({ success: true, path: '' }),
       },
       agent: {
         start: async () => {

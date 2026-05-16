@@ -2503,6 +2503,64 @@ export function registerIpcHandlers() {
     },
   );
 
+  ipcMain.handle('shell:setupGlobalGitignore', async () => {
+    const START_MARKER = '# >>> jean-claude (managed automatically)';
+    const END_MARKER = '# <<< jean-claude';
+
+    const ENTRIES = [
+      '**/.jean-claude/settings.local.json',
+      '**/.jean-claude/tmp/',
+    ];
+
+    // Respect user's core.excludesFile if set
+    let excludesFile: string;
+    try {
+      const { stdout } = await execAsync(
+        'git config --global core.excludesFile',
+      );
+      excludesFile = stdout.trim();
+      // Expand ~ if present
+      if (excludesFile.startsWith('~')) {
+        excludesFile = path.join(os.homedir(), excludesFile.slice(1));
+      }
+    } catch {
+      excludesFile = path.join(os.homedir(), '.config', 'git', 'ignore');
+    }
+
+    // Ensure parent directory exists
+    await fs.mkdir(path.dirname(excludesFile), { recursive: true });
+
+    // Read existing content
+    let existing = '';
+    try {
+      existing = await fs.readFile(excludesFile, 'utf-8');
+    } catch {
+      // File doesn't exist yet, that's fine
+    }
+
+    const block = [START_MARKER, ...ENTRIES, END_MARKER].join('\n');
+
+    if (existing.includes(START_MARKER) && existing.includes(END_MARKER)) {
+      // Replace existing managed block
+      const regex = new RegExp(
+        `${START_MARKER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?${END_MARKER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`,
+      );
+      const updated = existing.replace(regex, block);
+      await fs.writeFile(excludesFile, updated, 'utf-8');
+    } else {
+      // Append new block
+      const separator =
+        existing.length > 0 && !existing.endsWith('\n') ? '\n\n' : '\n';
+      await fs.writeFile(
+        excludesFile,
+        existing + (existing.length > 0 ? separator : '') + block + '\n',
+        'utf-8',
+      );
+    }
+
+    return { success: true, path: excludesFile };
+  });
+
   // Dialog: open application (macOS)
   ipcMain.handle('dialog:openApplication', async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);

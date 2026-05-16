@@ -448,6 +448,11 @@ contextBridge.exposeInMainWorld('api', {
     openInEditor: (dirPath: string, folderContext?: string) =>
       ipcRenderer.invoke('shell:openInEditor', dirPath, folderContext),
     getAvailableEditors: () => ipcRenderer.invoke('shell:getAvailableEditors'),
+    setupGlobalGitignore: () =>
+      ipcRenderer.invoke('shell:setupGlobalGitignore') as Promise<{
+        success: boolean;
+        path: string;
+      }>,
   },
   agent: {
     start: (stepId: string) => ipcRenderer.invoke(AGENT_CHANNELS.START, stepId),
