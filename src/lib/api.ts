@@ -654,6 +654,16 @@ export interface Api {
       projectRoot: string,
     ) => Promise<{ name: string; path: string; isDirectory: boolean }[] | null>;
     listProjectFiles: (projectRoot: string) => Promise<string[]>;
+    writeAttachmentFile: (
+      projectPath: string,
+      filename: string,
+      content: string,
+      encoding?: 'utf-8' | 'base64',
+    ) => Promise<string>;
+    copyAttachmentFile: (
+      projectPath: string,
+      sourcePath: string,
+    ) => Promise<{ filePath: string; filename: string }>;
   };
   settings: {
     get: <K extends keyof AppSettings>(key: K) => Promise<AppSettings[K]>;
@@ -1284,6 +1294,8 @@ export const api: Api = hasWindowApi
         readFile: async () => null,
         listDirectory: async () => null,
         listProjectFiles: async () => [],
+        writeAttachmentFile: async () => '',
+        copyAttachmentFile: async () => ({ filePath: '', filename: '' }),
       },
       settings: {
         get: async () => {

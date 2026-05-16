@@ -44,6 +44,7 @@ import {
   useRelatedTestCasesForWorkItems,
 } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
+import { buildAttachedFilesXml } from '@/lib/file-attachment-utils';
 import { compressImage } from '@/lib/image-compression';
 import {
   resolveSnippetTemplate,
@@ -65,6 +66,7 @@ import {
 import { useUISetting, useUIStore } from '@/stores/ui';
 import type {
   AgentBackendType,
+  PromptFilePart,
   PromptImagePart,
 } from '@shared/agent-backend-types';
 import {
@@ -772,6 +774,7 @@ export function NewTaskOverlay({
 
       let draftImages: PromptImagePart[] | undefined =
         draft.images && draft.images.length > 0 ? draft.images : undefined;
+      const draftFiles = draft?.files ?? [];
 
       // Append synthesized file comments to prompt
       const fileContextParts = synthesizeFileCommentsPrompt(
@@ -792,6 +795,9 @@ export function NewTaskOverlay({
           draftImages = [...(draftImages ?? []), ...commentImages];
         }
       }
+
+      // Append file attachment references to prompt text
+      finalPrompt += buildAttachedFilesXml(draftFiles);
 
       const backlogTodoId = draft.backlogTodoId ?? null;
 
@@ -1019,6 +1025,24 @@ export function NewTaskOverlay({
     [draft?.images, updateDraft],
   );
 
+  const handleFileAttach = useCallback(
+    (file: PromptFilePart) => {
+      updateDraft({
+        files: [...(draft?.files ?? []), file],
+      });
+    },
+    [draft?.files, updateDraft],
+  );
+
+  const handleFileRemove = useCallback(
+    (index: number) => {
+      updateDraft({
+        files: (draft?.files ?? []).filter((_, i) => i !== index),
+      });
+    },
+    [draft?.files, updateDraft],
+  );
+
   // Get current input value
   const inputValue =
     inputMode === 'search'
@@ -1210,6 +1234,9 @@ export function NewTaskOverlay({
                 images={draft?.images}
                 onImageAttach={handleImageAttach}
                 onImageRemove={handleImageRemove}
+                files={draft?.files}
+                onFileAttach={handleFileAttach}
+                onFileRemove={handleFileRemove}
                 promptSnippets={promptSnippets}
                 snippetVariableContext={snippetVariableContext}
                 className="text-ink-1 placeholder-ink-3 border-transparent bg-transparent px-0 py-0 text-sm focus:border-transparent focus:ring-0 focus:outline-none"
@@ -1286,6 +1313,10 @@ export function NewTaskOverlay({
               isFetchingImages={isFetchingWorkItemImages}
               onImageAttach={handleImageAttach}
               onImageRemove={handleImageRemove}
+              files={draft?.files}
+              onFileAttach={handleFileAttach}
+              onFileRemove={handleFileRemove}
+              projectRoot={selectedProject?.path ?? null}
               comments={workItemComments}
               selectedCommentIds={draft?.selectedCommentIds ?? []}
               onCommentToggle={handleCommentToggle}

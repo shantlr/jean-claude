@@ -11,8 +11,13 @@ import {
   PromptTextareaRef,
 } from '@/features/common/ui-prompt-textarea';
 import { useCompletionSetting } from '@/hooks/use-settings';
+import { buildAttachedFilesXml } from '@/lib/file-attachment-utils';
 import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
-import type { PromptPart, PromptImagePart } from '@shared/agent-backend-types';
+import type {
+  PromptPart,
+  PromptImagePart,
+  PromptFilePart,
+} from '@shared/agent-backend-types';
 import type { Skill } from '@shared/skill-types';
 import type { PromptSnippet } from '@shared/types';
 
@@ -85,13 +90,35 @@ export function MessageInput({
     setImages((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
+  const [attachedFiles, setAttachedFiles] = useState<PromptFilePart[]>([]);
+
+  const handleFileAttach = useCallback((file: PromptFilePart) => {
+    setAttachedFiles((prev) => [...prev, file]);
+  }, []);
+
+  const handleFileRemove = useCallback((index: number) => {
+    setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
   const handleSubmit = useCallback(() => {
     const trimmed = value.trim();
-    if (!trimmed && images.length === 0) return;
+    if (!trimmed && images.length === 0 && attachedFiles.length === 0) return;
 
     const parts: PromptPart[] = [];
     if (trimmed) parts.push({ type: 'text', text: trimmed });
     parts.push(...images);
+
+    // Append file attachment references to prompt text
+    const fileBlock = buildAttachedFilesXml(attachedFiles);
+    if (fileBlock) {
+      const textPartIndex = parts.findIndex((p) => p.type === 'text');
+      if (textPartIndex >= 0) {
+        (parts[textPartIndex] as { type: 'text'; text: string }).text +=
+          fileBlock;
+      } else {
+        parts.unshift({ type: 'text', text: fileBlock });
+      }
+    }
 
     if (isRunning && onQueue) {
       // Queue the message if agent is running
@@ -103,9 +130,19 @@ export function MessageInput({
 
     setValue('');
     setImages([]);
+    setAttachedFiles([]);
     // Reset textarea height
     textareaRef.current?.resetHeight();
-  }, [value, images, disabled, isRunning, onSend, onQueue, setValue]);
+  }, [
+    value,
+    images,
+    attachedFiles,
+    disabled,
+    isRunning,
+    onSend,
+    onQueue,
+    setValue,
+  ]);
 
   const handleEnterKey = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -157,6 +194,9 @@ export function MessageInput({
         images={supportsImages ? images : undefined}
         onImageAttach={supportsImages ? handleImageAttach : undefined}
         onImageRemove={supportsImages ? handleImageRemove : undefined}
+        files={attachedFiles}
+        onFileAttach={handleFileAttach}
+        onFileRemove={handleFileRemove}
         promptSnippets={promptSnippets}
         snippetVariableContext={snippetVariableContext}
         placeholder={
@@ -172,7 +212,10 @@ export function MessageInput({
       <Button
         onClick={handleSubmit}
         disabled={
-          (!value.trim() && images.length === 0) || (disabled && !isRunning)
+          (!value.trim() &&
+            images.length === 0 &&
+            attachedFiles.length === 0) ||
+          (disabled && !isRunning)
         }
         size="lg"
         variant="primary"

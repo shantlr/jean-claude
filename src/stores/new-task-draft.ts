@@ -4,6 +4,7 @@ import { persist } from 'zustand/middleware';
 
 import type {
   AgentBackendType,
+  PromptFilePart,
   PromptImagePart,
 } from '@shared/agent-backend-types';
 import type { InteractionMode, ModelPreference } from '@shared/types';
@@ -29,6 +30,8 @@ export interface NewTaskDraft {
   prompt: string;
   /** Image attachments for the initial prompt (transient, not persisted) */
   images: PromptImagePart[];
+  /** File attachments for the initial prompt (transient, not persisted) */
+  files: PromptFilePart[];
   // Shared state
   createWorktree: boolean;
   sourceBranch: string | null;
@@ -89,7 +92,7 @@ const useStore = create<NewTaskDraftState>()(
         drafts: Object.fromEntries(
           Object.entries(state.drafts).map(([key, draft]) => [
             key,
-            draft ? { ...draft, images: undefined } : draft,
+            draft ? { ...draft, images: undefined, files: undefined } : draft,
           ]),
         ),
       }),

@@ -417,6 +417,21 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('fs:listDirectory', dirPath, projectRoot),
     listProjectFiles: (projectRoot: string) =>
       ipcRenderer.invoke('fs:listProjectFiles', projectRoot),
+    writeAttachmentFile: (
+      projectPath: string,
+      filename: string,
+      content: string,
+      encoding?: 'utf-8' | 'base64',
+    ) =>
+      ipcRenderer.invoke(
+        'fs:writeAttachmentFile',
+        projectPath,
+        filename,
+        content,
+        encoding,
+      ),
+    copyAttachmentFile: (projectPath: string, sourcePath: string) =>
+      ipcRenderer.invoke('fs:copyAttachmentFile', projectPath, sourcePath),
   },
   shell: {
     openInEditor: (dirPath: string, folderContext?: string) =>

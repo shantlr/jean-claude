@@ -609,17 +609,19 @@ export class OpenCodeBackend implements AgentBackend {
       .prompt({
         sessionID: sessionId,
         directory: state.cwd,
-        parts: parts.map((part) => {
-          if (part.type === 'text') {
-            return { type: 'text' as const, text: part.text };
-          }
-          return {
-            type: 'file' as const,
-            mime: part.mimeType,
-            url: `data:${part.mimeType};base64,${part.data}`,
-            ...(part.filename ? { filename: part.filename } : {}),
-          };
-        }),
+        parts: parts
+          .filter((part) => part.type === 'text' || part.type === 'image')
+          .map((part) => {
+            if (part.type === 'text') {
+              return { type: 'text' as const, text: part.text };
+            }
+            return {
+              type: 'file' as const,
+              mime: part.mimeType,
+              url: `data:${part.mimeType};base64,${part.data}`,
+              ...(part.filename ? { filename: part.filename } : {}),
+            };
+          }),
         ...(model ? { model } : {}),
         agent: this.getPrimaryAgentName(config.interactionMode),
       })

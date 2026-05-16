@@ -43,7 +43,15 @@ export type PromptImagePart = {
   storageMimeType?: string;
 };
 
-export type PromptPart = PromptTextPart | PromptImagePart;
+export type PromptFilePart = {
+  type: 'file';
+  /** Absolute path where the file was written */
+  filePath: string;
+  /** Original filename for display */
+  filename: string;
+};
+
+export type PromptPart = PromptTextPart | PromptImagePart | PromptFilePart;
 
 // --- Backend interface ---
 

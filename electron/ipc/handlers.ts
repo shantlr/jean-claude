@@ -551,6 +551,43 @@ export function registerIpcHandlers() {
 
         dbg.ipc('Worktree created: %s, branch: %s', worktreePath, branchName);
 
+        // Relocate attached files from project .jean-claude/tmp/ to worktree .jean-claude/tmp/
+        const attachedFileRegex =
+          /<file\s+name="([^"]+)"\s+path="([^"]+)"\s*\/>/g;
+        if (attachedFileRegex.test(taskData.prompt)) {
+          const wtTmpDir = path.join(worktreePath, '.jean-claude', 'tmp');
+          await fs.mkdir(wtTmpDir, { recursive: true });
+
+          // Reset regex lastIndex after test()
+          attachedFileRegex.lastIndex = 0;
+          const relocations: Array<{
+            oldPath: string;
+            newPath: string;
+          }> = [];
+          let match;
+          while ((match = attachedFileRegex.exec(taskData.prompt)) !== null) {
+            const oldFilePath = match[2];
+            const basename = path.basename(oldFilePath);
+            const newFilePath = path.join(wtTmpDir, basename);
+            try {
+              await fs.copyFile(oldFilePath, newFilePath);
+              relocations.push({
+                oldPath: oldFilePath,
+                newPath: newFilePath,
+              });
+            } catch (err) {
+              dbg.ipc('Failed to relocate attachment %s: %O', oldFilePath, err);
+            }
+          }
+          for (const { oldPath, newPath } of relocations) {
+            // Replace only within path="..." attributes to avoid unintended matches
+            taskData.prompt = taskData.prompt.replaceAll(
+              `path="${oldPath}"`,
+              `path="${newPath}"`,
+            );
+          }
+        }
+
         // Create the task with worktree info and generated name
         task = await TaskRepository.create({
           ...taskData,
@@ -566,7 +603,7 @@ export function registerIpcHandlers() {
       const step = await StepService.create({
         taskId: task.id,
         name: 'Step 1',
-        promptTemplate: data.prompt,
+        promptTemplate: taskData.prompt,
         interactionMode: interactionMode ?? null,
         modelPreference: modelPreference ?? null,
         agentBackend: agentBackend ?? null,
@@ -2276,6 +2313,43 @@ export function registerIpcHandlers() {
       return [];
     }
   });
+
+  ipcMain.handle(
+    'fs:writeAttachmentFile',
+    async (
+      _,
+      projectPath: string,
+      filename: string,
+      content: string,
+      encoding?: 'utf-8' | 'base64',
+    ) => {
+      const tmpDir = path.join(projectPath, '.jean-claude', 'tmp');
+      await fs.mkdir(tmpDir, { recursive: true });
+      const hash = crypto.randomUUID().slice(0, 8);
+      const safeName = `${hash}-${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const filePath = path.join(tmpDir, safeName);
+      if (encoding === 'base64') {
+        await fs.writeFile(filePath, Buffer.from(content, 'base64'));
+      } else {
+        await fs.writeFile(filePath, content, 'utf-8');
+      }
+      return filePath;
+    },
+  );
+
+  ipcMain.handle(
+    'fs:copyAttachmentFile',
+    async (_, projectPath: string, sourcePath: string) => {
+      const tmpDir = path.join(projectPath, '.jean-claude', 'tmp');
+      await fs.mkdir(tmpDir, { recursive: true });
+      const originalFilename = path.basename(sourcePath);
+      const hash = crypto.randomUUID().slice(0, 8);
+      const safeName = `${hash}-${originalFilename.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const filePath = path.join(tmpDir, safeName);
+      await fs.copyFile(sourcePath, filePath);
+      return { filePath, filename: originalFilename };
+    },
+  );
 
   // Agent
   ipcMain.handle(AGENT_CHANNELS.START, (event, stepId: string) => {

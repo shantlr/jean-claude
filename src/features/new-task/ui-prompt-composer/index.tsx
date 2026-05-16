@@ -2,8 +2,10 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  FilePlus,
   ImageIcon,
   MessageSquare,
+  Paperclip,
   X,
 } from 'lucide-react';
 import {
@@ -20,11 +22,16 @@ import { createPortal } from 'react-dom';
 
 import { HandlebarsEditor } from '@/common/ui/handlebars-editor';
 import { Kbd } from '@/common/ui/kbd';
+import { FileEditorDialog } from '@/features/common/ui-file-editor-dialog';
 import type { AzureDevOpsWorkItem, WorkItemComment } from '@/lib/api';
+import { processAttachmentFile, MAX_FILES } from '@/lib/file-attachment-utils';
 import { processImageFile, MAX_IMAGES } from '@/lib/image-utils';
 import { resolveSnippetTemplate } from '@/lib/resolve-snippet-template';
 import { useToastStore } from '@/stores/toasts';
-import type { PromptImagePart } from '@shared/agent-backend-types';
+import type {
+  PromptFilePart,
+  PromptImagePart,
+} from '@shared/agent-backend-types';
 import type { PromptSnippet } from '@shared/types';
 
 export function getWorkItemCommentSelectionId(
@@ -425,6 +432,10 @@ export function PromptComposer({
   isFetchingImages,
   onImageAttach,
   onImageRemove,
+  files,
+  onFileAttach,
+  onFileRemove,
+  projectRoot,
   comments,
   selectedCommentIds,
   onCommentToggle,
@@ -442,6 +453,10 @@ export function PromptComposer({
   isFetchingImages?: boolean;
   onImageAttach?: (image: PromptImagePart) => void;
   onImageRemove?: (index: number) => void;
+  files?: PromptFilePart[];
+  onFileAttach?: (file: PromptFilePart) => void;
+  onFileRemove?: (index: number) => void;
+  projectRoot?: string | null;
   comments?: WorkItemComment[];
   selectedCommentIds?: string[];
   onCommentToggle?: (commentSelectionId: string) => void;
@@ -515,7 +530,9 @@ export function PromptComposer({
   }, [template, workItems, selectedComments, testCasesByWorkItem]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const nonImageFileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [showFileEditor, setShowFileEditor] = useState(false);
   const addToast = useToastStore((s) => s.addToast);
   const showImageError = useCallback(
     (message: string) => addToast({ message, type: 'error' }),
@@ -553,12 +570,12 @@ export function PromptComposer({
 
   const handleDragOver = useCallback(
     (e: DragEvent<HTMLDivElement>) => {
-      if (!onImageAttach) return;
+      if (!onImageAttach && !onFileAttach) return;
       e.preventDefault();
       e.stopPropagation();
       setIsDragOver(true);
     },
-    [onImageAttach],
+    [onImageAttach, onFileAttach],
   );
 
   const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
@@ -575,24 +592,44 @@ export function PromptComposer({
       e.stopPropagation();
       setIsDragOver(false);
 
-      if (!onImageAttach) return;
+      const droppedFiles = Array.from(e.dataTransfer.files);
 
-      const currentCount = images?.length ?? 0;
-      const allowed = MAX_IMAGES - currentCount;
-      if (allowed <= 0) return;
+      if (onImageAttach) {
+        const currentCount = images?.length ?? 0;
+        const allowed = MAX_IMAGES - currentCount;
+        if (allowed > 0) {
+          const imageFiles = droppedFiles.filter((f) =>
+            f.type.startsWith('image/'),
+          );
+          for (const file of imageFiles.slice(0, allowed)) {
+            void processImageFile(file, onImageAttach, showImageError).catch(
+              (err) => {
+                showImageError('Failed to process image');
+                console.error('Failed to process dropped image:', err);
+              },
+            );
+          }
+        }
+      }
 
-      const files = Array.from(e.dataTransfer.files);
-      const imageFiles = files.filter((f) => f.type.startsWith('image/'));
-      for (const file of imageFiles.slice(0, allowed)) {
-        void processImageFile(file, onImageAttach, showImageError).catch(
-          (err) => {
-            showImageError('Failed to process image');
-            console.error('Failed to process dropped image:', err);
-          },
+      // Handle non-image files
+      if (onFileAttach && projectRoot) {
+        const currentFileCount = files?.length ?? 0;
+        const allowedFiles = MAX_FILES - currentFileCount;
+        const nonImageFiles = droppedFiles.filter(
+          (f) => !f.type.startsWith('image/'),
         );
+        for (const file of nonImageFiles.slice(0, allowedFiles)) {
+          void processAttachmentFile(
+            file,
+            projectRoot,
+            onFileAttach,
+            showImageError,
+          );
+        }
       }
     },
-    [onImageAttach, images, showImageError],
+    [onImageAttach, onFileAttach, images, files, projectRoot, showImageError],
   );
 
   const handleFileSelect = useCallback(
@@ -617,15 +654,55 @@ export function PromptComposer({
     [onImageAttach, images, showImageError],
   );
 
+  const handleNonImageFileSelect = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      if (!onFileAttach || !projectRoot || !e.target.files) return;
+      const currentFileCount = files?.length ?? 0;
+      const allowed = MAX_FILES - currentFileCount;
+      if (allowed <= 0) return;
+
+      const selectedFiles = Array.from(e.target.files);
+      for (const file of selectedFiles.slice(0, allowed)) {
+        void processAttachmentFile(
+          file,
+          projectRoot,
+          onFileAttach,
+          showImageError,
+        );
+      }
+      e.target.value = '';
+    },
+    [onFileAttach, files, projectRoot, showImageError],
+  );
+
+  const handleFileCreate = useCallback(
+    async (filename: string, content: string) => {
+      if (!onFileAttach || !projectRoot) return;
+      try {
+        const filePath = await window.api.fs.writeAttachmentFile(
+          projectRoot,
+          filename,
+          content,
+        );
+        onFileAttach({ type: 'file', filePath, filename });
+        setShowFileEditor(false);
+      } catch (err) {
+        showImageError(`Failed to create file: ${filename}`);
+        console.error('Failed to create attachment file:', err);
+      }
+    },
+    [onFileAttach, projectRoot, showImageError],
+  );
+
   const handleTextareaDragOver = useCallback(
     (e: DragEvent<HTMLElement>) => {
-      if (!onImageAttach) return;
+      if (!onImageAttach && !onFileAttach) return;
       const hasFiles = Array.from(e.dataTransfer.types).includes('Files');
       if (hasFiles) {
         e.preventDefault();
       }
     },
-    [onImageAttach],
+    [onImageAttach, onFileAttach],
   );
 
   const canAttachMore = (images?.length ?? 0) < MAX_IMAGES;
@@ -886,6 +963,33 @@ export function PromptComposer({
                 </button>
               </>
             )}
+            {onFileAttach && projectRoot && (
+              <>
+                <input
+                  ref={nonImageFileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleNonImageFileSelect}
+                />
+                <button
+                  type="button"
+                  onClick={() => nonImageFileInputRef.current?.click()}
+                  className="text-ink-3 hover:bg-glass-medium hover:text-ink-1 rounded p-1"
+                  title="Attach file"
+                >
+                  <Paperclip className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowFileEditor(true)}
+                  className="text-ink-3 hover:bg-glass-medium hover:text-ink-1 rounded p-1"
+                  title="Create new file"
+                >
+                  <FilePlus className="h-3.5 w-3.5" />
+                </button>
+              </>
+            )}
           </div>
           <div
             className="flex-1"
@@ -917,7 +1021,9 @@ export function PromptComposer({
           {/* Drag overlay */}
           {isDragOver && (
             <div className="border-acc bg-acc-soft absolute inset-0 z-10 flex items-center justify-center rounded-lg border-2 border-dashed">
-              <span className="text-acc-ink text-sm">Drop image here</span>
+              <span className="text-acc-ink text-sm">
+                {onFileAttach ? 'Drop files here' : 'Drop image here'}
+              </span>
             </div>
           )}
         </div>
@@ -996,12 +1102,50 @@ export function PromptComposer({
         </div>
       )}
 
+      {/* File chips */}
+      {files && files.length > 0 && (
+        <div
+          className="flex shrink-0 flex-wrap items-center gap-2 px-[18px] py-2"
+          style={{ borderTop: '1px solid oklch(1 0 0 / 0.04)' }}
+        >
+          {files.map((file, index) => (
+            <div
+              key={`${file.filename}-${index}`}
+              className="group relative flex items-center gap-1.5 rounded border px-2 py-1"
+              style={{ borderColor: 'oklch(1 0 0 / 0.08)' }}
+            >
+              <Paperclip className="text-ink-3 h-3 w-3 shrink-0" />
+              <span className="text-ink-2 max-w-[120px] truncate text-xs">
+                {file.filename}
+              </span>
+              {onFileRemove && (
+                <button
+                  type="button"
+                  onClick={() => onFileRemove(index)}
+                  className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100"
+                  style={{ background: 'oklch(0 0 0 / 0.6)' }}
+                >
+                  <X className="text-ink-0 h-3 w-3" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Image preview lightbox */}
       {previewIndex !== null && images && images.length > 0 && (
         <ImagePreviewDialog
           images={images}
           initialIndex={previewIndex}
           onClose={() => setPreviewIndex(null)}
+        />
+      )}
+
+      {showFileEditor && onFileAttach && projectRoot && (
+        <FileEditorDialog
+          onSave={handleFileCreate}
+          onClose={() => setShowFileEditor(false)}
         />
       )}
     </div>

@@ -4,8 +4,10 @@ import {
   ChevronLeft,
   ChevronRight,
   File,
+  FilePlus,
   ImageIcon,
   Loader2,
+  Paperclip,
   Wand2,
   X,
 } from 'lucide-react';
@@ -30,16 +32,21 @@ import type {
 import { createPortal } from 'react-dom';
 
 import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
+import { FileEditorDialog } from '@/features/common/ui-file-editor-dialog';
 import { useInlineCompletion } from '@/hooks/use-inline-completion';
 import {
   getFilePathSuggestions,
   useProjectFilePaths,
 } from '@/hooks/use-project-file-paths';
+import { processAttachmentFile, MAX_FILES } from '@/lib/file-attachment-utils';
 import { processImageFile, MAX_IMAGES } from '@/lib/image-utils';
 import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
 import { resolvePromptSnippet } from '@/lib/resolve-snippet-template';
 import { useToastStore } from '@/stores/toasts';
-import type { PromptImagePart } from '@shared/agent-backend-types';
+import type {
+  PromptFilePart,
+  PromptImagePart,
+} from '@shared/agent-backend-types';
 import type { Skill } from '@shared/skill-types';
 import type { PromptSnippet } from '@shared/types';
 
@@ -141,6 +148,12 @@ export interface PromptTextareaProps extends Omit<
   onImageAttach?: (image: PromptImagePart) => void;
   /** Called when user removes an attached image */
   onImageRemove?: (index: number) => void;
+  /** Attached files */
+  files?: PromptFilePart[];
+  /** Called when user attaches a file (drop or file picker) */
+  onFileAttach?: (file: PromptFilePart) => void;
+  /** Called when user removes an attached file */
+  onFileRemove?: (index: number) => void;
   /** Prompt snippets from settings */
   promptSnippets?: PromptSnippet[];
   /** Context for resolving snippet variables */
@@ -166,6 +179,9 @@ export const PromptTextarea = forwardRef<
     images,
     onImageAttach,
     onImageRemove,
+    files,
+    onFileAttach,
+    onFileRemove,
     promptSnippets = [],
     snippetVariableContext,
     className,
@@ -559,6 +575,7 @@ export const PromptTextarea = forwardRef<
 
   // --- Image attachment handlers ---
   const [isDragOver, setIsDragOver] = useState(false);
+  const [showFileEditor, setShowFileEditor] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addToast = useToastStore((s) => s.addToast);
   const showImageError = useCallback(
@@ -598,12 +615,12 @@ export const PromptTextarea = forwardRef<
 
   const handleDragOver = useCallback(
     (e: DragEvent<HTMLDivElement>) => {
-      if (!onImageAttach) return;
+      if (!onImageAttach && !onFileAttach) return;
       e.preventDefault();
       e.stopPropagation();
       setIsDragOver(true);
     },
-    [onImageAttach],
+    [onImageAttach, onFileAttach],
   );
 
   const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
@@ -622,24 +639,43 @@ export const PromptTextarea = forwardRef<
       e.stopPropagation();
       setIsDragOver(false);
 
-      if (!onImageAttach) return;
+      const droppedFiles = Array.from(e.dataTransfer.files);
 
-      const currentCount = images?.length ?? 0;
-      const allowed = MAX_IMAGES - currentCount;
-      if (allowed <= 0) return;
-
-      const files = Array.from(e.dataTransfer.files);
-      const imageFiles = files.filter((f) => f.type.startsWith('image/'));
-      for (const file of imageFiles.slice(0, allowed)) {
-        void processImageFile(file, onImageAttach, showImageError).catch(
-          (err) => {
-            showImageError('Failed to process image');
-            console.error('Failed to process dropped image:', err);
-          },
+      // Handle image files (existing behavior)
+      if (onImageAttach) {
+        const currentImageCount = images?.length ?? 0;
+        const allowedImages = MAX_IMAGES - currentImageCount;
+        const imageFiles = droppedFiles.filter((f) =>
+          f.type.startsWith('image/'),
         );
+        for (const file of imageFiles.slice(0, allowedImages)) {
+          void processImageFile(file, onImageAttach, showImageError).catch(
+            (err) => {
+              showImageError('Failed to process image');
+              console.error('Failed to process dropped image:', err);
+            },
+          );
+        }
+      }
+
+      // Handle non-image files
+      if (onFileAttach && projectRoot) {
+        const currentFileCount = files?.length ?? 0;
+        const allowedFiles = MAX_FILES - currentFileCount;
+        const nonImageFiles = droppedFiles.filter(
+          (f) => !f.type.startsWith('image/'),
+        );
+        for (const file of nonImageFiles.slice(0, allowedFiles)) {
+          void processAttachmentFile(
+            file,
+            projectRoot,
+            onFileAttach,
+            showImageError,
+          );
+        }
       }
     },
-    [onImageAttach, images, showImageError],
+    [onImageAttach, onFileAttach, images, files, projectRoot, showImageError],
   );
 
   const handleFileSelect = useCallback(
@@ -665,17 +701,67 @@ export const PromptTextarea = forwardRef<
     [onImageAttach, images, showImageError],
   );
 
+  const nonImageFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleNonImageFileSelect = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      if (!onFileAttach || !projectRoot || !e.target.files) return;
+
+      const currentFileCount = files?.length ?? 0;
+      const allowedFiles = MAX_FILES - currentFileCount;
+      if (allowedFiles <= 0) return;
+
+      const selectedFiles = Array.from(e.target.files);
+      for (const file of selectedFiles.slice(0, allowedFiles)) {
+        void processAttachmentFile(
+          file,
+          projectRoot,
+          onFileAttach,
+          showImageError,
+        );
+      }
+      e.target.value = '';
+    },
+    [onFileAttach, files, projectRoot, showImageError],
+  );
+
+  const handleFileCreate = useCallback(
+    async (filename: string, content: string) => {
+      if (!onFileAttach || !projectRoot) return;
+      try {
+        const filePath = await window.api.fs.writeAttachmentFile(
+          projectRoot,
+          filename,
+          content,
+        );
+        onFileAttach({
+          type: 'file',
+          filePath,
+          filename,
+        });
+        setShowFileEditor(false);
+      } catch (err) {
+        addToast({
+          message: `Failed to create file: ${filename}`,
+          type: 'error',
+        });
+        console.error('Failed to create attachment file:', err);
+      }
+    },
+    [onFileAttach, projectRoot, addToast],
+  );
+
   // Prevent the textarea's native file-drop behavior (inserting filename as text).
   // The actual drop handling is on the parent container.
   const handleTextareaDragOver = useCallback(
     (e: DragEvent<HTMLTextAreaElement>) => {
-      if (!onImageAttach) return;
+      if (!onImageAttach && !onFileAttach) return;
       const hasFiles = Array.from(e.dataTransfer.types).includes('Files');
       if (hasFiles) {
         e.preventDefault();
       }
     },
-    [onImageAttach],
+    [onImageAttach, onFileAttach],
   );
 
   // Separate item types for grouped display
@@ -683,7 +769,7 @@ export const PromptTextarea = forwardRef<
   const commandItems = filteredItems.filter((item) => item.type === 'command');
   const snippetItems = filteredItems.filter((item) => item.type === 'snippet');
   const skillItems = filteredItems.filter((item) => item.type === 'skill');
-  const needsTrailingPadding = !!onImageAttach;
+  const needsTrailingPadding = !!onImageAttach || !!onFileAttach;
 
   // Get the flat index for an item (used for selection highlighting)
   const getItemIndex = (
@@ -938,8 +1024,10 @@ export const PromptTextarea = forwardRef<
             <span className="text-ink-3">{completion}</span>
           </div>
         )}
-        {/* Completion loader + file picker button */}
-        {(onImageAttach || (isCompletionLoading && !completion)) && (
+        {/* Completion loader + file picker buttons */}
+        {(onImageAttach ||
+          onFileAttach ||
+          (isCompletionLoading && !completion)) && (
           <div
             className={clsx(
               'absolute flex items-center gap-1',
@@ -971,13 +1059,42 @@ export const PromptTextarea = forwardRef<
                 </button>
               </>
             )}
+            {onFileAttach && projectRoot && (
+              <>
+                <input
+                  ref={nonImageFileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleNonImageFileSelect}
+                />
+                <button
+                  type="button"
+                  onClick={() => nonImageFileInputRef.current?.click()}
+                  className="text-ink-3 hover:bg-glass-medium hover:text-ink-1 rounded p-1"
+                  title="Attach file"
+                >
+                  <Paperclip className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowFileEditor(true)}
+                  className="text-ink-3 hover:bg-glass-medium hover:text-ink-1 rounded p-1"
+                  title="Create new file"
+                >
+                  <FilePlus className="h-4 w-4" />
+                </button>
+              </>
+            )}
           </div>
         )}
 
         {/* Drag overlay */}
         {isDragOver && (
           <div className="border-acc bg-acc-soft absolute inset-0 flex items-center justify-center rounded-lg border-2 border-dashed">
-            <span className="text-acc-ink text-sm">Drop image here</span>
+            <span className="text-acc-ink text-sm">
+              {onFileAttach ? 'Drop files here' : 'Drop image here'}
+            </span>
           </div>
         )}
       </div>
@@ -985,6 +1102,18 @@ export const PromptTextarea = forwardRef<
       {/* Image previews — below the textarea in normal flow */}
       {images && images.length > 0 && (
         <ImageThumbnails images={images} onImageRemove={onImageRemove} />
+      )}
+
+      {/* File previews — below images in normal flow */}
+      {files && files.length > 0 && (
+        <FileThumbnails files={files} onFileRemove={onFileRemove} />
+      )}
+
+      {showFileEditor && onFileAttach && projectRoot && (
+        <FileEditorDialog
+          onSave={handleFileCreate}
+          onClose={() => setShowFileEditor(false)}
+        />
       )}
     </div>
   );
@@ -1037,6 +1166,39 @@ function ImageThumbnails({
         />
       )}
     </>
+  );
+}
+
+function FileThumbnails({
+  files,
+  onFileRemove,
+}: {
+  files: PromptFilePart[];
+  onFileRemove?: (index: number) => void;
+}) {
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      {files.map((file, index) => (
+        <div
+          key={`${file.filename}-${index}`}
+          className="group border-glass-border bg-glass-light relative flex items-center gap-1.5 rounded border px-2 py-1"
+        >
+          <Paperclip className="text-ink-3 h-3 w-3 shrink-0" />
+          <span className="text-ink-2 max-w-[120px] truncate text-xs">
+            {file.filename}
+          </span>
+          {onFileRemove && (
+            <button
+              type="button"
+              onClick={() => onFileRemove(index)}
+              className="text-ink-3 hover:text-ink-1 ml-0.5 hidden group-hover:block"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
 
