@@ -540,6 +540,24 @@ export class OpenCodeBackend implements AgentBackend {
         'OpenCode session.create() returned no data. Full result: %O',
         result,
       );
+
+      // Extract meaningful error details from the response
+      const err = result.error as
+        | { name?: string; data?: { path?: string; issues?: unknown[] } }
+        | undefined;
+      if (err?.name) {
+        const detail = err.data?.path
+          ? `${err.name}: ${err.data.path}`
+          : err.name;
+        const issues = err.data?.issues;
+        const issueStr = Array.isArray(issues)
+          ? ` — ${JSON.stringify(issues)}`
+          : '';
+        throw new Error(
+          `Failed to create OpenCode session: ${detail}${issueStr}`,
+        );
+      }
+
       throw new Error(
         `Failed to create OpenCode session: result.data is ${String(result.data)}`,
       );
