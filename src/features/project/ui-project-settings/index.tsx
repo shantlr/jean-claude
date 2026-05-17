@@ -21,6 +21,7 @@ import { ProjectMcpSettings } from '@/features/project/ui-project-mcp-settings';
 import { ProjectPermissionsSettings } from '@/features/project/ui-project-permissions-settings';
 import { ProjectPipelineSettings } from '@/features/project/ui-project-pipeline-settings';
 import { ProjectSkillsSettings } from '@/features/project/ui-project-skills-settings';
+import { ProjectWorktreeSettings } from '@/features/project/ui-project-worktree-settings';
 import { RepoLink } from '@/features/project/ui-repo-link';
 import { RunCommandsConfig } from '@/features/project/ui-run-commands-config';
 import { WorkItemsLink } from '@/features/project/ui-work-items-link';
@@ -54,6 +55,7 @@ import { ProtectedBranchesInput } from './protected-branches-input';
 export type ProjectSettingsMenuItem =
   | 'details'
   | 'permissions'
+  | 'worktree'
   | 'autocomplete'
   | 'integrations'
   | 'pipelines'
@@ -455,6 +457,9 @@ export function ProjectSettings({
       break;
     case 'permissions':
       content = <ProjectPermissionsSettings projectPath={project.path} />;
+      break;
+    case 'worktree':
+      content = <ProjectWorktreeSettings projectPath={project.path} />;
       break;
     case 'autocomplete':
       content = (

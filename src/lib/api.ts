@@ -730,6 +730,15 @@ export interface Api {
       action: import('@shared/permission-types').PermissionAction,
     ) => Promise<import('@shared/permission-types').PermissionScope>;
   };
+  worktreeConfig: {
+    getCopyEntries: (
+      projectPath: string,
+    ) => Promise<import('@shared/permission-types').WorktreeFileCopyEntry[]>;
+    setCopyEntries: (
+      projectPath: string,
+      entries: import('@shared/permission-types').WorktreeFileCopyEntry[],
+    ) => Promise<import('@shared/permission-types').WorktreeFileCopyEntry[]>;
+  };
   shell: {
     openInEditor: (dirPath: string, folderContext?: string) => Promise<void>;
     getAvailableEditors: () => Promise<{ id: string; available: boolean }[]>;
@@ -1340,6 +1349,10 @@ export const api: Api = hasWindowApi
         addRule: async () => ({}),
         removeRule: async () => ({}),
         editRule: async () => ({}),
+      },
+      worktreeConfig: {
+        getCopyEntries: async () => [],
+        setCopyEntries: async () => [],
       },
       shell: {
         openInEditor: async () => {},

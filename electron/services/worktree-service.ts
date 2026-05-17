@@ -6,6 +6,7 @@ import { promisify } from 'util';
 import { app } from 'electron';
 import { nanoid } from 'nanoid';
 
+import type { WorktreeFileCopyEntry } from '@shared/permission-types';
 import type { BranchInfo } from '@shared/types';
 
 import { ProjectRepository } from '../database/repositories/projects';
@@ -13,7 +14,10 @@ import { dbg } from '../lib/debug';
 import { isEnoent, pathExists } from '../lib/fs';
 
 import { installMcpForWorktree } from './mcp-template-service';
-import { buildWorktreeSettings } from './permission-settings-service';
+import {
+  buildWorktreeSettings,
+  readSettings,
+} from './permission-settings-service';
 
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
@@ -633,6 +637,38 @@ export async function getWorktreeFileContent(
 }
 
 /**
+ * Copies files from the project root to the worktree based on the
+ * `worktree.create.copy` config in `.jean-claude/settings.local.json`.
+ *
+ * Each entry is either a string (same relative path) or a [source, dest] tuple.
+ * Missing source files are silently skipped.
+ */
+async function copyWorktreeFiles(
+  projectPath: string,
+  worktreePath: string,
+  entries: WorktreeFileCopyEntry[],
+): Promise<void> {
+  for (const entry of entries) {
+    const [src, dest] = Array.isArray(entry) ? entry : [entry, entry];
+    const srcPath = path.join(projectPath, src);
+    const destPath = path.join(worktreePath, dest);
+
+    try {
+      // Ensure destination directory exists
+      await fs.mkdir(path.dirname(destPath), { recursive: true });
+      await fs.copyFile(srcPath, destPath);
+      dbg.worktree('Copied file: %s → %s', src, dest);
+    } catch (error) {
+      if (isEnoent(error)) {
+        dbg.worktree('Skipping missing file: %s', src);
+      } else {
+        dbg.worktree('Failed to copy file %s: %O', src, error);
+      }
+    }
+  }
+}
+
+/**
  * Creates a git worktree for a task.
  *
  * @param projectPath - The path to the main git repository
@@ -719,6 +755,18 @@ export async function createWorktree(
   } catch (error) {
     dbg.worktree('Failed to install MCP servers for worktree: %O', error);
     // Don't throw — MCP setup failure shouldn't block worktree creation
+  }
+
+  // Copy configured files from project to worktree
+  try {
+    const settings = await readSettings(projectPath);
+    const copyEntries = settings.worktree?.create?.copy;
+    if (copyEntries && copyEntries.length > 0) {
+      await copyWorktreeFiles(projectPath, worktreePath, copyEntries);
+    }
+  } catch (error) {
+    dbg.worktree('Failed to copy worktree files: %O', error);
+    // Don't throw — file copy failure shouldn't block worktree creation
   }
 
   // Get the commit hash of the worktree HEAD (which is the source branch's HEAD or current HEAD)

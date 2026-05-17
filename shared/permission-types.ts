@@ -44,10 +44,33 @@ export interface PermissionSettings {
   worktrees?: WorktreePermissionScope;
 }
 
+/**
+ * A file copy entry for worktree creation.
+ * - `string`: copies the file to the same relative path in the worktree
+ * - `[source, destination]`: copies source to a different destination path
+ *
+ * All paths are relative to the project/worktree root.
+ */
+export type WorktreeFileCopyEntry =
+  | string
+  | [source: string, destination: string];
+
+/** Configuration for worktree creation behavior */
+export interface WorktreeCreateConfig {
+  /** Files to copy from the project root into the new worktree */
+  copy?: WorktreeFileCopyEntry[];
+}
+
+/** Worktree-related configuration */
+export interface WorktreeConfig {
+  create?: WorktreeCreateConfig;
+}
+
 /** The full `.jean-claude/settings.local.json` file shape */
 export interface JeanClaudeSettings {
   version: 1;
   permissions: PermissionSettings;
+  worktree?: WorktreeConfig;
 }
 
 /**

@@ -159,6 +159,8 @@ import {
   addProjectPermissionRule,
   removeProjectPermissionRule,
   editProjectPermissionRule,
+  readSettings,
+  writeSettings,
 } from '../services/permission-settings-service';
 import { pipelineTrackingService } from '../services/pipeline-tracking-service';
 import { generatePrDescriptionForTask } from '../services/pr-description-generation-service';
@@ -1419,6 +1421,41 @@ export function registerIpcHandlers() {
         action,
       });
       return readProjectPermissions(projectPath);
+    },
+  );
+
+  // Worktree config (file copy settings)
+  ipcMain.handle('worktreeConfig:get', async (_, projectPath: string) => {
+    if (typeof projectPath !== 'string' || !projectPath.trim()) {
+      throw new Error('Invalid projectPath: must be a non-empty string');
+    }
+    const settings = await readSettings(projectPath);
+    return settings.worktree?.create?.copy ?? [];
+  });
+
+  ipcMain.handle(
+    'worktreeConfig:setCopyEntries',
+    async (
+      _,
+      projectPath: string,
+      entries: import('@shared/permission-types').WorktreeFileCopyEntry[],
+    ) => {
+      if (typeof projectPath !== 'string' || !projectPath.trim()) {
+        throw new Error('Invalid projectPath: must be a non-empty string');
+      }
+      if (!Array.isArray(entries)) {
+        throw new Error('Invalid entries: must be an array');
+      }
+      const settings = await readSettings(projectPath);
+      settings.worktree = {
+        ...settings.worktree,
+        create: {
+          ...settings.worktree?.create,
+          copy: entries.length > 0 ? entries : undefined,
+        },
+      };
+      await writeSettings(projectPath, settings);
+      return settings.worktree?.create?.copy ?? [];
     },
   );
 

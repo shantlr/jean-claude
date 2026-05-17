@@ -143,6 +143,7 @@ const PROJECT_MENU_ITEMS: {
 }[] = [
   { id: 'details', label: 'Details', icon: FileText },
   { id: 'permissions', label: 'Permissions', icon: Zap },
+  { id: 'worktree', label: 'Worktree', icon: Folder },
   { id: 'autocomplete', label: 'Autocomplete', icon: Terminal },
   { id: 'integrations', label: 'Integrations', icon: Plug },
   { id: 'pipelines', label: 'Pipelines', icon: GitBranch },

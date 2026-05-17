@@ -420,6 +420,15 @@ contextBridge.exposeInMainWorld('api', {
         action,
       ),
   },
+  worktreeConfig: {
+    getCopyEntries: (projectPath: string) =>
+      ipcRenderer.invoke('worktreeConfig:get', projectPath),
+    setCopyEntries: (
+      projectPath: string,
+      entries: import('@shared/permission-types').WorktreeFileCopyEntry[],
+    ) =>
+      ipcRenderer.invoke('worktreeConfig:setCopyEntries', projectPath, entries),
+  },
   fs: {
     readPackageJson: (dirPath: string) =>
       ipcRenderer.invoke('fs:readPackageJson', dirPath),
