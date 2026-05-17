@@ -51,6 +51,7 @@ function normalizeSettingsShape(
         ? { worktrees: parsed.permissions.worktrees }
         : {}),
     },
+    ...(parsed.worktree ? { worktree: parsed.worktree } : {}),
   };
 }
 
