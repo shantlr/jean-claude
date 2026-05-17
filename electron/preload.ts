@@ -345,6 +345,34 @@ contextBridge.exposeInMainWorld('api', {
       projectId: string;
       evaluationId: string;
     }) => ipcRenderer.invoke('azureDevOps:requeuePolicyEvaluation', params),
+    votePullRequest: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      reviewerId: string;
+      vote: number;
+    }) => ipcRenderer.invoke('azureDevOps:votePullRequest', params),
+    setPullRequestAutoComplete: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      enabled: boolean;
+      autoCompleteSetById?: string;
+      completionOptions?: {
+        mergeStrategy: string;
+        deleteSourceBranch: boolean;
+        transitionWorkItems: boolean;
+        mergeCommitMessage?: string;
+      };
+    }) => ipcRenderer.invoke('azureDevOps:setPullRequestAutoComplete', params),
+    publishPullRequest: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+    }) => ipcRenderer.invoke('azureDevOps:publishPullRequest', params),
   },
   dialog: {
     openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),

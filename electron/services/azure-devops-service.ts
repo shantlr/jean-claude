@@ -1283,6 +1283,16 @@ interface PullRequestResponse {
   targetRefName: string;
   description?: string;
   mergeStatus?: string;
+  autoCompleteSetBy?: {
+    displayName: string;
+    id: string;
+  };
+  completionOptions?: {
+    mergeStrategy?: string;
+    deleteSourceBranch?: boolean;
+    transitionWorkItems?: boolean;
+    mergeCommitMessage?: string;
+  };
   reviewers?: Array<{
     displayName: string;
     uniqueName: string;
@@ -1538,6 +1548,56 @@ export async function listPullRequests(params: {
   }));
 }
 
+function mapPullRequestResponse(
+  pr: PullRequestResponse,
+  webUrl: string,
+): AzureDevOpsPullRequestDetails {
+  return {
+    id: pr.pullRequestId,
+    title: pr.title,
+    status: mapPrStatus(pr.status),
+    isDraft: pr.isDraft,
+    createdBy: {
+      displayName: pr.createdBy.displayName,
+      uniqueName: pr.createdBy.uniqueName,
+      imageUrl: pr.createdBy.imageUrl,
+    },
+    creationDate: pr.creationDate,
+    sourceRefName: pr.sourceRefName,
+    targetRefName: pr.targetRefName,
+    url: webUrl,
+    description: pr.description ?? '',
+    mergeStatus: pr.mergeStatus as AzureDevOpsPullRequestDetails['mergeStatus'],
+    autoCompleteSetBy: pr.autoCompleteSetBy
+      ? {
+          displayName: pr.autoCompleteSetBy.displayName,
+          id: pr.autoCompleteSetBy.id,
+        }
+      : undefined,
+    completionOptions: pr.completionOptions
+      ? {
+          mergeStrategy: (pr.completionOptions.mergeStrategy ??
+            'noFastForward') as
+            | 'noFastForward'
+            | 'squash'
+            | 'rebase'
+            | 'rebaseMerge',
+          deleteSourceBranch: pr.completionOptions.deleteSourceBranch ?? false,
+          transitionWorkItems:
+            pr.completionOptions.transitionWorkItems ?? false,
+          mergeCommitMessage: pr.completionOptions.mergeCommitMessage,
+        }
+      : undefined,
+    reviewers: (pr.reviewers ?? []).map((r) => ({
+      displayName: r.displayName,
+      uniqueName: r.uniqueName,
+      imageUrl: r.imageUrl,
+      voteStatus: mapVoteToStatus(r.vote),
+      isContainer: r.isContainer,
+    })),
+  };
+}
+
 export async function getPullRequest(params: {
   providerId: string;
   projectId: string;
@@ -1558,31 +1618,110 @@ export async function getPullRequest(params: {
   }
 
   const pr: PullRequestResponse = await response.json();
+  const webUrl = `https://dev.azure.com/${orgName}/${params.projectId}/_git/${params.repoId}/pullrequest/${pr.pullRequestId}`;
 
-  return {
-    id: pr.pullRequestId,
-    title: pr.title,
-    status: mapPrStatus(pr.status),
-    isDraft: pr.isDraft,
-    createdBy: {
-      displayName: pr.createdBy.displayName,
-      uniqueName: pr.createdBy.uniqueName,
-      imageUrl: pr.createdBy.imageUrl,
+  return mapPullRequestResponse(pr, webUrl);
+}
+
+export async function votePullRequest(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+  reviewerId: string;
+  vote: number;
+}): Promise<void> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}/reviewers/${params.reviewerId}?api-version=7.0`;
+
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      Authorization: authHeader,
+      'Content-Type': 'application/json',
     },
-    creationDate: pr.creationDate,
-    sourceRefName: pr.sourceRefName,
-    targetRefName: pr.targetRefName,
-    url: `https://dev.azure.com/${orgName}/${params.projectId}/_git/${params.repoId}/pullrequest/${pr.pullRequestId}`,
-    description: pr.description ?? '',
-    mergeStatus: pr.mergeStatus as AzureDevOpsPullRequestDetails['mergeStatus'],
-    reviewers: (pr.reviewers ?? []).map((r) => ({
-      displayName: r.displayName,
-      uniqueName: r.uniqueName,
-      imageUrl: r.imageUrl,
-      voteStatus: mapVoteToStatus(r.vote),
-      isContainer: r.isContainer,
-    })),
+    body: JSON.stringify({ vote: params.vote }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to vote on pull request: ${error}`);
+  }
+}
+
+export async function setPullRequestAutoComplete(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+  enabled: boolean;
+  autoCompleteSetById?: string;
+  completionOptions?: {
+    mergeStrategy: string;
+    deleteSourceBranch: boolean;
+    transitionWorkItems: boolean;
+    mergeCommitMessage?: string;
   };
+}): Promise<AzureDevOpsPullRequestDetails> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}?api-version=7.0`;
+
+  const body = params.enabled
+    ? {
+        autoCompleteSetBy: { id: params.autoCompleteSetById },
+        completionOptions: params.completionOptions,
+      }
+    : {
+        autoCompleteSetBy: {
+          id: '00000000-0000-0000-0000-000000000000',
+        },
+      };
+
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Authorization: authHeader,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to set auto-complete: ${error}`);
+  }
+
+  const pr: PullRequestResponse = await response.json();
+  const webUrl = `https://dev.azure.com/${orgName}/${params.projectId}/_git/${params.repoId}/pullrequest/${pr.pullRequestId}`;
+
+  return mapPullRequestResponse(pr, webUrl);
+}
+
+export async function publishPullRequest(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+}): Promise<void> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}?api-version=7.0`;
+
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Authorization: authHeader,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ isDraft: false }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to publish pull request: ${error}`);
+  }
 }
 
 export async function getPullRequestPolicyEvaluations(params: {

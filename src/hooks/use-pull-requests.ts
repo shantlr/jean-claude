@@ -337,3 +337,132 @@ export function useRequeuePolicyEvaluation(projectId: string, prId: number) {
     },
   });
 }
+
+export function useCurrentAzureUser(projectId: string) {
+  const repoInfo = useProjectRepoInfo(projectId);
+
+  return useQuery({
+    queryKey: ['azure-current-user', repoInfo?.providerId],
+    queryFn: () => api.azureDevOps.getCurrentUser(repoInfo!.providerId),
+    enabled: !!repoInfo,
+    staleTime: Infinity,
+  });
+}
+
+export function useVotePullRequest(projectId: string, prId: number) {
+  const queryClient = useQueryClient();
+  const repoInfo = useProjectRepoInfo(projectId);
+
+  return useMutation({
+    mutationFn: (params: { reviewerId: string; vote: number }) =>
+      api.azureDevOps.votePullRequest({
+        providerId: repoInfo!.providerId,
+        projectId: repoInfo!.projectId,
+        repoId: repoInfo!.repoId,
+        pullRequestId: prId,
+        ...params,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['pull-request', projectId, prId],
+      });
+    },
+  });
+}
+
+export function useSetAutoComplete(projectId: string, prId: number) {
+  const queryClient = useQueryClient();
+  const repoInfo = useProjectRepoInfo(projectId);
+
+  return useMutation({
+    mutationFn: (params: {
+      enabled: boolean;
+      autoCompleteSetById?: string;
+      completionOptions?: {
+        mergeStrategy: string;
+        deleteSourceBranch: boolean;
+        transitionWorkItems: boolean;
+        mergeCommitMessage?: string;
+      };
+    }) =>
+      api.azureDevOps.setPullRequestAutoComplete({
+        providerId: repoInfo!.providerId,
+        projectId: repoInfo!.projectId,
+        repoId: repoInfo!.repoId,
+        pullRequestId: prId,
+        ...params,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['pull-request', projectId, prId],
+      });
+    },
+  });
+}
+
+export function usePublishPullRequest(projectId: string, prId: number) {
+  const queryClient = useQueryClient();
+  const repoInfo = useProjectRepoInfo(projectId);
+
+  return useMutation({
+    mutationFn: () =>
+      api.azureDevOps.publishPullRequest({
+        providerId: repoInfo!.providerId,
+        projectId: repoInfo!.projectId,
+        repoId: repoInfo!.repoId,
+        pullRequestId: prId,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['pull-request', projectId, prId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['pull-requests', projectId],
+      });
+    },
+  });
+}
+
+// Policy type ID for "Limit merge types"
+const MERGE_TYPE_POLICY_ID = 'fa4e907d-c16b-4a4c-9dfa-4916e5d171ab';
+
+export type MergeStrategy =
+  | 'noFastForward'
+  | 'squash'
+  | 'rebase'
+  | 'rebaseMerge';
+
+const ALL_MERGE_STRATEGIES: MergeStrategy[] = [
+  'noFastForward',
+  'squash',
+  'rebase',
+  'rebaseMerge',
+];
+
+export function getAllowedMergeStrategies(
+  evaluations: AzureDevOpsPolicyEvaluation[],
+): MergeStrategy[] {
+  const mergePolicy = evaluations.find(
+    (e) => e.configuration.type.id === MERGE_TYPE_POLICY_ID,
+  );
+
+  if (!mergePolicy) {
+    return ALL_MERGE_STRATEGIES;
+  }
+
+  const settings = mergePolicy.configuration.settings;
+  const allowed: MergeStrategy[] = [];
+  if (settings.allowNoFastForward) allowed.push('noFastForward');
+  if (settings.allowSquash) allowed.push('squash');
+  if (settings.allowRebase) allowed.push('rebase');
+  if (settings.allowRebaseMerge) allowed.push('rebaseMerge');
+
+  return allowed.length > 0 ? allowed : ALL_MERGE_STRATEGIES;
+}
+
+export const MERGE_STRATEGY_LABELS: Record<MergeStrategy, string> = {
+  noFastForward: 'Merge (no fast-forward)',
+  squash: 'Squash commit',
+  rebase: 'Rebase',
+  rebaseMerge: 'Rebase and merge',
+};

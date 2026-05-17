@@ -7,6 +7,7 @@ import {
   GitMerge,
   Loader2,
   Plus,
+  Send,
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
@@ -14,6 +15,7 @@ import { Chip } from '@/common/ui/chip';
 import { Separator } from '@/common/ui/separator';
 import { UserAvatar, getVoteLabel } from '@/common/ui/user-avatar';
 import { useProject } from '@/hooks/use-projects';
+import { usePublishPullRequest } from '@/hooks/use-pull-requests';
 import { getEditorLabel, useEditorSetting } from '@/hooks/use-settings';
 import { api } from '@/lib/api';
 import type { AzureDevOpsPullRequestDetails } from '@/lib/api';
@@ -21,6 +23,9 @@ import { encodeProxyUrl } from '@/lib/azure-image-proxy';
 import { formatRelativeTime } from '@/lib/time';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useNewTaskFormStore } from '@/stores/new-task-form';
+
+import { PrAutoComplete } from '../ui-pr-auto-complete';
+import { PrVoteDropdown } from '../ui-pr-vote-dropdown';
 
 function getStatusBadge(
   status: AzureDevOpsPullRequestDetails['status'],
@@ -73,6 +78,7 @@ export function PrHeader({
   const markJobFailed = useBackgroundJobsStore((s) => s.markJobFailed);
   const { setDraft: setNewTaskDraft } = useNewTaskFormStore(projectId);
   const { data: editorSetting } = useEditorSetting();
+  const publishMutation = usePublishPullRequest(projectId, pr.id);
   const [isCreating, setIsCreating] = useState(false);
   const sourceBranch = getBranchName(pr.sourceRefName);
   const targetBranch = getBranchName(pr.targetRefName);
@@ -164,6 +170,26 @@ export function PrHeader({
                 {getStatusBadge(pr.status, pr.isDraft)}
               </div>
               <div className="grow" />
+              {pr.status === 'active' && !pr.isDraft && (
+                <>
+                  <PrVoteDropdown pr={pr} projectId={projectId} />
+                  <PrAutoComplete pr={pr} projectId={projectId} />
+                </>
+              )}
+              {pr.isDraft && pr.status === 'active' && (
+                <button
+                  onClick={() => publishMutation.mutate()}
+                  disabled={publishMutation.isPending}
+                  className="flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+                >
+                  {publishMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  Publish
+                </button>
+              )}
               <button
                 onClick={handleCreateTaskFromPrBranch}
                 className="bg-status-done text-ink-0 hover:bg-status-done flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"

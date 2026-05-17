@@ -66,6 +66,16 @@ export interface AzureDevOpsPullRequest {
 export interface AzureDevOpsPullRequestDetails extends AzureDevOpsPullRequest {
   description: string;
   mergeStatus?: 'succeeded' | 'conflicts' | 'failure' | 'notSet';
+  autoCompleteSetBy?: {
+    displayName: string;
+    id: string;
+  };
+  completionOptions?: {
+    mergeStrategy: 'noFastForward' | 'squash' | 'rebase' | 'rebaseMerge';
+    deleteSourceBranch: boolean;
+    transitionWorkItems: boolean;
+    mergeCommitMessage?: string;
+  };
 }
 
 export interface AzureDevOpsCommit {

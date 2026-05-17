@@ -653,6 +653,34 @@ export interface Api {
       projectId: string;
       evaluationId: string;
     }) => Promise<void>;
+    votePullRequest: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      reviewerId: string;
+      vote: number;
+    }) => Promise<void>;
+    setPullRequestAutoComplete: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      enabled: boolean;
+      autoCompleteSetById?: string;
+      completionOptions?: {
+        mergeStrategy: string;
+        deleteSourceBranch: boolean;
+        transitionWorkItems: boolean;
+        mergeCommitMessage?: string;
+      };
+    }) => Promise<AzureDevOpsPullRequestDetails>;
+    publishPullRequest: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+    }) => Promise<void>;
   };
   dialog: {
     openDirectory: () => Promise<string | null>;
@@ -1316,6 +1344,15 @@ export const api: Api = hasWindowApi
         fetchImageAsBase64: async () => null,
         getPullRequestPolicyEvaluations: async () => [],
         requeuePolicyEvaluation: async () => {},
+        votePullRequest: async () => {
+          throw new Error('API not available');
+        },
+        setPullRequestAutoComplete: async () => {
+          throw new Error('API not available');
+        },
+        publishPullRequest: async () => {
+          throw new Error('API not available');
+        },
       },
       dialog: {
         openDirectory: async () => null,

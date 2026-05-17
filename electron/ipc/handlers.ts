@@ -109,6 +109,9 @@ import {
   queueBuild,
   createRelease as createAzureRelease,
   cancelBuild,
+  votePullRequest,
+  setPullRequestAutoComplete,
+  publishPullRequest,
   type CloneRepositoryParams,
 } from '../services/azure-devops-service';
 import { fetchImageAsBase64 } from '../services/azure-image-proxy-service';
@@ -2078,6 +2081,55 @@ export function registerIpcHandlers() {
         evaluationId: string;
       },
     ) => requeuePolicyEvaluation(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:votePullRequest',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        pullRequestId: number;
+        reviewerId: string;
+        vote: number;
+      },
+    ) => votePullRequest(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:setPullRequestAutoComplete',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        pullRequestId: number;
+        enabled: boolean;
+        autoCompleteSetById?: string;
+        completionOptions?: {
+          mergeStrategy: string;
+          deleteSourceBranch: boolean;
+          transitionWorkItems: boolean;
+          mergeCommitMessage?: string;
+        };
+      },
+    ) => setPullRequestAutoComplete(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:publishPullRequest',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        pullRequestId: number;
+      },
+    ) => publishPullRequest(params),
   );
 
   ipcMain.handle(
