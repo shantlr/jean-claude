@@ -370,9 +370,13 @@ export function groupByPrompts(
       continue;
     }
 
-    // Compacting entries always render at the top level, outside groups
+    // Compacting belongs inside current group (it happens during an agent turn)
     if (dm.kind === 'compacting') {
-      result.push(dm);
+      if (currentGroup) {
+        currentGroup.childMessages.push(dm);
+      } else {
+        result.push(dm);
+      }
       continue;
     }
 

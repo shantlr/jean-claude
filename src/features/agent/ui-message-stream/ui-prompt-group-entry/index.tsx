@@ -47,6 +47,7 @@ function getRunningActivity(childMessages: DisplayMessage[]): {
     done: boolean;
     current: boolean;
   }>;
+  isCompacting: boolean;
   latestMessage:
     | {
         kind: 'text';
@@ -186,7 +187,12 @@ function getRunningActivity(childMessages: DisplayMessage[]): {
     if (!latestMessage) latestMessage = { kind: 'text', text: 'Working...' };
   }
 
-  return { subagents, todos, latestMessage };
+  // Check if context compaction is in progress
+  const isCompacting = childMessages.some(
+    (dm) => dm.kind === 'compacting' && !dm.endEntry,
+  );
+
+  return { subagents, todos, isCompacting, latestMessage };
 }
 
 function getLastAssistantMessageText(
@@ -565,6 +571,16 @@ function RunningSummary({
               <SubagentCard key={sa.id} sa={sa} />
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Context compaction */}
+      {activity.isCompacting && (
+        <div className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500 shadow-[0_0_6px_theme(colors.amber.500/40)]" />
+          <span className="text-ink-3 font-mono text-[10px] tracking-wider uppercase">
+            compacting context…
+          </span>
         </div>
       )}
 
