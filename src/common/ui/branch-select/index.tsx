@@ -10,7 +10,10 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 
-import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import {
+  useRegisterKeyboardBindings,
+  type KeyboardLayer,
+} from '@/common/context/keyboard-bindings';
 import { useRegisterOverlay } from '@/common/context/overlay';
 import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
 import { sizeClasses, type ComponentSize } from '@/common/ui/styles';
@@ -32,6 +35,7 @@ export function BranchSelect({
   side = 'bottom',
   size = 'md',
   className,
+  layer,
 }: {
   branches: BranchInfo[];
   branchesLoading?: boolean;
@@ -46,6 +50,7 @@ export function BranchSelect({
   side?: 'top' | 'bottom';
   size?: ComponentSize;
   className?: string;
+  layer?: KeyboardLayer;
 }) {
   const id = useId();
   const listboxId = `branch-select-listbox-${id}`;
@@ -193,7 +198,7 @@ export function BranchSelect({
         return true;
       },
     },
-    { enabled: isOpen },
+    { enabled: isOpen, layer },
   );
 
   const s = sizeClasses[size];
@@ -291,7 +296,7 @@ export function BranchSelect({
             role="listbox"
             aria-orientation="vertical"
             aria-label={label}
-            className="bg-bg-1 border-glass-border fixed z-50 min-w-48 rounded-md border shadow-xl"
+            className="bg-bg-1 border-glass-border fixed z-[70] min-w-48 rounded-md border shadow-xl"
             style={{
               top: position.actualSide === 'bottom' ? position.top : undefined,
               bottom:

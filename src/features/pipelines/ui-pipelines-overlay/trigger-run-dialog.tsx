@@ -12,6 +12,7 @@ import { BranchSelect } from '@/common/ui/branch-select';
 import { Button } from '@/common/ui/button';
 import { Checkbox } from '@/common/ui/checkbox';
 import { Input } from '@/common/ui/input';
+import { Kbd } from '@/common/ui/kbd';
 import { Select, type SelectOption } from '@/common/ui/select';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import {
@@ -41,6 +42,7 @@ function ParameterField({
   value,
   options,
   onChange,
+  layer,
 }: {
   name: string;
   label: string;
@@ -48,6 +50,7 @@ function ParameterField({
   value: string;
   options?: { value: string; label: string }[];
   onChange: (name: string, value: string) => void;
+  layer?: import('@/common/context/keyboard-bindings').KeyboardLayer;
 }) {
   if (type === 'boolean') {
     return (
@@ -69,6 +72,7 @@ function ParameterField({
           value={value}
           options={options as SelectOption<string>[]}
           onChange={(v) => onChange(name, v)}
+          layer={layer}
         />
       </>
     );
@@ -99,7 +103,6 @@ export function TriggerRunDialog({
   pipeline: TrackedPipeline;
   onClose: () => void;
 }) {
-  const layer = useKeyboardLayer('dialog', { exclusive: true });
   const isBuild = pipeline.kind === 'build';
   const providerId = project.repoProviderId;
   const azureProjectId = project.repoProjectId;
@@ -108,32 +111,7 @@ export function TriggerRunDialog({
 
   // Guard: all required project fields must be present
   if (!providerId || !azureProjectId || !repoId) {
-    return createPortal(
-      <KeyboardLayerProvider layer={layer}>
-        <FocusLock returnFocus>
-          <div
-            className="bg-bg-0/40 fixed inset-0 z-[60] flex items-center justify-center"
-            onClick={onClose}
-          >
-            <div
-              className="text-ink-1 border-glass-border bg-bg-1 w-full max-w-md rounded-lg border p-6 text-sm"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <p className="text-status-fail">
-                Project is missing repository configuration. Please link a
-                repository first.
-              </p>
-              <div className="mt-4 flex justify-end">
-                <Button variant="ghost" size="sm" onClick={onClose}>
-                  Close
-                </Button>
-              </div>
-            </div>
-          </div>
-        </FocusLock>
-      </KeyboardLayerProvider>,
-      document.body,
-    );
+    return <TriggerRunDialogError onClose={onClose} />;
   }
 
   return (
@@ -143,10 +121,58 @@ export function TriggerRunDialog({
       repoId={repoId}
       definitionId={definitionId}
       defaultBranch={project.defaultBranch ?? 'main'}
+      favoriteBranches={project.favoriteBranches}
+      protectedBranches={project.protectedBranches}
       isBuild={isBuild}
       pipelineName={pipeline.name}
       onClose={onClose}
     />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Error guard (extracted to avoid unconditional useKeyboardLayer in parent)
+// ---------------------------------------------------------------------------
+
+function TriggerRunDialogError({ onClose }: { onClose: () => void }) {
+  const layer = useKeyboardLayer('dialog', { exclusive: true });
+
+  useRegisterKeyboardBindings(
+    'trigger-run-dialog-error',
+    {
+      escape: () => {
+        onClose();
+        return true;
+      },
+    },
+    { layer },
+  );
+
+  return createPortal(
+    <KeyboardLayerProvider layer={layer}>
+      <FocusLock returnFocus>
+        <div
+          className="bg-bg-0/40 fixed inset-0 z-[60] flex items-center justify-center"
+          onClick={onClose}
+        >
+          <div
+            className="text-ink-1 border-glass-border bg-bg-1 w-full max-w-md rounded-lg border p-6 text-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-status-fail">
+              Project is missing repository configuration. Please link a
+              repository first.
+            </p>
+            <div className="mt-4 flex justify-end">
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      </FocusLock>
+    </KeyboardLayerProvider>,
+    document.body,
   );
 }
 
@@ -160,6 +186,8 @@ function TriggerRunDialogInner({
   repoId,
   definitionId,
   defaultBranch,
+  favoriteBranches,
+  protectedBranches,
   isBuild,
   pipelineName,
   onClose,
@@ -169,6 +197,8 @@ function TriggerRunDialogInner({
   repoId: string;
   definitionId: number;
   defaultBranch: string;
+  favoriteBranches?: string[];
+  protectedBranches?: string[];
   isBuild: boolean;
   pipelineName: string;
   onClose: () => void;
@@ -412,6 +442,10 @@ function TriggerRunDialogInner({
         onClose();
         return true;
       },
+      'cmd+enter': () => {
+        if (!isPending) handleSubmit();
+        return true;
+      },
     },
     { layer },
   );
@@ -443,9 +477,13 @@ function TriggerRunDialogInner({
                 <label className="text-ink-2 mb-1 block text-xs">Branch</label>
                 <BranchSelect
                   branches={pipelineBranchInfos}
+                  favoriteBranches={favoriteBranches}
+                  defaultBranch={defaultBranch}
+                  protectedBranches={protectedBranches}
                   value={branchFilter || undefined}
                   onChange={(branch) => setBranchFilter(branch)}
                   placeholder="Select branch..."
+                  layer={layer}
                 />
               </div>
             )}
@@ -484,6 +522,7 @@ function TriggerRunDialogInner({
                             : undefined
                         }
                         onChange={handleParamChange}
+                        layer={layer}
                       />
                     </div>
                   ))}
@@ -506,6 +545,7 @@ function TriggerRunDialogInner({
                           label: val,
                         }))}
                         onChange={handleParamChange}
+                        layer={layer}
                       />
                     </div>
                   ))}
@@ -518,6 +558,7 @@ function TriggerRunDialogInner({
                         type="text"
                         value={parameters[variable.name] ?? ''}
                         onChange={handleParamChange}
+                        layer={layer}
                       />
                     </div>
                   ))}
@@ -565,6 +606,7 @@ function TriggerRunDialogInner({
                   : isBuild
                     ? 'Queue Build'
                     : 'Create Release'}
+                <Kbd shortcut="cmd+enter" />
               </Button>
             </div>
           </div>

@@ -281,7 +281,7 @@ export const Select = forwardRef<
             role="listbox"
             aria-orientation="vertical"
             aria-label={label}
-            className="bg-bg-1 border-glass-border fixed z-50 min-w-48 overflow-y-auto rounded-md border py-1 shadow-xl"
+            className="bg-bg-1 border-glass-border fixed z-[70] min-w-48 overflow-y-auto rounded-md border py-1 shadow-xl"
             style={{
               top: position.actualSide === 'bottom' ? position.top : undefined,
               bottom:
