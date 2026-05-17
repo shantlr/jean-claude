@@ -59,6 +59,10 @@ export function getToolActivitySummary(toolUse: NormalizedToolUse): string {
     case 'todo-write': {
       return 'Updating todo list';
     }
+    case 'skill': {
+      const t = toolUse as ToolUseByName<'skill'>;
+      return `Skill \`${t.skillName}\``;
+    }
     case 'mcp': {
       const t = toolUse as ToolUseByName<'mcp'>;
       return `Using \`${t.toolName}\``;

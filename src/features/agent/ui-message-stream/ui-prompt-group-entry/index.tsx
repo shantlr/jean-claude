@@ -42,6 +42,10 @@ function getRunningActivity(childMessages: DisplayMessage[]): {
     step: string | null;
     model: string | null;
   }>;
+  runningTools: Array<{
+    id: string;
+    summary: string;
+  }>;
   todos: Array<{
     text: string;
     done: boolean;
@@ -65,6 +69,10 @@ function getRunningActivity(childMessages: DisplayMessage[]): {
     kind: string;
     step: string | null;
     model: string | null;
+  }> = [];
+  const runningTools: Array<{
+    id: string;
+    summary: string;
   }> = [];
   let latestMessage:
     | {
@@ -103,6 +111,21 @@ function getRunningActivity(childMessages: DisplayMessage[]): {
     }
   }
 
+  // Collect running tools (tool_use without result, excluding subagents/skills/todo-write)
+  for (const dm of childMessages) {
+    if (
+      dm.kind === 'entry' &&
+      dm.entry.type === 'tool-use' &&
+      !dm.entry.result &&
+      dm.entry.name !== 'todo-write'
+    ) {
+      runningTools.push({
+        id: dm.entry.toolId,
+        summary: getToolActivitySummary(dm.entry as NormalizedToolUse),
+      });
+    }
+  }
+
   // Collect latest todo state from most recent todo-write in ALL child messages
   const allEntries: NormalizedEntry[] = [];
   for (const dm of childMessages) {
@@ -133,66 +156,62 @@ function getRunningActivity(childMessages: DisplayMessage[]): {
     }
   }
 
-  // Latest message (fallback when no subagents)
-  if (subagents.length === 0) {
-    for (let i = childMessages.length - 1; i >= 0; i--) {
-      const dm = childMessages[i];
-      if (dm.kind === 'entry') {
-        if (dm.entry.type === 'tool-use') {
-          if (dm.entry.name === 'bash') {
-            const bashEntry = dm.entry as ToolUseByName<'bash'>;
-            const firstLine = bashEntry.input.command.split('\n')[0];
-            const command = firstLine.slice(0, 80);
-            latestMessage = {
-              kind: 'bash',
-              command:
-                command.length < firstLine.length ? `${command}...` : command,
-            };
-          } else {
-            latestMessage = {
-              kind: 'text',
-              text: getToolActivitySummary(dm.entry as NormalizedToolUse),
-            };
-          }
-          break;
-        }
-        if (dm.entry.type === 'assistant-message' && dm.entry.value.trim()) {
-          const preview = dm.entry.value.slice(0, 100);
+  // Latest message (always shown, even alongside subagents/running tools)
+  for (let i = childMessages.length - 1; i >= 0; i--) {
+    const dm = childMessages[i];
+    if (dm.kind === 'entry') {
+      if (dm.entry.type === 'tool-use') {
+        if (dm.entry.name === 'bash') {
+          const bashEntry = dm.entry as ToolUseByName<'bash'>;
+          const firstLine = bashEntry.input.command.split('\n')[0];
+          const command = firstLine.slice(0, 80);
+          latestMessage = {
+            kind: 'bash',
+            command:
+              command.length < firstLine.length ? `${command}...` : command,
+          };
+        } else {
           latestMessage = {
             kind: 'text',
-            text:
-              preview.length < dm.entry.value.length
-                ? `${preview}...`
-                : preview,
+            text: getToolActivitySummary(dm.entry as NormalizedToolUse),
           };
-          break;
         }
-        if (dm.entry.type === 'thinking') {
-          latestMessage = { kind: 'text', text: 'Thinking...' };
-          break;
-        }
+        break;
       }
-      if (dm.kind === 'subagent' && dm.toolUse.result) {
-        const sa =
-          dm.toolUse.name === 'sub-agent'
-            ? (dm.toolUse as ToolUseByName<'sub-agent'>)
-            : undefined;
+      if (dm.entry.type === 'assistant-message' && dm.entry.value.trim()) {
+        const preview = dm.entry.value.slice(0, 100);
         latestMessage = {
           kind: 'text',
-          text: `Completed: ${sa?.input.description ?? 'Sub-agent'}`,
+          text:
+            preview.length < dm.entry.value.length ? `${preview}...` : preview,
         };
         break;
       }
+      if (dm.entry.type === 'thinking') {
+        latestMessage = { kind: 'text', text: 'Thinking...' };
+        break;
+      }
     }
-    if (!latestMessage) latestMessage = { kind: 'text', text: 'Working...' };
+    if (dm.kind === 'subagent' && dm.toolUse.result) {
+      const sa =
+        dm.toolUse.name === 'sub-agent'
+          ? (dm.toolUse as ToolUseByName<'sub-agent'>)
+          : undefined;
+      latestMessage = {
+        kind: 'text',
+        text: `Completed: ${sa?.input.description ?? 'Sub-agent'}`,
+      };
+      break;
+    }
   }
+  if (!latestMessage) latestMessage = { kind: 'text', text: 'Working...' };
 
   // Check if context compaction is in progress
   const isCompacting = childMessages.some(
     (dm) => dm.kind === 'compacting' && !dm.endEntry,
   );
 
-  return { subagents, todos, isCompacting, latestMessage };
+  return { subagents, runningTools, todos, isCompacting, latestMessage };
 }
 
 function getLastAssistantMessageText(
@@ -569,6 +588,35 @@ function RunningSummary({
           <div className="flex flex-col gap-1.5">
             {activity.subagents.map((sa) => (
               <SubagentCard key={sa.id} sa={sa} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Running tools */}
+      {activity.runningTools.length > 0 && (
+        <div>
+          <div className="text-ink-4 mb-1.5 flex items-center gap-1.5 font-mono text-[10px] tracking-wider uppercase">
+            <span>tools</span>
+            <span className="text-ink-3 inline-flex items-center gap-1 rounded-full bg-white/[0.06] px-1.5 py-px text-[9.5px] font-semibold tracking-normal">
+              <span
+                className="bg-acc h-1 w-1 rounded-full"
+                style={{
+                  animation: 'rg-pulse-glow 1.4s ease-in-out infinite',
+                }}
+              />
+              {activity.runningTools.length} running
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            {activity.runningTools.map((tool) => (
+              <div
+                key={tool.id}
+                className="text-ink-2 flex items-baseline gap-2"
+              >
+                <span className="text-ink-4 w-3 shrink-0 text-center">⏳</span>
+                <span className="flex-1 truncate">{tool.summary}</span>
+              </div>
             ))}
           </div>
         </div>
