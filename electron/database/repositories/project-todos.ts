@@ -8,7 +8,7 @@ export const ProjectTodoRepository = {
       .selectFrom('project_todos')
       .selectAll()
       .where('projectId', '=', projectId)
-      .orderBy('sortOrder', 'asc')
+      .orderBy('sortOrder', 'desc')
       .execute(),
 
   countByProjectId: (projectId: string) =>
@@ -57,10 +57,11 @@ export const ProjectTodoRepository = {
   reorder: async (projectId: string, orderedIds: string[]) => {
     dbg.db('projectTodos.reorder projectId=%s ids=%o', projectId, orderedIds);
     await db.transaction().execute(async (trx) => {
+      const lastIndex = orderedIds.length - 1;
       for (let i = 0; i < orderedIds.length; i++) {
         await trx
           .updateTable('project_todos')
-          .set({ sortOrder: i })
+          .set({ sortOrder: lastIndex - i })
           .where('id', '=', orderedIds[i])
           .where('projectId', '=', projectId)
           .execute();
