@@ -109,9 +109,21 @@ export function FileDiffContent({
     [file.path, commentFormLineRange, onAddComment],
   );
 
-  const handleAddCommentClick = useCallback((lineRange: LineRange) => {
-    setCommentFormLineRange(lineRange);
-  }, []);
+  const handleAddCommentClick = useCallback(
+    (lineRange: LineRange) => {
+      // Toggle: close comment form if clicking the same line range
+      if (
+        commentFormLineRange !== null &&
+        commentFormLineRange.start === lineRange.start &&
+        commentFormLineRange.end === lineRange.end
+      ) {
+        setCommentFormLineRange(null);
+      } else {
+        setCommentFormLineRange(lineRange);
+      }
+    },
+    [commentFormLineRange],
+  );
 
   const handleCancelComment = useCallback(() => {
     setCommentFormLineRange(null);

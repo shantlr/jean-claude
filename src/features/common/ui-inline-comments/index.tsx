@@ -142,7 +142,6 @@ export function InlineCommentComposer({
       return true;
     },
     escape: () => {
-      if (document.activeElement !== textareaRef.current) return false;
       onCancel();
       return true;
     },
@@ -380,8 +379,6 @@ export function InlineCommentBubble({
             return true;
           },
           escape: () => {
-            if (document.activeElement !== editTextareaRef.current)
-              return false;
             cancelEditing();
             return true;
           },
