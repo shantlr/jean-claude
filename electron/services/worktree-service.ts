@@ -333,6 +333,48 @@ async function getDiffBaseCommit(
 }
 
 /**
+ * Gets the set of files in the working tree that differ from the source branch.
+ * Files NOT in this set have content identical to the source branch — they are
+ * merge artifacts (staged/unstaged changes from merging the source branch) and
+ * should be excluded from the task diff.
+ *
+ * Returns null if source branch is unavailable (no filtering should be applied).
+ */
+async function getTaskChangedFiles(
+  worktreePath: string,
+  sourceBranch: string | null,
+): Promise<Set<string> | null> {
+  if (!sourceBranch) return null;
+
+  // Try origin/ first (most up-to-date after fetch), then local
+  for (const ref of [`origin/${sourceBranch}`, sourceBranch]) {
+    try {
+      const { stdout } = await execAsync(
+        `git diff --name-only ${JSON.stringify(ref)}`,
+        {
+          cwd: worktreePath,
+          encoding: 'utf-8',
+          maxBuffer: 10 * 1024 * 1024,
+        },
+      );
+      const files = new Set(
+        stdout
+          .trim()
+          .split('\n')
+          .filter((f) => f),
+      );
+      dbg.worktree('Task-changed files (vs %s): %d files', ref, files.size);
+      return files;
+    } catch {
+      continue;
+    }
+  }
+
+  dbg.worktree('Could not resolve source branch for filtering, skipping');
+  return null;
+}
+
+/**
  * Gets the list of changed files between a worktree's current state and its divergence point
  * from the source branch. Does not load file contents - use getWorktreeFileContent for that.
  *
@@ -376,13 +418,19 @@ export async function getWorktreeDiff(
       sourceBranch ?? null,
     );
 
-    // We need to combine two sources to get all changes:
-    // 1. git diff --name-status <commit> - shows changes from baseCommit to current working tree
-    //    (includes committed, staged, and unstaged changes to tracked files)
-    // 2. git status --porcelain - shows untracked files that git diff doesn't see
+    // Get files that differ between working tree and source branch.
+    // Files whose content matches the source branch are merge artifacts
+    // (from merging source into this branch) and should be excluded.
+    const taskChangedFiles = await getTaskChangedFiles(
+      worktreePath,
+      sourceBranch ?? null,
+    );
 
-    // First, get changes from baseCommit to current working tree (including uncommitted)
-    // Note: Without HEAD, git diff compares against the working tree directly
+    // We need to combine two sources to get all changes:
+    // 1. git diff --name-status <commit> - changes from baseCommit to working tree
+    // 2. git status --porcelain - shows untracked files that git diff doesn't see
+    // Then filter to only include files with actual task changes (not merge artifacts)
+
     const { stdout: diffOutput } = await execAsync(
       `git diff --name-status ${baseCommit}`,
       {
@@ -454,6 +502,12 @@ export async function getWorktreeDiff(
           status = 'added';
         } else {
           status = 'modified';
+        }
+
+        // Skip files whose content matches the source branch (merge artifacts)
+        if (taskChangedFiles && !taskChangedFiles.has(filePath)) {
+          dbg.worktree('Skipping merge artifact: %s', filePath);
+          continue;
         }
 
         const stats = numstatMap.get(filePath) ?? {
@@ -1520,17 +1574,45 @@ export async function getWorktreeUnifiedDiff(
       sourceBranch ?? null,
     );
 
-    // Get the unified diff from baseCommit to current working tree
-    // Limit context lines to keep the output manageable
+    // Get task-changed files to filter out merge artifacts
+    const taskChangedFiles = await getTaskChangedFiles(
+      worktreePath,
+      sourceBranch ?? null,
+    );
+
+    if (taskChangedFiles && taskChangedFiles.size > 0) {
+      // Generate diff only for task-changed files to exclude merge artifacts
+      const fileArgs = [...taskChangedFiles]
+        .map((f) => `"${escapeForShell(f)}"`)
+        .join(' ');
+      const { stdout: diffOutput } = await execAsync(
+        `git diff -U3 ${baseCommit} -- ${fileArgs}`,
+        {
+          cwd: worktreePath,
+          encoding: 'utf-8',
+          maxBuffer: 10 * 1024 * 1024,
+        },
+      );
+      dbg.worktree(
+        'Got unified diff (filtered), length: %d',
+        diffOutput.length,
+      );
+      return diffOutput;
+    } else if (taskChangedFiles && taskChangedFiles.size === 0) {
+      // All changes are merge artifacts
+      dbg.worktree('No task-changed files, returning empty diff');
+      return '';
+    }
+
+    // No source branch to filter against — return full diff
     const { stdout: diffOutput } = await execAsync(
       `git diff -U3 ${baseCommit}`,
       {
         cwd: worktreePath,
         encoding: 'utf-8',
-        maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large diffs
+        maxBuffer: 10 * 1024 * 1024,
       },
     );
-
     dbg.worktree('Got unified diff, length: %d', diffOutput.length);
     return diffOutput;
   } catch (error) {
