@@ -110,9 +110,10 @@ function createWindow() {
 
 // When a second instance is launched, focus the existing window instead
 app.on('second-instance', () => {
-  const windows = BrowserWindow.getAllWindows();
-  if (windows.length > 0) {
-    const mainWindow = windows[0];
+  const mainWindow = BrowserWindow.getAllWindows().find(
+    (w) => !w.isDestroyed(),
+  );
+  if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.focus();
   }

@@ -36,7 +36,9 @@ export function sendGlobalPromptToWindow(
     });
 
     const window = BrowserWindow.getAllWindows()[0];
-    window?.webContents.send('globalPrompt:show', fullPrompt);
+    if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) {
+      window.webContents.send('globalPrompt:show', fullPrompt);
+    }
   });
 }
 

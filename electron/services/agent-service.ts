@@ -206,7 +206,15 @@ class AgentService {
 
   private getLiveWindows(): BrowserWindow[] {
     return BrowserWindow.getAllWindows().filter(
-      (window) => !window.isDestroyed(),
+      (window) => !window.isDestroyed() && !window.webContents.isDestroyed(),
+    );
+  }
+
+  private isMainWindowAlive(): boolean {
+    return (
+      this.mainWindow !== null &&
+      !this.mainWindow.isDestroyed() &&
+      !this.mainWindow.webContents.isDestroyed()
     );
   }
 
@@ -616,14 +624,14 @@ class AgentService {
         });
 
         // Send desktop notification if window not focused
-        if (this.mainWindow && !this.mainWindow.isFocused()) {
+        if (this.isMainWindowAlive() && !this.mainWindow!.isFocused()) {
           const displayName = await this.resolveTaskDisplayName(taskId, stepId);
           notificationService.notify({
             id: `${taskId}:permission`,
             title: 'Permission Required',
             body: `Task "${displayName}" needs approval for ${request.toolName}`,
             onClick: () => {
-              this.mainWindow?.focus();
+              if (this.isMainWindowAlive()) this.mainWindow!.focus();
             },
           });
         }
@@ -662,14 +670,14 @@ class AgentService {
         });
 
         // Send desktop notification if window not focused
-        if (this.mainWindow && !this.mainWindow.isFocused()) {
+        if (this.isMainWindowAlive() && !this.mainWindow!.isFocused()) {
           const displayName = await this.resolveTaskDisplayName(taskId, stepId);
           notificationService.notify({
             id: `${taskId}:question`,
             title: 'Question from Agent',
             body: `Task "${displayName}" has a question`,
             onClick: () => {
-              this.mainWindow?.focus();
+              if (this.isMainWindowAlive()) this.mainWindow!.focus();
             },
           });
         }
@@ -745,7 +753,9 @@ class AgentService {
         // Mark as unread BEFORE emitting the status event so the feed
         // re-fetch (triggered by the event) reads the updated value.
         const isFocused =
-          this.mainWindow?.isFocused() && this.focusedTaskId === taskId;
+          this.isMainWindowAlive() &&
+          this.mainWindow!.isFocused() &&
+          this.focusedTaskId === taskId;
         if (!isFocused) {
           await TaskRepository.setHasUnread(taskId, true);
         }
@@ -765,14 +775,14 @@ class AgentService {
         }
 
         // Notify on completion
-        if (this.mainWindow && !this.mainWindow.isFocused()) {
+        if (this.isMainWindowAlive() && !this.mainWindow!.isFocused()) {
           const displayName = await this.resolveTaskDisplayName(taskId, stepId);
           notificationService.notify({
             id: `${taskId}:complete`,
             title: status === 'completed' ? 'Task Completed' : 'Task Failed',
             body: `Task "${displayName}" ${status === 'completed' ? 'finished successfully' : 'encountered an error'}`,
             onClick: () => {
-              this.mainWindow?.focus();
+              if (this.isMainWindowAlive()) this.mainWindow!.focus();
             },
           });
         }

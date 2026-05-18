@@ -2797,7 +2797,13 @@ export function registerIpcHandlers() {
   // Subscribe to run command status changes and forward to renderer
   runCommandService.onStatusChange((taskId, status) => {
     BrowserWindow.getAllWindows().forEach((win) => {
-      win.webContents.send('project:commands:run:statusChange', taskId, status);
+      if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+        win.webContents.send(
+          'project:commands:run:statusChange',
+          taskId,
+          status,
+        );
+      }
     });
 
     const previousByCommand =
@@ -2817,8 +2823,8 @@ export function registerIpcHandlers() {
         continue;
       }
 
-      const isAnyWindowFocused = BrowserWindow.getAllWindows().some((win) =>
-        win.isFocused(),
+      const isAnyWindowFocused = BrowserWindow.getAllWindows().some(
+        (win) => !win.isDestroyed() && win.isFocused(),
       );
       if (isAnyWindowFocused) {
         continue;
@@ -2834,7 +2840,7 @@ export function registerIpcHandlers() {
               : 'Run Command Failed',
           body: `Task "${task?.name || 'Unknown'}": ${commandStatus.command}`,
           onClick: () => {
-            mainWindow?.focus();
+            if (mainWindow && !mainWindow.isDestroyed()) mainWindow.focus();
           },
         });
       });
@@ -2849,13 +2855,15 @@ export function registerIpcHandlers() {
 
   runCommandService.onLog((taskId, runCommandId, stream, line) => {
     BrowserWindow.getAllWindows().forEach((win) => {
-      win.webContents.send(
-        'project:commands:run:log',
-        taskId,
-        runCommandId,
-        stream,
-        line,
-      );
+      if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+        win.webContents.send(
+          'project:commands:run:log',
+          taskId,
+          runCommandId,
+          stream,
+          line,
+        );
+      }
     });
   });
 
