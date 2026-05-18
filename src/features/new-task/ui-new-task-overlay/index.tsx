@@ -832,7 +832,7 @@ export function NewTaskOverlay({
       // Append file attachment references to prompt text
       finalPrompt += buildAttachedFilesXml(draftFiles);
 
-      const backlogTodoId = draft.backlogTodoId ?? null;
+      const backlogTodoIds = draft.backlogTodoIds ?? [];
 
       const jobId = addRunningJob({
         type: 'task-creation',
@@ -841,7 +841,7 @@ export function NewTaskOverlay({
         details: {
           projectName: selectedProject?.name ?? null,
           promptPreview: finalPrompt.slice(0, 120),
-          backlogTodoId,
+          backlogTodoIds,
           creationInput: {
             projectId: selectedProjectId,
             prompt: finalPrompt,
@@ -908,9 +908,12 @@ export function NewTaskOverlay({
             queryKey: ['tasks', { projectId: task.projectId }],
           });
 
-          // Clean up backlog todo if this task was converted from one
-          if (backlogTodoId) {
-            deleteBacklogTodo.mutate(backlogTodoId);
+          // Clean up backlog todos if this task was converted from them
+          for (const id of backlogTodoIds) {
+            deleteBacklogTodo.mutate(id, {
+              onError: (err) =>
+                console.error(`Failed to delete backlog item ${id}:`, err),
+            });
           }
         })
         .catch((error: unknown) => {

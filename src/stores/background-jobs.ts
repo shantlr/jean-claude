@@ -35,7 +35,7 @@ export type BackgroundJob =
         projectName: string | null;
         promptPreview: string | null;
         creationInput: Parameters<typeof api.tasks.createWithWorktree>[0];
-        backlogTodoId: string | null;
+        backlogTodoIds: string[];
       };
     })
   | (BackgroundJobBase & {
@@ -102,7 +102,7 @@ type NewBackgroundJobInput =
         projectName: string | null;
         promptPreview: string | null;
         creationInput: Parameters<typeof api.tasks.createWithWorktree>[0];
-        backlogTodoId: string | null;
+        backlogTodoIds: string[];
       };
     }
   | {
@@ -353,7 +353,7 @@ export function useBackgroundNewTaskJobForBacklogItem({
       (job) =>
         job.type === 'task-creation' &&
         job.status === 'running' &&
-        job.details.backlogTodoId === itemId,
+        job.details.backlogTodoIds.includes(itemId),
     ),
   );
 }

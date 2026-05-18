@@ -65,7 +65,7 @@ function BacklogTodoRow({
   editValue: string;
   dragOverId: string | null;
   triggerRefs: React.RefObject<Map<string, HTMLButtonElement>>;
-  onSelect: () => void;
+  onSelect: (e: React.MouseEvent) => void;
   onEditChange: (value: string) => void;
   onEditBlur: () => void;
   onStartEdit: () => void;
@@ -182,6 +182,15 @@ function BacklogTodoRow({
   );
 }
 
+/** Build a range set from `from` to `to` inclusive. */
+function rangeSet(from: number, to: number): Set<number> {
+  const min = Math.min(from, to);
+  const max = Math.max(from, to);
+  const s = new Set<number>();
+  for (let i = min; i <= max; i++) s.add(i);
+  return s;
+}
+
 export function BacklogOverlay({
   initialProjectId,
   onClose,
@@ -202,22 +211,18 @@ export function BacklogOverlay({
     [projects],
   );
 
-  const handleProjectChange = useCallback(
-    (nextProjectId: string) => {
-      setProjectId(nextProjectId);
-      setSelectedIndex(-1);
-      // Re-focus input after project switch
-      requestAnimationFrame(() => inputRef.current?.focus());
-    },
-    // setSelectedIndex is a stable setState dispatcher
-
-    [],
-  );
-
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+
+  // Selection state: selectedIndex is the cursor (for keyboard nav / scroll),
+  // selectedIndices tracks all selected items for multi-select.
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(
+    new Set(),
+  );
+  const anchorIndexRef = useRef<number>(-1);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -241,6 +246,52 @@ export function BacklogOverlay({
     (s) => s.setSelectedProjectId,
   );
 
+  // --- Selection helpers ---
+  const selectSingle = useCallback((index: number) => {
+    setSelectedIndex(index);
+    setSelectedIndices(index >= 0 ? new Set([index]) : new Set());
+    anchorIndexRef.current = index;
+  }, []);
+
+  const selectRange = useCallback((toIndex: number) => {
+    const from = anchorIndexRef.current;
+    if (from < 0) {
+      setSelectedIndex(toIndex);
+      setSelectedIndices(new Set([toIndex]));
+      anchorIndexRef.current = toIndex;
+      return;
+    }
+    setSelectedIndices(rangeSet(from, toIndex));
+    setSelectedIndex(toIndex);
+  }, []);
+
+  const toggleSelect = useCallback((index: number) => {
+    setSelectedIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+    setSelectedIndex(index);
+    anchorIndexRef.current = index;
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIndex(-1);
+    setSelectedIndices(new Set());
+    anchorIndexRef.current = -1;
+  }, []);
+
+  const handleProjectChange = useCallback(
+    (nextProjectId: string) => {
+      setProjectId(nextProjectId);
+      clearSelection();
+      // Re-focus input after project switch
+      requestAnimationFrame(() => inputRef.current?.focus());
+    },
+    [clearSelection],
+  );
+
   // Focus input on mount
   useEffect(() => {
     inputRef.current?.focus();
@@ -256,7 +307,7 @@ export function BacklogOverlay({
   useEffect(() => {
     if (selectedIndex < 0) return;
     const selectedItem = listRef.current?.querySelector<HTMLDivElement>(
-      '[data-selected="true"]',
+      `[data-selected="true"]`,
     );
     selectedItem?.scrollIntoView({
       block: 'nearest',
@@ -269,6 +320,15 @@ export function BacklogOverlay({
     selectedIndex >= 0 && selectedIndex < todos.length
       ? todos[selectedIndex]
       : null;
+
+  const hasSelection = selectedIndices.size > 0;
+  const multiSelected = selectedIndices.size > 1;
+
+  // Get all selected todos in their original order
+  const selectedTodos = useMemo(
+    () => todos.filter((_, i) => selectedIndices.has(i)),
+    [todos, selectedIndices],
+  );
 
   // Register keyboard shortcuts (Cmd+B is handled by the container's toggle).
   useCommands(
@@ -295,8 +355,8 @@ export function BacklogOverlay({
             saveEdit();
             return;
           }
-          // If an item is selected, open its dropdown
-          if (selectedTodo) {
+          // If a single item is selected, open its dropdown
+          if (selectedTodo && !multiSelected) {
             triggerRefs.current.get(selectedTodo.id)?.click();
             return;
           }
@@ -312,7 +372,8 @@ export function BacklogOverlay({
           if (editingId) {
             return false;
           }
-          if (!selectedTodo) {
+          // Only allow editing a single selected item
+          if (!selectedTodo || multiSelected) {
             return false;
           }
 
@@ -321,8 +382,10 @@ export function BacklogOverlay({
         hideInCommandPalette: true,
       },
       {
-        label: selectedTodo
-          ? 'Convert Selected Item to Task'
+        label: hasSelection
+          ? multiSelected
+            ? `Convert ${selectedIndices.size} Items to Task`
+            : 'Convert Selected Item to Task'
           : 'Add Backlog Item',
         shortcut: 'cmd+enter',
         handler: () => {
@@ -331,8 +394,8 @@ export function BacklogOverlay({
             return;
           }
 
-          if (selectedTodo) {
-            handleConvertToTask(selectedTodo);
+          if (hasSelection && selectedTodos.length > 0) {
+            handleConvertSelectedToTask();
             return;
           }
 
@@ -351,6 +414,7 @@ export function BacklogOverlay({
 
   // Navigation bindings: up/down skip when typing in an input (ignoreIfInput),
   // cmd+up/cmd+down reorder the selected item, tab toggles focus.
+  // shift+up/shift+down extend selection range.
   useRegisterKeyboardBindings(
     'backlog-overlay-navigation',
     {
@@ -359,18 +423,43 @@ export function BacklogOverlay({
           if (selectedIndex <= 0) {
             if (!inputValue.trim()) {
               lastSelectedIndexRef.current = 0;
-              setSelectedIndex(-1);
+              selectSingle(-1);
               inputRef.current?.focus();
             }
             return;
           }
-          setSelectedIndex((i) => i - 1);
+          selectSingle(selectedIndex - 1);
         },
         ignoreIfInput: true,
       },
       down: {
         handler: () => {
-          setSelectedIndex((i) => Math.min(todos.length - 1, i + 1));
+          const next = Math.min(todos.length - 1, selectedIndex + 1);
+          selectSingle(next);
+        },
+        ignoreIfInput: true,
+      },
+      'shift+up': {
+        handler: () => {
+          if (selectedIndex <= 0) return;
+          const next = selectedIndex - 1;
+          setSelectedIndex(next);
+          if (anchorIndexRef.current < 0) {
+            anchorIndexRef.current = selectedIndex;
+          }
+          setSelectedIndices(rangeSet(anchorIndexRef.current, next));
+        },
+        ignoreIfInput: true,
+      },
+      'shift+down': {
+        handler: () => {
+          if (selectedIndex >= todos.length - 1) return;
+          const next = selectedIndex + 1;
+          setSelectedIndex(next);
+          if (anchorIndexRef.current < 0) {
+            anchorIndexRef.current = selectedIndex;
+          }
+          setSelectedIndices(rangeSet(anchorIndexRef.current, next));
         },
         ignoreIfInput: true,
       },
@@ -384,7 +473,7 @@ export function BacklogOverlay({
             newIds[selectedIndex - 1],
           ];
           reorderTodos.mutate({ projectId, orderedIds: newIds });
-          setSelectedIndex(selectedIndex - 1);
+          selectSingle(selectedIndex - 1);
         },
         ignoreIfInput: true,
       },
@@ -398,7 +487,7 @@ export function BacklogOverlay({
             newIds[selectedIndex],
           ];
           reorderTodos.mutate({ projectId, orderedIds: newIds });
-          setSelectedIndex(selectedIndex + 1);
+          selectSingle(selectedIndex + 1);
         },
         ignoreIfInput: true,
       },
@@ -407,21 +496,25 @@ export function BacklogOverlay({
         if (selectedIndex >= 0) {
           // List → Input: remember position, focus textarea
           lastSelectedIndexRef.current = selectedIndex;
-          setSelectedIndex(-1);
+          clearSelection();
           inputRef.current?.focus();
         } else {
           // Input → List: restore last position (or first item)
           const idx = Math.min(lastSelectedIndexRef.current, todos.length - 1);
-          setSelectedIndex(idx >= 0 ? idx : 0);
+          selectSingle(idx >= 0 ? idx : 0);
           inputRef.current?.blur();
         }
       },
       'cmd+backspace': {
         handler: () => {
-          if (!selectedTodo || editingId) {
+          if (editingId) {
             return false;
           }
-          handleDelete(selectedTodo);
+          if (hasSelection && selectedTodos.length > 0) {
+            handleDeleteSelected();
+            return;
+          }
+          return false;
         },
         ignoreIfInput: true,
       },
@@ -461,7 +554,30 @@ export function BacklogOverlay({
     setEditValue('');
   }, []);
 
-  // Delete todo
+  // Delete selected todos (single or multi)
+  const handleDeleteSelected = useCallback(() => {
+    if (selectedTodos.length === 0) return;
+
+    const isBulk = selectedTodos.length > 1;
+    modal.confirm({
+      title: isBulk
+        ? `Delete ${selectedTodos.length} backlog items?`
+        : 'Delete backlog item?',
+      content: isBulk
+        ? `This will permanently delete ${selectedTodos.length} items from your backlog.`
+        : `This will permanently delete "${selectedTodos[0].content}" from your backlog.`,
+      confirmLabel: 'Delete',
+      variant: 'danger',
+      onConfirm: () => {
+        for (const todo of selectedTodos) {
+          deleteTodo.mutate(todo.id);
+        }
+        clearSelection();
+      },
+    });
+  }, [selectedTodos, deleteTodo, modal, clearSelection]);
+
+  // Delete single todo (from context menu)
   const handleDelete = useCallback(
     (todo: ProjectTodo) => {
       modal.confirm({
@@ -477,22 +593,55 @@ export function BacklogOverlay({
     [deleteTodo, modal],
   );
 
-  // Convert to task
+  // Convert selected todos to task (single or multi)
+  const handleConvertSelectedToTask = useCallback(() => {
+    if (selectedTodos.length === 0) return;
+    const prompt = selectedTodos.map((t) => t.content).join('\n\n');
+    const ids = selectedTodos.map((t) => t.id);
+    setSelectedProjectId(projectId);
+    setDraft(projectId, {
+      prompt,
+      inputMode: 'prompt',
+      backlogTodoIds: ids,
+    });
+    onClose();
+    openOverlay('new-task');
+  }, [
+    selectedTodos,
+    projectId,
+    setDraft,
+    setSelectedProjectId,
+    onClose,
+    openOverlay,
+  ]);
+
+  // Convert single todo to task (from context menu)
   const handleConvertToTask = useCallback(
     (todo: ProjectTodo) => {
-      // Pre-fill new task draft with todo content, track the todo ID for
-      // cleanup after task creation, and select the project tab
       setSelectedProjectId(projectId);
       setDraft(projectId, {
         prompt: todo.content,
         inputMode: 'prompt',
-        backlogTodoId: todo.id,
+        backlogTodoIds: [todo.id],
       });
-      // Close backlog first, then open new-task overlay
       onClose();
       openOverlay('new-task');
     },
     [projectId, setDraft, setSelectedProjectId, onClose, openOverlay],
+  );
+
+  // Click handler for todo rows
+  const handleRowClick = useCallback(
+    (e: React.MouseEvent, index: number) => {
+      if (e.metaKey || e.ctrlKey) {
+        toggleSelect(index);
+      } else if (e.shiftKey) {
+        selectRange(index);
+      } else {
+        selectSingle(index);
+      }
+    },
+    [toggleSelect, selectRange, selectSingle],
   );
 
   // Drag-and-drop handlers
@@ -548,6 +697,13 @@ export function BacklogOverlay({
     e.stopPropagation();
   }, []);
 
+  // Derive label for cmd+enter footer hint
+  const convertLabel = hasSelection
+    ? multiSelected
+      ? `Convert ${selectedIndices.size} Items to Task`
+      : 'Convert Selected Item To Task'
+    : 'Add Item';
+
   return createPortal(
     <FocusLock returnFocus>
       <div
@@ -583,13 +739,13 @@ export function BacklogOverlay({
                 if (todos.length === 0) return;
 
                 e.preventDefault();
-                setSelectedIndex(0);
+                selectSingle(0);
                 inputRef.current?.blur();
               }}
               onFocus={() => {
                 if (selectedIndex < 0) return;
                 lastSelectedIndexRef.current = selectedIndex;
-                setSelectedIndex(-1);
+                clearSelection();
               }}
               onChange={(e) => {
                 setInputValue(e.target.value);
@@ -611,12 +767,12 @@ export function BacklogOverlay({
                 <BacklogTodoRow
                   key={todo.id}
                   todo={todo}
-                  isSelected={index === selectedIndex}
+                  isSelected={selectedIndices.has(index)}
                   isEditing={editingId === todo.id}
                   editValue={editValue}
                   dragOverId={dragOverId}
                   triggerRefs={triggerRefs}
-                  onSelect={() => setSelectedIndex(index)}
+                  onSelect={(e) => handleRowClick(e, index)}
                   onEditChange={setEditValue}
                   onEditBlur={saveEdit}
                   onStartEdit={() => startEdit(todo)}
@@ -638,18 +794,25 @@ export function BacklogOverlay({
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Kbd shortcut="cmd+enter" />
-              {selectedTodo ? 'Convert Selected Item To Task' : 'Add Item'}
+              {convertLabel}
             </span>
-            {selectedTodo && (
+            {hasSelection && (
               <>
+                {!multiSelected && (
+                  <>
+                    <span className="inline-flex items-center gap-1.5">
+                      <Kbd shortcut="shift+enter" /> Edit Selected Item
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <Kbd shortcut="enter" /> Open Selected Item Actions
+                    </span>
+                  </>
+                )}
                 <span className="inline-flex items-center gap-1.5">
-                  <Kbd shortcut="shift+enter" /> Edit Selected Item
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Kbd shortcut="enter" /> Open Selected Item Actions
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Kbd shortcut="cmd+backspace" /> Delete Selected Item
+                  <Kbd shortcut="cmd+backspace" />{' '}
+                  {multiSelected
+                    ? `Delete ${selectedIndices.size} Items`
+                    : 'Delete Selected Item'}
                 </span>
               </>
             )}
