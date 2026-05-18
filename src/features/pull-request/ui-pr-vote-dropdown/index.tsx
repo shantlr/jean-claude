@@ -67,28 +67,37 @@ export function PrVoteDropdown({
   const { data: currentUser } = useCurrentAzureUser(projectId);
   const voteMutation = useVotePullRequest(projectId, pr.id);
 
-  const currentVote: ReviewerVoteStatus = useMemo(() => {
-    if (!currentUser) return 'none';
-    const reviewer = pr.reviewers.find(
-      (r) => !r.isContainer && r.uniqueName === currentUser.emailAddress,
+  const currentReviewer = useMemo(() => {
+    if (!currentUser) return null;
+
+    const currentEmail = currentUser.emailAddress.toLowerCase();
+    return (
+      pr.reviewers.find(
+        (reviewer) =>
+          !reviewer.isContainer &&
+          reviewer.uniqueName.toLowerCase() === currentEmail,
+      ) ?? null
     );
-    return reviewer?.voteStatus ?? 'none';
   }, [pr.reviewers, currentUser]);
+
+  const currentVote: ReviewerVoteStatus = useMemo(() => {
+    return currentReviewer?.voteStatus ?? 'none';
+  }, [currentReviewer]);
 
   const handleVote = useCallback(
     (vote: number) => {
-      if (!currentUser) return;
-      voteMutation.mutate({ reviewerId: currentUser.id, vote });
+      if (!currentReviewer) return;
+      voteMutation.mutate({ reviewerId: currentReviewer.id, vote });
     },
-    [currentUser, voteMutation],
+    [currentReviewer, voteMutation],
   );
 
   const handleReset = useCallback(() => {
-    if (!currentUser) return;
-    voteMutation.mutate({ reviewerId: currentUser.id, vote: 0 });
-  }, [currentUser, voteMutation]);
+    if (!currentReviewer) return;
+    voteMutation.mutate({ reviewerId: currentReviewer.id, vote: 0 });
+  }, [currentReviewer, voteMutation]);
 
-  if (!currentUser) return null;
+  if (!currentReviewer) return null;
 
   return (
     <Dropdown

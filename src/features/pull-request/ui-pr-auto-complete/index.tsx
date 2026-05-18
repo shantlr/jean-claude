@@ -32,6 +32,27 @@ export function PrAutoComplete({
     [evaluations],
   );
 
+  const currentIdentityId = useMemo(() => {
+    if (!currentUser) return null;
+
+    const currentEmail = currentUser.emailAddress.toLowerCase();
+    const reviewerIdentity = pr.reviewers.find(
+      (reviewer) =>
+        !reviewer.isContainer &&
+        reviewer.uniqueName.toLowerCase() === currentEmail,
+    );
+
+    if (reviewerIdentity) {
+      return reviewerIdentity.id;
+    }
+
+    if (pr.createdBy.uniqueName.toLowerCase() === currentEmail) {
+      return pr.createdBy.id;
+    }
+
+    return null;
+  }, [pr.reviewers, pr.createdBy, currentUser]);
+
   const isAutoCompleteSet = !!pr.autoCompleteSetBy;
 
   // Form state for the popover
@@ -54,10 +75,10 @@ export function PrAutoComplete({
   );
 
   const handleEnable = useCallback(() => {
-    if (!currentUser) return;
+    if (!currentIdentityId) return;
     autoCompleteMutation.mutate({
       enabled: true,
-      autoCompleteSetById: currentUser.id,
+      autoCompleteSetById: currentIdentityId,
       completionOptions: {
         mergeStrategy,
         deleteSourceBranch,
@@ -69,7 +90,7 @@ export function PrAutoComplete({
       },
     });
   }, [
-    currentUser,
+    currentIdentityId,
     autoCompleteMutation,
     mergeStrategy,
     deleteSourceBranch,
@@ -86,7 +107,7 @@ export function PrAutoComplete({
     [autoCompleteMutation],
   );
 
-  if (!currentUser) return null;
+  if (!currentIdentityId) return null;
 
   // When auto-complete is already set, show status chip with cancel button
   if (isAutoCompleteSet) {

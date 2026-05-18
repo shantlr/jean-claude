@@ -1274,6 +1274,7 @@ interface PullRequestResponse {
   status: string;
   isDraft: boolean;
   createdBy: {
+    id: string;
     displayName: string;
     uniqueName: string;
     imageUrl?: string;
@@ -1294,6 +1295,7 @@ interface PullRequestResponse {
     mergeCommitMessage?: string;
   };
   reviewers?: Array<{
+    id: string;
     displayName: string;
     uniqueName: string;
     imageUrl?: string;
@@ -1530,6 +1532,7 @@ export async function listPullRequests(params: {
     status: mapPrStatus(pr.status),
     isDraft: pr.isDraft,
     createdBy: {
+      id: pr.createdBy.id,
       displayName: pr.createdBy.displayName,
       uniqueName: pr.createdBy.uniqueName,
       imageUrl: pr.createdBy.imageUrl,
@@ -1539,6 +1542,7 @@ export async function listPullRequests(params: {
     targetRefName: pr.targetRefName,
     url: `https://dev.azure.com/${orgName}/${params.projectId}/_git/${params.repoId}/pullrequest/${pr.pullRequestId}`,
     reviewers: (pr.reviewers ?? []).map((r) => ({
+      id: r.id,
       displayName: r.displayName,
       uniqueName: r.uniqueName,
       imageUrl: r.imageUrl,
@@ -1558,6 +1562,7 @@ function mapPullRequestResponse(
     status: mapPrStatus(pr.status),
     isDraft: pr.isDraft,
     createdBy: {
+      id: pr.createdBy.id,
       displayName: pr.createdBy.displayName,
       uniqueName: pr.createdBy.uniqueName,
       imageUrl: pr.createdBy.imageUrl,
@@ -1589,6 +1594,7 @@ function mapPullRequestResponse(
         }
       : undefined,
     reviewers: (pr.reviewers ?? []).map((r) => ({
+      id: r.id,
       displayName: r.displayName,
       uniqueName: r.uniqueName,
       imageUrl: r.imageUrl,
@@ -1641,7 +1647,10 @@ export async function votePullRequest(params: {
       Authorization: authHeader,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ vote: params.vote }),
+    body: JSON.stringify({
+      id: params.reviewerId,
+      vote: params.vote,
+    }),
   });
 
   if (!response.ok) {

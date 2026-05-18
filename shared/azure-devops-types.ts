@@ -46,6 +46,7 @@ export interface AzureDevOpsPullRequest {
   status: 'active' | 'completed' | 'abandoned';
   isDraft: boolean;
   createdBy: {
+    id: string;
     displayName: string;
     uniqueName: string;
     imageUrl?: string;
@@ -55,6 +56,7 @@ export interface AzureDevOpsPullRequest {
   targetRefName: string; // refs/heads/main
   url: string; // Web URL to PR
   reviewers: Array<{
+    id: string;
     displayName: string;
     uniqueName: string;
     imageUrl?: string;
