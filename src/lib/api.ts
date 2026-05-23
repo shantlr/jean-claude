@@ -53,8 +53,12 @@ import type {
 } from '@shared/pipeline-types';
 import type {
   ProjectCommand,
+  ProjectCommandGroup,
+  RunCommandConfigItem,
   NewProjectCommand,
+  NewProjectCommandGroup,
   UpdateProjectCommand,
+  UpdateProjectCommandGroup,
   RunStatus,
   PortsInUseErrorData,
   PackageScriptsResult,
@@ -849,12 +853,34 @@ export interface Api {
     delete: (id: string) => Promise<void>;
     reorder: (projectId: string, commandIds: string[]) => Promise<void>;
   };
+  projectCommandGroups: {
+    findByProjectId: (projectId: string) => Promise<ProjectCommandGroup[]>;
+    create: (data: NewProjectCommandGroup) => Promise<ProjectCommandGroup>;
+    update: (
+      id: string,
+      data: UpdateProjectCommandGroup,
+    ) => Promise<ProjectCommandGroup>;
+    delete: (id: string) => Promise<void>;
+    reorder: (projectId: string, groupIds: string[]) => Promise<void>;
+  };
+  projectRunConfig: {
+    reorder: (
+      projectId: string,
+      items: RunCommandConfigItem[],
+    ) => Promise<void>;
+  };
   runCommands: {
     startCommand: (params: {
       taskId: string;
       projectId: string;
       workingDir: string;
       runCommandId: string;
+    }) => Promise<RunStatus | PortsInUseErrorData>;
+    startGroup: (params: {
+      taskId: string;
+      projectId: string;
+      workingDir: string;
+      runCommandIds: string[];
     }) => Promise<RunStatus | PortsInUseErrorData>;
     stopCommand: (params: {
       taskId: string;
@@ -1469,8 +1495,26 @@ export const api: Api = hasWindowApi
         delete: async () => {},
         reorder: async () => {},
       },
+      projectCommandGroups: {
+        findByProjectId: async () => [],
+        create: async () => {
+          throw new Error('API not available');
+        },
+        update: async () => {
+          throw new Error('API not available');
+        },
+        delete: async () => {},
+        reorder: async () => {},
+      },
+      projectRunConfig: {
+        reorder: async () => {},
+      },
       runCommands: {
         startCommand: async () => ({
+          isRunning: false,
+          commands: [],
+        }),
+        startGroup: async () => ({
           isRunning: false,
           commands: [],
         }),

@@ -1,14 +1,16 @@
 import clsx from 'clsx';
 import { FileText, Loader2, Play, Square } from 'lucide-react';
-import { type MutableRefObject, useState } from 'react';
+import { type MutableRefObject, useMemo, useState } from 'react';
 
 import { Button } from '@/common/ui/button';
 import { Chip } from '@/common/ui/chip';
 import { Dropdown, DropdownItem, DropdownDivider } from '@/common/ui/dropdown';
 import { Kbd } from '@/common/ui/kbd';
+import { useProjectCommandGroups } from '@/hooks/use-project-command-groups';
 import { useProjectCommands } from '@/hooks/use-project-commands';
 import { useRunCommands } from '@/hooks/use-run-commands';
 import { useTaskMessagesStore } from '@/stores/task-messages';
+import { getRunCommandDisplayName } from '@shared/run-command-types';
 
 import { ConfirmRunModal } from './confirm-run-modal';
 import { KillPortsModal } from './kill-ports-modal';
@@ -26,36 +28,54 @@ export function RunButton({
   projectId: string;
   workingDir: string;
   onToggleLogs: () => void;
-  onRunCommand: (runCommandId: string) => void;
+  onRunCommand: (runCommandIds: string[]) => void;
   isLogsPaneOpen: boolean;
   dropdownRef?: MutableRefObject<{ toggle: () => void } | null>;
 }) {
   const { data: commands = [] } = useProjectCommands(projectId);
+  const { data: groups = [] } = useProjectCommandGroups(projectId);
   const {
     status,
     statusByCommandId,
-    isStartingCommandId,
-    isStoppingCommandId,
+    isCommandStarting,
+    isCommandStopping,
+    isStartingAnyCommand,
     startCommand,
+    startGroup,
     stopCommand,
+    stopGroup,
     portsInUseError,
     confirmKillPorts,
     dismissPortsError,
   } = useRunCommands({ taskId, projectId, workingDir });
 
-  const [pendingConfirmCommandId, setPendingConfirmCommandId] = useState<
-    string | null
-  >(null);
-
-  const pendingConfirmCommand = pendingConfirmCommandId
-    ? commands.find((c) => c.id === pendingConfirmCommandId)
-    : null;
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    commandIds: string[];
+    label: string;
+    message: string | null;
+  } | null>(null);
 
   const runCommandLogs =
     useTaskMessagesStore((state) => state.runCommandLogs[taskId]) ?? {};
 
+  const menuItems = useMemo(
+    () =>
+      [
+        ...commands.map((command) => ({
+          type: 'command' as const,
+          item: command,
+        })),
+        ...groups.map((group) => ({ type: 'group' as const, item: group })),
+      ].sort(
+        (a, b) =>
+          a.item.sortOrder - b.item.sortOrder ||
+          a.item.createdAt.localeCompare(b.item.createdAt),
+      ),
+    [commands, groups],
+  );
+
   // Don't show button if no commands configured
-  if (commands.length === 0) {
+  if (menuItems.length === 0) {
     return null;
   }
 
@@ -68,15 +88,18 @@ export function RunButton({
     (status?.commands.length ?? 0) > 0;
 
   const executeCommand = (runCommandId: string) => {
-    onRunCommand(runCommandId);
+    onRunCommand([runCommandId]);
     void startCommand(runCommandId);
   };
 
+  const executeGroup = (runCommandIds: string[]) => {
+    if (runCommandIds.length === 0) return;
+    onRunCommand(runCommandIds);
+    void startGroup(runCommandIds);
+  };
+
   const handleCommandAction = (runCommandId: string) => {
-    if (
-      isStartingCommandId === runCommandId ||
-      isStoppingCommandId === runCommandId
-    ) {
+    if (isCommandStarting(runCommandId) || isCommandStopping(runCommandId)) {
       return;
     }
 
@@ -88,25 +111,91 @@ export function RunButton({
 
     const cmd = commands.find((c) => c.id === runCommandId);
     if (cmd?.confirmBeforeRun) {
-      setPendingConfirmCommandId(runCommandId);
+      setPendingConfirm({
+        commandIds: [runCommandId],
+        label: getRunCommandDisplayName(cmd),
+        message: cmd.confirmMessage,
+      });
       return;
     }
 
     executeCommand(runCommandId);
   };
 
+  const handleGroupAction = (groupId: string) => {
+    const group = groups.find((entry) => entry.id === groupId);
+    if (!group || group.commandIds.length === 0) {
+      return;
+    }
+
+    const groupCommands = group.commandIds
+      .map((commandId) => commands.find((command) => command.id === commandId))
+      .filter(
+        (command): command is (typeof commands)[number] => command != null,
+      );
+    if (groupCommands.length === 0) {
+      return;
+    }
+
+    if (
+      groupCommands.some(
+        (command) =>
+          isCommandStarting(command.id) || isCommandStopping(command.id),
+      )
+    ) {
+      return;
+    }
+
+    const runningCommandIds = groupCommands
+      .filter((command) => statusByCommandId[command.id]?.status === 'running')
+      .map((command) => command.id);
+    if (runningCommandIds.length > 0) {
+      void stopGroup(runningCommandIds);
+      return;
+    }
+
+    const confirmCommands = groupCommands.filter(
+      (command) => command.confirmBeforeRun,
+    );
+    if (confirmCommands.length > 0) {
+      setPendingConfirm({
+        commandIds: groupCommands.map((command) => command.id),
+        label: group.name,
+        message:
+          confirmCommands
+            .map((command) => command.confirmMessage?.trim())
+            .filter(Boolean)
+            .join('\n') ||
+          `Run group ${group.name} (${groupCommands.length} commands)?`,
+      });
+      return;
+    }
+
+    executeGroup(groupCommands.map((command) => command.id));
+  };
+
   const handleConfirmRun = () => {
-    if (pendingConfirmCommandId) {
-      const id = pendingConfirmCommandId;
-      setPendingConfirmCommandId(null);
-      if (commands.some((c) => c.id === id)) {
-        executeCommand(id);
-      }
+    if (!pendingConfirm) {
+      return;
+    }
+
+    const commandIds = pendingConfirm.commandIds.filter((id) =>
+      commands.some((command) => command.id === id),
+    );
+    setPendingConfirm(null);
+
+    if (commandIds.length === 1) {
+      executeCommand(commandIds[0]);
+      return;
+    }
+
+    if (commandIds.length > 1) {
+      executeGroup(commandIds);
     }
   };
 
   const handleCancelConfirm = () => {
-    setPendingConfirmCommandId(null);
+    setPendingConfirm(null);
   };
 
   return (
@@ -140,27 +229,63 @@ export function RunButton({
             </button>
           }
         >
-          {commands.map((command, index) => {
-            const commandStatus = statusByCommandId[command.id];
-            const isRunningCommand = commandStatus?.status === 'running';
-            const isBusy =
-              isStartingCommandId === command.id ||
-              isStoppingCommandId === command.id;
+          {menuItems.map((menuItem, index) => {
+            if (menuItem.type === 'command') {
+              const command = menuItem.item;
+              const commandStatus = statusByCommandId[command.id];
+              const isRunningCommand = commandStatus?.status === 'running';
+              const isBusy =
+                isCommandStarting(command.id) || isCommandStopping(command.id);
+
+              return (
+                <div key={`command:${command.id}`}>
+                  <DropdownItem onClick={() => handleCommandAction(command.id)}>
+                    <span className="text-ink-2 mr-2 truncate text-xs">
+                      {getRunCommandDisplayName(command)}
+                    </span>
+                    <Chip
+                      size="xs"
+                      color={isRunningCommand ? 'red' : 'green'}
+                      className="uppercase"
+                    >
+                      {isBusy ? '...' : isRunningCommand ? 'Stop' : 'Run'}
+                    </Chip>
+                  </DropdownItem>
+                  {index < menuItems.length - 1 && <DropdownDivider />}
+                </div>
+              );
+            }
+
+            const group = menuItem.item;
+            const groupCommandIds = group.commandIds.filter((commandId) =>
+              commands.some((command) => command.id === commandId),
+            );
+            const runningInGroup = groupCommandIds.filter(
+              (commandId) => statusByCommandId[commandId]?.status === 'running',
+            ).length;
+            const isBusy = groupCommandIds.some(
+              (commandId) =>
+                isCommandStarting(commandId) || isCommandStopping(commandId),
+            );
+
             return (
-              <div key={command.id}>
-                <DropdownItem onClick={() => handleCommandAction(command.id)}>
-                  <span className="text-ink-2 mr-2 truncate font-mono text-xs">
-                    {command.command}
+              <div key={`group:${group.id}`}>
+                <DropdownItem onClick={() => handleGroupAction(group.id)}>
+                  <span className="text-ink-2 mr-2 truncate text-xs">
+                    {group.name}
                   </span>
+                  <Chip size="xs" color="blue">
+                    Group
+                  </Chip>
                   <Chip
                     size="xs"
-                    color={isRunningCommand ? 'red' : 'green'}
+                    color={runningInGroup > 0 ? 'red' : 'green'}
                     className="uppercase"
                   >
-                    {isBusy ? '...' : isRunningCommand ? 'Stop' : 'Run'}
+                    {isBusy ? '...' : runningInGroup > 0 ? 'Stop' : 'Run'}
                   </Chip>
                 </DropdownItem>
-                {index < commands.length - 1 && <DropdownDivider />}
+                {index < menuItems.length - 1 && <DropdownDivider />}
               </div>
             );
           })}
@@ -190,10 +315,10 @@ export function RunButton({
         )}
       </div>
 
-      {pendingConfirmCommand && (
+      {pendingConfirm && (
         <ConfirmRunModal
-          commandName={pendingConfirmCommand.command}
-          message={pendingConfirmCommand.confirmMessage}
+          commandName={pendingConfirm.label}
+          message={pendingConfirm.message}
           onConfirm={handleConfirmRun}
           onCancel={handleCancelConfirm}
         />
@@ -204,7 +329,7 @@ export function RunButton({
           error={portsInUseError}
           onConfirm={confirmKillPorts}
           onCancel={dismissPortsError}
-          isLoading={isStartingCommandId !== null}
+          isLoading={isStartingAnyCommand}
         />
       )}
     </>

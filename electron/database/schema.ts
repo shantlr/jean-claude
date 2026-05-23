@@ -36,6 +36,7 @@ export interface Database {
   task_steps: TaskStepTable;
   settings: SettingsTable;
   project_commands: ProjectCommandTable;
+  project_command_groups: ProjectCommandGroupTable;
   mcp_templates: McpTemplateTable;
   project_mcp_overrides: ProjectMcpOverrideTable;
   task_summaries: TaskSummaryTable;
@@ -220,6 +221,7 @@ export type UpdateSettingsRow = Updateable<SettingsTable>;
 export interface ProjectCommandTable {
   id: Generated<string>;
   projectId: string;
+  name: string | null;
   command: string;
   ports: string; // JSON array stored as text
   confirmBeforeRun: Generated<number>; // 0 or 1
@@ -231,6 +233,19 @@ export interface ProjectCommandTable {
 export type ProjectCommandRow = Selectable<ProjectCommandTable>;
 export type NewProjectCommandRow = Insertable<ProjectCommandTable>;
 export type UpdateProjectCommandRow = Updateable<ProjectCommandTable>;
+
+export interface ProjectCommandGroupTable {
+  id: Generated<string>;
+  projectId: string;
+  name: string;
+  commandIds: string; // JSON array stored as text
+  sortOrder: Generated<number>;
+  createdAt: Generated<string>;
+}
+
+export type ProjectCommandGroupRow = Selectable<ProjectCommandGroupTable>;
+export type NewProjectCommandGroupRow = Insertable<ProjectCommandGroupTable>;
+export type UpdateProjectCommandGroupRow = Updateable<ProjectCommandGroupTable>;
 
 export interface McpTemplateTable {
   id: Generated<string>;

@@ -14,16 +14,19 @@ import type {
 import { PortChipInput } from './port-chip-input';
 
 export function CommandRow({
+  sortableId,
   command,
   suggestions,
   onUpdate,
   onDelete,
 }: {
+  sortableId: string;
   command: ProjectCommand;
   suggestions: string[];
   onUpdate: (data: UpdateProjectCommand) => void;
   onDelete: () => void;
 }) {
+  const [localName, setLocalName] = useState(command.name ?? '');
   const [localCommand, setLocalCommand] = useState(command.command);
   const [localConfirmMessage, setLocalConfirmMessage] = useState(
     command.confirmMessage ?? '',
@@ -39,12 +42,16 @@ export function CommandRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: command.id });
+  } = useSortable({ id: sortableId });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  useEffect(() => {
+    setLocalName(command.name ?? '');
+  }, [command.name]);
 
   useEffect(() => {
     setLocalCommand(command.command);
@@ -59,6 +66,14 @@ export function CommandRow({
       s.toLowerCase().includes(localCommand.toLowerCase()) &&
       s !== localCommand,
   );
+
+  const handleNameBlur = () => {
+    const trimmed = localName.trim();
+    const newValue = trimmed || null;
+    if (newValue !== (command.name ?? null)) {
+      onUpdate({ name: newValue });
+    }
+  };
 
   const handleCommandChange = (value: string) => {
     setLocalCommand(value);
@@ -112,30 +127,42 @@ export function CommandRow({
         >
           <GripVertical className="h-4 w-4" />
         </button>
-        <div className="relative min-w-0 flex-1">
+        <div className="min-w-0 flex-1 space-y-2">
           <Input
-            ref={inputRef}
-            size="md"
-            value={localCommand}
-            onChange={(e) => handleCommandChange(e.target.value)}
-            onFocus={() => setShowSuggestions(true)}
-            onBlur={handleCommandBlur}
-            placeholder="Enter command (e.g., pnpm dev)"
+            size="sm"
+            value={localName}
+            onChange={(e) => setLocalName(e.target.value)}
+            onBlur={handleNameBlur}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur();
+            }}
+            placeholder="Optional display name"
           />
-          {showSuggestions && filteredSuggestions.length > 0 && (
-            <div className="border-glass-border bg-bg-1 absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border py-1 shadow-lg">
-              {filteredSuggestions.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  type="button"
-                  onMouseDown={() => handleSelectSuggestion(suggestion)}
-                  className="text-ink-1 hover:bg-glass-medium w-full px-3 py-1.5 text-left text-sm"
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="relative min-w-0">
+            <Input
+              ref={inputRef}
+              size="md"
+              value={localCommand}
+              onChange={(e) => handleCommandChange(e.target.value)}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={handleCommandBlur}
+              placeholder="Enter command (e.g., pnpm dev)"
+            />
+            {showSuggestions && filteredSuggestions.length > 0 && (
+              <div className="border-glass-border bg-bg-1 absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border py-1 shadow-lg">
+                {filteredSuggestions.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onMouseDown={() => handleSelectSuggestion(suggestion)}
+                    className="text-ink-1 hover:bg-glass-medium w-full px-3 py-1.5 text-left text-sm"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <IconButton
           variant="ghost"

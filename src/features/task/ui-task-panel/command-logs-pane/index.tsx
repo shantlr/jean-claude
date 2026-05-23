@@ -15,7 +15,10 @@ import {
   type RunCommandLogs,
   useTaskMessagesStore,
 } from '@/stores/task-messages';
-import type { RunStatus } from '@shared/run-command-types';
+import {
+  getRunCommandDisplayName,
+  type RunStatus,
+} from '@shared/run-command-types';
 
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from '../constants';
 
@@ -108,8 +111,13 @@ export function CommandLogsPane({
     if (!normalizedSearchQuery) return tabs;
 
     return tabs.filter((tab) => {
-      if (tab.command.toLowerCase().includes(normalizedSearchQuery))
+      if (
+        getRunCommandDisplayName(tab)
+          .toLowerCase()
+          .includes(normalizedSearchQuery)
+      ) {
         return true;
+      }
 
       return (
         runCommandLogs[tab.id]?.lines.some((entry) =>
@@ -216,9 +224,9 @@ export function CommandLogsPane({
                     ? 'bg-acc text-ink-0'
                     : 'text-ink-1 bg-bg-1 hover:bg-glass-medium',
                 )}
-                title={tab.command}
+                title={getRunCommandDisplayName(tab)}
               >
-                {tab.command}
+                {getRunCommandDisplayName(tab)}
               </Button>
             ))}
           </div>

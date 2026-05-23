@@ -571,6 +571,25 @@ contextBridge.exposeInMainWorld('api', {
     reorder: (projectId: string, commandIds: string[]) =>
       ipcRenderer.invoke('project:commands:reorder', { projectId, commandIds }),
   },
+  projectCommandGroups: {
+    findByProjectId: (projectId: string) =>
+      ipcRenderer.invoke('project:commandGroups:findByProjectId', projectId),
+    create: (data: unknown) =>
+      ipcRenderer.invoke('project:commandGroups:create', data),
+    update: (id: string, data: unknown) =>
+      ipcRenderer.invoke('project:commandGroups:update', { id, data }),
+    delete: (id: string) =>
+      ipcRenderer.invoke('project:commandGroups:delete', id),
+    reorder: (projectId: string, groupIds: string[]) =>
+      ipcRenderer.invoke('project:commandGroups:reorder', {
+        projectId,
+        groupIds,
+      }),
+  },
+  projectRunConfig: {
+    reorder: (projectId: string, items: unknown[]) =>
+      ipcRenderer.invoke('project:runConfig:reorder', { projectId, items }),
+  },
   runCommands: {
     startCommand: (params: {
       taskId: string;
@@ -583,6 +602,18 @@ contextBridge.exposeInMainWorld('api', {
         projectId: params.projectId,
         workingDir: params.workingDir,
         runCommandId: params.runCommandId,
+      }),
+    startGroup: (params: {
+      taskId: string;
+      projectId: string;
+      workingDir: string;
+      runCommandIds: string[];
+    }) =>
+      ipcRenderer.invoke('project:commands:run:startGroup', {
+        taskId: params.taskId,
+        projectId: params.projectId,
+        workingDir: params.workingDir,
+        runCommandIds: params.runCommandIds,
       }),
     stopCommand: (params: { taskId: string; runCommandId: string }) =>
       ipcRenderer.invoke('project:commands:run:stopCommand', params),

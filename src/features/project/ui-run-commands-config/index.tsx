@@ -18,15 +18,28 @@ import { useMemo, useCallback } from 'react';
 
 import { usePackageScripts } from '@/hooks/use-package-scripts';
 import {
+  useCreateProjectCommandGroup,
+  useDeleteProjectCommandGroup,
+  useProjectCommandGroups,
+  useUpdateProjectCommandGroup,
+} from '@/hooks/use-project-command-groups';
+import {
   useProjectCommands,
   useCreateProjectCommand,
   useUpdateProjectCommand,
   useDeleteProjectCommand,
-  useReorderProjectCommands,
 } from '@/hooks/use-project-commands';
-import type { UpdateProjectCommand } from '@shared/run-command-types';
+import { useReorderProjectRunConfig } from '@/hooks/use-project-run-config';
+import type {
+  ProjectCommand,
+  ProjectCommandGroup,
+  RunCommandConfigItem,
+  UpdateProjectCommand,
+  UpdateProjectCommandGroup,
+} from '@shared/run-command-types';
 
 import { CommandRow } from './command-row';
+import { GroupRow } from './group-row';
 
 export function RunCommandsConfig({
   projectId,
@@ -36,14 +49,32 @@ export function RunCommandsConfig({
   projectPath: string;
 }) {
   const { data: commands = [] } = useProjectCommands(projectId);
+  const { data: groups = [] } = useProjectCommandGroups(projectId);
   const { data: scriptsData } = usePackageScripts(projectPath);
   const createCommand = useCreateProjectCommand();
   const updateCommand = useUpdateProjectCommand();
   const deleteCommand = useDeleteProjectCommand();
-  const reorderCommands = useReorderProjectCommands();
-  const reorderMutate = reorderCommands.mutate;
+  const createGroup = useCreateProjectCommandGroup();
+  const updateGroup = useUpdateProjectCommandGroup();
+  const deleteGroup = useDeleteProjectCommandGroup();
+  const reorderRunConfig = useReorderProjectRunConfig();
 
-  const commandIds = useMemo(() => commands.map((cmd) => cmd.id), [commands]);
+  const items = useMemo(
+    () =>
+      [
+        ...commands.map((item) => ({ type: 'command' as const, item })),
+        ...groups.map((item) => ({ type: 'group' as const, item })),
+      ].sort(
+        (a, b) =>
+          a.item.sortOrder - b.item.sortOrder ||
+          a.item.createdAt.localeCompare(b.item.createdAt),
+      ),
+    [commands, groups],
+  );
+  const itemIds = useMemo(
+    () => items.map((item) => `${item.type}:${item.item.id}`),
+    [items],
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -61,6 +92,7 @@ export function RunCommandsConfig({
   const handleAddCommand = () => {
     createCommand.mutate({
       projectId,
+      name: null,
       command: '',
       ports: [],
       confirmBeforeRun: false,
@@ -76,19 +108,43 @@ export function RunCommandsConfig({
     deleteCommand.mutate(id);
   };
 
+  const handleAddGroup = () => {
+    createGroup.mutate({
+      projectId,
+      name: `Group ${groups.length + 1}`,
+      commandIds: [],
+    });
+  };
+
+  const handleUpdateGroup = (id: string, data: UpdateProjectCommandGroup) => {
+    updateGroup.mutate({ id, data });
+  };
+
+  const handleDeleteGroup = (id: string) => {
+    deleteGroup.mutate(id);
+  };
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
       if (!over || active.id === over.id) return;
 
-      const oldIndex = commandIds.indexOf(active.id as string);
-      const newIndex = commandIds.indexOf(over.id as string);
+      const oldIndex = itemIds.indexOf(active.id as string);
+      const newIndex = itemIds.indexOf(over.id as string);
       if (oldIndex === -1 || newIndex === -1) return;
 
-      const newOrder = arrayMove(commandIds, oldIndex, newIndex);
-      reorderMutate({ projectId, commandIds: newOrder });
+      const newOrder = arrayMove(
+        items,
+        oldIndex,
+        newIndex,
+      ).map<RunCommandConfigItem>((item, index) => ({
+        type: item.type,
+        id: item.item.id,
+        sortOrder: index,
+      }));
+      reorderRunConfig.mutate({ projectId, items: newOrder });
     },
-    [commandIds, projectId, reorderMutate],
+    [itemIds, items, projectId, reorderRunConfig],
   );
 
   return (
@@ -104,20 +160,29 @@ export function RunCommandsConfig({
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <SortableContext
-          items={commandIds}
-          strategy={verticalListSortingStrategy}
-        >
+        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
           <div className="space-y-3">
-            {commands.map((cmd) => (
-              <CommandRow
-                key={cmd.id}
-                command={cmd}
-                suggestions={suggestions}
-                onUpdate={(data) => handleUpdateCommand(cmd.id, data)}
-                onDelete={() => handleDeleteCommand(cmd.id)}
-              />
-            ))}
+            {items.map((item) =>
+              item.type === 'command' ? (
+                <CommandRow
+                  key={`command:${item.item.id}`}
+                  sortableId={`command:${item.item.id}`}
+                  command={item.item as ProjectCommand}
+                  suggestions={suggestions}
+                  onUpdate={(data) => handleUpdateCommand(item.item.id, data)}
+                  onDelete={() => handleDeleteCommand(item.item.id)}
+                />
+              ) : (
+                <GroupRow
+                  key={`group:${item.item.id}`}
+                  sortableId={`group:${item.item.id}`}
+                  group={item.item as ProjectCommandGroup}
+                  commands={commands}
+                  onUpdate={(data) => handleUpdateGroup(item.item.id, data)}
+                  onDelete={() => handleDeleteGroup(item.item.id)}
+                />
+              ),
+            )}
           </div>
         </SortableContext>
       </DndContext>
@@ -131,6 +196,21 @@ export function RunCommandsConfig({
         <Plus className="h-4 w-4" />
         Add Command
       </button>
+
+      <div className="mt-8 flex items-start gap-3">
+        <button
+          type="button"
+          onClick={handleAddGroup}
+          disabled={createGroup.isPending}
+          className="border-glass-border text-ink-2 hover:border-glass-border-strong hover:text-ink-1 flex items-center gap-2 rounded-md border border-dashed px-4 py-2 text-sm disabled:opacity-50"
+        >
+          <Plus className="h-4 w-4" />
+          Add Group
+        </button>
+        <p className="text-ink-3 pt-2 text-sm">
+          Drag commands and groups together to fully customize ordering.
+        </p>
+      </div>
     </div>
   );
 }

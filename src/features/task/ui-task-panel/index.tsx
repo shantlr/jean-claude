@@ -1243,8 +1243,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                     openCommandLogs();
                   }
                 }}
-                onRunCommand={(runCommandId) => {
-                  openCommandLogs(runCommandId);
+                onRunCommand={(runCommandIds) => {
+                  openCommandLogs(runCommandIds[0] ?? null);
                 }}
                 isLogsPaneOpen={rightPane?.type === 'commandLogs'}
               />

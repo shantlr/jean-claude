@@ -15,6 +15,7 @@ const ALL_TABLES: Record<TableName, true> = {
   raw_messages: true,
   settings: true,
   project_commands: true,
+  project_command_groups: true,
   mcp_templates: true,
   project_mcp_overrides: true,
   task_summaries: true,

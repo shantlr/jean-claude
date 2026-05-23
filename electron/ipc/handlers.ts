@@ -26,7 +26,10 @@ import type {
 } from '@shared/pipeline-types';
 import type {
   NewProjectCommand,
+  NewProjectCommandGroup,
+  RunCommandConfigItem,
   UpdateProjectCommand,
+  UpdateProjectCommandGroup,
 } from '@shared/run-command-types';
 import {
   PRESET_EDITORS,
@@ -57,8 +60,10 @@ import {
 } from '../database/repositories';
 import { McpTemplateRepository } from '../database/repositories/mcp-templates';
 import { NotificationRepository } from '../database/repositories/notifications';
+import { ProjectCommandGroupRepository } from '../database/repositories/project-command-groups';
 import { ProjectCommandRepository } from '../database/repositories/project-commands';
 import { ProjectMcpOverrideRepository } from '../database/repositories/project-mcp-overrides';
+import { ProjectRunConfigRepository } from '../database/repositories/project-run-config';
 import { TaskStepRepository } from '../database/repositories/task-steps';
 import { TrackedPipelineRepository } from '../database/repositories/tracked-pipelines';
 import { UsageSnapshotRepository } from '../database/repositories/usage-snapshots';
@@ -2765,6 +2770,39 @@ export function registerIpcHandlers() {
       { projectId, commandIds }: { projectId: string; commandIds: string[] },
     ) => ProjectCommandRepository.reorder(projectId, commandIds),
   );
+  ipcMain.handle(
+    'project:commandGroups:findByProjectId',
+    (_, projectId: string) =>
+      ProjectCommandGroupRepository.findByProjectId(projectId),
+  );
+  ipcMain.handle(
+    'project:commandGroups:create',
+    (_, data: NewProjectCommandGroup) =>
+      ProjectCommandGroupRepository.create(data),
+  );
+  ipcMain.handle(
+    'project:commandGroups:update',
+    (_, { id, data }: { id: string; data: UpdateProjectCommandGroup }) =>
+      ProjectCommandGroupRepository.update(id, data),
+  );
+  ipcMain.handle('project:commandGroups:delete', (_, id: string) =>
+    ProjectCommandGroupRepository.delete(id),
+  );
+  ipcMain.handle(
+    'project:commandGroups:reorder',
+    (_, { projectId, groupIds }: { projectId: string; groupIds: string[] }) =>
+      ProjectCommandGroupRepository.reorder(projectId, groupIds),
+  );
+  ipcMain.handle(
+    'project:runConfig:reorder',
+    (
+      _,
+      {
+        projectId,
+        items,
+      }: { projectId: string; items: RunCommandConfigItem[] },
+    ) => ProjectRunConfigRepository.reorder(projectId, items),
+  );
 
   // Run Commands
   ipcMain.handle(
@@ -2778,6 +2816,18 @@ export function registerIpcHandlers() {
         runCommandId: string;
       },
     ) => runCommandService.startCommand(params),
+  );
+  ipcMain.handle(
+    'project:commands:run:startGroup',
+    (
+      _,
+      params: {
+        taskId: string;
+        projectId: string;
+        workingDir: string;
+        runCommandIds: string[];
+      },
+    ) => runCommandService.startGroup(params),
   );
   ipcMain.handle(
     'project:commands:run:stopCommand',

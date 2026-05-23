@@ -1,9 +1,14 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { api } from '@/lib/api';
 import { useTaskMessagesStore } from '@/stores/task-messages';
-import type { RunStatus, PortsInUseErrorData } from '@shared/run-command-types';
+import type { PortsInUseErrorData, RunStatus } from '@shared/run-command-types';
 import { isPortsInUseError } from '@shared/run-command-types';
+
+interface PendingStart {
+  commandIds: string[];
+  kind: 'command' | 'group';
+}
 
 export function useRunCommands({
   taskId,
@@ -17,15 +22,9 @@ export function useRunCommands({
   const [status, setStatus] = useState<RunStatus | null>(null);
   const [portsInUseError, setPortsInUseError] =
     useState<PortsInUseErrorData | null>(null);
-  const [isStartingCommandId, setIsStartingCommandId] = useState<string | null>(
-    null,
-  );
-  const [isStoppingCommandId, setIsStoppingCommandId] = useState<string | null>(
-    null,
-  );
-  const [pendingStartCommandId, setPendingStartCommandId] = useState<
-    string | null
-  >(null);
+  const [startingCommandIds, setStartingCommandIds] = useState<string[]>([]);
+  const [stoppingCommandIds, setStoppingCommandIds] = useState<string[]>([]);
+  const [pendingStart, setPendingStart] = useState<PendingStart | null>(null);
 
   const clearRunCommandLogs = useTaskMessagesStore(
     (state) => state.clearRunCommandLogs,
@@ -49,21 +48,32 @@ export function useRunCommands({
     };
   }, [taskId]);
 
-  const startCommand = useCallback(
-    async (runCommandId: string) => {
-      setIsStartingCommandId(runCommandId);
+  const runStart = useCallback(
+    async (commandIds: string[], kind: PendingStart['kind']) => {
+      const uniqueCommandIds = [...new Set(commandIds)];
+      setStartingCommandIds(uniqueCommandIds);
       setPortsInUseError(null);
-      setPendingStartCommandId(runCommandId);
+      setPendingStart({ commandIds: uniqueCommandIds, kind });
 
-      clearRunCommandLogs(taskId, runCommandId);
+      for (const commandId of uniqueCommandIds) {
+        clearRunCommandLogs(taskId, commandId);
+      }
 
       try {
-        const result = await api.runCommands.startCommand({
-          taskId,
-          projectId,
-          workingDir,
-          runCommandId,
-        });
+        const result =
+          uniqueCommandIds.length === 1
+            ? await api.runCommands.startCommand({
+                taskId,
+                projectId,
+                workingDir,
+                runCommandId: uniqueCommandIds[0],
+              })
+            : await api.runCommands.startGroup({
+                taskId,
+                projectId,
+                workingDir,
+                runCommandIds: uniqueCommandIds,
+              });
 
         if (isPortsInUseError(result)) {
           setPortsInUseError(result);
@@ -71,43 +81,70 @@ export function useRunCommands({
         }
 
         setStatus(result);
-        setPendingStartCommandId(null);
+        setPendingStart(null);
       } finally {
-        setIsStartingCommandId(null);
+        setStartingCommandIds([]);
       }
     },
-    [taskId, projectId, workingDir, clearRunCommandLogs],
+    [clearRunCommandLogs, projectId, taskId, workingDir],
+  );
+
+  const startCommand = useCallback(
+    async (runCommandId: string) => runStart([runCommandId], 'command'),
+    [runStart],
+  );
+
+  const startGroup = useCallback(
+    async (runCommandIds: string[]) => runStart(runCommandIds, 'group'),
+    [runStart],
   );
 
   const stopCommand = useCallback(
     async (runCommandId: string) => {
-      setIsStoppingCommandId(runCommandId);
+      setStoppingCommandIds([runCommandId]);
       try {
         await api.runCommands.stopCommand({ taskId, runCommandId });
       } finally {
-        setIsStoppingCommandId(null);
+        setStoppingCommandIds([]);
+      }
+    },
+    [taskId],
+  );
+
+  const stopGroup = useCallback(
+    async (runCommandIds: string[]) => {
+      const uniqueCommandIds = [...new Set(runCommandIds)];
+      setStoppingCommandIds(uniqueCommandIds);
+      try {
+        await Promise.all(
+          uniqueCommandIds.map((runCommandId) =>
+            api.runCommands.stopCommand({ taskId, runCommandId }),
+          ),
+        );
+      } finally {
+        setStoppingCommandIds([]);
       }
     },
     [taskId],
   );
 
   const confirmKillPorts = useCallback(async () => {
-    if (!portsInUseError || !pendingStartCommandId) return;
+    if (!portsInUseError || !pendingStart) return;
 
     const commandIds = [
-      ...new Set(portsInUseError.portsInUse.map((p) => p.commandId)),
+      ...new Set(portsInUseError.portsInUse.map((port) => port.commandId)),
     ];
     for (const commandId of commandIds) {
       await api.runCommands.killPortsForCommand(projectId, commandId);
     }
 
     setPortsInUseError(null);
-    await startCommand(pendingStartCommandId);
-  }, [projectId, portsInUseError, pendingStartCommandId, startCommand]);
+    await runStart(pendingStart.commandIds, pendingStart.kind);
+  }, [pendingStart, portsInUseError, projectId, runStart]);
 
   const dismissPortsError = useCallback(() => {
     setPortsInUseError(null);
-    setPendingStartCommandId(null);
+    setPendingStart(null);
   }, []);
 
   const statusByCommandId = useMemo(() => {
@@ -118,14 +155,28 @@ export function useRunCommands({
     return byId;
   }, [status]);
 
+  const startingCommandIdSet = useMemo(
+    () => new Set(startingCommandIds),
+    [startingCommandIds],
+  );
+  const stoppingCommandIdSet = useMemo(
+    () => new Set(stoppingCommandIds),
+    [stoppingCommandIds],
+  );
+
   return {
     status,
     statusByCommandId,
     isRunning: status?.isRunning ?? false,
-    isStartingCommandId,
-    isStoppingCommandId,
+    isCommandStarting: (commandId: string) =>
+      startingCommandIdSet.has(commandId),
+    isCommandStopping: (commandId: string) =>
+      stoppingCommandIdSet.has(commandId),
+    isStartingAnyCommand: startingCommandIds.length > 0,
     startCommand,
+    startGroup,
     stopCommand,
+    stopGroup,
     portsInUseError,
     confirmKillPorts,
     dismissPortsError,

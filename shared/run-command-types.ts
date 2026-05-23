@@ -5,6 +5,7 @@ export type CommandStatus = 'running' | 'stopped' | 'errored';
 export interface ProjectCommand {
   id: string;
   projectId: string;
+  name: string | null;
   command: string;
   ports: number[];
   confirmBeforeRun: boolean;
@@ -20,12 +21,35 @@ export type NewProjectCommand = Omit<
 export type UpdateProjectCommand = Partial<
   Pick<
     ProjectCommand,
-    'command' | 'ports' | 'confirmBeforeRun' | 'confirmMessage'
+    'name' | 'command' | 'ports' | 'confirmBeforeRun' | 'confirmMessage'
   >
 >;
 
+export interface ProjectCommandGroup {
+  id: string;
+  projectId: string;
+  name: string;
+  commandIds: string[];
+  sortOrder: number;
+  createdAt: string;
+}
+
+export type NewProjectCommandGroup = Omit<
+  ProjectCommandGroup,
+  'id' | 'createdAt' | 'sortOrder'
+>;
+
+export type UpdateProjectCommandGroup = Partial<
+  Pick<ProjectCommandGroup, 'name' | 'commandIds'>
+>;
+
+export type RunCommandConfigItem =
+  | ({ type: 'command' } & Pick<ProjectCommand, 'id' | 'sortOrder'>)
+  | ({ type: 'group' } & Pick<ProjectCommandGroup, 'id' | 'sortOrder'>);
+
 export interface CommandRunStatus {
   id: string;
+  name: string | null;
   command: string;
   status: CommandStatus;
   pid?: number;
@@ -80,4 +104,11 @@ export interface PackageScriptsResult {
   packageManager: 'pnpm' | 'npm' | 'yarn' | 'bun' | null;
   isWorkspace: boolean;
   workspacePackages: WorkspacePackage[];
+}
+
+export function getRunCommandDisplayName(command: {
+  name?: string | null;
+  command: string;
+}): string {
+  return command.name?.trim() || command.command;
 }

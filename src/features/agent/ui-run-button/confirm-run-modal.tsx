@@ -22,7 +22,7 @@ export function ConfirmRunModal({
         <div className="text-ink-1 text-sm">
           {message ? (
             <>
-              <div className="mb-1">{message}</div>
+              <div className="mb-1 whitespace-pre-line">{message}</div>
               <div className="text-ink-3 text-xs">
                 Command:{' '}
                 <span className="text-ink-2 font-mono">{commandName}</span>

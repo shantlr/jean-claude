@@ -43,6 +43,7 @@ export function useDeleteProjectCommand() {
     mutationFn: (id: string) => api.projectCommands.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projectCommands'] });
+      queryClient.invalidateQueries({ queryKey: ['projectCommandGroups'] });
     },
   });
 }

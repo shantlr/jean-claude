@@ -403,7 +403,11 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
         if (
           prev.length === next.length &&
           prev.every(
-            (c, i) => c.id === next[i].id && c.status === next[i].status,
+            (c, i) =>
+              c.id === next[i].id &&
+              c.name === next[i].name &&
+              c.command === next[i].command &&
+              c.status === next[i].status,
           )
         ) {
           return state;

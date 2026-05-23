@@ -14,7 +14,10 @@ import { useTasks } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import { useToastStore } from '@/stores/toasts';
-import type { CommandRunStatus } from '@shared/run-command-types';
+import {
+  getRunCommandDisplayName,
+  type CommandRunStatus,
+} from '@shared/run-command-types';
 
 /** Stable empty array to avoid unstable selector references. */
 const EMPTY_ARRAY: never[] = [];
@@ -247,7 +250,7 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
                       <Loader2 className="text-status-done mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-medium">
-                          {cmd.commandStatus.command}
+                          {getRunCommandDisplayName(cmd.commandStatus)}
                         </p>
                         <p className="text-ink-3 mt-0.5 truncate text-[11px]">
                           {cmd.taskName}
@@ -284,7 +287,9 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
                   <LogViewer
                     taskId={selectedCommand.taskId}
                     runCommandId={selectedCommand.commandStatus.id}
-                    command={selectedCommand.commandStatus.command}
+                    command={getRunCommandDisplayName(
+                      selectedCommand.commandStatus,
+                    )}
                     isStopping={stoppingKeys.has(
                       makeKey(
                         selectedCommand.taskId,

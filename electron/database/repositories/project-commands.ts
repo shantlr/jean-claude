@@ -8,9 +8,12 @@ import type {
 
 import { db } from '../index';
 
+import { ProjectCommandGroupRepository } from './project-command-groups';
+
 function parseRow(row: {
   id: string;
   projectId: string;
+  name: string | null;
   command: string;
   ports: string;
   confirmBeforeRun: number;
@@ -54,11 +57,17 @@ export const ProjectCommandRepository = {
       .values({
         id,
         projectId: data.projectId,
+        name: data.name ?? null,
         command: data.command,
         ports: JSON.stringify(data.ports),
         confirmBeforeRun: data.confirmBeforeRun ? 1 : 0,
         confirmMessage: data.confirmMessage ?? null,
-        sortOrder: sql<number>`(SELECT COALESCE(MAX(sortOrder), -1) + 1 FROM project_commands WHERE projectId = ${data.projectId})`,
+        sortOrder: sql<number>`(
+          SELECT MAX(
+            COALESCE((SELECT MAX(sortOrder) FROM project_commands WHERE projectId = ${data.projectId}), -1),
+            COALESCE((SELECT MAX(sortOrder) FROM project_command_groups WHERE projectId = ${data.projectId}), -1)
+          ) + 1
+        )`,
         createdAt: new Date().toISOString(),
       })
       .returningAll()
@@ -71,6 +80,7 @@ export const ProjectCommandRepository = {
     data: UpdateProjectCommand,
   ): Promise<ProjectCommand> => {
     const updateData: Record<string, unknown> = {};
+    if (data.name !== undefined) updateData.name = data.name;
     if (data.command !== undefined) updateData.command = data.command;
     if (data.ports !== undefined) updateData.ports = JSON.stringify(data.ports);
     if (data.confirmBeforeRun !== undefined)
@@ -88,7 +98,14 @@ export const ProjectCommandRepository = {
   },
 
   delete: async (id: string): Promise<void> => {
+    const command = await ProjectCommandRepository.findById(id);
     await db.deleteFrom('project_commands').where('id', '=', id).execute();
+    if (command) {
+      await ProjectCommandGroupRepository.removeCommandFromAllGroups({
+        projectId: command.projectId,
+        commandId: id,
+      });
+    }
   },
 
   reorder: async (projectId: string, commandIds: string[]): Promise<void> => {

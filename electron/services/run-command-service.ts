@@ -9,6 +9,7 @@ import * as nodePty from 'node-pty';
 import type {
   RunStatus,
   CommandRunStatus,
+  ProjectCommand,
   PortInUse,
   PortsInUseErrorData,
   PackageScriptsResult,
@@ -165,6 +166,7 @@ type LogCallback = (
 
 interface TrackedProcess {
   commandId: string;
+  name: string | null;
   command: string;
   pty: nodePty.IPty;
   pid: number;
@@ -321,11 +323,111 @@ class RunCommandService {
     tracked.outputBuffer = applyLineOverwrites(tracked.outputBuffer);
   }
 
+  private async getPortsInUse(
+    commands: ProjectCommand[],
+  ): Promise<PortInUse[]> {
+    const portsInUse: PortInUse[] = [];
+
+    for (const command of commands) {
+      for (const port of command.ports) {
+        const processInfo = await this.checkPortInUse(port);
+        if (processInfo) {
+          portsInUse.push({
+            port,
+            commandId: command.id,
+            command: command.command,
+            processInfo,
+          });
+        }
+      }
+    }
+
+    return portsInUse;
+  }
+
+  private spawnTrackedCommand({
+    taskId,
+    workingDir,
+    command,
+  }: {
+    taskId: string;
+    workingDir: string;
+    command: ProjectCommand;
+  }): void {
+    dbg.runCommand('Spawning command via PTY: %s', command.command);
+
+    const shell =
+      process.platform === 'win32' ? 'cmd.exe' : process.env.SHELL || '/bin/sh';
+    const shellArgs =
+      process.platform === 'win32'
+        ? ['/c', command.command]
+        : ['-c', command.command];
+
+    const ptyProcess = nodePty.spawn(shell, shellArgs, {
+      name: 'xterm-256color',
+      cols: 120,
+      rows: 30,
+      cwd: workingDir,
+      env: getProcessEnvWithoutNodeEnv(),
+    });
+
+    let exitResolve: (value: { exitCode: number; signal?: number }) => void;
+    const exitPromise = new Promise<{ exitCode: number; signal?: number }>(
+      (resolve) => {
+        exitResolve = resolve;
+      },
+    );
+
+    const trackedProcess: TrackedProcess = {
+      commandId: command.id,
+      name: command.name,
+      command: command.command,
+      pty: ptyProcess,
+      pid: ptyProcess.pid,
+      status: 'running',
+      outputBuffer: '',
+      exited: false,
+      exitPromise,
+    };
+
+    const taskProcesses = this.getTaskProcesses(taskId);
+    taskProcesses.set(command.id, trackedProcess);
+
+    dbg.runCommand(
+      'PTY process started with PID %d for command: %s',
+      ptyProcess.pid,
+      command.command,
+    );
+
+    ptyProcess.onData((data: string) => {
+      this.appendLogChunk({
+        taskId,
+        tracked: trackedProcess,
+        chunk: data,
+      });
+    });
+
+    ptyProcess.onExit(({ exitCode, signal }) => {
+      dbg.runCommand(
+        'PTY process %d exited with code %d signal %d',
+        trackedProcess.pid,
+        exitCode,
+        signal,
+      );
+      this.flushBuffer({ taskId, tracked: trackedProcess });
+      trackedProcess.exited = true;
+      trackedProcess.status = exitCode === 0 ? 'stopped' : 'errored';
+      exitResolve!({ exitCode, signal });
+      this.notifyStatusChange(taskId);
+    });
+  }
+
   getRunStatus(taskId: string): RunStatus {
     const tracked = this.runningProcesses.get(taskId);
     const commands: CommandRunStatus[] = tracked
       ? [...tracked.values()].map((t) => ({
           id: t.commandId,
+          name: t.name,
           command: t.command,
           status: t.status,
           pid: t.pid,
@@ -470,18 +572,7 @@ class RunCommandService {
 
     await this.stopCommandWithoutLock({ taskId, runCommandId });
 
-    const portsInUse: PortInUse[] = [];
-    for (const port of command.ports) {
-      const processInfo = await this.checkPortInUse(port);
-      if (processInfo) {
-        portsInUse.push({
-          port,
-          commandId: command.id,
-          command: command.command,
-          processInfo,
-        });
-      }
-    }
+    const portsInUse = await this.getPortsInUse([command]);
 
     if (portsInUse.length > 0) {
       dbg.runCommand('Ports in use, cannot start: %o', portsInUse);
@@ -492,72 +583,55 @@ class RunCommandService {
       };
     }
 
-    dbg.runCommand('Spawning command via PTY: %s', command.command);
+    this.spawnTrackedCommand({ taskId, workingDir, command });
 
-    const shell =
-      process.platform === 'win32' ? 'cmd.exe' : process.env.SHELL || '/bin/sh';
-    const shellArgs =
-      process.platform === 'win32'
-        ? ['/c', command.command]
-        : ['-c', command.command];
+    this.notifyStatusChange(taskId);
+    return this.getRunStatus(taskId);
+  }
 
-    const ptyProcess = nodePty.spawn(shell, shellArgs, {
-      name: 'xterm-256color',
-      cols: 120,
-      rows: 30,
-      cwd: workingDir,
-      env: getProcessEnvWithoutNodeEnv(),
-    });
-
-    let exitResolve: (value: { exitCode: number; signal?: number }) => void;
-    const exitPromise = new Promise<{ exitCode: number; signal?: number }>(
-      (resolve) => {
-        exitResolve = resolve;
-      },
+  async startGroup({
+    taskId,
+    projectId,
+    workingDir,
+    runCommandIds,
+  }: {
+    taskId: string;
+    projectId: string;
+    workingDir: string;
+    runCommandIds: string[];
+  }): Promise<RunStatus | PortsInUseErrorData> {
+    const commandIds = [...new Set(runCommandIds)];
+    const commands = await Promise.all(
+      commandIds.map((runCommandId) =>
+        ProjectCommandRepository.findById(runCommandId),
+      ),
+    );
+    const validCommands = commands.filter(
+      (command): command is ProjectCommand =>
+        command != null && command.projectId === projectId,
     );
 
-    const trackedProcess: TrackedProcess = {
-      commandId: command.id,
-      command: command.command,
-      pty: ptyProcess,
-      pid: ptyProcess.pid,
-      status: 'running',
-      outputBuffer: '',
-      exited: false,
-      exitPromise,
-    };
-
-    const taskProcesses = this.getTaskProcesses(taskId);
-    taskProcesses.set(command.id, trackedProcess);
-
-    dbg.runCommand(
-      'PTY process started with PID %d for command: %s',
-      ptyProcess.pid,
-      command.command,
+    await Promise.all(
+      validCommands.map((command) =>
+        this.stopCommand({ taskId, runCommandId: command.id }),
+      ),
     );
 
-    // PTY combines stdout and stderr into a single stream
-    ptyProcess.onData((data: string) => {
-      this.appendLogChunk({
-        taskId,
-        tracked: trackedProcess,
-        chunk: data,
-      });
-    });
+    const portsInUse = await this.getPortsInUse(validCommands);
+    if (portsInUse.length > 0) {
+      dbg.runCommand('Group ports in use, cannot start: %o', portsInUse);
+      return {
+        type: 'PortsInUseError',
+        message: `Ports in use: ${portsInUse.map((p) => p.port).join(', ')}`,
+        portsInUse,
+      };
+    }
 
-    ptyProcess.onExit(({ exitCode, signal }) => {
-      dbg.runCommand(
-        'PTY process %d exited with code %d signal %d',
-        trackedProcess.pid,
-        exitCode,
-        signal,
-      );
-      this.flushBuffer({ taskId, tracked: trackedProcess });
-      trackedProcess.exited = true;
-      trackedProcess.status = exitCode === 0 ? 'stopped' : 'errored';
-      exitResolve!({ exitCode, signal });
-      this.notifyStatusChange(taskId);
-    });
+    await Promise.all(
+      validCommands.map((command) =>
+        this.spawnTrackedCommand({ taskId, workingDir, command }),
+      ),
+    );
 
     this.notifyStatusChange(taskId);
     return this.getRunStatus(taskId);
