@@ -78,8 +78,8 @@ export function TaskMessageManager() {
           if (isLoaded(stepId)) {
             setStatus(stepId, event.status, event.error);
           }
-          // Clear pending requests when stopped by user
-          if (event.status === 'interrupted') {
+          // Clear pending requests when agent resumes or is stopped
+          if (event.status === 'running' || event.status === 'interrupted') {
             clearPendingRequestForTask(taskId);
           }
           // Also invalidate task queries so task-level status updates

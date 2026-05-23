@@ -46,6 +46,9 @@ export function useAgentControls({
   const queryClient = useQueryClient();
   const setPermission = useTaskMessagesStore((s) => s.setPermission);
   const setQuestion = useTaskMessagesStore((s) => s.setQuestion);
+  const clearPendingRequestForTask = useTaskMessagesStore(
+    (s) => s.clearPendingRequestForTask,
+  );
   const addToast = useToastStore((s) => s.addToast);
 
   const start = useCallback(async () => {
@@ -92,8 +95,9 @@ export function useAgentControls({
         });
       }
       setPermission(stepId, null);
+      clearPendingRequestForTask(taskId);
     },
-    [stepId, setPermission, addToast],
+    [stepId, taskId, setPermission, clearPendingRequestForTask, addToast],
   );
 
   const respondToQuestion = useCallback(
@@ -111,8 +115,9 @@ export function useAgentControls({
         });
       }
       setQuestion(stepId, null);
+      clearPendingRequestForTask(taskId);
     },
-    [stepId, setQuestion, addToast],
+    [stepId, taskId, setQuestion, clearPendingRequestForTask, addToast],
   );
 
   const sendMessage = useCallback(
