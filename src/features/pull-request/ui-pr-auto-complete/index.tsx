@@ -35,6 +35,22 @@ export function PrAutoComplete({
   const currentIdentityId = useMemo(() => {
     if (!currentUser) return null;
 
+    // Match by org identity ID first (most reliable), fall back to email
+    const identityId = currentUser.identityId;
+    if (identityId) {
+      const byId = pr.reviewers.find(
+        (reviewer) => !reviewer.isContainer && reviewer.id === identityId,
+      );
+      if (byId) return byId.id;
+
+      if (pr.createdBy.id === identityId) {
+        return pr.createdBy.id;
+      }
+
+      // Not a reviewer or creator, but we have a valid identity ID
+      return identityId;
+    }
+
     const currentEmail = currentUser.emailAddress.toLowerCase();
     const reviewerIdentity = pr.reviewers.find(
       (reviewer) =>

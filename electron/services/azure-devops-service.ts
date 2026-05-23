@@ -55,6 +55,7 @@ export interface AzureDevOpsUser {
   id: string;
   displayName: string;
   emailAddress: string;
+  identityId?: string; // Org-level identity ID (matches reviewer IDs)
 }
 
 export interface AzureDevOpsProject {
@@ -1242,16 +1243,23 @@ async function getProviderAuth(providerId: string): Promise<{
 export async function getCurrentUser(
   providerId: string,
 ): Promise<AzureDevOpsUser> {
-  const { authHeader } = await getProviderAuth(providerId);
+  const { authHeader, orgName } = await getProviderAuth(providerId);
 
-  const profileResponse = await fetch(
-    'https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.0',
-    {
-      headers: {
-        Authorization: authHeader,
+  // Fetch profile and org identity in parallel
+  const [profileResponse, connectionResponse] = await Promise.all([
+    fetch(
+      'https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.0',
+      {
+        headers: { Authorization: authHeader },
       },
-    },
-  );
+    ),
+    fetch(
+      `https://dev.azure.com/${orgName}/_apis/connectionData?api-version=7.0`,
+      {
+        headers: { Authorization: authHeader },
+      },
+    ),
+  ]);
 
   if (!profileResponse.ok) {
     const error = await profileResponse.text();
@@ -1260,10 +1268,18 @@ export async function getCurrentUser(
 
   const profile: ProfileResponse = await profileResponse.json();
 
+  // Extract org-level identity ID (matches reviewer IDs in PRs)
+  let identityId: string | undefined;
+  if (connectionResponse.ok) {
+    const connectionData = await connectionResponse.json();
+    identityId = connectionData?.authenticatedUser?.id;
+  }
+
   return {
     id: profile.id,
     displayName: profile.displayName,
     emailAddress: profile.emailAddress,
+    identityId,
   };
 }
 

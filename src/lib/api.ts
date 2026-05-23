@@ -175,6 +175,7 @@ export interface AzureDevOpsUser {
   id: string;
   displayName: string;
   emailAddress: string;
+  identityId?: string;
 }
 
 export interface ProviderProject {
