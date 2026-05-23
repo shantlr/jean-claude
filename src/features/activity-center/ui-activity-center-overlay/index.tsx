@@ -176,7 +176,7 @@ function JobRow({
         </p>
 
         {job.status === 'failed' && job.errorMessage && (
-          <p className="text-status-fail mt-0.5 truncate font-mono text-[11px]">
+          <p className="text-status-fail mt-0.5 font-mono text-[11px] break-words whitespace-pre-wrap">
             {job.errorMessage}
           </p>
         )}
@@ -278,7 +278,7 @@ function NotificationRow({
         >
           {notification.title}
         </p>
-        <p className="text-ink-3 mt-0.5 truncate text-[11px]">
+        <p className="text-ink-3 mt-0.5 text-[11px] break-words whitespace-pre-wrap">
           {notification.body}
         </p>
 
