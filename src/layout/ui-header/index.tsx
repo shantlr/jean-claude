@@ -29,6 +29,7 @@ import { useTaskMessagesStore } from '@/stores/task-messages';
 
 import { ActivityButton } from './activity-button';
 import { CompletionCostDisplay } from './completion-cost-display';
+import { NextMeetingButton } from './next-meeting-button';
 import { RamUsageDisplay } from './ram-usage-display';
 import { UsageDisplay } from './usage-display';
 
@@ -222,6 +223,7 @@ export function Header() {
         className="flex shrink-0 items-center gap-1 px-4"
         style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
       >
+        <NextMeetingButton />
         <RamUsageDisplay />
         <CompletionCostDisplay />
         <UsageDisplay />

@@ -591,6 +591,13 @@ export const DEFAULT_TASK_NOTIFICATION_MODES: Record<
   errored: 'background',
 };
 
+export interface CalendarNotificationsSetting {
+  enabled: boolean;
+  leadTimeMinutes: number;
+}
+
+export const DEFAULT_CALENDAR_NOTIFICATION_LEAD_TIME_MINUTES = 5;
+
 export interface AiSkillSlotConfig {
   backend: AgentBackendType;
   model: string;
@@ -718,6 +725,20 @@ function isTaskEventNotificationsSetting(
     VALID_TASK_NOTIFICATION_MODES.includes(
       modes[event] as TaskNotificationMode,
     ),
+  );
+}
+
+function isCalendarNotificationsSetting(
+  v: unknown,
+): v is CalendarNotificationsSetting {
+  if (!v || typeof v !== 'object') return false;
+  const obj = v as Record<string, unknown>;
+  return (
+    typeof obj.enabled === 'boolean' &&
+    typeof obj.leadTimeMinutes === 'number' &&
+    Number.isInteger(obj.leadTimeMinutes) &&
+    obj.leadTimeMinutes >= 1 &&
+    obj.leadTimeMinutes <= 60
   );
 }
 
@@ -858,6 +879,13 @@ export const SETTINGS_DEFINITIONS = {
       modes: DEFAULT_TASK_NOTIFICATION_MODES,
     } as TaskEventNotificationsSetting,
     validate: isTaskEventNotificationsSetting,
+  },
+  calendarNotifications: {
+    defaultValue: {
+      enabled: false,
+      leadTimeMinutes: DEFAULT_CALENDAR_NOTIFICATION_LEAD_TIME_MINUTES,
+    } as CalendarNotificationsSetting,
+    validate: isCalendarNotificationsSetting,
   },
   aiSkillSlots: {
     defaultValue: {} as AiSkillSlotsSetting,

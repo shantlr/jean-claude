@@ -501,6 +501,15 @@ contextBridge.exposeInMainWorld('api', {
         path: string;
       }>,
   },
+  calendar: {
+    listUpcomingMeetings: () =>
+      ipcRenderer.invoke('calendar:listUpcomingMeetings') as Promise<
+        import('@shared/calendar-types').UpcomingMeeting[]
+      >,
+    revealMeeting: (
+      meeting: import('@shared/calendar-types').UpcomingMeeting,
+    ) => ipcRenderer.invoke('calendar:revealMeeting', meeting) as Promise<void>,
+  },
   agent: {
     start: (stepId: string) => ipcRenderer.invoke(AGENT_CHANNELS.START, stepId),
     stop: (stepId: string) => ipcRenderer.invoke(AGENT_CHANNELS.STOP, stepId),

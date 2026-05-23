@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import {
+  CalendarClock,
   CheckCircle,
   XCircle,
   Ban,
@@ -68,6 +69,9 @@ function groupByDay(notifications: AppNotification[]) {
 }
 
 function NotificationIcon({ type }: { type: string }) {
+  if (type === 'calendar-event-starting') {
+    return <CalendarClock className="text-acc-ink h-4 w-4 shrink-0" />;
+  }
   if (type.includes('cancelled')) {
     return <Ban className="text-ink-2 h-4 w-4 shrink-0" />;
   }
@@ -128,7 +132,7 @@ function NotificationsTab({
             <Bell className="h-8 w-8" />
             <span className="text-sm">No notifications yet</span>
             <span className="text-xs">
-              Enable pipeline tracking in project settings
+              Enable pipeline tracking or calendar meeting reminders
             </span>
           </div>
         ) : (

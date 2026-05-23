@@ -14,6 +14,7 @@ import type {
   AzureDevOpsComment,
   AzureDevOpsPolicyEvaluation,
 } from '@shared/azure-devops-types';
+import type { UpcomingMeeting } from '@shared/calendar-types';
 import type { DebugLogEntry } from '@shared/debug-log-types';
 import type { FeedItem, FeedNote, ProjectPriority } from '@shared/feed-types';
 import type { FoldRange } from '@shared/fold-types';
@@ -788,6 +789,10 @@ export interface Api {
     getAvailableEditors: () => Promise<{ id: string; available: boolean }[]>;
     setupGlobalGitignore: () => Promise<{ success: boolean; path: string }>;
   };
+  calendar: {
+    listUpcomingMeetings: () => Promise<UpcomingMeeting[]>;
+    revealMeeting: (meeting: UpcomingMeeting) => Promise<void>;
+  };
   agent: {
     start: (stepId: string) => Promise<void>;
     stop: (stepId: string) => Promise<void>;
@@ -1444,6 +1449,10 @@ export const api: Api = hasWindowApi
         openInEditor: async () => {},
         getAvailableEditors: async () => [],
         setupGlobalGitignore: async () => ({ success: true, path: '' }),
+      },
+      calendar: {
+        listUpcomingMeetings: async () => [],
+        revealMeeting: async () => {},
       },
       agent: {
         start: async () => {

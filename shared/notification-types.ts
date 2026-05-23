@@ -2,6 +2,7 @@ export type NotificationType =
   | 'pipeline-completed'
   | 'pipeline-failed'
   | 'pipeline-cancelled'
+  | 'calendar-event-starting'
   | 'release-completed'
   | 'release-failed'
   | 'release-cancelled';

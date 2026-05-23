@@ -15,6 +15,7 @@ import { upsertBuiltinSkills } from './services/builtin-skills-service';
 import { pipelineTrackingService } from './services/pipeline-tracking-service';
 import { runCommandService } from './services/run-command-service';
 import { syncBuiltinSkillSymlinks } from './services/skill-management-service';
+import { systemCalendarService } from './services/system-calendar-service';
 import { cleanupOrphanedWorkspaces } from './services/system-project-service';
 
 // Register custom protocol scheme before app is ready
@@ -152,6 +153,7 @@ app.whenReady().then(async () => {
   await syncBuiltinSkillSymlinks();
   dbg.main('Builtin skills upserted');
 
+  systemCalendarService.start();
   pipelineTrackingService.start();
 
   dbg.main('Registering IPC handlers...');
@@ -181,6 +183,7 @@ app.whenReady().then(async () => {
 
 app.on('before-quit', async () => {
   dbg.main('App quitting, stopping all commands...');
+  systemCalendarService.stop();
   pipelineTrackingService.stop();
   await runCommandService.stopAllCommands();
   dbg.main('All commands stopped');

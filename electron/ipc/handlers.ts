@@ -195,6 +195,7 @@ import {
 } from '../services/skill-registry-service';
 import { StepService } from '../services/step-service';
 import { generateSummary } from '../services/summary-generation-service';
+import { systemCalendarService } from '../services/system-calendar-service';
 import {
   assertValidSourceSkillPath,
   assertValidWorkspacePath,
@@ -2607,6 +2608,20 @@ export function registerIpcHandlers() {
       })),
     );
     return results;
+  });
+
+  ipcMain.handle('calendar:listUpcomingMeetings', async () => {
+    if (process.platform !== 'darwin') {
+      return [];
+    }
+    return systemCalendarService.listUpcomingMeetings();
+  });
+
+  ipcMain.handle('calendar:revealMeeting', async (_, meeting) => {
+    if (process.platform !== 'darwin') {
+      return;
+    }
+    await systemCalendarService.revealMeeting(meeting);
   });
 
   ipcMain.handle(

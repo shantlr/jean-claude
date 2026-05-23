@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import clsx from 'clsx';
 import {
   Ban,
+  CalendarClock,
   Check,
   CheckCircle,
   Copy,
@@ -45,14 +46,14 @@ import type { Project } from '@shared/types';
 // Types
 // ---------------------------------------------------------------------------
 
-type Tab = 'all' | 'running' | 'builds' | 'debug';
+type Tab = 'all' | 'running' | 'notifications' | 'debug';
 
-const TAB_ORDER: Tab[] = ['all', 'running', 'builds', 'debug'];
+const TAB_ORDER: Tab[] = ['all', 'running', 'notifications', 'debug'];
 
 const TAB_LABELS: Record<Tab, string> = {
   all: 'All',
   running: 'Running',
-  builds: 'Builds',
+  notifications: 'Notifications',
   debug: 'Debug',
 };
 
@@ -62,7 +63,8 @@ const TAB_LABELS: Record<Tab, string> = {
 
 function statusForNotification(
   n: AppNotification,
-): 'succeeded' | 'failed' | 'cancelled' {
+): 'succeeded' | 'failed' | 'cancelled' | 'info' {
+  if (n.type === 'calendar-event-starting') return 'info';
   if (n.type.includes('failed')) return 'failed';
   if (n.type.includes('cancelled')) return 'cancelled';
   return 'succeeded';
@@ -90,7 +92,7 @@ function matchesSearch(text: string | null | undefined, query: string) {
 function StatusIcon({
   status,
 }: {
-  status: 'running' | 'succeeded' | 'failed' | 'cancelled';
+  status: 'running' | 'succeeded' | 'failed' | 'cancelled' | 'info';
 }) {
   if (status === 'running') {
     return (
@@ -104,6 +106,11 @@ function StatusIcon({
   }
   if (status === 'cancelled') {
     return <Ban className="text-ink-2 h-[18px] w-[18px] shrink-0" />;
+  }
+  if (status === 'info') {
+    return (
+      <CalendarClock className="text-acc-ink h-[18px] w-[18px] shrink-0" />
+    );
   }
   return <XCircle className="text-status-fail h-[18px] w-[18px] shrink-0" />;
 }
@@ -428,7 +435,7 @@ export function ActivityCenterOverlay({
     () => ({
       all: jobs.length + notifications.length,
       running: runningJobs.length,
-      builds: notifications.length,
+      notifications: notifications.length,
       debug: debugLogs.length,
     }),
     [jobs.length, notifications.length, runningJobs.length, debugLogs.length],
@@ -445,7 +452,7 @@ export function ActivityCenterOverlay({
         );
       case 'running':
         return filteredRunningJobs.length;
-      case 'builds':
+      case 'notifications':
         return filteredNotifications.length;
       case 'debug':
         return filteredDebugLogs.length;
@@ -469,7 +476,7 @@ export function ActivityCenterOverlay({
     const items: string[] = [];
     const showRunning = activeTab === 'all' || activeTab === 'running';
     const showFinished = activeTab === 'all';
-    const showNotifs = activeTab === 'all' || activeTab === 'builds';
+    const showNotifs = activeTab === 'all' || activeTab === 'notifications';
     if (showRunning)
       items.push(...filteredRunningJobs.map((j) => `job-${j.id}`));
     if (showFinished)
@@ -652,7 +659,7 @@ export function ActivityCenterOverlay({
       case 'debug':
         clearDebugLogs();
         break;
-      case 'builds':
+      case 'notifications':
         void markAllAsRead();
         break;
       case 'running':
@@ -746,9 +753,9 @@ export function ActivityCenterOverlay({
     return filteredRunningJobs.map(renderJobRow);
   }
 
-  function renderBuildsTab() {
+  function renderNotificationsTab() {
     if (filteredNotifications.length === 0) {
-      return renderEmpty('No build notifications');
+      return renderEmpty('No notifications');
     }
     return filteredNotifications.map(renderNotifRow);
   }
@@ -781,8 +788,8 @@ export function ActivityCenterOverlay({
         return renderAllTab();
       case 'running':
         return renderRunningTab();
-      case 'builds':
-        return renderBuildsTab();
+      case 'notifications':
+        return renderNotificationsTab();
       case 'debug':
         return renderDebugTab();
     }

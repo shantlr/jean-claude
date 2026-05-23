@@ -102,7 +102,10 @@
       }
     ],
     "mac": {
-      "icon": "resources/icons/icon.icns"
+      "icon": "resources/icons/icon.icns",
+      "extendInfo": {
+        "NSCalendarsUsageDescription": "Jean-Claude needs access to your calendars to show upcoming meetings and pre-meeting reminders."
+      }
     },
     "win": {
       "icon": "resources/icons/icon.ico"

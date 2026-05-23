@@ -8,6 +8,7 @@ import type {
   AiSkillSlotsSetting,
   AppSettings,
   BackendsSetting,
+  CalendarNotificationsSetting,
   EditorSetting,
   PromptSnippetsSetting,
   SummaryModelsSetting,
@@ -168,6 +169,39 @@ export function useUpdateTaskEventNotificationsSetting() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['settings', 'taskEventNotifications'],
+      });
+    },
+  });
+}
+
+export function useCalendarNotificationsSetting() {
+  return useSetting('calendarNotifications');
+}
+
+export function useUpdateCalendarNotificationsSetting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: CalendarNotificationsSetting) =>
+      api.settings.set('calendarNotifications', value),
+    onMutate: async (value) => {
+      const queryKey = ['settings', 'calendarNotifications'] as const;
+      await queryClient.cancelQueries({ queryKey });
+      const previous =
+        queryClient.getQueryData<CalendarNotificationsSetting>(queryKey);
+      queryClient.setQueryData(queryKey, value);
+      return { previous };
+    },
+    onError: (_error, _value, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(
+          ['settings', 'calendarNotifications'],
+          context.previous,
+        );
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings', 'calendarNotifications'],
       });
     },
   });

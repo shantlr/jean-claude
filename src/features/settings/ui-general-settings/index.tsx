@@ -3,11 +3,12 @@ import {
   FolderOpen,
   GitBranch,
   Bell,
+  CircleAlert,
   Search,
   Star,
   Trash2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/common/ui/button';
 import { Checkbox } from '@/common/ui/checkbox';
@@ -25,10 +26,12 @@ import {
 import {
   getEditorLabel,
   useBackendsSetting,
+  useCalendarNotificationsSetting,
   useEditorSetting,
   useTaskEventNotificationsSetting,
   useSummaryModelsSetting,
   useUpdateBackendsSetting,
+  useUpdateCalendarNotificationsSetting,
   useUpdateEditorSetting,
   useUpdateTaskEventNotificationsSetting,
   useUpdateSummaryModelsSetting,
@@ -39,8 +42,10 @@ import {
 import { api, type NonExistentClaudeProject } from '@/lib/api';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import {
+  DEFAULT_CALENDAR_NOTIFICATION_LEAD_TIME_MINUTES,
   DEFAULT_TASK_NOTIFICATION_MODES,
   PRESET_EDITORS,
+  type CalendarNotificationsSetting,
   type TaskNotificationEvent,
   type TaskNotificationMode,
 } from '@shared/types';
@@ -224,6 +229,16 @@ export function GeneralSettings() {
       {/* Divider */}
       <div className="border-line-soft my-8 border-t" />
 
+      {api.platform === 'darwin' && (
+        <>
+          {/* Calendar Notifications */}
+          <CalendarNotificationSettings />
+
+          {/* Divider */}
+          <div className="border-line-soft my-8 border-t" />
+        </>
+      )}
+
       {/* Usage Display */}
       <UsageDisplaySettings />
 
@@ -317,6 +332,152 @@ export function BackendsSettings() {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function CalendarNotificationSettings() {
+  const { data: calendarNotificationsSetting } =
+    useCalendarNotificationsSetting();
+  const updateCalendarNotifications = useUpdateCalendarNotificationsSetting();
+
+  const settings: CalendarNotificationsSetting =
+    calendarNotificationsSetting ?? {
+      enabled: false,
+      leadTimeMinutes: DEFAULT_CALENDAR_NOTIFICATION_LEAD_TIME_MINUTES,
+    };
+  const isSupported = api.platform === 'darwin';
+  const [leadTimeInput, setLeadTimeInput] = useState(
+    String(settings.leadTimeMinutes),
+  );
+
+  useEffect(() => {
+    setLeadTimeInput(String(settings.leadTimeMinutes));
+  }, [settings.leadTimeMinutes]);
+
+  const updateSetting = (next: CalendarNotificationsSetting) => {
+    updateCalendarNotifications.mutate(next);
+  };
+
+  const commitLeadTime = () => {
+    const parsed = Number.parseInt(leadTimeInput, 10);
+    const leadTimeMinutes = Number.isFinite(parsed)
+      ? Math.min(Math.max(parsed, 1), 60)
+      : settings.leadTimeMinutes;
+    setLeadTimeInput(String(leadTimeMinutes));
+    if (leadTimeMinutes !== settings.leadTimeMinutes) {
+      updateSetting({ ...settings, leadTimeMinutes });
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex items-start gap-3">
+        <div className="bg-acc/15 text-acc-ink mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
+          <Bell className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-ink-1 text-lg font-semibold">
+            Calendar Notifications
+          </h2>
+          <p className="text-ink-3 mt-1 text-sm">
+            Notify before meetings start using your macOS Calendar data.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        <div className="border-glass-border bg-bg-1 rounded-lg border px-4 py-3">
+          <Checkbox
+            checked={settings.enabled}
+            onChange={() =>
+              updateSetting({ ...settings, enabled: !settings.enabled })
+            }
+            disabled={!isSupported}
+            label="Enable calendar meeting reminders"
+            description={
+              !isSupported
+                ? 'Calendar reminders are currently supported on macOS only.'
+                : 'Jean-Claude reads your macOS Calendar events and shows a reminder shortly before a meeting begins.'
+            }
+          />
+        </div>
+
+        {!isSupported ? (
+          <div className="border-line-soft bg-bg-0 rounded-lg border px-4 py-3 text-sm">
+            <div className="text-ink-1 flex items-center gap-2 font-medium">
+              <CircleAlert className="h-4 w-4" />
+              Calendar reminders are macOS-only for now
+            </div>
+            <p className="text-ink-3 mt-1">
+              This feature reads your local macOS Calendar data, so it is
+              unavailable on this platform.
+            </p>
+          </div>
+        ) : (
+          <div className="border-status-warn/40 bg-status-warn/8 rounded-lg border px-4 py-3 text-sm">
+            <div className="text-ink-1 flex items-center gap-2 font-medium">
+              <CircleAlert className="text-status-warn h-4 w-4" />
+              Sync your Outlook calendar into macOS Calendar
+            </div>
+            <p className="text-ink-2 mt-1">
+              Jean-Claude now reads meetings from the macOS Calendar app. If
+              your work meetings only appear in Outlook, add the same Microsoft
+              account to Calendar so macOS can sync those events locally.
+            </p>
+            <ol className="text-ink-2 mt-2 list-decimal space-y-1 pl-5">
+              <li>Open the macOS Calendar app.</li>
+              <li>
+                Open <code>Calendar &gt; Settings &gt; Accounts</code>.
+              </li>
+              <li>
+                Choose <code>Add Account...</code> and select{' '}
+                <code>Microsoft Exchange</code>.
+              </li>
+              <li>
+                Sign in with the same Microsoft account you use in Outlook.
+              </li>
+              <li>
+                Make sure Calendar sync is enabled, then wait for meetings to
+                appear.
+              </li>
+            </ol>
+            <p className="text-ink-3 mt-2">
+              The first fetch may take a moment if macOS prompts Jean-Claude for
+              Calendar access. Approve that prompt, then reopen the meetings
+              dropdown.
+            </p>
+          </div>
+        )}
+
+        <div className="border-glass-border bg-bg-1 rounded-lg border px-4 py-3">
+          <label className="text-ink-2 block text-sm font-medium">
+            Reminder lead time
+          </label>
+          <p className="text-ink-3 mt-1 text-xs">
+            How many minutes before a meeting Jean-Claude should notify you.
+          </p>
+          <div className="mt-3 flex items-center gap-3">
+            <Input
+              type="number"
+              min={1}
+              max={60}
+              step={1}
+              value={leadTimeInput}
+              onChange={(e) => setLeadTimeInput(e.target.value)}
+              onBlur={commitLeadTime}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  commitLeadTime();
+                }
+              }}
+              disabled={!settings.enabled || !isSupported}
+              className="w-28"
+            />
+            <span className="text-ink-3 text-sm">minutes</span>
+          </div>
+        </div>
       </div>
     </div>
   );
