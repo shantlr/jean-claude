@@ -26,7 +26,7 @@
     "dev:tmp:reuse": "JC_DISABLE_USAGE_TRACKING=1 JC_SKIP_INSTANCE_LOCK=1 ./scripts/dev-tmp.sh --auto-reuse-db",
     "dev:tmp:override": "JC_DISABLE_USAGE_TRACKING=1 JC_SKIP_INSTANCE_LOCK=1 ./scripts/dev-tmp.sh --auto-override-db",
     "build": "electron-vite build",
-    "preview": "electron-vite preview",
+    "preview": "JC_PREVIEW=1 electron-vite preview",
     "preview:mac": "pnpm package && open dist/mac/Jean-Claude.app",
     "package": "electron-vite build && electron-builder --dir",
     "package:mac": "electron-vite build && electron-builder --mac",

@@ -1,6 +1,7 @@
 import {
   ClipboardList,
   Menu,
+  RefreshCw,
   SlidersHorizontal,
   Terminal,
   Workflow,
@@ -13,9 +14,10 @@ import {
   type CSSProperties,
 } from 'react';
 
+import { useModal } from '@/common/context/modal';
 import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
-import { Dropdown, DropdownItem } from '@/common/ui/dropdown';
+import { Dropdown, DropdownDivider, DropdownItem } from '@/common/ui/dropdown';
 import { Kbd } from '@/common/ui/kbd';
 import { useBacklogProjectId } from '@/hooks/use-backlog-project-id';
 import { useProjectTodoCount } from '@/hooks/use-project-todos';
@@ -33,11 +35,13 @@ import { UsageDisplay } from './usage-display';
 export function Header() {
   const isMac = api.platform === 'darwin';
   const [isWindowFullscreen, setIsWindowFullscreen] = useState(false);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
   const { projectId } = useCurrentVisibleProject();
   const { data: projects = [] } = useProjects();
   const openOverlay = useOverlaysStore((state) => state.open);
   const backlogProjectId = useBacklogProjectId();
   const { data: todoCount } = useProjectTodoCount(backlogProjectId);
+  const modal = useModal();
 
   const runCommandRunning = useTaskMessagesStore((s) => s.runCommandRunning);
   const menuDropdownRef = useRef<{ toggle: () => void } | null>(null);
@@ -86,6 +90,10 @@ export function Header() {
       if (!isCancelled) {
         setIsWindowFullscreen(false);
       }
+    });
+
+    api.app.getIsPreviewMode().then((preview) => {
+      if (!isCancelled) setIsPreviewMode(preview);
     });
 
     const unsubscribe = api.windowState.onFullscreenChange((isFullscreen) => {
@@ -171,6 +179,28 @@ export function Header() {
               </span>
             )}
           </DropdownItem>
+          {isPreviewMode && (
+            <>
+              <DropdownDivider />
+              <DropdownItem
+                icon={<RefreshCw />}
+                onClick={() => {
+                  modal.confirm({
+                    title: 'Reload App',
+                    content:
+                      'This will run pnpm install, rebuild, and restart the app. Any unsaved state will be lost.',
+                    confirmLabel: 'Reload',
+                    variant: 'danger',
+                    onConfirm: () => {
+                      api.app.reloadPreview();
+                    },
+                  });
+                }}
+              >
+                Reload App
+              </DropdownItem>
+            </>
+          )}
         </Dropdown>
       </div>
 

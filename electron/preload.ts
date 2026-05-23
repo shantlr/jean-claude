@@ -879,6 +879,12 @@ contextBridge.exposeInMainWorld('api', {
     deleteNote: (params: { id: string }) =>
       ipcRenderer.invoke('feed:deleteNote', params),
   },
+  app: {
+    getIsPreviewMode: () =>
+      ipcRenderer.invoke('app:getIsPreviewMode') as Promise<boolean>,
+    reloadPreview: () =>
+      ipcRenderer.invoke('app:reloadPreview') as Promise<void>,
+  },
   system: {
     getMemoryUsage: () => ipcRenderer.invoke('system:getMemoryUsage'),
   },

@@ -1115,6 +1115,10 @@ export interface Api {
     }) => Promise<FeedNote>;
     deleteNote: (params: { id: string }) => Promise<void>;
   };
+  app: {
+    getIsPreviewMode: () => Promise<boolean>;
+    reloadPreview: () => Promise<void>;
+  };
   system: {
     getMemoryUsage: () => Promise<{
       totalRssBytes: number;
@@ -1628,6 +1632,10 @@ export const api: Api = hasWindowApi
           updatedAt: '',
         }),
         deleteNote: async () => {},
+      },
+      app: {
+        getIsPreviewMode: async () => false,
+        reloadPreview: async () => {},
       },
       system: {
         getMemoryUsage: async () => ({

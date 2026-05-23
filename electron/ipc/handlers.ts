@@ -3931,6 +3931,33 @@ export function registerIpcHandlers() {
     }));
   });
 
+  // ─── App ─────────────────────────────────────────────────────────
+
+  ipcMain.handle('app:getIsPreviewMode', () => {
+    return !!process.env.JC_PREVIEW;
+  });
+
+  ipcMain.handle('app:reloadPreview', () => {
+    const projectRoot = app.getAppPath();
+    dbg.ipc(
+      'app:reloadPreview — spawning pnpm install && pnpm preview in %s',
+      projectRoot,
+    );
+
+    const child = spawn('pnpm install && pnpm preview', [], {
+      cwd: projectRoot,
+      detached: true,
+      stdio: 'ignore',
+      shell: true,
+    });
+    child.unref();
+
+    // Give the child process a moment to start, then exit
+    setTimeout(() => {
+      app.exit(0);
+    }, 500);
+  });
+
   // ─── System ───────────────────────────────────────────────────────
 
   ipcMain.handle('system:getMemoryUsage', async (event) => {
