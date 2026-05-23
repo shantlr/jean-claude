@@ -2,6 +2,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Eye,
   FilePlus,
   ImageIcon,
   MessageSquare,
@@ -1072,28 +1073,47 @@ export function PromptComposer({
               return (
                 <div
                   key={`${image.filename ?? 'img'}-${index}`}
-                  className="group relative h-12 w-12 shrink-0 overflow-hidden rounded border"
+                  className="group relative h-12 w-12 shrink-0 rounded border"
                   style={{ borderColor: 'oklch(1 0 0 / 0.08)' }}
                 >
                   <button
                     type="button"
                     onClick={() => setPreviewIndex(index)}
-                    className="h-full w-full cursor-pointer"
+                    className="relative h-full w-full cursor-pointer overflow-hidden rounded focus-visible:outline-none"
+                    aria-label={`Preview ${image.filename ?? `image ${index + 1}`}`}
                   >
                     <img
                       src={`data:${thumbMime};base64,${thumbData}`}
                       alt={image.filename ?? 'Attached image'}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover transition duration-150 group-focus-within:scale-105 group-focus-within:brightness-75 group-hover:scale-105 group-hover:brightness-75"
                     />
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100">
+                      <span
+                        className="flex h-6 w-6 items-center justify-center rounded-full border"
+                        style={{
+                          background: 'oklch(0.2 0.02 280 / 0.72)',
+                          borderColor: 'oklch(1 0 0 / 0.14)',
+                        }}
+                      >
+                        <Eye className="text-ink-0 h-3.5 w-3.5" />
+                      </span>
+                    </span>
                   </button>
                   {onImageRemove && (
                     <button
                       type="button"
-                      onClick={() => onImageRemove(index)}
-                      className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100"
-                      style={{ background: 'oklch(0 0 0 / 0.6)' }}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onImageRemove(index);
+                      }}
+                      className="absolute top-0 right-0 flex h-4 w-4 translate-x-1/4 -translate-y-1/4 items-center justify-center rounded-full border transition-transform hover:scale-110"
+                      style={{
+                        background: 'oklch(0.2 0.02 280 / 0.92)',
+                        borderColor: 'oklch(1 0 0 / 0.16)',
+                      }}
+                      aria-label={`Remove ${image.filename ?? `image ${index + 1}`}`}
                     >
-                      <X className="text-ink-0 h-3 w-3" />
+                      <X className="text-ink-0 h-2.5 w-2.5" />
                     </button>
                   )}
                 </div>
