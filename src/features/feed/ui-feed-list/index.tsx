@@ -85,7 +85,7 @@ function StackableZone({
       {items.map((item, index) => (
         <div
           key={item.id}
-          className="relative transition-[margin] duration-200 ease-out"
+          className="bg-bg-0 relative transition-[margin] duration-200 ease-out"
           style={{
             zIndex: index + 1,
             marginTop:
