@@ -254,12 +254,13 @@ Push logic down to the most specific child component. Keep parents focused on co
 
 When making user-facing changes (new features, bug fixes, UI improvements), update `changelogs/`:
 
-1. If today's date already has a file `changelogs/YYYY-MM-DD.md`, append to it
-2. Otherwise, create a new file `changelogs/YYYY-MM-DD.md`
-3. Each line is a markdown list item with a `[type]` prefix: `[feature]`, `[fix]`, or `[improvement]`
-4. Keep entry text concise (one sentence)
+1. **Check the current date** — run `date +%Y-%m-%d` to get today's date. Do NOT assume the year; always verify via the shell before creating or naming changelog files.
+2. If today's date already has a file `changelogs/YYYY-MM-DD.md`, append to it
+3. Otherwise, create a new file `changelogs/YYYY-MM-DD.md`
+4. Each line is a markdown list item with a `[type]` prefix: `[feature]`, `[fix]`, or `[improvement]`
+5. Keep entry text concise (one sentence)
 
-Example (`changelogs/2025-06-01.md`):
+Example (`changelogs/2026-06-01.md`):
 ```md
 - [feature] Added dark mode toggle in settings
 - [fix] Fixed sidebar not collapsing on narrow screens
