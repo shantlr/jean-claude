@@ -118,6 +118,8 @@ export interface WorktreeFileContent {
   oldContent: string | null;
   newContent: string | null;
   isBinary: boolean;
+  oldImageDataUrl?: string | null;
+  newImageDataUrl?: string | null;
 }
 
 export interface DetectedProject {
@@ -697,6 +699,7 @@ export interface Api {
     readFile: (
       filePath: string,
     ) => Promise<{ content: string; language: string } | null>;
+    readImageAsDataUrl: (filePath: string) => Promise<string | null>;
     listDirectory: (
       dirPath: string,
       projectRoot: string,
@@ -1374,6 +1377,7 @@ export const api: Api = hasWindowApi
       fs: {
         readPackageJson: async () => null,
         readFile: async () => null,
+        readImageAsDataUrl: async () => null,
         listDirectory: async () => null,
         listProjectFiles: async () => [],
         writeAttachmentFile: async () => '',

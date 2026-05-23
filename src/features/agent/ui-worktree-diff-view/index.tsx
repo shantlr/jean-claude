@@ -455,6 +455,8 @@ function WorktreeFileDiffContent({
       newContent={data?.newContent ?? ''}
       isLoading={isLoading}
       isBinary={data?.isBinary}
+      oldImageDataUrl={data?.oldImageDataUrl}
+      newImageDataUrl={data?.newImageDataUrl}
       headerClassName={headerClassName}
       annotations={annotations}
       reviewComments={fileReviewComments}

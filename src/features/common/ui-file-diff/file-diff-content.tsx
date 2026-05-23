@@ -31,6 +31,9 @@ export function FileDiffContent({
   isLoading,
   isBinary,
   headerClassName,
+  // Optional image support
+  oldImageDataUrl,
+  newImageDataUrl,
   // Optional comment support
   threads,
   onAddComment,
@@ -52,6 +55,8 @@ export function FileDiffContent({
   isLoading?: boolean;
   isBinary?: boolean;
   headerClassName?: string;
+  oldImageDataUrl?: string | null;
+  newImageDataUrl?: string | null;
   // Comment props - all optional
   threads?: CommentThread[];
   onAddComment?: (params: {
@@ -318,6 +323,62 @@ export function FileDiffContent({
   }
 
   if (isBinary) {
+    // Show image preview if we have image data
+    if (oldImageDataUrl || newImageDataUrl) {
+      return (
+        <div className="flex h-full flex-col overflow-hidden">
+          <FileDiffHeader file={file} className={headerClassName} />
+          <div className="flex min-h-0 flex-1 items-center justify-center gap-6 overflow-auto p-6">
+            {oldImageDataUrl && newImageDataUrl ? (
+              // Modified image: show old → new side by side
+              <>
+                <div className="flex flex-col items-center gap-2">
+                  <span className="text-ink-3 text-xs font-medium tracking-wide uppercase">
+                    Before
+                  </span>
+                  <div className="border-red-6 overflow-hidden rounded-md border">
+                    <img
+                      src={oldImageDataUrl}
+                      alt="Before"
+                      className="max-h-[60vh] max-w-[40vw] object-contain"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <span className="text-ink-3 text-xs font-medium tracking-wide uppercase">
+                    After
+                  </span>
+                  <div className="border-green-6 overflow-hidden rounded-md border">
+                    <img
+                      src={newImageDataUrl}
+                      alt="After"
+                      className="max-h-[60vh] max-w-[40vw] object-contain"
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              // Added or deleted image: show single image
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-ink-3 text-xs font-medium tracking-wide uppercase">
+                  {newImageDataUrl ? 'Added' : 'Deleted'}
+                </span>
+                <div
+                  className={`overflow-hidden rounded-md border ${newImageDataUrl ? 'border-green-6' : 'border-red-6'}`}
+                >
+                  <img
+                    src={(newImageDataUrl ?? oldImageDataUrl)!}
+                    alt={newImageDataUrl ? 'Added' : 'Deleted'}
+                    className="max-h-[70vh] max-w-[60vw] object-contain"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="text-ink-3 flex h-full flex-col items-center justify-center gap-2">
         <p>Binary file changed</p>

@@ -14,6 +14,7 @@ import {
   QuestionResponse,
 } from '@shared/agent-types';
 import type { GlobalPromptResponse } from '@shared/global-prompt-types';
+import { getImageMimeType } from '@shared/image-types';
 import type {
   NewMcpServerTemplate,
   UpdateMcpServerTemplate,
@@ -2415,6 +2416,18 @@ export function registerIpcHandlers() {
         dockerfile: 'dockerfile',
       };
       return { content, language: languageMap[ext] || 'text' };
+    } catch {
+      return null;
+    }
+  });
+
+  ipcMain.handle('fs:readImageAsDataUrl', async (_, filePath: string) => {
+    try {
+      const mimeType = getImageMimeType(filePath);
+      if (!mimeType) return null;
+      const buffer = await fs.readFile(filePath);
+      const base64 = buffer.toString('base64');
+      return `data:${mimeType};base64,${base64}`;
     } catch {
       return null;
     }

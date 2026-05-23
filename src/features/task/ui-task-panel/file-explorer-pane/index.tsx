@@ -24,6 +24,7 @@ import {
   useFileExplorerTreeWidth,
   useTaskFileExplorerState,
 } from '@/stores/navigation';
+import { isImagePath } from '@shared/image-types';
 
 import { FileTree } from './file-tree';
 
@@ -389,17 +390,58 @@ function ExplorerDiffViewer({
       newContent={data?.newContent ?? ''}
       isLoading={isLoading}
       isBinary={data?.isBinary}
+      oldImageDataUrl={data?.oldImageDataUrl}
+      newImageDataUrl={data?.newImageDataUrl}
     />
   );
 }
 
 function ExplorerFileViewer({ filePath }: { filePath: string }) {
+  const isImage = isImagePath(filePath);
+
   const { data, isLoading } = useQuery({
     queryKey: ['file-content', filePath],
     queryFn: () => api.fs.readFile(filePath),
     staleTime: Infinity,
     refetchOnWindowFocus: false,
+    enabled: !isImage,
   });
+
+  const { data: imageDataUrl, isLoading: isImageLoading } = useQuery({
+    queryKey: ['image-content', filePath],
+    queryFn: () => api.fs.readImageAsDataUrl(filePath),
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    enabled: isImage,
+  });
+
+  if (isImage) {
+    if (isImageLoading) {
+      return (
+        <div className="text-ink-3 flex flex-1 items-center justify-center text-sm">
+          Loading...
+        </div>
+      );
+    }
+
+    if (!imageDataUrl) {
+      return (
+        <div className="text-ink-3 flex flex-1 items-center justify-center text-sm">
+          Unable to read image
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-1 items-center justify-center overflow-auto p-6">
+        <img
+          src={imageDataUrl}
+          alt={filePath.split('/').pop() ?? 'Image'}
+          className="max-h-[70vh] max-w-full object-contain"
+        />
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

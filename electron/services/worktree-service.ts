@@ -6,6 +6,7 @@ import { promisify } from 'util';
 import { app } from 'electron';
 import { nanoid } from 'nanoid';
 
+import { getImageMimeType } from '@shared/image-types';
 import type { WorktreeFileCopyEntry } from '@shared/permission-types';
 import type { BranchInfo } from '@shared/types';
 
@@ -20,6 +21,7 @@ import {
 } from './permission-settings-service';
 
 const execAsync = promisify(exec);
+
 const execFileAsync = promisify(execFile);
 
 async function gitCommit({
@@ -272,6 +274,8 @@ export interface WorktreeFileContent {
   oldContent: string | null;
   newContent: string | null;
   isBinary: boolean;
+  oldImageDataUrl?: string | null;
+  newImageDataUrl?: string | null;
 }
 
 /**
@@ -631,20 +635,42 @@ export async function getWorktreeFileContent(
   let oldContent: string | null = null;
   let newContent: string | null = null;
   let isBinary = false;
+  let oldImageDataUrl: string | null = null;
+  let newImageDataUrl: string | null = null;
+
+  const mimeType = getImageMimeType(filePath);
 
   // Get old content from the base commit (unless file was added)
   if (status !== 'added') {
     try {
-      const { stdout } = await execAsync(
-        `git show ${baseCommit}:"${escapeForShell(filePath)}"`,
-        {
-          cwd: worktreePath,
-          encoding: 'utf-8',
-          maxBuffer: 5 * 1024 * 1024,
-        },
-      );
-      oldContent = stdout;
-      dbg.worktree('Got old content, length: %d', stdout.length);
+      if (mimeType) {
+        // Read old image as base64 from git
+        const { stdout } = await execAsync(
+          `git show ${baseCommit}:"${escapeForShell(filePath)}" | base64`,
+          {
+            cwd: worktreePath,
+            encoding: 'utf-8',
+            maxBuffer: 15 * 1024 * 1024,
+          },
+        );
+        const base64 = stdout.replace(/\s/g, '');
+        oldImageDataUrl = `data:${mimeType};base64,${base64}`;
+        dbg.worktree(
+          'Got old image data URL, base64 length: %d',
+          base64.length,
+        );
+      } else {
+        const { stdout } = await execAsync(
+          `git show ${baseCommit}:"${escapeForShell(filePath)}"`,
+          {
+            cwd: worktreePath,
+            encoding: 'utf-8',
+            maxBuffer: 5 * 1024 * 1024,
+          },
+        );
+        oldContent = stdout;
+        dbg.worktree('Got old content, length: %d', stdout.length);
+      }
     } catch (error) {
       // File might be binary or inaccessible
       dbg.worktree('Failed to get old content: %O', error);
@@ -658,8 +684,17 @@ export async function getWorktreeFileContent(
   if (status !== 'deleted') {
     const fullPath = path.join(worktreePath, filePath);
     try {
-      // Check if file is binary
-      if (await isBinaryFile(fullPath)) {
+      if (mimeType) {
+        // Read new image as base64 from disk
+        const buffer = await fs.readFile(fullPath);
+        const base64 = buffer.toString('base64');
+        newImageDataUrl = `data:${mimeType};base64,${base64}`;
+        isBinary = true;
+        dbg.worktree(
+          'Got new image data URL, base64 length: %d',
+          base64.length,
+        );
+      } else if (await isBinaryFile(fullPath)) {
         dbg.worktree('File is binary');
         isBinary = true;
         newContent = null;
@@ -675,8 +710,18 @@ export async function getWorktreeFileContent(
     dbg.worktree('File is deleted, no new content to fetch');
   }
 
+  // Mark as binary for images
+  if (mimeType) {
+    isBinary = true;
+  }
+
   // Also check if old content indicates binary (null bytes would have caused git show to fail)
-  if (oldContent === null && newContent === null && status === 'modified') {
+  if (
+    oldContent === null &&
+    newContent === null &&
+    status === 'modified' &&
+    !mimeType
+  ) {
     dbg.worktree('Both contents null for modified file, marking as binary');
     isBinary = true;
   }
@@ -685,9 +730,11 @@ export async function getWorktreeFileContent(
     hasOldContent: oldContent !== null,
     hasNewContent: newContent !== null,
     isBinary,
+    hasOldImage: oldImageDataUrl !== null,
+    hasNewImage: newImageDataUrl !== null,
   });
 
-  return { oldContent, newContent, isBinary };
+  return { oldContent, newContent, isBinary, oldImageDataUrl, newImageDataUrl };
 }
 
 /**
