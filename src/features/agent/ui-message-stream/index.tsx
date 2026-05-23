@@ -93,6 +93,7 @@ export const MessageStream = memo(function MessageStream({
   onAddBashToPermissions,
   rootPath,
   taskId,
+  stepId,
 }: {
   messages: NormalizedEntry[];
   isRunning?: boolean;
@@ -122,6 +123,8 @@ export const MessageStream = memo(function MessageStream({
   rootPath?: string | null;
   /** Task ID for comment anchoring in assistant messages */
   taskId?: string;
+  /** Active step ID so task/step switches can reset scroll position */
+  stepId?: string | null;
 }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -180,11 +183,11 @@ export const MessageStream = memo(function MessageStream({
     isNearBottomRef.current = checkIfNearBottom();
   }, [checkIfNearBottom]);
 
-  // Initial scroll to bottom
+  // Reset scroll to bottom when switching tasks or steps
   useLayoutEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'instant' });
     isNearBottomRef.current = true;
-  }, []);
+  }, [taskId, stepId]);
 
   // Derive a boolean so the effect only fires when a banner appears/disappears
   const hasPendingBanner = !!pendingPermission || !!pendingQuestion;

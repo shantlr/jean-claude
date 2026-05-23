@@ -1496,6 +1496,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                   onAddBashToPermissions={handleAddBashToPermissions}
                   rootPath={taskRootPath}
                   taskId={taskId}
+                  stepId={activeStepId}
                 />
               ) : (
                 <div
