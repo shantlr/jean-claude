@@ -9,10 +9,11 @@ import {
   Play,
   RefreshCw,
   ChevronDown,
-  ChevronRight,
+  ChevronUp,
   ShieldCheck,
   Circle,
 } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useState, useMemo, useCallback } from 'react';
 
 import type { AzureDevOpsPolicyEvaluation } from '@/lib/api';
@@ -42,25 +43,27 @@ function isOptimisticQueued(evaluation: EvaluationWithOptimistic) {
 }
 
 function getStatusIcon(evaluation: EvaluationWithOptimistic) {
+  const cls = 'h-3.5 w-3.5 shrink-0';
+
   if (isOptimisticQueued(evaluation)) {
-    return <Loader2 className="h-4 w-4 animate-spin text-yellow-400" />;
+    return <Loader2 className={clsx(cls, 'animate-spin text-yellow-400')} />;
   }
   if (isPending(evaluation)) {
-    return <Circle className="text-ink-3 h-4 w-4" />;
+    return <Circle className={clsx(cls, 'text-ink-3')} />;
   }
   switch (evaluation.status) {
     case 'approved':
-      return <CheckCircle2 className="h-4 w-4 text-green-400" />;
+      return <CheckCircle2 className={clsx(cls, 'text-status-done')} />;
     case 'rejected':
-      return <XCircle className="h-4 w-4 text-red-400" />;
+      return <XCircle className={clsx(cls, 'text-status-fail')} />;
     case 'running':
-      return <Loader2 className="h-4 w-4 animate-spin text-blue-400" />;
+      return <Loader2 className={clsx(cls, 'animate-spin text-blue-400')} />;
     case 'queued':
-      return <Clock className="h-4 w-4 text-yellow-400" />;
+      return <Clock className={clsx(cls, 'text-yellow-400')} />;
     case 'notApplicable':
-      return <MinusCircle className="text-ink-3 h-4 w-4" />;
+      return <MinusCircle className={clsx(cls, 'text-ink-3')} />;
     case 'broken':
-      return <AlertTriangle className="h-4 w-4 text-orange-400" />;
+      return <AlertTriangle className={clsx(cls, 'text-orange-400')} />;
   }
 }
 
@@ -77,7 +80,7 @@ function getStatusLabel(evaluation: EvaluationWithOptimistic) {
     case 'queued':
       return 'Queued';
     case 'notApplicable':
-      return 'Not applicable';
+      return 'N/A';
     case 'broken':
       return 'Broken';
   }
@@ -88,9 +91,9 @@ function getStatusColor(evaluation: EvaluationWithOptimistic) {
   if (isPending(evaluation)) return 'text-ink-3';
   switch (evaluation.status) {
     case 'approved':
-      return 'text-green-400';
+      return 'text-status-done';
     case 'rejected':
-      return 'text-red-400';
+      return 'text-status-fail';
     case 'running':
       return 'text-blue-400';
     case 'queued':
@@ -110,18 +113,12 @@ function isBuildPolicy(evaluation: EvaluationWithOptimistic) {
 /** Can this check be queued/re-queued? Only for build policies, not if optimistic queued. */
 function canQueue(evaluation: EvaluationWithOptimistic) {
   if (!isBuildPolicy(evaluation)) return false;
-  // Already optimistically queued — don't show button
   if (isOptimisticQueued(evaluation)) return false;
-  // Pending (Azure says "queued" but no build triggered) — allow queue
   if (isPending(evaluation)) return true;
-  // Failed/broken — allow retry
   if (evaluation.status === 'rejected' || evaluation.status === 'broken')
     return true;
-  // Passed — allow re-run
   if (evaluation.status === 'approved') return true;
-  // Not applicable — allow queue
   if (evaluation.status === 'notApplicable') return true;
-  // Running or truly queued — no action
   return false;
 }
 
@@ -163,6 +160,9 @@ export function PrChecks({
   isRequeuing,
   onCheckClick,
   selectedBuildId,
+  expandedBuildId,
+  onExpandCheck,
+  renderExpanded,
 }: {
   evaluations: EvaluationWithOptimistic[];
   isLoading?: boolean;
@@ -171,9 +171,10 @@ export function PrChecks({
   isRequeuing?: boolean;
   onCheckClick?: (buildId: number) => void;
   selectedBuildId?: number | null;
+  expandedBuildId?: number | null;
+  onExpandCheck?: (buildId: number | null) => void;
+  renderExpanded?: (buildId: number) => ReactNode;
 }) {
-  const [expanded, setExpanded] = useState(true);
-
   const sorted = useMemo(() => {
     const order: Record<EvalStatus, number> = {
       rejected: 0,
@@ -184,16 +185,12 @@ export function PrChecks({
       notApplicable: 5,
     };
     return [...evaluations].sort((a, b) => {
-      // Blocking first
       if (a.isBlocking !== b.isBlocking) return a.isBlocking ? -1 : 1;
-      // Optimistic queued sort with running
       if (a._optimisticQueued !== b._optimisticQueued)
         return a._optimisticQueued ? -1 : 1;
-      // Pending (queued but not triggered) sort after running but before approved
       const aPending = isPending(a);
       const bPending = isPending(b);
       if (aPending !== bPending) return aPending ? -1 : 1;
-      // Then by status
       return order[a.status] - order[b.status];
     });
   }, [evaluations]);
@@ -205,8 +202,6 @@ export function PrChecks({
     [evaluations],
   );
 
-  const toggleExpanded = useCallback(() => setExpanded((v) => !v), []);
-
   const handleQueueAll = useCallback(() => {
     if (onQueueAll) {
       onQueueAll(queueableIds);
@@ -217,16 +212,27 @@ export function PrChecks({
     }
   }, [onQueueAll, onRequeue, queueableIds]);
 
+  // Split into active (non-passed) and passed groups
+  const { active, passed } = useMemo(() => {
+    const a: typeof sorted = [];
+    const p: typeof sorted = [];
+    for (const e of sorted) {
+      if (e.status === 'approved' && !e._optimisticQueued) {
+        p.push(e);
+      } else {
+        a.push(e);
+      }
+    }
+    return { active: a, passed: p };
+  }, [sorted]);
+
+  // Passed checks collapsed by default
+  const [showPassed, setShowPassed] = useState(false);
+
   if (isLoading) {
     return (
-      <div className="mb-6">
-        <div className="text-ink-2 mb-2 flex items-center gap-2 text-sm font-medium">
-          <ShieldCheck className="h-4 w-4" />
-          Checks
-        </div>
-        <div className="bg-bg-1 flex items-center justify-center rounded-lg border border-white/5 p-4">
-          <Loader2 className="text-ink-3 h-4 w-4 animate-spin" />
-        </div>
+      <div className="border-glass-border bg-bg-1 flex items-center justify-center rounded-lg border p-6">
+        <Loader2 className="text-ink-3 h-4 w-4 animate-spin" />
       </div>
     );
   }
@@ -238,52 +244,52 @@ export function PrChecks({
   const allPassed = summary.failed === 0 && summary.running === 0;
 
   return (
-    <div className="mb-6">
+    <div className="border-glass-border bg-bg-1 overflow-hidden rounded-lg border">
       {/* Header */}
-      <div className="mb-2 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={toggleExpanded}
-          className="text-ink-2 hover:text-ink-1 flex items-center gap-2 text-sm font-medium transition-colors"
-        >
-          {expanded ? (
-            <ChevronDown className="h-3.5 w-3.5" />
-          ) : (
-            <ChevronRight className="h-3.5 w-3.5" />
+      <div className="border-glass-border/50 flex items-center gap-2.5 border-b px-3.5 py-2.5">
+        {allPassed ? (
+          <CheckCircle2 className="text-status-done h-4 w-4 shrink-0" />
+        ) : summary.failed > 0 ? (
+          <XCircle className="text-status-fail h-4 w-4 shrink-0" />
+        ) : (
+          <ShieldCheck className="text-ink-2 h-4 w-4 shrink-0" />
+        )}
+        <span className="text-ink-0 text-[13px] font-medium">
+          {allPassed ? 'All checks passed' : 'Some checks failed'}
+        </span>
+        <span
+          className={clsx(
+            'rounded px-1.5 py-0.5 font-mono text-[10.5px]',
+            allPassed
+              ? 'bg-status-done/15 text-status-done'
+              : summary.failed > 0
+                ? 'bg-status-fail/15 text-status-fail'
+                : 'bg-glass-medium text-ink-3',
           )}
-          <ShieldCheck className="h-4 w-4" />
-          Checks
-          <span
-            className={clsx(
-              'ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium',
-              allPassed
-                ? 'bg-green-900/30 text-green-400'
-                : summary.failed > 0
-                  ? 'bg-red-900/30 text-red-400'
-                  : 'bg-yellow-900/30 text-yellow-400',
-            )}
-          >
-            {summary.passed}/{summary.total}
-          </span>
-        </button>
-
-        {/* Queue All button */}
-        {expanded && queueableIds.length > 1 && (onQueueAll || onRequeue) && (
+        >
+          {summary.passed}/{summary.total}
+        </span>
+        <div className="flex-1" />
+        {queueableIds.length > 1 && (onQueueAll || onRequeue) && (
           <button
             type="button"
             onClick={handleQueueAll}
             disabled={isRequeuing}
-            className="text-ink-3 hover:text-acc-ink hover:bg-glass-medium ml-auto rounded px-2 py-0.5 text-xs transition-colors disabled:opacity-50"
+            className="text-ink-2 hover:text-ink-1 flex items-center gap-1.5 text-xs transition-colors disabled:opacity-50"
           >
-            {isRequeuing ? 'Queueing...' : 'Queue all'}
+            <RefreshCw className="h-3 w-3" />
+            Queue all
           </button>
         )}
       </div>
 
-      {/* List */}
-      {expanded && (
-        <div className="bg-bg-1 overflow-hidden rounded-lg border border-white/5">
-          {sorted.map((evaluation) => (
+      {/* Active (non-passed) check rows */}
+      <div>
+        {active.map((evaluation, i) => {
+          const buildId = evaluation.context?.buildId;
+          const isExpanded = buildId != null && buildId === expandedBuildId;
+
+          return (
             <CheckRow
               key={evaluation.evaluationId}
               evaluation={evaluation}
@@ -291,9 +297,78 @@ export function PrChecks({
               isAnyRequeuing={isRequeuing}
               onCheckClick={onCheckClick}
               selectedBuildId={selectedBuildId}
+              isExpanded={isExpanded}
+              onToggleExpand={
+                buildId != null && onExpandCheck
+                  ? () => onExpandCheck(isExpanded ? null : (buildId ?? null))
+                  : undefined
+              }
+              hasBorderTop={i > 0}
+              expandedContent={
+                isExpanded && buildId != null && renderExpanded
+                  ? renderExpanded(buildId)
+                  : null
+              }
             />
-          ))}
-        </div>
+          );
+        })}
+      </div>
+
+      {/* Passed checks — collapsed by default */}
+      {passed.length > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setShowPassed((v) => !v)}
+            className={clsx(
+              'flex w-full items-center gap-2.5 border-t border-white/5 px-3.5 py-2 transition-colors',
+              'text-ink-3 hover:bg-white/[0.03]',
+            )}
+          >
+            <CheckCircle2 className="text-status-done h-3.5 w-3.5 shrink-0" />
+            <span className="text-[12.5px]">
+              {passed.length} passed {passed.length === 1 ? 'check' : 'checks'}
+            </span>
+            <div className="flex-1" />
+            <span className="shrink-0">
+              {showPassed ? (
+                <ChevronUp className="h-3 w-3" />
+              ) : (
+                <ChevronDown className="h-3 w-3" />
+              )}
+            </span>
+          </button>
+
+          {showPassed &&
+            passed.map((evaluation, i) => {
+              const buildId = evaluation.context?.buildId;
+              const isExpanded = buildId != null && buildId === expandedBuildId;
+
+              return (
+                <CheckRow
+                  key={evaluation.evaluationId}
+                  evaluation={evaluation}
+                  onRequeue={onRequeue}
+                  isAnyRequeuing={isRequeuing}
+                  onCheckClick={onCheckClick}
+                  selectedBuildId={selectedBuildId}
+                  isExpanded={isExpanded}
+                  onToggleExpand={
+                    buildId != null && onExpandCheck
+                      ? () =>
+                          onExpandCheck(isExpanded ? null : (buildId ?? null))
+                      : undefined
+                  }
+                  hasBorderTop={i > 0 || active.length > 0}
+                  expandedContent={
+                    isExpanded && buildId != null && renderExpanded
+                      ? renderExpanded(buildId)
+                      : null
+                  }
+                />
+              );
+            })}
+        </>
       )}
     </div>
   );
@@ -305,77 +380,120 @@ function CheckRow({
   isAnyRequeuing,
   onCheckClick,
   selectedBuildId,
+  isExpanded,
+  onToggleExpand,
+  hasBorderTop,
+  expandedContent,
 }: {
   evaluation: EvaluationWithOptimistic;
   onRequeue?: (evaluationId: string) => void;
   isAnyRequeuing?: boolean;
   onCheckClick?: (buildId: number) => void;
   selectedBuildId?: number | null;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
+  hasBorderTop?: boolean;
+  expandedContent?: ReactNode;
 }) {
   const name = getDisplayName(evaluation);
   const showQueue = canQueue(evaluation) && onRequeue;
   const queueLabel = getQueueLabel(evaluation);
-  const pending = isPending(evaluation);
 
   const buildId = evaluation.context?.buildId;
-  const isClickable = !!buildId && !!onCheckClick;
+  const isClickable = !!onToggleExpand || (!!buildId && !!onCheckClick);
   const isSelected = buildId != null && buildId === selectedBuildId;
 
   const handleRowClick = () => {
-    if (isClickable) {
+    if (onToggleExpand) {
+      onToggleExpand();
+    } else if (isClickable && buildId && onCheckClick) {
       onCheckClick(buildId);
     }
   };
 
   return (
-    <div
-      className={clsx(
-        'flex items-center gap-3 border-b border-white/5 px-3 py-2 last:border-b-0',
-        isClickable && 'hover:bg-glass-light cursor-pointer',
-        isSelected && 'bg-glass-medium',
-      )}
-      onClick={handleRowClick}
-    >
-      {/* Status icon */}
-      <span className="shrink-0">{getStatusIcon(evaluation)}</span>
+    <>
+      <div
+        className={clsx(
+          'flex items-center gap-3 px-3.5 py-2.5 transition-colors',
+          hasBorderTop && 'border-t border-white/5',
+          isClickable && 'cursor-pointer',
+          isExpanded
+            ? 'bg-acc/8 border-l-acc border-l-2 pl-3'
+            : isSelected
+              ? 'bg-glass-medium'
+              : isClickable && 'hover:bg-white/[0.03]',
+        )}
+        onClick={handleRowClick}
+      >
+        {/* Status icon */}
+        <span className="shrink-0">{getStatusIcon(evaluation)}</span>
 
-      {/* Name + optional/required badge */}
-      <div className="min-w-0 flex-1">
-        <span className="text-ink-1 truncate text-sm">{name}</span>
+        {/* Name */}
+        <span
+          className={clsx(
+            'min-w-0 flex-1 truncate text-[13px]',
+            isExpanded ? 'text-ink-0 font-medium' : 'text-ink-1',
+          )}
+        >
+          {name}
+        </span>
+
+        {/* Optional badge */}
         {!evaluation.isBlocking && (
-          <span className="text-ink-3 ml-2 text-[10px] uppercase">
-            optional
+          <span className="border-glass-border text-ink-4 shrink-0 rounded border px-1.5 py-0.5 text-[10px] tracking-wider uppercase">
+            Optional
           </span>
         )}
-      </div>
 
-      {/* Status label */}
-      <span className={clsx('shrink-0 text-xs', getStatusColor(evaluation))}>
-        {getStatusLabel(evaluation)}
-      </span>
-
-      {/* Queue action button */}
-      {showQueue && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRequeue(evaluation.evaluationId);
-          }}
-          disabled={isAnyRequeuing}
-          title={queueLabel}
-          className="text-ink-3 hover:text-ink-1 hover:bg-glass-medium shrink-0 rounded px-2 py-0.5 text-xs font-medium transition-colors disabled:opacity-50"
+        {/* Status label */}
+        <span
+          className={clsx(
+            'min-w-[52px] shrink-0 text-right text-xs font-medium',
+            getStatusColor(evaluation),
+          )}
         >
-          <span className="flex items-center gap-1">
-            {pending || evaluation.status === 'notApplicable' ? (
+          {getStatusLabel(evaluation)}
+        </span>
+
+        {/* Queue action button */}
+        {showQueue && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRequeue(evaluation.evaluationId);
+            }}
+            disabled={isAnyRequeuing}
+            className="text-ink-3 hover:text-ink-1 hover:bg-glass-medium flex shrink-0 items-center gap-1 rounded px-2 py-1 text-[11.5px] transition-colors disabled:opacity-50"
+          >
+            {isPending(evaluation) || evaluation.status === 'notApplicable' ? (
               <Play className="h-3 w-3" />
             ) : (
               <RefreshCw className="h-3 w-3" />
             )}
             {queueLabel}
+          </button>
+        )}
+
+        {/* Expand chevron */}
+        {onToggleExpand && (
+          <span className="text-ink-3 ml-0.5 shrink-0">
+            {isExpanded ? (
+              <ChevronUp className="h-3 w-3" />
+            ) : (
+              <ChevronDown className="h-3 w-3" />
+            )}
           </span>
-        </button>
+        )}
+      </div>
+
+      {/* Expanded inline content */}
+      {expandedContent && (
+        <div className="bg-acc/4 border-t border-white/5 px-3.5 pt-3 pb-3.5">
+          {expandedContent}
+        </div>
       )}
-    </div>
+    </>
   );
 }

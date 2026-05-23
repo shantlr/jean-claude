@@ -5,7 +5,6 @@ import type { ReactNode } from 'react';
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
-import { Separator } from '@/common/ui/separator';
 import {
   DiffFileTree,
   normalizeAzureChangeType,
@@ -100,15 +99,12 @@ export function PrDetail({
   recordPrViewRef.current = recordPrView;
 
   // Record PR view for activity tracking.
-  // Optimistically clear hasNewActivity in the feed cache so the blue dot
-  // disappears immediately, then persist the snapshot in the background.
   useEffect(() => {
     if (!project?.repoProviderId || !project?.repoProjectId || !project?.repoId)
       return;
 
     const prFeedItemId = `pr:${projectId}:${prId}`;
 
-    // Optimistically update feed cache to clear the blue dot right away
     queryClient.setQueryData<FeedItem[]>(['feed', 'items'], (old) => {
       if (!old) return old;
       return old.map((item) =>
@@ -116,7 +112,6 @@ export function PrDetail({
       );
     });
 
-    // Persist the view snapshot in the background
     recordPrViewRef.current({
       projectId,
       pullRequestId: prId,
@@ -210,30 +205,31 @@ export function PrDetail({
       {/* Header */}
       <PrHeader pr={pr} projectId={projectId} />
 
-      {/* Tabs */}
-      <div className="flex">
-        <TabButton
-          active={activeTab === 'overview'}
-          onClick={() => setActiveTab('overview')}
-          icon={<FileText className="h-4 w-4" />}
-          label="Overview"
-        />
-        <TabButton
-          active={activeTab === 'files'}
-          onClick={() => setActiveTab('files')}
-          icon={<FileCode className="h-4 w-4" />}
-          label="Files"
-          count={files.length}
-        />
-        <TabButton
-          active={activeTab === 'commits'}
-          onClick={() => setActiveTab('commits')}
-          icon={<GitCommit className="h-4 w-4" />}
-          label="Commits"
-          count={commits.length}
-        />
+      {/* Tab bar */}
+      <div className="border-glass-border/50 flex items-center border-b px-5">
+        <div className="flex gap-0.5">
+          <TabButton
+            active={activeTab === 'overview'}
+            onClick={() => setActiveTab('overview')}
+            icon={<FileText className="h-3.5 w-3.5" />}
+            label="Overview"
+          />
+          <TabButton
+            active={activeTab === 'files'}
+            onClick={() => setActiveTab('files')}
+            icon={<FileCode className="h-3.5 w-3.5" />}
+            label="Files"
+            count={files.length}
+          />
+          <TabButton
+            active={activeTab === 'commits'}
+            onClick={() => setActiveTab('commits')}
+            icon={<GitCommit className="h-3.5 w-3.5" />}
+            label="Commits"
+            count={commits.length}
+          />
+        </div>
       </div>
-      <Separator />
 
       {/* Tab content */}
       <div className="min-h-0 flex-1 overflow-hidden">
@@ -248,6 +244,7 @@ export function PrDetail({
             onAddComment={handleAddComment}
             isAddingComment={addComment.isPending}
             bottomPadding={bottomPadding}
+            fileCount={files.length}
           />
         )}
 
@@ -336,19 +333,20 @@ function TabButton({
     <button
       onClick={onClick}
       className={clsx(
-        'flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors',
+        'flex items-center gap-2 border-b-2 px-3.5 py-2.5 text-[13px] font-medium transition-colors',
         active
-          ? 'border-acc text-acc-ink'
+          ? 'border-acc text-ink-0'
           : 'text-ink-2 hover:text-ink-1 border-transparent',
       )}
+      style={{ marginBottom: -1 }}
     >
       {icon}
       {label}
       {count !== undefined && count > 0 && (
         <span
           className={clsx(
-            'rounded-full px-1.5 py-0.5 text-xs',
-            active ? 'bg-acc/50' : 'bg-glass-medium',
+            'rounded px-1.5 py-0.5 font-mono text-[10.5px]',
+            active ? 'bg-acc/20 text-acc-ink' : 'bg-glass-medium text-ink-3',
           )}
         >
           {count}
