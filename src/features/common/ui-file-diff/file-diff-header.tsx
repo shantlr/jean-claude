@@ -27,7 +27,10 @@ export function FileDiffHeader({
         )}
       >
         <DiffStatusBadge status={file.status} />
-        <div className="text-ink-1 shrink overflow-hidden font-mono text-sm text-ellipsis whitespace-nowrap">
+        <div
+          className="text-ink-1 min-w-0 shrink overflow-hidden text-left font-mono text-sm text-ellipsis whitespace-nowrap [direction:rtl] [unicode-bidi:plaintext]"
+          title={file.path}
+        >
           {file.path}
         </div>
         {file.status === 'renamed' && file.originalPath && (
