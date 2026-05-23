@@ -1,19 +1,25 @@
 import clsx from 'clsx';
-import { Trash2, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Search, Trash2, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/common/ui/button';
 import { IconButton } from '@/common/ui/icon-button';
+import { Input } from '@/common/ui/input';
 import { Separator } from '@/common/ui/separator';
 import { InteractiveLog } from '@/features/common/interactive-log';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useProjectCommands } from '@/hooks/use-project-commands';
 import { api } from '@/lib/api';
 import { useCommandLogsPaneWidth } from '@/stores/navigation';
-import { useTaskMessagesStore } from '@/stores/task-messages';
+import {
+  type RunCommandLogs,
+  useTaskMessagesStore,
+} from '@/stores/task-messages';
 import type { RunStatus } from '@shared/run-command-types';
 
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from '../constants';
+
+const EMPTY_RUN_COMMAND_LOGS: RunCommandLogs = {};
 
 export function CommandLogsPane({
   taskId,
@@ -30,11 +36,15 @@ export function CommandLogsPane({
 }) {
   const { data: commands = [] } = useProjectCommands(projectId);
   const runCommandLogs =
-    useTaskMessagesStore((state) => state.runCommandLogs[taskId]) ?? {};
+    useTaskMessagesStore((state) => state.runCommandLogs[taskId]) ??
+    EMPTY_RUN_COMMAND_LOGS;
   const clearRunCommandLogs = useTaskMessagesStore(
     (state) => state.clearRunCommandLogs,
   );
   const [status, setStatus] = useState<RunStatus | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const paneRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api.runCommands.getStatus(taskId).then(setStatus);
@@ -50,6 +60,28 @@ export function CommandLogsPane({
     return unsubscribe;
   }, [taskId]);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const pane = paneRef.current;
+      const target = event.target;
+      if (!(target instanceof Node) || !pane?.contains(target)) return;
+
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        !event.shiftKey &&
+        !event.altKey
+      ) {
+        if (event.key.toLowerCase() !== 'f') return;
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const runningCommandIds = useMemo(
     () =>
       new Set(
@@ -60,11 +92,32 @@ export function CommandLogsPane({
     [status],
   );
 
-  const tabs = commands.filter(
-    (command) =>
-      (runCommandLogs[command.id]?.lines.length ?? 0) > 0 ||
-      runningCommandIds.has(command.id),
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+
+  const tabs = useMemo(
+    () =>
+      commands.filter(
+        (command) =>
+          (runCommandLogs[command.id]?.lines.length ?? 0) > 0 ||
+          runningCommandIds.has(command.id),
+      ),
+    [commands, runCommandLogs, runningCommandIds],
   );
+
+  const filteredTabs = useMemo(() => {
+    if (!normalizedSearchQuery) return tabs;
+
+    return tabs.filter((tab) => {
+      if (tab.command.toLowerCase().includes(normalizedSearchQuery))
+        return true;
+
+      return (
+        runCommandLogs[tab.id]?.lines.some((entry) =>
+          entry.line.toLowerCase().includes(normalizedSearchQuery),
+        ) ?? false
+      );
+    });
+  }, [normalizedSearchQuery, runCommandLogs, tabs]);
 
   const activeCommandId =
     selectedCommandId && tabs.some((tab) => tab.id === selectedCommandId)
@@ -74,6 +127,17 @@ export function CommandLogsPane({
   const isActiveRunning = !!(
     activeCommandId && runningCommandIds.has(activeCommandId)
   );
+  const filteredActiveLines = useMemo(() => {
+    if (!activeLog) return [];
+    if (!normalizedSearchQuery) return activeLog.lines;
+
+    return activeLog.lines.filter((entry) =>
+      entry.line.toLowerCase().includes(normalizedSearchQuery),
+    );
+  }, [activeLog, normalizedSearchQuery]);
+  const hasAnyTabs = tabs.length > 0;
+  const showNoSearchMatches =
+    normalizedSearchQuery.length > 0 && filteredTabs.length === 0;
 
   const { width, setWidth, minWidth, maxWidth } = useCommandLogsPaneWidth();
   const { isDragging, handleMouseDown } = useHorizontalResize({
@@ -87,6 +151,7 @@ export function CommandLogsPane({
 
   return (
     <div
+      ref={paneRef}
       style={{ width }}
       className="panel-edge-shadow bg-bg-0 relative flex h-full flex-col"
     >
@@ -124,10 +189,23 @@ export function CommandLogsPane({
       </div>
       <Separator />
 
-      {tabs.length > 0 ? (
+      <div className="shrink-0 px-4 py-2">
+        <Input
+          ref={searchInputRef}
+          size="sm"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search commands and logs..."
+          icon={<Search />}
+        />
+      </div>
+
+      <Separator />
+
+      {hasAnyTabs && !showNoSearchMatches ? (
         <>
           <div className="flex shrink-0 gap-1 overflow-x-auto px-2 py-2">
-            {tabs.map((tab) => (
+            {filteredTabs.map((tab) => (
               <Button
                 key={tab.id}
                 type="button"
@@ -148,16 +226,23 @@ export function CommandLogsPane({
 
           {activeCommandId && (
             <InteractiveLog
-              lines={activeLog?.lines ?? []}
+              lines={filteredActiveLines}
               taskId={taskId}
               runCommandId={activeCommandId}
               isRunning={isActiveRunning}
+              emptyText={
+                normalizedSearchQuery
+                  ? `No log lines match "${searchQuery.trim()}".`
+                  : 'Waiting for output...'
+              }
             />
           )}
         </>
       ) : (
         <div className="text-ink-3 flex flex-1 items-center justify-center px-4 text-sm">
-          Run a command to see logs.
+          {normalizedSearchQuery
+            ? `No command logs match "${searchQuery.trim()}".`
+            : 'Run a command to see logs.'}
         </div>
       )}
     </div>
