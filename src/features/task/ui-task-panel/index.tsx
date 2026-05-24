@@ -54,7 +54,7 @@ import { PermissionBar } from '@/features/agent/ui-permission-bar';
 import { PrBadge } from '@/features/agent/ui-pr-badge';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
 import { RunButton } from '@/features/agent/ui-run-button';
-import { WorktreeDiffView } from '@/features/agent/ui-worktree-diff-view';
+import { WorktreeReviewView } from '@/features/agent/ui-worktree-review-view';
 import {
   ReviewPillsQueue,
   reviewCommentToPill,
@@ -81,6 +81,7 @@ import {
   useSteps,
   useUpdateStep,
 } from '@/hooks/use-steps';
+import { useTaskRootPath } from '@/hooks/use-task-root-path';
 import {
   useTask,
   useDeleteTask,
@@ -106,6 +107,8 @@ import {
   useTaskState,
   useDiffViewState,
   usePrViewState,
+  useTaskFileExplorerState,
+  type ReviewMode,
 } from '@/stores/navigation';
 import { useNewTaskDraftStore } from '@/stores/new-task-draft';
 import { useOverlaysStore } from '@/stores/overlays';
@@ -292,9 +295,11 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     isOpen: isDiffViewOpen,
     selectedFilePath: diffSelectedFile,
     collapsedFolders: diffCollapsedFolders,
+    reviewMode,
     toggleDiffView,
     selectFile: selectDiffFile,
     toggleCollapsedFolder: toggleDiffCollapsedFolder,
+    setReviewMode,
   } = useDiffViewState(taskId);
 
   // PR view state
@@ -304,6 +309,17 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     togglePrView,
     closePrView,
   } = usePrViewState(taskId);
+
+  // File explorer state for review view
+  const { rootPath: taskRootPathForExplorer } = useTaskRootPath(taskId);
+  const {
+    selectedFilePath: explorerSelectedFile,
+    expandedDirs: explorerExpandedDirs,
+    selectFile: explorerSelectFile,
+    toggleDir: explorerToggleDir,
+    hideUnchanged: explorerHideUnchanged,
+    toggleHideUnchanged: explorerToggleHideUnchanged,
+  } = useTaskFileExplorerState(taskId);
 
   const agentState = useAgentStream({ taskId, stepId: activeStepId });
   const contextUsage = useContextUsage(agentState.messages);
@@ -887,7 +903,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       },
     },
     {
-      label: 'Toggle Diff View',
+      label: 'Toggle Review View',
       shortcut: 'cmd+d',
       section: 'Task',
       handler: () => {
@@ -907,6 +923,17 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         const current = useUIStore.getState().settings.diffViewMode;
         const next = MODES[(MODES.indexOf(current) + 1) % MODES.length];
         useUIStore.getState().setSetting('diffViewMode', next);
+      },
+    },
+    {
+      label: 'Cycle Review Mode',
+      shortcut: 'cmd+shift+r',
+      section: 'Task',
+      handler: () => {
+        if (!isDiffViewOpen) return;
+        const MODES: ReviewMode[] = ['changes', 'files', 'commits'];
+        const next = MODES[(MODES.indexOf(reviewMode) + 1) % MODES.length]!;
+        setReviewMode(next);
       },
     },
     {
@@ -1286,7 +1313,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                     checked={isDiffViewOpen}
                     shortcut="cmd+d"
                   >
-                    Diff
+                    Review
                   </DropdownItem>
                 )}
                 {task.worktreePath && hasRepoLink && (
@@ -1454,13 +1481,24 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                   bottomPadding={footerHeight}
                 />
               ) : isDiffViewOpen && task.worktreePath ? (
-                <WorktreeDiffView
+                <WorktreeReviewView
                   taskId={taskId}
                   projectId={project.id}
                   selectedFilePath={diffSelectedFile}
                   onSelectFile={selectDiffFile}
                   collapsedFolders={diffCollapsedFolders}
                   onToggleFolder={toggleDiffCollapsedFolder}
+                  reviewMode={reviewMode}
+                  onReviewModeChange={setReviewMode}
+                  fileExplorerRootPath={taskRootPathForExplorer}
+                  fileExplorerSelectedFile={explorerSelectedFile}
+                  onFileExplorerSelectFile={explorerSelectFile}
+                  fileExplorerExpandedDirs={explorerExpandedDirs}
+                  onFileExplorerToggleDir={explorerToggleDir}
+                  fileExplorerHideUnchanged={explorerHideUnchanged}
+                  onFileExplorerToggleHideUnchanged={
+                    explorerToggleHideUnchanged
+                  }
                   branchName={
                     task.branchName ??
                     getBranchFromWorktreePath(task.worktreePath)

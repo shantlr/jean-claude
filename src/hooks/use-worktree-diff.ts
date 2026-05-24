@@ -4,6 +4,8 @@ import { useCallback } from 'react';
 import { invalidateFeedItems } from '@/hooks/use-tasks';
 import {
   api,
+  type WorktreeCommit,
+  type WorktreeDiffFile,
   type WorktreeDiffResult,
   type WorktreeFileContent,
 } from '@/lib/api';
@@ -64,6 +66,60 @@ export function useWorktreeFileContent(
     },
     enabled: !!taskId && !!filePath && !!status,
     // Cache file content for the session
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useWorktreeCommits(taskId: string | null) {
+  return useQuery<WorktreeCommit[]>({
+    queryKey: ['worktree-commits', taskId],
+    queryFn: () => {
+      if (!taskId) return [];
+      return api.tasks.worktree.getCommits(taskId);
+    },
+    enabled: !!taskId,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useWorktreeCommitDiff(
+  taskId: string | null,
+  commitHash: string | null,
+) {
+  return useQuery<WorktreeDiffFile[]>({
+    queryKey: ['worktree-commit-diff', taskId, commitHash],
+    queryFn: () => {
+      if (!taskId || !commitHash) return [];
+      return api.tasks.worktree.getCommitDiff(taskId, commitHash);
+    },
+    enabled: !!taskId && !!commitHash,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useWorktreeCommitFileContent(
+  taskId: string | null,
+  commitHash: string | null,
+  filePath: string | null,
+  status: 'added' | 'modified' | 'deleted' | null,
+) {
+  return useQuery<WorktreeFileContent>({
+    queryKey: ['worktree-commit-file-content', taskId, commitHash, filePath],
+    queryFn: () => {
+      if (!taskId || !commitHash || !filePath || !status) {
+        return { oldContent: null, newContent: null, isBinary: false };
+      }
+      return api.tasks.worktree.getCommitFileContent(
+        taskId,
+        commitHash,
+        filePath,
+        status,
+      );
+    },
+    enabled: !!taskId && !!commitHash && !!filePath && !!status,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
   });

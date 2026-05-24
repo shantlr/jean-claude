@@ -122,6 +122,14 @@ export interface WorktreeDiffResult {
   worktreeDeleted?: boolean;
 }
 
+export interface WorktreeCommit {
+  hash: string;
+  shortHash: string;
+  message: string;
+  author: string;
+  date: string;
+}
+
 export interface WorktreeFileContent {
   oldContent: string | null;
   newContent: string | null;
@@ -446,6 +454,17 @@ export interface Api {
     ) => Promise<Task[]>;
     worktree: {
       getDiff: (taskId: string) => Promise<WorktreeDiffResult>;
+      getCommits: (taskId: string) => Promise<WorktreeCommit[]>;
+      getCommitDiff: (
+        taskId: string,
+        commitHash: string,
+      ) => Promise<WorktreeDiffFile[]>;
+      getCommitFileContent: (
+        taskId: string,
+        commitHash: string,
+        filePath: string,
+        status: 'added' | 'modified' | 'deleted',
+      ) => Promise<WorktreeFileContent>;
       getFileContent: (
         taskId: string,
         filePath: string,
@@ -1276,6 +1295,13 @@ export const api: Api = hasWindowApi
         reorder: async () => [],
         worktree: {
           getDiff: async () => ({ files: [] }),
+          getCommits: async () => [],
+          getCommitDiff: async () => [],
+          getCommitFileContent: async () => ({
+            oldContent: null,
+            newContent: null,
+            isBinary: false,
+          }),
           getFileContent: async () => ({
             oldContent: null,
             newContent: null,

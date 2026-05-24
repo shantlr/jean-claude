@@ -213,6 +213,9 @@ import {
 import {
   checkMergeConflicts,
   createWorktree,
+  getWorktreeCommitDiff,
+  getWorktreeCommitFileContent,
+  getWorktreeCommits,
   getWorktreeDiff,
   getWorktreeFileContent,
   getWorktreeUnifiedDiff,
@@ -1528,6 +1531,47 @@ export function registerIpcHandlers() {
       task.sourceBranch,
     );
   });
+
+  ipcMain.handle('tasks:worktree:getCommits', async (_, taskId: string) => {
+    const task = await TaskRepository.findById(taskId);
+    if (!task?.worktreePath || !task?.startCommitHash) {
+      return [];
+    }
+    return getWorktreeCommits(task.worktreePath, task.startCommitHash);
+  });
+
+  ipcMain.handle(
+    'tasks:worktree:getCommitDiff',
+    async (_, taskId: string, commitHash: string) => {
+      const task = await TaskRepository.findById(taskId);
+      if (!task?.worktreePath) {
+        return [];
+      }
+      return getWorktreeCommitDiff(task.worktreePath, commitHash);
+    },
+  );
+
+  ipcMain.handle(
+    'tasks:worktree:getCommitFileContent',
+    async (
+      _,
+      taskId: string,
+      commitHash: string,
+      filePath: string,
+      status: 'added' | 'modified' | 'deleted',
+    ) => {
+      const task = await TaskRepository.findById(taskId);
+      if (!task?.worktreePath) {
+        throw new Error(`Task ${taskId} does not have a worktree`);
+      }
+      return getWorktreeCommitFileContent(
+        task.worktreePath,
+        commitHash,
+        filePath,
+        status,
+      );
+    },
+  );
 
   ipcMain.handle(
     'tasks:worktree:getFileContent',

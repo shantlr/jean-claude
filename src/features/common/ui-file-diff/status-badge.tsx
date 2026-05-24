@@ -4,12 +4,13 @@ import type { DiffFileStatus } from './types';
 
 const statusConfig: Record<
   DiffFileStatus,
-  { label: string; color: 'green' | 'orange' | 'red' | 'yellow' }
+  { label: string; color: 'green' | 'orange' | 'red' | 'yellow' | 'neutral' }
 > = {
   added: { label: 'Added', color: 'green' },
   modified: { label: 'Modified', color: 'orange' },
   deleted: { label: 'Deleted', color: 'red' },
   renamed: { label: 'Renamed', color: 'yellow' },
+  unchanged: { label: 'Unchanged', color: 'neutral' },
 };
 
 export function DiffStatusBadge({ status }: { status: DiffFileStatus }) {
@@ -33,5 +34,7 @@ export function getStatusIndicator(status: DiffFileStatus) {
       return { label: 'M', color: 'text-orange-400' };
     case 'renamed':
       return { label: 'R', color: 'text-yellow-400' };
+    case 'unchanged':
+      return { label: '', color: '' };
   }
 }

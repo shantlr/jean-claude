@@ -256,7 +256,7 @@ export const Select = forwardRef<
         aria-controls={isOpen ? listboxId : undefined}
         aria-label={label}
         className={clsx(
-          'bg-glass-light hover:bg-glass-medium text-ink-1 flex items-center transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+          'bg-glass-light hover:bg-glass-medium text-ink-1 flex min-w-0 items-center transition-colors disabled:cursor-not-allowed disabled:opacity-50',
           heightOrPy,
           s.text,
           s.px,
@@ -265,7 +265,7 @@ export const Select = forwardRef<
           className,
         )}
       >
-        <span>{selectedOption?.label}</span>
+        <span className="truncate">{selectedOption?.label}</span>
         {displayShortcut ? (
           <Kbd shortcut={displayShortcut} />
         ) : (

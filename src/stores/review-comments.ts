@@ -51,6 +51,8 @@ export interface ReviewComment {
   /** 'diff' for file/code comments, 'message' for agent message comments */
   commentKind: ReviewCommentKind;
   anchor: FileCommentAnchor;
+  /** Commit-scoped comments only appear for that commit's file diff. */
+  commitHash?: string;
   body: string;
   images?: PromptImagePart[];
   presets: ReviewPresetId[];
@@ -202,10 +204,34 @@ export function useReviewCommentsStore<T>(
 
 const {
   useComments: useReviewComments,
-  useCommentsForFile: useReviewCommentsForFile,
+  useCommentsForFile: useAllReviewCommentsForFile,
 } = createCommentSelectors(baseStore);
 
-export { useReviewComments, useReviewCommentsForFile };
+export { useReviewComments };
+
+export function useReviewCommentsForFile(taskId: string, filePath: string) {
+  const comments = useAllReviewCommentsForFile(taskId, filePath);
+  return useMemo(
+    () => comments.filter((c) => c.commitHash === undefined),
+    [comments],
+  );
+}
+
+export function useReviewCommentsForCommitFile({
+  taskId,
+  commitHash,
+  filePath,
+}: {
+  taskId: string;
+  commitHash: string;
+  filePath: string;
+}) {
+  const comments = useAllReviewCommentsForFile(taskId, filePath);
+  return useMemo(
+    () => comments.filter((c) => c.commitHash === commitHash),
+    [comments, commitHash],
+  );
+}
 
 // -- Imperative API (for use outside React components) --
 
@@ -242,7 +268,7 @@ export function useReviewCommentsByFile(taskId: string) {
   return useMemo(() => {
     const map: Record<string, number> = {};
     for (const c of comments) {
-      if (!c.resolved) {
+      if (!c.resolved && c.commitHash === undefined) {
         map[c.anchor.filePath] = (map[c.anchor.filePath] ?? 0) + 1;
       }
     }
@@ -261,6 +287,41 @@ export function useReviewCommentsByFile(taskId: string) {
     prevRef.current = keys.length === 0 ? EMPTY_RECORD : map;
     return prevRef.current;
   }, [comments]);
+}
+
+export function useReviewCommentsByCommitFile({
+  taskId,
+  commitHash,
+}: {
+  taskId: string;
+  commitHash: string | null;
+}) {
+  const comments = useReviewComments(taskId);
+  const prevRef = useRef<Record<string, number>>(EMPTY_RECORD);
+
+  return useMemo(() => {
+    if (!commitHash) return EMPTY_RECORD;
+
+    const map: Record<string, number> = {};
+    for (const c of comments) {
+      if (!c.resolved && c.commitHash === commitHash) {
+        map[c.anchor.filePath] = (map[c.anchor.filePath] ?? 0) + 1;
+      }
+    }
+
+    const prev = prevRef.current;
+    const keys = Object.keys(map);
+    const prevKeys = Object.keys(prev);
+    if (
+      keys.length === prevKeys.length &&
+      keys.every((k) => prev[k] === map[k])
+    ) {
+      return prev;
+    }
+
+    prevRef.current = keys.length === 0 ? EMPTY_RECORD : map;
+    return prevRef.current;
+  }, [comments, commitHash]);
 }
 
 /** Synthesize a single comment into XML lines based on its kind. */
@@ -285,8 +346,11 @@ function synthesizeComment(
       c.anchor.lineStart,
       c.anchor.lineEnd,
     );
+    const commitAttr = c.commitHash
+      ? ` commit="${escapePromptTagContent(c.commitHash)}"`
+      : '';
     textLines.push(
-      `<comment index="${index}" type="file" file_path="${escapePromptTagContent(c.anchor.filePath)}" line_range="${lineLabel}">`,
+      `<comment index="${index}" type="file" file_path="${escapePromptTagContent(c.anchor.filePath)}" line_range="${lineLabel}"${commitAttr}>`,
     );
     if (c.presets.length > 0) {
       textLines.push(

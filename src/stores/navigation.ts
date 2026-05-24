@@ -34,10 +34,13 @@ export type RightPane =
       selectedCommandId: string | null;
     };
 
+export type ReviewMode = 'changes' | 'files' | 'commits';
+
 interface DiffViewState {
   selectedFilePath: string | null;
   /** Folder paths the user has manually collapsed in the diff file tree */
   collapsedFolders: Set<string>;
+  reviewMode: ReviewMode;
 }
 
 interface FileExplorerState {
@@ -77,6 +80,7 @@ interface TaskState {
 const defaultDiffViewState: DiffViewState = {
   selectedFilePath: null,
   collapsedFolders: new Set<string>(),
+  reviewMode: 'changes',
 };
 
 const defaultFileExplorerState: FileExplorerState = {
@@ -224,6 +228,7 @@ interface NavigationState {
   setPrActiveTab: (prKey: string, tab: PrDetailTab) => void;
   clearPrNavState: (prKey: string) => void;
   reconcilePrState: (activePrKeys: Set<string>) => void;
+  setReviewMode: (taskId: string, mode: ReviewMode) => void;
   clearProjectNavHistoryState: (projectId: string) => void;
   clearTaskNavHistoryState: (taskId: string) => void;
 }
@@ -486,6 +491,21 @@ const useStore = create<NavigationState>()(
           };
         }),
 
+      setReviewMode: (taskId, mode) =>
+        set((state) => ({
+          taskState: {
+            ...state.taskState,
+            [taskId]: {
+              ...defaultTaskState,
+              ...state.taskState[taskId],
+              diffView: {
+                ...(state.taskState[taskId]?.diffView ?? defaultDiffViewState),
+                reviewMode: mode,
+              },
+            },
+          },
+        })),
+
       setPrSelectedFile: (prKey, filePath) =>
         set((state) => ({
           prState: {
@@ -594,6 +614,7 @@ const useStore = create<NavigationState>()(
                 selectedFilePath: taskState.diffView.selectedFilePath,
                 // Serialize Set as array for JSON persistence
                 collapsedFolders: [...taskState.diffView.collapsedFolders],
+                reviewMode: taskState.diffView.reviewMode,
               },
               prDraft: taskState.prDraft,
             },
@@ -619,6 +640,9 @@ const useStore = create<NavigationState>()(
                     collapsedFolders: new Set(
                       (taskState.diffView?.collapsedFolders as any) ?? [],
                     ),
+                    reviewMode:
+                      (taskState.diffView?.reviewMode as ReviewMode) ??
+                      'changes',
                   },
                 },
               ],
@@ -961,6 +985,19 @@ export function useDiffViewState(taskId: string) {
     [taskId, setDiffViewSelectedFileAction],
   );
 
+  const reviewMode = useStore(
+    (state) =>
+      state.taskState[taskId]?.diffView.reviewMode ??
+      defaultDiffViewState.reviewMode,
+  );
+
+  const setReviewModeAction = useStore((state) => state.setReviewMode);
+
+  const setReviewMode = useCallback(
+    (mode: ReviewMode) => setReviewModeAction(taskId, mode),
+    [taskId, setReviewModeAction],
+  );
+
   const collapsedFolders = useStore(
     (state) =>
       state.taskState[taskId]?.diffView.collapsedFolders ??
@@ -977,11 +1014,13 @@ export function useDiffViewState(taskId: string) {
     isOpen: taskState.activeView === 'diff',
     selectedFilePath: taskState.diffView.selectedFilePath,
     collapsedFolders,
+    reviewMode,
     toggleDiffView,
     openDiffView,
     closeDiffView,
     selectFile,
     toggleCollapsedFolder,
+    setReviewMode,
   };
 }
 

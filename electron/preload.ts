@@ -107,6 +107,23 @@ contextBridge.exposeInMainWorld('api', {
     worktree: {
       getDiff: (taskId: string) =>
         ipcRenderer.invoke('tasks:worktree:getDiff', taskId),
+      getCommits: (taskId: string) =>
+        ipcRenderer.invoke('tasks:worktree:getCommits', taskId),
+      getCommitDiff: (taskId: string, commitHash: string) =>
+        ipcRenderer.invoke('tasks:worktree:getCommitDiff', taskId, commitHash),
+      getCommitFileContent: (
+        taskId: string,
+        commitHash: string,
+        filePath: string,
+        status: 'added' | 'modified' | 'deleted',
+      ) =>
+        ipcRenderer.invoke(
+          'tasks:worktree:getCommitFileContent',
+          taskId,
+          commitHash,
+          filePath,
+          status,
+        ),
       getFileContent: (
         taskId: string,
         filePath: string,

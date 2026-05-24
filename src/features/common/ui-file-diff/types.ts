@@ -1,7 +1,12 @@
 // Unified diff file type that normalizes between different sources
 // (worktree diff, PR changes, etc.)
 
-export type DiffFileStatus = 'added' | 'modified' | 'deleted' | 'renamed';
+export type DiffFileStatus =
+  | 'added'
+  | 'modified'
+  | 'deleted'
+  | 'renamed'
+  | 'unchanged';
 
 export interface DiffFile {
   path: string;

@@ -1691,3 +1691,197 @@ export async function getWorktreeCommitLog(
     return '';
   }
 }
+
+export interface WorktreeCommit {
+  hash: string;
+  shortHash: string;
+  message: string;
+  author: string;
+  date: string; // ISO 8601
+}
+
+export async function getWorktreeCommits(
+  worktreePath: string,
+  startCommitHash: string,
+): Promise<WorktreeCommit[]> {
+  if (!/^[0-9a-f]{7,40}$/i.test(startCommitHash)) {
+    dbg.worktree('Invalid commit hash for commits: %s', startCommitHash);
+    return [];
+  }
+
+  try {
+    const DELIM = '---COMMIT-DELIM---';
+    const { stdout } = await execAsync(
+      `git log --format='%H%n%h%n%s%n%an%n%aI%n${DELIM}' ${startCommitHash}..HEAD --`,
+      { cwd: worktreePath, encoding: 'utf-8', maxBuffer: 1024 * 1024 },
+    );
+
+    if (!stdout.trim()) return [];
+
+    const commits: WorktreeCommit[] = [];
+    const blocks = stdout.split(DELIM).filter((b) => b.trim());
+
+    for (const block of blocks) {
+      const lines = block.trim().split('\n');
+      if (lines.length >= 5) {
+        commits.push({
+          hash: lines[0]!,
+          shortHash: lines[1]!,
+          message: lines[2]!,
+          author: lines[3]!,
+          date: lines[4]!,
+        });
+      }
+    }
+
+    return commits;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Returns the list of files changed in a specific commit.
+ */
+export async function getWorktreeCommitDiff(
+  worktreePath: string,
+  commitHash: string,
+): Promise<
+  {
+    path: string;
+    status: 'added' | 'modified' | 'deleted';
+    additions: number;
+    deletions: number;
+  }[]
+> {
+  // Validate commit hash
+  if (!/^[0-9a-f]{7,40}$/i.test(commitHash)) {
+    dbg.worktree('Invalid commit hash for commit diff: %s', commitHash);
+    return [];
+  }
+
+  try {
+    // Get file list with status
+    const { stdout: nameStatus } = await execAsync(
+      `git diff --name-status ${commitHash}^..${commitHash}`,
+      { cwd: worktreePath, encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 },
+    );
+
+    // Get per-file line counts
+    const { stdout: numstatOutput } = await execAsync(
+      `git diff --numstat ${commitHash}^..${commitHash}`,
+      { cwd: worktreePath, encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 },
+    );
+
+    const numstatMap = new Map<
+      string,
+      { additions: number; deletions: number }
+    >();
+    for (const line of numstatOutput.split('\n')) {
+      if (!line.trim()) continue;
+      const [adds, dels, ...pathParts] = line.split('\t');
+      const filePath = pathParts.join('\t');
+      numstatMap.set(filePath, {
+        additions: adds === '-' ? 0 : parseInt(adds!, 10),
+        deletions: dels === '-' ? 0 : parseInt(dels!, 10),
+      });
+    }
+
+    const files: {
+      path: string;
+      status: 'added' | 'modified' | 'deleted';
+      additions: number;
+      deletions: number;
+    }[] = [];
+    for (const line of nameStatus.split('\n')) {
+      if (!line.trim()) continue;
+      const [statusCode, ...pathParts] = line.split('\t');
+      const filePath = pathParts.join('\t');
+      if (!filePath) continue;
+
+      let status: 'added' | 'modified' | 'deleted' = 'modified';
+      if (statusCode === 'A') status = 'added';
+      else if (statusCode === 'D') status = 'deleted';
+
+      const stats = numstatMap.get(filePath) ?? {
+        additions: 0,
+        deletions: 0,
+      };
+      files.push({
+        path: filePath,
+        status,
+        additions: stats.additions,
+        deletions: stats.deletions,
+      });
+    }
+
+    return files;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Returns the old and new content of a file for a specific commit.
+ */
+export async function getWorktreeCommitFileContent(
+  worktreePath: string,
+  commitHash: string,
+  filePath: string,
+  status: 'added' | 'modified' | 'deleted',
+): Promise<{
+  oldContent: string | null;
+  newContent: string | null;
+  isBinary: boolean;
+}> {
+  // Validate commit hash
+  if (!/^[0-9a-f]{7,40}$/i.test(commitHash)) {
+    return { oldContent: null, newContent: null, isBinary: false };
+  }
+
+  try {
+    let oldContent: string | null = null;
+    let newContent: string | null = null;
+
+    if (status !== 'added') {
+      try {
+        const { stdout } = await execAsync(
+          `git show ${commitHash}^:${filePath}`,
+          {
+            cwd: worktreePath,
+            encoding: 'utf-8',
+            maxBuffer: 10 * 1024 * 1024,
+          },
+        );
+        oldContent = stdout;
+      } catch {
+        oldContent = null;
+      }
+    }
+
+    if (status !== 'deleted') {
+      try {
+        const { stdout } = await execAsync(
+          `git show ${commitHash}:${filePath}`,
+          {
+            cwd: worktreePath,
+            encoding: 'utf-8',
+            maxBuffer: 10 * 1024 * 1024,
+          },
+        );
+        newContent = stdout;
+      } catch {
+        newContent = null;
+      }
+    }
+
+    // Simple binary detection
+    const isBinary =
+      (oldContent !== null && oldContent.includes('\0')) ||
+      (newContent !== null && newContent.includes('\0'));
+
+    return { oldContent, newContent, isBinary };
+  } catch {
+    return { oldContent: null, newContent: null, isBinary: false };
+  }
+}
