@@ -211,6 +211,16 @@ export function Header() {
           <DropdownDivider />
           <DropdownInfo label="Build" value={commitHash} />
         </Dropdown>
+        {api.app.isDevMode && (
+          <div
+            className="ml-2 flex items-center gap-1 rounded-full border border-amber-400/50 bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold tracking-[0.18em] text-amber-200 shadow-[0_0_16px_oklch(0.8_0.18_80_/_0.22)]"
+            title="Jean-Claude is running in development mode"
+            aria-label="Development mode"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-300 shadow-[0_0_8px_oklch(0.8_0.18_80)]" />
+            DEV
+          </div>
+        )}
       </div>
 
       {/* CENTER — Activity (absolutely centered) */}

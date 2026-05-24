@@ -946,6 +946,7 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('feed:deleteNote', params),
   },
   app: {
+    isDevMode: !!process.env.ELECTRON_RENDERER_URL,
     getIsPreviewMode: () =>
       ipcRenderer.invoke('app:getIsPreviewMode') as Promise<boolean>,
     reloadPreview: () =>

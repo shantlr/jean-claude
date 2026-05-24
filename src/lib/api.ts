@@ -1170,6 +1170,7 @@ export interface Api {
     deleteNote: (params: { id: string }) => Promise<void>;
   };
   app: {
+    isDevMode: boolean;
     getIsPreviewMode: () => Promise<boolean>;
     reloadPreview: () => Promise<void>;
   };
@@ -1721,6 +1722,7 @@ export const api: Api = hasWindowApi
         deleteNote: async () => {},
       },
       app: {
+        isDevMode: false,
         getIsPreviewMode: async () => false,
         reloadPreview: async () => {},
       },
