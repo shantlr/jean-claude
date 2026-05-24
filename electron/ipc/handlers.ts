@@ -5,7 +5,14 @@ import * as os from 'os';
 import * as path from 'path';
 import { promisify } from 'util';
 
-import { BrowserWindow, app, ipcMain, dialog } from 'electron';
+import {
+  BrowserWindow,
+  Notification,
+  app,
+  ipcMain,
+  dialog,
+  shell,
+} from 'electron';
 
 import type { AgentBackendType, PromptPart } from '@shared/agent-backend-types';
 import {
@@ -3957,6 +3964,28 @@ export function registerIpcHandlers() {
       read: row.read === 1,
       meta: safeJsonParse(row.meta),
     }));
+  });
+
+  ipcMain.handle('notifications:getDesktopStatus', async () => ({
+    supported: Notification.isSupported(),
+    canOpenSettings:
+      process.platform === 'darwin' || process.platform === 'win32',
+  }));
+
+  ipcMain.handle('notifications:openSystemSettings', async () => {
+    if (process.platform === 'darwin') {
+      await shell.openExternal(
+        'x-apple.systempreferences:com.apple.preference.notifications',
+      );
+      return true;
+    }
+
+    if (process.platform === 'win32') {
+      await shell.openExternal('ms-settings:notifications');
+      return true;
+    }
+
+    return false;
   });
 
   ipcMain.handle('notifications:markRead', async (_, id: string | 'all') => {

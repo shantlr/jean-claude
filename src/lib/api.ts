@@ -339,6 +339,12 @@ export interface DebugMessageWithRawData {
 export type AgentEventCallback<T> = (event: T) => void;
 export type UnsubscribeFn = () => void;
 
+export type DesktopNotificationStatus = {
+  supported: boolean;
+  permission: 'default' | 'denied' | 'granted' | 'unknown';
+  canOpenSettings: boolean;
+};
+
 export interface Api {
   platform: typeof process.platform;
   windowState: {
@@ -1082,6 +1088,8 @@ export interface Api {
   };
   notifications: {
     list: () => Promise<AppNotification[]>;
+    getDesktopStatus: () => Promise<DesktopNotificationStatus>;
+    openSystemSettings: () => Promise<boolean>;
     markRead: (id: string | 'all') => Promise<void>;
     delete: (id: string) => Promise<void>;
     onNew: (callback: (notification: AppNotification) => void) => () => void;
@@ -1660,6 +1668,12 @@ export const api: Api = hasWindowApi
       },
       notifications: {
         list: async () => [],
+        getDesktopStatus: async () => ({
+          supported: true,
+          permission: 'granted',
+          canOpenSettings: true,
+        }),
+        openSystemSettings: async () => true,
         markRead: async () => {},
         delete: async () => {},
         onNew: () => () => {},

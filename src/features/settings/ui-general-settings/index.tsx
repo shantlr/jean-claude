@@ -4,6 +4,8 @@ import {
   GitBranch,
   Bell,
   CircleAlert,
+  ExternalLink,
+  RefreshCw,
   Search,
   Star,
   Trash2,
@@ -39,7 +41,11 @@ import {
   useUsageDisplaySetting,
   useUpdateUsageDisplaySetting,
 } from '@/hooks/use-settings';
-import { api, type NonExistentClaudeProject } from '@/lib/api';
+import {
+  api,
+  type DesktopNotificationStatus,
+  type NonExistentClaudeProject,
+} from '@/lib/api';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import {
   DEFAULT_CALENDAR_NOTIFICATION_LEAD_TIME_MINUTES,
@@ -486,9 +492,28 @@ function CalendarNotificationSettings() {
 function TaskNotificationSettings() {
   const { data: taskNotificationsSetting } = useTaskEventNotificationsSetting();
   const updateTaskNotifications = useUpdateTaskEventNotificationsSetting();
+  const [desktopStatus, setDesktopStatus] =
+    useState<DesktopNotificationStatus | null>(null);
+  const [isCheckingDesktopStatus, setIsCheckingDesktopStatus] = useState(false);
 
   const modes =
     taskNotificationsSetting?.modes ?? DEFAULT_TASK_NOTIFICATION_MODES;
+
+  const checkDesktopStatus = async () => {
+    setIsCheckingDesktopStatus(true);
+    try {
+      setDesktopStatus(await api.notifications.getDesktopStatus());
+    } finally {
+      setIsCheckingDesktopStatus(false);
+    }
+  };
+
+  useEffect(() => {
+    checkDesktopStatus();
+
+    window.addEventListener('focus', checkDesktopStatus);
+    return () => window.removeEventListener('focus', checkDesktopStatus);
+  }, []);
 
   const handleModeChange = ({
     event,
@@ -504,6 +529,19 @@ function TaskNotificationSettings() {
       },
     });
   };
+
+  const handleOpenSystemSettings = async () => {
+    await api.notifications.openSystemSettings();
+  };
+
+  const showDesktopWarning =
+    desktopStatus &&
+    (!desktopStatus.supported || desktopStatus.permission !== 'granted');
+  const desktopWarningTitle = !desktopStatus?.supported
+    ? 'Desktop notifications are unsupported'
+    : desktopStatus.permission === 'denied'
+      ? 'Desktop notifications are blocked'
+      : 'Desktop notifications are not allowed yet';
 
   return (
     <div>
@@ -522,6 +560,40 @@ function TaskNotificationSettings() {
       </div>
 
       <div className="mt-4 space-y-3">
+        {showDesktopWarning ? (
+          <div className="border-status-err/50 bg-status-err/8 rounded-lg border px-4 py-3 text-sm">
+            <div className="text-ink-1 flex items-center gap-2 font-medium">
+              <CircleAlert className="text-status-err h-4 w-4" />
+              {desktopWarningTitle}
+            </div>
+            <p className="text-ink-2 mt-1">
+              Jean-Claude cannot show desktop notifications right now. Allow
+              notifications for Jean-Claude in your system settings, then check
+              again.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {desktopStatus.canOpenSettings ? (
+                <Button
+                  onClick={handleOpenSystemSettings}
+                  size="sm"
+                  icon={<ExternalLink className="h-3.5 w-3.5" />}
+                >
+                  Open System Settings
+                </Button>
+              ) : null}
+              <Button
+                onClick={checkDesktopStatus}
+                size="sm"
+                variant="ghost"
+                disabled={isCheckingDesktopStatus}
+                icon={<RefreshCw className="h-3.5 w-3.5" />}
+              >
+                Check again
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         {TASK_NOTIFICATION_OPTIONS.map((option) => {
           const selectedMode = modes[option.event];
 

@@ -840,6 +840,15 @@ contextBridge.exposeInMainWorld('api', {
   },
   notifications: {
     list: () => ipcRenderer.invoke('notifications:list'),
+    getDesktopStatus: async () => ({
+      ...(await ipcRenderer.invoke('notifications:getDesktopStatus')),
+      permission:
+        typeof Notification === 'undefined'
+          ? 'unknown'
+          : Notification.permission,
+    }),
+    openSystemSettings: () =>
+      ipcRenderer.invoke('notifications:openSystemSettings'),
     markRead: (id: string | 'all') =>
       ipcRenderer.invoke('notifications:markRead', id),
     delete: (id: string) => ipcRenderer.invoke('notifications:delete', id),
