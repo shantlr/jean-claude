@@ -21,6 +21,9 @@ export function Modal({
   closeOnClickOutside = true,
   closeOnEscape = true,
   contentRef,
+  showHeader = true,
+  contentClassName = 'min-h-0 overflow-y-auto p-4',
+  panelClassName = '',
   children,
 }: {
   isOpen: boolean;
@@ -30,6 +33,9 @@ export function Modal({
   closeOnClickOutside?: boolean;
   closeOnEscape?: boolean;
   contentRef?: RefObject<HTMLDivElement | null>;
+  showHeader?: boolean;
+  contentClassName?: string;
+  panelClassName?: string;
   children: ReactNode;
 }) {
   const id = useId();
@@ -63,24 +69,26 @@ export function Modal({
         >
           <div
             ref={contentRef}
-            className={`flex max-h-[85vh] w-full ${modalSizeClasses[size]} bg-bg-1 flex-col rounded-lg shadow-xl`}
+            className={`flex max-h-[85vh] w-full ${modalSizeClasses[size]} bg-bg-1 flex-col rounded-lg shadow-xl ${panelClassName}`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="border-glass-border flex items-center justify-between border-b px-4 py-3">
-              {title ? (
-                <h2 className="text-ink-0 text-lg font-semibold">{title}</h2>
-              ) : (
-                <div />
-              )}
-              <button
-                onClick={onClose}
-                aria-label="Close dialog"
-                className="text-ink-2 hover:bg-glass-medium hover:text-ink-1 rounded p-1"
-              >
-                <X className="h-5 w-5" aria-hidden />
-              </button>
-            </div>
-            <div className="min-h-0 overflow-y-auto p-4">{children}</div>
+            {showHeader && (
+              <div className="border-glass-border flex items-center justify-between border-b px-4 py-3">
+                {title ? (
+                  <h2 className="text-ink-0 text-lg font-semibold">{title}</h2>
+                ) : (
+                  <div />
+                )}
+                <button
+                  onClick={onClose}
+                  aria-label="Close dialog"
+                  className="text-ink-2 hover:bg-glass-medium hover:text-ink-1 rounded p-1"
+                >
+                  <X className="h-5 w-5" aria-hidden />
+                </button>
+              </div>
+            )}
+            <div className={contentClassName}>{children}</div>
           </div>
         </div>
       </RemoveScroll>

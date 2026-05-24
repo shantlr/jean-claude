@@ -1,4 +1,4 @@
-import { Sparkles, Wrench, Zap } from 'lucide-react';
+import { Sparkles, Wrench, X, Zap } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Modal } from '@/common/ui/modal';
@@ -7,23 +7,35 @@ import { useChangelogStore } from '@/stores/changelog';
 
 const DAYS_PER_PAGE = 10;
 
-const typeIcons = {
-  feature: Sparkles,
-  fix: Wrench,
-  improvement: Zap,
-} as const;
+type ChangelogFilter = 'all' | ChangelogEntry['type'];
 
-const typeColors = {
-  feature: 'text-blue-300',
-  fix: 'text-amber-300',
-  improvement: 'text-emerald-300',
-} as const;
+const filterLabels: Record<ChangelogFilter, string> = {
+  all: 'All',
+  feature: 'New',
+  improvement: 'Improvements',
+  fix: 'Fixes',
+};
 
-function EntryIcon({ type }: { type: ChangelogEntry['type'] }) {
-  const Icon = typeIcons[type];
-  const color = typeColors[type];
-  return <Icon className={`h-4 w-4 shrink-0 ${color}`} aria-hidden />;
-}
+const typeMeta = {
+  feature: {
+    label: 'New',
+    Icon: Sparkles,
+    dot: 'bg-blue-300',
+    chip: 'bg-blue-400/10 text-blue-200',
+  },
+  improvement: {
+    label: 'Improvement',
+    Icon: Zap,
+    dot: 'bg-emerald-300',
+    chip: 'bg-emerald-400/10 text-emerald-200',
+  },
+  fix: {
+    label: 'Fix',
+    Icon: Wrench,
+    dot: 'bg-amber-300',
+    chip: 'bg-amber-400/10 text-amber-200',
+  },
+} as const;
 
 function formatScope(scope: string) {
   return scope
@@ -31,6 +43,87 @@ function formatScope(scope: string) {
     .filter(Boolean)
     .map((part) => part[0].toUpperCase() + part.slice(1))
     .join(' ');
+}
+
+function formatShortDate(label: string) {
+  return label.replace(/, \d{4}$/, '');
+}
+
+function filterDay(day: (typeof changelog)[number], filter: ChangelogFilter) {
+  if (filter === 'all') return day;
+  const entries = day.entries.filter((entry) => entry.type === filter);
+  return entries.length > 0 ? { ...day, entries } : null;
+}
+
+function FilterRow({
+  value,
+  counts,
+  onChange,
+}: {
+  value: ChangelogFilter;
+  counts: Record<ChangelogFilter, number>;
+  onChange: (value: ChangelogFilter) => void;
+}) {
+  const filters: ChangelogFilter[] = ['all', 'feature', 'improvement', 'fix'];
+
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {filters.map((filter) => {
+        const active = value === filter;
+        const meta = filter === 'all' ? null : typeMeta[filter];
+        return (
+          <button
+            key={filter}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(filter)}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
+              active
+                ? 'text-ink-0 border-white/10 bg-white/[0.055]'
+                : 'text-ink-2 hover:text-ink-1 border-transparent hover:bg-white/[0.035]'
+            }`}
+          >
+            {meta && (
+              <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+            )}
+            <span>{filterLabels[filter]}</span>
+            <span className="text-ink-4 tabular-nums">{counts[filter]}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function TypeChip({ type }: { type: ChangelogEntry['type'] }) {
+  const meta = typeMeta[type];
+  const Icon = meta.Icon;
+  return (
+    <span
+      className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px] ${meta.chip}`}
+      aria-label={meta.label}
+    >
+      <Icon className="h-3 w-3" aria-hidden />
+    </span>
+  );
+}
+
+function EmptyState({ filter }: { filter: ChangelogFilter }) {
+  const label =
+    filter === 'all' ? 'changes' : filterLabels[filter].toLowerCase();
+
+  return (
+    <div className="flex flex-col items-center gap-2 px-6 py-16 text-center">
+      <div className="border-glass-border text-ink-3 flex h-9 w-9 items-center justify-center rounded-full border border-dashed">
+        <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      </div>
+      <div className="text-ink-1 text-sm font-medium">You're caught up</div>
+      <div className="text-ink-3 max-w-72 text-xs leading-5">
+        No {label} to show. Try a different filter, or check back after the next
+        release.
+      </div>
+    </div>
+  );
 }
 
 export function ChangelogModal() {
@@ -41,12 +134,41 @@ export function ChangelogModal() {
   const markSeen = useChangelogStore((s) => s.markSeen);
   const [daysShown, setDaysShown] = useState(DAYS_PER_PAGE);
   const [activeDate, setActiveDate] = useState<string | null>(null);
+  const [filter, setFilter] = useState<ChangelogFilter>('all');
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const dayRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-  const visibleDays = useMemo(() => changelog.slice(0, daysShown), [daysShown]);
-  const hasMore = changelog.length > daysShown;
+  const counts = useMemo(() => {
+    const next: Record<ChangelogFilter, number> = {
+      all: 0,
+      feature: 0,
+      improvement: 0,
+      fix: 0,
+    };
+
+    for (const day of changelog) {
+      for (const entry of day.entries) {
+        next[entry.type] += entry.bullets.length;
+        next.all += entry.bullets.length;
+      }
+    }
+
+    return next;
+  }, []);
+
+  const filteredDays = useMemo(
+    () =>
+      changelog
+        .map((day) => filterDay(day, filter))
+        .filter((day) => day !== null),
+    [filter],
+  );
+  const visibleDays = useMemo(
+    () => filteredDays.slice(0, daysShown),
+    [daysShown, filteredDays],
+  );
+  const hasMore = filteredDays.length > daysShown;
 
   // Auto-open on startup if hash changed
   useEffect(() => {
@@ -56,7 +178,14 @@ export function ChangelogModal() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Infinite scroll — load more when sentinel visible
+  useEffect(() => {
+    if (!isOpen) return;
+    setDaysShown(DAYS_PER_PAGE);
+    setActiveDate(filteredDays[0]?.date ?? null);
+    scrollContainerRef.current?.scrollTo({ top: 0 });
+  }, [filter, filteredDays, isOpen]);
+
+  // Infinite scroll: load more when sentinel visible.
   useEffect(() => {
     if (!isOpen || !hasMore) return;
     const sentinel = sentinelRef.current;
@@ -65,7 +194,7 @@ export function ChangelogModal() {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          setDaysShown((n) => Math.min(n + DAYS_PER_PAGE, changelog.length));
+          setDaysShown((n) => Math.min(n + DAYS_PER_PAGE, filteredDays.length));
         }
       },
       { root: scrollContainerRef.current, threshold: 0.1 },
@@ -73,54 +202,54 @@ export function ChangelogModal() {
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [isOpen, hasMore, daysShown]);
+  }, [filteredDays.length, hasMore, isOpen]);
 
-  // Track which day section is in view for sidebar highlight
+  // Track closest day marker for sidebar highlight.
   useEffect(() => {
     if (!isOpen) return;
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // Find the topmost intersecting entry
-        let topEntry: IntersectionObserverEntry | null = null;
-        for (const entry of entries) {
-          if (
-            entry.isIntersecting &&
-            (!topEntry ||
-              entry.boundingClientRect.top < topEntry.boundingClientRect.top)
-          ) {
-            topEntry = entry;
-          }
-        }
-        if (topEntry) {
-          const date = topEntry.target.getAttribute('data-date');
-          if (date) setActiveDate(date);
-        }
-      },
-      { root: container, threshold: 0.3 },
-    );
+    const handleScroll = () => {
+      const containerTop = container.getBoundingClientRect().top;
+      let bestDate = visibleDays[0]?.date ?? null;
+      let bestDistance = Number.POSITIVE_INFINITY;
 
-    for (const el of dayRefs.current.values()) {
-      observer.observe(el);
-    }
+      for (const day of visibleDays) {
+        const el = dayRefs.current.get(day.date);
+        if (!el) continue;
+        const top = el.getBoundingClientRect().top - containerTop;
+        const distance = Math.abs(top - 40);
+        if (top <= 72 && distance < bestDistance) {
+          bestDate = day.date;
+          bestDistance = distance;
+        }
+      }
 
-    return () => observer.disconnect();
-  }, [isOpen, visibleDays]); // re-register when new days loaded
+      setActiveDate(bestDate);
+    };
+
+    handleScroll();
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [isOpen, visibleDays]);
 
   const handleClose = () => {
     close();
     markSeen(changelogHash);
     setDaysShown(DAYS_PER_PAGE);
     setActiveDate(null);
+    setFilter('all');
   };
 
   const scrollToDate = useCallback((date: string) => {
     const el = dayRefs.current.get(date);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    const container = scrollContainerRef.current;
+    if (!el || !container) return;
+    container.scrollTo({
+      top: Math.max(0, el.offsetTop - 8),
+      behavior: 'smooth',
+    });
   }, []);
 
   const setDayRef = useCallback(
@@ -137,83 +266,151 @@ export function ChangelogModal() {
   if (!isOpen || changelog.length === 0) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Changelog" size="xl">
-      <div className="-m-4 flex" style={{ height: '68vh' }}>
-        {/* Sidebar — day list */}
-        <nav className="border-glass-border flex w-40 shrink-0 flex-col overflow-y-auto border-r py-2">
-          {changelog.map((day) => (
-            <button
-              key={day.date}
-              onClick={() => {
-                const idx = changelog.indexOf(day);
-                // Load enough days if clicking beyond visible range
-                if (idx >= daysShown) {
-                  setDaysShown(idx + DAYS_PER_PAGE);
-                  requestAnimationFrame(() => scrollToDate(day.date));
-                } else {
-                  scrollToDate(day.date);
-                }
-              }}
-              className={`px-3 py-1.5 text-left text-xs transition-colors ${
-                day.date === activeDate
-                  ? 'bg-glass-medium text-ink-0 font-medium'
-                  : 'text-ink-2 hover:bg-glass-light hover:text-ink-1'
-              }`}
-            >
-              {day.label}
-            </button>
-          ))}
-        </nav>
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      size="xl"
+      showHeader={false}
+      panelClassName="!max-w-[920px] overflow-hidden border border-white/[0.07] bg-[#1b1a22] shadow-[0_24px_80px_rgba(0,0,0,0.5)]"
+      contentClassName="min-h-0 overflow-hidden p-0"
+    >
+      <div className="flex h-[min(620px,78vh)] flex-col overflow-hidden">
+        <header className="border-glass-border flex items-center justify-between gap-3 border-b px-[18px] py-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+            <h2 className="text-ink-0 text-[13.5px] font-semibold">
+              Changelog
+            </h2>
+            <span className="text-ink-4 text-xs">·</span>
+            <FilterRow value={filter} counts={counts} onChange={setFilter} />
+          </div>
+          <button
+            type="button"
+            onClick={handleClose}
+            aria-label="Close dialog"
+            className="text-ink-2 hover:text-ink-0 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-white/[0.06]"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        </header>
 
-        {/* Content — scrollable entries */}
-        <div
-          ref={scrollContainerRef}
-          className="min-w-0 flex-1 overflow-y-auto p-4"
-        >
-          <div className="space-y-6">
-            {visibleDays.map((day) => (
-              <div
+        <div className="flex min-h-0 flex-1">
+          <nav className="border-glass-border hidden w-[168px] shrink-0 flex-col gap-px overflow-y-auto border-r px-3 py-3 sm:flex">
+            <div className="text-ink-4 px-2 pt-1 pb-2 text-[10px] font-semibold tracking-[0.1em] uppercase">
+              Releases
+            </div>
+            {filteredDays.map((day, index) => {
+              const active = day.date === activeDate;
+              return (
+                <button
+                  key={day.date}
+                  type="button"
+                  onClick={() => {
+                    if (index >= daysShown) {
+                      setDaysShown(index + DAYS_PER_PAGE);
+                      requestAnimationFrame(() => scrollToDate(day.date));
+                    } else {
+                      scrollToDate(day.date);
+                    }
+                  }}
+                  className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors ${
+                    active ? 'bg-white/[0.055]' : 'hover:bg-white/[0.035]'
+                  }`}
+                >
+                  <span
+                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                      index === 0
+                        ? 'bg-blue-300'
+                        : active
+                          ? 'bg-ink-1'
+                          : 'bg-ink-4'
+                    }`}
+                  />
+                  <span className="min-w-0">
+                    <span
+                      className={`block truncate text-xs ${
+                        active
+                          ? 'text-ink-0 font-semibold'
+                          : 'text-ink-1 font-medium'
+                      }`}
+                    >
+                      {formatShortDate(day.label)}
+                    </span>
+                    <span className="text-ink-4 block font-mono text-[10px]">
+                      {day.date}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div
+            ref={scrollContainerRef}
+            className="min-w-0 flex-1 overflow-y-auto px-[18px] pb-2"
+          >
+            {visibleDays.length === 0 && <EmptyState filter={filter} />}
+
+            {visibleDays.map((day, dayIndex) => (
+              <section
                 key={day.date}
                 ref={setDayRef(day.date)}
+                className="relative pl-7"
                 data-date={day.date}
               >
-                <h3 className="text-ink-2 mb-2 text-xs font-medium tracking-wider uppercase">
-                  {day.label}
-                </h3>
-                <ul className="space-y-2">
-                  {day.entries.map((entry, i) => (
-                    <li
-                      key={i}
-                      className="border-glass-border bg-glass-light rounded-xl border p-3"
-                    >
-                      <div className="flex items-start gap-2.5">
-                        <EntryIcon type={entry.type} />
-                        <div className="min-w-0 flex-1 space-y-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="border-glass-border bg-glass-medium text-ink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold tracking-[0.22em] uppercase shadow-sm">
-                              {formatScope(entry.scope)}
-                            </span>
-                          </div>
-                          <ul className="space-y-1">
-                            {entry.bullets.map((bullet, bulletIndex) => (
-                              <li
-                                key={`${entry.scope}-${entry.type}-${bulletIndex}`}
-                                className="text-ink-1 flex gap-2 text-sm leading-6"
-                              >
-                                <span className="text-ink-3 mt-0.5">-</span>
-                                <span>{bullet}</span>
-                              </li>
-                            ))}
-                          </ul>
+                <div
+                  className="absolute top-[22px] bottom-0 left-[7px] w-px"
+                  style={{
+                    backgroundImage:
+                      'linear-gradient(to bottom, rgb(255 255 255 / 0.1) 50%, transparent 0%)',
+                    backgroundRepeat: 'repeat-y',
+                    backgroundSize: '1px 6px',
+                  }}
+                />
+
+                <div className="sticky -top-px z-10 -mr-[18px] -ml-[46px] flex items-center bg-gradient-to-b from-[#1b1a22] from-75% to-[#1b1a22]/0 pt-[15px] pb-2 pl-[18px]">
+                  <div className="flex h-[15px] w-[15px] items-center justify-center rounded-full border border-white/15 bg-[#1b1a22]">
+                    <div
+                      className={`h-[5px] w-[5px] rounded-full ${
+                        dayIndex === 0 ? 'bg-blue-300' : 'bg-ink-3'
+                      }`}
+                    />
+                  </div>
+                  <div className="ml-3.5 flex min-w-0 flex-wrap items-baseline gap-2.5">
+                    <h3 className="text-ink-0 text-[13.5px] font-semibold">
+                      {day.label}
+                    </h3>
+                    <span className="border-glass-border text-ink-3 rounded bg-white/[0.04] px-1.5 py-0.5 font-mono text-[10.5px]">
+                      {day.date}
+                    </span>
+                    {dayIndex === 0 && (
+                      <span className="text-[10px] font-medium tracking-[0.06em] text-blue-200 uppercase">
+                        Latest
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-col pb-3">
+                  {day.entries.flatMap((entry) =>
+                    entry.bullets.map((bullet, bulletIndex) => (
+                      <div
+                        key={`${entry.scope}-${entry.type}-${bulletIndex}`}
+                        className="grid grid-cols-[20px_minmax(76px,110px)_1fr] items-start gap-x-3 border-t border-white/[0.03] py-1.5 first:border-t-0"
+                      >
+                        <TypeChip type={entry.type} />
+                        <div className="text-ink-3 pt-0.5 text-[11px] tracking-[0.06em] uppercase">
+                          {formatScope(entry.scope)}
+                        </div>
+                        <div className="text-ink-1 text-[12.5px] leading-5 text-pretty">
+                          {bullet}
                         </div>
                       </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                    )),
+                  )}
+                </div>
+              </section>
             ))}
 
-            {/* Infinite scroll sentinel */}
             {hasMore && <div ref={sentinelRef} className="h-4" aria-hidden />}
           </div>
         </div>
