@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronRight,
   Copy,
+  File,
   Loader2,
   PackageOpen,
 } from 'lucide-react';
@@ -14,6 +15,7 @@ import { codeToTokens, type ThemedToken } from 'shiki';
 
 import { formatNumber } from '@/lib/number';
 import { formatDuration } from '@/lib/time';
+import type { TodoItem } from '@shared/agent-types';
 import type {
   NormalizedEntry,
   NormalizedToolUse,
@@ -178,6 +180,48 @@ function formatToolResult(toolUse: NormalizedToolUse): string {
 }
 
 type EntryType = 'user' | 'tool' | 'text' | 'thinking' | 'result' | 'system';
+
+function TodoUpdateEntry({
+  oldTodos,
+  newTodos,
+}: {
+  oldTodos: TodoItem[];
+  newTodos: TodoItem[];
+}) {
+  return <TodoListEntry oldTodos={oldTodos} newTodos={newTodos} />;
+}
+
+function FileEditedEntry({
+  filePath,
+  onFilePathClick,
+}: {
+  filePath: string;
+  onFilePathClick?: (
+    filePath: string,
+    lineStart?: number,
+    lineEnd?: number,
+  ) => void;
+}) {
+  return (
+    <DotEntry
+      type="system"
+      summary={`Edited ${filePath}`}
+      persistentContent={
+        <button
+          type="button"
+          className="text-ink-2 hover:text-ink-1 mt-1 flex items-center gap-1 text-xs"
+          onClick={(e) => {
+            e.stopPropagation();
+            onFilePathClick?.(filePath);
+          }}
+        >
+          <File className="h-3 w-3 shrink-0" />
+          <span className="truncate">{filePath}</span>
+        </button>
+      }
+    />
+  );
+}
 
 // Single dot entry component
 function DotEntry({
@@ -1067,6 +1111,19 @@ export function TimelineEntry({
     case 'thinking':
       if (!entry.value.trim()) return null;
       return <ThinkingEntry text={entry.value} />;
+    case 'todo-update':
+      return (
+        <TodoUpdateEntry oldTodos={entry.oldTodos} newTodos={entry.newTodos} />
+      );
+    case 'file-edited':
+      return (
+        <FileEditedEntry
+          filePath={entry.filePath}
+          onFilePathClick={onFilePathClick}
+        />
+      );
+    case 'session-summary':
+      return null;
     case 'tool-use':
       // Sub-agent tool-use entries are rendered as SubagentEntry in message stream
       if (entry.name === 'sub-agent') return null;

@@ -47,6 +47,7 @@ import {
   type OpenCodeNormalizationContext,
   type OpenCodeRawInput,
 } from './normalize-opencode-message-v2';
+import { applyDeltaToMessageParts } from './opencode-message-delta';
 
 // --- Server lifecycle (singleton) ---
 
@@ -192,6 +193,10 @@ interface OpenCodeSessionState {
   /** Guards against double-close of dedicated servers */
   serverClosed: boolean;
 }
+
+type PromptResultEvent =
+  | { type: 'entries'; events: AgentEvent[] }
+  | { type: 'error'; error: string };
 
 export class OpenCodeBackend implements AgentBackend {
   private sessions = new Map<string, OpenCodeSessionState>();
@@ -623,7 +628,7 @@ export class OpenCodeBackend implements AgentBackend {
     // Send the initial prompt (fire and forget — events arrive via SSE)
     const model = this.parseModel(config.model);
 
-    const promptPromise = client.session
+    const promptPromise: Promise<PromptResultEvent | null> = client.session
       .prompt({
         sessionID: sessionId,
         directory: state.cwd,
@@ -643,7 +648,7 @@ export class OpenCodeBackend implements AgentBackend {
         ...(model ? { model } : {}),
         agent: this.getPrimaryAgentName(config.interactionMode),
       })
-      .then(async (result) => {
+      .then(async (result): Promise<PromptResultEvent | null> => {
         promptComplete = true;
 
         // Emit the final assistant message from prompt response using V2 normalizer
@@ -682,25 +687,30 @@ export class OpenCodeBackend implements AgentBackend {
             }
           }
 
-          // Return the first entry event as the prompt result
-          const entryEvent = normEvents.find(
-            (ne) => ne.type === 'entry' || ne.type === 'entry-update',
-          );
-          if (entryEvent && 'entry' in entryEvent) {
+          const promptEvents = normEvents.map((ne): AgentEvent => {
+            if (ne.type === 'entry') {
+              return {
+                ...ne,
+                rawMessageId,
+              };
+            }
+            return ne as AgentEvent;
+          });
+
+          if (promptEvents.length > 0) {
             return {
-              type: 'entry' as const,
-              entry: entryEvent.entry,
-              rawMessageId,
+              type: 'entries',
+              events: promptEvents,
             };
           }
         }
         return null;
       })
-      .catch((error) => {
+      .catch((error): PromptResultEvent => {
         promptComplete = true;
         dbg.agent('OpenCode prompt error: %O', error);
         return {
-          type: 'error' as const,
+          type: 'error',
           error: error instanceof Error ? error.message : String(error),
         };
       });
@@ -808,8 +818,13 @@ export class OpenCodeBackend implements AgentBackend {
     // Wait for the prompt response to complete
     const promptResult = await promptPromise;
     if (promptResult) {
-      if (promptResult.type === 'entry') {
-        yield promptResult as AgentEvent;
+      if (promptResult.type === 'entries') {
+        for (const event of promptResult.events) {
+          if (event.type === 'error') {
+            emittedError = true;
+          }
+          yield event;
+        }
       } else if (promptResult.type === 'error' && !emittedError) {
         emittedError = true;
         yield promptResult;
@@ -943,11 +958,23 @@ export class OpenCodeBackend implements AgentBackend {
         if (msgEntry) {
           const legacyIdx = msgEntry.parts.findIndex((p) => p.id === part.id);
           if (legacyIdx >= 0) {
-            msgEntry.parts[legacyIdx] = part;
+            msgEntry.parts[legacyIdx] = cloneOpenCodePart(part);
           } else {
-            msgEntry.parts.push(part);
+            msgEntry.parts.push(cloneOpenCodePart(part));
           }
         }
+        break;
+      }
+
+      case 'message.part.delta': {
+        const props = event.properties as {
+          messageID: string;
+          partID: string;
+          field: string;
+          delta: unknown;
+        };
+
+        applyDeltaToMessageParts(ctx.rawParts.get(props.messageID), props);
         break;
       }
 
@@ -1078,4 +1105,8 @@ export class OpenCodeBackend implements AgentBackend {
       return null;
     }
   }
+}
+
+function cloneOpenCodePart(part: OcPart): OcPart {
+  return structuredClone(part) as OcPart;
 }

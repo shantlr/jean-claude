@@ -26,6 +26,7 @@ import type {
   ToolStateError,
 } from '@opencode-ai/sdk/v2';
 
+import type { TodoItem } from '@shared/agent-types';
 import type {
   NormalizedEntry,
   NormalizedToolUse,
@@ -98,6 +99,11 @@ function normalizeEvent(
       return normalizePartUpdated(props.part, ctx);
     }
 
+    case 'message.part.delta': {
+      const props = event.properties as { messageID: string; partID: string };
+      return normalizePartDelta(props.messageID, props.partID, ctx);
+    }
+
     case 'message.removed': {
       // Message removal — no direct entry-level event for this in the flat model.
       // The backend handles cleanup of emittedEntryIds.
@@ -121,6 +127,31 @@ function normalizeEvent(
 
     case 'session.updated': {
       const props = event.properties as { info: OcSession };
+      const summary = props.info.summary;
+      if (
+        summary &&
+        typeof summary === 'object' &&
+        typeof summary.additions === 'number' &&
+        typeof summary.deletions === 'number' &&
+        typeof summary.files === 'number'
+      ) {
+        return [
+          {
+            type: 'entry',
+            entry: {
+              id: `session-summary:${props.info.id}:${props.info.time.updated}`,
+              date: toIsoDateFromOpenCodeTimestamp(props.info.time.updated),
+              type: 'session-summary',
+              title: props.info.title,
+              summary: {
+                additions: summary.additions,
+                deletions: summary.deletions,
+                files: summary.files,
+              },
+            },
+          },
+        ];
+      }
       return [{ type: 'session-updated', title: props.info.title }];
     }
 
@@ -198,12 +229,51 @@ function normalizeEvent(
       return [];
     }
 
+    case 'file.edited': {
+      const props = event.properties as { file?: unknown };
+      const filePath = str(props.file);
+      if (!filePath) return [];
+      return [
+        {
+          type: 'entry',
+          entry: {
+            id:
+              str((event as { id?: unknown }).id) ||
+              `file-edited:${filePath}:${ctx.emittedEntryIds.size}`,
+            date: new Date().toISOString(),
+            type: 'file-edited',
+            filePath,
+          },
+        },
+      ];
+    }
+
+    case 'todo.updated': {
+      const props = event.properties as { todos?: unknown };
+      const newTodos = Array.isArray(props.todos)
+        ? (props.todos as unknown[]).map(mapOpenCodeTodoItem)
+        : [];
+      return [
+        {
+          type: 'entry',
+          entry: {
+            id:
+              str((event as { id?: unknown }).id) ||
+              `todo-update:${newTodos.length}:${ctx.emittedEntryIds.size}`,
+            date: new Date().toISOString(),
+            type: 'todo-update',
+            oldTodos: [],
+            newTodos,
+          },
+        },
+      ];
+    }
+
     // --- Events with no normalised representation ---
     //
     // permission.replied:       Response confirmation — backend manages the resolve lifecycle.
     // session.created/deleted:  Session lifecycle — session ID is known from create() call.
-    // file.edited / file.watcher.updated: File system changes. Informational only.
-    // todo.updated:             Todo list changes. Could be a separate UI component.
+    // file.watcher.updated:    File system changes. Informational only.
     // vcs.branch.updated:       Git branch changes. Informational.
     // lsp.updated / lsp.client.diagnostics: Language server events. Internal.
     // server.instance.disposed / server.connected: Server lifecycle.
@@ -244,6 +314,18 @@ function normalizePartUpdated(
   return buildEntries(info, parts, ctx);
 }
 
+function normalizePartDelta(
+  messageId: string,
+  _partId: string,
+  ctx: OpenCodeNormalizationContext,
+): NormalizationEvent[] {
+  const info = ctx.rawMessages.get(messageId);
+  if (!info) return [];
+
+  const parts = ctx.rawParts.get(messageId) ?? [];
+  return buildEntries(info, parts, ctx);
+}
+
 // --- session.compacted ---
 
 function normalizeCompacted(
@@ -259,7 +341,7 @@ function normalizeCompacted(
         id,
         date: new Date().toISOString(),
         type: 'system-status',
-        status: null,
+        status: 'compacting',
       },
     },
   ];
@@ -687,7 +769,8 @@ function mapOpenCodeTool(
     case 'apply_patch': {
       // Prefer structured metadata (available on completed/running states)
       // over parsing raw patchText content
-      const file = extractFirstPatchFile(metadata);
+      const files = extractPatchFiles(metadata);
+      const file = files[0] ?? null;
       if (file) {
         if (file.type === 'add') {
           return {
@@ -695,6 +778,7 @@ function mapOpenCodeTool(
             input: {
               filePath: file.filePath,
               value: file.after ?? '',
+              files,
             },
           };
         }
@@ -704,6 +788,7 @@ function mapOpenCodeTool(
             filePath: file.filePath,
             oldString: file.before ?? '',
             newString: file.after ?? '',
+            files,
           },
         };
       }
@@ -720,12 +805,23 @@ function mapOpenCodeTool(
       if (operation === 'add') {
         return {
           name: 'write',
-          input: { filePath, value: '' },
+          input: {
+            filePath,
+            value: '',
+            files: [{ filePath, type: 'add' }],
+          },
         };
       }
       return {
         name: 'edit',
-        input: { filePath, oldString: '', newString: '' },
+        input: {
+          filePath,
+          oldString: '',
+          newString: '',
+          files: [
+            { filePath, type: operation === 'delete' ? 'delete' : 'update' },
+          ],
+        },
       };
     }
 
@@ -904,59 +1000,82 @@ function strOrUndefined(value: unknown): string | undefined {
 }
 
 /**
- * Extract the first file entry from apply_patch metadata.
+ * Extract all file entries from apply_patch metadata.
  *
  * The metadata.files array (provided by OpenCode on completed tool state) contains
  * structured file info: filePath, type (add/update/delete), before, after, diff.
  * This is much more reliable than parsing the raw patchText content.
  */
-function extractFirstPatchFile(
+function extractPatchFiles(
   metadata: Record<string, unknown> | undefined,
-): { filePath: string; type: string; before?: string; after?: string } | null {
-  if (!metadata) return null;
+): Array<{
+  filePath: string;
+  type: 'add' | 'update' | 'delete';
+  patch?: string;
+  additions?: number;
+  deletions?: number;
+  before?: string;
+  after?: string;
+}> {
+  if (!metadata) return [];
 
   const files = metadata.files;
-  if (!Array.isArray(files) || files.length === 0) return null;
+  if (!Array.isArray(files) || files.length === 0) return [];
 
-  const first = files[0] as Record<string, unknown>;
-  const filePath = str(first.filePath ?? first.relativePath);
-  if (!filePath) return null;
-
-  return {
-    filePath,
-    type: str(first.type ?? 'update'),
-    before: first.before != null ? str(first.before) : undefined,
-    after: first.after != null ? str(first.after) : undefined,
-  };
+  return files
+    .map((file) => {
+      const entry = file as Record<string, unknown>;
+      const filePath = str(entry.filePath ?? entry.relativePath);
+      if (!filePath) return null;
+      const rawType = str(entry.type ?? 'update');
+      const type: 'add' | 'update' | 'delete' =
+        rawType === 'add' || rawType === 'delete' ? rawType : 'update';
+      return {
+        filePath,
+        type,
+        patch: entry.patch != null ? str(entry.patch) : undefined,
+        additions:
+          typeof entry.additions === 'number' ? entry.additions : undefined,
+        deletions:
+          typeof entry.deletions === 'number' ? entry.deletions : undefined,
+        before: entry.before != null ? str(entry.before) : undefined,
+        after: entry.after != null ? str(entry.after) : undefined,
+      };
+    })
+    .filter((file) => file !== null);
 }
 
 type TodoStatus = 'pending' | 'in_progress' | 'completed';
 
 function mapOpenCodeTodoItem(item: unknown): {
   content: string;
+  description?: string;
   status: TodoStatus;
+  activeForm: string;
 } {
   const obj = item as Record<string, unknown>;
   const status = String(obj.status ?? 'pending');
   return {
     content: str(obj.content),
+    description: strOrUndefined(obj.description),
     status: (status === 'in_progress' || status === 'completed'
       ? status
       : 'pending') as TodoStatus,
+    activeForm: '',
   };
 }
 
 function extractOpenCodeTodos(
   input: Record<string, unknown>,
-): Array<{ content: string; status: TodoStatus }> | undefined {
+): TodoItem[] | undefined {
   const todos = input.todos;
   if (!Array.isArray(todos)) return undefined;
   return (todos as unknown[]).map(mapOpenCodeTodoItem);
 }
 
 function extractOpenCodeTodoResult(state: ToolStateCompleted): {
-  oldTodos: Array<{ content: string; status: TodoStatus }>;
-  newTodos: Array<{ content: string; status: TodoStatus }>;
+  oldTodos: TodoItem[];
+  newTodos: TodoItem[];
 } {
   // OpenCode doesn't provide oldTodos — only the new state
   const metadata = state.metadata as Record<string, unknown> | undefined;

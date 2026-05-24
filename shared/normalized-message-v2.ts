@@ -1,3 +1,5 @@
+import type { TodoItem } from './agent-types';
+import type { InteractionMode } from './types';
 export type NormalizedEntry = {
   id: string;
   date: string;
@@ -10,6 +12,13 @@ export type NormalizedEntryBody =
   | { type: 'user-prompt'; value: string; isSDKSynthetic?: boolean }
   | { type: 'assistant-message'; value: string }
   | { type: 'thinking'; value: string }
+  | { type: 'todo-update'; oldTodos: TodoItem[]; newTodos: TodoItem[] }
+  | { type: 'file-edited'; filePath: string }
+  | {
+      type: 'session-summary';
+      title?: string;
+      summary: { additions: number; deletions: number; files: number };
+    }
   | { type: 'system-status'; status: 'compacting' | null }
   | {
       type: 'result';
@@ -97,6 +106,15 @@ export type NormalizedToolUse = {
       input: {
         filePath: string;
         value: string;
+        files?: {
+          filePath: string;
+          type: 'add' | 'update' | 'delete';
+          patch?: string;
+          additions?: number;
+          deletions?: number;
+          before?: string;
+          after?: string;
+        }[];
       };
       result?: {
         success: boolean;
@@ -105,23 +123,11 @@ export type NormalizedToolUse = {
   | {
       name: 'todo-write';
       input: {
-        todos?: {
-          content: string;
-          description?: string;
-          status: 'pending' | 'in_progress' | 'completed';
-        }[];
+        todos?: TodoItem[];
       };
       result?: {
-        oldTodos: {
-          content: string;
-          description?: string;
-          status: 'pending' | 'in_progress' | 'completed';
-        }[];
-        newTodos: {
-          content: string;
-          description?: string;
-          status: 'pending' | 'in_progress' | 'completed';
-        }[];
+        oldTodos: TodoItem[];
+        newTodos: TodoItem[];
       };
     }
   | {
@@ -141,6 +147,15 @@ export type NormalizedToolUse = {
         filePath: string;
         oldString: string;
         newString: string;
+        files?: {
+          filePath: string;
+          type: 'add' | 'update' | 'delete';
+          patch?: string;
+          additions?: number;
+          deletions?: number;
+          before?: string;
+          after?: string;
+        }[];
       };
       result?: {
         changes: {
@@ -259,7 +274,5 @@ export type NormalizationEvent =
   | { type: 'complete'; result: NormalizedResult }
   | { type: 'error'; error: string }
   | { type: 'rate-limit'; retryAfterMs?: number; message?: string };
-
-import type { InteractionMode } from './types';
 
 export const CURRENT_NORMALIZATION_VERSION = 3;

@@ -23,6 +23,7 @@ export interface CompactMetadata {
 
 export interface TodoItem {
   content: string;
+  description?: string;
   status: 'pending' | 'in_progress' | 'completed';
   activeForm: string;
 }

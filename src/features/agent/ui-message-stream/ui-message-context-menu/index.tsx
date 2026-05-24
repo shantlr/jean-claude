@@ -149,6 +149,14 @@ function getEntryText(entry: NormalizedEntry): string | null {
       return entry.value;
     case 'assistant-message':
       return entry.value;
+    case 'todo-update':
+      return entry.newTodos
+        .map((todo) => `[${todo.status}] ${todo.content}`)
+        .join('\n');
+    case 'file-edited':
+      return entry.filePath;
+    case 'session-summary':
+      return `${entry.title ?? 'Session'}: ${entry.summary.files} files, +${entry.summary.additions}, -${entry.summary.deletions}`;
     default:
       return null;
   }

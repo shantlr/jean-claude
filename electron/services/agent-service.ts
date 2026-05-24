@@ -188,6 +188,7 @@ interface ActiveSession {
     permissionRequest?: NormalizedPermissionRequest;
     questionRequest?: NormalizedQuestionRequest;
   }>;
+  hasTerminalError: boolean;
 }
 
 class AgentService {
@@ -238,6 +239,17 @@ class AgentService {
         stepId,
         ...event,
       });
+    }
+  }
+
+  private async markTaskUnreadIfBackground(taskId: string): Promise<void> {
+    const isFocused =
+      this.isMainWindowAlive() &&
+      this.mainWindow!.isFocused() &&
+      this.focusedTaskId === taskId;
+
+    if (!isFocused) {
+      await TaskRepository.setHasUnread(taskId, true);
     }
   }
 
@@ -470,6 +482,7 @@ class AgentService {
       queuedPrompts: [],
       abortController: new AbortController(),
       pendingRequests: [],
+      hasTerminalError: false,
     };
 
     this.sessions.set(stepId, session);
@@ -775,6 +788,14 @@ class AgentService {
           session.queuedPrompts.length,
         );
 
+        if (result.isError && session.hasTerminalError) {
+          dbg.agentSession(
+            'Skipping duplicate errored completion for step %s after terminal error',
+            stepId,
+          );
+          break;
+        }
+
         // Sync session-allowed tools back to the task
         if (
           session.backend.getSessionAllowedTools &&
@@ -830,17 +851,23 @@ class AgentService {
           autoStartStepIds = await StepService.completeStep(stepId);
         }
 
+        await this.persistAndEmitSyntheticEntry(taskId, session, {
+          id: nanoid(),
+          date: new Date().toISOString(),
+          isSynthetic: true,
+          type: 'result',
+          value: result.text,
+          isError: result.isError,
+          durationMs: result.durationMs,
+          cost: result.cost?.costUsd,
+          usage: result.usage,
+        });
+
         const status = result.isError ? 'errored' : 'completed';
 
         // Mark as unread BEFORE emitting the status event so the feed
         // re-fetch (triggered by the event) reads the updated value.
-        const isFocused =
-          this.isMainWindowAlive() &&
-          this.mainWindow!.isFocused() &&
-          this.focusedTaskId === taskId;
-        if (!isFocused) {
-          await TaskRepository.setHasUnread(taskId, true);
-        }
+        await this.markTaskUnreadIfBackground(taskId);
 
         this.emitEvent(taskId, stepId, { type: 'status', status });
 
@@ -872,6 +899,7 @@ class AgentService {
 
       case 'error': {
         dbg.agent('Backend error for step %s: %s', stepId, event.error);
+        session.hasTerminalError = true;
 
         // Emit a synthetic error entry so the user sees the error in the timeline
         await this.persistAndEmitSyntheticEntry(taskId, session, {
@@ -884,6 +912,7 @@ class AgentService {
         });
 
         await StepService.errorStep(stepId);
+        await this.markTaskUnreadIfBackground(taskId);
         this.emitEvent(taskId, stepId, {
           type: 'status',
           status: 'errored',
@@ -910,14 +939,14 @@ class AgentService {
           event.retryAfterMs,
         );
 
-        // Emit a synthetic error entry so the user sees the rate-limit in the timeline
+        // Emit a non-terminal assistant entry so the user sees the retry state
+        // without closing the current prompt group.
         await this.persistAndEmitSyntheticEntry(taskId, session, {
           id: nanoid(),
           date: new Date().toISOString(),
           isSynthetic: true,
-          type: 'result',
+          type: 'assistant-message',
           value: message,
-          isError: true,
         });
         break;
       }

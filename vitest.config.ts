@@ -14,7 +14,7 @@ export default defineConfig({
     include: [
       'shared/**/*.test.ts',
       'electron/**/*.test.ts',
-      'src/**/*.test.ts',
+      'src/features/agent/ui-message-stream/**/*.test.ts',
     ],
     setupFiles: ['./vitest.setup.ts'],
   },

@@ -26,6 +26,8 @@ interface FileChange {
   oldContent: string;
   /** Concatenated new strings (edit) or full content (write) */
   newContent: string;
+  rawPatch?: string;
+  hasStructuredDiff: boolean;
 }
 
 function relativizePath(
@@ -46,7 +48,12 @@ function extractFileChanges(
 ): FileChange[] {
   const fileMap = new Map<
     string,
-    { edits: Array<{ old: string; new: string }>; status: DiffFileStatus }
+    {
+      edits: Array<{ old: string; new: string }>;
+      status: DiffFileStatus;
+      rawPatches: string[];
+      hasStructuredDiff: boolean;
+    }
   >();
 
   function processEntries(entries: NormalizedEntry[]) {
@@ -55,29 +62,84 @@ function extractFileChanges(
 
       if (entry.name === 'edit') {
         const e = entry as ToolUseByName<'edit'>;
-        const existing = fileMap.get(e.input.filePath);
-        if (existing) {
-          existing.edits.push({
-            old: e.input.oldString,
-            new: e.input.newString,
-          });
-        } else {
-          fileMap.set(e.input.filePath, {
-            edits: [{ old: e.input.oldString, new: e.input.newString }],
-            status: 'modified',
-          });
+        const files = e.input.files ?? [
+          {
+            filePath: e.input.filePath,
+            type: 'update' as const,
+            before: e.input.oldString,
+            after: e.input.newString,
+          },
+        ];
+        for (const file of files) {
+          const existing = fileMap.get(file.filePath);
+          const status: DiffFileStatus =
+            file.type === 'add'
+              ? 'added'
+              : file.type === 'delete'
+                ? 'deleted'
+                : 'modified';
+          const hasStructuredDiff =
+            file.before !== undefined || file.after !== undefined;
+          const oldContent = file.before ?? '';
+          const newContent = file.after ?? '';
+          if (existing) {
+            if (hasStructuredDiff) {
+              existing.edits.push({ old: oldContent, new: newContent });
+            }
+            existing.status = status;
+            if (file.patch) existing.rawPatches.push(file.patch);
+            existing.hasStructuredDiff =
+              existing.hasStructuredDiff || hasStructuredDiff;
+          } else {
+            fileMap.set(file.filePath, {
+              edits: hasStructuredDiff
+                ? [{ old: oldContent, new: newContent }]
+                : [],
+              status,
+              rawPatches: file.patch ? [file.patch] : [],
+              hasStructuredDiff,
+            });
+          }
         }
       } else if (entry.name === 'write') {
         const w = entry as ToolUseByName<'write'>;
-        const existing = fileMap.get(w.input.filePath);
-        if (existing) {
-          // Write after edit = full rewrite, keep status as modified
-          existing.edits = [{ old: '', new: w.input.value }];
-        } else {
-          fileMap.set(w.input.filePath, {
-            edits: [{ old: '', new: w.input.value }],
-            status: 'added',
-          });
+        const files = w.input.files ?? [
+          {
+            filePath: w.input.filePath,
+            type: 'add' as const,
+            after: w.input.value,
+          },
+        ];
+        for (const file of files) {
+          const existing = fileMap.get(file.filePath);
+          const status: DiffFileStatus =
+            file.type === 'delete'
+              ? 'deleted'
+              : file.type === 'update'
+                ? 'modified'
+                : 'added';
+          const hasStructuredDiff =
+            file.before !== undefined || file.after !== undefined;
+          const oldContent = file.before ?? '';
+          const newContent = file.after ?? '';
+          if (existing) {
+            if (hasStructuredDiff) {
+              existing.edits = [{ old: oldContent, new: newContent }];
+            }
+            existing.status = status;
+            if (file.patch) existing.rawPatches.push(file.patch);
+            existing.hasStructuredDiff =
+              existing.hasStructuredDiff || hasStructuredDiff;
+          } else {
+            fileMap.set(file.filePath, {
+              edits: hasStructuredDiff
+                ? [{ old: oldContent, new: newContent }]
+                : [],
+              status,
+              rawPatches: file.patch ? [file.patch] : [],
+              hasStructuredDiff,
+            });
+          }
         }
       }
     }
@@ -94,6 +156,7 @@ function extractFileChanges(
     const separator = '\n⋯\n';
     const oldContent = data.edits.map((e) => e.old).join(separator);
     const newContent = data.edits.map((e) => e.new).join(separator);
+    const rawPatch = data.rawPatches.join(`\n${separator}\n`);
     const { displayPath, external } = relativizePath(path, rootPath);
     changes.push({
       path,
@@ -102,6 +165,8 @@ function extractFileChanges(
       external,
       oldContent,
       newContent,
+      rawPatch: rawPatch || undefined,
+      hasStructuredDiff: data.hasStructuredDiff,
     });
   }
 
@@ -204,12 +269,24 @@ export function PromptGroupDiffModal({
         {/* Diff content */}
         <div className="min-w-0 flex-1 overflow-hidden">
           {selectedChange ? (
-            <DiffView
-              filePath={selectedChange.displayPath}
-              oldString={selectedChange.oldContent}
-              newString={selectedChange.newContent}
-              withMinimap
-            />
+            selectedChange.hasStructuredDiff ? (
+              <DiffView
+                filePath={selectedChange.displayPath}
+                oldString={selectedChange.oldContent}
+                newString={selectedChange.newContent}
+                withMinimap
+              />
+            ) : selectedChange.rawPatch ? (
+              <div className="h-full overflow-auto p-4">
+                <pre className="text-ink-1 overflow-auto rounded bg-black/30 p-3 font-mono text-xs whitespace-pre-wrap">
+                  {selectedChange.rawPatch}
+                </pre>
+              </div>
+            ) : (
+              <div className="text-ink-3 flex h-full items-center justify-center text-sm">
+                No structured diff available for this file
+              </div>
+            )
           ) : (
             <div className="text-ink-3 flex h-full items-center justify-center text-sm">
               Select a file to view changes

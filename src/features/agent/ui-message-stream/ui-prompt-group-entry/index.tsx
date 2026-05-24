@@ -215,6 +215,13 @@ function getRunningActivity(childMessages: DisplayMessage[]): {
   return { subagents, runningTools, todos, isCompacting, latestMessage };
 }
 
+function parseDateMs(date: string | undefined): number | null {
+  if (!date) return null;
+
+  const ms = Date.parse(ensureUtc(date));
+  return Number.isNaN(ms) ? null : ms;
+}
+
 function getLastAssistantMessage(
   childMessages: DisplayMessage[],
 ): { text: string; entryId: string } | null {
@@ -230,13 +237,6 @@ function getLastAssistantMessage(
   }
 
   return null;
-}
-
-function parseDateMs(date: string | undefined): number | null {
-  if (!date) return null;
-
-  const ms = Date.parse(ensureUtc(date));
-  return Number.isNaN(ms) ? null : ms;
 }
 
 function getRunningStartDate({
@@ -761,17 +761,7 @@ export function PromptGroupEntry({
   // Result summary
   const resultSummary = useMemo(() => {
     if (!group.resultEntry) {
-      if (group.status !== 'completed') return null;
-
-      const lastMsg = getLastAssistantMessage(group.childMessages);
-      if (!lastMsg) return null;
-
-      return {
-        isError: false,
-        stats: null,
-        text: lastMsg.text,
-        entryId: lastMsg.entryId,
-      };
+      return null;
     }
 
     const entry = group.resultEntry;
@@ -788,13 +778,18 @@ export function PromptGroupEntry({
       (entry.usage?.inputTokens ?? 0) + (entry.usage?.outputTokens ?? 0),
     );
     const durationMs = group.durationMs ?? entry.durationMs ?? 0;
+    const fallbackAssistantMessage =
+      !entry.value || !entry.value.trim()
+        ? getLastAssistantMessage(group.childMessages)
+        : null;
     return {
       isError: false,
       stats: `${tokens} tok · ${formatDuration(durationMs)} · $${cost}`,
-      text: entry.value || null,
-      entryId: entry.id,
+      text: entry.value || fallbackAssistantMessage?.text || null,
+      entryId: fallbackAssistantMessage?.entryId ?? entry.id,
+      isAssistantFallback: fallbackAssistantMessage !== null,
     };
-  }, [group.childMessages, group.durationMs, group.resultEntry, group.status]);
+  }, [group.childMessages, group.durationMs, group.resultEntry]);
 
   const completedDurationLabel = useMemo(() => {
     if (showRunningHeader) return null;
@@ -879,15 +874,54 @@ export function PromptGroupEntry({
         if (entry.type !== 'tool-use') continue;
         if (entry.name === 'edit') {
           const e = entry as ToolUseByName<'edit'>;
-          files.add(e.input.filePath);
-          const oldLines = countLines(e.input.oldString);
-          const newLines = countLines(e.input.newString);
-          if (newLines > oldLines) added += newLines - oldLines;
-          else removed += oldLines - newLines;
+          const editFiles = e.input.files ?? [
+            {
+              filePath: e.input.filePath,
+              type: 'update' as const,
+              before: e.input.oldString,
+              after: e.input.newString,
+              additions: undefined,
+              deletions: undefined,
+            },
+          ];
+          for (const file of editFiles) {
+            files.add(file.filePath);
+            if (
+              typeof file.additions === 'number' ||
+              typeof file.deletions === 'number'
+            ) {
+              added += file.additions ?? 0;
+              removed += file.deletions ?? 0;
+              continue;
+            }
+            const oldLines = countLines(file.before ?? e.input.oldString);
+            const newLines = countLines(file.after ?? e.input.newString);
+            if (newLines > oldLines) added += newLines - oldLines;
+            else removed += oldLines - newLines;
+          }
         } else if (entry.name === 'write') {
           const w = entry as ToolUseByName<'write'>;
-          files.add(w.input.filePath);
-          added += countLines(w.input.value);
+          const writeFiles = w.input.files ?? [
+            {
+              filePath: w.input.filePath,
+              type: 'add' as const,
+              after: w.input.value,
+              additions: undefined,
+              deletions: undefined,
+            },
+          ];
+          for (const file of writeFiles) {
+            files.add(file.filePath);
+            if (
+              typeof file.additions === 'number' ||
+              typeof file.deletions === 'number'
+            ) {
+              added += file.additions ?? 0;
+              removed += file.deletions ?? 0;
+              continue;
+            }
+            added += countLines(file.after ?? w.input.value);
+          }
         }
       }
     }
@@ -1093,7 +1127,11 @@ export function PromptGroupEntry({
                     }
                   >
                     <ResultBlock
-                      resultText={resultSummary?.text ?? null}
+                      resultText={
+                        resultSummary?.isAssistantFallback
+                          ? null
+                          : (resultSummary?.text ?? null)
+                      }
                       stats={resultSummary?.stats ?? null}
                       isError={resultSummary?.isError ?? false}
                       onFilePathClick={onFilePathClick}

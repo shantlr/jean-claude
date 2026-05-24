@@ -21,10 +21,16 @@ function formatInput(toolUse: NormalizedToolUse): string {
       return (toolUse as ToolUseByName<'read'>).input.filePath;
     case 'write': {
       const t = toolUse as ToolUseByName<'write'>;
+      if (t.input.files && t.input.files.length > 1) {
+        return t.input.files.map((file) => file.filePath).join('\n');
+      }
       return `${t.input.filePath}\n${t.input.value}`;
     }
     case 'edit': {
       const t = toolUse as ToolUseByName<'edit'>;
+      if (t.input.files && t.input.files.length > 1) {
+        return t.input.files.map((file) => file.filePath).join('\n');
+      }
       return `${t.input.filePath}\n-${t.input.oldString}\n+${t.input.newString}`;
     }
     case 'grep':
