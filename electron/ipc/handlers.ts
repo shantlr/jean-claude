@@ -345,6 +345,7 @@ async function activateAssociatedWorkItems(params: {
 
 export function registerIpcHandlers() {
   dbg.ipc('Registering IPC handlers');
+  let previewReloadInProgress = false;
 
   ipcMain.handle('windowState:getIsFullscreen', (event) => {
     const currentWindow = BrowserWindow.fromWebContents(event.sender);
@@ -4056,14 +4057,49 @@ export function registerIpcHandlers() {
     return !!process.env.JC_PREVIEW;
   });
 
-  ipcMain.handle('app:reloadPreview', () => {
+  ipcMain.handle('app:reloadPreview', async () => {
+    if (previewReloadInProgress) {
+      return;
+    }
+
+    previewReloadInProgress = true;
     const projectRoot = app.getAppPath();
     dbg.ipc(
-      'app:reloadPreview — spawning pnpm install && pnpm preview in %s',
+      'app:reloadPreview — running pnpm install && pnpm build in %s',
       projectRoot,
     );
 
-    const child = spawn('pnpm install && pnpm preview', [], {
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn('pnpm install && pnpm build', [], {
+        cwd: projectRoot,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        shell: true,
+      });
+
+      child.stdout?.on('data', (data: Buffer) => {
+        dbg.ipc('app:reloadPreview stdout: %s', data.toString().trim());
+      });
+      child.stderr?.on('data', (data: Buffer) => {
+        dbg.ipc('app:reloadPreview stderr: %s', data.toString().trim());
+      });
+
+      child.on('error', reject);
+      child.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+          return;
+        }
+
+        reject(new Error(`Reload preparation failed with exit code ${code}`));
+      });
+    }).catch((error) => {
+      previewReloadInProgress = false;
+      throw error;
+    });
+
+    dbg.ipc('app:reloadPreview — launching pnpm preview in %s', projectRoot);
+    app.releaseSingleInstanceLock();
+    const child = spawn('pnpm preview', [], {
       cwd: projectRoot,
       detached: true,
       stdio: 'ignore',
@@ -4071,7 +4107,6 @@ export function registerIpcHandlers() {
     });
     child.unref();
 
-    // Give the child process a moment to start, then exit
     setTimeout(() => {
       app.exit(0);
     }, 500);

@@ -42,6 +42,8 @@ export function Header() {
   const isMac = api.platform === 'darwin';
   const [isWindowFullscreen, setIsWindowFullscreen] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [isReloadingPreview, setIsReloadingPreview] = useState(false);
+  const [reloadError, setReloadError] = useState<string | null>(null);
   const { projectId } = useCurrentVisibleProject();
   const { data: projects = [] } = useProjects();
   const openOverlay = useOverlaysStore((state) => state.open);
@@ -199,7 +201,15 @@ export function Header() {
                     confirmLabel: 'Reload',
                     variant: 'danger',
                     onConfirm: () => {
-                      api.app.reloadPreview();
+                      setReloadError(null);
+                      setIsReloadingPreview(true);
+                      api.app.reloadPreview().catch((error) => {
+                        setReloadError(
+                          error instanceof Error
+                            ? error.message
+                            : 'Reload failed. Check logs for details.',
+                        );
+                      });
                     },
                   });
                 }}
@@ -246,6 +256,41 @@ export function Header() {
         <CompletionCostDisplay />
         <UsageDisplay />
       </div>
+
+      {isReloadingPreview && (
+        <div
+          className="bg-bg-0/95 fixed inset-0 z-[9999] flex items-center justify-center px-6 backdrop-blur-md"
+          style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
+        >
+          <div className="border-glass-border bg-bg-1/90 flex w-full max-w-md flex-col items-center rounded-3xl border px-8 py-10 text-center shadow-2xl shadow-black/50">
+            <div className="border-glass-border bg-bg-2 mb-6 rounded-full border p-4 shadow-inner">
+              <RefreshCw className="text-acc h-8 w-8 animate-spin" />
+            </div>
+            <h2 className="text-ink-1 text-lg font-semibold">
+              Preparing app reload
+            </h2>
+            <p className="text-ink-3 mt-3 text-sm leading-6">
+              Running pnpm install and rebuilding the preview. The window will
+              close only when the updated app is ready to launch.
+            </p>
+            {reloadError && (
+              <>
+                <p className="text-status-fail mt-5 text-sm">{reloadError}</p>
+                <Button
+                  className="mt-6"
+                  variant="secondary"
+                  onClick={() => {
+                    setIsReloadingPreview(false);
+                    setReloadError(null);
+                  }}
+                >
+                  Back to app
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 }
