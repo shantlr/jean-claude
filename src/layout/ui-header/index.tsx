@@ -17,7 +17,12 @@ import {
 import { useModal } from '@/common/context/modal';
 import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
-import { Dropdown, DropdownDivider, DropdownItem } from '@/common/ui/dropdown';
+import {
+  Dropdown,
+  DropdownDivider,
+  DropdownInfo,
+  DropdownItem,
+} from '@/common/ui/dropdown';
 import { Kbd } from '@/common/ui/kbd';
 import { useBacklogProjectId } from '@/hooks/use-backlog-project-id';
 import { useProjectTodoCount } from '@/hooks/use-project-todos';
@@ -43,6 +48,7 @@ export function Header() {
   const backlogProjectId = useBacklogProjectId();
   const { data: todoCount } = useProjectTodoCount(backlogProjectId);
   const modal = useModal();
+  const commitHash = import.meta.env.VITE_COMMIT_HASH;
 
   const runCommandRunning = useTaskMessagesStore((s) => s.runCommandRunning);
   const menuDropdownRef = useRef<{ toggle: () => void } | null>(null);
@@ -202,6 +208,8 @@ export function Header() {
               </DropdownItem>
             </>
           )}
+          <DropdownDivider />
+          <DropdownInfo label="Build" value={commitHash} />
         </Dropdown>
       </div>
 

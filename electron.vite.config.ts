@@ -1,3 +1,4 @@
+import { execSync } from 'child_process';
 import { resolve } from 'path';
 
 import tailwindcss from '@tailwindcss/vite';
@@ -5,6 +6,10 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import svgr from 'vite-plugin-svgr';
+
+const commitHash = execSync('git rev-parse --short HEAD', {
+  encoding: 'utf8',
+}).trim();
 
 export default defineConfig({
   main: {
@@ -43,6 +48,9 @@ export default defineConfig({
   },
   renderer: {
     root: '.',
+    define: {
+      'import.meta.env.VITE_COMMIT_HASH': JSON.stringify(commitHash),
+    },
     build: {
       rollupOptions: {
         input: {
