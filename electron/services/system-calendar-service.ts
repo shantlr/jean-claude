@@ -99,6 +99,7 @@ function parseSystemCalendarEvents(rawOutput: string): CalendarEventRecord[] {
     location?: string;
     calendarName?: string;
     notes?: string;
+    url?: string;
   }>;
 
   return parsed
@@ -118,6 +119,7 @@ function parseSystemCalendarEvents(rawOutput: string): CalendarEventRecord[] {
       location: event.location ?? '',
       calendarName: event.calendarName ?? '',
       notes: event.notes ?? '',
+      url: event.url ?? '',
     }));
 }
 
@@ -141,6 +143,7 @@ struct Meeting: Encodable {
   let location: String
   let calendarName: String
   let notes: String
+  let url: String
 }
 
 let store = EKEventStore()
@@ -205,7 +208,8 @@ let filteredEvents = events.compactMap { event -> Meeting? in
     startLabel: timeFormatter.string(from: event.startDate),
     location: event.location ?? "",
     calendarName: event.calendar.title,
-    notes: event.notes ?? ""
+    notes: event.notes ?? "",
+    url: event.url?.absoluteString ?? ""
   )
 }
 
@@ -262,11 +266,13 @@ function escapeAppleScriptString(value: string): string {
 }
 
 function buildSystemCalendarRevealScript({
+  externalId,
   calendarName,
   title,
   startAt,
   endAt,
 }: {
+  externalId: string;
   calendarName: string;
   title: string;
   startAt: string;
@@ -293,13 +299,31 @@ end formatForMachine
 tell application "Calendar"
   activate
   tell calendar "${escapeAppleScriptString(calendarName)}"
-    set matchingEvents to (every event whose summary is "${escapeAppleScriptString(title)}")
+    set targetUid to "${escapeAppleScriptString(externalId)}"
+    set targetTitle to "${escapeAppleScriptString(title)}"
+    set fallbackEvent to missing value
+    set matchingEvents to every event
     repeat with matchingEvent in matchingEvents
       if (my formatForMachine(start date of matchingEvent)) is "${escapeAppleScriptString(startAt)}" and (my formatForMachine(end date of matchingEvent)) is "${escapeAppleScriptString(endAt)}" then
-        show matchingEvent
-        return
+        set eventUid to uid of matchingEvent as string
+        if targetUid is not "" and eventUid is targetUid then
+          show matchingEvent
+          return
+        end if
+        set eventSummary to summary of matchingEvent as string
+        if eventSummary is targetTitle or eventSummary is in targetTitle or targetTitle is in eventSummary then
+          show matchingEvent
+          return
+        end if
+        if fallbackEvent is missing value then
+          set fallbackEvent to matchingEvent
+        end if
       end if
     end repeat
+    if fallbackEvent is not missing value then
+      show fallbackEvent
+      return
+    end if
     error "Could not find meeting in Calendar"
   end tell
 end tell
@@ -366,6 +390,7 @@ class SystemCalendarService {
         location: event.location,
         calendarName: event.calendarName,
         notes: event.notes,
+        url: event.url,
       }));
   }
 
@@ -375,6 +400,7 @@ class SystemCalendarService {
     }
 
     const script = buildSystemCalendarRevealScript({
+      externalId: meeting.externalId,
       calendarName: meeting.calendarName,
       title: meeting.title,
       startAt: meeting.startAt,

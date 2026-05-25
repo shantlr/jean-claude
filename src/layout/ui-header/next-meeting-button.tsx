@@ -4,7 +4,9 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  ExternalLink,
   MapPin,
+  Video,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -14,6 +16,29 @@ import { useCalendarNotificationsSetting } from '@/hooks/use-settings';
 import { api } from '@/lib/api';
 import { useToastStore } from '@/stores/toasts';
 import type { UpcomingMeeting } from '@shared/calendar-types';
+
+const TEAMS_URL_PATTERN =
+  /https?:\/\/(?:[^\s<>()"']+\.)?(?:teams\.microsoft\.com|teams\.live\.com|teams\.cloud\.microsoft)\/[^\s<>()"']+/gi;
+
+function extractTeamsUrl(meeting: UpcomingMeeting): string | null {
+  const haystack = [meeting.url, meeting.location, meeting.notes].join('\n');
+  const matches = haystack.matchAll(TEAMS_URL_PATTERN);
+
+  for (const match of matches) {
+    const rawUrl = match[0].replaceAll('&amp;', '&').replace(/[.,;:!?]+$/, '');
+
+    try {
+      const url = new URL(rawUrl);
+      if (url.protocol === 'https:' || url.protocol === 'http:') {
+        return url.toString();
+      }
+    } catch {
+      // Ignore malformed calendar text fragments.
+    }
+  }
+
+  return null;
+}
 
 function formatMeetingBadge(startAt: string): string {
   const date = new Date(startAt);
@@ -191,11 +216,14 @@ function MeetingRow({
 function MeetingDetailsPane({
   meeting,
   onOpen,
+  onOpenTeams,
 }: {
   meeting: UpcomingMeeting;
   onOpen: () => void;
+  onOpenTeams: (url: string) => void;
 }) {
   const status = getMeetingStatus(meeting);
+  const teamsUrl = extractTeamsUrl(meeting);
   const detailItems = [
     {
       label: 'Date',
@@ -269,9 +297,26 @@ function MeetingDetailsPane({
       </div>
 
       <div className="border-glass-border/70 bg-bg-2/95 shrink-0 border-t p-3">
-        <Button size="sm" variant="secondary" onClick={onOpen}>
-          Open in Calendar
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {teamsUrl && (
+            <Button
+              size="sm"
+              variant="primary"
+              icon={<Video />}
+              onClick={() => onOpenTeams(teamsUrl)}
+            >
+              Open Teams Call
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="secondary"
+            icon={<ExternalLink />}
+            onClick={onOpen}
+          >
+            Open in Calendar
+          </Button>
+        </div>
       </div>
     </aside>
   );
@@ -347,6 +392,7 @@ export function NextMeetingButton() {
   const nextMeetingStatus = nextMeeting ? getMeetingStatus(nextMeeting) : null;
   const selectedMeeting =
     meetings.find((meeting) => meeting.id === selectedMeetingId) ?? nextMeeting;
+
   const openMeeting = (meeting: UpcomingMeeting) => {
     void api.calendar.revealMeeting(meeting).catch((error) => {
       addToast({
@@ -357,6 +403,10 @@ export function NextMeetingButton() {
         type: 'error',
       });
     });
+  };
+
+  const openTeamsCall = (url: string) => {
+    window.open(url, '_blank');
   };
 
   return (
@@ -433,6 +483,7 @@ export function NextMeetingButton() {
             <MeetingDetailsPane
               meeting={selectedMeeting}
               onOpen={() => openMeeting(selectedMeeting)}
+              onOpenTeams={openTeamsCall}
             />
           )}
         </div>

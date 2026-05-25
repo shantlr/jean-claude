@@ -7,4 +7,5 @@ export interface UpcomingMeeting {
   location: string;
   calendarName: string;
   notes: string;
+  url: string;
 }

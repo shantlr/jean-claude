@@ -10,6 +10,7 @@ export interface CalendarEventRecord {
   location: string;
   calendarName: string;
   notes: string;
+  url: string;
 }
 
 export function parseCalendarEventRecords(
@@ -33,6 +34,7 @@ export function parseCalendarEventRecords(
         location = '',
         calendarName = '',
         notes = '',
+        url = '',
       ] = record.split(CALENDAR_FIELD_DELIMITER);
 
       return {
@@ -44,6 +46,7 @@ export function parseCalendarEventRecords(
         location,
         calendarName,
         notes,
+        url,
       };
     })
     .filter(

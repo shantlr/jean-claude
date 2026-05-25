@@ -10,7 +10,7 @@ import {
 describe('parseCalendarEventRecords', () => {
   it('parses delimited osascript output into calendar events', () => {
     const raw =
-      'evt-1\u001fDesign Review\u001f2026-05-23T10:00:00\u001f2026-05-23T10:30:00\u001f10:00 AM\u001fRoom A\u001fWork\u001fPrep notes' +
+      'evt-1\u001fDesign Review\u001f2026-05-23T10:00:00\u001f2026-05-23T10:30:00\u001f10:00 AM\u001fRoom A\u001fWork\u001fPrep notes\u001fhttps://teams.microsoft.com/l/meetup-join/abc' +
       '\u001e' +
       'evt-2\u001fStandup\u001f2026-05-23T11:00:00\u001f2026-05-23T11:15:00\u001f11:00 AM\u001f\u001fPersonal\u001f';
 
@@ -24,6 +24,7 @@ describe('parseCalendarEventRecords', () => {
         location: 'Room A',
         calendarName: 'Work',
         notes: 'Prep notes',
+        url: 'https://teams.microsoft.com/l/meetup-join/abc',
       },
       {
         externalId: 'evt-2',
@@ -34,6 +35,7 @@ describe('parseCalendarEventRecords', () => {
         location: '',
         calendarName: 'Personal',
         notes: '',
+        url: '',
       },
     ]);
   });
@@ -59,6 +61,7 @@ describe('parseCalendarEventRecords', () => {
         location: 'Zoom',
         calendarName: 'Work',
         notes: 'Agenda',
+        url: '',
       },
     ]);
   });
