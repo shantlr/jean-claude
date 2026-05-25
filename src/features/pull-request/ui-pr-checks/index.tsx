@@ -138,6 +138,28 @@ function getDisplayName(evaluation: EvaluationWithOptimistic) {
   );
 }
 
+function getNormalizedDisplayName(evaluation: EvaluationWithOptimistic) {
+  return getDisplayName(evaluation).trim().toLowerCase();
+}
+
+function getVisibleEvaluations(evaluations: EvaluationWithOptimistic[]) {
+  const hasRequiredReviewers = evaluations.some(
+    (evaluation) =>
+      getNormalizedDisplayName(evaluation) === 'required reviewers',
+  );
+
+  return evaluations.filter((evaluation) => {
+    const name = getNormalizedDisplayName(evaluation);
+
+    if (name === 'require a merge strategy') return false;
+    if (hasRequiredReviewers && name === 'minimum number of reviewers') {
+      return false;
+    }
+
+    return true;
+  });
+}
+
 function getSummary(evaluations: EvaluationWithOptimistic[]) {
   const required = evaluations.filter((e) => e.isBlocking);
   const passed = required.filter((e) => e.status === 'approved').length;
@@ -175,6 +197,11 @@ export function PrChecks({
   onExpandCheck?: (buildId: number | null) => void;
   renderExpanded?: (buildId: number) => ReactNode;
 }) {
+  const visibleEvaluations = useMemo(
+    () => getVisibleEvaluations(evaluations),
+    [evaluations],
+  );
+
   const sorted = useMemo(() => {
     const order: Record<EvalStatus, number> = {
       rejected: 0,
@@ -184,7 +211,7 @@ export function PrChecks({
       approved: 4,
       notApplicable: 5,
     };
-    return [...evaluations].sort((a, b) => {
+    return [...visibleEvaluations].sort((a, b) => {
       if (a.isBlocking !== b.isBlocking) return a.isBlocking ? -1 : 1;
       if (a._optimisticQueued !== b._optimisticQueued)
         return a._optimisticQueued ? -1 : 1;
@@ -193,13 +220,17 @@ export function PrChecks({
       if (aPending !== bPending) return aPending ? -1 : 1;
       return order[a.status] - order[b.status];
     });
-  }, [evaluations]);
+  }, [visibleEvaluations]);
 
-  const summary = useMemo(() => getSummary(evaluations), [evaluations]);
+  const summary = useMemo(
+    () => getSummary(visibleEvaluations),
+    [visibleEvaluations],
+  );
 
   const queueableIds = useMemo(
-    () => evaluations.filter((e) => canQueue(e)).map((e) => e.evaluationId),
-    [evaluations],
+    () =>
+      visibleEvaluations.filter((e) => canQueue(e)).map((e) => e.evaluationId),
+    [visibleEvaluations],
   );
 
   const handleQueueAll = useCallback(() => {
@@ -237,7 +268,7 @@ export function PrChecks({
     );
   }
 
-  if (evaluations.length === 0) {
+  if (visibleEvaluations.length === 0) {
     return null;
   }
 
@@ -246,7 +277,7 @@ export function PrChecks({
   return (
     <div className="border-glass-border bg-bg-1 overflow-hidden rounded-lg border">
       {/* Header */}
-      <div className="border-glass-border/50 flex items-center gap-2.5 border-b px-3.5 py-2.5">
+      <div className="border-glass-border/50 flex items-center gap-2 border-b px-3 py-2">
         {allPassed ? (
           <CheckCircle2 className="text-status-done h-4 w-4 shrink-0" />
         ) : summary.failed > 0 ? (
@@ -321,7 +352,7 @@ export function PrChecks({
             type="button"
             onClick={() => setShowPassed((v) => !v)}
             className={clsx(
-              'flex w-full items-center gap-2.5 border-t border-white/5 px-3.5 py-2 transition-colors',
+              'flex w-full items-center gap-2 border-t border-white/5 px-3 py-1.5 transition-colors',
               'text-ink-3 hover:bg-white/[0.03]',
             )}
           >
@@ -415,11 +446,11 @@ function CheckRow({
     <>
       <div
         className={clsx(
-          'flex items-center gap-3 px-3.5 py-2.5 transition-colors',
+          'flex items-center gap-2.5 px-3 py-1.5 transition-colors',
           hasBorderTop && 'border-t border-white/5',
           isClickable && 'cursor-pointer',
           isExpanded
-            ? 'bg-acc/8 border-l-acc border-l-2 pl-3'
+            ? 'bg-acc/8 border-l-acc border-l-2 pl-2.5'
             : isSelected
               ? 'bg-glass-medium'
               : isClickable && 'hover:bg-white/[0.03]',
