@@ -140,18 +140,18 @@ export function HandlebarsEditor({
               return { suggestions: [] };
             }
 
-            const word = model.getWordUntilPosition(position);
-            const range = {
-              startLineNumber: position.lineNumber,
-              endLineNumber: position.lineNumber,
-              startColumn: word.startColumn,
-              endColumn: word.endColumn,
-            };
-
             const afterBraces = textUntilPosition.slice(lastOpen + 2);
+            const expressionStartColumn =
+              lastOpen + 3 + afterBraces.search(/\S|$/);
             const isHelper =
               afterBraces.trimStart().startsWith('#') ||
               afterBraces.trimStart().startsWith('/');
+            const range = {
+              startLineNumber: position.lineNumber,
+              endLineNumber: position.lineNumber,
+              startColumn: expressionStartColumn,
+              endColumn: position.column,
+            };
 
             const suggestions: languages.CompletionItem[] = [];
 
@@ -286,7 +286,7 @@ export function HandlebarsEditor({
         }}
         options={{
           theme: 'handlebars-dark',
-          fixedOverflowWidgets: true,
+          fixedOverflowWidgets: false,
           minimap: { enabled: false },
           lineNumbers: 'off',
           glyphMargin: false,

@@ -425,7 +425,7 @@ export function SnippetDetail({
               }
             />
             <div
-              className="min-w-0 overflow-hidden rounded-[7px]"
+              className="min-w-0 overflow-visible rounded-[7px]"
               style={{
                 background: 'oklch(0 0 0 / 0.35)',
                 border: '1px solid oklch(1 0 0 / 0.08)',
