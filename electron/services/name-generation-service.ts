@@ -14,7 +14,7 @@ const TASK_NAME_MAX_LENGTH = 40;
 const TASK_NAME_SCHEMA = {
   type: 'object',
   properties: {
-    name: { type: 'string' },
+    name: { type: 'string', maxLength: TASK_NAME_MAX_LENGTH },
   },
   required: ['name'],
 } as const;
@@ -111,11 +111,34 @@ async function getBuiltinSkillPrompt(): Promise<string> {
 }
 
 function normalizeGeneratedTaskName(name: string): string {
-  return name
+  const unwrappedName = unwrapJsonTaskName(name);
+
+  return unwrappedName
     .trim()
     .replace(/^['"`]+|['"`]+$/g, '')
     .replace(/[.!?:;,]+$/g, '')
     .replace(/\s+/g, ' ')
     .slice(0, TASK_NAME_MAX_LENGTH)
     .trim();
+}
+
+function unwrapJsonTaskName(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed.startsWith('{')) return name;
+
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      'name' in parsed &&
+      typeof (parsed as { name: unknown }).name === 'string'
+    ) {
+      return (parsed as { name: string }).name;
+    }
+  } catch {
+    return name;
+  }
+
+  return name;
 }

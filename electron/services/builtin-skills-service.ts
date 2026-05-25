@@ -32,11 +32,12 @@ const BUILTIN_SKILLS: BuiltinSkillDefinition[] = [
     dirName: 'task-name-generation',
     name: 'task-name-generation',
     description: 'Generate concise task names from prompts',
-    content: `You are a task naming assistant. Given a coding task description, produce a caveman-short task name (≤40 characters) that captures the essence of the work.
+    content: `You are a task naming assistant. Given a coding task description, produce a caveman-short task name that captures the essence of the work.
 
 Rules:
-- MUST be ≤40 characters. This is a hard limit.
-- Return plain text only. No quotes.
+- The task name value MUST be ≤40 characters. This is a hard limit.
+- If asked for structured JSON, put only the task name in the "name" field. The JSON wrapper does not count toward the 40-character limit.
+- Otherwise return plain text only. No quotes.
 - Start with a lowercase verb (add, fix, refactor, update, remove, rename, switch, etc.)
 - Prefer 2-5 words when possible
 - Keep the strongest nouns only
