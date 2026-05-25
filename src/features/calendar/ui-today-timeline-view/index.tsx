@@ -34,14 +34,16 @@ export function TodayTimelineView({
   selectedId,
   onSelect,
   ignoredSet,
-  onToggleIgnore,
+  onReactivate,
+  onRequestIgnore,
 }: {
   meetings: UpcomingMeeting[];
   now: number;
   selectedId: string | null;
   onSelect: (id: string) => void;
   ignoredSet: Set<string>;
-  onToggleIgnore: (id: string) => void;
+  onReactivate: (id: string) => void;
+  onRequestIgnore: (meeting: UpcomingMeeting) => void;
 }) {
   const todayDate = new Date(now);
   const dayStart = startOfDay(todayDate);
@@ -215,7 +217,14 @@ export function TodayTimelineView({
           meeting={selected}
           now={now}
           isIgnored={selected ? ignoredSet.has(selected.id) : false}
-          onToggleIgnore={() => selected && onToggleIgnore(selected.id)}
+          onToggleIgnore={() => {
+            if (!selected) return;
+            if (ignoredSet.has(selected.id)) {
+              onReactivate(selected.id);
+            } else {
+              onRequestIgnore(selected);
+            }
+          }}
         />
       </div>
     </>

@@ -6,10 +6,12 @@ import {
   Eye,
   EyeOff,
   MapPin,
+  Repeat,
   Video,
 } from 'lucide-react';
 
 import { Button } from '@/common/ui/button';
+import { Kbd } from '@/common/ui/kbd';
 import { CountdownRing } from '@/features/calendar/ui-countdown-ring';
 import {
   extractTeamsUrl,
@@ -139,6 +141,15 @@ export function MeetingDetail({
           <Calendar className="text-ink-3 h-3 w-3" />
           {formatDayHeader(new Date(meeting.startAt))}
         </span>
+        {meeting.recurring && (
+          <>
+            <span className="text-ink-4">·</span>
+            <span className="flex items-center gap-1.5 font-mono uppercase">
+              <Repeat className="text-ink-3 h-3 w-3" />
+              recurring
+            </span>
+          </>
+        )}
         <span className="text-ink-4">·</span>
         <span className="flex items-center gap-1.5 font-mono">
           <Clock className="text-ink-3 h-3 w-3" />
@@ -213,6 +224,7 @@ export function MeetingDetail({
             <EyeOff className="h-3.5 w-3.5" />
           )}
           {isIgnored ? 'Reactivate' : 'Ignore'}
+          <Kbd shortcut="i" />
         </button>
       </div>
     </div>

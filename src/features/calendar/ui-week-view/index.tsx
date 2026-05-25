@@ -10,6 +10,7 @@ import {
 import { useMemo } from 'react';
 
 import { Button } from '@/common/ui/button';
+import { Kbd } from '@/common/ui/kbd';
 import {
   addDays,
   extractTeamsUrl,
@@ -44,14 +45,16 @@ export function WeekView({
   selectedId,
   onSelect,
   ignoredSet,
-  onToggleIgnore,
+  onReactivate,
+  onRequestIgnore,
 }: {
   meetings: UpcomingMeeting[];
   now: number;
   selectedId: string | null;
   onSelect: (id: string) => void;
   ignoredSet: Set<string>;
-  onToggleIgnore: (id: string) => void;
+  onReactivate: (id: string) => void;
+  onRequestIgnore: (meeting: UpcomingMeeting) => void;
 }) {
   const addToast = useToastStore((s) => s.addToast);
   const today = new Date(now);
@@ -77,6 +80,7 @@ export function WeekView({
   );
 
   const teamsUrl = selected ? extractTeamsUrl(selected) : null;
+  const selectedIsIgnored = selected ? ignoredSet.has(selected.id) : false;
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">
@@ -316,15 +320,22 @@ export function WeekView({
           </Button>
           <button
             type="button"
-            onClick={() => onToggleIgnore(selected.id)}
+            onClick={() => {
+              if (selectedIsIgnored) {
+                onReactivate(selected.id);
+              } else {
+                onRequestIgnore(selected);
+              }
+            }}
             className="border-glass-border text-ink-3 flex items-center gap-1.5 rounded border px-2.5 py-1.5 text-xs font-medium"
           >
-            {ignoredSet.has(selected.id) ? (
+            {selectedIsIgnored ? (
               <Eye className="h-3.5 w-3.5" />
             ) : (
               <EyeOff className="h-3.5 w-3.5" />
             )}
-            {ignoredSet.has(selected.id) ? 'Reactivate' : 'Ignore'}
+            {selectedIsIgnored ? 'Reactivate' : 'Ignore'}
+            <Kbd shortcut="i" />
           </button>
         </div>
       )}

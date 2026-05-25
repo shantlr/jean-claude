@@ -8,6 +8,42 @@ import {
 } from '@/features/calendar/utils-calendar';
 import type { UpcomingMeeting } from '@shared/calendar-types';
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function startOfLocalDay(date: Date): number {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  return copy.getTime();
+}
+
+function formatFutureCountdown(startAt: number, now: number): string {
+  const startDate = new Date(startAt);
+  const todayStart = startOfLocalDay(new Date(now));
+  const startDay = startOfLocalDay(startDate);
+  const dayDiff = Math.round((startDay - todayStart) / DAY_MS);
+  const time = startDate.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
+  if (dayDiff === 1) return `Tomorrow ${time}`;
+  if (dayDiff > 1 && dayDiff < 7) {
+    return `${startDate.toLocaleDateString(undefined, { weekday: 'short' })} ${time}`;
+  }
+  if (dayDiff >= 7) {
+    return `${startDate.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+    })} ${time}`;
+  }
+
+  const mins = Math.round((startAt - now) / 60_000);
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const mm = mins % 60;
+  return `${h}h${String(mm).padStart(2, '0')}`;
+}
+
 function CountdownBadge({
   meeting,
   now,
@@ -47,14 +83,9 @@ function CountdownBadge({
   if (state === 'past') {
     return <span className="text-ink-4 font-mono text-[11px]">ended</span>;
   }
-  const mins = Math.round((start - now) / 60_000);
-  if (mins < 60)
-    return <span className="text-ink-3 font-mono text-[11px]">{mins}m</span>;
-  const h = Math.floor(mins / 60);
-  const mm = mins % 60;
   return (
-    <span className="text-ink-3 font-mono text-[11px]">
-      {h}h{String(mm).padStart(2, '0')}
+    <span className="text-ink-3 shrink-0 font-mono text-[11px]">
+      {formatFutureCountdown(start, now)}
     </span>
   );
 }
@@ -78,6 +109,7 @@ export function MeetingListItem({
   return (
     <button
       type="button"
+      data-selected={selected ? 'true' : undefined}
       onClick={onSelect}
       className={clsx(
         'flex w-full gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-colors',

@@ -100,6 +100,7 @@ function parseSystemCalendarEvents(rawOutput: string): CalendarEventRecord[] {
     calendarName?: string;
     notes?: string;
     url?: string;
+    recurring?: boolean;
   }>;
 
   return parsed
@@ -120,6 +121,7 @@ function parseSystemCalendarEvents(rawOutput: string): CalendarEventRecord[] {
       calendarName: event.calendarName ?? '',
       notes: event.notes ?? '',
       url: event.url ?? '',
+      recurring: event.recurring ?? false,
     }));
 }
 
@@ -148,6 +150,7 @@ struct Meeting: Encodable {
   let calendarName: String
   let notes: String
   let url: String
+  let recurring: Bool
 }
 
 let store = EKEventStore()
@@ -217,7 +220,8 @@ let filteredEvents = events.compactMap { event -> Meeting? in
     location: event.location ?? "",
     calendarName: event.calendar.title,
     notes: event.notes ?? "",
-    url: event.url?.absoluteString ?? ""
+    url: event.url?.absoluteString ?? "",
+    recurring: !(event.recurrenceRules ?? []).isEmpty
   )
 }
 
@@ -399,6 +403,7 @@ class SystemCalendarService {
         calendarName: event.calendarName,
         notes: event.notes,
         url: event.url,
+        recurring: event.recurring,
       }));
   }
 
@@ -443,6 +448,7 @@ class SystemCalendarService {
       calendarName: event.calendarName,
       notes: event.notes,
       url: event.url,
+      recurring: event.recurring,
     }));
   }
 

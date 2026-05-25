@@ -11,6 +11,7 @@ export interface CalendarEventRecord {
   calendarName: string;
   notes: string;
   url: string;
+  recurring: boolean;
 }
 
 export function parseCalendarEventRecords(
@@ -35,6 +36,7 @@ export function parseCalendarEventRecords(
         calendarName = '',
         notes = '',
         url = '',
+        recurring = 'false',
       ] = record.split(CALENDAR_FIELD_DELIMITER);
 
       return {
@@ -47,6 +49,7 @@ export function parseCalendarEventRecords(
         calendarName,
         notes,
         url,
+        recurring: recurring === 'true',
       };
     })
     .filter(

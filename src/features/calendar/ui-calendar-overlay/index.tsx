@@ -1,11 +1,23 @@
 import clsx from 'clsx';
-import { Calendar, Clock, Eye, EyeOff, Search, Zap } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import {
+  BellOff,
+  Calendar,
+  Clock,
+  Eye,
+  EyeOff,
+  Repeat,
+  Search,
+  Zap,
+} from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
 import { RemoveScroll } from 'react-remove-scroll';
 
-import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import {
+  useKeyboardLayer,
+  useRegisterKeyboardBindings,
+} from '@/common/context/keyboard-bindings';
 import { Kbd } from '@/common/ui/kbd';
 import { MeetingDetail } from '@/features/calendar/ui-meeting-detail';
 import { MeetingListItem } from '@/features/calendar/ui-meeting-list-item';
@@ -32,7 +44,71 @@ const TABS: { id: CalendarTab; label: string; icon: typeof Zap }[] = [
   { id: 'week', label: 'Week', icon: Calendar },
 ];
 
+function recurrenceKey(meeting: UpcomingMeeting): string {
+  if (meeting.externalId) return meeting.externalId;
+
+  const durationMs =
+    new Date(meeting.endAt).getTime() - new Date(meeting.startAt).getTime();
+  return [
+    meeting.calendarName,
+    meeting.title,
+    meeting.location,
+    Number.isFinite(durationMs) ? durationMs : '',
+  ].join(':');
+}
+
+function getRecurringOccurrences({
+  meeting,
+  meetings,
+}: {
+  meeting: UpcomingMeeting;
+  meetings: UpcomingMeeting[];
+}): UpcomingMeeting[] {
+  const key = recurrenceKey(meeting);
+  const selectedStart = new Date(meeting.startAt).getTime();
+  return meetings
+    .filter(
+      (m) =>
+        m.recurring &&
+        recurrenceKey(m) === key &&
+        new Date(m.startAt).getTime() >= selectedStart,
+    )
+    .sort(
+      (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime(),
+    );
+}
+
+function buildIgnoreOptions({
+  meeting,
+  meetings,
+}: {
+  meeting: UpcomingMeeting;
+  meetings: UpcomingMeeting[];
+}): { count: number; label: string }[] {
+  if (!meeting.recurring) return [{ count: 1, label: 'This' }];
+
+  const occurrenceCount = getRecurringOccurrences({ meeting, meetings }).length;
+  const counts = [1, 2, 5, occurrenceCount].filter(
+    (count, index, values) =>
+      count <= occurrenceCount && values.indexOf(count) === index,
+  );
+
+  return counts.map((count) => ({
+    count,
+    label:
+      count === 1
+        ? 'This'
+        : count === occurrenceCount
+          ? `All ${occurrenceCount}`
+          : `Next ${count}`,
+  }));
+}
+
 export function CalendarOverlay({ onClose }: { onClose: () => void }) {
+  const layer = useKeyboardLayer('overlay', {
+    exclusive: true,
+    passthrough: ['global-nav'],
+  });
   const { data: setting } = useCalendarNotificationsSetting();
   const enabled = setting?.enabled ?? false;
   const canShow = enabled && api.platform === 'darwin';
@@ -43,18 +119,14 @@ export function CalendarOverlay({ onClose }: { onClose: () => void }) {
   const [search, setSearch] = useState('');
   const [hideIgnored, setHideIgnored] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [ignoreScopeMeeting, setIgnoreScopeMeeting] =
+    useState<UpcomingMeeting | null>(null);
   const addToast = useToastStore((s) => s.addToast);
 
   const ignoredIds = useCalendarIgnoredStore((s) => s.ignoredIds);
-  const toggleIgnored = useCalendarIgnoredStore((s) => s.toggleIgnored);
+  const addIgnored = useCalendarIgnoredStore((s) => s.addIgnored);
+  const removeIgnored = useCalendarIgnoredStore((s) => s.removeIgnored);
   const ignoredSet = useMemo(() => new Set(ignoredIds), [ignoredIds]);
-
-  useRegisterKeyboardBindings('calendar-overlay', {
-    escape: () => {
-      onClose();
-      return true;
-    },
-  });
 
   // Load meetings
   useEffect(() => {
@@ -134,6 +206,11 @@ export function CalendarOverlay({ onClose }: { onClose: () => void }) {
     [meetings, ignoredSet],
   );
 
+  const upNextMeetings = useMemo(() => {
+    const todayStart = startOfDay(new Date(now)).getTime();
+    return filtered.filter((m) => new Date(m.endAt).getTime() > todayStart);
+  }, [filtered, now]);
+
   const allMeetings = useMemo(() => {
     const seen = new Set<string>();
     const combined: UpcomingMeeting[] = [];
@@ -146,28 +223,132 @@ export function CalendarOverlay({ onClose }: { onClose: () => void }) {
     return combined;
   }, [filtered, filteredToday]);
 
+  const loadedMeetings = useMemo(() => {
+    const seen = new Set<string>();
+    const combined: UpcomingMeeting[] = [];
+    for (const m of [...meetings, ...todayMeetings]) {
+      if (!seen.has(m.id)) {
+        seen.add(m.id);
+        combined.push(m);
+      }
+    }
+    return combined;
+  }, [meetings, todayMeetings]);
+
+  const ignoreMeetingOccurrences = (
+    meeting: UpcomingMeeting,
+    count: number,
+  ) => {
+    const occurrenceIds = getRecurringOccurrences({
+      meeting,
+      meetings: loadedMeetings,
+    })
+      .slice(0, count)
+      .map((m) => m.id);
+    addIgnored(occurrenceIds.length > 0 ? occurrenceIds : [meeting.id]);
+  };
+
+  const getIgnoreOptions = (meeting: UpcomingMeeting) =>
+    buildIgnoreOptions({ meeting, meetings: loadedMeetings });
+
+  const requestIgnoreMeeting = (meeting: UpcomingMeeting) => {
+    if (meeting.recurring && getIgnoreOptions(meeting).length > 1) {
+      setIgnoreScopeMeeting(meeting);
+      return;
+    }
+
+    ignoreMeetingOccurrences(meeting, 1);
+  };
+
   const selected = useMemo(
     () =>
       allMeetings.find((m) => m.id === selectedId) ?? allMeetings[0] ?? null,
     [allMeetings, selectedId],
   );
 
+  useRegisterKeyboardBindings(
+    'calendar-overlay',
+    {
+      escape: () => {
+        if (ignoreScopeMeeting) {
+          setIgnoreScopeMeeting(null);
+          return true;
+        }
+        onClose();
+        return true;
+      },
+      i: {
+        ignoreIfInput: true,
+        handler: () => {
+          if (!selected || ignoreScopeMeeting) return false;
+          if (ignoredSet.has(selected.id)) {
+            removeIgnored(selected.id);
+          } else {
+            requestIgnoreMeeting(selected);
+          }
+          return true;
+        },
+      },
+      up: {
+        ignoreIfInput: true,
+        handler: () => {
+          if (
+            tab !== 'next' ||
+            ignoreScopeMeeting ||
+            upNextMeetings.length === 0
+          ) {
+            return false;
+          }
+          const currentIndex = Math.max(
+            0,
+            upNextMeetings.findIndex((m) => m.id === selected?.id),
+          );
+          setSelectedId(upNextMeetings[Math.max(0, currentIndex - 1)].id);
+          return true;
+        },
+      },
+      down: {
+        ignoreIfInput: true,
+        handler: () => {
+          if (
+            tab !== 'next' ||
+            ignoreScopeMeeting ||
+            upNextMeetings.length === 0
+          ) {
+            return false;
+          }
+          const currentIndex = Math.max(
+            0,
+            upNextMeetings.findIndex((m) => m.id === selected?.id),
+          );
+          setSelectedId(
+            upNextMeetings[
+              Math.min(upNextMeetings.length - 1, currentIndex + 1)
+            ].id,
+          );
+          return true;
+        },
+      },
+    },
+    { layer },
+  );
+
   // Auto-select first meeting on mount
   useEffect(() => {
-    if (!selectedId && filtered.length > 0) {
-      setSelectedId(filtered[0].id);
+    if (!selectedId && upNextMeetings.length > 0) {
+      setSelectedId(upNextMeetings[0].id);
     }
-  }, [filtered, selectedId]);
+  }, [selectedId, upNextMeetings]);
 
   return createPortal(
-    <FocusLock returnFocus>
+    <FocusLock returnFocus autoFocus={false}>
       <RemoveScroll>
         <div
           className="bg-bg-0/50 fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm"
           onClick={onClose}
         >
           <div
-            className="bg-bg-1 border-glass-border flex h-[min(760px,calc(100vh-60px))] w-[min(1180px,calc(100vw-60px))] flex-col overflow-hidden rounded-xl border shadow-2xl"
+            className="bg-bg-1 border-glass-border relative flex h-[min(760px,calc(100vh-60px))] w-[min(1180px,calc(100vw-60px))] flex-col overflow-hidden rounded-xl border shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -240,12 +421,13 @@ export function CalendarOverlay({ onClose }: { onClose: () => void }) {
             <div className="flex min-h-0 flex-1">
               {tab === 'next' && (
                 <UpNextView
-                  meetings={filtered}
+                  meetings={upNextMeetings}
                   now={now}
                   selectedId={selected?.id ?? null}
                   onSelect={setSelectedId}
                   ignoredSet={ignoredSet}
-                  onToggleIgnore={toggleIgnored}
+                  onReactivate={removeIgnored}
+                  onRequestIgnore={requestIgnoreMeeting}
                 />
               )}
               {tab === 'today' && (
@@ -255,7 +437,8 @@ export function CalendarOverlay({ onClose }: { onClose: () => void }) {
                   selectedId={selected?.id ?? null}
                   onSelect={setSelectedId}
                   ignoredSet={ignoredSet}
-                  onToggleIgnore={toggleIgnored}
+                  onReactivate={removeIgnored}
+                  onRequestIgnore={requestIgnoreMeeting}
                 />
               )}
               {tab === 'week' && (
@@ -265,7 +448,8 @@ export function CalendarOverlay({ onClose }: { onClose: () => void }) {
                   selectedId={selected?.id ?? null}
                   onSelect={setSelectedId}
                   ignoredSet={ignoredSet}
-                  onToggleIgnore={toggleIgnored}
+                  onReactivate={removeIgnored}
+                  onRequestIgnore={requestIgnoreMeeting}
                 />
               )}
             </div>
@@ -277,11 +461,21 @@ export function CalendarOverlay({ onClose }: { onClose: () => void }) {
               <span>↑↓ navigate</span>
               <span>·</span>
               <span>⏎ open Teams</span>
-              <span>·</span>
-              <span>I ignore</span>
               <div className="flex-1" />
               <span>{meetings.length} events this week</span>
             </div>
+
+            {ignoreScopeMeeting && (
+              <RecurringIgnoreModal
+                meeting={ignoreScopeMeeting}
+                options={getIgnoreOptions(ignoreScopeMeeting)}
+                onClose={() => setIgnoreScopeMeeting(null)}
+                onChoose={(count) => {
+                  ignoreMeetingOccurrences(ignoreScopeMeeting, count);
+                  setIgnoreScopeMeeting(null);
+                }}
+              />
+            )}
           </div>
         </div>
       </RemoveScroll>
@@ -297,15 +491,18 @@ function UpNextView({
   selectedId,
   onSelect,
   ignoredSet,
-  onToggleIgnore,
+  onReactivate,
+  onRequestIgnore,
 }: {
   meetings: UpcomingMeeting[];
   now: number;
   selectedId: string | null;
   onSelect: (id: string) => void;
   ignoredSet: Set<string>;
-  onToggleIgnore: (id: string) => void;
+  onReactivate: (id: string) => void;
+  onRequestIgnore: (meeting: UpcomingMeeting) => void;
 }) {
+  const listRef = useRef<HTMLDivElement>(null);
   const todayStart = startOfDay(new Date(now));
   const upcomingMeetings = useMemo(
     () =>
@@ -326,6 +523,17 @@ function UpNextView({
     [upcomingMeetings, selectedId],
   );
 
+  useEffect(() => {
+    const selectedItem = listRef.current?.querySelector<HTMLButtonElement>(
+      'button[data-selected="true"]',
+    );
+    selectedItem?.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest',
+      behavior: 'auto',
+    });
+  }, [selected?.id]);
+
   return (
     <>
       {/* Left — list */}
@@ -339,7 +547,10 @@ function UpNextView({
             {upcomingMeetings.length !== 1 ? 's' : ''} · soonest first
           </div>
         </div>
-        <div className="scroll flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-3 pb-3">
+        <div
+          ref={listRef}
+          className="scroll flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-3 pb-3"
+        >
           {grouped.map(({ date, meetings: dayMeetings }) => (
             <div key={date.getTime()} className="flex flex-col gap-1.5">
               <div
@@ -389,9 +600,160 @@ function UpNextView({
           meeting={selected}
           now={now}
           isIgnored={selected ? ignoredSet.has(selected.id) : false}
-          onToggleIgnore={() => selected && onToggleIgnore(selected.id)}
+          onToggleIgnore={() => {
+            if (!selected) return;
+            if (ignoredSet.has(selected.id)) {
+              onReactivate(selected.id);
+            } else {
+              onRequestIgnore(selected);
+            }
+          }}
         />
       </div>
     </>
+  );
+}
+
+function RecurringIgnoreModal({
+  meeting,
+  options,
+  onClose,
+  onChoose,
+}: {
+  meeting: UpcomingMeeting;
+  options: { count: number; label: string }[];
+  onClose: () => void;
+  onChoose: (count: number) => void;
+}) {
+  const layer = useKeyboardLayer('dialog', { exclusive: true });
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  useEffect(() => {
+    optionRefs.current[selectedIndex]?.focus();
+  }, [selectedIndex]);
+
+  useRegisterKeyboardBindings(
+    'calendar-recurring-ignore-modal',
+    {
+      escape: () => {
+        onClose();
+        return true;
+      },
+      up: () => {
+        setSelectedIndex((index) => Math.max(0, index - 1));
+        return true;
+      },
+      down: () => {
+        setSelectedIndex((index) => Math.min(options.length - 1, index + 1));
+        return true;
+      },
+      enter: () => {
+        const option = options[selectedIndex];
+        if (!option) return false;
+        onChoose(option.count);
+        return true;
+      },
+      '1': () => {
+        if (!options[0]) return false;
+        onChoose(options[0].count);
+        return true;
+      },
+      '2': () => {
+        if (!options[1]) return false;
+        onChoose(options[1].count);
+        return true;
+      },
+      '3': () => {
+        if (!options[2]) return false;
+        onChoose(options[2].count);
+        return true;
+      },
+      '4': () => {
+        if (!options[3]) return false;
+        onChoose(options[3].count);
+        return true;
+      },
+    },
+    { layer },
+  );
+
+  return (
+    <div
+      className="bg-bg-0/60 absolute inset-0 z-10 flex items-center justify-center backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="border-glass-border bg-bg-1 w-[min(430px,calc(100%-32px))] overflow-hidden rounded-xl border shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="calendar-ignore-title"
+        aria-describedby="calendar-ignore-description"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="border-glass-border border-b px-5 pt-4 pb-3">
+          <div className="text-acc-ink mb-2 flex items-center gap-2 text-[11px] font-semibold tracking-widest uppercase">
+            <Repeat className="h-3.5 w-3.5" />
+            recurring meeting
+          </div>
+          <div
+            id="calendar-ignore-title"
+            className="text-ink-0 text-lg leading-snug font-semibold"
+          >
+            Ignore {meeting.title}?
+          </div>
+          <div
+            id="calendar-ignore-description"
+            className="text-ink-3 mt-1 font-mono text-[11px]"
+          >
+            Choose how many upcoming occurrences Jean-Claude should ignore.
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 px-4 py-4">
+          {options.map((option, index) => (
+            <button
+              key={option.count}
+              ref={(node) => {
+                optionRefs.current[index] = node;
+              }}
+              type="button"
+              onClick={() => onChoose(option.count)}
+              onFocus={() => setSelectedIndex(index)}
+              className={clsx(
+                'border-glass-border bg-bg-0 hover:bg-glass-medium flex items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors',
+                index === selectedIndex && 'ring-acc/50 ring-2',
+              )}
+            >
+              <span className="bg-acc/12 text-acc-ink flex h-8 w-8 items-center justify-center rounded-full font-mono text-xs font-semibold">
+                {index + 1}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="text-ink-0 block text-sm font-medium">
+                  {option.label}
+                </span>
+                <span className="text-ink-4 block text-[11px]">
+                  {option.count === 1
+                    ? 'Only this calendar occurrence'
+                    : `Ignore ${option.count} upcoming occurrences`}
+                </span>
+              </span>
+              <Kbd shortcut={String(index + 1) as '1' | '2' | '3' | '4'} />
+              <BellOff className="text-ink-4 h-4 w-4" />
+            </button>
+          ))}
+        </div>
+
+        <div className="border-glass-border bg-bg-0 flex justify-end border-t px-4 py-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-ink-3 hover:bg-glass-light rounded px-3 py-1.5 text-xs font-medium transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
