@@ -188,6 +188,7 @@ export const PromptTextarea = forwardRef<
     snippetVariableContext,
     containerClassName,
     className,
+    style,
     onKeyDown: externalOnKeyDown,
     ...textareaProps
   },
@@ -200,6 +201,8 @@ export const PromptTextarea = forwardRef<
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const ghostRef = useRef<HTMLDivElement>(null);
+  const trailingControlsRef = useRef<HTMLDivElement>(null);
+  const [trailingControlsWidth, setTrailingControlsWidth] = useState(0);
 
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
@@ -259,6 +262,31 @@ export const PromptTextarea = forwardRef<
     projectId,
     getContextBeforePrompt: getCompletionContextBeforePrompt,
   });
+
+  useLayoutEffect(() => {
+    const controls = trailingControlsRef.current;
+    if (!controls) {
+      setTrailingControlsWidth(0);
+      return;
+    }
+
+    const updateWidth = () => {
+      setTrailingControlsWidth(controls.getBoundingClientRect().width);
+    };
+
+    updateWidth();
+
+    const resizeObserver = new ResizeObserver(updateWidth);
+    resizeObserver.observe(controls);
+
+    return () => resizeObserver.disconnect();
+  }, [
+    onImageAttach,
+    onFileAttach,
+    projectRoot,
+    isCompletionLoading,
+    completion,
+  ]);
 
   // Filter slash commands/skills or @file path suggestions
   const filteredItems = useMemo((): RankedDropdownItem[] => {
@@ -772,7 +800,8 @@ export const PromptTextarea = forwardRef<
   const commandItems = filteredItems.filter((item) => item.type === 'command');
   const snippetItems = filteredItems.filter((item) => item.type === 'snippet');
   const skillItems = filteredItems.filter((item) => item.type === 'skill');
-  const needsTrailingPadding = !!onImageAttach || !!onFileAttach;
+  const trailingPaddingRight =
+    trailingControlsWidth > 0 ? `${trailingControlsWidth + 16}px` : undefined;
 
   // Get the flat index for an item (used for selection highlighting)
   const getItemIndex = (
@@ -1007,9 +1036,9 @@ export const PromptTextarea = forwardRef<
             // Chrome classes (border, bg, padding, rounding) — replaced when className is provided
             className ??
               'border-glass-border bg-glass-light focus:border-glass-border-strong focus:ring-acc/10 rounded-lg border px-3 py-2 focus:ring-1',
-            needsTrailingPadding && 'pr-11',
             isDragOver && 'border-acc bg-acc-soft',
           )}
+          style={{ ...style, paddingRight: trailingPaddingRight }}
           {...textareaProps}
         />
         {/* Ghost text overlay — matches textarea border+padding so text aligns */}
@@ -1019,9 +1048,11 @@ export const PromptTextarea = forwardRef<
             className={clsx(
               'pointer-events-none absolute inset-0 overflow-hidden text-sm leading-[20px] break-words whitespace-pre-wrap',
               className ? className : 'border border-transparent px-3 py-2',
-              needsTrailingPadding && 'pr-11',
             )}
-            style={{ maxHeight: `${maxHeight}px` }}
+            style={{
+              maxHeight: `${maxHeight}px`,
+              paddingRight: trailingPaddingRight,
+            }}
           >
             <span className="invisible">{value}</span>
             <span className="text-ink-3">{completion}</span>
@@ -1032,6 +1063,7 @@ export const PromptTextarea = forwardRef<
           onFileAttach ||
           (isCompletionLoading && !completion)) && (
           <div
+            ref={trailingControlsRef}
             className={clsx(
               'absolute flex items-center gap-1',
               className ? 'right-0 bottom-0' : 'right-2 bottom-2',
