@@ -22,7 +22,10 @@ import type {
   ToolUseByName,
 } from '@shared/normalized-message-v2';
 
-import { computeDiff } from '../../ui-diff-view/diff-utils';
+import {
+  computeDiff,
+  parseUnifiedPatchToStrings,
+} from '../../ui-diff-view/diff-utils';
 import { getLanguageFromPath } from '../../ui-diff-view/language-utils';
 import { MarkdownContent } from '../../ui-markdown-content';
 import { CommentableTextEntry } from '../ui-commentable-text-entry';
@@ -384,6 +387,50 @@ function getCodeStyleForTool(toolName: string): CodeStyle {
 }
 
 const DIFF_PREVIEW_MAX_LINES = 10;
+
+function getPreviewStringsFromFile(file: {
+  before?: string;
+  after?: string;
+  patch?: string;
+}): { oldString: string; newString: string } | null {
+  if (file.before !== undefined || file.after !== undefined) {
+    return {
+      oldString: file.before ?? '',
+      newString: file.after ?? '',
+    };
+  }
+
+  if (!file.patch) return null;
+  return parseUnifiedPatchToStrings(file.patch);
+}
+
+function getEditPreview(toolUse: NormalizedToolUse): {
+  filePath: string;
+  oldString: string;
+  newString: string;
+} {
+  if (toolUse.name === 'edit') {
+    const editTool = toolUse as ToolUseByName<'edit'>;
+    const file = editTool.input.files?.[0];
+    const preview = file ? getPreviewStringsFromFile(file) : null;
+
+    return {
+      filePath: file?.filePath ?? editTool.input.filePath,
+      oldString: preview?.oldString ?? editTool.input.oldString,
+      newString: preview?.newString ?? editTool.input.newString,
+    };
+  }
+
+  const writeTool = toolUse as ToolUseByName<'write'>;
+  const file = writeTool.input.files?.[0];
+  const preview = file ? getPreviewStringsFromFile(file) : null;
+
+  return {
+    filePath: file?.filePath ?? writeTool.input.filePath,
+    oldString: preview?.oldString ?? '',
+    newString: preview?.newString ?? writeTool.input.value,
+  };
+}
 
 function CompactDiffPreview({
   filePath,
@@ -754,12 +801,7 @@ function ToolEntry({
   }
 
   if (isEditTool || isWriteTool) {
-    const editTool = isEditTool ? (toolUse as ToolUseByName<'edit'>) : null;
-    const writeTool = isWriteTool ? (toolUse as ToolUseByName<'write'>) : null;
-    const filePath =
-      editTool?.input.filePath ?? writeTool?.input.filePath ?? '';
-    const oldString = editTool?.input.oldString ?? '';
-    const newString = editTool?.input.newString ?? writeTool?.input.value ?? '';
+    const { filePath, oldString, newString } = getEditPreview(toolUse);
 
     return (
       <DotEntry

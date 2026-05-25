@@ -73,4 +73,68 @@ describe('message-merger', () => {
       groups[0]?.kind === 'prompt-group' ? groups[0].resultEntry : undefined,
     ).toBeUndefined();
   });
+
+  it('hides file-edited entries already covered by edit tools', () => {
+    const entries: NormalizedEntry[] = [
+      {
+        id: 'file-edited-1',
+        date: '2026-05-23T10:00:00.000Z',
+        type: 'file-edited',
+        filePath: '/tmp/project/src/index.tsx',
+      },
+      {
+        id: 'tool-1',
+        date: '2026-05-23T10:00:01.000Z',
+        type: 'tool-use',
+        toolId: 'call-1',
+        name: 'edit',
+        input: {
+          filePath: 'src/index.tsx',
+          oldString: 'old',
+          newString: 'new',
+        },
+        result: { changes: [] },
+      },
+    ];
+
+    const merged = mergeSkillMessages(entries);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]).toMatchObject({
+      kind: 'entry',
+      entry: { id: 'tool-1', type: 'tool-use', name: 'edit' },
+    });
+  });
+
+  it('keeps file-edited entries without matching edit tools', () => {
+    const entries: NormalizedEntry[] = [
+      {
+        id: 'file-edited-1',
+        date: '2026-05-23T10:00:00.000Z',
+        type: 'file-edited',
+        filePath: '/tmp/project/src/generated.ts',
+      },
+      {
+        id: 'tool-1',
+        date: '2026-05-23T10:00:01.000Z',
+        type: 'tool-use',
+        toolId: 'call-1',
+        name: 'edit',
+        input: {
+          filePath: 'src/index.tsx',
+          oldString: 'old',
+          newString: 'new',
+        },
+        result: { changes: [] },
+      },
+    ];
+
+    const merged = mergeSkillMessages(entries);
+
+    expect(merged).toHaveLength(2);
+    expect(merged[0]).toMatchObject({
+      kind: 'entry',
+      entry: { id: 'file-edited-1', type: 'file-edited' },
+    });
+  });
 });

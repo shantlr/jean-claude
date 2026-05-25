@@ -1,6 +1,7 @@
 import type {
   NormalizedEntry,
   NormalizedToolUse,
+  ToolUseByName,
 } from '@shared/normalized-message-v2';
 
 /**
@@ -105,6 +106,42 @@ function isSyntheticUserPrompt(entry: NormalizedEntry): boolean {
   return entry.isSynthetic === true && entry.type === 'user-prompt';
 }
 
+function pathsMatch(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  return a.endsWith(`/${b}`) || b.endsWith(`/${a}`);
+}
+
+function getEditedFilePaths(entry: NormalizedEntry): string[] {
+  if (entry.type !== 'tool-use') return [];
+
+  if (entry.name === 'edit') {
+    const edit = entry as ToolUseByName<'edit'>;
+    return (edit.input.files ?? [{ filePath: edit.input.filePath }])
+      .map((file) => file.filePath)
+      .filter(Boolean);
+  }
+
+  if (entry.name === 'write') {
+    const write = entry as ToolUseByName<'write'>;
+    return (write.input.files ?? [{ filePath: write.input.filePath }])
+      .map((file) => file.filePath)
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+function hasToolEditForFile(
+  entry: NormalizedEntry,
+  editedFilePaths: string[],
+): boolean {
+  return (
+    entry.type === 'file-edited' &&
+    editedFilePaths.some((filePath) => pathsMatch(entry.filePath, filePath))
+  );
+}
+
 /**
  * Merge flat entries into display entries:
  * - Skill: skill tool-use + next synthetic user-prompt entry (with matching parentToolId) + child entries
@@ -115,6 +152,7 @@ function isSyntheticUserPrompt(entry: NormalizedEntry): boolean {
 export function mergeSkillMessages(
   entries: NormalizedEntry[],
 ): DisplayMessage[] {
+  const editedFilePaths = entries.flatMap(getEditedFilePaths);
   const result: DisplayMessage[] = [];
   const processedIndices = new Set<number>();
 
@@ -152,6 +190,7 @@ export function mergeSkillMessages(
   >();
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];
+    if (hasToolEditForFile(entry, editedFilePaths)) continue;
     const parentId = entry.parentToolId;
     if (
       parentId &&
@@ -176,6 +215,10 @@ export function mergeSkillMessages(
     if (processedIndices.has(i)) continue;
 
     const current = entries[i];
+    if (hasToolEditForFile(current, editedFilePaths)) {
+      processedIndices.add(i);
+      continue;
+    }
 
     // Check for skill tool-use
     if (isSkillToolUse(current)) {
