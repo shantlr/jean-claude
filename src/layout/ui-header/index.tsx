@@ -403,8 +403,13 @@ export function Header() {
 
       {/* RIGHT — telemetry */}
       <div
-        className="flex shrink-0 items-center gap-1 px-4"
-        style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
+        className="flex min-w-0 items-center justify-end gap-1 overflow-hidden px-4"
+        style={
+          {
+            WebkitAppRegion: 'no-drag',
+            maxWidth: 'max(0px, calc(50vw - 220px))',
+          } as CSSProperties
+        }
       >
         <NextMeetingButton />
         <RamUsageDisplay />

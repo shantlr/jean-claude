@@ -101,7 +101,7 @@ export function NextMeetingButton() {
       size="sm"
       onClick={handleClick}
       className={clsx(
-        'max-w-[340px] gap-2 rounded-lg border px-2.5',
+        'max-w-[340px] min-w-0 flex-1 gap-2 overflow-hidden rounded-lg border px-2.5',
         state === 'live' &&
           'border-status-run/40 bg-status-run/8 hover:bg-status-run/12',
         state === 'imminent' && 'border-acc/40 bg-acc/8 hover:bg-acc/12',
