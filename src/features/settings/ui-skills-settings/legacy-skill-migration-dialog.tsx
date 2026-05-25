@@ -47,6 +47,43 @@ function StatusBadge({
   );
 }
 
+function entryTypeLabel(
+  type: LegacySkillMigrationPreviewItem['folderEntries'][number]['type'],
+): string {
+  if (type === 'directory') return 'dir';
+  if (type === 'symlink') return 'link';
+  return type;
+}
+
+function FolderContents({ item }: { item: LegacySkillMigrationPreviewItem }) {
+  const visibleEntries = item.folderEntries.slice(0, 8);
+  const hiddenCount = item.folderEntries.length - visibleEntries.length;
+
+  if (item.folderEntries.length === 0) return null;
+
+  return (
+    <div className="mt-3 text-xs">
+      <div className="text-ink-3 mb-1">Files to copy</div>
+      <div className="flex flex-wrap gap-1.5">
+        {visibleEntries.map((entry) => (
+          <span
+            key={`${entry.name}:${entry.type}`}
+            className="border-glass-border bg-bg-1/60 text-ink-2 rounded border px-2 py-0.5"
+          >
+            {entry.name}{' '}
+            <span className="text-ink-4">{entryTypeLabel(entry.type)}</span>
+          </span>
+        ))}
+        {hiddenCount > 0 && (
+          <span className="border-glass-border bg-bg-1/60 text-ink-3 rounded border px-2 py-0.5">
+            +{hiddenCount} more
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function LegacySkillMigrationDialog({
   onClose,
 }: {
@@ -170,12 +207,16 @@ export function LegacySkillMigrationDialog({
     <div className="bg-bg-0/55 fixed inset-0 z-60 flex items-center justify-center">
       <div className="border-glass-border bg-bg-0 flex h-[75svh] w-[78svw] max-w-[1100px] flex-col rounded-lg border">
         <div className="border-glass-border flex items-center justify-between border-b px-4 py-3">
-          <div>
+          <div className="space-y-2">
             <h3 className="text-ink-0 text-base font-semibold">
               Migrate Manually Installed Skills
             </h3>
             <p className="text-ink-2 text-xs">
-              Move manually installed skills into Jean-Claude canonical storage.
+              Jean-Claude will copy each selected skill folder into its
+              canonical storage, including companion files, then replace the
+              original backend folder with a symlink. This keeps skills
+              available to the same backend while making Jean-Claude the source
+              of truth.
             </p>
           </div>
           <IconButton
@@ -226,10 +267,12 @@ export function LegacySkillMigrationDialog({
           {!previewMutation.isPending && !result && (
             <div className="space-y-4">
               <div className="border-glass-border bg-bg-1/40 text-ink-1 flex items-center justify-between rounded border p-3 text-xs">
-                <span>
-                  Selected: {counts.selected}/{counts.migrate} · Conflicts:{' '}
-                  {counts.conflict} · Invalid: {counts.invalid}
-                </span>
+                <div className="space-y-1">
+                  <div>
+                    Selected: {counts.selected}/{counts.migrate} · Conflicts:{' '}
+                    {counts.conflict} · Invalid: {counts.invalid}
+                  </div>
+                </div>
                 {migratableIds.length > 0 && (
                   <Button
                     type="button"
@@ -290,6 +333,7 @@ export function LegacySkillMigrationDialog({
                                   {item.reason}
                                 </div>
                               )}
+                              {isMigratable && <FolderContents item={item} />}
                             </div>
                           </div>
                         );

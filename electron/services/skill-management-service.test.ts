@@ -1,12 +1,15 @@
 import * as fs from 'fs/promises';
+import * as os from 'os';
 import * as path from 'path';
 
 import { describe, expect, it } from 'vitest';
 
 import {
   createSkill,
+  executeLegacySkillMigration,
   getAllManagedSkills,
   getAllManagedSkillsUnified,
+  previewLegacySkillMigration,
 } from './skill-management-service';
 
 async function writeSkill({
@@ -88,5 +91,79 @@ describe('skill management project skill discovery', () => {
       'claude-code': true,
       opencode: true,
     });
+  });
+});
+
+describe('legacy skill migration', () => {
+  it('previews companion files in migratable skill folders', async () => {
+    const legacyDir = path.join(os.homedir(), '.claude/skills/rich-skill');
+    await fs.mkdir(path.join(legacyDir, 'resources'), { recursive: true });
+    await fs.writeFile(
+      path.join(legacyDir, 'SKILL.md'),
+      '---\nname: rich-skill\ndescription: Rich skill\n---\n\nUse companions.\n',
+      'utf-8',
+    );
+    await fs.writeFile(
+      path.join(legacyDir, 'AGENTS.md'),
+      'Extra instructions\n',
+      'utf-8',
+    );
+
+    const preview = await previewLegacySkillMigration();
+    const item = preview.items.find((entry) => entry.name === 'rich-skill');
+
+    expect(item).toEqual(
+      expect.objectContaining({
+        legacyPath: legacyDir,
+        status: 'migrate',
+        folderEntries: expect.arrayContaining([
+          { name: 'AGENTS.md', type: 'file' },
+          { name: 'SKILL.md', type: 'file' },
+          { name: 'resources', type: 'directory' },
+        ]),
+      }),
+    );
+  });
+
+  it('copies companion files when executing migration', async () => {
+    const legacyDir = path.join(os.homedir(), '.claude/skills/rich-skill');
+    const canonicalDir = path.join(
+      os.homedir(),
+      '.config/jean-claude/skills/user/rich-skill',
+    );
+    await fs.mkdir(path.join(legacyDir, 'resources'), { recursive: true });
+    await fs.writeFile(
+      path.join(legacyDir, 'SKILL.md'),
+      '---\nname: rich-skill\ndescription: Rich skill\n---\n\nUse companions.\n',
+      'utf-8',
+    );
+    await fs.writeFile(
+      path.join(legacyDir, 'AGENTS.md'),
+      'Extra instructions\n',
+      'utf-8',
+    );
+    await fs.writeFile(
+      path.join(legacyDir, 'resources/example.md'),
+      'Example\n',
+      'utf-8',
+    );
+
+    const preview = await previewLegacySkillMigration();
+    const item = preview.items.find((entry) => entry.name === 'rich-skill');
+    expect(item).toBeDefined();
+
+    const result = await executeLegacySkillMigration({
+      itemIds: [item!.id],
+    });
+
+    expect(result.results).toContainEqual(
+      expect.objectContaining({ name: 'rich-skill', status: 'migrated' }),
+    );
+    await expect(
+      fs.readFile(path.join(canonicalDir, 'AGENTS.md'), 'utf-8'),
+    ).resolves.toBe('Extra instructions\n');
+    await expect(
+      fs.readFile(path.join(canonicalDir, 'resources/example.md'), 'utf-8'),
+    ).resolves.toBe('Example\n');
   });
 });

@@ -48,6 +48,10 @@ export interface LegacySkillMigrationPreviewItem {
   name: string;
   status: LegacySkillMigrationStatus;
   reason?: string;
+  folderEntries: Array<{
+    name: string;
+    type: 'file' | 'directory' | 'symlink' | 'other';
+  }>;
 }
 
 export interface LegacySkillMigrationPreviewResult {

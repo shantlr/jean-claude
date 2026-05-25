@@ -193,6 +193,52 @@ async function discoverNestedSkillDirs(baseDir: string): Promise<string[]> {
   return Array.from(discovered);
 }
 
+async function readFolderEntries(folderPath: string): Promise<
+  Array<{
+    name: string;
+    type: 'file' | 'directory' | 'symlink' | 'other';
+  }>
+> {
+  try {
+    const entries = await fs.readdir(folderPath, { withFileTypes: true });
+    return entries
+      .map((entry) => {
+        let type: 'file' | 'directory' | 'symlink' | 'other' = 'other';
+        if (entry.isSymbolicLink()) type = 'symlink';
+        else if (entry.isDirectory()) type = 'directory';
+        else if (entry.isFile()) type = 'file';
+
+        return { name: entry.name, type };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch {
+    return [];
+  }
+}
+
+async function createMigrationPreviewItem(candidate: {
+  backendType: AgentBackendType;
+  legacyPath: string;
+  targetCanonicalPath: string;
+  name: string;
+  status: 'migrate' | 'skip-conflict' | 'skip-invalid';
+  reason?: string;
+}): Promise<LegacySkillMigrationPreviewItem> {
+  return {
+    id: createMigrationId({
+      backendType: candidate.backendType,
+      legacyPath: candidate.legacyPath,
+    }),
+    backendType: candidate.backendType,
+    legacyPath: candidate.legacyPath,
+    targetCanonicalPath: candidate.targetCanonicalPath,
+    name: candidate.name,
+    status: candidate.status,
+    reason: candidate.reason,
+    folderEntries: await readFolderEntries(candidate.legacyPath),
+  };
+}
+
 /**
  * Scans the JC canonical directory for user skills (unified, all backends).
  * For each skill, checks whether a symlink exists in ALL backends'
@@ -932,21 +978,11 @@ export async function previewLegacySkillMigration(): Promise<LegacySkillMigratio
     backendType: 'opencode',
   });
 
-  const items: LegacySkillMigrationPreviewItem[] = [
-    ...claudeCandidates,
-    ...opencodeCandidates,
-  ].map((candidate) => ({
-    id: createMigrationId({
-      backendType: candidate.backendType,
-      legacyPath: candidate.legacyPath,
-    }),
-    backendType: candidate.backendType,
-    legacyPath: candidate.legacyPath,
-    targetCanonicalPath: candidate.targetCanonicalPath,
-    name: candidate.name,
-    status: candidate.status,
-    reason: candidate.reason,
-  }));
+  const items = await Promise.all(
+    [...claudeCandidates, ...opencodeCandidates].map((candidate) =>
+      createMigrationPreviewItem(candidate),
+    ),
+  );
 
   return { items };
 }
