@@ -391,22 +391,37 @@ export function ChangelogModal() {
                 </div>
 
                 <div className="flex flex-col pb-3">
-                  {day.entries.flatMap((entry) =>
-                    entry.bullets.map((bullet, bulletIndex) => (
-                      <div
-                        key={`${entry.scope}-${entry.type}-${bulletIndex}`}
-                        className="grid grid-cols-[20px_minmax(76px,110px)_1fr] items-start gap-x-3 border-t border-white/[0.03] py-1.5 first:border-t-0"
-                      >
-                        <TypeChip type={entry.type} />
-                        <div className="text-ink-3 pt-0.5 text-[11px] tracking-[0.06em] uppercase">
-                          {formatScope(entry.scope)}
-                        </div>
-                        <div className="text-ink-1 text-[12.5px] leading-5 text-pretty">
-                          {bullet}
-                        </div>
+                  {day.entries.map((entry) => (
+                    <div
+                      key={`${entry.scope}-${entry.type}-${entry.bullets.join('|')}`}
+                      className="grid grid-cols-[20px_minmax(76px,110px)_1fr] items-start gap-x-3 border-t border-white/[0.03] py-2 first:border-t-0"
+                    >
+                      <TypeChip type={entry.type} />
+                      <div className="text-ink-3 pt-0.5 text-[11px] tracking-[0.06em] uppercase">
+                        {formatScope(entry.scope)}
                       </div>
-                    )),
-                  )}
+                      <div className="min-w-0">
+                        <div className="text-ink-1 space-y-1 text-[12.5px] leading-5 text-pretty">
+                          {entry.bullets.map((bullet) => (
+                            <div key={bullet}>{bullet}</div>
+                          ))}
+                        </div>
+                        {entry.commits.length > 0 && (
+                          <div className="text-ink-4 mt-1 flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
+                            <span>Commits</span>
+                            {entry.commits.map((commit) => (
+                              <span
+                                key={commit}
+                                className="rounded border border-white/[0.06] bg-white/[0.035] px-1 py-px"
+                              >
+                                {commit}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </section>
             ))}

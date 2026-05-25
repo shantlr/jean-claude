@@ -4,6 +4,7 @@ export interface ChangelogEntry {
   type: ChangelogEntryType;
   scope: string;
   bullets: string[];
+  commits: string[];
 }
 
 export interface ChangelogDay {
@@ -70,6 +71,16 @@ function parseNestedBullet(line: string): string | null {
   return match[1].trim();
 }
 
+function parseCommitsBullet(bullet: string): string[] | null {
+  const match = bullet.match(/^Commits:\s*(.+)$/i);
+  if (!match) return null;
+
+  return match[1]
+    .split(',')
+    .map((commit) => commit.trim())
+    .filter(Boolean);
+}
+
 export function parseChangelogFile(content: string): ChangelogEntry[] {
   const entries: ChangelogEntry[] = [];
   let currentEntry: ChangelogEntry | null = null;
@@ -81,6 +92,7 @@ export function parseChangelogFile(content: string): ChangelogEntry[] {
         type: topLevelEntry.type,
         scope: topLevelEntry.scope,
         bullets: topLevelEntry.inlineBullet ? [topLevelEntry.inlineBullet] : [],
+        commits: [],
       };
       entries.push(currentEntry);
       continue;
@@ -88,6 +100,12 @@ export function parseChangelogFile(content: string): ChangelogEntry[] {
 
     const nestedBullet = parseNestedBullet(rawLine);
     if (nestedBullet && currentEntry) {
+      const commits = parseCommitsBullet(nestedBullet);
+      if (commits) {
+        currentEntry.commits = commits;
+        continue;
+      }
+
       currentEntry.bullets.push(nestedBullet);
     }
   }

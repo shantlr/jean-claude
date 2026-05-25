@@ -252,27 +252,38 @@ Push logic down to the most specific child component. Keep parents focused on co
 
 ### Changelog
 
-When making user-facing changes (new features, bug fixes, UI improvements), update `changelogs/`:
+Do not update `changelogs/` as part of normal implementation work, even for user-facing changes. Only edit changelog files when the user intentionally asks for a changelog update.
 
-1. **Check the current date** — run `date +%Y-%m-%d` to get today's date. Do NOT assume the year; always verify via the shell before creating or naming changelog files.
-2. If today's date already has a file `changelogs/YYYY-MM-DD.md`, append to it
-3. Otherwise, create a new file `changelogs/YYYY-MM-DD.md`
-4. Keep **one top-level changelog entry per branch/work item**. If you make more changes for the same branch later (even across multiple agent sessions), update the existing entry instead of adding a second top-level entry for that same work.
-5. Each top-level entry must start with `[type]` and `[scope]`: `[feature]`, `[fix]`, or `[improvement]`, plus a concise scope like `[project]`, `[task details]`, `[settings]`, or `[pr details]`
-6. Under each top-level entry, add short nested bullet points for the user-visible details. Prefer a few concise bullets over one long sentence.
+Manual changelog updates are handled through the repository project skill at `.claude/skills/update-changelog/SKILL.md`. Use that skill when the user says to update, generate, refresh, or run the changelog.
+
+The manual changelog process:
+
+1. Reads `changelogs/.metadata.json` to find the last processed commit
+2. Reviews commits since then and groups them by commit date
+3. Writes editorial, product-facing daily summaries instead of one entry per commit
+4. Adds commit hashes to each top-level entry with `Commits: <hash>` or `Commits: <hash>, <hash>`
+5. Updates `changelogs/.metadata.json` after successful changelog edits
+
+Daily changelog files live at `changelogs/YYYY-MM-DD.md`. Each top-level entry starts with `[type]` and `[scope]`: `[feature]`, `[fix]`, or `[improvement]`, plus a concise scope like `[project]`, `[task details]`, `[settings]`, or `[pr details]`. Under each top-level entry, add short nested bullets for user-visible details and one `Commits:` bullet.
+
+Order each day by product value: new features first, improvements second, bug fixes last. Merge related commits into one entry. If a feature and its same-day fixes belong to one user-facing outcome, describe the final polished outcome and include all commit hashes instead of adding separate bug-fix entries.
 
 Example (`changelogs/2026-06-01.md`):
 ```md
 - [feature] [settings]
   - Added dark mode toggle in Settings > General
   - Saved theme preference between app launches
+  - Commits: abc1234
 - [fix] [project]
   - Fixed sidebar layout collapsing on narrow project views
+  - Commits: def5678, 901abcd
 ```
 
 **Writing good entries:**
 
 - Merge follow-up tweaks for same branch into existing top-level entry instead of creating another one
+- Prefer final user-facing outcomes over implementation chronology
+- Do not mention same-day bug fixes separately when they only stabilize a feature shipped that day
 - Be concise but include actionable details the user needs
 - Keep scopes short and product-facing
 - Keep nested bullets focused on visible outcomes, not implementation details
