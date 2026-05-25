@@ -1353,6 +1353,12 @@ export function NewTaskOverlay({
                   onViewModeChange={(mode: WorkItemsViewMode) =>
                     updateDraft({ workItemsViewMode: mode })
                   }
+                  iterationFilter={
+                    draft?.workItemsIterationFilter ?? '__current__'
+                  }
+                  onIterationFilterChange={(iterationFilter) =>
+                    updateDraft({ workItemsIterationFilter: iterationFilter })
+                  }
                   onWorkItemToggle={handleWorkItemToggle}
                   onClearSelectedWorkItems={handleClearSelectedWorkItems}
                   onHighlightChange={setHighlightedWorkItemId}
@@ -1876,6 +1882,8 @@ function SearchModeContent({
   selectedWorkItemIds,
   viewMode,
   onViewModeChange,
+  iterationFilter,
+  onIterationFilterChange,
   onWorkItemToggle,
   onClearSelectedWorkItems,
   onHighlightChange,
@@ -1889,6 +1897,8 @@ function SearchModeContent({
   selectedWorkItemIds: string[];
   viewMode: WorkItemsViewMode;
   onViewModeChange: (mode: WorkItemsViewMode) => void;
+  iterationFilter: string;
+  onIterationFilterChange: (iterationFilter: string) => void;
   onWorkItemToggle: (workItem: AzureDevOpsWorkItem) => void;
   onClearSelectedWorkItems: () => void;
   onHighlightChange?: (workItemId: string | null) => void;
@@ -1932,6 +1942,8 @@ function SearchModeContent({
       filter={filter}
       viewMode={viewMode}
       onViewModeChange={onViewModeChange}
+      iterationFilter={iterationFilter}
+      onIterationFilterChange={onIterationFilterChange}
       panelWidth={panelWidth}
       onPanelWidthChange={onPanelWidthChange}
       headerRight={

@@ -24,6 +24,7 @@ export interface NewTaskDraft {
   workItemIds: string[]; // Changed from workItemId: string | null
   updateWorkItemStatus: boolean;
   workItemsFilter: string;
+  workItemsIterationFilter: string;
   searchStep: SearchStep; // NEW: which step in search mode
   workItemsViewMode: WorkItemsViewMode;
   /** Selected work item/comment composite IDs to include in prompt. */
@@ -89,6 +90,20 @@ const useStore = create<NewTaskDraftState>()(
 
       clearDraft: (key) =>
         set((state) => {
+          const draft = state.drafts[key];
+          const persistentDraft = draft?.workItemsIterationFilter
+            ? { workItemsIterationFilter: draft.workItemsIterationFilter }
+            : null;
+
+          if (persistentDraft) {
+            return {
+              drafts: {
+                ...state.drafts,
+                [key]: persistentDraft,
+              },
+            };
+          }
+
           const { [key]: _, ...rest } = state.drafts;
           return { drafts: rest };
         }),

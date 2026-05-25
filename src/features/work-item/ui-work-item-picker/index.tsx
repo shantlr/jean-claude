@@ -52,6 +52,8 @@ export function WorkItemPicker({
   filter,
   viewMode: controlledViewMode,
   onViewModeChange,
+  iterationFilter: controlledIterationFilter,
+  onIterationFilterChange,
   panelWidth: controlledPanelWidth,
   onPanelWidthChange,
   excludeWorkItemTypes = DEFAULT_EXCLUDE_TYPES,
@@ -68,6 +70,8 @@ export function WorkItemPicker({
   filter?: string;
   viewMode?: WorkItemsViewMode;
   onViewModeChange?: (mode: WorkItemsViewMode) => void;
+  iterationFilter?: string;
+  onIterationFilterChange?: (iterationFilter: string) => void;
   /** Controlled panel width percentage. If omitted, internal state is used. */
   panelWidth?: number;
   onPanelWidthChange?: (width: number) => void;
@@ -90,13 +94,27 @@ export function WorkItemPicker({
   );
 
   // Iteration state
-  const [selectedIteration, setSelectedIteration] =
+  const [internalIterationFilter, setInternalIterationFilter] =
     useState<string>('__current__');
+  const selectedIteration =
+    controlledIterationFilter ?? internalIterationFilter;
+  const setSelectedIteration = useCallback(
+    (iterationFilter: string) => {
+      if (onIterationFilterChange) {
+        onIterationFilterChange(iterationFilter);
+      } else {
+        setInternalIterationFilter(iterationFilter);
+      }
+    },
+    [onIterationFilterChange],
+  );
 
   // Reset iteration when project changes
   useEffect(() => {
-    setSelectedIteration('__current__');
-  }, [projectId]);
+    if (controlledIterationFilter === undefined) {
+      setInternalIterationFilter('__current__');
+    }
+  }, [projectId, controlledIterationFilter]);
 
   // Fetch iterations
   const { data: iterations } = useIterations({ providerId, projectName });
@@ -134,6 +152,15 @@ export function WorkItemPicker({
     }
     return options;
   }, [iterations, currentIteration]);
+
+  useEffect(() => {
+    if (!iterations || iterationOptions.length === 0) return;
+    if (iterationOptions.some((option) => option.value === selectedIteration)) {
+      return;
+    }
+
+    setSelectedIteration('__current__');
+  }, [iterations, iterationOptions, selectedIteration, setSelectedIteration]);
 
   // Fetch work items
   const { data: workItems, isLoading } = useWorkItems({
