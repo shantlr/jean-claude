@@ -7,6 +7,139 @@ export interface DiffLine {
   newLineNumber?: number;
 }
 
+export interface ParsedUnifiedPatch {
+  oldString: string;
+  newString: string;
+}
+
+interface ParsedHunk {
+  oldStart: number;
+  oldLines: string[];
+  newLines: string[];
+  hasContext: boolean;
+  hasAddition: boolean;
+  hasDeletion: boolean;
+}
+
+function applyHunkToLines(lines: string[], hunk: ParsedHunk): string[] | null {
+  const startIndex = Math.max(hunk.oldStart - 1, 0);
+  const before = lines.slice(0, startIndex);
+  const target = lines.slice(startIndex, startIndex + hunk.oldLines.length);
+  if (target.join('\n') !== hunk.oldLines.join('\n')) return null;
+  const after = lines.slice(startIndex + hunk.oldLines.length);
+  return [...before, ...hunk.newLines, ...after];
+}
+
+function reconstructSequentialPatch(
+  hunks: ParsedHunk[],
+): ParsedUnifiedPatch | null {
+  if (hunks.length === 0) return null;
+
+  const firstHunk = hunks[0];
+  if (firstHunk.oldStart !== 0 || firstHunk.oldLines.length !== 0) return null;
+
+  let currentLines = firstHunk.newLines;
+  for (const hunk of hunks.slice(1)) {
+    const nextLines = applyHunkToLines(currentLines, hunk);
+    if (!nextLines) return null;
+    currentLines = nextLines;
+  }
+
+  return {
+    oldString: '',
+    newString: currentLines.join('\n'),
+  };
+}
+
+/**
+ * Convert unified diff hunks into old/new strings for DiffView.
+ * Header lines (Index, ---, +++, diff --git) are ignored; only @@ hunks count.
+ */
+export function parseUnifiedPatchToStrings(
+  patch: string,
+): ParsedUnifiedPatch | null {
+  const hunkHeaderPattern = /^@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@/;
+  const hunks: ParsedHunk[] = [];
+  let currentHunk: ParsedHunk | null = null;
+  let inHunk = false;
+
+  for (const line of patch.split('\n')) {
+    const hunkHeaderMatch = line.match(hunkHeaderPattern);
+    if (hunkHeaderMatch) {
+      currentHunk = {
+        oldStart: Number(hunkHeaderMatch[1]),
+        oldLines: [],
+        newLines: [],
+        hasContext: false,
+        hasAddition: false,
+        hasDeletion: false,
+      };
+      hunks.push(currentHunk);
+      inHunk = true;
+      continue;
+    }
+
+    if (!inHunk || !currentHunk) continue;
+
+    if (line.startsWith('\\ No newline at end of file')) {
+      continue;
+    }
+
+    if (line.startsWith('+')) {
+      currentHunk.newLines.push(line.slice(1));
+      currentHunk.hasAddition = true;
+    } else if (line.startsWith('-')) {
+      currentHunk.oldLines.push(line.slice(1));
+      currentHunk.hasDeletion = true;
+    } else if (line.startsWith(' ')) {
+      const content = line.slice(1);
+      currentHunk.oldLines.push(content);
+      currentHunk.newLines.push(content);
+      currentHunk.hasContext = true;
+    } else if (line === '') {
+      inHunk = false;
+    } else {
+      inHunk = false;
+    }
+  }
+
+  const meaningfulHunks = hunks.filter(
+    (hunk) => hunk.oldLines.length > 0 || hunk.newLines.length > 0,
+  );
+  const sawDiffLine = meaningfulHunks.length > 0;
+  if (!sawDiffLine) return null;
+
+  const sequentialPatch = reconstructSequentialPatch(meaningfulHunks);
+  if (sequentialPatch) return sequentialPatch;
+
+  const hasContext = meaningfulHunks.some((hunk) => hunk.hasContext);
+  const hasAddition = meaningfulHunks.some((hunk) => hunk.hasAddition);
+  const hasDeletion = meaningfulHunks.some((hunk) => hunk.hasDeletion);
+
+  if (!hasContext && hasAddition && hasDeletion) {
+    return {
+      oldString: meaningfulHunks.flatMap((hunk) => hunk.oldLines).join('\n'),
+      newString: meaningfulHunks.flatMap((hunk) => hunk.newLines).join('\n'),
+    };
+  }
+
+  const oldLines: string[] = [];
+  const newLines: string[] = [];
+  for (const hunk of meaningfulHunks) {
+    if (oldLines.length > 0 && newLines.length > 0) {
+      oldLines.push('⋯');
+      newLines.push('⋯');
+    }
+    oldLines.push(...hunk.oldLines);
+    newLines.push(...hunk.newLines);
+  }
+
+  return {
+    oldString: oldLines.join('\n'),
+    newString: newLines.join('\n'),
+  };
+}
+
 export interface SideBySideRow {
   left: DiffLine | null; // null = gap (addition on right)
   right: DiffLine | null; // null = gap (deletion on left)
