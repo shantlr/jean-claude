@@ -11,6 +11,7 @@ export type BackgroundJobType =
   | 'pr-creation'
   | 'pr-review-creation'
   | 'summary-generation'
+  | 'verification-note'
   | 'task-deletion'
   | 'commit'
   | 'merge'
@@ -26,6 +27,7 @@ interface BackgroundJobBase {
   errorMessage: string | null;
   taskId: string | null;
   projectId: string | null;
+  noteId: string | null;
 }
 
 export type BackgroundJob =
@@ -61,6 +63,13 @@ export type BackgroundJob =
       type: 'summary-generation';
       details: {
         taskName: string | null;
+      };
+    })
+  | (BackgroundJobBase & {
+      type: 'verification-note';
+      details: {
+        workItemCount: number;
+        workItemTitles: string[];
       };
     })
   | (BackgroundJobBase & {
@@ -143,6 +152,17 @@ type NewBackgroundJobInput =
       };
     }
   | {
+      type: 'verification-note';
+      title: string;
+      taskId?: string | null;
+      projectId?: string | null;
+      noteId?: string | null;
+      details: {
+        workItemCount: number;
+        workItemTitles: string[];
+      };
+    }
+  | {
       type: 'task-deletion';
       title: string;
       taskId?: string | null;
@@ -188,7 +208,11 @@ interface BackgroundJobsState {
   addRunningJob: (job: NewBackgroundJobInput) => string;
   markJobSucceeded: (
     id: string,
-    data?: { taskId?: string | null; projectId?: string | null },
+    data?: {
+      taskId?: string | null;
+      projectId?: string | null;
+      noteId?: string | null;
+    },
   ) => void;
   markJobFailed: (id: string, errorMessage: string) => void;
   markJobRunning: (id: string) => void;
@@ -200,13 +224,15 @@ export const useBackgroundJobsStore = create<BackgroundJobsState>()(
     (set) => ({
       jobs: [],
 
-      addRunningJob: ({
-        type,
-        title,
-        taskId = null,
-        projectId = null,
-        details,
-      }) => {
+      addRunningJob: (jobInput) => {
+        const {
+          type,
+          title,
+          taskId = null,
+          projectId = null,
+          details,
+        } = jobInput;
+        const noteId = 'noteId' in jobInput ? (jobInput.noteId ?? null) : null;
         const id = nanoid();
         const createdAt = new Date().toISOString();
         const runningJob = {
@@ -219,6 +245,7 @@ export const useBackgroundJobsStore = create<BackgroundJobsState>()(
           errorMessage: null,
           taskId,
           projectId,
+          noteId,
           details,
         } as BackgroundJob;
 
@@ -240,6 +267,7 @@ export const useBackgroundJobsStore = create<BackgroundJobsState>()(
                   errorMessage: null,
                   taskId: data?.taskId ?? job.taskId,
                   projectId: data?.projectId ?? job.projectId,
+                  noteId: data?.noteId ?? job.noteId,
                 }
               : job,
           ),
@@ -308,6 +336,8 @@ export function bgJobLabel(type: BackgroundJobType): string {
       return 'Merging…';
     case 'summary-generation':
       return 'Generating summary…';
+    case 'verification-note':
+      return 'Generating verification note…';
     case 'task-creation':
       return 'Creating…';
     case 'skill-creation':

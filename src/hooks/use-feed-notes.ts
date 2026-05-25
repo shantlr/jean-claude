@@ -3,11 +3,23 @@ import { useMemo } from 'react';
 
 import { api } from '@/lib/api';
 import type { FeedItem } from '@shared/feed-types';
+import type { CreateWorkItemVerificationNoteParams } from '@shared/work-item-verification-note-types';
 
 export function useCreateFeedNote() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (params: { content: string }) => api.feed.createNote(params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+    },
+  });
+}
+
+export function useCreateWorkItemVerificationNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: CreateWorkItemVerificationNoteParams) =>
+      api.feed.createWorkItemVerificationNote(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
     },

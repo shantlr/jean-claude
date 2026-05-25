@@ -608,7 +608,8 @@ export type AiSkillSlotKey =
   | 'merge-commit-message'
   | 'commit-message'
   | 'pr-description'
-  | 'task-name';
+  | 'task-name'
+  | 'verification-note';
 export type AiSkillSlotsSetting = Partial<
   Record<AiSkillSlotKey, AiSkillSlotConfig>
 >;
@@ -747,6 +748,7 @@ const VALID_SLOT_KEYS: AiSkillSlotKey[] = [
   'commit-message',
   'pr-description',
   'task-name',
+  'verification-note',
 ];
 
 /** Note: returns true for `{}` (empty object) — this is intentional as it represents "no slots configured". */

@@ -173,6 +173,14 @@ export function BackgroundJobsOverlay({ onClose }: { onClose: () => void }) {
                       });
                       onClose();
                     }}
+                    onOpenNote={(targetJob) => {
+                      if (!targetJob.noteId) return;
+                      navigate({
+                        to: '/all/notes/$noteId',
+                        params: { noteId: targetJob.noteId },
+                      });
+                      onClose();
+                    }}
                   />
                 ))}
               </div>
@@ -191,12 +199,14 @@ function JobRow({
   onRetryTaskCreation,
   onRetryTaskDeletion,
   onOpenTask,
+  onOpenNote,
 }: {
   job: BackgroundJob;
   onCopyPrompt: (job: BackgroundJob) => Promise<void>;
   onRetryTaskCreation: (job: BackgroundJob) => Promise<void>;
   onRetryTaskDeletion: (job: BackgroundJob) => Promise<void>;
   onOpenTask: (job: BackgroundJob) => void;
+  onOpenNote: (job: BackgroundJob) => void;
 }) {
   const icon =
     job.status === 'running' ? (
@@ -281,6 +291,17 @@ function JobRow({
                   Open Task
                 </Button>
               )}
+            {job.type === 'verification-note' &&
+              job.status === 'succeeded' &&
+              job.noteId && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => onOpenNote(job)}
+                >
+                  Open Note
+                </Button>
+              )}
           </div>
         </div>
       </div>
@@ -346,6 +367,20 @@ function JobDetails({ job }: { job: BackgroundJob }) {
             <p>Task: {typedJob.details.taskName}</p>
           )}
           <p>Scope: git diff</p>
+        </div>
+      );
+    },
+    'verification-note': (typedJob) => {
+      if (typedJob.type !== 'verification-note') return null;
+
+      return (
+        <div className="text-ink-2 mt-1 space-y-0.5 text-xs">
+          <p>{typedJob.details.workItemCount} work item(s)</p>
+          {typedJob.details.workItemTitles.length > 0 && (
+            <p className="truncate">
+              {typedJob.details.workItemTitles.join(', ')}
+            </p>
+          )}
         </div>
       );
     },

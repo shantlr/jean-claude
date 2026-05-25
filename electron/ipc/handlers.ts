@@ -49,10 +49,12 @@ import {
   type UpdateTaskStep,
   type SkillCreationStepMeta,
   isSkillCreationStepMeta,
+  isAiSkillSlotsSetting,
   type ReviewerConfig,
   type ReviewStepMeta,
 } from '@shared/types';
 import type { UsageProviderType } from '@shared/usage-types';
+import type { CreateWorkItemVerificationNoteParams } from '@shared/work-item-verification-note-types';
 
 import type { PermissionScope } from '../../shared/permission-types';
 import {
@@ -210,6 +212,7 @@ import {
   getOrCreateSystemProject,
   getSkillWorkspacePath,
 } from '../services/system-project-service';
+import { generateWorkItemVerificationNote } from '../services/work-item-verification-note-service';
 import {
   checkMergeConflicts,
   createWorktree,
@@ -3961,6 +3964,20 @@ export function registerIpcHandlers() {
   );
 
   ipcMain.handle(
+    'feed:createWorkItemVerificationNote',
+    async (_event, params: CreateWorkItemVerificationNoteParams) => {
+      const validatedParams =
+        validateCreateWorkItemVerificationNoteParams(params);
+      const content = await generateWorkItemVerificationNote(validatedParams);
+      if (!content) {
+        throw new Error('Failed to generate verification note');
+      }
+
+      return createFeedNote({ content: validateFeedNoteContent(content) });
+    },
+  );
+
+  ipcMain.handle(
     'feed:updateNote',
     async (
       _event,
@@ -4567,6 +4584,66 @@ function validateFeedNoteId(id: string): string {
   }
 
   return trimmed;
+}
+
+function validateCreateWorkItemVerificationNoteParams(
+  params: CreateWorkItemVerificationNoteParams,
+): CreateWorkItemVerificationNoteParams {
+  if (!params || typeof params !== 'object') {
+    throw new Error('Invalid verification note params');
+  }
+
+  if (params.backend !== 'claude-code' && params.backend !== 'opencode') {
+    throw new Error('Invalid agent backend');
+  }
+
+  if (typeof params.model !== 'string' || params.model.trim().length === 0) {
+    throw new Error('Invalid model');
+  }
+
+  if (!Array.isArray(params.workItems) || params.workItems.length === 0) {
+    throw new Error('At least one work item is required');
+  }
+
+  if (params.workItems.length > 20) {
+    throw new Error('Too many work items selected');
+  }
+
+  return {
+    backend: params.backend,
+    model: params.model.trim(),
+    projectAiSkillSlots: isAiSkillSlotsSetting(params.projectAiSkillSlots)
+      ? params.projectAiSkillSlots
+      : null,
+    workItems: params.workItems.map((workItem) => ({
+      id: Number(workItem.id),
+      title: String(workItem.title ?? '').slice(0, 500),
+      workItemType: String(workItem.workItemType ?? '').slice(0, 100),
+      state: String(workItem.state ?? '').slice(0, 100),
+      description: workItem.description?.slice(0, 8000),
+      reproSteps: workItem.reproSteps?.slice(0, 8000),
+    })),
+    testCasesByWorkItem: Object.fromEntries(
+      Object.entries(params.testCasesByWorkItem ?? {}).map(
+        ([workItemId, testCases]) => [
+          Number(workItemId),
+          (Array.isArray(testCases) ? testCases : [])
+            .slice(0, 20)
+            .map((tc) => ({
+              id: Number(tc.id),
+              title: String(tc.title ?? '').slice(0, 500),
+              steps: (tc.steps ?? []).slice(0, 30).map((step) => ({
+                action: String(step.action ?? '').slice(0, 4000),
+                expectedResult: String(step.expectedResult ?? '').slice(
+                  0,
+                  4000,
+                ),
+              })),
+            })),
+        ],
+      ),
+    ),
+  };
 }
 
 function validateFeedNoteContent(content: string): string {

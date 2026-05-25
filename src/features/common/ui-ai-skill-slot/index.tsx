@@ -41,6 +41,12 @@ export const SLOT_DEFINITIONS: {
     description:
       'Auto-generate short task names from prompts (defaults to builtin skill with Haiku)',
   },
+  {
+    key: 'verification-note',
+    label: 'Verification Note',
+    description:
+      'Generate named work item verification checklists from selected work items and test cases',
+  },
 ];
 
 export function SlotDetail({

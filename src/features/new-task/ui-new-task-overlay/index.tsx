@@ -49,7 +49,10 @@ import {
 } from '@/features/common/ui-prompt-textarea';
 import { WorkItemPicker } from '@/features/work-item/ui-work-item-picker';
 import { useBackendModels } from '@/hooks/use-backend-models';
-import { useCreateFeedNote } from '@/hooks/use-feed-notes';
+import {
+  useCreateFeedNote,
+  useCreateWorkItemVerificationNote,
+} from '@/hooks/use-feed-notes';
 import { useDeleteProjectTodo } from '@/hooks/use-project-todos';
 import {
   useProjects,
@@ -205,6 +208,7 @@ export function NewTaskOverlay({
   const reorderProjectsMutation = useReorderProjects();
   const createTaskMutation = useCreateTaskWithWorktree();
   const createNoteMutation = useCreateFeedNote();
+  const createVerificationNoteMutation = useCreateWorkItemVerificationNote();
   const deleteBacklogTodo = useDeleteProjectTodo();
   const queryClient = useQueryClient();
   const addRunningJob = useBackgroundJobsStore((state) => state.addRunningJob);
@@ -983,6 +987,68 @@ export function NewTaskOverlay({
     }
   }, [draft?.prompt, createNoteMutation, clearDraft]);
 
+  const handleCreateVerificationNote = useCallback(async () => {
+    if (selectedWorkItems.length === 0) return;
+
+    const workItemTitles = selectedWorkItems.map((workItem) =>
+      workItem.fields.title.slice(0, 80),
+    );
+    const creationInput = {
+      backend: currentBackend,
+      model: currentModelPreference,
+      projectAiSkillSlots: selectedProject?.aiSkillSlots ?? null,
+      workItems: selectedWorkItems.map((workItem) => ({
+        id: workItem.id,
+        title: workItem.fields.title,
+        workItemType: workItem.fields.workItemType,
+        state: workItem.fields.state,
+        description: workItem.fields.description,
+        reproSteps: workItem.fields.reproSteps,
+      })),
+      testCasesByWorkItem,
+    };
+    const jobId = addRunningJob({
+      type: 'verification-note',
+      title: 'Generating verification note',
+      details: {
+        workItemCount: selectedWorkItems.length,
+        workItemTitles,
+      },
+    });
+
+    void triggerAnimation();
+    clearDraft();
+    onClose();
+
+    void createVerificationNoteMutation
+      .mutateAsync(creationInput)
+      .then((note) => {
+        markJobSucceeded(jobId, { noteId: note.id });
+        queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+      })
+      .catch((error: unknown) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Failed to create verification note';
+        markJobFailed(jobId, message);
+      });
+  }, [
+    selectedWorkItems,
+    testCasesByWorkItem,
+    currentBackend,
+    currentModelPreference,
+    selectedProject?.aiSkillSlots,
+    addRunningJob,
+    createVerificationNoteMutation,
+    clearDraft,
+    onClose,
+    triggerAnimation,
+    markJobSucceeded,
+    queryClient,
+    markJobFailed,
+  ]);
+
   // Handle Cmd+Enter based on current state
   const handleCmdEnter = useCallback(() => {
     if (isNoteMode) {
@@ -1518,6 +1584,24 @@ export function NewTaskOverlay({
                       </span>
                     )}
                     <Kbd shortcut="cmd+e" />
+                  </button>
+                )}
+
+                {!isNoteMode && selectedWorkItems.length > 0 && (
+                  <button
+                    type="button"
+                    className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[5px] px-2.5 py-[5px] text-xs font-medium"
+                    style={{
+                      background: 'oklch(1 0 0 / 0.03)',
+                      border: '1px solid oklch(1 0 0 / 0.07)',
+                      color: 'oklch(0.78 0.01 280)',
+                    }}
+                    onClick={() => void handleCreateVerificationNote()}
+                    disabled={createVerificationNoteMutation.isPending}
+                  >
+                    {createVerificationNoteMutation.isPending
+                      ? 'Generating note...'
+                      : 'Verification note'}
                   </button>
                 )}
 

@@ -95,6 +95,7 @@ import type {
   ProjectTodo,
 } from '@shared/types';
 import type { UsageProviderMap, UsageSnapshot } from '@shared/usage-types';
+import type { CreateWorkItemVerificationNoteParams } from '@shared/work-item-verification-note-types';
 
 export type {
   AzureDevOpsPullRequest,
@@ -1187,6 +1188,9 @@ export interface Api {
   feed: {
     getItems: () => Promise<FeedItem[]>;
     createNote: (params: { content: string }) => Promise<FeedNote>;
+    createWorkItemVerificationNote: (
+      params: CreateWorkItemVerificationNoteParams,
+    ) => Promise<FeedNote>;
     updateNote: (params: {
       id: string;
       content?: string;
@@ -1754,6 +1758,14 @@ export const api: Api = hasWindowApi
       feed: {
         getItems: async () => [],
         createNote: async () => ({
+          id: '',
+          content: '',
+          completedAt: null,
+          sortOrder: 0,
+          createdAt: '',
+          updatedAt: '',
+        }),
+        createWorkItemVerificationNote: async () => ({
           id: '',
           content: '',
           completedAt: null,

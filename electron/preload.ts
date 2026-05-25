@@ -14,6 +14,7 @@ import type {
   GetYamlParametersIpcParams,
   QueueBuildIpcParams,
 } from '@shared/pipeline-types';
+import type { CreateWorkItemVerificationNoteParams } from '@shared/work-item-verification-note-types';
 
 contextBridge.exposeInMainWorld('api', {
   platform: process.platform,
@@ -965,6 +966,9 @@ contextBridge.exposeInMainWorld('api', {
     getItems: () => ipcRenderer.invoke('feed:getItems'),
     createNote: (params: { content: string }) =>
       ipcRenderer.invoke('feed:createNote', params),
+    createWorkItemVerificationNote: (
+      params: CreateWorkItemVerificationNoteParams,
+    ) => ipcRenderer.invoke('feed:createWorkItemVerificationNote', params),
     updateNote: (params: {
       id: string;
       content?: string;
