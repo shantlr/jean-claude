@@ -13,6 +13,7 @@ import { Button } from '@/common/ui/button';
 import { GlobalPromptFromBackModal } from '@/common/ui/global-prompt-from-back-modal';
 import { ActivityCenterOverlay } from '@/features/activity-center/ui-activity-center-overlay';
 import { TaskMessageManager } from '@/features/agent/task-message-manager';
+import { CalendarOverlay } from '@/features/calendar/ui-calendar-overlay';
 import { ChangelogModal } from '@/features/changelog/ui-changelog-modal';
 import { CommandPaletteOverlay } from '@/features/command-palette/ui-command-palette-overlay';
 import { NewTaskOverlay } from '@/features/new-task/ui-new-task-overlay';
@@ -228,6 +229,31 @@ function ActivityCenterContainer() {
   return <ActivityCenterOverlay onClose={() => close('activity-center')} />;
 }
 
+function CalendarContainer() {
+  const layer = useKeyboardLayer('global-nav');
+  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'calendar');
+  const toggle = useOverlaysStore((s) => s.toggle);
+  const close = useOverlaysStore((s) => s.close);
+
+  useCommands(
+    'calendar-trigger',
+    [
+      {
+        shortcut: 'cmd+;',
+        label: 'Calendar',
+        section: 'General',
+        handler: () => {
+          toggle('calendar');
+        },
+      },
+    ],
+    { layer },
+  );
+
+  if (!isOpen) return null;
+  return <CalendarOverlay onClose={() => close('calendar')} />;
+}
+
 function SettingsContainer() {
   const isOpen = useOverlaysStore((s) => s.activeOverlay === 'settings');
   const close = useOverlaysStore((s) => s.close);
@@ -368,6 +394,7 @@ function RootLayout() {
       <ProjectOverlayContainer />
       <ProjectBacklogContainer />
       <ActivityCenterContainer />
+      <CalendarContainer />
       <SettingsContainer />
       <RunningCommandsContainer />
       <PipelinesOverlayContainer />

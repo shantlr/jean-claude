@@ -12,7 +12,8 @@ export type OverlayType =
   | 'settings'
   | 'project-backlog'
   | 'pipelines'
-  | 'running-commands';
+  | 'running-commands'
+  | 'calendar';
 
 interface OverlaysState {
   // Current active overlay (null = none open)

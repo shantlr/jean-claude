@@ -126,10 +126,14 @@ function parseSystemCalendarEvents(rawOutput: string): CalendarEventRecord[] {
 function buildSystemCalendarSwiftScript({
   lookaheadMinutes,
   includeOngoing,
+  lookBehindMinutes,
 }: {
   lookaheadMinutes: number;
   includeOngoing: boolean;
+  lookBehindMinutes?: number;
 }): string {
+  const hasLookBehind =
+    lookBehindMinutes !== undefined && lookBehindMinutes > 0;
   return `
 import Foundation
 import EventKit
@@ -176,9 +180,11 @@ guard accessGranted else {
 }
 
 let now = Date()
-let start = ${includeOngoing}
-  ? now.addingTimeInterval(-14 * 24 * 60 * 60)
-  : now
+let start = ${hasLookBehind}
+  ? now.addingTimeInterval(-${hasLookBehind ? lookBehindMinutes : 0} * 60)
+  : ${includeOngoing}
+    ? now.addingTimeInterval(-14 * 24 * 60 * 60)
+    : now
 let end = now.addingTimeInterval(${lookaheadMinutes} * 60)
 let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
 let formatter = DateFormatter()
@@ -192,9 +198,11 @@ let filteredEvents = events.compactMap { event -> Meeting? in
     return nil
   }
 
-  let shouldInclude = ${includeOngoing}
-    ? event.endDate >= now && event.startDate <= end
-    : event.startDate >= now && event.startDate <= end
+  let shouldInclude = ${hasLookBehind}
+    ? event.startDate >= start && event.startDate <= end
+    : ${includeOngoing}
+      ? event.endDate >= now && event.startDate <= end
+      : event.startDate >= now && event.startDate <= end
 
   if !shouldInclude {
     return nil
@@ -394,6 +402,50 @@ class SystemCalendarService {
       }));
   }
 
+  async listTodayMeetings(): Promise<UpcomingMeeting[]> {
+    if (process.platform !== 'darwin') {
+      return [];
+    }
+
+    const settings = await SettingsRepository.get('calendarNotifications');
+    if (!settings.enabled) {
+      return [];
+    }
+
+    // Calculate minutes from now back to start of today
+    const now = new Date();
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+    const lookBehindMinutes = Math.ceil(
+      (now.getTime() - startOfToday.getTime()) / 60_000,
+    );
+
+    // Look ahead to end of today
+    const endOfToday = new Date(startOfToday);
+    endOfToday.setHours(23, 59, 59, 999);
+    const lookaheadMinutes = Math.ceil(
+      (endOfToday.getTime() - now.getTime()) / 60_000,
+    );
+
+    const events = await this.fetchUpcomingEvents({
+      lookaheadMinutes,
+      includeOngoing: false,
+      lookBehindMinutes,
+    });
+
+    return events.sort(compareMeetingUrgency).map((event) => ({
+      id: buildCalendarNotificationKey(event),
+      externalId: event.externalId,
+      title: event.subject,
+      startAt: event.startAt,
+      endAt: event.endAt,
+      location: event.location,
+      calendarName: event.calendarName,
+      notes: event.notes,
+      url: event.url,
+    }));
+  }
+
   async revealMeeting(meeting: UpcomingMeeting): Promise<void> {
     if (process.platform !== 'darwin') {
       return;
@@ -462,13 +514,16 @@ class SystemCalendarService {
   private async fetchUpcomingEvents({
     lookaheadMinutes,
     includeOngoing,
+    lookBehindMinutes,
   }: {
     lookaheadMinutes: number;
     includeOngoing: boolean;
+    lookBehindMinutes?: number;
   }): Promise<CalendarEventRecord[]> {
     const script = buildSystemCalendarSwiftScript({
       lookaheadMinutes,
       includeOngoing,
+      lookBehindMinutes,
     });
     const { stdout } = await execFileAsync('xcrun', ['swift', '-e', script], {
       timeout: APPLE_SCRIPT_TIMEOUT_MS,

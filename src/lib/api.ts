@@ -816,6 +816,7 @@ export interface Api {
   };
   calendar: {
     listUpcomingMeetings: () => Promise<UpcomingMeeting[]>;
+    listTodayMeetings: () => Promise<UpcomingMeeting[]>;
     revealMeeting: (meeting: UpcomingMeeting) => Promise<void>;
   };
   agent: {
@@ -1492,6 +1493,7 @@ export const api: Api = hasWindowApi
       },
       calendar: {
         listUpcomingMeetings: async () => [],
+        listTodayMeetings: async () => [],
         revealMeeting: async () => {},
       },
       agent: {

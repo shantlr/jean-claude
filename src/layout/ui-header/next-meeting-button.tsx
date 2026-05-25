@@ -1,326 +1,23 @@
 import clsx from 'clsx';
-import {
-  CalendarClock,
-  ChevronDown,
-  ChevronUp,
-  Clock,
-  ExternalLink,
-  MapPin,
-  Video,
-} from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Calendar, Video } from 'lucide-react';
+import { type MouseEvent, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/common/ui/button';
-import { Dropdown } from '@/common/ui/dropdown';
+import { Kbd } from '@/common/ui/kbd';
+import { CountdownRing } from '@/features/calendar/ui-countdown-ring';
+import {
+  extractTeamsUrl,
+  formatTimeHHMM,
+  getMeetingState,
+  relativeLabel,
+  sortMeetings,
+} from '@/features/calendar/utils-calendar';
 import { useCalendarNotificationsSetting } from '@/hooks/use-settings';
 import { api } from '@/lib/api';
+import { useCalendarIgnoredStore } from '@/stores/calendar-ignored';
+import { useOverlaysStore } from '@/stores/overlays';
 import { useToastStore } from '@/stores/toasts';
 import type { UpcomingMeeting } from '@shared/calendar-types';
-
-const TEAMS_URL_PATTERN =
-  /https?:\/\/(?:[^\s<>()"']+\.)?(?:teams\.microsoft\.com|teams\.live\.com|teams\.cloud\.microsoft)\/[^\s<>()"']+/gi;
-
-function extractTeamsUrl(meeting: UpcomingMeeting): string | null {
-  const haystack = [meeting.url, meeting.location, meeting.notes].join('\n');
-  const matches = haystack.matchAll(TEAMS_URL_PATTERN);
-
-  for (const match of matches) {
-    const rawUrl = match[0].replaceAll('&amp;', '&').replace(/[.,;:!?]+$/, '');
-
-    try {
-      const url = new URL(rawUrl);
-      if (url.protocol === 'https:' || url.protocol === 'http:') {
-        return url.toString();
-      }
-    } catch {
-      // Ignore malformed calendar text fragments.
-    }
-  }
-
-  return null;
-}
-
-function formatMeetingBadge(startAt: string): string {
-  const date = new Date(startAt);
-  const now = new Date();
-  const sameDay = date.toDateString() === now.toDateString();
-
-  return sameDay
-    ? date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-    : date.toLocaleString([], {
-        weekday: 'short',
-        hour: 'numeric',
-        minute: '2-digit',
-      });
-}
-
-function formatMeetingDate(startAt: string): string {
-  return new Date(startAt).toLocaleDateString([], {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
-function formatMeetingTimeRange(startAt: string, endAt: string): string {
-  const start = new Date(startAt);
-  const end = new Date(endAt);
-
-  return `${start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
-}
-
-function compareMeetings(a: UpcomingMeeting, b: UpcomingMeeting): number {
-  const nowMs = Date.now();
-  const aStartMs = new Date(a.startAt).getTime();
-  const aEndMs = new Date(a.endAt).getTime();
-  const bStartMs = new Date(b.startAt).getTime();
-  const bEndMs = new Date(b.endAt).getTime();
-
-  const aIsLive =
-    Number.isFinite(aStartMs) && Number.isFinite(aEndMs)
-      ? aStartMs <= nowMs && aEndMs >= nowMs
-      : false;
-  const bIsLive =
-    Number.isFinite(bStartMs) && Number.isFinite(bEndMs)
-      ? bStartMs <= nowMs && bEndMs >= nowMs
-      : false;
-
-  if (aIsLive !== bIsLive) {
-    return aIsLive ? -1 : 1;
-  }
-
-  if (aIsLive && bIsLive) {
-    const liveEndDiff = aEndMs - bEndMs;
-    if (Number.isFinite(liveEndDiff) && liveEndDiff !== 0) {
-      return liveEndDiff;
-    }
-  }
-
-  const startDiff = aStartMs - bStartMs;
-  if (Number.isFinite(startDiff) && startDiff !== 0) {
-    return startDiff;
-  }
-
-  const startTextDiff = a.startAt.localeCompare(b.startAt);
-  if (startTextDiff !== 0) {
-    return startTextDiff;
-  }
-
-  const endDiff = aEndMs - bEndMs;
-  if (Number.isFinite(endDiff) && endDiff !== 0) {
-    return endDiff;
-  }
-
-  const endTextDiff = a.endAt.localeCompare(b.endAt);
-  if (endTextDiff !== 0) {
-    return endTextDiff;
-  }
-
-  return a.title.localeCompare(b.title);
-}
-
-function getMeetingStatus(meeting: UpcomingMeeting): {
-  label: string | null;
-  tone: 'soon' | 'live' | 'normal';
-} {
-  const nowMs = Date.now();
-  const startMs = new Date(meeting.startAt).getTime();
-  const endMs = new Date(meeting.endAt).getTime();
-
-  if (Number.isFinite(startMs) && Number.isFinite(endMs)) {
-    if (startMs <= nowMs && endMs >= nowMs) {
-      return { label: 'Now', tone: 'live' };
-    }
-
-    const minutesUntil = Math.round((startMs - nowMs) / 60_000);
-    if (minutesUntil >= 0 && minutesUntil <= 15) {
-      return {
-        label: minutesUntil <= 1 ? 'Soon' : `${minutesUntil}m`,
-        tone: 'soon',
-      };
-    }
-  }
-
-  return { label: null, tone: 'normal' };
-}
-
-function statusClasses(tone: 'soon' | 'live' | 'normal'): string {
-  if (tone === 'live') {
-    return 'bg-status-done/15 text-status-done';
-  }
-
-  if (tone === 'soon') {
-    return 'bg-status-warn/15 text-status-warn';
-  }
-
-  return 'bg-glass-medium text-ink-2';
-}
-
-function MeetingRow({
-  meeting,
-  isSelected,
-  onSelect,
-}: {
-  meeting: UpcomingMeeting;
-  isSelected: boolean;
-  onSelect: () => void;
-}) {
-  const status = getMeetingStatus(meeting);
-
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={clsx(
-        'border-glass-border/70 hover:bg-glass-medium flex w-full items-start justify-between gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
-        isSelected && 'border-acc/50 bg-acc/10 hover:bg-acc/12',
-      )}
-      aria-pressed={isSelected}
-    >
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <div className="text-ink-1 truncate text-sm font-medium">
-            {meeting.title}
-          </div>
-          {status.label && (
-            <span
-              className={clsx(
-                'rounded-full px-1.5 py-0.5 text-[10px] font-medium',
-                statusClasses(status.tone),
-              )}
-            >
-              {status.label}
-            </span>
-          )}
-        </div>
-        <div className="text-ink-3 mt-1 text-xs">
-          {formatMeetingDate(meeting.startAt)}
-        </div>
-        <div className="text-ink-2 mt-0.5 text-xs">
-          {formatMeetingTimeRange(meeting.startAt, meeting.endAt)}
-        </div>
-        <div className="text-ink-3 mt-1 flex items-center gap-1 text-xs">
-          <MapPin className="h-3 w-3 shrink-0" />
-          <span className="truncate">{meeting.location || 'No location'}</span>
-        </div>
-      </div>
-      {isSelected ? (
-        <ChevronUp className="text-acc-ink mt-0.5 h-4 w-4 shrink-0" />
-      ) : (
-        <ChevronDown className="text-ink-3 mt-0.5 h-4 w-4 shrink-0" />
-      )}
-    </button>
-  );
-}
-
-function MeetingDetailsPane({
-  meeting,
-  onOpen,
-  onOpenTeams,
-}: {
-  meeting: UpcomingMeeting;
-  onOpen: () => void;
-  onOpenTeams: (url: string) => void;
-}) {
-  const status = getMeetingStatus(meeting);
-  const teamsUrl = extractTeamsUrl(meeting);
-  const detailItems = [
-    {
-      label: 'Date',
-      value: formatMeetingDate(meeting.startAt),
-      icon: <CalendarClock className="h-4 w-4" />,
-    },
-    {
-      label: 'Time',
-      value: formatMeetingTimeRange(meeting.startAt, meeting.endAt),
-      icon: <Clock className="h-4 w-4" />,
-    },
-    {
-      label: 'Location',
-      value: meeting.location || 'No location',
-      icon: <MapPin className="h-4 w-4" />,
-    },
-    {
-      label: 'Calendar',
-      value: meeting.calendarName,
-      icon: <CalendarClock className="h-4 w-4" />,
-    },
-  ];
-
-  return (
-    <aside className="border-glass-border/70 bg-bg-2 flex min-h-0 flex-col overflow-hidden rounded-xl border">
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-acc-ink text-[11px] font-semibold tracking-wide uppercase">
-              Meeting details
-            </div>
-            <h3 className="text-ink-1 mt-1.5 text-xl leading-tight font-semibold tracking-[-0.02em]">
-              {meeting.title}
-            </h3>
-          </div>
-          {status.label && (
-            <span
-              className={clsx(
-                'shrink-0 rounded-full px-2 py-1 text-[11px] font-medium',
-                statusClasses(status.tone),
-              )}
-            >
-              {status.label}
-            </span>
-          )}
-        </div>
-
-        <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
-          {detailItems.map((item) => (
-            <div
-              key={item.label}
-              className="border-glass-border/70 bg-glass-subtle rounded-lg border p-2.5"
-            >
-              <div className="text-ink-3 flex items-center gap-2 text-[11px] font-medium">
-                {item.icon}
-                {item.label}
-              </div>
-              <div className="text-ink-1 mt-1.5 text-sm leading-snug font-semibold">
-                {item.value}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="border-glass-border/70 bg-glass-subtle mt-3 rounded-lg border p-2.5">
-          <div className="text-ink-3 text-[11px] font-medium">Notes</div>
-          <div className="text-ink-1 mt-1.5 text-xs leading-5 whitespace-pre-wrap">
-            {meeting.notes || 'No notes for this meeting.'}
-          </div>
-        </div>
-      </div>
-
-      <div className="border-glass-border/70 bg-bg-2/95 shrink-0 border-t p-3">
-        <div className="flex flex-wrap gap-2">
-          {teamsUrl && (
-            <Button
-              size="sm"
-              variant="primary"
-              icon={<Video />}
-              onClick={() => onOpenTeams(teamsUrl)}
-            >
-              Open Teams Call
-            </Button>
-          )}
-          <Button
-            size="sm"
-            variant="secondary"
-            icon={<ExternalLink />}
-            onClick={onOpen}
-          >
-            Open in Calendar
-          </Button>
-        </div>
-      </div>
-    </aside>
-  );
-}
 
 export function NextMeetingButton() {
   const { data: calendarNotificationsSetting } =
@@ -328,166 +25,160 @@ export function NextMeetingButton() {
   const enabled = calendarNotificationsSetting?.enabled ?? false;
   const canShow = enabled && api.platform === 'darwin';
   const [meetings, setMeetings] = useState<UpcomingMeeting[]>([]);
-  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(
-    null,
-  );
-  const [isLoading, setIsLoading] = useState(false);
-  const addToast = useToastStore((state) => state.addToast);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const addToast = useToastStore((s) => s.addToast);
+  const toggleOverlay = useOverlaysStore((s) => s.toggle);
+  const ignoredIds = useCalendarIgnoredStore((s) => s.ignoredIds);
 
+  // Poll meetings every 60s
   useEffect(() => {
     if (!canShow) {
       setMeetings([]);
-      setIsLoading(false);
+      setHasLoaded(false);
       return;
     }
-
-    let isCancelled = false;
-
-    const loadMeetings = async () => {
-      setIsLoading(true);
+    let cancelled = false;
+    const load = async () => {
       try {
-        const nextMeetings = await api.calendar.listUpcomingMeetings();
-        if (!isCancelled) {
-          const sortedMeetings = [...nextMeetings].sort(compareMeetings);
-          setMeetings(sortedMeetings);
-          setSelectedMeetingId((current) =>
-            current && sortedMeetings.some((meeting) => meeting.id === current)
-              ? current
-              : (sortedMeetings[0]?.id ?? null),
-          );
+        const result = await api.calendar.listUpcomingMeetings();
+        if (!cancelled) {
+          setMeetings(result);
+          setHasLoaded(true);
         }
       } catch (error) {
-        if (!isCancelled) {
+        if (!cancelled) {
           addToast({
             message:
               error instanceof Error
                 ? error.message
-                : 'Could not load upcoming meetings',
+                : 'Could not load meetings',
             type: 'error',
           });
         }
-      } finally {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
       }
     };
-
-    void loadMeetings();
-    const intervalId = window.setInterval(() => {
-      void loadMeetings();
-    }, 60_000);
-
+    void load();
+    const id = window.setInterval(() => void load(), 60_000);
     return () => {
-      isCancelled = true;
-      window.clearInterval(intervalId);
+      cancelled = true;
+      window.clearInterval(id);
     };
   }, [addToast, canShow]);
 
-  if (!canShow) {
-    return null;
-  }
+  // Refresh `now` every 30s for countdown updates
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
-  const nextMeeting = meetings[0];
-  const nextMeetingStatus = nextMeeting ? getMeetingStatus(nextMeeting) : null;
-  const selectedMeeting =
-    meetings.find((meeting) => meeting.id === selectedMeetingId) ?? nextMeeting;
+  const ignoredSet = useMemo(() => new Set(ignoredIds), [ignoredIds]);
 
-  const openMeeting = (meeting: UpcomingMeeting) => {
-    void api.calendar.revealMeeting(meeting).catch((error) => {
-      addToast({
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Could not open meeting in Calendar',
-        type: 'error',
-      });
-    });
-  };
+  const activeMeetings = useMemo(
+    () =>
+      sortMeetings(
+        meetings.filter((m) => !ignoredSet.has(m.id)),
+        now,
+      ),
+    [meetings, ignoredSet, now],
+  );
 
-  const openTeamsCall = (url: string) => {
-    window.open(url, '_blank');
+  if (!canShow) return null;
+
+  const next = activeMeetings[0] ?? null;
+  const state = next ? getMeetingState(next, now) : 'none';
+  const teamsUrl = next ? extractTeamsUrl(next) : null;
+
+  const handleClick = () => toggleOverlay('calendar');
+  const handleJoin = (e: MouseEvent) => {
+    e.stopPropagation();
+    if (teamsUrl) window.open(teamsUrl, '_blank');
   };
 
   return (
-    <Dropdown
-      align="right"
-      trigger={
-        <Button
-          variant="ghost"
-          size="sm"
-          className={clsx(
-            'max-w-[280px] gap-2 rounded-lg border px-2.5',
-            nextMeetingStatus?.tone === 'live'
-              ? 'border-status-done/40 bg-status-done/8 hover:bg-status-done/12'
-              : nextMeetingStatus?.tone === 'soon'
-                ? 'border-status-warn/40 bg-status-warn/8 hover:bg-status-warn/12'
-                : nextMeeting
-                  ? 'border-acc/35 bg-acc/8 hover:bg-acc/12'
-                  : 'border-glass-border bg-glass-subtle hover:bg-glass-light',
-          )}
-          title={nextMeeting ? nextMeeting.title : 'Upcoming meetings'}
-        >
-          <CalendarClock className="h-4 w-4 shrink-0" />
-          <span className="min-w-0 truncate text-xs">
-            {isLoading
-              ? 'Loading meetings...'
-              : nextMeeting
-                ? `${formatMeetingBadge(nextMeeting.startAt)} · ${nextMeeting.title}`
-                : 'No upcoming meetings'}
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={handleClick}
+      className={clsx(
+        'max-w-[340px] gap-2 rounded-lg border px-2.5',
+        state === 'live' &&
+          'border-status-run/40 bg-status-run/8 hover:bg-status-run/12',
+        state === 'imminent' && 'border-acc/40 bg-acc/8 hover:bg-acc/12',
+        state === 'soon' && 'border-acc/35 bg-acc/8 hover:bg-acc/12',
+        (state === 'upcoming' || state === 'none') &&
+          'border-glass-border bg-glass-subtle hover:bg-glass-light',
+      )}
+      title={next ? next.title : 'Upcoming meetings'}
+    >
+      {next ? (
+        <>
+          <CountdownRing
+            startAt={next.startAt}
+            endAt={next.endAt}
+            now={now}
+            size={18}
+            strokeWidth={2}
+            color={
+              state === 'live'
+                ? 'oklch(0.78 0.16 75)'
+                : state === 'soon' || state === 'imminent'
+                  ? 'oklch(0.72 0.2 295)'
+                  : 'oklch(0.52 0.014 275)'
+            }
+          />
+          <span className="text-ink-3 font-mono text-[11px]">
+            {formatTimeHHMM(next.startAt)}
           </span>
-          {nextMeetingStatus?.label && (
-            <span
-              className={clsx(
-                'rounded-full px-1.5 py-0.5 text-[10px] font-medium',
-                statusClasses(nextMeetingStatus.tone),
-              )}
-            >
-              {nextMeetingStatus.label}
+          <span className="text-ink-1 max-w-[180px] min-w-0 truncate text-xs font-medium">
+            {next.title}
+          </span>
+          {state === 'live' && (
+            <span className="text-status-run flex items-center gap-1 font-mono text-[11px] font-semibold tracking-wide uppercase">
+              <span className="bg-status-run h-1.5 w-1.5 animate-pulse rounded-full" />
+              LIVE
             </span>
           )}
-        </Button>
-      }
-      className="flex h-[88vh] !max-h-[calc(100vh-32px)] w-[920px] max-w-[calc(100vw-32px)] flex-col !overflow-hidden p-3"
-    >
-      <div className="px-2 pt-1 pb-2">
-        <div className="text-ink-1 text-sm font-semibold">
-          Upcoming meetings
-        </div>
-        <div className="text-ink-3 mt-0.5 text-xs">
-          macOS Calendar events scheduled soonest first.
-        </div>
-      </div>
-
-      {isLoading ? (
-        <div className="text-ink-3 px-2 py-6 text-center text-sm">
-          Loading upcoming meetings...
-        </div>
-      ) : meetings.length === 0 ? (
-        <div className="text-ink-3 px-2 py-6 text-center text-sm">
-          No upcoming meetings found.
-        </div>
-      ) : (
-        <div className="grid min-h-0 flex-1 gap-3 px-2 pb-2 md:grid-cols-[minmax(260px,360px)_1fr]">
-          <div className="flex min-h-0 flex-col gap-2 overflow-y-auto pr-1">
-            {meetings.map((meeting) => (
-              <MeetingRow
-                key={meeting.id}
-                meeting={meeting}
-                isSelected={selectedMeeting?.id === meeting.id}
-                onSelect={() => setSelectedMeetingId(meeting.id)}
-              />
-            ))}
-          </div>
-          {selectedMeeting && (
-            <MeetingDetailsPane
-              meeting={selectedMeeting}
-              onOpen={() => openMeeting(selectedMeeting)}
-              onOpenTeams={openTeamsCall}
-            />
+          {(state === 'soon' || state === 'upcoming') && (
+            <span
+              className={clsx(
+                'font-mono text-[11px]',
+                state === 'soon' ? 'text-acc-ink font-semibold' : 'text-ink-3',
+              )}
+            >
+              {relativeLabel(next, now)}
+            </span>
           )}
-        </div>
+          {state === 'imminent' && teamsUrl && (
+            <button
+              type="button"
+              onClick={handleJoin}
+              className="bg-acc text-bg-0 flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-semibold"
+            >
+              <Video className="h-3 w-3" />
+              Join
+            </button>
+          )}
+          {state === 'live' && teamsUrl && (
+            <button
+              type="button"
+              onClick={handleJoin}
+              className="bg-status-run/20 text-status-run flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-semibold"
+            >
+              <Video className="h-3 w-3" />
+              Join
+            </button>
+          )}
+        </>
+      ) : (
+        <>
+          <Calendar className="text-ink-3 h-3.5 w-3.5" />
+          <span className="text-ink-3 text-xs">
+            {!hasLoaded ? 'Loading...' : 'No meetings'}
+          </span>
+        </>
       )}
-    </Dropdown>
+      <Kbd shortcut="cmd+;" className="ml-0.5" />
+    </Button>
   );
 }

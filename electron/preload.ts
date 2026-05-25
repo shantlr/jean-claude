@@ -523,6 +523,10 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('calendar:listUpcomingMeetings') as Promise<
         import('@shared/calendar-types').UpcomingMeeting[]
       >,
+    listTodayMeetings: () =>
+      ipcRenderer.invoke('calendar:listTodayMeetings') as Promise<
+        import('@shared/calendar-types').UpcomingMeeting[]
+      >,
     revealMeeting: (
       meeting: import('@shared/calendar-types').UpcomingMeeting,
     ) => ipcRenderer.invoke('calendar:revealMeeting', meeting) as Promise<void>,

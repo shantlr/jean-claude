@@ -2677,6 +2677,13 @@ export function registerIpcHandlers() {
     return systemCalendarService.listUpcomingMeetings();
   });
 
+  ipcMain.handle('calendar:listTodayMeetings', async () => {
+    if (process.platform !== 'darwin') {
+      return [];
+    }
+    return systemCalendarService.listTodayMeetings();
+  });
+
   ipcMain.handle('calendar:revealMeeting', async (_, meeting) => {
     if (process.platform !== 'darwin') {
       return;
