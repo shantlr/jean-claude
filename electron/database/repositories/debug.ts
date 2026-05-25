@@ -45,6 +45,7 @@ export interface QueryTableResult {
 
 export interface DatabaseSizeResult {
   bytes: number;
+  reclaimableBytes: number;
 }
 
 export interface OldCompletedTasksCountResult {
@@ -75,12 +76,19 @@ export const DebugRepository = {
     const pageCountResult = await sql<{
       page_count: number;
     }>`PRAGMA page_count`.execute(db);
+    const freelistCountResult = await sql<{
+      freelist_count: number;
+    }>`PRAGMA freelist_count`.execute(db);
 
     const pageSize = Number(pageSizeResult.rows[0]?.page_size ?? 0);
     const pageCount = Number(pageCountResult.rows[0]?.page_count ?? 0);
+    const freelistCount = Number(
+      freelistCountResult.rows[0]?.freelist_count ?? 0,
+    );
 
     return {
       bytes: pageSize * pageCount,
+      reclaimableBytes: pageSize * freelistCount,
     };
   },
 

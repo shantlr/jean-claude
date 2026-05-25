@@ -78,9 +78,12 @@ export function DebugDatabase() {
           Browse database tables and rows for debugging
         </p>
         {databaseSize && (
-          <p className="text-ink-2 mt-2 text-sm">
-            Current DB size: {formatBytes(databaseSize.bytes)}
-          </p>
+          <div className="text-ink-2 mt-2 space-y-1 text-sm">
+            <p>Current DB size: {formatBytes(databaseSize.bytes)}</p>
+            <p>
+              Vacuum reclaimable: {formatBytes(databaseSize.reclaimableBytes)}
+            </p>
+          </div>
         )}
       </div>
 

@@ -297,6 +297,7 @@ export interface QueryTableResult {
 
 export interface DebugDatabaseSizeResult {
   bytes: number;
+  reclaimableBytes: number;
 }
 
 export interface OldCompletedTasksCountResult {
@@ -1547,7 +1548,7 @@ export const api: Api = hasWindowApi
       },
       debug: {
         getTableNames: async () => [],
-        getDatabaseSize: async () => ({ bytes: 0 }),
+        getDatabaseSize: async () => ({ bytes: 0, reclaimableBytes: 0 }),
         countOldCompletedTasks: async () => ({ count: 0 }),
         deleteOldCompletedTasks: async () => ({ deletedCount: 0 }),
         queryTable: async () => ({ columns: [], rows: [], total: 0 }),
