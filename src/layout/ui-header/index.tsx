@@ -15,6 +15,7 @@ import {
   type CSSProperties,
 } from 'react';
 
+import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
 import { useModal } from '@/common/context/modal';
 import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
@@ -84,6 +85,8 @@ function ReloadPreviewModal({
   onBack: () => void;
   onRetry: () => void;
 }) {
+  useKeyboardLayer('dialog', { exclusive: true });
+
   const [progress, setProgress] = useState<ReloadPreviewProgress>(
     initialReloadProgress,
   );
