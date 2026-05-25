@@ -24,7 +24,7 @@ export function MergeConfirmDialog({
   branchName,
   targetBranch,
   isPending,
-  hasUnstagedChanges,
+  hasUncommittedChanges,
   canAutoGenerateCommitMessage,
   contentRef,
 }: {
@@ -39,17 +39,18 @@ export function MergeConfirmDialog({
   branchName: string;
   targetBranch: string;
   isPending: boolean;
-  hasUnstagedChanges: boolean;
+  hasUncommittedChanges: boolean;
   canAutoGenerateCommitMessage: boolean;
   contentRef?: RefObject<HTMLDivElement | null>;
 }) {
   const layer = useKeyboardLayer('dialog', { exclusive: isOpen });
   const [squash, setSquash] = useState(true);
   const [commitMessage, setCommitMessage] = useState('');
-  const [commitAllUnstaged, setCommitAllUnstaged] =
-    useState(hasUnstagedChanges);
+  const [commitAllUnstaged, setCommitAllUnstaged] = useState(
+    hasUncommittedChanges,
+  );
   const commitMessageRef = useRef<HTMLTextAreaElement>(null);
-  const hasUnstagedChangesRef = useRef(hasUnstagedChanges);
+  const hasUncommittedChangesRef = useRef(hasUncommittedChanges);
   const submitLockRef = useRef(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,8 +63,8 @@ export function MergeConfirmDialog({
 
   // Keep ref in sync
   useEffect(() => {
-    hasUnstagedChangesRef.current = hasUnstagedChanges;
-  }, [hasUnstagedChanges]);
+    hasUncommittedChangesRef.current = hasUncommittedChanges;
+  }, [hasUncommittedChanges]);
 
   // Reset state when dialog opens/closes
   useEffect(() => {
@@ -71,7 +72,7 @@ export function MergeConfirmDialog({
 
     setSquash(true);
     setCommitMessage('');
-    setCommitAllUnstaged(hasUnstagedChangesRef.current);
+    setCommitAllUnstaged(hasUncommittedChangesRef.current);
     setSubmitError(null);
     setHasConflicts(false);
     setCheckError(null);
@@ -129,7 +130,7 @@ export function MergeConfirmDialog({
     !isPending &&
     !isSubmitting &&
     !needsCommitMessage &&
-    (!hasUnstagedChanges || commitAllUnstaged);
+    (!hasUncommittedChanges || commitAllUnstaged);
 
   const handleConfirm = async () => {
     if (!canConfirm || submitLockRef.current) return;
@@ -139,10 +140,10 @@ export function MergeConfirmDialog({
     setIsSubmitting(true);
 
     try {
-      if (hasUnstagedChanges && commitAllUnstaged) {
+      if (hasUncommittedChanges && commitAllUnstaged) {
         await commitMutation.mutateAsync({
           taskId,
-          message: 'chore: commit unstaged changes before merge',
+          message: 'chore: commit uncommitted changes before merge',
           stageAll: true,
         });
       }
@@ -236,11 +237,11 @@ export function MergeConfirmDialog({
           </div>
         )}
 
-        {hasUnstagedChanges && (
+        {hasUncommittedChanges && (
           <Checkbox
             checked={commitAllUnstaged}
             onChange={setCommitAllUnstaged}
-            label="Commit all unstaged files before merge"
+            label="Commit all uncommitted files before merge"
             className="mb-4"
           />
         )}

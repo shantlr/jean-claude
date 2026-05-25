@@ -31,6 +31,7 @@ import { useToastStore } from '@/stores/toasts';
 import { CommitModal } from './commit-modal';
 import { MergeConfirmDialog } from './merge-confirm-dialog';
 import { PushConfirmDialog } from './push-confirm-dialog';
+import { canMergeWorktree } from './utils-merge-eligibility';
 
 export function WorktreeActions({
   taskId,
@@ -142,8 +143,10 @@ export function WorktreeActions({
   const canCommit =
     (status?.hasUncommittedChanges ?? false) && !hasRunningCommitJob;
   const isSelectedBranchProtected = protectedBranches.includes(selectedBranch);
-  const canMerge =
-    !status?.hasStagedChanges && !isStatusLoading && !isSelectedBranchProtected;
+  const canMerge = canMergeWorktree({
+    isStatusLoading,
+    isSelectedBranchProtected,
+  });
   const canCreatePr = !isStatusLoading;
 
   // Set default branch when branches load
@@ -335,7 +338,7 @@ export function WorktreeActions({
             size="md"
             icon={<GitMerge />}
             className="w-full"
-            title={canMerge ? 'Merge worktree' : 'Commit staged changes first'}
+            title={canMerge ? 'Merge worktree' : 'Merge unavailable'}
           >
             Merge
             <Kbd shortcut="cmd+shift+m" className="text-[9px]" />
@@ -418,7 +421,7 @@ export function WorktreeActions({
         branchName={branchName}
         targetBranch={selectedBranch}
         isPending={mergeMutation.isPending}
-        hasUnstagedChanges={status?.hasUnstagedChanges ?? false}
+        hasUncommittedChanges={status?.hasUncommittedChanges ?? false}
         canAutoGenerateCommitMessage={canAutoGenerateMergeMessage}
         contentRef={mergeDialogRef}
       />
