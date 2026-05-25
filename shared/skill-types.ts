@@ -25,7 +25,10 @@ export type Skill = Pick<
 /** Filesystem path config for a backend's skill directories */
 export interface AgentSkillPathConfig {
   userSkillsDir: string;
-  projectSkillsDir?: string; // relative to project root
+  /** Relative project path used when creating new project-scoped skills. */
+  projectSkillsDir?: string;
+  /** Relative project paths searched when discovering project-scoped skills. */
+  projectSkillsDirs?: string[];
   /** Optional function to discover additional skills (e.g., active plugins) */
   discoverExternalSkills?: () => Promise<ManagedSkill[]>;
 }

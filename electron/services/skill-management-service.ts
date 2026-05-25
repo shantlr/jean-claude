@@ -63,12 +63,14 @@ const SKILL_PATH_CONFIGS: Record<AgentBackendType, AgentSkillPathConfig> = {
   'claude-code': {
     userSkillsDir: path.join(os.homedir(), '.claude', 'skills'),
     projectSkillsDir: '.claude/skills',
+    projectSkillsDirs: ['.claude/skills'],
     discoverExternalSkills: () =>
       discoverActivePluginSkills({ backendType: 'claude-code' }),
   },
   opencode: {
     userSkillsDir: path.join(os.homedir(), '.config', 'opencode', 'skills'),
-    projectSkillsDir: undefined,
+    projectSkillsDir: '.opencode/skills',
+    projectSkillsDirs: ['.opencode/skills', '.claude/skills', '.agents/skills'],
   },
 };
 
@@ -103,6 +105,13 @@ async function pathExists(p: string): Promise<boolean> {
 /** Converts a skill name into a safe directory name (lowercase, alphanumeric + dashes). */
 function normalizeSkillDirName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+}
+
+function getProjectSkillDirs(config: AgentSkillPathConfig): string[] {
+  return (
+    config.projectSkillsDirs ??
+    (config.projectSkillsDir ? [config.projectSkillsDir] : [])
+  );
 }
 
 /** Builds a unique migration item identifier from backend type and legacy path. */
@@ -799,16 +808,18 @@ async function discoverSkillsForBackend({
   results.push(...(await discoverLegacyUserSkills(backendType)));
 
   // Project skills: in-place in project dir (always enabled)
-  if (projectPath && config.projectSkillsDir) {
-    const projectSkillsDir = path.join(projectPath, config.projectSkillsDir);
-    results.push(
-      ...(await discoverSkillsInDir({
-        baseDir: projectSkillsDir,
-        source: 'project',
-        enabledBackends: { [backendType]: true },
-        editable: true,
-      })),
-    );
+  if (projectPath) {
+    for (const relativeDir of getProjectSkillDirs(config)) {
+      const projectSkillsDir = path.join(projectPath, relativeDir);
+      results.push(
+        ...(await discoverSkillsInDir({
+          baseDir: projectSkillsDir,
+          source: 'project',
+          enabledBackends: { [backendType]: true },
+          editable: true,
+        })),
+      );
+    }
   }
 
   // External skills (e.g., active plugins)
@@ -868,18 +879,31 @@ export async function getAllManagedSkillsUnified({
       results.push(skill);
     }
 
-    if (projectPath && config.projectSkillsDir) {
-      const projectSkillsDir = path.join(projectPath, config.projectSkillsDir);
-      const projectSkills = await discoverSkillsInDir({
-        baseDir: projectSkillsDir,
-        source: 'project',
-        enabledBackends: { [backendType]: true },
-        editable: true,
-      });
-      for (const skill of projectSkills) {
-        if (seenPaths.has(skill.skillPath)) continue;
-        seenPaths.add(skill.skillPath);
-        results.push(skill);
+    if (projectPath) {
+      for (const relativeDir of getProjectSkillDirs(config)) {
+        const projectSkillsDir = path.join(projectPath, relativeDir);
+        const projectSkills = await discoverSkillsInDir({
+          baseDir: projectSkillsDir,
+          source: 'project',
+          enabledBackends: { [backendType]: true },
+          editable: true,
+        });
+        for (const skill of projectSkills) {
+          if (seenPaths.has(skill.skillPath)) {
+            const existing = results.find(
+              (s) => s.skillPath === skill.skillPath,
+            );
+            if (existing) {
+              existing.enabledBackends = {
+                ...existing.enabledBackends,
+                ...skill.enabledBackends,
+              };
+            }
+            continue;
+          }
+          seenPaths.add(skill.skillPath);
+          results.push(skill);
+        }
       }
     }
 
