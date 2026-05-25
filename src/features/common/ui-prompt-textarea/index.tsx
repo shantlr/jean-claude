@@ -158,6 +158,8 @@ export interface PromptTextareaProps extends Omit<
   promptSnippets?: PromptSnippet[];
   /** Context for resolving snippet variables */
   snippetVariableContext?: SnippetVariableContext;
+  /** Classes for the droppable composer container */
+  containerClassName?: string;
 }
 
 export const PromptTextarea = forwardRef<
@@ -184,6 +186,7 @@ export const PromptTextarea = forwardRef<
     onFileRemove,
     promptSnippets = [],
     snippetVariableContext,
+    containerClassName,
     className,
     onKeyDown: externalOnKeyDown,
     ...textareaProps
@@ -788,7 +791,7 @@ export const PromptTextarea = forwardRef<
   return (
     <div
       ref={containerRef}
-      className="flex flex-1 flex-col"
+      className={clsx('relative flex flex-1 flex-col', containerClassName)}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -1088,15 +1091,6 @@ export const PromptTextarea = forwardRef<
             )}
           </div>
         )}
-
-        {/* Drag overlay */}
-        {isDragOver && (
-          <div className="border-acc bg-acc-soft absolute inset-0 flex items-center justify-center rounded-lg border-2 border-dashed">
-            <span className="text-acc-ink text-sm">
-              {onFileAttach ? 'Drop files here' : 'Drop image here'}
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Image previews — below the textarea in normal flow */}
@@ -1107,6 +1101,15 @@ export const PromptTextarea = forwardRef<
       {/* File previews — below images in normal flow */}
       {files && files.length > 0 && (
         <FileThumbnails files={files} onFileRemove={onFileRemove} />
+      )}
+
+      {/* Drag overlay covers the full composer container, including padding. */}
+      {isDragOver && (
+        <div className="border-acc bg-acc-soft pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg border-2 border-dashed">
+          <span className="text-acc-ink text-sm">
+            {onFileAttach ? 'Drop files here' : 'Drop image here'}
+          </span>
+        </div>
       )}
 
       {showFileEditor && onFileAttach && projectRoot && (

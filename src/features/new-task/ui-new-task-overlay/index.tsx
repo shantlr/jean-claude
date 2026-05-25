@@ -1271,7 +1271,7 @@ export function NewTaskOverlay({
               </div>
             )}
             {showPromptInput && (
-              <div className="flex shrink-0 flex-col px-[18px] py-3.5">
+              <div className="flex shrink-0 flex-col">
                 <div className="flex flex-1 flex-col">
                   <PromptTextarea
                     ref={promptInputRef}
@@ -1297,10 +1297,11 @@ export function NewTaskOverlay({
                     onFileRemove={handleFileRemove}
                     promptSnippets={promptSnippets}
                     snippetVariableContext={snippetVariableContext}
+                    containerClassName={`px-[18px] pt-3.5 ${fileCommentCount > 0 && selectedProject ? 'pb-2' : 'pb-3.5'}`}
                     className="text-ink-1 placeholder-ink-3 border-transparent bg-transparent px-0 py-0 text-sm focus:border-transparent focus:ring-0 focus:outline-none"
                   />
                   {fileCommentCount > 0 && selectedProject && (
-                    <div className="mt-2">
+                    <div className="px-[18px] pb-3.5">
                       <ComposerCommentsChip
                         projectId={selectedProject.id}
                         projectRoot={selectedProject.path}
