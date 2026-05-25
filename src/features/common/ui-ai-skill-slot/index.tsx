@@ -191,10 +191,13 @@ export function SlotDetail({
                   selectedPresetId={localPresetId}
                   enabledBackends={enabledBackends.map((b) => b.value)}
                   onChange={(selection) => {
+                    const backendChanged = selection.backend !== localBackend;
                     setLocalBackend(selection.backend);
                     setLocalModel(selection.model);
                     setLocalPresetId(selection.presetId);
-                    setLocalSkillName(null);
+                    if (backendChanged) {
+                      setLocalSkillName(null);
+                    }
                   }}
                 />
               </div>
