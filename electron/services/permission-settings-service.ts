@@ -899,11 +899,16 @@ export function compileForClaude(rules: ResolvedPermissionRule[]): {
 export function compileForOpenCode(
   rules: ResolvedPermissionRule[],
 ): Array<{ permission: string; pattern: string; action: PermissionAction }> {
-  return rules.map((rule) => ({
-    permission: rule.tool,
-    pattern: rule.pattern,
-    action: rule.action,
-  }));
+  return [
+    // OpenCode defaults to permissive allow-all unless a permission baseline is
+    // provided. Keep Jean-Claude's default as ask, then let explicit rules win.
+    { permission: '*', pattern: '*', action: 'ask' as const },
+    ...rules.map((rule) => ({
+      permission: rule.tool,
+      pattern: rule.pattern,
+      action: rule.action,
+    })),
+  ];
 }
 
 // ---------------------------------------------------------------------------

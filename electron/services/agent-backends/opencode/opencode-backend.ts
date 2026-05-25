@@ -761,8 +761,7 @@ export class OpenCodeBackend implements AgentBackend {
                 'Auto-allowing %s (pattern match)',
                 req.toolName,
               );
-              const { client: ocClient } = await getOrCreateServer();
-              await ocClient.permission.reply({
+              await state.serverHandle.client.permission.reply({
                 requestID: req.requestId,
                 directory: state.cwd,
                 reply: 'once',
@@ -775,8 +774,7 @@ export class OpenCodeBackend implements AgentBackend {
                 'Auto-denying %s (pattern match)',
                 req.toolName,
               );
-              const { client: ocClient } = await getOrCreateServer();
-              await ocClient.permission.reply({
+              await state.serverHandle.client.permission.reply({
                 requestID: req.requestId,
                 directory: state.cwd,
                 reply: 'reject',
