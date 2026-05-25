@@ -298,9 +298,13 @@ function getDefaultProjectSelection(): {
 
 /* ── Content rendering ── */
 
-// Skills / snippets need fill-height flex layout
+// List/detail settings need fill-height flex layout.
 function isFillHeightGlobal(sel: ActiveSelection): boolean {
-  return sel.sectionId === 'skills' || sel.sectionId === 'prompt-snippets';
+  return (
+    sel.sectionId === 'skills' ||
+    sel.sectionId === 'prompt-snippets' ||
+    sel.sectionId === 'ai-generation'
+  );
 }
 
 function isFillHeightProject(menuItem: ProjectSettingsMenuItem): boolean {

@@ -698,25 +698,6 @@ export function UsageDisplaySettings() {
 }
 
 export function SummaryModelsSettings() {
-  const { data: summaryModelsSetting } = useSummaryModelsSetting();
-  const updateSummaryModels = useUpdateSummaryModelsSetting();
-  const { data: claudeDynamicModels } = useBackendModels('claude-code');
-  const { data: opencodeDynamicModels } = useBackendModels('opencode');
-
-  const models = summaryModelsSetting?.models ?? {
-    'claude-code': 'haiku',
-    opencode: 'default',
-  };
-
-  const setModelForBackend = (backend: AgentBackendType, model: string) => {
-    updateSummaryModels.mutate({
-      models: {
-        ...models,
-        [backend]: model,
-      },
-    });
-  };
-
   return (
     <div>
       <h2 className="text-ink-1 text-lg font-semibold">Summary Models</h2>
@@ -726,31 +707,79 @@ export function SummaryModelsSettings() {
       </p>
 
       <div className="mt-4 space-y-3">
-        <div className="border-glass-border bg-bg-1 flex items-center justify-between rounded-lg border px-4 py-3">
-          <div>
-            <div className="text-ink-1 text-sm font-medium">Claude Code</div>
-            <div className="text-ink-3 text-xs">Recommended: Haiku</div>
-          </div>
-          <ModelSelector
-            value={models['claude-code']}
-            onChange={(model) => setModelForBackend('claude-code', model)}
-            models={getModelsForBackend('claude-code', claudeDynamicModels)}
-          />
-        </div>
+        <SummaryModelSettings backend="claude-code" compact />
+        <SummaryModelSettings backend="opencode" compact />
+      </div>
+    </div>
+  );
+}
 
-        <div className="border-glass-border bg-bg-1 flex items-center justify-between rounded-lg border px-4 py-3">
-          <div>
-            <div className="text-ink-1 text-sm font-medium">OpenCode</div>
-            <div className="text-ink-3 text-xs">
-              Use a lightweight provider/model when available
-            </div>
-          </div>
-          <ModelSelector
-            value={models.opencode}
-            onChange={(model) => setModelForBackend('opencode', model)}
-            models={getModelsForBackend('opencode', opencodeDynamicModels)}
-          />
+const SUMMARY_MODEL_BACKENDS: Record<
+  AgentBackendType,
+  { label: string; description: string; defaultModel: string }
+> = {
+  'claude-code': {
+    label: 'Claude Code',
+    description: 'Recommended: Haiku',
+    defaultModel: 'haiku',
+  },
+  opencode: {
+    label: 'OpenCode',
+    description: 'Use a lightweight provider/model when available',
+    defaultModel: 'default',
+  },
+};
+
+export function SummaryModelSettings({
+  backend,
+  compact = false,
+}: {
+  backend: AgentBackendType;
+  compact?: boolean;
+}) {
+  const { data: summaryModelsSetting } = useSummaryModelsSetting();
+  const updateSummaryModels = useUpdateSummaryModelsSetting();
+  const { data: dynamicModels } = useBackendModels(backend);
+  const details = SUMMARY_MODEL_BACKENDS[backend];
+
+  const models = summaryModelsSetting?.models ?? {
+    'claude-code': SUMMARY_MODEL_BACKENDS['claude-code'].defaultModel,
+    opencode: SUMMARY_MODEL_BACKENDS.opencode.defaultModel,
+  };
+
+  const setModel = (model: string) => {
+    updateSummaryModels.mutate({
+      models: {
+        ...models,
+        [backend]: model,
+      },
+    });
+  };
+
+  return (
+    <div className="border-glass-border bg-bg-1 rounded-lg border px-4 py-3">
+      {!compact && (
+        <div className="mb-4">
+          <h2 className="text-ink-1 text-lg font-semibold">
+            {details.label} Summary Model
+          </h2>
+          <p className="text-ink-3 mt-1 text-sm">
+            Model used for <code>{'{{summary(step.<id>)}}'}</code> template
+            functions when generating summaries with {details.label}.
+          </p>
         </div>
+      )}
+
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <div className="text-ink-1 text-sm font-medium">{details.label}</div>
+          <div className="text-ink-3 text-xs">{details.description}</div>
+        </div>
+        <ModelSelector
+          value={models[backend]}
+          onChange={setModel}
+          models={getModelsForBackend(backend, dynamicModels)}
+        />
       </div>
     </div>
   );

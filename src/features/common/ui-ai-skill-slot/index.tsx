@@ -1,4 +1,3 @@
-import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/common/ui/button';
@@ -44,7 +43,7 @@ export const SLOT_DEFINITIONS: {
   },
 ];
 
-export function SlotRow({
+export function SlotDetail({
   label,
   description,
   config,
@@ -57,8 +56,6 @@ export function SlotRow({
   enabledBackends: { value: AgentBackendType; label: string }[];
   onUpdate: (config: AiSkillSlotConfig | null) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
-
   const isEnabled = config !== null;
 
   // Local editing state
@@ -75,13 +72,11 @@ export function SlotRow({
 
   // Sync local state when external config changes (e.g., query refetch)
   useEffect(() => {
-    if (!expanded) {
-      setLocalBackend(config?.backend ?? 'claude-code');
-      setLocalModel(config?.model ?? DEFAULT_CLAUDE_CODE_MODEL);
-      setLocalPresetId(null);
-      setLocalSkillName(config?.skillName ?? null);
-    }
-  }, [config, expanded]);
+    setLocalBackend(config?.backend ?? 'claude-code');
+    setLocalModel(config?.model ?? DEFAULT_CLAUDE_CODE_MODEL);
+    setLocalPresetId(null);
+    setLocalSkillName(config?.skillName ?? null);
+  }, [config]);
 
   // Skills for the selected backend (enabled or builtin)
   const { data: skills } = useManagedSkills(localBackend);
@@ -116,7 +111,6 @@ export function SlotRow({
       model: localModel,
       skillName: localSkillName,
     });
-    setExpanded(false);
   }, [localBackend, localModel, localSkillName, onUpdate]);
 
   const handleCancel = useCallback(() => {
@@ -125,7 +119,6 @@ export function SlotRow({
     setLocalModel(config?.model ?? DEFAULT_CLAUDE_CODE_MODEL);
     setLocalPresetId(null);
     setLocalSkillName(config?.skillName ?? null);
-    setExpanded(false);
   }, [config]);
 
   const handleToggleEnabled = useCallback(
@@ -145,17 +138,6 @@ export function SlotRow({
     [localBackend, localModel, localSkillName, onUpdate],
   );
 
-  const handleToggle = useCallback(() => {
-    if (!expanded) {
-      // Opening: reset local state from config
-      setLocalBackend(config?.backend ?? 'claude-code');
-      setLocalModel(config?.model ?? DEFAULT_CLAUDE_CODE_MODEL);
-      setLocalPresetId(null);
-      setLocalSkillName(config?.skillName ?? null);
-    }
-    setExpanded((prev) => !prev);
-  }, [expanded, config]);
-
   // Build summary string
   const summary = config
     ? [
@@ -170,70 +152,77 @@ export function SlotRow({
   const canEnable = true;
 
   return (
-    <div className="border-glass-border bg-bg-1 rounded-lg border">
-      {/* Header */}
-      <button
-        type="button"
-        onClick={handleToggle}
-        className="flex w-full cursor-pointer items-center gap-3 px-4 py-3"
-      >
-        {expanded ? (
-          <ChevronDown className="text-ink-2 h-4 w-4 shrink-0" />
-        ) : (
-          <ChevronRight className="text-ink-2 h-4 w-4 shrink-0" />
-        )}
-        <div className="flex-1 text-left">
-          <div className="text-ink-1 text-sm font-medium">{label}</div>
-          <div className="text-ink-3 text-xs">{description}</div>
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
+      <div className="max-w-3xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-ink-1 text-lg font-semibold">{label}</h2>
+            <p className="text-ink-3 mt-1 text-sm">{description}</p>
+          </div>
+          <div className="flex items-center gap-2 pt-0.5">
+            <span className="text-ink-2 text-xs">{summary}</span>
+            {!config && (
+              <span className="text-ink-3 bg-glass-medium rounded px-1.5 py-0.5 text-xs">
+                Disabled
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-ink-2 text-xs">{summary}</span>
-          {!config && (
-            <span className="text-ink-3 bg-glass-medium rounded px-1.5 py-0.5 text-xs">
-              Disabled
-            </span>
-          )}
-        </div>
-      </button>
 
-      {/* Expanded content */}
-      {expanded && (
-        <div className="border-glass-border border-t px-4 py-3">
-          <div className="space-y-3">
-            {/* Backend */}
-            <div className="flex items-center justify-between">
-              <label className="text-ink-2 text-sm">Backend</label>
-              <BackendModelPresetPicker
-                backend={localBackend}
-                model={localModel}
-                selectedPresetId={localPresetId}
-                enabledBackends={enabledBackends.map((b) => b.value)}
-                onChange={(selection) => {
-                  setLocalBackend(selection.backend);
-                  setLocalModel(selection.model);
-                  setLocalPresetId(selection.presetId);
-                  setLocalSkillName(null);
-                }}
-              />
+        <div className="border-glass-border bg-bg-1 mt-5 rounded-lg border p-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <label className="text-ink-2 text-sm">Backend</label>
+                <p className="text-ink-3 mt-0.5 text-xs">
+                  Backend and model used for this generation slot.
+                </p>
+              </div>
+              <div className="shrink-0">
+                <BackendModelPresetPicker
+                  backend={localBackend}
+                  model={localModel}
+                  selectedPresetId={localPresetId}
+                  enabledBackends={enabledBackends.map((b) => b.value)}
+                  onChange={(selection) => {
+                    setLocalBackend(selection.backend);
+                    setLocalModel(selection.model);
+                    setLocalPresetId(selection.presetId);
+                    setLocalSkillName(null);
+                  }}
+                />
+              </div>
             </div>
 
-            {/* Skill */}
-            <div className="flex items-center justify-between">
-              <label className="text-ink-2 text-sm">Skill</label>
-              <Select
-                value={localSkillName ?? NO_SKILL_VALUE}
-                options={skillOptions}
-                onChange={(v) =>
-                  setLocalSkillName(v === NO_SKILL_VALUE ? null : v)
-                }
-                label="Skill"
-              />
+            <div className="border-glass-border border-t" />
+
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <label className="text-ink-2 text-sm">Skill</label>
+                <p className="text-ink-3 mt-0.5 text-xs">
+                  Optional skill prompt applied before generation.
+                </p>
+              </div>
+              <div className="shrink-0">
+                <Select
+                  value={localSkillName ?? NO_SKILL_VALUE}
+                  options={skillOptions}
+                  onChange={(v) =>
+                    setLocalSkillName(v === NO_SKILL_VALUE ? null : v)
+                  }
+                  label="Skill"
+                />
+              </div>
             </div>
 
-            {/* Enable/Disable toggle */}
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col">
+            <div className="border-glass-border border-t" />
+
+            <div className="flex items-center justify-between gap-4">
+              <div>
                 <label className="text-ink-2 text-sm">Enabled</label>
+                <p className="text-ink-3 mt-0.5 text-xs">
+                  Disabled slots skip AI generation for this feature.
+                </p>
               </div>
               <Switch
                 checked={isEnabled}
@@ -243,7 +232,6 @@ export function SlotRow({
             </div>
           </div>
 
-          {/* Actions */}
           <div className="mt-4 flex items-center justify-end">
             <div className="flex gap-2">
               <Button
@@ -261,7 +249,7 @@ export function SlotRow({
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
