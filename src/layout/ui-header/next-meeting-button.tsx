@@ -101,7 +101,7 @@ export function NextMeetingButton() {
       size="sm"
       onClick={handleClick}
       className={clsx(
-        'max-w-[340px] min-w-0 flex-1 gap-2 overflow-hidden rounded-lg border px-2.5',
+        'max-w-[340px] min-w-0 flex-1 gap-2 overflow-hidden rounded-lg border px-2.5 whitespace-nowrap',
         state === 'live' &&
           'border-status-run/40 bg-status-run/8 hover:bg-status-run/12',
         state === 'imminent' && 'border-acc/40 bg-acc/8 hover:bg-acc/12',
@@ -127,7 +127,7 @@ export function NextMeetingButton() {
                   : 'oklch(0.52 0.014 275)'
             }
           />
-          <span className="text-ink-3 font-mono text-[11px]">
+          <span className="text-ink-3 shrink-0 font-mono text-[11px]">
             {formatTimeHHMM(next.startAt)}
           </span>
           <span className="text-ink-1 max-w-[180px] min-w-0 truncate text-xs font-medium">
@@ -142,7 +142,7 @@ export function NextMeetingButton() {
           {(state === 'soon' || state === 'upcoming') && (
             <span
               className={clsx(
-                'font-mono text-[11px]',
+                'shrink-0 font-mono text-[11px]',
                 state === 'soon' ? 'text-acc-ink font-semibold' : 'text-ink-3',
               )}
             >
@@ -153,7 +153,7 @@ export function NextMeetingButton() {
             <button
               type="button"
               onClick={handleJoin}
-              className="bg-acc text-bg-0 flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-semibold"
+              className="bg-acc text-bg-0 flex shrink-0 items-center gap-1 rounded px-2 py-0.5 text-[11px] font-semibold"
             >
               <Video className="h-3 w-3" />
               Join
@@ -163,7 +163,7 @@ export function NextMeetingButton() {
             <button
               type="button"
               onClick={handleJoin}
-              className="bg-status-run/20 text-status-run flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-semibold"
+              className="bg-status-run/20 text-status-run flex shrink-0 items-center gap-1 rounded px-2 py-0.5 text-[11px] font-semibold"
             >
               <Video className="h-3 w-3" />
               Join
