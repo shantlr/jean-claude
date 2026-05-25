@@ -1,6 +1,12 @@
 import clsx from 'clsx';
 import { Send, Square, Loader2, ListPlus } from 'lucide-react';
-import { useState, useRef, useCallback, KeyboardEvent } from 'react';
+import {
+  useState,
+  useRef,
+  useCallback,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 
 import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
 import { Button } from '@/common/ui/button';
@@ -42,6 +48,8 @@ export function MessageInput({
   promptSnippets,
   snippetVariableContext,
   allowEmptySubmit = false,
+  toolbarLeading,
+  isCompact = false,
 }: {
   onSend: (parts: PromptPart[]) => void;
   onQueue?: (parts: PromptPart[]) => void;
@@ -68,6 +76,10 @@ export function MessageInput({
   snippetVariableContext?: SnippetVariableContext;
   /** When true, allow submitting even with empty text (e.g. when review pills are attached) */
   allowEmptySubmit?: boolean;
+  /** Content rendered at the left of the bottom toolbar row (compact stacked layout only) */
+  toolbarLeading?: ReactNode;
+  /** When true, use stacked layout: textarea on top, toolbar below. When false, horizontal layout. */
+  isCompact?: boolean;
 }) {
   const { data: completionSetting } = useCompletionSetting();
   const [internalValue, setInternalValue] = useState('');
@@ -187,85 +199,111 @@ export function MessageInput({
     }
   };
 
+  const isSubmitDisabled =
+    (!value.trim() &&
+      images.length === 0 &&
+      attachedFiles.length === 0 &&
+      !allowEmptySubmit) ||
+    (disabled && !isRunning);
+
+  const sendButton = (
+    <Button
+      onClick={handleSubmit}
+      disabled={isSubmitDisabled}
+      size="lg"
+      variant="primary"
+      icon={isRunning ? <ListPlus /> : <Send />}
+      className={clsx(
+        'shrink-0 transition-all duration-200',
+        isRunning
+          ? 'bg-status-run shadow-status-run/25 hover:shadow-status-run/40 shadow-md hover:shadow-lg hover:brightness-110'
+          : 'bg-acc shadow-acc/25 hover:shadow-acc/40 shadow-md hover:scale-105 hover:shadow-lg hover:brightness-110',
+      )}
+      aria-label={isRunning ? 'Queue this message' : 'Send message'}
+      title={
+        isRunning
+          ? `Queue message (${formatKeyForDisplay('cmd+enter')})`
+          : `Send message (${formatKeyForDisplay('cmd+enter')})`
+      }
+    >
+      {isRunning ? 'Queue' : 'Send'}
+      <Kbd
+        shortcut="cmd+enter"
+        className="border-glass-border bg-glass-light text-ink-0"
+      />
+    </Button>
+  );
+
+  const stopButton = isRunning && onStop && (
+    <IconButton
+      onClick={onStop}
+      disabled={isStopping}
+      size="lg"
+      variant="danger"
+      icon={isStopping ? <Loader2 className="animate-spin" /> : <Square />}
+      className="bg-status-fail text-bg-0 shadow-status-fail/25 hover:shadow-status-fail/40 shrink-0 shadow-md transition-all duration-200 hover:scale-105 hover:shadow-lg hover:brightness-110"
+      aria-label={isStopping ? 'Stopping agent' : 'Stop agent'}
+      tooltip={
+        isStopping
+          ? 'Stopping agent...'
+          : `Stop agent (${formatKeyForDisplay('escape')} twice)`
+      }
+    />
+  );
+
+  const textarea = (
+    <PromptTextarea
+      ref={textareaRef}
+      value={value}
+      onChange={setValue}
+      skills={skills}
+      onEnterKey={handleEnterKey}
+      onKeyDown={handleKeyDown}
+      enableCompletion={completionSetting?.enabled ?? false}
+      projectId={projectId}
+      getCompletionContextBeforePrompt={getCompletionContextBeforePrompt}
+      projectRoot={projectRoot}
+      enableFilePathAutocomplete
+      images={supportsImages ? images : undefined}
+      onImageAttach={supportsImages ? handleImageAttach : undefined}
+      onImageRemove={supportsImages ? handleImageRemove : undefined}
+      files={attachedFiles}
+      onFileAttach={handleFileAttach}
+      onFileRemove={handleFileRemove}
+      promptSnippets={promptSnippets}
+      snippetVariableContext={snippetVariableContext}
+      placeholder={
+        isRunning
+          ? 'Type to queue a follow-up... (Esc twice to stop)'
+          : placeholder
+      }
+      disabled={disabled && !isRunning}
+      onFocus={() => onFocusChange?.(true)}
+      onBlur={() => onFocusChange?.(false)}
+    />
+  );
+
+  if (isCompact) {
+    // Stacked layout: textarea full-width on top, toolbar row below
+    return (
+      <div className="flex flex-1 flex-col gap-2">
+        {textarea}
+        <div className="flex items-center gap-2">
+          {toolbarLeading}
+          <div className="flex-1" />
+          {sendButton}
+          {stopButton}
+        </div>
+      </div>
+    );
+  }
+
+  // Default horizontal layout: selectors + textarea + buttons in one row
   return (
     <div className="relative flex flex-1 items-end gap-2">
-      <PromptTextarea
-        ref={textareaRef}
-        value={value}
-        onChange={setValue}
-        skills={skills}
-        onEnterKey={handleEnterKey}
-        onKeyDown={handleKeyDown}
-        enableCompletion={completionSetting?.enabled ?? false}
-        projectId={projectId}
-        getCompletionContextBeforePrompt={getCompletionContextBeforePrompt}
-        projectRoot={projectRoot}
-        enableFilePathAutocomplete
-        images={supportsImages ? images : undefined}
-        onImageAttach={supportsImages ? handleImageAttach : undefined}
-        onImageRemove={supportsImages ? handleImageRemove : undefined}
-        files={attachedFiles}
-        onFileAttach={handleFileAttach}
-        onFileRemove={handleFileRemove}
-        promptSnippets={promptSnippets}
-        snippetVariableContext={snippetVariableContext}
-        placeholder={
-          isRunning
-            ? 'Type to queue a follow-up... (Esc twice to stop)'
-            : placeholder
-        }
-        disabled={disabled && !isRunning}
-        onFocus={() => onFocusChange?.(true)}
-        onBlur={() => onFocusChange?.(false)}
-      />
-      {/* Send/Queue button */}
-      <Button
-        onClick={handleSubmit}
-        disabled={
-          (!value.trim() &&
-            images.length === 0 &&
-            attachedFiles.length === 0 &&
-            !allowEmptySubmit) ||
-          (disabled && !isRunning)
-        }
-        size="lg"
-        variant="primary"
-        icon={isRunning ? <ListPlus /> : <Send />}
-        className={clsx(
-          'shrink-0 transition-all duration-200',
-          isRunning
-            ? 'bg-status-run shadow-status-run/25 hover:shadow-status-run/40 shadow-md hover:shadow-lg hover:brightness-110'
-            : 'bg-acc shadow-acc/25 hover:shadow-acc/40 shadow-md hover:scale-105 hover:shadow-lg hover:brightness-110',
-        )}
-        aria-label={isRunning ? 'Queue this message' : 'Send message'}
-        title={
-          isRunning
-            ? `Queue message (${formatKeyForDisplay('cmd+enter')})`
-            : `Send message (${formatKeyForDisplay('cmd+enter')})`
-        }
-      >
-        {isRunning ? 'Queue' : 'Send'}
-        <Kbd
-          shortcut="cmd+enter"
-          className="border-glass-border bg-glass-light text-ink-0"
-        />
-      </Button>
-      {isRunning && onStop && (
-        <IconButton
-          onClick={onStop}
-          disabled={isStopping}
-          size="lg"
-          variant="danger"
-          icon={isStopping ? <Loader2 className="animate-spin" /> : <Square />}
-          className="bg-status-fail text-bg-0 shadow-status-fail/25 hover:shadow-status-fail/40 shrink-0 shadow-md transition-all duration-200 hover:scale-105 hover:shadow-lg hover:brightness-110"
-          aria-label={isStopping ? 'Stopping agent' : 'Stop agent'}
-          tooltip={
-            isStopping
-              ? 'Stopping agent...'
-              : `Stop agent (${formatKeyForDisplay('escape')} twice)`
-          }
-        />
-      )}
+      {textarea}
+      {sendButton}
+      {stopButton}
     </div>
   );
 }

@@ -48,6 +48,7 @@ import { ContextUsageDisplay } from '@/features/agent/ui-context-usage-display';
 import { FilePreviewPane } from '@/features/agent/ui-file-preview-pane';
 import { MessageInput } from '@/features/agent/ui-message-input';
 import { MessageStream } from '@/features/agent/ui-message-stream';
+import { ModeModelComboSelector } from '@/features/agent/ui-mode-model-combo';
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
 import { ModelSelector } from '@/features/agent/ui-model-selector';
 import { PermissionBar } from '@/features/agent/ui-permission-bar';
@@ -1998,11 +1999,31 @@ const TaskInputFooter = memo(function TaskInputFooter({
 
   const [inputFocused, setInputFocused] = useState(false);
 
+  // Responsive: detect narrow composer width.
+  // Below this threshold the composer switches to a stacked layout
+  // with a combined mode·model chip instead of separate selectors.
+  const COMPACT_BREAKPOINT = 800;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isCompact, setIsCompact] = useState(false);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    // Check initial width synchronously
+    setIsCompact(el.offsetWidth < COMPACT_BREAKPOINT);
+    const ro = new ResizeObserver(() => {
+      setIsCompact(el.offsetWidth < COMPACT_BREAKPOINT);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // Allow send with just pills (no typed text)
   const effectiveCanSend = canSendMessage || openReviewComments.length > 0;
 
   return (
     <div
+      ref={containerRef}
       className={clsx(
         'mx-3 mb-3 flex flex-col rounded-xl transition-shadow duration-300',
         inputFocused ? 'prompt-input-border-focused' : 'prompt-input-border',
@@ -2017,41 +2038,82 @@ const TaskInputFooter = memo(function TaskInputFooter({
           openReviewComments.length > 0 ? () => setShowPreview(true) : undefined
         }
       />
-      {/* Input row */}
-      <div className="flex items-center gap-2 p-2 px-3">
-        <ContextUsageDisplay contextUsage={contextUsage} />
-        <ModeSelector
-          value={effectiveMode}
-          onChange={handleModeChange}
-          backend={effectiveBackend}
-          disabled={isRunning}
-        />
-        <ModelSelector
-          value={effectiveModel}
-          onChange={handleModelChange}
-          models={getModelsForBackend(effectiveBackend, dynamicModels)}
-        />
-        <MessageInput
-          onSend={handleSendMessage}
-          onQueue={handleQueuePrompt}
-          onStop={handleStop}
-          disabled={!effectiveCanSend}
-          allowEmptySubmit={openReviewComments.length > 0}
-          placeholder="Send a follow-up message..."
-          isRunning={isRunning}
-          isStopping={isStopping}
-          skills={skills}
-          projectRoot={projectRoot}
-          value={promptDraft}
-          onValueChange={setPromptDraft}
-          supportsImages={backendSupportsImages(activeStep?.agentBackend)}
-          projectId={task?.projectId}
-          getCompletionContextBeforePrompt={getCompletionContextBeforePrompt}
-          onFocusChange={setInputFocused}
-          promptSnippets={footerSnippets}
-          snippetVariableContext={snippetVariableContext}
-        />
-      </div>
+      {isCompact ? (
+        /* Compact stacked layout: textarea on top, combo chip + send in toolbar below */
+        <div className="p-2 px-3">
+          <MessageInput
+            onSend={handleSendMessage}
+            onQueue={handleQueuePrompt}
+            onStop={handleStop}
+            disabled={!effectiveCanSend}
+            allowEmptySubmit={openReviewComments.length > 0}
+            placeholder="Send a follow-up message..."
+            isRunning={isRunning}
+            isStopping={isStopping}
+            skills={skills}
+            projectRoot={projectRoot}
+            value={promptDraft}
+            onValueChange={setPromptDraft}
+            supportsImages={backendSupportsImages(activeStep?.agentBackend)}
+            projectId={task?.projectId}
+            getCompletionContextBeforePrompt={getCompletionContextBeforePrompt}
+            onFocusChange={setInputFocused}
+            promptSnippets={footerSnippets}
+            snippetVariableContext={snippetVariableContext}
+            isCompact
+            toolbarLeading={
+              <>
+                <ContextUsageDisplay contextUsage={contextUsage} />
+                <ModeModelComboSelector
+                  mode={effectiveMode}
+                  onModeChange={handleModeChange}
+                  model={effectiveModel}
+                  onModelChange={handleModelChange}
+                  backend={effectiveBackend}
+                  models={getModelsForBackend(effectiveBackend, dynamicModels)}
+                  disabled={isRunning}
+                />
+              </>
+            }
+          />
+        </div>
+      ) : (
+        /* Wide layout: selectors + textarea + send in one row */
+        <div className="flex items-center gap-2 p-2 px-3">
+          <ContextUsageDisplay contextUsage={contextUsage} />
+          <ModeSelector
+            value={effectiveMode}
+            onChange={handleModeChange}
+            backend={effectiveBackend}
+            disabled={isRunning}
+          />
+          <ModelSelector
+            value={effectiveModel}
+            onChange={handleModelChange}
+            models={getModelsForBackend(effectiveBackend, dynamicModels)}
+          />
+          <MessageInput
+            onSend={handleSendMessage}
+            onQueue={handleQueuePrompt}
+            onStop={handleStop}
+            disabled={!effectiveCanSend}
+            allowEmptySubmit={openReviewComments.length > 0}
+            placeholder="Send a follow-up message..."
+            isRunning={isRunning}
+            isStopping={isStopping}
+            skills={skills}
+            projectRoot={projectRoot}
+            value={promptDraft}
+            onValueChange={setPromptDraft}
+            supportsImages={backendSupportsImages(activeStep?.agentBackend)}
+            projectId={task?.projectId}
+            getCompletionContextBeforePrompt={getCompletionContextBeforePrompt}
+            onFocusChange={setInputFocused}
+            promptSnippets={footerSnippets}
+            snippetVariableContext={snippetVariableContext}
+          />
+        </div>
+      )}
       {showPreview && (
         <Modal
           isOpen={showPreview}
