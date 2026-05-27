@@ -77,7 +77,9 @@ export function NextMeetingButton() {
   const activeMeetings = useMemo(
     () =>
       sortMeetings(
-        meetings.filter((m) => !ignoredSet.has(m.id)),
+        meetings.filter(
+          (m) => !ignoredSet.has(m.id) && new Date(m.endAt).getTime() > now,
+        ),
         now,
       ),
     [meetings, ignoredSet, now],

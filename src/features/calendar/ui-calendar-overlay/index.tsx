@@ -28,7 +28,6 @@ import {
   groupByDay,
   isSameDay,
   sortMeetings,
-  startOfDay,
 } from '@/features/calendar/utils-calendar';
 import { useCalendarNotificationsSetting } from '@/hooks/use-settings';
 import { api } from '@/lib/api';
@@ -207,8 +206,7 @@ export function CalendarOverlay({ onClose }: { onClose: () => void }) {
   );
 
   const upNextMeetings = useMemo(() => {
-    const todayStart = startOfDay(new Date(now)).getTime();
-    return filtered.filter((m) => new Date(m.endAt).getTime() > todayStart);
+    return filtered.filter((m) => new Date(m.endAt).getTime() > now);
   }, [filtered, now]);
 
   const allMeetings = useMemo(() => {
@@ -462,7 +460,7 @@ export function CalendarOverlay({ onClose }: { onClose: () => void }) {
               <span>·</span>
               <span>⏎ open Teams</span>
               <div className="flex-1" />
-              <span>{meetings.length} events this week</span>
+              <span>{meetings.length} events loaded</span>
             </div>
 
             {ignoreScopeMeeting && (
@@ -503,13 +501,9 @@ function UpNextView({
   onRequestIgnore: (meeting: UpcomingMeeting) => void;
 }) {
   const listRef = useRef<HTMLDivElement>(null);
-  const todayStart = startOfDay(new Date(now));
   const upcomingMeetings = useMemo(
-    () =>
-      meetings.filter(
-        (m) => new Date(m.endAt).getTime() > todayStart.getTime(),
-      ),
-    [meetings, todayStart],
+    () => meetings.filter((m) => new Date(m.endAt).getTime() > now),
+    [meetings, now],
   );
   const grouped = useMemo(
     () => groupByDay(upcomingMeetings),

@@ -7,7 +7,7 @@ import {
   EyeOff,
   Video,
 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
@@ -33,6 +33,25 @@ const TOTAL_H = HOURS * PX_PER_HOUR;
 
 const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+function formatWeekRange(start: Date, end: Date): string {
+  const sameMonth = start.getMonth() === end.getMonth();
+  const sameYear = start.getFullYear() === end.getFullYear();
+
+  if (sameMonth && sameYear) {
+    return `${start.toLocaleDateString(undefined, {
+      month: 'short',
+    })} ${start.getDate()}-${end.getDate()}`;
+  }
+
+  return `${start.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+  })} - ${end.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+  })}`;
+}
+
 function toY(dateStr: string): number {
   const d = new Date(dateStr);
   const mins = (d.getHours() - HOUR_START) * 60 + d.getMinutes();
@@ -57,14 +76,18 @@ export function WeekView({
   onRequestIgnore: (meeting: UpcomingMeeting) => void;
 }) {
   const addToast = useToastStore((s) => s.addToast);
-  const today = new Date(now);
-  const dow = (today.getDay() + 6) % 7; // 0=Mon
-  const monday = startOfDay(addDays(today, -dow));
+  const today = useMemo(() => new Date(now), [now]);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const monday = useMemo(() => {
+    const dow = (today.getDay() + 6) % 7; // 0=Mon
+    return startOfDay(addDays(today, weekOffset * 7 - dow));
+  }, [today, weekOffset]);
   const days = useMemo(
     () => Array.from({ length: 5 }).map((_, i) => addDays(monday, i)),
     [monday],
   );
   const weekEnd = addDays(days[4], 1);
+  const weekLabel = formatWeekRange(days[0], days[4]);
 
   const weekMeetings = useMemo(
     () =>
@@ -89,9 +112,23 @@ export function WeekView({
         className="border-glass-border grid border-b"
         style={{ gridTemplateColumns: '52px repeat(5, 1fr)' }}
       >
-        <div className="text-ink-4 flex items-center justify-between px-2 py-2.5 font-mono text-[10px]">
-          <ChevronLeft className="h-3 w-3" />
-          <ChevronRight className="h-3 w-3" />
+        <div className="text-ink-4 flex items-center justify-between px-1 py-2.5 font-mono text-[10px]">
+          <button
+            type="button"
+            aria-label="Previous week"
+            onClick={() => setWeekOffset((offset) => offset - 1)}
+            className="hover:bg-glass-light hover:text-ink-1 rounded p-1 transition-colors"
+          >
+            <ChevronLeft className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            aria-label="Next week"
+            onClick={() => setWeekOffset((offset) => offset + 1)}
+            className="hover:bg-glass-light hover:text-ink-1 rounded p-1 transition-colors"
+          >
+            <ChevronRight className="h-3 w-3" />
+          </button>
         </div>
         {days.map((d, i) => {
           const isToday = isSameDay(d, today);
@@ -131,6 +168,11 @@ export function WeekView({
                 >
                   {d.getDate()}
                 </span>
+                {i === 0 && (
+                  <span className="text-ink-4 font-mono text-[10px]">
+                    {weekLabel}
+                  </span>
+                )}
                 {isToday && (
                   <span className="bg-acc text-bg-0 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wide uppercase">
                     today

@@ -21,8 +21,9 @@ const execFileAsync = promisify(execFile);
 
 const POLL_INTERVAL_MS = 60_000;
 const APPLE_SCRIPT_TIMEOUT_MS = 60_000;
-const UPCOMING_MEETINGS_LOOKAHEAD_MINUTES = 14 * 24 * 60;
-const UPCOMING_MEETINGS_MAX = 25;
+const CALENDAR_MEETINGS_LOOKAHEAD_MINUTES = 31 * 24 * 60;
+const CALENDAR_MEETINGS_LOOKBEHIND_MINUTES = 31 * 24 * 60;
+const CALENDAR_MEETINGS_MAX = 250;
 const REVEAL_MEETING_TIMEOUT_MS = 15_000;
 
 function compareCalendarDateTime(a: string, b: string): number {
@@ -386,13 +387,14 @@ class SystemCalendarService {
     }
 
     const events = await this.fetchUpcomingEvents({
-      lookaheadMinutes: UPCOMING_MEETINGS_LOOKAHEAD_MINUTES,
-      includeOngoing: true,
+      lookaheadMinutes: CALENDAR_MEETINGS_LOOKAHEAD_MINUTES,
+      includeOngoing: false,
+      lookBehindMinutes: CALENDAR_MEETINGS_LOOKBEHIND_MINUTES,
     });
 
     return events
       .sort(compareMeetingUrgency)
-      .slice(0, UPCOMING_MEETINGS_MAX)
+      .slice(0, CALENDAR_MEETINGS_MAX)
       .map((event) => ({
         id: buildCalendarNotificationKey(event),
         externalId: event.externalId,
