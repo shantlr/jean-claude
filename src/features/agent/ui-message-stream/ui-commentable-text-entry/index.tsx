@@ -1,14 +1,23 @@
-import { MessageSquarePlus } from 'lucide-react';
+import { MessageSquare, MessageSquarePlus } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { useReviewContext } from '@/common/context/review-context';
 import {
   COMMENT_ACCENT,
-  InlineCommentBubble,
   InlineCommentComposer,
 } from '@/features/common/ui-inline-comments';
-import { useReviewComments } from '@/stores/review-comments';
+import {
+  useReviewComments,
+  useReviewCommentsStore,
+} from '@/stores/review-comments';
 import type { PromptImagePart } from '@shared/agent-backend-types';
 
 import { MarkdownContent } from '../../ui-markdown-content';
@@ -133,6 +142,11 @@ export function CommentableWrapper({
   const [composerSelectedText, setComposerSelectedText] = useState('');
   const [composerCharOffset, setComposerCharOffset] = useState(-1);
   const [composerPos, setComposerPos] = useState<{ top: number } | null>(null);
+  const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
+  const [commentPositions, setCommentPositions] = useState<
+    Record<string, { top: number; left: number }>
+  >({});
+  const updateComment = useReviewCommentsStore((s) => s.updateComment);
 
   // Get existing comments for this message entry from review store
   const allComments = useReviewComments(taskId);
@@ -191,6 +205,54 @@ export function CommentableWrapper({
       }
     };
   }, [highlightSpans]);
+
+  const updateCommentPositions = useCallback(() => {
+    if (!contentRef.current || !containerRef.current) {
+      setCommentPositions({});
+      return;
+    }
+
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const positions: Record<string, { top: number; left: number }> = {};
+    const contentRect = contentRef.current.getBoundingClientRect();
+
+    for (const comment of messageComments) {
+      const charOffset = comment.anchor.charOffset;
+      const selectedText = comment.anchor.selectedText;
+      if (charOffset == null || charOffset < 0 || !selectedText) {
+        positions[comment.id] = {
+          top: contentRect.top - containerRect.top,
+          left: contentRect.right - containerRect.left + 6,
+        };
+        continue;
+      }
+
+      const range = createRangeFromOffset(
+        contentRef.current,
+        charOffset,
+        selectedText.length,
+      );
+      if (!range) continue;
+
+      const rects = Array.from(range.getClientRects());
+      const rect = rects.at(-1) ?? range.getBoundingClientRect();
+      positions[comment.id] = {
+        top: rect.top - containerRect.top,
+        left: rect.right - containerRect.left + 6,
+      };
+    }
+
+    setCommentPositions(positions);
+  }, [messageComments]);
+
+  useLayoutEffect(() => {
+    updateCommentPositions();
+  }, [updateCommentPositions]);
+
+  useEffect(() => {
+    window.addEventListener('resize', updateCommentPositions);
+    return () => window.removeEventListener('resize', updateCommentPositions);
+  }, [updateCommentPositions]);
 
   // Detect text selection within the container
   const handleMouseUp = useCallback(() => {
@@ -284,6 +346,7 @@ export function CommentableWrapper({
       setComposerSelectedText('');
       setComposerCharOffset(-1);
       setComposerPos(null);
+      setActiveCommentId(null);
       window.getSelection()?.removeAllRanges();
     },
     [reviewContext, entryId, composerSelectedText, composerCharOffset],
@@ -294,8 +357,27 @@ export function CommentableWrapper({
     setComposerSelectedText('');
     setComposerCharOffset(-1);
     setComposerPos(null);
+    setActiveCommentId(null);
     window.getSelection()?.removeAllRanges();
   }, []);
+
+  const handleEditComment = useCallback(
+    (commentId: string, body: string, images: PromptImagePart[]) => {
+      updateComment(taskId, commentId, {
+        body,
+        images: images.length > 0 ? images : undefined,
+      });
+    },
+    [taskId, updateComment],
+  );
+
+  const handleRemoveComment = useCallback(
+    (commentId: string) => {
+      reviewContext?.removeComment(commentId);
+      setActiveCommentId(null);
+    },
+    [reviewContext],
+  );
 
   // No review context — render children as-is
   if (!reviewContext?.enabled) {
@@ -355,28 +437,83 @@ export function CommentableWrapper({
         </div>
       )}
 
-      {/* Existing comment bubbles */}
-      {messageComments.length > 0 && (
-        <div
-          className="mt-2 rounded-md px-2 py-1.5"
-          style={{
-            background: COMMENT_ACCENT.bg,
-            border: `1px solid ${COMMENT_ACCENT.border}`,
-          }}
-        >
-          {messageComments.map((comment) => (
-            <InlineCommentBubble
-              key={comment.id}
-              lineStart={comment.anchor.lineStart}
-              lineEnd={comment.anchor.lineEnd}
-              body={comment.body}
-              images={comment.images}
-              selectedText={comment.anchor.selectedText}
-              onRemove={() => reviewContext.removeComment(comment.id)}
-            />
-          ))}
-        </div>
-      )}
+      {messageComments.map((comment) => {
+        const position = commentPositions[comment.id];
+        if (!position) return null;
+        const isActive = activeCommentId === comment.id;
+
+        return (
+          <div key={comment.id}>
+            <button
+              type="button"
+              aria-label="Open comment"
+              className="absolute z-10 flex h-5 w-5 items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105"
+              style={{
+                top: position.top,
+                left: position.left,
+                background: isActive
+                  ? COMMENT_ACCENT.chipText
+                  : COMMENT_ACCENT.chipBg,
+                color: isActive
+                  ? 'oklch(0.16 0.02 295)'
+                  : COMMENT_ACCENT.chipText,
+                border: `1px solid ${COMMENT_ACCENT.borderStrong}`,
+              }}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() =>
+                setActiveCommentId((activeId) =>
+                  activeId === comment.id ? null : comment.id,
+                )
+              }
+            >
+              <MessageSquare className="h-3 w-3" />
+            </button>
+
+            {isActive && (
+              <div
+                className="absolute right-0 left-0 z-20 rounded-md px-3 py-2.5 shadow-xl"
+                style={{
+                  top: position.top + 24,
+                  background: 'oklch(0.18 0.02 295)',
+                  border: `1px solid ${COMMENT_ACCENT.borderStrong}`,
+                }}
+              >
+                {comment.anchor.selectedText && (
+                  <div
+                    className="text-ink-2 mb-2 border-l-2 pl-2 font-mono text-[10px] italic"
+                    style={{ borderColor: COMMENT_ACCENT.barSoft }}
+                  >
+                    <span className="line-clamp-3">
+                      {comment.anchor.selectedText}
+                    </span>
+                  </div>
+                )}
+                <InlineCommentComposer
+                  lineStart={comment.anchor.lineStart}
+                  lineEnd={comment.anchor.lineEnd}
+                  initialBody={comment.body}
+                  initialImages={comment.images}
+                  submitLabel="Save comment"
+                  onSubmit={(body, images) => {
+                    handleEditComment(comment.id, body, images);
+                    setActiveCommentId(null);
+                  }}
+                  onCancel={() => setActiveCommentId(null)}
+                  renderAfterActions={
+                    <button
+                      type="button"
+                      className="text-ink-3 hover:text-danger ml-auto rounded px-2 py-1 text-xs"
+                      onClick={() => handleRemoveComment(comment.id)}
+                    >
+                      Delete
+                    </button>
+                  }
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
