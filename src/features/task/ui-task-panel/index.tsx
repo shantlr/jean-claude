@@ -301,6 +301,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     collapsedFolders: diffCollapsedFolders,
     reviewMode,
     toggleDiffView,
+    openDiffView,
+    closeDiffView,
     selectFile: selectDiffFile,
     toggleCollapsedFolder: toggleDiffCollapsedFolder,
     setReviewMode,
@@ -913,11 +915,31 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       },
     },
     {
-      label: 'Toggle Review View',
+      label: 'Toggle Review Changes',
       shortcut: 'cmd+d',
       section: 'Task',
       handler: () => {
-        toggleDiffView();
+        if (!task?.worktreePath) return;
+        if (isDiffViewOpen && reviewMode === 'changes') {
+          closeDiffView();
+          return;
+        }
+        setReviewMode('changes');
+        openDiffView();
+      },
+    },
+    {
+      label: 'Toggle Review Files',
+      shortcut: 'cmd+f',
+      section: 'Task',
+      handler: () => {
+        if (!task?.worktreePath) return;
+        if (isDiffViewOpen && reviewMode === 'files') {
+          closeDiffView();
+          return;
+        }
+        setReviewMode('files');
+        openDiffView();
       },
     },
     {
