@@ -10,19 +10,30 @@ import { Checkbox } from '@/common/ui/checkbox';
 import { Input } from '@/common/ui/input';
 import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
 import { findMatchingBackendModelPresetId } from '@/features/agent/ui-backend-preset-selector';
+import { getModelThinkingCapabilities } from '@/features/agent/ui-backend-selector';
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
+import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
 import { WorkItemsBrowser } from '@/features/agent/ui-work-items-browser';
 import { PromptTextarea } from '@/features/common/ui-prompt-textarea';
+import { useBackendModels } from '@/hooks/use-backend-models';
 import { useProject, useProjectBranches } from '@/hooks/use-projects';
 import {
   useBackendModelPresetsSetting,
   useBackendsSetting,
   useCompletionSetting,
+  useThinkingSettingsSetting,
 } from '@/hooks/use-settings';
 import { useProjectSkills } from '@/hooks/use-skills';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
 import { useNewTaskFormStore } from '@/stores/new-task-form';
-import { normalizeInteractionModeForBackend } from '@shared/types';
+import {
+  getThinkingEffortOptions,
+  normalizeThinkingEffortForModel,
+} from '@shared/thinking-settings';
+import {
+  normalizeInteractionModeForBackend,
+  type ThinkingEffort,
+} from '@shared/types';
 
 export const Route = createFileRoute('/projects/$projectId/tasks/new')({
   component: NewTask,
@@ -52,6 +63,7 @@ function NewTask() {
     sourceBranch,
     interactionMode,
     modelPreference,
+    thinkingEffort,
     backendModelPresetId,
     agentBackend,
     workItemIds,
@@ -62,6 +74,7 @@ function NewTask() {
   // Sync draft backend with project→global default on mount
   const { data: backendsSetting } = useBackendsSetting();
   const { data: backendModelPresets = [] } = useBackendModelPresetsSetting();
+  const { data: thinkingSettings } = useThinkingSettingsSetting();
   const resolvedDefaultBackend =
     project?.defaultAgentBackend ?? backendsSetting?.defaultBackend;
   const resolvedDefaultModelPreference =
@@ -73,6 +86,9 @@ function NewTask() {
       ? resolvedDefaultBackend
       : backendsSetting?.enabledBackends[0]) ??
     'claude-code';
+  const { data: dynamicModels } = useBackendModels(effectiveAgentBackend);
+  const effectiveModelPreference =
+    modelPreference || resolvedDefaultModelPreference;
   const effectiveBackendModelPresetId =
     draft.shouldAutoSelectBackendModelPreset === false
       ? backendModelPresetId
@@ -82,6 +98,34 @@ function NewTask() {
           backend: agentBackend ?? project?.defaultAgentBackend,
           model: modelPreference ?? project?.defaultAgentModelPreference,
         }));
+  const effectiveBackendModelPreset = effectiveBackendModelPresetId
+    ? backendModelPresets.find(
+        (preset) => preset.id === effectiveBackendModelPresetId,
+      )
+    : null;
+  const thinkingCapabilities = getModelThinkingCapabilities(
+    effectiveModelPreference,
+    dynamicModels,
+  );
+  const thinkingOptions = getThinkingEffortOptions({
+    backend: effectiveAgentBackend,
+    model: effectiveModelPreference,
+    capabilities: thinkingCapabilities,
+  });
+  const effectiveThinkingEffort: ThinkingEffort =
+    normalizeThinkingEffortForModel({
+      backend: effectiveAgentBackend,
+      model: effectiveModelPreference,
+      effort:
+        thinkingEffort ??
+        effectiveBackendModelPreset?.thinkingEffort ??
+        thinkingSettings?.efforts[effectiveAgentBackend]?.[
+          effectiveModelPreference
+        ] ??
+        thinkingSettings?.efforts[effectiveAgentBackend]?.default ??
+        'default',
+      capabilities: thinkingCapabilities,
+    });
   useEffect(() => {
     if (!backendsSetting || !project || hasDraft) return;
 
@@ -89,14 +133,26 @@ function NewTask() {
       project.defaultAgentBackend ?? backendsSetting.defaultBackend;
     if (!backendsSetting.enabledBackends.includes(resolved)) return;
 
+    const presetId = findMatchingBackendModelPresetId({
+      presets: backendModelPresets,
+      backend: project.defaultAgentBackend,
+      model: project.defaultAgentModelPreference,
+    });
+    const preset = presetId
+      ? backendModelPresets.find((item) => item.id === presetId)
+      : null;
+
     setDraft({
       agentBackend: resolved,
       modelPreference: project.defaultAgentModelPreference ?? 'default',
-      backendModelPresetId: findMatchingBackendModelPresetId({
-        presets: backendModelPresets,
-        backend: project.defaultAgentBackend,
-        model: project.defaultAgentModelPreference,
-      }),
+      thinkingEffort:
+        preset?.thinkingEffort ??
+        thinkingSettings?.efforts[resolved]?.[
+          project.defaultAgentModelPreference ?? 'default'
+        ] ??
+        thinkingSettings?.efforts[resolved]?.default ??
+        'default',
+      backendModelPresetId: presetId,
       shouldAutoSelectBackendModelPreset: true,
       interactionMode: normalizeInteractionModeForBackend({
         backend: resolved,
@@ -110,6 +166,7 @@ function NewTask() {
     interactionMode,
     project,
     setDraft,
+    thinkingSettings,
   ]);
 
   // Determine the effective source branch (draft value or project default)
@@ -128,6 +185,7 @@ function NewTask() {
       status: 'waiting',
       interactionMode,
       modelPreference,
+      thinkingEffort: effectiveThinkingEffort,
       agentBackend: effectiveAgentBackend,
       useWorktree,
       workItemIds,
@@ -307,21 +365,45 @@ function NewTask() {
             />
             <BackendModelPresetPicker
               backend={effectiveAgentBackend}
-              model={modelPreference || resolvedDefaultModelPreference}
+              model={effectiveModelPreference}
               selectedPresetId={effectiveBackendModelPresetId}
               onChange={(selection) => {
+                const nextThinkingCapabilities = getModelThinkingCapabilities(
+                  selection.model,
+                  dynamicModels,
+                );
                 setDraft({
                   agentBackend: selection.backend,
                   backendModelPresetId: selection.presetId,
                   shouldAutoSelectBackendModelPreset:
                     selection.presetId !== null,
                   modelPreference: selection.model,
+                  thinkingEffort: normalizeThinkingEffortForModel({
+                    backend: selection.backend,
+                    model: selection.model,
+                    effort:
+                      selection.thinkingEffort ??
+                      thinkingSettings?.efforts[selection.backend]?.[
+                        selection.model
+                      ] ??
+                      thinkingSettings?.efforts[selection.backend]?.default ??
+                      'default',
+                    capabilities: nextThinkingCapabilities,
+                  }),
                   interactionMode: normalizeInteractionModeForBackend({
                     backend: selection.backend,
                     mode: interactionMode,
                   }),
                 });
               }}
+            />
+            <ThinkingSelector
+              value={effectiveThinkingEffort}
+              options={thinkingOptions}
+              onChange={(nextThinkingEffort) =>
+                setDraft({ thinkingEffort: nextThinkingEffort })
+              }
+              disabled={thinkingOptions.length <= 1}
             />
             <Button
               variant="secondary"

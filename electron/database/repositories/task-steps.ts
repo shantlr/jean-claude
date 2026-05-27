@@ -11,6 +11,7 @@ import type {
   TaskStepMeta,
   TaskStepStatus,
   TaskStepType,
+  ThinkingEffort,
 } from '@shared/types';
 
 import { dbg } from '../../lib/debug';
@@ -30,6 +31,7 @@ function toStep(row: TaskStepRow): TaskStep {
     sessionId: row.sessionId,
     interactionMode: row.interactionMode as InteractionMode | null,
     modelPreference: row.modelPreference as ModelPreference | null,
+    thinkingEffort: row.thinkingEffort as ThinkingEffort | null,
     agentBackend: row.agentBackend as AgentBackendType | null,
     output: row.output,
     images: row.images ? JSON.parse(row.images) : null,
@@ -104,6 +106,7 @@ export const TaskStepRepository = {
     promptTemplate: string;
     interactionMode?: InteractionMode | null;
     modelPreference?: ModelPreference | null;
+    thinkingEffort?: ThinkingEffort | null;
     agentBackend?: AgentBackendType | null;
     images?: PromptImagePart[] | null;
     meta?: TaskStepMeta;
@@ -149,6 +152,7 @@ export const TaskStepRepository = {
           sessionId: null,
           interactionMode: data.interactionMode ?? null,
           modelPreference: data.modelPreference ?? null,
+          thinkingEffort: data.thinkingEffort ?? null,
           agentBackend: data.agentBackend ?? null,
           output: null,
           images: data.images ? JSON.stringify(data.images) : null,
@@ -177,6 +181,7 @@ export const TaskStepRepository = {
       sessionId?: string | null;
       interactionMode?: InteractionMode | null;
       modelPreference?: ModelPreference | null;
+      thinkingEffort?: ThinkingEffort | null;
       agentBackend?: AgentBackendType | null;
       output?: string | null;
       meta?: TaskStepMeta;

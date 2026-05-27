@@ -1,0 +1,52 @@
+import { forwardRef } from 'react';
+
+import type { KeyboardLayer } from '@/common/context/keyboard-bindings';
+import type { BindingKey } from '@/common/context/keyboard-bindings/types';
+import { Select, type SelectRef } from '@/common/ui/select';
+import type { ThinkingEffortOption } from '@shared/thinking-settings';
+import { THINKING_EFFORT_OPTIONS } from '@shared/thinking-settings';
+import type { ThinkingEffort } from '@shared/types';
+
+export const ThinkingSelector = forwardRef<
+  SelectRef,
+  {
+    value: ThinkingEffort;
+    onChange: (effort: ThinkingEffort) => void;
+    options?: ThinkingEffortOption[];
+    disabled?: boolean;
+    shortcut?: BindingKey | BindingKey[];
+    shortcutBehavior?: 'cycle' | 'open';
+    side?: 'top' | 'bottom';
+    className?: string;
+    layer?: KeyboardLayer;
+  }
+>(function ThinkingSelector(
+  {
+    value,
+    onChange,
+    options = THINKING_EFFORT_OPTIONS,
+    disabled,
+    shortcut,
+    shortcutBehavior,
+    side,
+    className,
+    layer,
+  },
+  ref,
+) {
+  return (
+    <Select
+      ref={ref}
+      value={value}
+      options={options}
+      onChange={onChange as (v: string) => void}
+      disabled={disabled}
+      label="Think"
+      shortcut={shortcut}
+      shortcutBehavior={shortcutBehavior}
+      side={side}
+      className={className}
+      layer={layer}
+    />
+  );
+});

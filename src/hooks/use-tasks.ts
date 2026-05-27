@@ -9,7 +9,12 @@ import { api } from '@/lib/api';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { AgentBackendType } from '@shared/agent-backend-types';
-import type { InteractionMode, NewTask, UpdateTask } from '@shared/types';
+import type {
+  InteractionMode,
+  NewTask,
+  ThinkingEffort,
+  UpdateTask,
+} from '@shared/types';
 
 // The creation payload includes step-related fields alongside task fields.
 // The IPC handler extracts interactionMode/modelPreference/agentBackend
@@ -17,6 +22,7 @@ import type { InteractionMode, NewTask, UpdateTask } from '@shared/types';
 type CreateTaskPayload = NewTask & {
   interactionMode?: InteractionMode | null;
   modelPreference?: string | null;
+  thinkingEffort?: ThinkingEffort | null;
   agentBackend?: AgentBackendType | null;
 };
 

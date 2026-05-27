@@ -2,10 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
 import type { AgentBackendType } from '@shared/agent-backend-types';
+import type { ThinkingEffort } from '@shared/types';
 
 export interface BackendModel {
   id: string;
   label: string;
+  supportsThinking?: boolean;
+  thinkingEfforts?: ThinkingEffort[];
 }
 
 /**

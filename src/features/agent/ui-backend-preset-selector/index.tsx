@@ -9,7 +9,11 @@ import {
   useBackendsSetting,
 } from '@/hooks/use-settings';
 import type { AgentBackendType } from '@shared/agent-backend-types';
-import type { BackendModelPreset, ModelPreference } from '@shared/types';
+import type {
+  BackendModelPreset,
+  ModelPreference,
+  ThinkingEffort,
+} from '@shared/types';
 
 export type { SelectRef } from '@/common/ui/select';
 
@@ -28,10 +32,12 @@ export function findMatchingBackendModelPresetId({
   presets,
   backend,
   model,
+  thinkingEffort,
 }: {
   presets: BackendModelPreset[];
   backend: AgentBackendType | null | undefined;
   model: ModelPreference | null | undefined;
+  thinkingEffort?: ThinkingEffort | null;
 }) {
   if (!backend || !model) {
     return null;
@@ -39,7 +45,11 @@ export function findMatchingBackendModelPresetId({
 
   return (
     presets.find(
-      (preset) => preset.backend === backend && preset.model === model,
+      (preset) =>
+        preset.backend === backend &&
+        preset.model === model &&
+        (thinkingEffort === undefined ||
+          (preset.thinkingEffort ?? 'default') === thinkingEffort),
     )?.id ?? null
   );
 }
@@ -54,6 +64,7 @@ export const BackendPresetSelector = forwardRef<
       backend: AgentBackendType;
       presetId: string | null;
       modelPreference?: ModelPreference;
+      thinkingEffort?: ThinkingEffort | null;
     }) => void;
     disabled?: boolean;
     shortcut?: BindingKey | BindingKey[];
@@ -111,7 +122,7 @@ export const BackendPresetSelector = forwardRef<
         return {
           value: toPresetValue(preset.id),
           label: preset.name.trim() || 'Untitled preset',
-          description: `${backendOption?.label ?? preset.backend} - ${preset.model}`,
+          description: `${backendOption?.label ?? preset.backend} - ${preset.model} - ${preset.thinkingEffort ?? 'default'} thinking`,
           group: 'Presets',
         };
       },
@@ -155,6 +166,7 @@ export const BackendPresetSelector = forwardRef<
             backend: preset.backend,
             presetId: preset.id,
             modelPreference: preset.model,
+            thinkingEffort: preset.thinkingEffort ?? 'default',
           });
           return;
         }

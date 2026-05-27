@@ -17,9 +17,11 @@ import { Checkbox } from '@/common/ui/checkbox';
 import { Input } from '@/common/ui/input';
 import {
   AVAILABLE_BACKENDS,
+  getModelThinkingCapabilities,
   getModelsForBackend,
 } from '@/features/agent/ui-backend-selector';
 import { ModelSelector } from '@/features/agent/ui-model-selector';
+import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
 import { useBackendModels } from '@/hooks/use-backend-models';
 import {
   useScanNonExistentProjects,
@@ -32,11 +34,13 @@ import {
   useEditorSetting,
   useTaskEventNotificationsSetting,
   useSummaryModelsSetting,
+  useThinkingSettingsSetting,
   useUpdateBackendsSetting,
   useUpdateCalendarNotificationsSetting,
   useUpdateEditorSetting,
   useUpdateTaskEventNotificationsSetting,
   useUpdateSummaryModelsSetting,
+  useUpdateThinkingSettingsSetting,
   useAvailableEditors,
   useUsageDisplaySetting,
   useUpdateUsageDisplaySetting,
@@ -48,9 +52,15 @@ import {
 } from '@/lib/api';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import {
+  getThinkingEffortOptions,
+  normalizeThinkingEffortForModel,
+} from '@shared/thinking-settings';
+import {
   DEFAULT_CALENDAR_NOTIFICATION_LEAD_TIME_MINUTES,
   DEFAULT_TASK_NOTIFICATION_MODES,
   PRESET_EDITORS,
+  type ModelPreference,
+  type ThinkingEffort,
   type CalendarNotificationsSetting,
   type TaskNotificationEvent,
   type TaskNotificationMode,
@@ -303,7 +313,7 @@ export function BackendsSettings() {
           return (
             <div
               key={backend.value}
-              className={`flex items-center justify-between rounded-lg border px-4 py-3 ${
+              className={`flex items-center justify-between gap-4 rounded-lg border px-4 py-3 ${
                 enabled
                   ? 'border-glass-border bg-bg-1'
                   : 'border-line-soft bg-bg-0'
@@ -318,19 +328,111 @@ export function BackendsSettings() {
               />
 
               {enabled && (
-                <Button
-                  onClick={() => handleSetDefault(backend.value)}
-                  variant={dflt ? 'primary' : 'ghost'}
-                  size="sm"
-                  icon={<Star className={dflt ? 'fill-acc-ink' : ''} />}
-                >
-                  {dflt ? 'Default' : 'Set as default'}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <BackendThinkingSettings backend={backend.value} />
+                  <Button
+                    onClick={() => handleSetDefault(backend.value)}
+                    variant={dflt ? 'primary' : 'ghost'}
+                    size="sm"
+                    icon={<Star className={dflt ? 'fill-acc-ink' : ''} />}
+                  >
+                    {dflt ? 'Default' : 'Set as default'}
+                  </Button>
+                </div>
               )}
             </div>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function BackendThinkingSettings({ backend }: { backend: AgentBackendType }) {
+  const { data: thinkingSettings } = useThinkingSettingsSetting();
+  const updateThinkingSettings = useUpdateThinkingSettingsSetting();
+  const { data: dynamicModels } = useBackendModels(backend);
+  const [model, setModel] = useState<ModelPreference>('default');
+
+  const capabilities = getModelThinkingCapabilities(model, dynamicModels);
+  const thinkingOptions = getThinkingEffortOptions({
+    backend,
+    model,
+    capabilities,
+  });
+  const backendEfforts = thinkingSettings?.efforts[backend] ?? {
+    default: 'default',
+  };
+  const value = normalizeThinkingEffortForModel({
+    backend,
+    model,
+    effort: backendEfforts[model] ?? backendEfforts.default,
+    capabilities,
+  });
+
+  const handleModelChange = (nextModel: ModelPreference) => {
+    const nextCapabilities = getModelThinkingCapabilities(
+      nextModel,
+      dynamicModels,
+    );
+    setModel(nextModel);
+
+    const normalizedEffort = normalizeThinkingEffortForModel({
+      backend,
+      model: nextModel,
+      effort: backendEfforts[nextModel] ?? backendEfforts.default,
+      capabilities: nextCapabilities,
+    });
+
+    if (
+      backendEfforts[nextModel] &&
+      backendEfforts[nextModel] !== normalizedEffort
+    ) {
+      setThinkingEffort(nextModel, normalizedEffort);
+    }
+  };
+
+  const setThinkingEffort = (
+    targetModel: ModelPreference,
+    effort: ThinkingEffort,
+  ) => {
+    const normalizedEffort = normalizeThinkingEffortForModel({
+      backend,
+      model: targetModel,
+      effort,
+      capabilities: getModelThinkingCapabilities(targetModel, dynamicModels),
+    });
+    updateThinkingSettings.mutate({
+      efforts: {
+        'claude-code': {
+          ...(thinkingSettings?.efforts['claude-code'] ?? {
+            default: 'default',
+          }),
+        },
+        opencode: {
+          ...(thinkingSettings?.efforts.opencode ?? { default: 'default' }),
+        },
+        [backend]: {
+          ...backendEfforts,
+          [targetModel]: normalizedEffort,
+        },
+      },
+    });
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <ModelSelector
+        value={model}
+        onChange={handleModelChange}
+        models={getModelsForBackend(backend, dynamicModels)}
+      />
+      <ThinkingSelector
+        value={value}
+        options={thinkingOptions}
+        onChange={(effort) => setThinkingEffort(model, effort)}
+        disabled={thinkingOptions.length <= 1}
+      />
     </div>
   );
 }

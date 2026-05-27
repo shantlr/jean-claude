@@ -2,21 +2,47 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 
 import type { AgentBackendType } from '@shared/agent-backend-types';
+import type { ThinkingEffort } from '@shared/types';
 
 import { dbg } from '../lib/debug';
 
 const execAsync = promisify(exec);
+const OPENCODE_THINKING_VARIANTS = new Set<ThinkingEffort>([
+  'none',
+  'low',
+  'medium',
+  'high',
+  'max',
+  'xhigh',
+]);
 
 export interface BackendModel {
   id: string;
   label: string;
+  supportsThinking?: boolean;
+  thinkingEfforts?: ThinkingEffort[];
 }
 
 // Claude Code models are static — they're defined by the SDK, not discoverable via CLI.
 const CLAUDE_CODE_MODELS: BackendModel[] = [
-  { id: 'opus', label: 'Opus' },
-  { id: 'sonnet', label: 'Sonnet' },
-  { id: 'haiku', label: 'Haiku' },
+  {
+    id: 'opus',
+    label: 'Opus',
+    supportsThinking: true,
+    thinkingEfforts: ['low', 'medium', 'high', 'max'],
+  },
+  {
+    id: 'sonnet',
+    label: 'Sonnet',
+    supportsThinking: true,
+    thinkingEfforts: ['low', 'medium', 'high', 'max'],
+  },
+  {
+    id: 'haiku',
+    label: 'Haiku',
+    supportsThinking: true,
+    thinkingEfforts: ['low', 'medium', 'high'],
+  },
 ];
 
 // Cache for dynamic model lists (keyed by backend type)
@@ -53,19 +79,12 @@ async function fetchOpenCodeModels(): Promise<BackendModel[]> {
   }
 
   try {
-    const { stdout } = await execAsync('opencode models', {
+    const { stdout } = await execAsync('opencode models --verbose', {
       encoding: 'utf-8',
       timeout: 10_000,
     });
 
-    const models: BackendModel[] = stdout
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-      .map((id) => ({
-        id,
-        label: formatModelLabel(id),
-      }));
+    const models = parseOpenCodeModelsVerbose(stdout);
 
     dbg.agent('Discovered %d OpenCode models', models.length);
     modelCache.set('opencode', { models, fetchedAt: Date.now() });
@@ -75,6 +94,94 @@ async function fetchOpenCodeModels(): Promise<BackendModel[]> {
     // Return cached value (even if stale) on error, or empty array
     return cached?.models ?? [];
   }
+}
+
+export function parseOpenCodeModelsVerbose(stdout: string): BackendModel[] {
+  const lines = stdout.split('\n');
+  const models: BackendModel[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const id = lines[i].trim();
+    if (!id || id.startsWith('{')) continue;
+
+    let next = i + 1;
+    while (next < lines.length && !lines[next].trim()) next++;
+    if (lines[next]?.trim() !== '{') {
+      models.push({ id, label: formatModelLabel(id) });
+      continue;
+    }
+
+    const jsonLines: string[] = [];
+    let depth = 0;
+    for (let j = next; j < lines.length; j++) {
+      const line = lines[j];
+      jsonLines.push(line);
+      depth += countJsonDepthDelta(line);
+
+      if (depth === 0 && jsonLines.length > 0) {
+        i = j;
+        break;
+      }
+    }
+
+    try {
+      const metadata = JSON.parse(jsonLines.join('\n')) as {
+        name?: string;
+        capabilities?: { reasoning?: boolean };
+        variants?: Record<string, unknown>;
+      };
+      const thinkingEfforts = Object.keys(metadata.variants ?? {}).filter(
+        (variant): variant is ThinkingEffort =>
+          OPENCODE_THINKING_VARIANTS.has(variant as ThinkingEffort),
+      );
+      models.push({
+        id,
+        label: metadata.name ?? formatModelLabel(id),
+        supportsThinking:
+          metadata.capabilities?.reasoning === true ||
+          thinkingEfforts.length > 0,
+        ...(thinkingEfforts.length > 0 ? { thinkingEfforts } : {}),
+      });
+    } catch (error) {
+      dbg.agent(
+        'Failed to parse OpenCode model metadata for %s: %O',
+        id,
+        error,
+      );
+      models.push({ id, label: formatModelLabel(id) });
+    }
+  }
+
+  return models;
+}
+
+function countJsonDepthDelta(line: string): number {
+  let delta = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (const char of line) {
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escaped = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) continue;
+    if (char === '{') delta++;
+    if (char === '}') delta--;
+  }
+
+  return delta;
 }
 
 /** Convert a model id like 'openai/gpt-5.1-codex' to a human-readable label like 'GPT-5.1 Codex' */

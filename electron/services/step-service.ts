@@ -8,6 +8,7 @@ import type {
   TaskStep,
   TaskStepMeta,
   TaskStepType,
+  ThinkingEffort,
 } from '@shared/types';
 
 import { AgentMessageRepository } from '../database/repositories/agent-messages';
@@ -334,6 +335,7 @@ export const StepService = {
     promptTemplate: string;
     interactionMode?: InteractionMode | null;
     modelPreference?: ModelPreference | null;
+    thinkingEffort?: ThinkingEffort | null;
     agentBackend?: AgentBackendType | null;
     images?: PromptImagePart[] | null;
     meta?: TaskStepMeta;

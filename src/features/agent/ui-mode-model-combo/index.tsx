@@ -6,12 +6,15 @@ import { createPortal } from 'react-dom';
 import { useRegisterOverlay } from '@/common/context/overlay';
 import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
 import type { AgentBackendType } from '@shared/agent-backend-types';
+import type { ThinkingEffortOption } from '@shared/thinking-settings';
+import { THINKING_EFFORT_OPTIONS } from '@shared/thinking-settings';
 import {
   getInteractionModeOptions,
   normalizeInteractionModeForBackend,
   type InteractionMode,
 } from '@shared/types';
 import type { ModelPreference } from '@shared/types';
+import type { ThinkingEffort } from '@shared/types';
 
 import type { BackendModelOption } from '../ui-backend-selector';
 
@@ -46,6 +49,9 @@ export function ModeModelComboSelector({
   onModeChange,
   model,
   onModelChange,
+  thinkingEffort = 'default',
+  onThinkingEffortChange,
+  thinkingOptions = THINKING_EFFORT_OPTIONS,
   backend = 'claude-code',
   models,
   disabled = false,
@@ -54,6 +60,9 @@ export function ModeModelComboSelector({
   onModeChange: (mode: InteractionMode) => void;
   model: ModelPreference;
   onModelChange: (model: ModelPreference) => void;
+  thinkingEffort?: ThinkingEffort;
+  onThinkingEffortChange?: (effort: ThinkingEffort) => void;
+  thinkingOptions?: ThinkingEffortOption[];
   backend?: AgentBackendType;
   models?: BackendModelOption[];
   disabled?: boolean;
@@ -102,6 +111,10 @@ export function ModeModelComboSelector({
 
   const modeLabel = selectedModeOption?.label ?? 'Plan';
   const modelLabel = selectedModelOption?.label ?? 'Default';
+  const selectedThinkingOption = thinkingOptions.find(
+    (option) => option.value === thinkingEffort,
+  );
+  const thinkingLabel = selectedThinkingOption?.label ?? 'Default';
 
   return (
     <>
@@ -113,7 +126,7 @@ export function ModeModelComboSelector({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-controls={isOpen ? listboxId : undefined}
-        aria-label={`Mode: ${modeLabel}, Model: ${modelLabel}`}
+        aria-label={`Mode: ${modeLabel}, Model: ${modelLabel}, Thinking: ${thinkingLabel}`}
         className={clsx(
           'bg-glass-light hover:bg-glass-medium flex items-center gap-0 rounded-md transition-colors',
           'h-7 text-xs',
@@ -125,6 +138,11 @@ export function ModeModelComboSelector({
           {modeLabel}
         </span>
         {/* Divider */}
+        <span className="bg-glass-border h-3.5 w-px shrink-0" />
+        {/* Thinking segment */}
+        <span className="text-ink-2 flex items-center gap-1 px-2">
+          {thinkingLabel}
+        </span>
         <span className="bg-glass-border h-3.5 w-px shrink-0" />
         {/* Model segment */}
         <span className="text-ink-1 flex items-center gap-1 px-2 font-medium">
@@ -198,6 +216,50 @@ export function ModeModelComboSelector({
             ))}
 
             {/* Divider */}
+            <div className="border-glass-border my-1 border-t" />
+
+            {/* Thinking section */}
+            <div className="text-ink-4 px-3 pt-1 pb-1 text-[10px] font-semibold tracking-[0.14em] uppercase">
+              Thinking
+            </div>
+            {thinkingOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="option"
+                tabIndex={-1}
+                aria-selected={option.value === thinkingEffort}
+                onClick={() => {
+                  onThinkingEffortChange?.(option.value);
+                }}
+                className={clsx(
+                  'hover:bg-glass-medium flex w-full items-center gap-1.5 px-3 py-1 text-left text-xs transition-colors',
+                  option.value === thinkingEffort ? 'text-ink-1' : 'text-ink-2',
+                )}
+              >
+                <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                  {option.value === thinkingEffort && (
+                    <Check className="h-3 w-3" />
+                  )}
+                </span>
+                <div className="flex flex-col">
+                  <span
+                    className={clsx(
+                      'text-xs',
+                      option.value === thinkingEffort && 'font-medium',
+                    )}
+                  >
+                    {option.label}
+                  </span>
+                  {option.description && (
+                    <span className="text-ink-3 text-xs">
+                      {option.description}
+                    </span>
+                  )}
+                </div>
+              </button>
+            ))}
+
             <div className="border-glass-border my-1 border-t" />
 
             {/* Model section */}

@@ -7,7 +7,11 @@ import type {
   PromptFilePart,
   PromptImagePart,
 } from '@shared/agent-backend-types';
-import type { InteractionMode, ModelPreference } from '@shared/types';
+import type {
+  InteractionMode,
+  ModelPreference,
+  ThinkingEffort,
+} from '@shared/types';
 
 export type InputMode = 'search' | 'prompt';
 export type SearchStep = 'select' | 'compose';
@@ -17,6 +21,7 @@ export interface NewTaskDraft {
   inputMode: InputMode;
   interactionMode: InteractionMode;
   modelPreference: ModelPreference;
+  thinkingEffort: ThinkingEffort;
   backendModelPresetId: string | null;
   shouldAutoSelectBackendModelPreset: boolean;
   agentBackend: AgentBackendType;

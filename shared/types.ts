@@ -135,6 +135,14 @@ export function normalizeInteractionModeForBackend({
 // 'default' means use the backend's default model.
 // Other values are backend-specific model identifiers (e.g. 'sonnet', 'openai/gpt-5.1-codex').
 export type ModelPreference = 'default' | (string & {});
+export type ThinkingEffort =
+  | 'default'
+  | 'none'
+  | 'low'
+  | 'medium'
+  | 'high'
+  | 'max'
+  | 'xhigh';
 
 export interface Provider {
   id: string;
@@ -450,6 +458,7 @@ export interface TaskStep {
   sessionId: string | null;
   interactionMode: InteractionMode | null;
   modelPreference: ModelPreference | null;
+  thinkingEffort: ThinkingEffort | null;
   agentBackend: AgentBackendType | null;
   output: string | null;
   images: PromptImagePart[] | null;
@@ -469,6 +478,7 @@ export interface NewTaskStep {
   promptTemplate: string;
   interactionMode?: InteractionMode | null;
   modelPreference?: ModelPreference | null;
+  thinkingEffort?: ThinkingEffort | null;
   agentBackend?: AgentBackendType | null;
   images?: PromptImagePart[] | null;
   meta?: TaskStepMeta;
@@ -486,6 +496,7 @@ export interface UpdateTaskStep {
   sessionId?: string | null;
   interactionMode?: InteractionMode | null;
   modelPreference?: ModelPreference | null;
+  thinkingEffort?: ThinkingEffort | null;
   agentBackend?: AgentBackendType | null;
   output?: string | null;
   images?: PromptImagePart[] | null;
@@ -560,11 +571,16 @@ export interface SummaryModelsSetting {
   models: Record<AgentBackendType, ModelPreference>;
 }
 
+export interface ThinkingSettingsSetting {
+  efforts: Record<AgentBackendType, Record<string, ThinkingEffort>>;
+}
+
 export interface BackendModelPreset {
   id: string;
   name: string;
   backend: AgentBackendType;
   model: ModelPreference;
+  thinkingEffort?: ThinkingEffort | null;
 }
 
 export type BackendModelPresetsSetting = BackendModelPreset[];
@@ -682,6 +698,30 @@ function isSummaryModelsSetting(v: unknown): v is SummaryModelsSetting {
   return VALID_BACKENDS.every((backend) => typeof models[backend] === 'string');
 }
 
+const VALID_THINKING_EFFORTS: ThinkingEffort[] = [
+  'default',
+  'none',
+  'low',
+  'medium',
+  'high',
+  'max',
+  'xhigh',
+];
+
+function isThinkingSettingsSetting(v: unknown): v is ThinkingSettingsSetting {
+  if (!v || typeof v !== 'object') return false;
+  const obj = v as Record<string, unknown>;
+  if (!obj.efforts || typeof obj.efforts !== 'object') return false;
+  const efforts = obj.efforts as Record<string, unknown>;
+  return VALID_BACKENDS.every((backend) => {
+    const backendEfforts = efforts[backend];
+    if (!backendEfforts || typeof backendEfforts !== 'object') return false;
+    return Object.values(backendEfforts as Record<string, unknown>).every(
+      (effort) => VALID_THINKING_EFFORTS.includes(effort as ThinkingEffort),
+    );
+  });
+}
+
 function isBackendModelPresetsSetting(
   v: unknown,
 ): v is BackendModelPresetsSetting {
@@ -697,7 +737,10 @@ function isBackendModelPresetsSetting(
       typeof obj.name === 'string' &&
       typeof obj.model === 'string' &&
       typeof obj.backend === 'string' &&
-      VALID_BACKENDS.includes(obj.backend as AgentBackendType)
+      VALID_BACKENDS.includes(obj.backend as AgentBackendType) &&
+      (obj.thinkingEffort === undefined ||
+        obj.thinkingEffort === null ||
+        VALID_THINKING_EFFORTS.includes(obj.thinkingEffort as ThinkingEffort))
     );
   });
 }
@@ -871,6 +914,15 @@ export const SETTINGS_DEFINITIONS = {
       },
     } as SummaryModelsSetting,
     validate: isSummaryModelsSetting,
+  },
+  thinkingSettings: {
+    defaultValue: {
+      efforts: {
+        'claude-code': { default: 'default' },
+        opencode: { default: 'default' },
+      },
+    } as ThinkingSettingsSetting,
+    validate: isThinkingSettingsSetting,
   },
   backendModelPresets: {
     defaultValue: [] as BackendModelPresetsSetting,

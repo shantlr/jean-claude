@@ -11,7 +11,7 @@ import { ModelSelector } from '@/features/agent/ui-model-selector';
 import { useBackendModels } from '@/hooks/use-backend-models';
 import { useBackendModelPresetsSetting } from '@/hooks/use-settings';
 import type { AgentBackendType } from '@shared/agent-backend-types';
-import type { ModelPreference } from '@shared/types';
+import type { ModelPreference, ThinkingEffort } from '@shared/types';
 
 export function BackendModelPresetPicker({
   backend,
@@ -34,6 +34,7 @@ export function BackendModelPresetPicker({
   onChange: (selection: {
     backend: AgentBackendType;
     model: ModelPreference;
+    thinkingEffort?: ThinkingEffort | null;
     presetId: string | null;
   }) => void;
   disabled?: boolean;
@@ -89,6 +90,7 @@ export function BackendModelPresetPicker({
             onChange({
               backend: selection.backend,
               model: selection.modelPreference ?? 'default',
+              thinkingEffort: selection.thinkingEffort ?? 'default',
               presetId: selection.presetId,
             });
             return;
@@ -97,6 +99,7 @@ export function BackendModelPresetPicker({
           onChange({
             backend: selection.backend,
             model: 'default',
+            thinkingEffort: 'default',
             presetId: null,
           });
         }}
@@ -114,6 +117,7 @@ export function BackendModelPresetPicker({
             onChange({
               backend,
               model: nextModel,
+              thinkingEffort: null,
               presetId: null,
             })
           }

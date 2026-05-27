@@ -397,6 +397,15 @@ export class ClaudeCodeBackend implements AgentBackend {
       queryOptions.model = config.model;
     }
 
+    if (
+      config.thinkingEffort === 'low' ||
+      config.thinkingEffort === 'medium' ||
+      config.thinkingEffort === 'high' ||
+      config.thinkingEffort === 'max'
+    ) {
+      queryOptions.effort = config.thinkingEffort;
+    }
+
     if (config.mcpServers && Object.keys(config.mcpServers).length > 0) {
       queryOptions.mcpServers = config.mcpServers;
     }

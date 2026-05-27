@@ -38,6 +38,7 @@ import {
 } from '@shared/types';
 
 import type { PermissionScope } from '../../shared/permission-types';
+import { normalizeThinkingEffortForModel } from '../../shared/thinking-settings';
 import {
   TaskRepository,
   ProjectRepository,
@@ -581,6 +582,12 @@ class AgentService {
         ? buildJcMcpServersConfigForCwd(workingDir)
         : undefined;
 
+    const normalizedThinkingEffort = normalizeThinkingEffortForModel({
+      backend: session.backendType,
+      model: step?.modelPreference ?? 'default',
+      effort: step?.thinkingEffort,
+    });
+
     // Start the backend
     dbg.agentSession('Starting backend for step %s', stepId);
     const agentSession = await session.backend.start(
@@ -597,6 +604,10 @@ class AgentService {
         model:
           step?.modelPreference && step.modelPreference !== 'default'
             ? step.modelPreference
+            : undefined,
+        thinkingEffort:
+          normalizedThinkingEffort !== 'default'
+            ? normalizedThinkingEffort
             : undefined,
         sessionId: session.sdkSessionId ?? undefined,
         persistedSessionRules: task.sessionRules ?? {},

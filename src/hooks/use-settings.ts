@@ -13,6 +13,7 @@ import type {
   PromptSnippetsSetting,
   SummaryModelsSetting,
   TaskEventNotificationsSetting,
+  ThinkingSettingsSetting,
   UsageDisplaySetting,
 } from '@shared/types';
 import { PRESET_EDITORS } from '@shared/types';
@@ -119,6 +120,23 @@ export function useUpdateSummaryModelsSetting() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['settings', 'summaryModels'],
+      });
+    },
+  });
+}
+
+export function useThinkingSettingsSetting() {
+  return useSetting('thinkingSettings');
+}
+
+export function useUpdateThinkingSettingsSetting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: ThinkingSettingsSetting) =>
+      api.settings.set('thinkingSettings', value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings', 'thinkingSettings'],
       });
     },
   });

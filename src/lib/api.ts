@@ -96,6 +96,7 @@ import type {
   UpdateToken,
   BranchInfo,
   InteractionMode,
+  ThinkingEffort,
   AppSettings,
   ProjectTodo,
 } from '@shared/types';
@@ -395,6 +396,7 @@ export interface Api {
       data: NewTask & {
         interactionMode?: InteractionMode | null;
         modelPreference?: string | null;
+        thinkingEffort?: ThinkingEffort | null;
         agentBackend?: AgentBackendType | null;
       },
     ) => Promise<Task>;
@@ -405,6 +407,7 @@ export interface Api {
         autoStart?: boolean;
         interactionMode?: InteractionMode | null;
         modelPreference?: string | null;
+        thinkingEffort?: ThinkingEffort | null;
         agentBackend?: AgentBackendType | null;
       },
     ) => Promise<Task>;
@@ -888,9 +891,14 @@ export interface Api {
       content: string,
     ) => Promise<void>;
     cancelQueuedPrompt: (stepId: string, promptId: string) => Promise<void>;
-    getBackendModels: (
-      backend: string,
-    ) => Promise<{ id: string; label: string }[]>;
+    getBackendModels: (backend: string) => Promise<
+      {
+        id: string;
+        label: string;
+        supportsThinking?: boolean;
+        thinkingEfforts?: ThinkingEffort[];
+      }[]
+    >;
     getMessages: (stepId: string) => Promise<NormalizedEntry[]>;
     getMessageCount: (stepId: string) => Promise<number>;
     getMessagesWithRawData: (

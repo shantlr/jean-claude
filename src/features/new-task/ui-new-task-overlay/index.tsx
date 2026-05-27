@@ -41,8 +41,12 @@ import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
 import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
 import { findMatchingBackendModelPresetId } from '@/features/agent/ui-backend-preset-selector';
-import { getModelsForBackend } from '@/features/agent/ui-backend-selector';
+import {
+  getModelThinkingCapabilities,
+  getModelsForBackend,
+} from '@/features/agent/ui-backend-selector';
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
+import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
 import {
   PromptTextarea,
   type PromptTextareaRef,
@@ -64,6 +68,7 @@ import {
   useBackendsSetting,
   useCompletionSetting,
   usePromptSnippetsSetting,
+  useThinkingSettingsSetting,
 } from '@/hooks/use-settings';
 import { useProjectSkills } from '@/hooks/use-skills';
 import { useCreateTaskWithWorktree, useProjectTasks } from '@/hooks/use-tasks';
@@ -99,7 +104,12 @@ import type {
   PromptImagePart,
 } from '@shared/agent-backend-types';
 import {
+  getThinkingEffortOptions,
+  normalizeThinkingEffortForModel,
+} from '@shared/thinking-settings';
+import {
   normalizeInteractionModeForBackend,
+  type ThinkingEffort,
   type Project,
 } from '@shared/types';
 
@@ -484,6 +494,7 @@ export function NewTaskOverlay({
   // Enabled backends from settings
   const { data: backendsSetting } = useBackendsSetting();
   const { data: backendModelPresets = [] } = useBackendModelPresetsSetting();
+  const { data: thinkingSettings } = useThinkingSettingsSetting();
 
   const defaultBackend = useMemo(() => {
     if (!backendsSetting) {
@@ -537,6 +548,9 @@ export function NewTaskOverlay({
             draft?.modelPreference ??
             selectedProject?.defaultAgentModelPreference,
         }));
+  const currentBackendModelPreset = currentBackendPresetId
+    ? backendModelPresets.find((preset) => preset.id === currentBackendPresetId)
+    : null;
   const currentModelPreference = useMemo(() => {
     const draftModelPreference =
       draft?.modelPreference ??
@@ -555,6 +569,37 @@ export function NewTaskOverlay({
     currentBackendPresetId,
     draft?.modelPreference,
     availableModelPreferences,
+  ]);
+  const thinkingCapabilities = getModelThinkingCapabilities(
+    currentModelPreference,
+    dynamicModels,
+  );
+  const thinkingOptions = getThinkingEffortOptions({
+    backend: currentBackend,
+    model: currentModelPreference,
+    capabilities: thinkingCapabilities,
+  });
+  const currentThinkingEffort = useMemo<ThinkingEffort>(() => {
+    const configuredEffort =
+      draft?.thinkingEffort ??
+      currentBackendModelPreset?.thinkingEffort ??
+      thinkingSettings?.efforts[currentBackend]?.[currentModelPreference] ??
+      thinkingSettings?.efforts[currentBackend]?.default ??
+      'default';
+
+    return normalizeThinkingEffortForModel({
+      backend: currentBackend,
+      model: currentModelPreference,
+      effort: configuredEffort,
+      capabilities: thinkingCapabilities,
+    });
+  }, [
+    draft?.thinkingEffort,
+    currentBackendModelPreset?.thinkingEffort,
+    thinkingSettings,
+    currentBackend,
+    currentModelPreference,
+    thinkingCapabilities,
   ]);
 
   const currentSourceBranch = useMemo(() => {
@@ -865,6 +910,7 @@ export function NewTaskOverlay({
             interactionMode: currentInteractionMode,
             agentBackend: currentBackend,
             modelPreference: currentModelPreference,
+            thinkingEffort: currentThinkingEffort,
             useWorktree: currentCreateWorktree,
             sourceBranch: currentCreateWorktree ? currentSourceBranch : null,
             workItemIds,
@@ -905,6 +951,7 @@ export function NewTaskOverlay({
           images: draftImages,
           interactionMode: currentInteractionMode,
           modelPreference: currentModelPreference,
+          thinkingEffort: currentThinkingEffort,
           agentBackend: currentBackend,
           useWorktree: currentCreateWorktree,
           sourceBranch: currentCreateWorktree ? currentSourceBranch : null,
@@ -958,6 +1005,7 @@ export function NewTaskOverlay({
     currentBackend,
     currentInteractionMode,
     currentModelPreference,
+    currentThinkingEffort,
     currentCreateWorktree,
     currentUpdateWorkItemStatus,
     currentSourceBranch,
@@ -1501,6 +1549,11 @@ export function NewTaskOverlay({
                           mode: currentInteractionMode,
                         },
                       );
+                      const nextThinkingCapabilities =
+                        getModelThinkingCapabilities(
+                          selection.model,
+                          dynamicModels,
+                        );
 
                       updateDraft({
                         agentBackend: selection.backend,
@@ -1509,8 +1562,34 @@ export function NewTaskOverlay({
                           selection.presetId !== null,
                         interactionMode: normalizedMode,
                         modelPreference: selection.model,
+                        thinkingEffort: normalizeThinkingEffortForModel({
+                          backend: selection.backend,
+                          model: selection.model,
+                          effort:
+                            selection.thinkingEffort ??
+                            thinkingSettings?.efforts[selection.backend]?.[
+                              selection.model
+                            ] ??
+                            thinkingSettings?.efforts[selection.backend]
+                              ?.default ??
+                            'default',
+                          capabilities: nextThinkingCapabilities,
+                        }),
                       });
                     }}
+                  />
+                )}
+
+                {!isNoteMode && (
+                  <ThinkingSelector
+                    value={currentThinkingEffort}
+                    onChange={(thinkingEffort) =>
+                      updateDraft({ thinkingEffort })
+                    }
+                    options={thinkingOptions}
+                    disabled={thinkingOptions.length <= 1}
+                    side="top"
+                    layer={layer}
                   />
                 )}
 

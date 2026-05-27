@@ -6,6 +6,7 @@ import { Select, type SelectRef } from '@/common/ui/select';
 import type { BackendModel } from '@/hooks/use-backend-models';
 import { useBackendsSetting } from '@/hooks/use-settings';
 import type { AgentBackendType } from '@shared/agent-backend-types';
+import type { ThinkingModelCapabilities } from '@shared/thinking-settings';
 import type { ModelPreference } from '@shared/types';
 
 export type { SelectRef } from '@/common/ui/select';
@@ -103,6 +104,19 @@ export function getModelLabel(
 ): string {
   const models = getModelsForBackend(backend, dynamicModels);
   return models.find((m) => m.value === model)?.label ?? model;
+}
+
+export function getModelThinkingCapabilities(
+  model: ModelPreference,
+  dynamicModels?: BackendModel[],
+): ThinkingModelCapabilities | null {
+  if (model === 'default') return null;
+  const dynamicModel = dynamicModels?.find((m) => m.id === model);
+  if (!dynamicModel) return null;
+  return {
+    supportsThinking: dynamicModel.supportsThinking,
+    thinkingEfforts: dynamicModel.thinkingEfforts,
+  };
 }
 
 /**

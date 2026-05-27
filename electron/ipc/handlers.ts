@@ -41,6 +41,7 @@ import type {
 import {
   PRESET_EDITORS,
   type InteractionMode,
+  type ThinkingEffort,
   type EditorSetting,
   type AppSettings,
   type NewToken,
@@ -482,12 +483,14 @@ export function registerIpcHandlers() {
       data: NewTask & {
         interactionMode?: InteractionMode | null;
         modelPreference?: string | null;
+        thinkingEffort?: ThinkingEffort | null;
         agentBackend?: AgentBackendType | null;
       },
     ) => {
       const {
         interactionMode,
         modelPreference,
+        thinkingEffort,
         agentBackend,
         images,
         updateWorkItemStatus,
@@ -502,6 +505,7 @@ export function registerIpcHandlers() {
         promptTemplate: data.prompt,
         interactionMode: interactionMode ?? null,
         modelPreference: modelPreference ?? null,
+        thinkingEffort: thinkingEffort ?? null,
         agentBackend: agentBackend ?? null,
         images: images ?? null,
       });
@@ -526,6 +530,7 @@ export function registerIpcHandlers() {
         autoStart?: boolean;
         interactionMode?: InteractionMode | null;
         modelPreference?: string | null;
+        thinkingEffort?: ThinkingEffort | null;
         agentBackend?: AgentBackendType | null;
       },
     ) => {
@@ -536,6 +541,7 @@ export function registerIpcHandlers() {
         images,
         interactionMode,
         modelPreference,
+        thinkingEffort,
         agentBackend,
         updateWorkItemStatus,
         ...taskData
@@ -651,6 +657,7 @@ export function registerIpcHandlers() {
         promptTemplate: taskData.prompt,
         interactionMode: interactionMode ?? null,
         modelPreference: modelPreference ?? null,
+        thinkingEffort: thinkingEffort ?? null,
         agentBackend: agentBackend ?? null,
         images: images ?? null,
       });

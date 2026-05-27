@@ -43,6 +43,7 @@ import { AddPermissionModal } from '@/features/agent/ui-add-permission-modal';
 import {
   AVAILABLE_BACKENDS,
   getModelsForBackend,
+  getModelThinkingCapabilities,
 } from '@/features/agent/ui-backend-selector';
 import { ContextUsageDisplay } from '@/features/agent/ui-context-usage-display';
 import { FilePreviewPane } from '@/features/agent/ui-file-preview-pane';
@@ -55,6 +56,7 @@ import { PermissionBar } from '@/features/agent/ui-permission-bar';
 import { PrBadge } from '@/features/agent/ui-pr-badge';
 import { QuestionOptions } from '@/features/agent/ui-question-options';
 import { RunButton } from '@/features/agent/ui-run-button';
+import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
 import { WorktreeReviewView } from '@/features/agent/ui-worktree-review-view';
 import {
   ReviewPillsQueue,
@@ -130,10 +132,15 @@ import type {
 } from '@shared/agent-backend-types';
 import type { NormalizedEntry } from '@shared/normalized-message-v2';
 import {
+  getThinkingEffortOptions,
+  normalizeThinkingEffortForModel,
+} from '@shared/thinking-settings';
+import {
   getDefaultInteractionModeForBackend,
   type InteractionMode,
   type ModelPreference,
   type TaskStep,
+  type ThinkingEffort,
 } from '@shared/types';
 
 import { AddStepDialog, type AddStepPresetType } from './add-step-dialog';
@@ -756,6 +763,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       interactionMode: InteractionMode;
       agentBackend: AgentBackendType;
       modelPreference: ModelPreference;
+      thinkingEffort: ThinkingEffort;
       images: PromptImagePart[];
       start: boolean;
       reviewers?: import('@shared/types').ReviewerConfig[];
@@ -814,6 +822,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           interactionMode: data.interactionMode,
           agentBackend: data.agentBackend,
           modelPreference: data.modelPreference,
+          thinkingEffort: data.thinkingEffort,
           images: data.images.length > 0 ? data.images : null,
           dependsOn,
           sortOrder: insertionSortOrder,
@@ -1754,6 +1763,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           onConfirm={(data) => void handleAddStep(data)}
           defaultBackend={activeStep?.agentBackend ?? 'claude-code'}
           defaultModel={activeStep?.modelPreference ?? 'default'}
+          defaultThinkingEffort={activeStep?.thinkingEffort ?? 'default'}
           taskId={taskId}
           activeStepId={activeStepId ?? undefined}
           projectRoot={taskRootPath}
@@ -1884,6 +1894,21 @@ const TaskInputFooter = memo(function TaskInputFooter({
   const effectiveModel = activeStep?.modelPreference ?? 'default';
 
   const { data: dynamicModels } = useBackendModels(effectiveBackend);
+  const thinkingCapabilities = getModelThinkingCapabilities(
+    effectiveModel,
+    dynamicModels,
+  );
+  const thinkingOptions = getThinkingEffortOptions({
+    backend: effectiveBackend,
+    model: effectiveModel,
+    capabilities: thinkingCapabilities,
+  });
+  const effectiveThinkingEffort = normalizeThinkingEffortForModel({
+    backend: effectiveBackend,
+    model: effectiveModel,
+    effort: activeStep?.thinkingEffort,
+    capabilities: thinkingCapabilities,
+  });
   const setStepMode = useSetTaskMode();
   const clearUserCompleted = useClearTaskUserCompleted();
 
@@ -1958,7 +1983,37 @@ const TaskInputFooter = memo(function TaskInputFooter({
   const handleModelChange = useCallback(
     (modelPreference: ModelPreference) => {
       if (activeStepId) {
-        updateStep.mutate({ stepId: activeStepId, data: { modelPreference } });
+        const nextCapabilities = getModelThinkingCapabilities(
+          modelPreference,
+          dynamicModels,
+        );
+        updateStep.mutate({
+          stepId: activeStepId,
+          data: {
+            modelPreference,
+            thinkingEffort: normalizeThinkingEffortForModel({
+              backend: effectiveBackend,
+              model: modelPreference,
+              effort: effectiveThinkingEffort,
+              capabilities: nextCapabilities,
+            }),
+          },
+        });
+      }
+    },
+    [
+      activeStepId,
+      dynamicModels,
+      effectiveBackend,
+      effectiveThinkingEffort,
+      updateStep,
+    ],
+  );
+
+  const handleThinkingEffortChange = useCallback(
+    (thinkingEffort: ThinkingEffort) => {
+      if (activeStepId) {
+        updateStep.mutate({ stepId: activeStepId, data: { thinkingEffort } });
       }
     },
     [activeStepId, updateStep],
@@ -2091,6 +2146,9 @@ const TaskInputFooter = memo(function TaskInputFooter({
                   onModeChange={handleModeChange}
                   model={effectiveModel}
                   onModelChange={handleModelChange}
+                  thinkingEffort={effectiveThinkingEffort}
+                  onThinkingEffortChange={handleThinkingEffortChange}
+                  thinkingOptions={thinkingOptions}
                   backend={effectiveBackend}
                   models={getModelsForBackend(effectiveBackend, dynamicModels)}
                   disabled={isRunning}
@@ -2113,6 +2171,12 @@ const TaskInputFooter = memo(function TaskInputFooter({
             value={effectiveModel}
             onChange={handleModelChange}
             models={getModelsForBackend(effectiveBackend, dynamicModels)}
+          />
+          <ThinkingSelector
+            value={effectiveThinkingEffort}
+            onChange={handleThinkingEffortChange}
+            options={thinkingOptions}
+            disabled={isRunning || thinkingOptions.length <= 1}
           />
           <MessageInput
             onSend={handleSendMessage}

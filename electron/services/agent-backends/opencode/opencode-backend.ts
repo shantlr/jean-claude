@@ -646,6 +646,9 @@ export class OpenCodeBackend implements AgentBackend {
             };
           }),
         ...(model ? { model } : {}),
+        ...(config.thinkingEffort && config.thinkingEffort !== 'default'
+          ? { variant: config.thinkingEffort }
+          : {}),
         agent: this.getPrimaryAgentName(config.interactionMode),
       })
       .then(async (result): Promise<PromptResultEvent | null> => {

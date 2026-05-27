@@ -8,9 +8,11 @@ import { Select, type SelectOption } from '@/common/ui/select';
 import {
   AVAILABLE_BACKENDS,
   getModelLabel,
+  getModelThinkingCapabilities,
   getModelsForBackend,
 } from '@/features/agent/ui-backend-selector';
 import { ModelSelector } from '@/features/agent/ui-model-selector';
+import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
 import { BackendsSettings } from '@/features/settings/ui-general-settings';
 import { useBackendModels } from '@/hooks/use-backend-models';
 import {
@@ -19,6 +21,10 @@ import {
   useUpdateBackendModelPresetsSetting,
 } from '@/hooks/use-settings';
 import type { AgentBackendType } from '@shared/agent-backend-types';
+import {
+  getThinkingEffortOptions,
+  normalizeThinkingEffortForModel,
+} from '@shared/thinking-settings';
 import type { BackendModelPreset } from '@shared/types';
 
 function PresetCard({
@@ -33,6 +39,21 @@ function PresetCard({
   onDelete: () => void;
 }) {
   const { data: dynamicModels, isFetched } = useBackendModels(preset.backend);
+  const thinkingCapabilities = getModelThinkingCapabilities(
+    preset.model,
+    dynamicModels,
+  );
+  const thinkingOptions = getThinkingEffortOptions({
+    backend: preset.backend,
+    model: preset.model,
+    capabilities: thinkingCapabilities,
+  });
+  const thinkingEffort = normalizeThinkingEffortForModel({
+    backend: preset.backend,
+    model: preset.model,
+    effort: preset.thinkingEffort,
+    capabilities: thinkingCapabilities,
+  });
   const modelOptions = useMemo(() => {
     const availableModels = getModelsForBackend(preset.backend, dynamicModels);
 
@@ -80,6 +101,7 @@ function PresetCard({
             onChange({
               backend,
               model: 'default',
+              thinkingEffort: 'default',
             })
           }
           options={backendOptions}
@@ -87,8 +109,30 @@ function PresetCard({
         />
         <ModelSelector
           value={preset.model}
-          onChange={(model) => onChange({ model })}
+          onChange={(model) => {
+            const capabilities = getModelThinkingCapabilities(
+              model,
+              dynamicModels,
+            );
+            onChange({
+              model,
+              thinkingEffort: normalizeThinkingEffortForModel({
+                backend: preset.backend,
+                model,
+                effort: preset.thinkingEffort,
+                capabilities,
+              }),
+            });
+          }}
           models={modelOptions}
+        />
+        <ThinkingSelector
+          value={thinkingEffort}
+          onChange={(nextThinkingEffort) =>
+            onChange({ thinkingEffort: nextThinkingEffort })
+          }
+          options={thinkingOptions}
+          disabled={thinkingOptions.length <= 1}
         />
       </div>
     </div>
@@ -141,6 +185,7 @@ export function ModelPresetsSettings() {
         name: '',
         backend: defaultBackend,
         model: 'default',
+        thinkingEffort: 'default',
       },
     ]);
   };
@@ -171,7 +216,7 @@ export function ModelPresetsSettings() {
 
       {backendOptions.length === 0 ? (
         <div className="border-line-soft bg-bg-0 text-ink-3 mt-4 rounded-xl border px-4 py-3 text-sm">
-          Enable at least one backend in General settings before creating model
+          Enable at least one backend in Coding Agents before creating model
           presets.
         </div>
       ) : presets.length === 0 ? (

@@ -171,6 +171,7 @@ export interface TaskStepTable {
   sessionId: string | null;
   interactionMode: string | null;
   modelPreference: string | null;
+  thinkingEffort: string | null;
   agentBackend: string | null;
   output: string | null;
   images: string | null; // JSON stringified PromptImagePart[]

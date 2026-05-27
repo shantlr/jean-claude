@@ -44,7 +44,6 @@ import {
   CalendarSettings,
   UsageDisplaySettings,
   MaintenanceSettings,
-  BackendsSettings,
 } from '@/features/settings/ui-general-settings';
 import { GlobalPermissionsSettings } from '@/features/settings/ui-global-permissions-settings';
 import { McpServersSettings } from '@/features/settings/ui-mcp-servers-settings';
@@ -93,7 +92,6 @@ function getGlobalSections(): GlobalSection[] {
 
   const generalSubs: GlobalSubItem[] = [
     { id: 'editor', label: 'Editor' },
-    { id: 'backends', label: 'Agent Backends' },
     { id: 'notifications', label: 'Notifications' },
     ...(api.platform === 'darwin'
       ? [{ id: 'calendar', label: 'Calendar' }]
@@ -116,7 +114,7 @@ function getGlobalSections(): GlobalSection[] {
       label: 'Coding Agents',
       icon: Grid3X3,
       title: 'Coding Agents',
-      subtitle: 'Saved backend/model preset combinations',
+      subtitle: 'Backends, thinking defaults, and model presets',
     },
     {
       id: 'ai-generation',
@@ -379,8 +377,6 @@ function getGlobalSubtitle(sectionId: string, subId: string): string {
     switch (subId) {
       case 'editor':
         return 'Where projects open and how they launch.';
-      case 'backends':
-        return 'Enable or disable agent backends for task creation.';
       case 'notifications':
         return 'How and when jean-claude lets you know about runs.';
       case 'calendar':
@@ -400,8 +396,6 @@ function GlobalContentInner({ selection }: { selection: ActiveSelection }) {
     switch (`${selection.sectionId}:${selection.subId}`) {
       case 'general:editor':
         return <EditorSettings />;
-      case 'general:backends':
-        return <BackendsSettings />;
       case 'general:notifications':
         return <NotificationsSettings />;
       case 'general:calendar':

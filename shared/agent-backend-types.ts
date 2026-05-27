@@ -7,7 +7,7 @@ import type {
   PermissionScope,
   ResolvedPermissionRule,
 } from './permission-types';
-import type { InteractionMode } from './types';
+import type { InteractionMode, ThinkingEffort } from './types';
 
 // Re-export shared types that live in normalized-message-v2
 export type {
@@ -60,6 +60,7 @@ export interface AgentBackendConfig {
   cwd: string;
   interactionMode: InteractionMode;
   model?: string;
+  thinkingEffort?: ThinkingEffort;
   sessionId?: string; // for session resumption
   /** Session-allowed tools persisted from prior runs (PermissionScope format) */
   persistedSessionRules?: PermissionScope;

@@ -19,9 +19,11 @@ import { Textarea } from '@/common/ui/textarea';
 import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
 import {
   AVAILABLE_BACKENDS,
+  getModelThinkingCapabilities,
   getModelsForBackend,
 } from '@/features/agent/ui-backend-selector';
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
+import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
 import {
   PromptTextarea,
   type PromptTextareaRef,
@@ -43,10 +45,15 @@ import type {
   PromptImagePart,
 } from '@shared/agent-backend-types';
 import {
+  getThinkingEffortOptions,
+  normalizeThinkingEffortForModel,
+} from '@shared/thinking-settings';
+import {
   normalizeInteractionModeForBackend,
   type InteractionMode,
   type ModelPreference,
   type ReviewerConfig,
+  type ThinkingEffort,
 } from '@shared/types';
 
 function createDefaultReviewers(backend: AgentBackendType): ReviewerConfig[] {
@@ -135,6 +142,7 @@ export function AddStepDialog({
   onConfirm,
   defaultBackend = 'claude-code',
   defaultModel = 'default',
+  defaultThinkingEffort = 'default',
   taskId,
   activeStepId,
   projectRoot,
@@ -148,12 +156,14 @@ export function AddStepDialog({
     interactionMode: InteractionMode;
     agentBackend: AgentBackendType;
     modelPreference: ModelPreference;
+    thinkingEffort: ThinkingEffort;
     images: PromptImagePart[];
     start: boolean;
     reviewers?: ReviewerConfig[];
   }) => void;
   defaultBackend?: AgentBackendType;
   defaultModel?: ModelPreference;
+  defaultThinkingEffort?: ThinkingEffort | null;
   taskId: string;
   activeStepId?: string;
   projectRoot?: string | null;
@@ -167,6 +177,9 @@ export function AddStepDialog({
     useState<InteractionMode>('ask');
   const [backend, setBackend] = useState<AgentBackendType>(defaultBackend);
   const [model, setModel] = useState<ModelPreference>(defaultModel);
+  const [thinkingEffort, setThinkingEffort] = useState<ThinkingEffort>(
+    defaultThinkingEffort ?? 'default',
+  );
   const [backendModelPresetId, setBackendModelPresetId] = useState<
     string | null
   >(null);
@@ -195,6 +208,22 @@ export function AddStepDialog({
   const { data: promptSnippets = [] } = usePromptSnippetsSetting();
   const { data: stepTask } = useTask(taskId);
   const { data: stepProject } = useProject(projectId ?? '');
+  const { data: dynamicModels } = useBackendModels(backend);
+  const thinkingCapabilities = getModelThinkingCapabilities(
+    model,
+    dynamicModels,
+  );
+  const thinkingOptions = getThinkingEffortOptions({
+    backend,
+    model,
+    capabilities: thinkingCapabilities,
+  });
+  const normalizedThinkingEffort = normalizeThinkingEffortForModel({
+    backend,
+    model,
+    effort: thinkingEffort,
+    capabilities: thinkingCapabilities,
+  });
   const snippetVariableContext: SnippetVariableContext = useMemo(
     () => ({
       task: stepTask
@@ -220,13 +249,14 @@ export function AddStepDialog({
       setInteractionMode('ask');
       setBackend(defaultBackend);
       setModel(defaultModel);
+      setThinkingEffort(defaultThinkingEffort ?? 'default');
       setBackendModelPresetId(null);
       setImages([]);
       setAutoStart(true);
       setReviewers(createDefaultReviewers(defaultBackend));
       setTimeout(() => textareaRef.current?.focus(), 0);
     }
-  }, [isOpen, defaultBackend, defaultModel]);
+  }, [isOpen, defaultBackend, defaultModel, defaultThinkingEffort]);
 
   const canSubmit =
     presetType === 'review-changes'
@@ -249,6 +279,7 @@ export function AddStepDialog({
       }),
       agentBackend: backend,
       modelPreference: model,
+      thinkingEffort: normalizedThinkingEffort,
       images,
       start: autoStart,
       reviewers:
@@ -268,6 +299,7 @@ export function AddStepDialog({
     interactionMode,
     backend,
     model,
+    normalizedThinkingEffort,
     images,
     autoStart,
     reviewers,
@@ -503,7 +535,27 @@ export function AddStepDialog({
                 setBackend(selection.backend);
                 setBackendModelPresetId(selection.presetId);
                 setModel(selection.model);
+                const nextCapabilities = getModelThinkingCapabilities(
+                  selection.model,
+                  dynamicModels,
+                );
+                setThinkingEffort(
+                  normalizeThinkingEffortForModel({
+                    backend: selection.backend,
+                    model: selection.model,
+                    effort: selection.thinkingEffort ?? 'default',
+                    capabilities: nextCapabilities,
+                  }),
+                );
               }}
+            />
+            <ThinkingSelector
+              value={normalizedThinkingEffort}
+              onChange={setThinkingEffort}
+              options={thinkingOptions}
+              disabled={thinkingOptions.length <= 1}
+              side="top"
+              layer={layer}
             />
           </div>
           <div className="flex items-center justify-between pt-1">
