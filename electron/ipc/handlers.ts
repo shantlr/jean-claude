@@ -103,6 +103,8 @@ import {
   updatePullRequestDescription,
   uploadPullRequestAttachment,
   getPullRequestWorkItems,
+  linkWorkItemToPr,
+  unlinkWorkItemFromPr,
   getPullRequestPolicyEvaluations,
   requeuePolicyEvaluation,
   getPullRequestCommits,
@@ -2117,6 +2119,47 @@ export function registerIpcHandlers() {
         pullRequestId: number;
       },
     ) => getPullRequestThreads(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:getPullRequestWorkItems',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        pullRequestId: number;
+      },
+    ) => getPullRequestWorkItems(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:linkWorkItemToPr',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        pullRequestId: number;
+        workItemId: number;
+      },
+    ) => linkWorkItemToPr(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:unlinkWorkItemFromPr',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        pullRequestId: number;
+        workItemId: number;
+      },
+    ) => unlinkWorkItemFromPr(params),
   );
 
   ipcMain.handle(

@@ -240,6 +240,8 @@ export function PrDetail({
             prId={prId}
             providerId={project?.repoProviderId ?? undefined}
             azureProjectId={project?.repoProjectId ?? undefined}
+            repoId={project?.repoId ?? undefined}
+            azureProjectName={project?.repoProjectName ?? undefined}
             threads={threads}
             onAddComment={handleAddComment}
             isAddingComment={addComment.isPending}

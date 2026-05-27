@@ -3,6 +3,8 @@ import { CheckCircle2, FileCode, GitMerge, User } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { UserAvatar } from '@/common/ui/user-avatar';
+import { PrWorkItems } from '@/features/pull-request/ui-pr-work-items';
+import type { AzureDevOpsWorkItem } from '@/lib/api';
 import { encodeProxyUrl } from '@/lib/azure-image-proxy';
 import type { AzureDevOpsPullRequestDetails } from '@shared/azure-devops-types';
 
@@ -50,10 +52,26 @@ export function PrMetaPanel({
   pr,
   fileCount = 0,
   providerId,
+  workItems = [],
+  isWorkItemsLoading = false,
+  azureProjectId,
+  azureProjectName,
+  onLinkWorkItem,
+  onUnlinkWorkItem,
+  isLinkingWorkItem,
+  isUnlinkingWorkItem,
 }: {
   pr: AzureDevOpsPullRequestDetails;
   fileCount?: number;
   providerId?: string;
+  workItems?: AzureDevOpsWorkItem[];
+  isWorkItemsLoading?: boolean;
+  azureProjectId?: string;
+  azureProjectName?: string;
+  onLinkWorkItem?: (workItemId: number) => void;
+  onUnlinkWorkItem?: (workItemId: number) => void;
+  isLinkingWorkItem?: boolean;
+  isUnlinkingWorkItem?: boolean;
 }) {
   const reviewers = pr.reviewers.filter((r) => !r.isContainer);
 
@@ -109,6 +127,19 @@ export function PrMetaPanel({
           </span>
         </MetaCard>
       )}
+
+      {/* Work Items */}
+      <PrWorkItems
+        workItems={workItems}
+        isLoading={isWorkItemsLoading}
+        providerId={providerId}
+        azureProjectId={azureProjectId}
+        azureProjectName={azureProjectName}
+        onLink={onLinkWorkItem}
+        onUnlink={onUnlinkWorkItem}
+        isLinking={isLinkingWorkItem}
+        isUnlinking={isUnlinkingWorkItem}
+      />
 
       {/* Auto-complete */}
       {pr.autoCompleteSetBy && (

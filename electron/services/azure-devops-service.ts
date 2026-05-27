@@ -3057,3 +3057,110 @@ export async function cancelBuild(params: {
     throw new Error(`Failed to cancel build: ${error}`);
   }
 }
+
+export async function linkWorkItemToPr(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+  workItemId: number;
+}): Promise<void> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const artifactUrl = `vstfs:///Git/PullRequestId/${params.projectId}%2F${params.repoId}%2F${params.pullRequestId}`;
+
+  const patchOps = [
+    {
+      op: 'add',
+      path: '/relations/-',
+      value: {
+        rel: 'ArtifactLink',
+        url: artifactUrl,
+        attributes: {
+          name: 'Pull Request',
+        },
+      },
+    },
+  ];
+
+  const url = `https://dev.azure.com/${orgName}/_apis/wit/workitems/${params.workItemId}?api-version=7.0`;
+
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Authorization: authHeader,
+      'Content-Type': 'application/json-patch+json',
+    },
+    body: JSON.stringify(patchOps),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(
+      `Failed to link work item ${params.workItemId} to PR: ${error}`,
+    );
+  }
+}
+
+export async function unlinkWorkItemFromPr(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+  workItemId: number;
+}): Promise<void> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  // Fetch work item with relations to find the relation index
+  const wiUrl = `https://dev.azure.com/${orgName}/_apis/wit/workitems/${params.workItemId}?$expand=relations&api-version=7.0`;
+
+  const wiResponse = await fetch(wiUrl, {
+    headers: { Authorization: authHeader },
+  });
+
+  if (!wiResponse.ok) {
+    const error = await wiResponse.text();
+    throw new Error(`Failed to fetch work item ${params.workItemId}: ${error}`);
+  }
+
+  const wiData: {
+    relations?: Array<{ rel: string; url: string }>;
+  } = await wiResponse.json();
+
+  // Find the relation index matching our PR artifact link
+  const artifactUrl = `vstfs:///Git/PullRequestId/${params.projectId}%2F${params.repoId}%2F${params.pullRequestId}`;
+
+  const relationIndex = wiData.relations?.findIndex(
+    (r) => r.rel === 'ArtifactLink' && r.url === artifactUrl,
+  );
+
+  if (relationIndex === undefined || relationIndex === -1) {
+    // Already unlinked
+    return;
+  }
+
+  const patchOps = [
+    {
+      op: 'remove',
+      path: `/relations/${relationIndex}`,
+    },
+  ];
+
+  const url = `https://dev.azure.com/${orgName}/_apis/wit/workitems/${params.workItemId}?api-version=7.0`;
+
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Authorization: authHeader,
+      'Content-Type': 'application/json-patch+json',
+    },
+    body: JSON.stringify(patchOps),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(
+      `Failed to unlink work item ${params.workItemId} from PR: ${error}`,
+    );
+  }
+}

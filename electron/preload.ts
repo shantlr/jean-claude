@@ -349,6 +349,26 @@ contextBridge.exposeInMainWorld('api', {
       repoId: string;
       pullRequestId: number;
     }) => ipcRenderer.invoke('azureDevOps:getPullRequestThreads', params),
+    getPullRequestWorkItems: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+    }) => ipcRenderer.invoke('azureDevOps:getPullRequestWorkItems', params),
+    linkWorkItemToPr: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      workItemId: number;
+    }) => ipcRenderer.invoke('azureDevOps:linkWorkItemToPr', params),
+    unlinkWorkItemFromPr: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      workItemId: number;
+    }) => ipcRenderer.invoke('azureDevOps:unlinkWorkItemFromPr', params),
     addPullRequestComment: (params: {
       providerId: string;
       projectId: string;

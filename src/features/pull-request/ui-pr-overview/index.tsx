@@ -7,8 +7,11 @@ import { Textarea } from '@/common/ui/textarea';
 import { AzureMarkdownContent } from '@/features/common/ui-azure-html-content';
 import {
   useCurrentAzureUser,
+  useLinkWorkItemToPr,
   usePullRequestPolicyEvaluations,
+  usePullRequestWorkItems,
   useRequeuePolicyEvaluation,
+  useUnlinkWorkItemFromPr,
   useUpdatePullRequestDescription,
   useUploadPullRequestAttachment,
 } from '@/hooks/use-pull-requests';
@@ -29,6 +32,8 @@ export function PrOverview({
   prId,
   providerId,
   azureProjectId,
+  repoId: _repoId,
+  azureProjectName,
   threads = [],
   onAddComment,
   isAddingComment,
@@ -40,6 +45,8 @@ export function PrOverview({
   prId: number;
   providerId?: string;
   azureProjectId?: string;
+  repoId?: string;
+  azureProjectName?: string;
   threads?: AzureDevOpsCommentThread[];
   onAddComment?: (content: string) => void;
   isAddingComment?: boolean;
@@ -86,6 +93,12 @@ export function PrOverview({
     usePullRequestPolicyEvaluations(projectId, prId, {
       refetchInterval: hasActiveBuilds ? 10_000 : false,
     });
+
+  const { data: workItems = [], isLoading: isWorkItemsLoading } =
+    usePullRequestWorkItems(projectId, prId);
+
+  const linkWorkItem = useLinkWorkItemToPr(projectId, prId);
+  const unlinkWorkItem = useUnlinkWorkItemFromPr(projectId, prId);
 
   // Clear queued IDs when the server confirms they're no longer pending
   const prevEvaluationsRef = useRef(evaluations);
@@ -399,7 +412,19 @@ export function PrOverview({
             bottomPadding > 0 ? { paddingBottom: bottomPadding } : undefined
           }
         >
-          <PrMetaPanel pr={pr} fileCount={fileCount} providerId={providerId} />
+          <PrMetaPanel
+            pr={pr}
+            fileCount={fileCount}
+            providerId={providerId}
+            workItems={workItems}
+            isWorkItemsLoading={isWorkItemsLoading}
+            azureProjectId={azureProjectId}
+            azureProjectName={azureProjectName}
+            onLinkWorkItem={(workItemId) => linkWorkItem.mutate(workItemId)}
+            onUnlinkWorkItem={(workItemId) => unlinkWorkItem.mutate(workItemId)}
+            isLinkingWorkItem={linkWorkItem.isPending}
+            isUnlinkingWorkItem={unlinkWorkItem.isPending}
+          />
         </div>
       </div>
     </div>

@@ -9,6 +9,7 @@ import {
   type AzureDevOpsCommentThread,
   type AzureDevOpsComment,
   type AzureDevOpsPolicyEvaluation,
+  type AzureDevOpsWorkItem,
 } from '@/lib/api';
 
 import { useProject } from './use-projects';
@@ -273,6 +274,65 @@ export function usePullRequestThreads(projectId: string, prId: number) {
       }),
     enabled: !!repoInfo && prId > 0,
     staleTime: 30_000,
+  });
+}
+
+export function usePullRequestWorkItems(projectId: string, prId: number) {
+  const repoInfo = useProjectRepoInfo(projectId);
+
+  return useQuery<AzureDevOpsWorkItem[]>({
+    queryKey: ['pull-request-work-items', projectId, prId],
+    queryFn: () =>
+      api.azureDevOps.getPullRequestWorkItems({
+        providerId: repoInfo!.providerId,
+        projectId: repoInfo!.projectId,
+        repoId: repoInfo!.repoId,
+        pullRequestId: prId,
+      }),
+    enabled: !!repoInfo && prId > 0,
+    staleTime: 60_000,
+  });
+}
+
+export function useLinkWorkItemToPr(projectId: string, prId: number) {
+  const queryClient = useQueryClient();
+  const repoInfo = useProjectRepoInfo(projectId);
+
+  return useMutation({
+    mutationFn: (workItemId: number) =>
+      api.azureDevOps.linkWorkItemToPr({
+        providerId: repoInfo!.providerId,
+        projectId: repoInfo!.projectId,
+        repoId: repoInfo!.repoId,
+        pullRequestId: prId,
+        workItemId,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['pull-request-work-items', projectId, prId],
+      });
+    },
+  });
+}
+
+export function useUnlinkWorkItemFromPr(projectId: string, prId: number) {
+  const queryClient = useQueryClient();
+  const repoInfo = useProjectRepoInfo(projectId);
+
+  return useMutation({
+    mutationFn: (workItemId: number) =>
+      api.azureDevOps.unlinkWorkItemFromPr({
+        providerId: repoInfo!.providerId,
+        projectId: repoInfo!.projectId,
+        repoId: repoInfo!.repoId,
+        pullRequestId: prId,
+        workItemId,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['pull-request-work-items', projectId, prId],
+      });
+    },
   });
 }
 

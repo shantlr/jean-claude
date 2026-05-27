@@ -672,6 +672,26 @@ export interface Api {
       repoId: string;
       pullRequestId: number;
     }) => Promise<AzureDevOpsCommentThread[]>;
+    getPullRequestWorkItems: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+    }) => Promise<AzureDevOpsWorkItem[]>;
+    linkWorkItemToPr: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      workItemId: number;
+    }) => Promise<void>;
+    unlinkWorkItemFromPr: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      workItemId: number;
+    }) => Promise<void>;
     addPullRequestComment: (params: {
       providerId: string;
       projectId: string;
@@ -1475,6 +1495,9 @@ export const api: Api = hasWindowApi
         getPullRequestChanges: async () => [],
         getPullRequestFileContent: async () => '',
         getPullRequestThreads: async () => [],
+        getPullRequestWorkItems: async () => [],
+        linkWorkItemToPr: async () => {},
+        unlinkWorkItemFromPr: async () => {},
         addPullRequestComment: async () => {
           throw new Error('API not available');
         },
