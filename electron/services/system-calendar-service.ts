@@ -580,7 +580,7 @@ class SystemCalendarService {
     event: CalendarEventRecord;
     notificationKey: string;
   }) {
-    const title = 'Meeting starting soon';
+    const title = '📅 Meeting starting soon';
     const body = `${event.subject} - ${formatMeetingBody(event)}`;
 
     const notification = await NotificationRepository.create({
