@@ -2,10 +2,15 @@ import { useNavigate, useParams } from '@tanstack/react-router';
 import clsx from 'clsx';
 import {
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Filter,
+  GitPullRequest,
   ListTodo,
   Loader2,
+  MessageSquare,
   Plus,
 } from 'lucide-react';
 import type React from 'react';
@@ -108,6 +113,264 @@ function StackableZone({
   );
 }
 
+function HorizontalPrReviewStack({
+  items,
+  isItemSelected,
+  onOpen,
+}: {
+  items: FeedItem[];
+  isItemSelected: (item: FeedItem) => boolean;
+  onOpen: (item: FeedItem) => void;
+}) {
+  const [focusedIndex, setFocusedIndex] = useState(0);
+  const lastWheelAt = useRef(0);
+
+  const maxIndex = items.length - 1;
+  const safeIndex = Math.min(focusedIndex, Math.max(0, maxIndex));
+  const focusedItem = items[safeIndex];
+  const dotIndexes = useMemo(() => {
+    const maxDots = 7;
+    if (items.length <= maxDots) {
+      return items.map((_, index) => index);
+    }
+
+    const halfWindow = Math.floor(maxDots / 2);
+    const start = Math.min(
+      Math.max(0, safeIndex - halfWindow),
+      items.length - maxDots,
+    );
+    return Array.from({ length: maxDots }, (_, index) => start + index);
+  }, [items, safeIndex]);
+
+  const goPrevious = useCallback(() => {
+    setFocusedIndex((index) => Math.max(0, index - 1));
+  }, []);
+
+  const goNext = useCallback(() => {
+    setFocusedIndex((index) => Math.min(maxIndex, index + 1));
+  }, [maxIndex]);
+
+  const goFirst = useCallback(() => {
+    setFocusedIndex(0);
+  }, []);
+
+  const goLast = useCallback(() => {
+    setFocusedIndex(maxIndex);
+  }, [maxIndex]);
+
+  const handleWheel = useCallback(
+    (event: React.WheelEvent) => {
+      if (Math.abs(event.deltaX) < 20) return;
+      event.preventDefault();
+
+      const now = Date.now();
+      if (now - lastWheelAt.current < 220) return;
+      lastWheelAt.current = now;
+
+      if (event.deltaX > 0) {
+        goNext();
+      } else {
+        goPrevious();
+      }
+    },
+    [goNext, goPrevious],
+  );
+
+  useEffect(() => {
+    if (focusedIndex > maxIndex) {
+      setFocusedIndex(Math.max(0, maxIndex));
+    }
+  }, [focusedIndex, maxIndex]);
+
+  if (!focusedItem) return null;
+
+  return (
+    <section className="bg-bg-0/95 border-status-pr/15 border-b py-2 backdrop-blur-sm">
+      <div className="relative h-[140px] overflow-hidden" onWheel={handleWheel}>
+        {items.map((item, index) => (
+          <PrReviewCarouselCard
+            key={item.id}
+            item={item}
+            position={index - safeIndex}
+            isSelected={isItemSelected(item)}
+            onFocus={() => setFocusedIndex(index)}
+            onOpen={() => onOpen(item)}
+          />
+        ))}
+      </div>
+      <div className="mt-1.5 flex items-center gap-2 px-3">
+        <button
+          type="button"
+          onClick={goFirst}
+          disabled={safeIndex === 0}
+          className="border-line-soft text-ink-2 hover:bg-glass-light disabled:text-ink-4 flex h-5 w-5 items-center justify-center rounded border transition-colors disabled:opacity-40"
+          aria-label="First PR to review"
+        >
+          <ChevronsLeft className="h-3 w-3" />
+        </button>
+        <button
+          type="button"
+          onClick={goPrevious}
+          disabled={safeIndex === 0}
+          className="border-line-soft text-ink-2 hover:bg-glass-light disabled:text-ink-4 flex h-5 w-5 items-center justify-center rounded border transition-colors disabled:opacity-40"
+          aria-label="Previous PR to review"
+        >
+          <ChevronLeft className="h-3 w-3" />
+        </button>
+        <div className="flex min-w-0 flex-1 items-center justify-center gap-1 overflow-hidden">
+          {dotIndexes.map((index) => {
+            const item = items[index];
+            const isFocused = index === safeIndex;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setFocusedIndex(index)}
+                className={clsx(
+                  'h-1.5 rounded-full transition-[width,background-color,opacity]',
+                  isFocused
+                    ? 'bg-status-pr w-4 opacity-100'
+                    : 'bg-ink-4 w-1.5 opacity-50',
+                )}
+                aria-label={`Focus PR ${index + 1}`}
+              />
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={goNext}
+          disabled={safeIndex === maxIndex}
+          className="border-line-soft text-ink-2 hover:bg-glass-light disabled:text-ink-4 flex h-5 w-5 items-center justify-center rounded border transition-colors disabled:opacity-40"
+          aria-label="Next PR to review"
+        >
+          <ChevronRight className="h-3 w-3" />
+        </button>
+        <button
+          type="button"
+          onClick={goLast}
+          disabled={safeIndex === maxIndex}
+          className="border-line-soft text-ink-2 hover:bg-glass-light disabled:text-ink-4 flex h-5 w-5 items-center justify-center rounded border transition-colors disabled:opacity-40"
+          aria-label="Last PR to review"
+        >
+          <ChevronsRight className="h-3 w-3" />
+        </button>
+      </div>
+      <div className="text-ink-3 mt-1 flex items-center gap-1.5 px-3 font-mono text-[9.5px]">
+        <span>
+          {safeIndex + 1} / {items.length}
+        </span>
+        <span className="opacity-40">·</span>
+        <span className="truncate">{focusedItem.projectName}</span>
+      </div>
+    </section>
+  );
+}
+
+function PrReviewCarouselCard({
+  item,
+  position,
+  isSelected,
+  onFocus,
+  onOpen,
+}: {
+  item: FeedItem;
+  position: number;
+  isSelected: boolean;
+  onFocus: () => void;
+  onOpen: () => void;
+}) {
+  const isCenter = position === 0;
+  const isVisible = Math.abs(position) <= 2;
+  const layout =
+    position === 0
+      ? { translateX: 0, scale: 1, opacity: 1, zIndex: 6 }
+      : position === 1
+        ? { translateX: 118, scale: 0.86, opacity: 0.58, zIndex: 4 }
+        : position === -1
+          ? { translateX: -118, scale: 0.86, opacity: 0.58, zIndex: 4 }
+          : position === 2
+            ? { translateX: 164, scale: 0.74, opacity: 0.25, zIndex: 2 }
+            : position === -2
+              ? { translateX: -164, scale: 0.74, opacity: 0.25, zIndex: 2 }
+              : { translateX: 0, scale: 0.7, opacity: 0, zIndex: 1 };
+
+  const stateLabel = item.hasNewActivity ? 'UPDATED' : 'REVIEW';
+  const isHighPriority = item.projectPriority === 'high';
+  const accent = isHighPriority
+    ? 'var(--color-status-fail)'
+    : 'var(--color-status-pr)';
+
+  if (!isVisible) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (isCenter) {
+          onOpen();
+        } else {
+          onFocus();
+        }
+      }}
+      className={clsx(
+        'bg-bg-1 border-line-soft absolute top-0 left-1/2 block w-[218px] cursor-pointer rounded-md border py-2.5 pr-2.5 pl-3 text-left shadow-lg transition-[transform,opacity,box-shadow] duration-300 ease-out',
+        isSelected && 'ring-acc/60 ring-1',
+      )}
+      style={{
+        borderLeft: `2px solid ${accent}`,
+        transform: `translate(-50%, 0) translateX(${layout.translateX}px) scale(${layout.scale})`,
+        transformOrigin: 'center top',
+        opacity: layout.opacity,
+        zIndex: layout.zIndex,
+        boxShadow: isCenter
+          ? '0 12px 30px -14px oklch(0 0 0 / 0.75), inset 0 0 0 1px oklch(1 0 0 / 0.03)'
+          : undefined,
+      }}
+    >
+      <div className="mb-1.5 flex items-center gap-1.5">
+        <span className="bg-status-pr/15 text-status-pr inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wide">
+          <span className="bg-status-pr h-1.5 w-1.5 rounded-full" />
+          {stateLabel}
+        </span>
+        <span className="text-ink-3 ml-auto max-w-[76px] truncate font-mono text-[9.5px]">
+          {item.subtitle ?? item.ownerName ?? ''}
+        </span>
+      </div>
+      <div className="text-ink-0 mb-2 truncate text-[12.5px] leading-snug font-medium">
+        {item.title}
+      </div>
+      <div className="mb-2 flex items-center gap-1.5">
+        <span
+          className="h-2 w-2 shrink-0 rounded-full"
+          style={{ background: item.projectColor || 'var(--color-ink-4)' }}
+        />
+        <span className="text-ink-2 truncate text-[10.5px]">
+          {item.projectName}
+        </span>
+        <span className="text-status-pr bg-status-pr/10 border-status-pr/25 ml-auto inline-flex items-center gap-1 rounded border border-dashed px-1.5 py-0 font-mono text-[9.5px]">
+          <GitPullRequest className="h-2.5 w-2.5" />#{item.pullRequestId}
+        </span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className="text-ink-3 min-w-0 flex-1 truncate text-[10.5px]">
+          {item.hasNewActivity
+            ? 'New activity since last view'
+            : (item.activeThreadCount ?? 0) > 0
+              ? 'Threads need a look'
+              : 'Waiting for your review'}
+        </span>
+        {(item.activeThreadCount ?? 0) > 0 && (
+          <span className="text-status-pr flex items-center gap-0.5 font-mono text-[9.5px]">
+            <MessageSquare className="h-3 w-3" />
+            {item.activeThreadCount}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}
+
 export function FeedList() {
   const navigate = useNavigate();
   const params = useParams({ strict: false });
@@ -119,6 +382,7 @@ export function FeedList() {
   const {
     pinnedItems,
     actionNeededItems,
+    prReviewItems,
     activeTaskItems,
     highPriorityItems,
     normalItems,
@@ -161,6 +425,7 @@ export function FeedList() {
   );
   const hasUnpinnedItems =
     actionNeededItems.length > 0 ||
+    prReviewItems.length > 0 ||
     activeTaskItems.length > 0 ||
     highPriorityItems.length > 0 ||
     normalItems.length > 0 ||
@@ -326,6 +591,39 @@ export function FeedList() {
       }
     },
     [allVisibleItems, navigate],
+  );
+
+  const navigateToFeedItem = useCallback(
+    (item: FeedItem) => {
+      if (item.source === 'note' && item.noteId) {
+        navigate({
+          to: '/all/notes/$noteId',
+          params: { noteId: item.noteId },
+        });
+      } else if (item.source === 'work-item' && item.workItemId) {
+        navigate({
+          to: '/all/work-items/$projectId/$workItemId',
+          params: {
+            projectId: item.projectId,
+            workItemId: String(item.workItemId),
+          },
+        });
+      } else if (item.source === 'pull-request' && item.pullRequestId) {
+        navigate({
+          to: '/all/prs/$projectId/$prId',
+          params: {
+            projectId: item.projectId,
+            prId: String(item.pullRequestId),
+          },
+        });
+      } else if (item.taskId) {
+        navigate({
+          to: '/all/$taskId',
+          params: { taskId: item.taskId },
+        });
+      }
+    },
+    [navigate],
   );
 
   const openInProject = useCallback(
@@ -515,6 +813,7 @@ export function FeedList() {
 
   const totalCount =
     pinnedItems.length +
+    prReviewItems.length +
     actionNeededItems.length +
     highPriorityItems.length +
     activeTaskItems.length +
@@ -670,6 +969,15 @@ export function FeedList() {
       {/* Slightly stronger divider between pinned and rest of feed */}
       {pinnedItems.length > 0 && hasUnpinnedItems && (
         <div className="border-acc/20 border-t-4" />
+      )}
+
+      {/* PR review zone - horizontal stack, priority sorted */}
+      {prReviewItems.length > 0 && (
+        <HorizontalPrReviewStack
+          items={prReviewItems}
+          isItemSelected={isItemSelected}
+          onOpen={navigateToFeedItem}
+        />
       )}
 
       {runningTaskCreationCount > 0 && (

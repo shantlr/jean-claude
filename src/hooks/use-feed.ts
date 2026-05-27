@@ -20,6 +20,19 @@ const bySourceThenTimestamp = (a: FeedItem, b: FeedItem) => {
   return b.timestamp < a.timestamp ? -1 : b.timestamp > a.timestamp ? 1 : 0;
 };
 
+const PRIORITY_ORDER: Record<FeedItem['projectPriority'], number> = {
+  high: 0,
+  normal: 1,
+  low: 2,
+};
+
+const byPriorityThenTimestamp = (a: FeedItem, b: FeedItem) => {
+  const priority =
+    PRIORITY_ORDER[a.projectPriority] - PRIORITY_ORDER[b.projectPriority];
+  if (priority !== 0) return priority;
+  return b.timestamp < a.timestamp ? -1 : b.timestamp > a.timestamp ? 1 : 0;
+};
+
 const ACTION_NEEDED_ATTENTIONS: Set<FeedItemAttention> = new Set([
   'needs-permission',
   'has-question',
@@ -28,6 +41,11 @@ const ACTION_NEEDED_ATTENTIONS: Set<FeedItemAttention> = new Set([
 
 /** Task attentions that keep a task in the stacked (top) zone. */
 const STACKED_TASK_ATTENTIONS: Set<FeedItemAttention> = new Set(['running']);
+
+const PR_REVIEW_ATTENTIONS: Set<FeedItemAttention> = new Set([
+  'review-requested',
+  'pr-comments',
+]);
 
 export function useFeed() {
   const pinned = useFeedStore((s) => s.pinned);
@@ -212,6 +230,7 @@ export function useFeed() {
   const {
     pinnedItems,
     actionNeededItems,
+    prReviewItems,
     activeTaskItems,
     highPriorityItems,
     normalItems,
@@ -244,6 +263,7 @@ export function useFeed() {
 
     let dCount = 0;
     const actionNeeded: FeedItem[] = [];
+    const prReviews: FeedItem[] = [];
     const activeTasks: FeedItem[] = [];
     const high: FeedItem[] = [];
     const rest: FeedItem[] = [];
@@ -261,6 +281,13 @@ export function useFeed() {
       if (pinnedIds.has(item.id)) continue;
       if (dismissedIds.has(item.id)) {
         dCount++;
+        continue;
+      }
+      if (
+        item.source === 'pull-request' &&
+        PR_REVIEW_ATTENTIONS.has(item.attention)
+      ) {
+        prReviews.push(item);
         continue;
       }
       if (ACTION_NEEDED_ATTENTIONS.has(item.attention)) {
@@ -294,6 +321,7 @@ export function useFeed() {
     }
 
     actionNeeded.sort(bySourceThenTimestamp);
+    prReviews.sort(byPriorityThenTimestamp);
     activeTasks.sort(bySourceThenTimestamp);
     high.sort(bySourceThenTimestamp);
     rest.sort(bySourceThenTimestamp);
@@ -302,6 +330,7 @@ export function useFeed() {
     return {
       pinnedItems: pinnedResult,
       actionNeededItems: actionNeeded,
+      prReviewItems: prReviews,
       activeTaskItems: activeTasks,
       highPriorityItems: high,
       normalItems: rest,
@@ -321,6 +350,7 @@ export function useFeed() {
   const allVisibleItems = useMemo(
     () => [
       ...pinnedItems,
+      ...prReviewItems,
       ...actionNeededItems,
       ...activeTaskItems,
       ...highPriorityItems,
@@ -328,6 +358,7 @@ export function useFeed() {
     ],
     [
       pinnedItems,
+      prReviewItems,
       actionNeededItems,
       activeTaskItems,
       highPriorityItems,
@@ -339,6 +370,7 @@ export function useFeed() {
     ...query,
     pinnedItems,
     actionNeededItems,
+    prReviewItems,
     activeTaskItems,
     highPriorityItems,
     normalItems,
