@@ -86,6 +86,17 @@ import {
 } from '../database/schema';
 import { dbg } from '../lib/debug';
 import { pathExists } from '../lib/fs';
+import {
+  createAgent,
+  deleteAgent,
+  disableAgent,
+  enableAgent,
+  executeLegacyAgentMigration,
+  getAgentContent,
+  getAllManagedAgents,
+  previewLegacyAgentMigration,
+  updateAgent,
+} from '../services/agent-management-service';
 import { agentService } from '../services/agent-service';
 import { agentUsageService } from '../services/agent-usage-service';
 import {
@@ -3605,6 +3616,76 @@ export function registerIpcHandlers() {
     (_, projectId: string, orderedIds: string[]) => {
       dbg.ipc('project-todos:reorder %s %o', projectId, orderedIds);
       return ProjectTodoRepository.reorder(projectId, orderedIds);
+    },
+  );
+
+  // Agent Management
+
+  ipcMain.handle('agents:getAll', async () => {
+    dbg.ipc('agents:getAll');
+    return getAllManagedAgents();
+  });
+
+  ipcMain.handle('agents:getContent', async (_, agentPath: string) => {
+    dbg.ipc('agents:getContent path=%s', agentPath);
+    return getAgentContent({ agentPath });
+  });
+
+  ipcMain.handle(
+    'agents:create',
+    async (
+      _,
+      params: {
+        enabledBackends: AgentBackendType[];
+        name: string;
+        description: string;
+        content: string;
+      },
+    ) => {
+      dbg.ipc('agents:create name=%s', params.name);
+      return createAgent(params);
+    },
+  );
+
+  ipcMain.handle(
+    'agents:update',
+    async (_, params: { agentPath: string; content: string }) => {
+      dbg.ipc('agents:update path=%s', params.agentPath);
+      return updateAgent(params);
+    },
+  );
+
+  ipcMain.handle('agents:delete', async (_, agentPath: string) => {
+    dbg.ipc('agents:delete path=%s', agentPath);
+    return deleteAgent({ agentPath });
+  });
+
+  ipcMain.handle(
+    'agents:disable',
+    async (_, agentPath: string, backendType: AgentBackendType) => {
+      dbg.ipc('agents:disable path=%s backend=%s', agentPath, backendType);
+      return disableAgent({ agentPath, backendType });
+    },
+  );
+
+  ipcMain.handle(
+    'agents:enable',
+    async (_, agentPath: string, backendType: AgentBackendType) => {
+      dbg.ipc('agents:enable path=%s backend=%s', agentPath, backendType);
+      return enableAgent({ agentPath, backendType });
+    },
+  );
+
+  ipcMain.handle('agents:migrationPreview', async () => {
+    dbg.ipc('agents:migrationPreview');
+    return previewLegacyAgentMigration();
+  });
+
+  ipcMain.handle(
+    'agents:migrationExecute',
+    async (_, params: { itemIds: string[] }) => {
+      dbg.ipc('agents:migrationExecute count=%d', params.itemIds.length);
+      return executeLegacyAgentMigration({ itemIds: params.itemIds });
     },
   );
 

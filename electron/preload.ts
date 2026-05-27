@@ -843,6 +843,28 @@ contextBridge.exposeInMainWorld('api', {
     reorder: (projectId: string, orderedIds: string[]) =>
       ipcRenderer.invoke('project-todos:reorder', projectId, orderedIds),
   },
+  agentManagement: {
+    getAll: () => ipcRenderer.invoke('agents:getAll'),
+    getContent: (agentPath: string) =>
+      ipcRenderer.invoke('agents:getContent', agentPath),
+    create: (params: {
+      enabledBackends: string[];
+      name: string;
+      description: string;
+      content: string;
+    }) => ipcRenderer.invoke('agents:create', params),
+    update: (params: { agentPath: string; content: string }) =>
+      ipcRenderer.invoke('agents:update', params),
+    delete: (agentPath: string) =>
+      ipcRenderer.invoke('agents:delete', agentPath),
+    disable: (agentPath: string, backendType: string) =>
+      ipcRenderer.invoke('agents:disable', agentPath, backendType),
+    enable: (agentPath: string, backendType: string) =>
+      ipcRenderer.invoke('agents:enable', agentPath, backendType),
+    migrationPreview: () => ipcRenderer.invoke('agents:migrationPreview'),
+    migrationExecute: (params: { itemIds: string[] }) =>
+      ipcRenderer.invoke('agents:migrationExecute', params),
+  },
   skillManagement: {
     getForStep: (params: { taskId: string; stepId?: string }) =>
       ipcRenderer.invoke('skills:getForStep', params),

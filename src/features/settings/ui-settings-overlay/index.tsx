@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  Bot,
   Box,
   ChevronDown,
   ChevronRight,
@@ -32,6 +33,7 @@ import {
   ProjectSettings,
   type ProjectSettingsMenuItem,
 } from '@/features/project/ui-project-settings';
+import { AgentsSettings } from '@/features/settings/ui-agents-settings';
 import { AiGenerationSettings } from '@/features/settings/ui-ai-generation-settings';
 import { AutocompleteSettings } from '@/features/settings/ui-autocomplete-settings';
 import { AzureDevOpsTab } from '@/features/settings/ui-azure-devops-tab';
@@ -136,6 +138,13 @@ function getGlobalSections(): GlobalSection[] {
       icon: Box,
       title: 'Skills',
       subtitle: 'Manage and discover agent skills',
+    },
+    {
+      id: 'agents',
+      label: 'Agents',
+      icon: Bot,
+      title: 'Agents',
+      subtitle: 'Manage backend subagents',
     },
     {
       id: 'prompt-snippets',
@@ -302,6 +311,7 @@ function getDefaultProjectSelection(): {
 function isFillHeightGlobal(sel: ActiveSelection): boolean {
   return (
     sel.sectionId === 'skills' ||
+    sel.sectionId === 'agents' ||
     sel.sectionId === 'prompt-snippets' ||
     sel.sectionId === 'ai-generation'
   );
@@ -413,6 +423,8 @@ function GlobalContentInner({ selection }: { selection: ActiveSelection }) {
       return <GlobalPermissionsSettings />;
     case 'skills':
       return <SkillsSettings />;
+    case 'agents':
+      return <AgentsSettings />;
     case 'prompt-snippets':
       return <PromptSnippetsSettings />;
     case 'mcp-servers':

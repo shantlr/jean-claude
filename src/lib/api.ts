@@ -1,5 +1,10 @@
 import type { AgentBackendType, PromptPart } from '@shared/agent-backend-types';
 import type {
+  AgentMigrationExecuteResult,
+  AgentMigrationPreviewResult,
+  ManagedAgent,
+} from '@shared/agent-management-types';
+import type {
   AgentQuestion,
   PermissionResponse,
   QuestionResponse,
@@ -1082,6 +1087,32 @@ export interface Api {
     delete: (id: string) => Promise<void>;
     reorder: (projectId: string, orderedIds: string[]) => Promise<void>;
   };
+  agentManagement: {
+    getAll: () => Promise<ManagedAgent[]>;
+    getContent: (
+      agentPath: string,
+    ) => Promise<{ name: string; description: string; content: string }>;
+    create: (params: {
+      enabledBackends: AgentBackendType[];
+      name: string;
+      description: string;
+      content: string;
+    }) => Promise<ManagedAgent>;
+    update: (params: {
+      agentPath: string;
+      content: string;
+    }) => Promise<ManagedAgent>;
+    delete: (agentPath: string) => Promise<void>;
+    disable: (
+      agentPath: string,
+      backendType: AgentBackendType,
+    ) => Promise<void>;
+    enable: (agentPath: string, backendType: AgentBackendType) => Promise<void>;
+    migrationPreview: () => Promise<AgentMigrationPreviewResult>;
+    migrationExecute: (params: {
+      itemIds: string[];
+    }) => Promise<AgentMigrationExecuteResult>;
+  };
   skillManagement: {
     getForStep: (params: {
       taskId: string;
@@ -1729,6 +1760,31 @@ export const api: Api = hasWindowApi
         },
         delete: async () => {},
         reorder: async () => {},
+      },
+      agentManagement: {
+        getAll: async () => [],
+        getContent: async () => ({ name: '', description: '', content: '' }),
+        create: async () => ({
+          name: '',
+          description: '',
+          agentPath: '',
+          managed: true,
+          enabledBackends: { 'claude-code': true },
+          editable: true,
+        }),
+        update: async () => ({
+          name: '',
+          description: '',
+          agentPath: '',
+          managed: true,
+          enabledBackends: { 'claude-code': true },
+          editable: true,
+        }),
+        delete: async () => {},
+        disable: async () => {},
+        enable: async () => {},
+        migrationPreview: async () => ({ items: [] }),
+        migrationExecute: async () => ({ results: [] }),
       },
       skillManagement: {
         getForStep: async () => [],
