@@ -440,7 +440,7 @@ button {
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  border-radius: 0.95rem;
+  border-radius: inherit;
   padding: 1.5px;
   background: conic-gradient(
     from var(--gradient-angle),
@@ -466,7 +466,7 @@ button {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  border-radius: 0.95rem;
+  border-radius: inherit;
   background: none;
   box-shadow: none;
 }
