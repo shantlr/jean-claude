@@ -47,6 +47,13 @@ const PR_REVIEW_ATTENTIONS: Set<FeedItemAttention> = new Set([
   'pr-comments',
 ]);
 
+function shouldHideReviewPr(item: FeedItem) {
+  return (
+    item.source === 'pull-request' &&
+    (item.isOwnedByCurrentUser || item.isApprovedByMe)
+  );
+}
+
 export function useFeed() {
   const pinned = useFeedStore((s) => s.pinned);
   const dismissed = useFeedStore((s) => s.dismissed);
@@ -173,11 +180,16 @@ export function useFeed() {
     });
   }, [query.data, taskSteps, pendingRequestsByTaskId]);
 
+  const visibleFeedItems = useMemo(
+    () => refinedItems.filter((item) => !shouldHideReviewPr(item)),
+    [refinedItems],
+  );
+
   // Collect PR IDs already shown in a task's rail so we can hide the
   // standalone PR feed item (the rail already surfaces it).
   const taskOwnedPrIds = useMemo(() => {
     const ids = new Set<number>();
-    for (const item of refinedItems) {
+    for (const item of visibleFeedItems) {
       if (item.source === 'task' && item.pullRequestId != null) {
         ids.add(item.pullRequestId);
       }
@@ -191,7 +203,7 @@ export function useFeed() {
       }
     }
     return ids;
-  }, [refinedItems]);
+  }, [visibleFeedItems]);
 
   const projectOptions = useMemo(() => {
     const byProjectId = new Map<
@@ -199,7 +211,7 @@ export function useFeed() {
       { id: string; name: string; color: string; itemCount: number }
     >();
 
-    for (const item of refinedItems) {
+    for (const item of visibleFeedItems) {
       const existing = byProjectId.get(item.projectId);
       if (existing) {
         existing.itemCount += 1;
@@ -218,13 +230,13 @@ export function useFeed() {
     return Array.from(byProjectId.values()).sort((a, b) =>
       a.name.localeCompare(b.name),
     );
-  }, [refinedItems]);
+  }, [visibleFeedItems]);
 
   const filteredOutCount = useMemo(
     () =>
-      refinedItems.filter((item) => hiddenProjectIdSet.has(item.projectId))
+      visibleFeedItems.filter((item) => hiddenProjectIdSet.has(item.projectId))
         .length,
-    [refinedItems, hiddenProjectIdSet],
+    [visibleFeedItems, hiddenProjectIdSet],
   );
 
   const {
@@ -237,7 +249,7 @@ export function useFeed() {
     lowPriorityItems,
     dismissedCount,
   } = useMemo(() => {
-    const items = refinedItems.filter(
+    const items = visibleFeedItems.filter(
       (item) => !hiddenProjectIdSet.has(item.projectId),
     );
 
@@ -338,7 +350,7 @@ export function useFeed() {
       dismissedCount: dCount,
     };
   }, [
-    refinedItems,
+    visibleFeedItems,
     pinned,
     pinnedIds,
     dismissedIds,

@@ -123,7 +123,27 @@ function HorizontalPrReviewStack({
   onOpen: (item: FeedItem) => void;
 }) {
   const [focusedIndex, setFocusedIndex] = useState(0);
-  const lastWheelAt = useRef(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const wheelGesture = useRef<{
+    accumulated: number;
+    consumed: boolean;
+    direction: -1 | 0 | 1;
+    lastEventAt: number;
+    lastStepAt: number;
+    peakAbsDelta: number;
+    resetTimer?: ReturnType<typeof setTimeout>;
+    sawPostStepDip: boolean;
+    troughAbsDelta: number;
+  }>({
+    accumulated: 0,
+    consumed: false,
+    direction: 0,
+    lastEventAt: 0,
+    lastStepAt: 0,
+    peakAbsDelta: 0,
+    sawPostStepDip: false,
+    troughAbsDelta: Number.POSITIVE_INFINITY,
+  });
 
   const maxIndex = items.length - 1;
   const safeIndex = Math.min(focusedIndex, Math.max(0, maxIndex));
@@ -159,13 +179,72 @@ function HorizontalPrReviewStack({
   }, [maxIndex]);
 
   const handleWheel = useCallback(
-    (event: React.WheelEvent) => {
-      if (Math.abs(event.deltaX) < 20) return;
+    (event: WheelEvent) => {
+      console.log(event.type, event.deltaX);
+      const absDeltaX = Math.abs(event.deltaX);
+      if (absDeltaX < 16 || absDeltaX < Math.abs(event.deltaY) * 1.25) return;
       event.preventDefault();
 
-      const now = Date.now();
-      if (now - lastWheelAt.current < 220) return;
-      lastWheelAt.current = now;
+      const direction = event.deltaX > 0 ? 1 : -1;
+      const now = performance.now();
+      const gesture = wheelGesture.current;
+      const isNewGesture =
+        gesture.direction !== direction || now - gesture.lastEventAt > 80;
+
+      if (isNewGesture) {
+        gesture.accumulated = 0;
+        gesture.consumed = false;
+        gesture.direction = direction;
+        gesture.peakAbsDelta = 0;
+        gesture.sawPostStepDip = false;
+        gesture.troughAbsDelta = Number.POSITIVE_INFINITY;
+      }
+
+      clearTimeout(gesture.resetTimer);
+      gesture.resetTimer = setTimeout(() => {
+        gesture.accumulated = 0;
+        gesture.consumed = false;
+        gesture.direction = 0;
+        gesture.peakAbsDelta = 0;
+        gesture.sawPostStepDip = false;
+        gesture.troughAbsDelta = Number.POSITIVE_INFINITY;
+      }, 80);
+
+      if (gesture.consumed) {
+        gesture.troughAbsDelta = Math.min(gesture.troughAbsDelta, absDeltaX);
+
+        if (absDeltaX <= 14 || absDeltaX <= gesture.peakAbsDelta * 0.7) {
+          gesture.sawPostStepDip = true;
+        }
+
+        const isNewSwipeImpulse =
+          gesture.sawPostStepDip &&
+          now - gesture.lastStepAt > 60 &&
+          absDeltaX >= 18 &&
+          absDeltaX >=
+            Math.max(gesture.troughAbsDelta + 8, 1.35 * gesture.troughAbsDelta);
+
+        gesture.lastEventAt = now;
+
+        if (!isNewSwipeImpulse) return;
+
+        gesture.accumulated = 0;
+        gesture.consumed = false;
+        gesture.peakAbsDelta = 0;
+        gesture.sawPostStepDip = false;
+        gesture.troughAbsDelta = Number.POSITIVE_INFINITY;
+      }
+
+      gesture.accumulated += absDeltaX;
+      gesture.peakAbsDelta = Math.max(gesture.peakAbsDelta, absDeltaX);
+      gesture.lastEventAt = now;
+
+      if (gesture.accumulated < 48) return;
+
+      gesture.consumed = true;
+      gesture.lastStepAt = now;
+      gesture.sawPostStepDip = false;
+      gesture.troughAbsDelta = Number.POSITIVE_INFINITY;
 
       if (event.deltaX > 0) {
         goNext();
@@ -177,16 +256,33 @@ function HorizontalPrReviewStack({
   );
 
   useEffect(() => {
+    const carousel = carouselRef.current;
+    if (!carousel) return;
+
+    carousel.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      carousel.removeEventListener('wheel', handleWheel);
+    };
+  }, [handleWheel]);
+
+  useEffect(() => {
     if (focusedIndex > maxIndex) {
       setFocusedIndex(Math.max(0, maxIndex));
     }
   }, [focusedIndex, maxIndex]);
 
+  useEffect(() => {
+    const gesture = wheelGesture.current;
+    return () => {
+      clearTimeout(gesture.resetTimer);
+    };
+  }, []);
+
   if (!focusedItem) return null;
 
   return (
     <section className="bg-bg-0/95 border-status-pr/15 border-b py-2 backdrop-blur-sm">
-      <div className="relative h-[140px] overflow-hidden" onWheel={handleWheel}>
+      <div ref={carouselRef} className="relative h-[140px] overflow-hidden">
         {items.map((item, index) => (
           <PrReviewCarouselCard
             key={item.id}
@@ -284,16 +380,16 @@ function PrReviewCarouselCard({
   const isVisible = Math.abs(position) <= 2;
   const layout =
     position === 0
-      ? { translateX: 0, scale: 1, opacity: 1, zIndex: 6 }
+      ? { translateX: '0%', scale: 1, opacity: 1, zIndex: 6 }
       : position === 1
-        ? { translateX: 118, scale: 0.86, opacity: 0.58, zIndex: 4 }
+        ? { translateX: '54%', scale: 0.86, opacity: 0.58, zIndex: 4 }
         : position === -1
-          ? { translateX: -118, scale: 0.86, opacity: 0.58, zIndex: 4 }
+          ? { translateX: '-54%', scale: 0.86, opacity: 0.58, zIndex: 4 }
           : position === 2
-            ? { translateX: 164, scale: 0.74, opacity: 0.25, zIndex: 2 }
+            ? { translateX: '75%', scale: 0.74, opacity: 0.25, zIndex: 2 }
             : position === -2
-              ? { translateX: -164, scale: 0.74, opacity: 0.25, zIndex: 2 }
-              : { translateX: 0, scale: 0.7, opacity: 0, zIndex: 1 };
+              ? { translateX: '-75%', scale: 0.74, opacity: 0.25, zIndex: 2 }
+              : { translateX: '0%', scale: 0.7, opacity: 0, zIndex: 1 };
 
   const stateLabel = item.hasNewActivity ? 'UPDATED' : 'REVIEW';
   const isHighPriority = item.projectPriority === 'high';
@@ -314,12 +410,12 @@ function PrReviewCarouselCard({
         }
       }}
       className={clsx(
-        'bg-bg-1 border-line-soft absolute top-0 left-1/2 block w-[218px] cursor-pointer rounded-md border py-2.5 pr-2.5 pl-3 text-left shadow-lg transition-[transform,opacity,box-shadow] duration-300 ease-out',
+        'bg-bg-1 border-line-soft absolute top-0 left-1/2 block w-[clamp(220px,85%,320px)] cursor-pointer rounded-md border py-2.5 pr-2.5 pl-3 text-left shadow-lg transition-[transform,opacity,box-shadow] duration-300 ease-out',
         isSelected && 'ring-acc/60 ring-1',
       )}
       style={{
         borderLeft: `2px solid ${accent}`,
-        transform: `translate(-50%, 0) translateX(${layout.translateX}px) scale(${layout.scale})`,
+        transform: `translate(-50%, 0) translateX(${layout.translateX}) scale(${layout.scale})`,
         transformOrigin: 'center top',
         opacity: layout.opacity,
         zIndex: layout.zIndex,
