@@ -154,6 +154,23 @@ interface ProfileResponse {
   emailAddress: string;
 }
 
+interface IdentitiesResponse {
+  value?: Array<{
+    id?: string;
+    providerDisplayName?: string;
+    properties?: {
+      Account?: { $value?: string };
+      Mail?: { $value?: string };
+    };
+  }>;
+}
+
+function maskEmail(emailAddress: string): string {
+  const [name, domain] = emailAddress.split('@');
+  if (!name || !domain) return '<unknown>';
+  return `${name.slice(0, 2)}***@${domain}`;
+}
+
 interface AccountsResponse {
   count: number;
   value: Array<{
@@ -1254,7 +1271,7 @@ export async function getCurrentUser(
       },
     ),
     fetch(
-      `https://dev.azure.com/${orgName}/_apis/connectionData?api-version=7.0`,
+      `https://dev.azure.com/${orgName}/_apis/connectionData?api-version=7.0-preview`,
       {
         headers: { Authorization: authHeader },
       },
@@ -1268,12 +1285,46 @@ export async function getCurrentUser(
 
   const profile: ProfileResponse = await profileResponse.json();
 
+  const connectionBody = await connectionResponse.text();
+
   // Extract org-level identity ID (matches reviewer IDs in PRs)
   let identityId: string | undefined;
+  let identitySource: 'connectionData' | 'identityLookup' | 'unresolved' =
+    'unresolved';
   if (connectionResponse.ok) {
-    const connectionData = await connectionResponse.json();
+    const connectionData = JSON.parse(connectionBody);
     identityId = connectionData?.authenticatedUser?.id;
+    if (identityId) identitySource = 'connectionData';
   }
+
+  dbg.azure('current-user:connection-identity', {
+    orgName,
+    profileId: profile.id,
+    email: maskEmail(profile.emailAddress),
+    connectionStatus: connectionResponse.status,
+    identityId: identityId ?? null,
+    body: connectionResponse.ok ? undefined : connectionBody,
+  });
+
+  if (!identityId) {
+    const resolvedIdentityId = await resolveIdentityIdByEmail({
+      authHeader,
+      orgName,
+      emailAddress: profile.emailAddress,
+    });
+    if (resolvedIdentityId) {
+      identityId = resolvedIdentityId;
+      identitySource = 'identityLookup';
+    }
+  }
+
+  dbg.azure('current-user:resolved', {
+    orgName,
+    profileId: profile.id,
+    email: maskEmail(profile.emailAddress),
+    identityId: identityId ?? null,
+    identitySource,
+  });
 
   return {
     id: profile.id,
@@ -1281,6 +1332,50 @@ export async function getCurrentUser(
     emailAddress: profile.emailAddress,
     identityId,
   };
+}
+
+async function resolveIdentityIdByEmail({
+  authHeader,
+  orgName,
+  emailAddress,
+}: {
+  authHeader: string;
+  orgName: string;
+  emailAddress: string;
+}): Promise<string | undefined> {
+  const url = `https://vssps.dev.azure.com/${orgName}/_apis/identities?searchFilter=General&filterValue=${encodeURIComponent(emailAddress)}&queryMembership=None&api-version=7.1`;
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader },
+  });
+
+  if (!response.ok) {
+    const responseText = await response.text();
+    dbg.azure('identity-lookup:failed', {
+      orgName,
+      email: maskEmail(emailAddress),
+      status: response.status,
+      body: responseText,
+    });
+    return undefined;
+  }
+
+  const identities: IdentitiesResponse = await response.json();
+  const normalizedEmail = emailAddress.toLowerCase();
+  const match = identities.value?.find((identity) => {
+    const account = identity.properties?.Account?.$value?.toLowerCase();
+    const mail = identity.properties?.Mail?.$value?.toLowerCase();
+    return account === normalizedEmail || mail === normalizedEmail;
+  });
+
+  dbg.azure('identity-lookup:resolved', {
+    orgName,
+    email: maskEmail(emailAddress),
+    resultCount: identities.value?.length ?? 0,
+    matchedByEmail: !!match,
+    identityId: match?.id ?? null,
+  });
+
+  return match?.id;
 }
 
 // Pull Request API response types
@@ -1787,6 +1882,14 @@ export async function votePullRequest(params: {
 
   const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}/reviewers/${params.reviewerId}?api-version=7.0`;
 
+  dbg.azure('pr-vote:request', {
+    projectId: params.projectId,
+    repoId: params.repoId,
+    pullRequestId: params.pullRequestId,
+    reviewerId: params.reviewerId,
+    vote: params.vote,
+  });
+
   const response = await fetch(url, {
     method: 'PUT',
     headers: {
@@ -1799,9 +1902,21 @@ export async function votePullRequest(params: {
     }),
   });
 
+  const responseText = await response.text();
+
+  dbg.azure('pr-vote:response', {
+    projectId: params.projectId,
+    repoId: params.repoId,
+    pullRequestId: params.pullRequestId,
+    reviewerId: params.reviewerId,
+    vote: params.vote,
+    status: response.status,
+    ok: response.ok,
+    body: response.ok ? undefined : responseText,
+  });
+
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Failed to vote on pull request: ${error}`);
+    throw new Error(`Failed to vote on pull request: ${responseText}`);
   }
 }
 

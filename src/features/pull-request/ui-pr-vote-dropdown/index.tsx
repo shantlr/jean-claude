@@ -10,6 +10,11 @@ import {
 import type { AzureDevOpsPullRequestDetails } from '@/lib/api';
 import type { ReviewerVoteStatus } from '@shared/azure-devops-types';
 
+import {
+  findCurrentReviewer,
+  getCurrentIdentityId,
+} from '../utils-pr-current-user';
+
 const VOTE_OPTIONS = [
   {
     vote: 10,
@@ -67,30 +72,16 @@ export function PrVoteDropdown({
   const { data: currentUser } = useCurrentAzureUser(projectId);
   const voteMutation = useVotePullRequest(projectId, pr.id);
 
-  // Find current user in reviewers list (by identity ID, then email fallback)
   const currentReviewer = useMemo(() => {
-    if (!currentUser) return null;
-
-    const identityId = currentUser.identityId;
-    if (identityId) {
-      const byId = pr.reviewers.find(
-        (reviewer) => !reviewer.isContainer && reviewer.id === identityId,
-      );
-      if (byId) return byId;
-    }
-
-    const currentEmail = currentUser.emailAddress.toLowerCase();
-    return (
-      pr.reviewers.find(
-        (reviewer) =>
-          !reviewer.isContainer &&
-          reviewer.uniqueName.toLowerCase() === currentEmail,
-      ) ?? null
-    );
+    return findCurrentReviewer({ reviewers: pr.reviewers, currentUser });
   }, [pr.reviewers, currentUser]);
 
-  // Resolve the ID to use for voting: reviewer ID if found, otherwise identity ID
-  const voterId = currentReviewer?.id ?? currentUser?.identityId ?? null;
+  const voterId = useMemo(() => {
+    return getCurrentIdentityId({
+      reviewers: pr.reviewers,
+      currentUser,
+    });
+  }, [pr.reviewers, currentUser]);
 
   const currentVote: ReviewerVoteStatus = useMemo(() => {
     return currentReviewer?.voteStatus ?? 'none';
