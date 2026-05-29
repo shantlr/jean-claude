@@ -28,6 +28,7 @@ import type {
   DragEvent,
   SyntheticEvent,
   TextareaHTMLAttributes,
+  UIEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -190,6 +191,7 @@ export const PromptTextarea = forwardRef<
     className,
     style,
     onKeyDown: externalOnKeyDown,
+    onScroll: externalOnScroll,
     ...textareaProps
   },
   ref,
@@ -205,6 +207,7 @@ export const PromptTextarea = forwardRef<
   const ghostRef = useRef<HTMLDivElement>(null);
   const trailingControlsRef = useRef<HTMLDivElement>(null);
   const [trailingControlsWidth, setTrailingControlsWidth] = useState(0);
+  const [textareaScrollTop, setTextareaScrollTop] = useState(0);
 
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
@@ -564,6 +567,7 @@ export const PromptTextarea = forwardRef<
             textareaRef.current.selectionEnd = newCursorPos;
           }
           adjustHeight();
+          syncScrollTop();
         });
       }
       return;
@@ -594,11 +598,17 @@ export const PromptTextarea = forwardRef<
     textarea.style.height = `${Math.min(neededHeight, maxHeight)}px`;
   }, [maxHeight]);
 
-  // Re-adjust height when completion appears/disappears (multiline ghost text)
+  const syncScrollTop = useCallback(() => {
+    setTextareaScrollTop(textareaRef.current?.scrollTop ?? 0);
+  }, []);
+
+  // Re-adjust height when value/completion changes; newlines can change scrollTop
+  // during layout without dispatching a scroll event.
   // useLayoutEffect avoids a visual flash where the textarea is too short before expanding
   useLayoutEffect(() => {
     adjustHeight();
-  }, [completion, adjustHeight]);
+    syncScrollTop();
+  }, [value, completion, adjustHeight, syncScrollTop]);
 
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value);
@@ -619,6 +629,16 @@ export const PromptTextarea = forwardRef<
       dismiss();
     }
   };
+
+  const handleScroll = useCallback(
+    (e: UIEvent<HTMLTextAreaElement>) => {
+      if (completion) {
+        setTextareaScrollTop(e.currentTarget.scrollTop);
+      }
+      externalOnScroll?.(e);
+    },
+    [completion, externalOnScroll],
+  );
 
   // --- Image attachment handlers ---
   const [isDragOver, setIsDragOver] = useState(false);
@@ -1043,6 +1063,7 @@ export const PromptTextarea = forwardRef<
           onKeyDown={handleKeyDown}
           onSelect={handleSelect}
           onPaste={handlePaste}
+          onScroll={handleScroll}
           onDragOver={handleTextareaDragOver}
           rows={1}
           autoComplete="off"
@@ -1060,24 +1081,27 @@ export const PromptTextarea = forwardRef<
         />
         {/* Ghost text overlay — matches textarea border+padding so text aligns */}
         {completion && (
-          <div
-            ref={ghostRef}
-            className={clsx(
-              'pointer-events-none absolute inset-0 overflow-hidden text-sm leading-[20px] break-words whitespace-pre-wrap',
-              className ? className : 'border border-transparent px-3 py-2',
-            )}
-            style={{
-              maxHeight: `${maxHeight}px`,
-              paddingRight: trailingPaddingRight,
-            }}
-          >
-            <span className="text-ink-1">
-              {value.slice(0, completionPosition ?? value.length)}
-            </span>
-            <span className="text-ink-3">{completion}</span>
-            <span className="text-ink-1">
-              {value.slice(completionPosition ?? value.length)}
-            </span>
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div
+              ref={ghostRef}
+              className={clsx(
+                'text-sm leading-[20px] break-words whitespace-pre-wrap',
+                className ? className : 'border border-transparent px-3 py-2',
+              )}
+              style={{
+                maxHeight: `${maxHeight}px`,
+                paddingRight: trailingPaddingRight,
+                transform: `translateY(-${textareaScrollTop}px)`,
+              }}
+            >
+              <span className="text-ink-1">
+                {value.slice(0, completionPosition ?? value.length)}
+              </span>
+              <span className="text-ink-3">{completion}</span>
+              <span className="text-ink-1">
+                {value.slice(completionPosition ?? value.length)}
+              </span>
+            </div>
           </div>
         )}
         {/* Completion loader + file picker buttons */}
