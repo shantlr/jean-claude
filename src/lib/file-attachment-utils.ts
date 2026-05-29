@@ -60,17 +60,28 @@ export async function processAttachmentFile(
   onAttach: (file: PromptFilePart) => void,
   onError?: (message: string) => void,
 ): Promise<void> {
+  // Electron File objects from file picker and drag/drop have a .path property
+  // with the absolute filesystem path.
+  const electronPath = (file as File & { path?: string }).path;
+
   if (file.size > MAX_FILE_ATTACHMENT_SIZE) {
+    if (electronPath && electronPath.length > 0) {
+      onAttach({
+        type: 'file',
+        filePath: electronPath,
+        filename: file.name,
+      });
+      return;
+    }
+
     onError?.(
       `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB, max ${MAX_FILE_ATTACHMENT_SIZE / 1024 / 1024} MB)`,
     );
     return;
   }
 
-  // Electron File objects from file picker and drag/drop have a .path property
-  // with the absolute filesystem path. This is always preferred as it uses
-  // fs.copyFile (binary-safe) instead of file.text() (UTF-8 only).
-  const electronPath = (file as File & { path?: string }).path;
+  // Prefer path-backed copy because it uses fs.copyFile (binary-safe) instead
+  // of FileReader fallback.
   if (electronPath && electronPath.length > 0) {
     try {
       const result = await window.api.fs.copyAttachmentFile(
