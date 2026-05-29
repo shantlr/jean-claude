@@ -65,6 +65,7 @@ export function relativeLabel(
   const mins = Math.round((start - now) / 60_000);
   if (mins < 1) return 'now';
   if (mins < 60) return `in ${mins}m`;
+  if (mins >= 24 * 60) return `in ${Math.floor(mins / 60 / 24)}d`;
   const h = Math.floor(mins / 60);
   const mm = mins % 60;
   return mm ? `in ${h}h${String(mm).padStart(2, '0')}` : `in ${h}h`;
