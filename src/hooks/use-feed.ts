@@ -2,50 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
 
 import { api } from '@/lib/api';
+import { partitionFeedItems } from '@/lib/feed-partition';
 import { useFeedStore } from '@/stores/feed';
 import { useNavigationStore } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
-import type { FeedItem, FeedItemAttention } from '@shared/feed-types';
-
-const SOURCE_ORDER: Record<FeedItem['source'], number> = {
-  note: 0,
-  task: 1,
-  'work-item': 2,
-  'pull-request': 2,
-};
-
-const bySourceThenTimestamp = (a: FeedItem, b: FeedItem) => {
-  const so = SOURCE_ORDER[a.source] - SOURCE_ORDER[b.source];
-  if (so !== 0) return so;
-  return b.timestamp < a.timestamp ? -1 : b.timestamp > a.timestamp ? 1 : 0;
-};
-
-const PRIORITY_ORDER: Record<FeedItem['projectPriority'], number> = {
-  high: 0,
-  normal: 1,
-  low: 2,
-};
-
-const byPriorityThenTimestamp = (a: FeedItem, b: FeedItem) => {
-  const priority =
-    PRIORITY_ORDER[a.projectPriority] - PRIORITY_ORDER[b.projectPriority];
-  if (priority !== 0) return priority;
-  return b.timestamp < a.timestamp ? -1 : b.timestamp > a.timestamp ? 1 : 0;
-};
-
-const ACTION_NEEDED_ATTENTIONS: Set<FeedItemAttention> = new Set([
-  'needs-permission',
-  'has-question',
-  'errored',
-]);
-
-/** Task attentions that keep a task in the stacked (top) zone. */
-const STACKED_TASK_ATTENTIONS: Set<FeedItemAttention> = new Set(['running']);
-
-const PR_REVIEW_ATTENTIONS: Set<FeedItemAttention> = new Set([
-  'review-requested',
-  'pr-comments',
-]);
+import type { FeedItem } from '@shared/feed-types';
 
 function shouldHideReviewPr(item: FeedItem) {
   return (
@@ -249,106 +210,15 @@ export function useFeed() {
     lowPriorityItems,
     dismissedCount,
   } = useMemo(() => {
-    const items = visibleFeedItems.filter(
-      (item) => !hiddenProjectIdSet.has(item.projectId),
-    );
-
-    const itemsById = new Map<string, FeedItem>();
-    for (const item of items) {
-      itemsById.set(item.id, item);
-    }
-
-    const pinnedResult: FeedItem[] = [];
-    for (const p of [...pinned].sort((a, b) => a.order - b.order)) {
-      const item = itemsById.get(p.id);
-      if (!item) continue;
-      // Skip PR items already shown in a task's rail
-      if (
-        item.source === 'pull-request' &&
-        item.pullRequestId != null &&
-        taskOwnedPrIds.has(item.pullRequestId)
-      ) {
-        continue;
-      }
-      pinnedResult.push(item);
-    }
-
-    let dCount = 0;
-    const actionNeeded: FeedItem[] = [];
-    const prReviews: FeedItem[] = [];
-    const activeTasks: FeedItem[] = [];
-    const high: FeedItem[] = [];
-    const rest: FeedItem[] = [];
-    const low: FeedItem[] = [];
-
-    for (const item of items) {
-      // Hide standalone PR items when the PR is already shown in a task's rail.
-      if (
-        item.source === 'pull-request' &&
-        item.pullRequestId != null &&
-        taskOwnedPrIds.has(item.pullRequestId)
-      ) {
-        continue;
-      }
-      if (pinnedIds.has(item.id)) continue;
-      if (dismissedIds.has(item.id)) {
-        dCount++;
-        continue;
-      }
-      if (
-        item.source === 'pull-request' &&
-        PR_REVIEW_ATTENTIONS.has(item.attention)
-      ) {
-        prReviews.push(item);
-        continue;
-      }
-      if (ACTION_NEEDED_ATTENTIONS.has(item.attention)) {
-        // Action-needed items always surface to the top, even if marked
-        // low-priority — a permission request or error needs attention.
-        actionNeeded.push(item);
-      } else if (
-        item.source === 'task' &&
-        STACKED_TASK_ATTENTIONS.has(item.attention)
-      ) {
-        // Only actively running tasks get the stacked treatment.
-        activeTasks.push(item);
-      } else if (item.source === 'task') {
-        // Non-running tasks (waiting, completed, interrupted) are still
-        // highest priority compared to other feed items.
-        high.push(item);
-      } else if (item.source === 'note') {
-        // Notes are high priority — below pinned and active tasks, but
-        // above work-items and pull-requests.
-        high.push(item);
-      } else if (
-        lowPriorityIds.has(item.id) ||
-        item.projectPriority === 'low'
-      ) {
-        low.push(item);
-      } else if (item.projectPriority === 'high') {
-        high.push(item);
-      } else {
-        rest.push(item);
-      }
-    }
-
-    actionNeeded.sort(bySourceThenTimestamp);
-    prReviews.sort(byPriorityThenTimestamp);
-    activeTasks.sort(bySourceThenTimestamp);
-    high.sort(bySourceThenTimestamp);
-    rest.sort(bySourceThenTimestamp);
-    low.sort(bySourceThenTimestamp);
-
-    return {
-      pinnedItems: pinnedResult,
-      actionNeededItems: actionNeeded,
-      prReviewItems: prReviews,
-      activeTaskItems: activeTasks,
-      highPriorityItems: high,
-      normalItems: rest,
-      lowPriorityItems: low,
-      dismissedCount: dCount,
-    };
+    return partitionFeedItems({
+      visibleFeedItems,
+      hiddenProjectIdSet,
+      pinned,
+      pinnedIds,
+      dismissedIds,
+      lowPriorityIds,
+      taskOwnedPrIds,
+    });
   }, [
     visibleFeedItems,
     pinned,

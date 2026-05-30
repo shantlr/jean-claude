@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronsDown,
   ChevronsLeft,
   ChevronsRight,
   Filter,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { Dropdown, DropdownDivider, DropdownItem } from '@/common/ui/dropdown';
@@ -27,6 +29,91 @@ import type { FeedItem } from '@shared/feed-types';
 
 import { FeedItemCard } from './feed-item-card';
 import { FeedNoteCard } from './feed-note-card';
+
+type PrReviewContextMenuState = {
+  item: FeedItem;
+  x: number;
+  y: number;
+} | null;
+
+function useClampedContextMenuPosition(x: number, y: number) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ x, y });
+
+  useEffect(() => {
+    if (!menuRef.current) return;
+    const rect = menuRef.current.getBoundingClientRect();
+    setPos({
+      x: Math.max(8, Math.min(x, window.innerWidth - rect.width - 8)),
+      y: Math.max(8, Math.min(y, window.innerHeight - rect.height - 8)),
+    });
+  }, [x, y]);
+
+  return { menuRef, pos };
+}
+
+function PrReviewContextMenu({
+  state,
+  onClose,
+  onMarkLowPriority,
+}: {
+  state: NonNullable<PrReviewContextMenuState>;
+  onClose: () => void;
+  onMarkLowPriority: (item: FeedItem) => void;
+}) {
+  const { menuRef, pos } = useClampedContextMenuPosition(state.x, state.y);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      }
+    };
+    const handleMouseDown = (event: MouseEvent) => {
+      if (menuRef.current?.contains(event.target as Node)) return;
+      onClose();
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+    document.addEventListener('mousedown', handleMouseDown, true);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true);
+      document.removeEventListener('mousedown', handleMouseDown, true);
+    };
+  }, [menuRef, onClose]);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [menuRef]);
+
+  return createPortal(
+    <div
+      ref={menuRef}
+      className="border-glass-border bg-bg-1 fixed z-50 min-w-48 rounded-md border py-1 shadow-lg"
+      style={{ top: pos.y, left: pos.x }}
+      role="menu"
+      aria-label="Pull request actions"
+    >
+      <button
+        role="menuitem"
+        tabIndex={-1}
+        onClick={() => {
+          onMarkLowPriority(state.item);
+          onClose();
+        }}
+        className="text-ink-1 hover:bg-glass-medium focus:bg-glass-medium flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors focus:outline-none"
+      >
+        <ChevronsDown className="h-3.5 w-3.5 shrink-0" />
+        Mark as very low priority
+      </button>
+    </div>,
+    document.body,
+  );
+}
 
 function FeedCard({
   item,
@@ -117,12 +204,16 @@ function HorizontalPrReviewStack({
   items,
   isItemSelected,
   onOpen,
+  onMarkLowPriority,
 }: {
   items: FeedItem[];
   isItemSelected: (item: FeedItem) => boolean;
   onOpen: (item: FeedItem) => void;
+  onMarkLowPriority: (item: FeedItem) => void;
 }) {
   const [focusedIndex, setFocusedIndex] = useState(0);
+  const [contextMenu, setContextMenu] =
+    useState<PrReviewContextMenuState>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
   const wheelGesture = useRef<{
     accumulated: number;
@@ -178,9 +269,41 @@ function HorizontalPrReviewStack({
     setFocusedIndex(maxIndex);
   }, [maxIndex]);
 
+  const handleContextMenu = useCallback(
+    (event: React.MouseEvent, item: FeedItem, index: number) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setFocusedIndex(index);
+      setContextMenu({ item, x: event.clientX, y: event.clientY });
+    },
+    [],
+  );
+
+  const handleContextMenuKeyDown = useCallback(
+    (event: React.KeyboardEvent, item: FeedItem, index: number) => {
+      if (
+        event.key !== 'ContextMenu' &&
+        !(event.shiftKey && event.key === 'F10')
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      setFocusedIndex(index);
+
+      const rect = event.currentTarget.getBoundingClientRect();
+      setContextMenu({
+        item,
+        x: rect.left + Math.min(rect.width - 8, 28),
+        y: rect.top + Math.min(rect.height - 8, 28),
+      });
+    },
+    [],
+  );
+
   const handleWheel = useCallback(
     (event: WheelEvent) => {
-      console.log(event.type, event.deltaX);
       const absDeltaX = Math.abs(event.deltaX);
       if (absDeltaX < 16 || absDeltaX < Math.abs(event.deltaY) * 1.25) return;
       event.preventDefault();
@@ -291,6 +414,8 @@ function HorizontalPrReviewStack({
             isSelected={isItemSelected(item)}
             onFocus={() => setFocusedIndex(index)}
             onOpen={() => onOpen(item)}
+            onContextMenu={(event) => handleContextMenu(event, item, index)}
+            onKeyDown={(event) => handleContextMenuKeyDown(event, item, index)}
           />
         ))}
       </div>
@@ -359,6 +484,13 @@ function HorizontalPrReviewStack({
         <span className="opacity-40">·</span>
         <span className="truncate">{focusedItem.projectName}</span>
       </div>
+      {contextMenu && (
+        <PrReviewContextMenu
+          state={contextMenu}
+          onClose={() => setContextMenu(null)}
+          onMarkLowPriority={onMarkLowPriority}
+        />
+      )}
     </section>
   );
 }
@@ -369,12 +501,16 @@ function PrReviewCarouselCard({
   isSelected,
   onFocus,
   onOpen,
+  onContextMenu,
+  onKeyDown,
 }: {
   item: FeedItem;
   position: number;
   isSelected: boolean;
   onFocus: () => void;
   onOpen: () => void;
+  onContextMenu: (event: React.MouseEvent) => void;
+  onKeyDown: (event: React.KeyboardEvent) => void;
 }) {
   const isCenter = position === 0;
   const isVisible = Math.abs(position) <= 2;
@@ -400,70 +536,80 @@ function PrReviewCarouselCard({
   if (!isVisible) return null;
 
   return (
-    <button
-      type="button"
-      onClick={() => {
-        if (isCenter) {
-          onOpen();
-        } else {
-          onFocus();
-        }
-      }}
+    <div
       className={clsx(
-        'bg-bg-1 border-line-soft absolute top-0 left-1/2 block w-[clamp(220px,85%,320px)] cursor-pointer rounded-md border py-2.5 pr-2.5 pl-3 text-left shadow-lg transition-[transform,opacity,box-shadow] duration-300 ease-out',
-        isSelected && 'ring-acc/60 ring-1',
+        'absolute top-0 left-1/2 w-[clamp(220px,85%,320px)] transition-[transform,opacity] duration-300 ease-out',
       )}
       style={{
-        borderLeft: `2px solid ${accent}`,
         transform: `translate(-50%, 0) translateX(${layout.translateX}) scale(${layout.scale})`,
         transformOrigin: 'center top',
         opacity: layout.opacity,
         zIndex: layout.zIndex,
-        boxShadow: isCenter
-          ? '0 12px 30px -14px oklch(0 0 0 / 0.75), inset 0 0 0 1px oklch(1 0 0 / 0.03)'
-          : undefined,
       }}
     >
-      <div className="mb-1.5 flex items-center gap-1.5">
-        <span className="bg-status-pr/15 text-status-pr inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wide">
-          <span className="bg-status-pr h-1.5 w-1.5 rounded-full" />
-          {stateLabel}
-        </span>
-        <span className="text-ink-3 ml-auto max-w-[76px] truncate font-mono text-[9.5px]">
-          {item.subtitle ?? item.ownerName ?? ''}
-        </span>
-      </div>
-      <div className="text-ink-0 mb-2 truncate text-[12.5px] leading-snug font-medium">
-        {item.title}
-      </div>
-      <div className="mb-2 flex items-center gap-1.5">
-        <span
-          className="h-2 w-2 shrink-0 rounded-full"
-          style={{ background: item.projectColor || 'var(--color-ink-4)' }}
-        />
-        <span className="text-ink-2 truncate text-[10.5px]">
-          {item.projectName}
-        </span>
-        <span className="text-status-pr bg-status-pr/10 border-status-pr/25 ml-auto inline-flex items-center gap-1 rounded border border-dashed px-1.5 py-0 font-mono text-[9.5px]">
-          <GitPullRequest className="h-2.5 w-2.5" />#{item.pullRequestId}
-        </span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <span className="text-ink-3 min-w-0 flex-1 truncate text-[10.5px]">
-          {item.hasNewActivity
-            ? 'New activity since last view'
-            : (item.activeThreadCount ?? 0) > 0
-              ? 'Threads need a look'
-              : 'Waiting for your review'}
-        </span>
-        {(item.activeThreadCount ?? 0) > 0 && (
-          <span className="text-status-pr flex items-center gap-0.5 font-mono text-[9.5px]">
-            <MessageSquare className="h-3 w-3" />
-            {item.activeThreadCount}
-          </span>
+      <button
+        type="button"
+        onClick={() => {
+          if (isCenter) {
+            onOpen();
+          } else {
+            onFocus();
+          }
+        }}
+        onContextMenu={onContextMenu}
+        onKeyDown={onKeyDown}
+        className={clsx(
+          'bg-bg-1 border-line-soft block w-full cursor-pointer rounded-md border py-2.5 pr-2.5 pl-3 text-left shadow-lg transition-[box-shadow] duration-300 ease-out',
+          isSelected && 'ring-acc/60 ring-1',
         )}
-      </div>
-    </button>
+        style={{
+          borderLeft: `2px solid ${accent}`,
+          boxShadow: isCenter
+            ? '0 12px 30px -14px oklch(0 0 0 / 0.75), inset 0 0 0 1px oklch(1 0 0 / 0.03)'
+            : undefined,
+        }}
+      >
+        <div className="mb-1.5 flex items-center gap-1.5">
+          <span className="bg-status-pr/15 text-status-pr inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wide">
+            <span className="bg-status-pr h-1.5 w-1.5 rounded-full" />
+            {stateLabel}
+          </span>
+          <span className="text-ink-3 ml-auto max-w-[76px] truncate font-mono text-[9.5px]">
+            {item.subtitle ?? item.ownerName ?? ''}
+          </span>
+        </div>
+        <div className="text-ink-0 mb-2 truncate text-[12.5px] leading-snug font-medium">
+          {item.title}
+        </div>
+        <div className="mb-2 flex items-center gap-1.5">
+          <span
+            className="h-2 w-2 shrink-0 rounded-full"
+            style={{ background: item.projectColor || 'var(--color-ink-4)' }}
+          />
+          <span className="text-ink-2 truncate text-[10.5px]">
+            {item.projectName}
+          </span>
+          <span className="text-status-pr bg-status-pr/10 border-status-pr/25 ml-auto inline-flex items-center gap-1 rounded border border-dashed px-1.5 py-0 font-mono text-[9.5px]">
+            <GitPullRequest className="h-2.5 w-2.5" />#{item.pullRequestId}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-ink-3 min-w-0 flex-1 truncate text-[10.5px]">
+            {item.hasNewActivity
+              ? 'New activity since last view'
+              : (item.activeThreadCount ?? 0) > 0
+                ? 'Threads need a look'
+                : 'Waiting for your review'}
+          </span>
+          {(item.activeThreadCount ?? 0) > 0 && (
+            <span className="text-status-pr flex items-center gap-0.5 font-mono text-[9.5px]">
+              <MessageSquare className="h-3 w-3" />
+              {item.activeThreadCount}
+            </span>
+          )}
+        </div>
+      </button>
+    </div>
   );
 }
 
@@ -507,6 +653,7 @@ export function FeedList() {
   const pin = useFeedStore((s) => s.pin);
   const unpin = useFeedStore((s) => s.unpin);
   const dismiss = useFeedStore((s) => s.dismiss);
+  const markLowPriority = useFeedStore((s) => s.markLowPriority);
   const toggleLowPriority = useFeedStore((s) => s.toggleLowPriority);
   const toggleProjectHidden = useFeedStore((s) => s.toggleProjectHidden);
   const clearHiddenProjects = useFeedStore((s) => s.clearHiddenProjects);
@@ -1073,6 +1220,7 @@ export function FeedList() {
           items={prReviewItems}
           isItemSelected={isItemSelected}
           onOpen={navigateToFeedItem}
+          onMarkLowPriority={(item) => markLowPriority(item.id)}
         />
       )}
 

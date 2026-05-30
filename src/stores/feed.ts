@@ -20,6 +20,7 @@ interface FeedOverridesState {
   reorderPinned: (orderedIds: string[]) => void;
   dismiss: (id: string) => void;
   undismiss: (id: string) => void;
+  markLowPriority: (id: string) => void;
   toggleLowPriority: (id: string) => void;
   toggleProjectHidden: (projectId: string) => void;
   clearHiddenProjects: () => void;
@@ -68,6 +69,12 @@ export const useFeedStore = create<FeedOverridesState>()(
         set((state) => ({
           dismissed: state.dismissed.filter((d) => d !== id),
         })),
+
+      markLowPriority: (id) =>
+        set((state) => {
+          if (state.lowPriority.includes(id)) return state;
+          return { lowPriority: [...state.lowPriority, id] };
+        }),
 
       toggleLowPriority: (id) =>
         set((state) => {
