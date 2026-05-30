@@ -38,6 +38,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('projects:uploadLogo', projectId, sourcePath),
     generateLogo: (projectId: string) =>
       ipcRenderer.invoke('projects:generateLogo', projectId),
+    regenerateSummary: (projectId: string) =>
+      ipcRenderer.invoke('projects:regenerateSummary', projectId),
     removeLogo: (projectId: string) =>
       ipcRenderer.invoke('projects:removeLogo', projectId),
     delete: (id: string) => ipcRenderer.invoke('projects:delete', id),
@@ -842,6 +844,22 @@ contextBridge.exposeInMainWorld('api', {
     generateContext: (params: { projectId: string }) =>
       ipcRenderer.invoke('completion:generateContext', params),
     getDailyUsage: () => ipcRenderer.invoke('completion:getDailyUsage'),
+  },
+  aiGeneration: {
+    saveSettings: (params: {
+      openAiApiKey: string;
+      openAiImageGenerationEnabled: boolean;
+      openAiImageModel: string;
+      openAiLogoPromptContext: string;
+    }) => ipcRenderer.invoke('aiGeneration:saveSettings', params),
+    saveBaseImage: (params: { sourcePath: string }) =>
+      ipcRenderer.invoke('aiGeneration:saveBaseImage', params),
+    listBaseImages: () => ipcRenderer.invoke('aiGeneration:listBaseImages'),
+    setBaseImageSelection: (params: {
+      mode: 'builtin' | 'custom';
+      builtinId?: string;
+    }) => ipcRenderer.invoke('aiGeneration:setBaseImageSelection', params),
+    removeBaseImage: () => ipcRenderer.invoke('aiGeneration:removeBaseImage'),
   },
   projectTodos: {
     list: (projectId: string) =>

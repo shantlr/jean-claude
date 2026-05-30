@@ -377,6 +377,7 @@ export interface Api {
     update: (id: string, data: UpdateProject) => Promise<Project>;
     uploadLogo: (projectId: string, sourcePath: string) => Promise<Project>;
     generateLogo: (projectId: string) => Promise<Project>;
+    regenerateSummary: (projectId: string) => Promise<Project>;
     removeLogo: (projectId: string) => Promise<Project>;
     delete: (id: string) => Promise<void>;
     deleteWorktreesFolder: (projectId: string) => Promise<void>;
@@ -1092,6 +1093,28 @@ export interface Api {
       outputCostUsd: number;
     }>;
   };
+  aiGeneration: {
+    saveSettings: (params: {
+      openAiApiKey: string;
+      openAiImageGenerationEnabled: boolean;
+      openAiImageModel: string;
+      openAiLogoPromptContext: string;
+    }) => Promise<void>;
+    saveBaseImage: (params: {
+      sourcePath: string;
+    }) => Promise<AppSettings['aiGeneration']>;
+    listBaseImages: () => Promise<{
+      mode: 'builtin' | 'custom';
+      builtinId: string;
+      custom: { name: string; dataUrl: string | null } | null;
+      builtin: { id: string; name: string; dataUrl: string }[];
+    }>;
+    setBaseImageSelection: (params: {
+      mode: 'builtin' | 'custom';
+      builtinId?: string;
+    }) => Promise<AppSettings['aiGeneration']>;
+    removeBaseImage: () => Promise<AppSettings['aiGeneration']>;
+  };
   projectTodos: {
     list: (projectId: string) => Promise<ProjectTodo[]>;
     count: (projectId: string) => Promise<{ count: number }>;
@@ -1372,6 +1395,9 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         generateLogo: async () => {
+          throw new Error('API not available');
+        },
+        regenerateSummary: async () => {
           throw new Error('API not available');
         },
         removeLogo: async () => {
@@ -1788,6 +1814,45 @@ export const api: Api = hasWindowApi
           costUsd: 0,
           inputCostUsd: 0,
           outputCostUsd: 0,
+        }),
+      },
+      aiGeneration: {
+        saveSettings: async () => {},
+        saveBaseImage: async () => ({
+          openAiApiKey: '',
+          openAiImageGenerationEnabled: false,
+          openAiImageModel: 'gpt-image-2',
+          openAiLogoPromptContext: '',
+          openAiBaseImageMode: 'builtin',
+          openAiBaseImageBuiltin: 'geometric-adventurers',
+          openAiBaseImagePath: null,
+          openAiBaseImageName: null,
+        }),
+        listBaseImages: async () => ({
+          mode: 'builtin',
+          builtinId: 'geometric-adventurers',
+          custom: null,
+          builtin: [],
+        }),
+        setBaseImageSelection: async () => ({
+          openAiApiKey: '',
+          openAiImageGenerationEnabled: false,
+          openAiImageModel: 'gpt-image-2',
+          openAiLogoPromptContext: '',
+          openAiBaseImageMode: 'builtin',
+          openAiBaseImageBuiltin: 'geometric-adventurers',
+          openAiBaseImagePath: null,
+          openAiBaseImageName: null,
+        }),
+        removeBaseImage: async () => ({
+          openAiApiKey: '',
+          openAiImageGenerationEnabled: false,
+          openAiImageModel: 'gpt-image-2',
+          openAiLogoPromptContext: '',
+          openAiBaseImageMode: 'builtin',
+          openAiBaseImageBuiltin: 'geometric-adventurers',
+          openAiBaseImagePath: null,
+          openAiBaseImageName: null,
         }),
       },
       projectTodos: {

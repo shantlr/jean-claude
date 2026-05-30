@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { api } from '@/lib/api';
 import { BUILTIN_SNIPPETS, BUILTIN_SNIPPET_IDS } from '@/lib/builtin-snippets';
 import type {
+  AiGenerationSetting,
   BackendModelPresetsSetting,
   AiSkillSlotsSetting,
   AppSettings,
@@ -267,6 +268,47 @@ export function useUpdateCalendarNotificationsSetting() {
 // Convenience hooks for AI skill slots setting
 export function useAiSkillSlotsSetting() {
   return useSetting('aiSkillSlots');
+}
+
+export function useAiGenerationSetting() {
+  return useSetting('aiGeneration');
+}
+
+export function useSaveAiGenerationSetting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: {
+      openAiApiKey: string;
+      openAiImageGenerationEnabled: boolean;
+      openAiImageModel: string;
+      openAiLogoPromptContext: string;
+    }) => api.aiGeneration.saveSettings(value),
+    onMutate: async (value) => {
+      const queryKey = ['settings', 'aiGeneration'] as const;
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<AiGenerationSetting>(queryKey);
+      queryClient.setQueryData(queryKey, (current: AiGenerationSetting) => ({
+        ...current,
+        openAiApiKey:
+          value.openAiApiKey.trim() || current?.openAiApiKey ? 'stored' : '',
+        openAiImageGenerationEnabled: value.openAiImageGenerationEnabled,
+        openAiImageModel: value.openAiImageModel,
+        openAiLogoPromptContext: value.openAiLogoPromptContext,
+      }));
+      return { previous };
+    },
+    onError: (_error, _value, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(
+          ['settings', 'aiGeneration'],
+          context.previous,
+        );
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings', 'aiGeneration'] });
+    },
+  });
 }
 
 export function useUpdateAiSkillSlotsSetting() {

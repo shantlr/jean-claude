@@ -11,6 +11,7 @@ export type BackgroundJobType =
   | 'pr-creation'
   | 'pr-review-creation'
   | 'summary-generation'
+  | 'project-summary-generation'
   | 'logo-generation'
   | 'verification-note'
   | 'task-deletion'
@@ -64,6 +65,12 @@ export type BackgroundJob =
       type: 'summary-generation';
       details: {
         taskName: string | null;
+      };
+    })
+  | (BackgroundJobBase & {
+      type: 'project-summary-generation';
+      details: {
+        projectName: string | null;
       };
     })
   | (BackgroundJobBase & {
@@ -156,6 +163,15 @@ type NewBackgroundJobInput =
       projectId?: string | null;
       details: {
         taskName: string | null;
+      };
+    }
+  | {
+      type: 'project-summary-generation';
+      title: string;
+      taskId?: string | null;
+      projectId?: string | null;
+      details: {
+        projectName: string | null;
       };
     }
   | {
@@ -352,6 +368,8 @@ export function bgJobLabel(type: BackgroundJobType): string {
       return 'Merging…';
     case 'summary-generation':
       return 'Generating summary…';
+    case 'project-summary-generation':
+      return 'Generating project summary…';
     case 'logo-generation':
       return 'Generating logo…';
     case 'verification-note':

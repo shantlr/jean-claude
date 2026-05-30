@@ -3,6 +3,12 @@
 
 import type { AgentBackendType, PromptImagePart } from './agent-backend-types';
 import type { ProjectPriority } from './feed-types';
+import {
+  DEFAULT_OPENAI_LOGO_BASE_IMAGE_ID,
+  isOpenAiLogoBaseImageId,
+  type OpenAiBaseImageMode,
+  type OpenAiLogoBaseImageId,
+} from './openai-logo-bases';
 import type { PermissionScope } from './permission-types';
 import type { UsageProviderType } from './usage-types';
 
@@ -209,6 +215,7 @@ export interface Project {
   defaultAgentBackend: AgentBackendType | null; // null = use global default
   defaultAgentModelPreference: ModelPreference | null;
   completionContext: string | null;
+  summary: string | null;
   aiSkillSlots: AiSkillSlotsSetting | null;
   protectedBranches: string[];
   favoriteBranches: string[];
@@ -243,6 +250,7 @@ export interface NewProject {
   defaultAgentBackend?: AgentBackendType | null;
   defaultAgentModelPreference?: ModelPreference | null;
   completionContext?: string | null;
+  summary?: string | null;
   aiSkillSlots?: AiSkillSlotsSetting | null;
   protectedBranches?: string[];
   favoriteBranches?: string[];
@@ -277,6 +285,7 @@ export interface UpdateProject {
   defaultAgentBackend?: AgentBackendType | null;
   defaultAgentModelPreference?: ModelPreference | null;
   completionContext?: string | null;
+  summary?: string | null;
   aiSkillSlots?: AiSkillSlotsSetting | null;
   protectedBranches?: string[];
   favoriteBranches?: string[];
@@ -636,12 +645,28 @@ export interface AiSkillSlotConfig {
   skillName: string | null; // null = built-in default prompt
 }
 
+export interface AiGenerationSetting {
+  openAiApiKey: string; // Stored encrypted
+  openAiImageGenerationEnabled?: boolean;
+  openAiImageModel?: string;
+  openAiLogoPromptContext?: string;
+  openAiBaseImageMode?: OpenAiBaseImageMode;
+  openAiBaseImageBuiltin?: OpenAiLogoBaseImageId;
+  openAiBaseImagePath?: string | null;
+  openAiBaseImageName?: string | null;
+}
+
+export function isOpenAiImageModel(model: string): boolean {
+  return model.trim().startsWith('gpt-image');
+}
+
 export type AiSkillSlotKey =
   | 'merge-commit-message'
   | 'commit-message'
   | 'pr-description'
   | 'task-name'
   | 'verification-note'
+  | 'project-summary'
   | 'logo-generation';
 export type AiSkillSlotsSetting = Partial<
   Record<AiSkillSlotKey, AiSkillSlotConfig>
@@ -673,6 +698,32 @@ function isCompletionSetting(v: unknown): v is CompletionSetting {
   if (typeof obj.model !== 'string') return false;
   if (typeof obj.serverUrl !== 'string') return false;
   return true;
+}
+
+function isAiGenerationSetting(v: unknown): v is AiGenerationSetting {
+  if (!v || typeof v !== 'object') return false;
+  const obj = v as Record<string, unknown>;
+  return (
+    typeof obj.openAiApiKey === 'string' &&
+    (obj.openAiImageGenerationEnabled === undefined ||
+      typeof obj.openAiImageGenerationEnabled === 'boolean') &&
+    (obj.openAiImageModel === undefined ||
+      (typeof obj.openAiImageModel === 'string' &&
+        isOpenAiImageModel(obj.openAiImageModel))) &&
+    (obj.openAiLogoPromptContext === undefined ||
+      typeof obj.openAiLogoPromptContext === 'string') &&
+    (obj.openAiBaseImageMode === undefined ||
+      obj.openAiBaseImageMode === 'builtin' ||
+      obj.openAiBaseImageMode === 'custom') &&
+    (obj.openAiBaseImageBuiltin === undefined ||
+      isOpenAiLogoBaseImageId(obj.openAiBaseImageBuiltin)) &&
+    (obj.openAiBaseImagePath === undefined ||
+      obj.openAiBaseImagePath === null ||
+      typeof obj.openAiBaseImagePath === 'string') &&
+    (obj.openAiBaseImageName === undefined ||
+      obj.openAiBaseImageName === null ||
+      typeof obj.openAiBaseImageName === 'string')
+  );
 }
 
 function isBackendsSetting(v: unknown): v is BackendsSetting {
@@ -815,6 +866,7 @@ const VALID_SLOT_KEYS: AiSkillSlotKey[] = [
   'pr-description',
   'task-name',
   'verification-note',
+  'project-summary',
   'logo-generation',
 ];
 
@@ -974,6 +1026,19 @@ export const SETTINGS_DEFINITIONS = {
   aiSkillSlots: {
     defaultValue: {} as AiSkillSlotsSetting,
     validate: isAiSkillSlotsSetting,
+  },
+  aiGeneration: {
+    defaultValue: {
+      openAiApiKey: '',
+      openAiImageGenerationEnabled: false,
+      openAiImageModel: 'gpt-image-2',
+      openAiLogoPromptContext: '',
+      openAiBaseImageMode: 'builtin',
+      openAiBaseImageBuiltin: DEFAULT_OPENAI_LOGO_BASE_IMAGE_ID,
+      openAiBaseImagePath: null,
+      openAiBaseImageName: null,
+    } as AiGenerationSetting,
+    validate: isAiGenerationSetting,
   },
   promptSnippets: {
     defaultValue: [] as PromptSnippetsSetting,

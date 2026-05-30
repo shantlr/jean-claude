@@ -4,32 +4,306 @@ import * as path from 'path';
 
 import { app } from 'electron';
 
-import type { AgentBackendType } from '@shared/agent-backend-types';
-import { getImageMimeType } from '@shared/image-types';
+import {
+  getImageMimeType,
+  getImageMimeTypeFromBytes,
+} from '@shared/image-types';
+import {
+  DEFAULT_OPENAI_LOGO_BASE_IMAGE_ID,
+  isOpenAiLogoBaseImageId,
+} from '@shared/openai-logo-bases';
+import { isOpenAiImageModel } from '@shared/types';
 
 import { ProjectRepository } from '../database/repositories/projects';
+import { SettingsRepository } from '../database/repositories/settings';
 import { dbg } from '../lib/debug';
 
-import { generateText } from './ai-generation-service';
-import { resolveAiSkillSlot } from './ai-skill-slot-resolver';
+import { getOpenAiBuiltinBaseImagePath } from './ai-generation-settings-service';
+import { encryptionService } from './encryption-service';
+import { generateProjectSummary } from './project-summary-generation-service';
 
 const MAX_LOGO_BYTES = 5 * 1024 * 1024;
 const LOGO_TIMEOUT_MS = 10 * 60 * 1000;
+const DEFAULT_IMAGE_MODEL = 'gpt-image-2';
 
-const LOGO_SCHEMA = {
-  type: 'object',
-  properties: {
-    svg: { type: 'string' },
-  },
-  required: ['svg'],
-} as const;
+function normalizeOpenAiImageModel(model: string | undefined): string {
+  const trimmed = model?.trim() || DEFAULT_IMAGE_MODEL;
+  if (!isOpenAiImageModel(trimmed)) {
+    throw new Error('OpenAI image model must be a GPT-image model');
+  }
+  return trimmed;
+}
 
-function buildLogoPrompt(project: {
+function buildLogoImagePrompt(project: {
   name: string;
   path: string;
   color: string;
+  logoPromptContext?: string | null;
 }): string {
-  return `Create a square SVG logo for this software project. The logo should feel like a distinctive app mascot/avatar, not a generic product mark.\n\nProject name: ${project.name}\nRepository path: ${project.path}\nBrand color: ${project.color}\n\nVisual direction:\n- Modern app mascot avatar: friendly character head or bust, simple vector shapes, memorable silhouette.\n- Readable at 24px: avoid tiny details, dense linework, and text-heavy marks.\n- Use the brand color as the primary color, with 2-4 supporting colors maximum.\n- Add 1-2 contextual accessories inferred from project name/path, but keep them subtle.\n- Prefer developer-tool personality: robot, helper, builder, explorer, terminal companion, or tiny app creature.\n- Do not copy Reddit, GitHub, Android, Apple, or any existing mascot. Make an original character.\n\nExample concepts to emulate in spirit, not copy:\n- A rounded robot head wearing tiny terminal goggles, with a small command prompt badge.\n- A helpful builder mascot with hard-hat-like top shape and small pipeline nodes around the head.\n- A browser-app avatar with a visor shaped like a tab bar and small sparkle pixels.\n- A mobile-app companion with soft antenna-like ears and a phone-screen chest badge.\n- An AI tooling mascot with a simple face, orbit dots, and one geometric neural accent.\n\nSVG requirements:\n- Return only JSON matching schema.\n- svg must be a complete standalone <svg>...</svg> string.\n- Use viewBox="0 0 512 512".\n- No scripts, external URLs, raster images, animation, or event handlers.\n- No text unless it is a tiny 1-2 letter badge derived from project initials.\n- Use accessible, clean SVG structure with basic shapes and paths.\n- Avoid generic initials-only monograms unless no better mascot idea fits.`;
+  const extraContext = project.logoPromptContext?.trim()
+    ? `\nAdditional user context:\n${project.logoPromptContext.trim()}\n`
+    : '';
+
+  return `Create one polished square app icon for this software project. Use the provided reference direction: friendly geometric adventurer mascot, cute project avatar, soft vector-like rendering, consistent dark outline, simple face, tiny contextual accessory.
+
+Project name: ${project.name}
+Repository path: ${project.path}
+Brand color: ${project.color}
+${extraContext}
+
+Style requirements:
+- Single centered mascot on transparent background.
+- Large geometric base body: rounded triangle, squircle, capsule, bean, circle, shield, or hexagon.
+- Two simple dark eyes, tiny warm smile, optional subtle cheek dots.
+- Use project brand color as main body color with 2-4 soft supporting pastel colors.
+- Add exactly 1-2 small role accessories inferred from project name/path: hard hat, goggles, cap, backpack, badge, wrench, chart, magnifier, terminal prompt, envelope, compass, antenna, rocket, or similar.
+- Consistent dark navy rounded outline. Soft gentle shading, small highlights, and optional soft oval ground shadow.
+- Body fills 65-80% of canvas. Clear and recognizable at 24px.
+- Cute, memorable, polished, cohesive icon-family look.
+
+Avoid:
+- Text, letters, corporate marks, monograms, abstract logos, complex scenes, tiny clutter, photorealism, sharp aggressive shapes, existing brand mascots, brand parody.`;
+}
+
+function getProjectShortSummary(project: {
+  name: string;
+  path: string;
+  summary?: string | null;
+}): string {
+  const summary = project.summary?.trim();
+  if (summary) return summary.slice(0, 600);
+  return `${project.name} (${project.path})`;
+}
+
+function buildLogoImageEditPrompt(project: {
+  name: string;
+  path: string;
+  color: string;
+  summary?: string | null;
+  logoPromptContext?: string | null;
+}): string {
+  const extraContext = project.logoPromptContext?.trim()
+    ? `\nAdditional user context: ${project.logoPromptContext.trim()}\n`
+    : '';
+
+  return `Create one polished square app icon for this software project.
+
+Project name: ${project.name}
+Brand color: ${project.color}
+Project summary: ${getProjectShortSummary(project)}
+${extraContext}
+
+Follow the original image's visual instructions and art direction. Use it as a style, composition, and quality reference for a new original app icon. Do not copy any exact identity, text, or trademarked elements from the reference image.`;
+}
+
+async function getOpenAiLogoConfig(): Promise<{
+  apiKey: string;
+  model: string;
+  baseImagePath: string | null;
+  baseImageName: string | null;
+  logoPromptContext: string | null;
+}> {
+  const setting = await SettingsRepository.get('aiGeneration');
+  if (!setting.openAiImageGenerationEnabled) {
+    throw new Error('OpenAI image generation is disabled');
+  }
+  const model = normalizeOpenAiImageModel(setting.openAiImageModel);
+
+  if (setting.openAiApiKey) {
+    try {
+      const decrypted = encryptionService.decrypt(setting.openAiApiKey).trim();
+      if (decrypted) {
+        return {
+          apiKey: decrypted,
+          model,
+          ...(await getSelectedBaseImage(setting)),
+          logoPromptContext: setting.openAiLogoPromptContext ?? null,
+        };
+      }
+    } catch (error) {
+      dbg.agent('Failed to decrypt OpenAI API key setting: %O', error);
+      throw new Error('Failed to read saved OpenAI API key');
+    }
+  }
+
+  throw new Error('OpenAI API key is required to generate project logos');
+}
+
+async function getSelectedBaseImage(setting: {
+  openAiBaseImageMode?: 'builtin' | 'custom';
+  openAiBaseImageBuiltin?: string;
+  openAiBaseImagePath?: string | null;
+  openAiBaseImageName?: string | null;
+}): Promise<{ baseImagePath: string | null; baseImageName: string | null }> {
+  if (
+    (setting.openAiBaseImageMode ??
+      (setting.openAiBaseImagePath ? 'custom' : 'builtin')) === 'custom' &&
+    setting.openAiBaseImagePath
+  ) {
+    return {
+      baseImagePath: setting.openAiBaseImagePath,
+      baseImageName: setting.openAiBaseImageName ?? 'Custom base image',
+    };
+  }
+
+  const builtinId = isOpenAiLogoBaseImageId(setting.openAiBaseImageBuiltin)
+    ? setting.openAiBaseImageBuiltin
+    : DEFAULT_OPENAI_LOGO_BASE_IMAGE_ID;
+  const filePath = getOpenAiBuiltinBaseImagePath(builtinId);
+
+  try {
+    await fs.access(filePath);
+    return { baseImagePath: filePath, baseImageName: 'Base image reference' };
+  } catch {
+    return { baseImagePath: null, baseImageName: null };
+  }
+}
+
+async function buildOpenAiImageEditBody({
+  config,
+  project,
+}: {
+  config: {
+    model: string;
+    baseImagePath: string;
+    baseImageName: string | null;
+  };
+  project: {
+    name: string;
+    path: string;
+    color: string;
+    summary?: string | null;
+    logoPromptContext?: string | null;
+  };
+}): Promise<FormData> {
+  const buffer = await fs.readFile(config.baseImagePath);
+  const mimeType =
+    getImageMimeTypeFromBytes(buffer) ?? getImageMimeType(config.baseImagePath);
+  if (!mimeType) throw new Error('Unsupported OpenAI base image file type');
+  const formData = new FormData();
+  formData.append('model', config.model);
+  formData.append('prompt', buildLogoImageEditPrompt(project));
+  formData.append(
+    'image',
+    new Blob([buffer], { type: mimeType }),
+    config.baseImageName ?? path.basename(config.baseImagePath),
+  );
+  return formData;
+}
+
+function extractGeneratedImage(value: unknown): Buffer | null {
+  if (!value || typeof value !== 'object') return null;
+  const data = (value as { data?: unknown }).data;
+  if (!Array.isArray(data) || data.length === 0) return null;
+  const first = data[0];
+  if (!first || typeof first !== 'object') return null;
+  const b64Json = (first as { b64_json?: unknown }).b64_json;
+  if (typeof b64Json !== 'string' || b64Json.length === 0) return null;
+  return Buffer.from(b64Json, 'base64');
+}
+
+async function readOpenAiError(response: Response): Promise<string> {
+  try {
+    const body = await response.json();
+    const message = (body as { error?: { message?: unknown } }).error?.message;
+    if (typeof message === 'string' && message.trim()) return message.trim();
+    return JSON.stringify(body);
+  } catch {
+    try {
+      return await response.text();
+    } catch {
+      return response.statusText;
+    }
+  }
+}
+
+async function generateLogoImage({
+  config,
+  project,
+}: {
+  config: Awaited<ReturnType<typeof getOpenAiLogoConfig>>;
+  project: {
+    name: string;
+    path: string;
+    color: string;
+    summary?: string | null;
+    logoPromptContext?: string | null;
+  };
+}): Promise<Buffer> {
+  const abortController = new AbortController();
+  const timeout = setTimeout(() => abortController.abort(), LOGO_TIMEOUT_MS);
+
+  try {
+    const request: {
+      url: string;
+      headers: Record<string, string>;
+      body: string | FormData;
+    } = config.baseImagePath
+      ? {
+          url: 'https://api.openai.com/v1/images/edits',
+          headers: { Authorization: `Bearer ${config.apiKey}` },
+          body: await buildOpenAiImageEditBody({
+            config: {
+              model: config.model,
+              baseImagePath: config.baseImagePath,
+              baseImageName: config.baseImageName,
+            },
+            project: {
+              ...project,
+              logoPromptContext: config.logoPromptContext,
+            },
+          }),
+        }
+      : {
+          url: 'https://api.openai.com/v1/images/generations',
+          headers: {
+            Authorization: `Bearer ${config.apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: config.model,
+            prompt: buildLogoImagePrompt({
+              ...project,
+              logoPromptContext: config.logoPromptContext,
+            }),
+          }),
+        };
+
+    const response = await fetch(request.url, {
+      method: 'POST',
+      headers: request.headers,
+      body: request.body,
+      signal: abortController.signal,
+    });
+
+    if (!response.ok) {
+      const errorMessage = await readOpenAiError(response);
+      dbg.agent(
+        'OpenAI logo image generation failed: %d %s: %s',
+        response.status,
+        response.statusText,
+        errorMessage,
+      );
+      throw new Error(
+        `OpenAI image generation failed (${response.status} ${response.statusText}): ${errorMessage}`,
+      );
+    }
+
+    const image = extractGeneratedImage(await response.json());
+    if (!image) {
+      throw new Error('OpenAI image generation returned no image');
+    }
+    if (getImageMimeTypeFromBytes(image) !== 'image/png') {
+      throw new Error('OpenAI image generation did not return a PNG image');
+    }
+    return image;
+  } catch (error) {
+    dbg.agent('OpenAI logo image generation failed: %O', error);
+    if (error instanceof Error) throw error;
+    throw new Error('OpenAI image generation failed');
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function getLogosDir(): string {
@@ -63,16 +337,6 @@ async function removeOldLogo(logoPath: string | null | undefined) {
   } catch {
     // Best effort cleanup; stale logo files are harmless.
   }
-}
-
-function extractSvg(value: unknown): string | null {
-  if (!value || typeof value !== 'object' || !('svg' in value)) return null;
-  const svg = (value as { svg: unknown }).svg;
-  if (typeof svg !== 'string') return null;
-  const trimmed = svg.trim();
-  if (!trimmed.startsWith('<svg') || !trimmed.endsWith('</svg>')) return null;
-  if (/<script\b/i.test(trimmed) || /\bon\w+=/i.test(trimmed)) return null;
-  return trimmed;
 }
 
 export async function uploadProjectLogo({
@@ -114,42 +378,23 @@ export async function uploadProjectLogo({
 }
 
 export async function generateProjectLogo(projectId: string) {
-  const project = await ProjectRepository.findById(projectId);
+  let project = await ProjectRepository.findById(projectId);
   if (!project) throw new Error('Project not found');
+  const config = await getOpenAiLogoConfig();
 
-  const slotConfig = await resolveAiSkillSlot(
-    'logo-generation',
-    project.aiSkillSlots,
-  );
-  const backend: AgentBackendType =
-    slotConfig?.backend ??
-    (project.defaultAgentBackend === 'opencode' ? 'opencode' : 'claude-code');
-  const model =
-    slotConfig?.model ??
-    (project.defaultAgentModelPreference &&
-    project.defaultAgentModelPreference !== 'default'
-      ? project.defaultAgentModelPreference
-      : 'haiku');
-  const skillName = slotConfig?.skillName ?? undefined;
-  const result = await generateText({
-    backend,
-    model,
-    skillName,
-    outputSchema: LOGO_SCHEMA,
-    timeoutMs: LOGO_TIMEOUT_MS,
-    prompt: buildLogoPrompt(project),
-  });
-
-  const svg = extractSvg(result);
-  if (!svg) {
-    dbg.agent('Failed to generate project logo: invalid SVG result');
-    throw new Error('Failed to generate logo');
+  if (!project.summary?.trim()) {
+    const summary = await generateProjectSummary({ project });
+    if (!summary) {
+      throw new Error('Project summary is required to generate project logos');
+    }
+    project = await ProjectRepository.update(projectId, { summary });
   }
 
+  const image = await generateLogoImage({ config, project });
   const logoPath = await writeLogoFile({
     projectId,
-    extension: '.svg',
-    content: svg,
+    extension: '.png',
+    content: image,
   });
   try {
     const updatedProject = await ProjectRepository.update(projectId, {

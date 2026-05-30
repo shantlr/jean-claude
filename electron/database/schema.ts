@@ -96,6 +96,7 @@ export interface ProjectTable {
   defaultAgentBackend: string | null;
   defaultAgentModelPreference: string | null;
   completionContext: string | null;
+  summary: string | null;
   aiSkillSlots: string | null; // JSON text
   protectedBranches: string | null; // JSON array of branch names
   favoriteBranches: string | null; // JSON array of branch names

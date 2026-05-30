@@ -42,6 +42,7 @@ import {
   PRESET_EDITORS,
   type InteractionMode,
   type ThinkingEffort,
+  type AiGenerationSetting,
   type EditorSetting,
   type AppSettings,
   type NewToken,
@@ -54,6 +55,7 @@ import {
   isAiSkillSlotsSetting,
   type ReviewerConfig,
   type ReviewStepMeta,
+  isOpenAiImageModel,
 } from '@shared/types';
 import type { UsageProviderType } from '@shared/usage-types';
 import type { CreateWorkItemVerificationNoteParams } from '@shared/work-item-verification-note-types';
@@ -101,6 +103,12 @@ import {
 } from '../services/agent-management-service';
 import { agentService } from '../services/agent-service';
 import { agentUsageService } from '../services/agent-usage-service';
+import {
+  listOpenAiBaseImageOptions,
+  removeOpenAiBaseImage,
+  saveOpenAiBaseImage,
+  setOpenAiBaseImageSelection,
+} from '../services/ai-generation-settings-service';
 import {
   getOrganizationsByTokenId,
   validateTokenAndGetOrganizations,
@@ -214,6 +222,7 @@ import {
   removeProjectLogo,
   uploadProjectLogo,
 } from '../services/project-logo-service';
+import { regenerateProjectSummary } from '../services/project-summary-generation-service';
 import { runReloadPreviewCommand } from '../services/reload-preview-service';
 import { runCommandService } from '../services/run-command-service';
 import {
@@ -265,6 +274,15 @@ import {
   pushBranch,
   deleteProjectWorktreesFolder,
 } from '../services/worktree-service';
+
+function redactAiGenerationSetting(
+  setting: AiGenerationSetting,
+): AiGenerationSetting {
+  return {
+    ...setting,
+    openAiApiKey: setting.openAiApiKey ? 'stored' : '',
+  };
+}
 
 const execAsync = promisify(exec);
 
@@ -518,6 +536,10 @@ export function registerIpcHandlers() {
     invalidatePrCache();
     invalidateWorkItemCache();
     return result;
+  });
+  ipcMain.handle('projects:regenerateSummary', async (_, projectId: string) => {
+    dbg.ipc('projects:regenerateSummary %s', projectId);
+    return regenerateProjectSummary(projectId);
   });
   ipcMain.handle('projects:detectLogos', (_, projectPath: string) => {
     dbg.ipc('projects:detectLogos %s', projectPath);
@@ -2991,13 +3013,26 @@ export function registerIpcHandlers() {
   // Settings
   ipcMain.handle(
     'settings:get',
-    <K extends keyof AppSettings>(_: unknown, key: K) =>
-      SettingsRepository.get(key),
+    async <K extends keyof AppSettings>(_: unknown, key: K) => {
+      const value = await SettingsRepository.get(key);
+      if (key === 'aiGeneration') {
+        return redactAiGenerationSetting(value as AiGenerationSetting);
+      }
+      return value;
+    },
   );
   ipcMain.handle(
     'settings:set',
-    <K extends keyof AppSettings>(_: unknown, key: K, value: AppSettings[K]) =>
-      SettingsRepository.set(key, value),
+    <K extends keyof AppSettings>(
+      _: unknown,
+      key: K,
+      value: AppSettings[K],
+    ) => {
+      if (key === 'aiGeneration') {
+        throw new Error('Use aiGeneration:saveSettings for OpenAI settings');
+      }
+      return SettingsRepository.set(key, value);
+    },
   );
 
   // Shell
@@ -3824,6 +3859,78 @@ export function registerIpcHandlers() {
     }
     dbg.ipc('completion:getDailyUsage');
     return getCompletionDailyUsage();
+  });
+
+  ipcMain.handle(
+    'aiGeneration:saveSettings',
+    async (
+      _,
+      params: {
+        openAiApiKey: string;
+        openAiImageGenerationEnabled: boolean;
+        openAiImageModel: string;
+        openAiLogoPromptContext: string;
+      },
+    ) => {
+      dbg.ipc(
+        'aiGeneration:saveSettings hasNewOpenAiKey=%s imageModel=%s',
+        !!params.openAiApiKey,
+        params.openAiImageModel,
+      );
+
+      const existing = await SettingsRepository.get('aiGeneration');
+      let encryptedOpenAiApiKey: string;
+      if (params.openAiApiKey) {
+        const { encryptionService } =
+          await import('../services/encryption-service');
+        encryptedOpenAiApiKey = encryptionService.encrypt(params.openAiApiKey);
+      } else {
+        encryptedOpenAiApiKey = existing.openAiApiKey;
+      }
+
+      const openAiImageModel = params.openAiImageModel.trim() || 'gpt-image-2';
+      if (!isOpenAiImageModel(openAiImageModel)) {
+        throw new Error('OpenAI image model must be a GPT-image model');
+      }
+
+      await SettingsRepository.set('aiGeneration', {
+        ...existing,
+        openAiApiKey: encryptedOpenAiApiKey,
+        openAiImageGenerationEnabled: params.openAiImageGenerationEnabled,
+        openAiImageModel,
+        openAiLogoPromptContext: params.openAiLogoPromptContext,
+      });
+    },
+  );
+
+  ipcMain.handle(
+    'aiGeneration:saveBaseImage',
+    async (_, params: { sourcePath: string }) => {
+      dbg.ipc('aiGeneration:saveBaseImage %s', params.sourcePath);
+      return redactAiGenerationSetting(
+        await saveOpenAiBaseImage(params.sourcePath),
+      );
+    },
+  );
+
+  ipcMain.handle('aiGeneration:listBaseImages', async () => {
+    dbg.ipc('aiGeneration:listBaseImages');
+    return listOpenAiBaseImageOptions();
+  });
+
+  ipcMain.handle(
+    'aiGeneration:setBaseImageSelection',
+    async (_, params: { mode: 'builtin' | 'custom'; builtinId?: string }) => {
+      dbg.ipc('aiGeneration:setBaseImageSelection %o', params);
+      return redactAiGenerationSetting(
+        await setOpenAiBaseImageSelection(params),
+      );
+    },
+  );
+
+  ipcMain.handle('aiGeneration:removeBaseImage', async () => {
+    dbg.ipc('aiGeneration:removeBaseImage');
+    return redactAiGenerationSetting(await removeOpenAiBaseImage());
   });
 
   // Project Todos

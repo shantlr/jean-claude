@@ -79,6 +79,19 @@ export function useGenerateProjectLogo() {
   });
 }
 
+export function useRegenerateProjectSummary() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (projectId: string) =>
+      api.projects.regenerateSummary(projectId),
+    onSuccess: (_, projectId) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+    },
+  });
+}
+
 export function useRemoveProjectLogo() {
   const queryClient = useQueryClient();
   return useMutation({

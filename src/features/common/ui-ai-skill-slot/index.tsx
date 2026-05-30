@@ -47,10 +47,10 @@ export const SLOT_DEFINITIONS: {
       'Generate named work item verification checklists from selected work items and test cases',
   },
   {
-    key: 'logo-generation',
-    label: 'Project Logo',
+    key: 'project-summary',
+    label: 'Project Summary',
     description:
-      'Generate SVG project logos from project metadata and brand color',
+      'Generate short project summaries used as context for project logo generation',
   },
 ];
 

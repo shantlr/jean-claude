@@ -105,6 +105,14 @@
       {
         "from": "out/main/jean-claude-mcp-server.js",
         "to": "mcp/jean-claude-mcp-server.js"
+      },
+      {
+        "from": "resources/assets/default-logo-base.png",
+        "to": "assets/default-logo-base.png"
+      },
+      {
+        "from": "resources/assets/logo-base-cozy-adventurers.png",
+        "to": "assets/logo-base-cozy-adventurers.png"
       }
     ],
     "mac": {

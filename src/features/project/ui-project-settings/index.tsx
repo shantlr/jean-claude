@@ -1,6 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import isEqual from 'lodash-es/isEqual';
-import { FolderOpen, ImagePlus, Sparkles, Trash2, X } from 'lucide-react';
+import {
+  FolderOpen,
+  ImagePlus,
+  RefreshCw,
+  Sparkles,
+  Trash2,
+  X,
+} from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -12,6 +19,7 @@ import {
 
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { Button } from '@/common/ui/button';
+import { ImagePreviewModal } from '@/common/ui/image-preview-modal';
 import { Input } from '@/common/ui/input';
 import {
   ListDetailLayout,
@@ -47,10 +55,12 @@ import {
   useDeleteProject,
   useDeleteProjectWorktreesFolder,
   useGenerateProjectLogo,
+  useRegenerateProjectSummary,
   useRemoveProjectLogo,
   useUploadProjectLogo,
 } from '@/hooks/use-projects';
 import {
+  useAiGenerationSetting,
   useBackendModelPresetsSetting,
   useBackendsSetting,
 } from '@/hooks/use-settings';
@@ -106,6 +116,7 @@ export function ProjectSettings({
   const { mutateAsync: updateProject } = useUpdateProject();
   const uploadProjectLogo = useUploadProjectLogo();
   const generateProjectLogo = useGenerateProjectLogo();
+  const regenerateProjectSummary = useRegenerateProjectSummary();
   const removeProjectLogo = useRemoveProjectLogo();
   const deleteProject = useDeleteProject();
   const deleteWorktreesFolder = useDeleteProjectWorktreesFolder();
@@ -126,6 +137,12 @@ export function ProjectSettings({
     queryFn: () => api.projects.detectLogos(project?.path ?? ''),
     enabled: !!project?.path,
   });
+  const { data: logoPreviewDataUrl } = useQuery({
+    queryKey: ['project-logo-preview', project?.logoPath],
+    queryFn: () => api.fs.readImageAsDataUrl(project?.logoPath ?? ''),
+    enabled: !!project?.logoPath,
+    staleTime: Infinity,
+  });
 
   const [name, setName] = useState('');
   const [path, setPath] = useState('');
@@ -141,6 +158,7 @@ export function ProjectSettings({
   const [worktreesPath, setWorktreesPath] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [completionContext, setCompletionContext] = useState('');
+  const [summary, setSummary] = useState('');
   const [prPriority, setPrPriority] = useState<ProjectPriority>('normal');
   const [workItemPriority, setWorkItemPriority] =
     useState<ProjectPriority>('normal');
@@ -150,11 +168,16 @@ export function ProjectSettings({
   const [protectedBranches, setProtectedBranches] = useState<string[]>([]);
   const [favoriteBranches, setFavoriteBranches] = useState<string[]>([]);
   const [isGeneratingContext, setIsGeneratingContext] = useState(false);
+  const [isLogoPreviewOpen, setIsLogoPreviewOpen] = useState(false);
   const initializedProjectIdRef = useRef<string | null>(null);
 
   const { data: backendsSetting } = useBackendsSetting();
+  const { data: aiGenerationSetting } = useAiGenerationSetting();
   const { data: backendModelPresets = [] } = useBackendModelPresetsSetting();
   const enabledBackends = useEnabledBackends();
+  const canGenerateLogoWithOpenAi =
+    !!aiGenerationSetting?.openAiApiKey &&
+    aiGenerationSetting.openAiImageGenerationEnabled === true;
 
   const projectData = useMemo(() => {
     if (!project) return null;
@@ -169,6 +192,7 @@ export function ProjectSettings({
       prPriority: project.prPriority ?? 'normal',
       workItemPriority: project.workItemPriority ?? 'normal',
       completionContext: project.completionContext ?? null,
+      summary: project.summary ?? null,
       worktreesPath: project.worktreesPath ?? null,
       protectedBranches: project.protectedBranches ?? [],
       favoriteBranches: project.favoriteBranches ?? [],
@@ -187,6 +211,7 @@ export function ProjectSettings({
       prPriority,
       workItemPriority,
       completionContext: completionContext || null,
+      summary: summary || null,
       worktreesPath: worktreesPath || null,
       protectedBranches,
       favoriteBranches,
@@ -204,6 +229,7 @@ export function ProjectSettings({
       path,
       prPriority,
       protectedBranches,
+      summary,
       workItemPriority,
       worktreesPath,
     ],
@@ -241,6 +267,7 @@ export function ProjectSettings({
       setPrPriority(project.prPriority ?? 'normal');
       setWorkItemPriority(project.workItemPriority ?? 'normal');
       setCompletionContext(project.completionContext ?? '');
+      setSummary(project.summary ?? '');
       setWorktreesPath(project.worktreesPath ?? '');
       setProtectedBranches(project.protectedBranches ?? []);
       setFavoriteBranches(project.favoriteBranches ?? []);
@@ -334,6 +361,39 @@ export function ProjectSettings({
     } finally {
       setIsGeneratingContext(false);
     }
+  }
+
+  function handleRegenerateSummary() {
+    if (!project) return;
+
+    const jobId = addRunningJob({
+      type: 'project-summary-generation',
+      title: `Regenerating summary for ${project.name}`,
+      projectId,
+      details: {
+        projectName: project.name,
+      },
+    });
+
+    void triggerAnimation();
+
+    void regenerateProjectSummary
+      .mutateAsync(projectId)
+      .then((updatedProject) => {
+        setSummary(updatedProject.summary ?? '');
+        markJobSucceeded(jobId, { projectId });
+      })
+      .catch((error: unknown) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Failed to regenerate project summary.';
+        markJobFailed(jobId, message);
+        addToast({
+          message,
+          type: 'error',
+        });
+      });
   }
 
   async function handleUploadLogo() {
@@ -453,11 +513,50 @@ export function ProjectSettings({
           </div>
 
           <div>
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <label className="text-ink-1 block text-sm font-medium">
+                Summary
+              </label>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleRegenerateSummary}
+                disabled={regenerateProjectSummary.isPending}
+                loading={regenerateProjectSummary.isPending}
+                icon={<RefreshCw />}
+              >
+                {regenerateProjectSummary.isPending
+                  ? 'Regenerating...'
+                  : 'Regenerate'}
+              </Button>
+            </div>
+            <Textarea
+              size="md"
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              placeholder="Short project summary used as context for generated app icons"
+              rows={3}
+            />
+            <p className="text-ink-3 mt-1 text-xs">
+              Used as context for generated project logos. You can edit it
+              manually or regenerate it using AI generation settings.
+            </p>
+          </div>
+
+          <div>
             <label className="text-ink-1 mb-1 block text-sm font-medium">
               Logo
             </label>
             <div className="border-glass-border bg-glass-light flex flex-col gap-4 rounded-xl border p-4 sm:flex-row sm:items-center">
-              <ProjectLogo project={{ ...project, color }} size="lg" />
+              <button
+                type="button"
+                className="rounded-xl transition-transform hover:scale-105 disabled:hover:scale-100"
+                onClick={() => setIsLogoPreviewOpen(true)}
+                disabled={!logoPreviewDataUrl}
+                aria-label="Preview project logo"
+              >
+                <ProjectLogo project={{ ...project, color }} size="lg" />
+              </button>
               <div className="min-w-0 flex-1">
                 <p className="text-ink-1 text-sm font-medium">
                   {project.logoPath
@@ -485,7 +584,9 @@ export function ProjectSettings({
                   variant="secondary"
                   size="sm"
                   onClick={handleGenerateLogo}
-                  disabled={generateProjectLogo.isPending}
+                  disabled={
+                    generateProjectLogo.isPending || !canGenerateLogoWithOpenAi
+                  }
                   icon={<Sparkles />}
                 >
                   {generateProjectLogo.isPending ? 'Generating...' : 'Generate'}
@@ -503,6 +604,12 @@ export function ProjectSettings({
                 )}
               </div>
             </div>
+            {!canGenerateLogoWithOpenAi && (
+              <p className="text-ink-3 mt-2 text-xs">
+                Enable GPT-image project logos with a saved OpenAI API key in AI
+                Generation settings to generate logos.
+              </p>
+            )}
             {detectedLogos.length > 0 && (
               <div className="mt-3">
                 <p className="text-ink-3 mb-2 text-xs">
@@ -826,6 +933,12 @@ export function ProjectSettings({
       }
     >
       {content}
+      <ImagePreviewModal
+        isOpen={isLogoPreviewOpen}
+        title={`${project.name} logo`}
+        imageUrl={logoPreviewDataUrl ?? null}
+        onClose={() => setIsLogoPreviewOpen(false)}
+      />
     </div>
   );
 }
