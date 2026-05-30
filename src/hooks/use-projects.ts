@@ -34,6 +34,13 @@ export function useUpdateProject() {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['projects', id] });
+      queryClient.invalidateQueries({
+        queryKey: ['project-is-git-repository', id],
+      });
+      queryClient.invalidateQueries({ queryKey: ['project-branches', id] });
+      queryClient.invalidateQueries({
+        queryKey: ['project-current-branch', id],
+      });
       queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
     },
   });
@@ -43,8 +50,11 @@ export function useDeleteProject() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.projects.delete(id),
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({
+        queryKey: ['project-is-git-repository', id],
+      });
       queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
     },
   });
@@ -120,5 +130,17 @@ export function useProjectCurrentBranch(projectId: string | null) {
     enabled: !!projectId,
     refetchInterval: 5000, // Auto-refresh every 5 seconds
     staleTime: 2000, // Consider stale after 2 seconds
+  });
+}
+
+export function useProjectIsGitRepository(projectId: string | null) {
+  return useQuery({
+    queryKey: ['project-is-git-repository', projectId],
+    queryFn: () => {
+      if (!projectId) return false;
+      return api.projects.isGitRepository(projectId);
+    },
+    enabled: !!projectId,
+    staleTime: 30000,
   });
 }

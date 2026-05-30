@@ -243,6 +243,7 @@ import {
   getProjectBranches,
   getCurrentBranch,
   getCurrentCommitHash,
+  isGitRepository,
   getWorktreeStatus,
   commitWorktreeChanges,
   cleanupWorktree,
@@ -454,6 +455,13 @@ export function registerIpcHandlers() {
       throw new Error(`Project ${projectId} not found`);
     }
     return getCurrentBranch(project.path);
+  });
+  ipcMain.handle('projects:isGitRepository', async (_, projectId: string) => {
+    const project = await ProjectRepository.findById(projectId);
+    if (!project) {
+      throw new Error(`Project ${projectId} not found`);
+    }
+    return isGitRepository(project.path);
   });
   ipcMain.handle('projects:getSkills', async (_, projectId: string) => {
     const project = await ProjectRepository.findById(projectId);

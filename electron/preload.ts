@@ -43,6 +43,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('projects:getBranches', projectId),
     getCurrentBranch: (projectId: string) =>
       ipcRenderer.invoke('projects:getCurrentBranch', projectId),
+    isGitRepository: (projectId: string) =>
+      ipcRenderer.invoke('projects:isGitRepository', projectId),
     getDetected: () => ipcRenderer.invoke('projects:getDetected'),
     getSkills: (projectId: string) =>
       ipcRenderer.invoke('projects:getSkills', projectId),

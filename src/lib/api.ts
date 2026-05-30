@@ -379,6 +379,7 @@ export interface Api {
     reorder: (orderedIds: string[]) => Promise<Project[]>;
     getBranches: (projectId: string) => Promise<BranchInfo[]>;
     getCurrentBranch: (projectId: string) => Promise<string>;
+    isGitRepository: (projectId: string) => Promise<boolean>;
     getDetected: () => Promise<DetectedProject[]>;
     getSkills: (projectId: string) => Promise<Skill[]>;
   };
@@ -1354,6 +1355,7 @@ export const api: Api = hasWindowApi
         reorder: async () => [],
         getBranches: async () => [],
         getCurrentBranch: async () => '',
+        isGitRepository: async () => false,
         getDetected: async () => [],
         getSkills: async () => [],
       },

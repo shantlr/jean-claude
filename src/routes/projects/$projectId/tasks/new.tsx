@@ -16,7 +16,11 @@ import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
 import { WorkItemsBrowser } from '@/features/agent/ui-work-items-browser';
 import { PromptTextarea } from '@/features/common/ui-prompt-textarea';
 import { useBackendModels } from '@/hooks/use-backend-models';
-import { useProject, useProjectBranches } from '@/hooks/use-projects';
+import {
+  useProject,
+  useProjectBranches,
+  useProjectIsGitRepository,
+} from '@/hooks/use-projects';
 import {
   useBackendModelPresetsSetting,
   useBackendsSetting,
@@ -44,8 +48,14 @@ function NewTask() {
   const navigate = useNavigate();
   const createTask = useCreateTaskWithWorktree();
   const { data: project } = useProject(projectId);
-  const { data: branchInfos = [], isLoading: branchesLoading } =
-    useProjectBranches(projectId);
+  const { data: isGitRepository = false, isFetching: isGitRepositoryFetching } =
+    useProjectIsGitRepository(projectId);
+  const canUseWorktree = isGitRepository;
+  const {
+    data: branchInfos = [],
+    isLoading: branchesLoading,
+    isFetching: branchesFetching,
+  } = useProjectBranches(canUseWorktree ? projectId : null);
   const branches = useMemo(() => branchInfos.map((b) => b.name), [branchInfos]);
   const { data: skills = [] } = useProjectSkills(projectId);
 
@@ -172,10 +182,16 @@ function NewTask() {
   // Determine the effective source branch (draft value or project default)
   const effectiveSourceBranch =
     sourceBranch ?? project?.defaultBranch ?? branches[0] ?? null;
+  const isWorktreeDataFetching =
+    isGitRepositoryFetching ||
+    (canUseWorktree && useWorktree && branchesFetching);
 
   async function handleCreateTask(shouldStart: boolean) {
+    if (isWorktreeDataFetching) return;
+
     // Pass null if name is empty - will trigger auto-generation when agent starts
     const taskName = name.trim() || null;
+    const shouldUseWorktree = canUseWorktree && useWorktree;
 
     const task = await createTask.mutateAsync({
       id: nanoid(),
@@ -187,11 +203,11 @@ function NewTask() {
       modelPreference,
       thinkingEffort: effectiveThinkingEffort,
       agentBackend: effectiveAgentBackend,
-      useWorktree,
+      useWorktree: shouldUseWorktree,
       workItemIds,
       workItemUrls,
       updateWorkItemStatus,
-      sourceBranch: useWorktree ? effectiveSourceBranch : null,
+      sourceBranch: shouldUseWorktree ? effectiveSourceBranch : null,
       updatedAt: new Date().toISOString(),
       autoStart: shouldStart,
     });
@@ -275,37 +291,37 @@ function NewTask() {
             />
           </div>
 
-          {/* Use worktree checkbox */}
-          <div className="space-y-2">
-            <Checkbox
-              id="useWorktree"
-              checked={useWorktree}
-              onChange={(checked) => setDraft({ useWorktree: checked })}
-              label="Create git worktree for isolation"
-            />
+          {canUseWorktree && (
+            <div className="space-y-2">
+              <Checkbox
+                id="useWorktree"
+                checked={useWorktree}
+                onChange={(checked) => setDraft({ useWorktree: checked })}
+                label="Create git worktree for isolation"
+              />
 
-            {/* Source branch selector - shown when worktree is checked */}
-            {useWorktree && (
-              <div className="ml-6">
-                <label className="text-ink-2 mb-1 block text-sm font-medium">
-                  Base branch
-                </label>
-                <BranchSelect
-                  branches={branchInfos}
-                  branchesLoading={branchesLoading}
-                  favoriteBranches={project?.favoriteBranches}
-                  defaultBranch={project?.defaultBranch}
-                  value={effectiveSourceBranch ?? branchInfos[0]?.name}
-                  onChange={(value) =>
-                    setDraft({ sourceBranch: value || null })
-                  }
-                  disabled={branchesLoading}
-                  className="w-full justify-between"
-                  placeholder="Select branch..."
-                />
-              </div>
-            )}
-          </div>
+              {useWorktree && (
+                <div className="ml-6">
+                  <label className="text-ink-2 mb-1 block text-sm font-medium">
+                    Base branch
+                  </label>
+                  <BranchSelect
+                    branches={branchInfos}
+                    branchesLoading={branchesLoading}
+                    favoriteBranches={project?.favoriteBranches}
+                    defaultBranch={project?.defaultBranch}
+                    value={effectiveSourceBranch ?? branchInfos[0]?.name}
+                    onChange={(value) =>
+                      setDraft({ sourceBranch: value || null })
+                    }
+                    disabled={branchesLoading}
+                    className="w-full justify-between"
+                    placeholder="Select branch..."
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Work Items */}
           {hasWorkItemsLink && (
@@ -410,7 +426,9 @@ function NewTask() {
               size="md"
               onClick={handleCreateOnly}
               loading={createTask.isPending}
-              disabled={createTask.isPending || !prompt.trim()}
+              disabled={
+                createTask.isPending || !prompt.trim() || isWorktreeDataFetching
+              }
             >
               Create
             </Button>
@@ -419,7 +437,9 @@ function NewTask() {
               size="md"
               type="submit"
               loading={createTask.isPending}
-              disabled={createTask.isPending || !prompt.trim()}
+              disabled={
+                createTask.isPending || !prompt.trim() || isWorktreeDataFetching
+              }
             >
               {createTask.isPending ? 'Creating…' : 'Start'}
             </Button>

@@ -61,6 +61,7 @@ import { useDeleteProjectTodo } from '@/hooks/use-project-todos';
 import {
   useProjects,
   useProjectBranches,
+  useProjectIsGitRepository,
   useReorderProjects,
 } from '@/hooks/use-projects';
 import {
@@ -300,8 +301,13 @@ export function NewTaskOverlay({
     },
   });
 
+  const { data: isGitRepository = false, isFetching: isGitRepositoryFetching } =
+    useProjectIsGitRepository(selectedProjectId);
+  const canCreateWorktree = isGitRepository;
+
   // Fetch branches for the selected project
-  const { data: branchInfos = [] } = useProjectBranches(selectedProjectId);
+  const { data: branchInfos = [], isFetching: branchesFetching } =
+    useProjectBranches(canCreateWorktree ? selectedProjectId : null);
   const branches = useMemo(() => branchInfos.map((b) => b.name), [branchInfos]);
 
   // Fetch active tasks for the selected project (for parent task selection)
@@ -400,6 +406,11 @@ export function NewTaskOverlay({
   // File comments for the selected project
   const fileCommentCount = useComposerFileCommentCount(selectedProjectId ?? '');
   const fileComments = useComposerFileComments(selectedProjectId ?? '');
+  const currentCreateWorktree =
+    canCreateWorktree && (draft?.createWorktree ?? true);
+  const isWorktreeDataFetching =
+    isGitRepositoryFetching || (currentCreateWorktree && branchesFetching);
+
   // Check if we can advance to compose step
   const canAdvanceToCompose = useMemo(() => {
     if (inputMode !== 'search') return false;
@@ -410,6 +421,7 @@ export function NewTaskOverlay({
   // Check if we can start a task
   const canStartTask = useMemo(() => {
     if (!draft) return false;
+    if (selectedProjectId && isWorktreeDataFetching) return false;
 
     // In search mode compose step, need the expanded prompt
     if (inputMode === 'search' && searchStep === 'compose') {
@@ -432,6 +444,7 @@ export function NewTaskOverlay({
     promptTemplate,
     selectedWorkItems,
     selectedProjectId,
+    isWorktreeDataFetching,
     fileCommentCount,
   ]);
 
@@ -463,7 +476,6 @@ export function NewTaskOverlay({
   );
 
   // Toggle worktree checkbox
-  const currentCreateWorktree = draft?.createWorktree ?? true;
   const currentUpdateWorkItemStatus = draft?.updateWorkItemStatus ?? true;
   const currentShowFileExplorer = draft?.showFileExplorer ?? false;
   const toggleWorktree = useCallback(
@@ -1237,13 +1249,14 @@ export function NewTaskOverlay({
           onDiscardDraft();
         },
       },
-      !isNoteMode && {
-        label: 'Toggle Worktree',
-        shortcut: 'cmd+b',
-        handler: () => {
-          toggleWorktree(!currentCreateWorktree);
+      !isNoteMode &&
+        canCreateWorktree && {
+          label: 'Toggle Worktree',
+          shortcut: 'cmd+b',
+          handler: () => {
+            toggleWorktree(!currentCreateWorktree);
+          },
         },
-      },
       !isNoteMode &&
         !!selectedProjectId && {
           label: 'Toggle File Explorer',
@@ -1593,7 +1606,7 @@ export function NewTaskOverlay({
                   />
                 )}
 
-                {!isNoteMode && (
+                {!isNoteMode && canCreateWorktree && (
                   <button
                     type="button"
                     role="checkbox"
