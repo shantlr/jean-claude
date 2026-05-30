@@ -1,4 +1,4 @@
-import { HelpCircle, Send } from 'lucide-react';
+import { Check, HelpCircle, Send } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
@@ -42,9 +42,12 @@ function QuestionInput({
       <div className="space-y-2">
         <div className="flex flex-wrap gap-2">
           {question.options.map((option, index) => {
+            const isSelected = selectedLabels.includes(option.label);
             return (
               <Button
                 key={option.label}
+                variant="unstyled"
+                aria-pressed={isSelected}
                 onFocus={() => {
                   onActivate({ questionIndex, optionIndex: index });
                 }}
@@ -52,16 +55,19 @@ function QuestionInput({
                   onActivate({ questionIndex, optionIndex: index });
                   onSelectOption({ questionIndex, optionIndex: index });
                 }}
-                className={`focus-visible:ring-acc rounded-md px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${
-                  selectedLabels.includes(option.label)
-                    ? 'bg-acc text-white'
+                className={`focus-visible:ring-acc rounded-md border px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${
+                  isSelected
+                    ? 'border-teal-400/80 bg-teal-500/25 text-teal-50 ring-1 ring-teal-400/60'
                     : isActive && activeOptionIndex === index
-                      ? 'bg-acc/20 text-ink-0 ring-acc ring-2'
-                      : 'bg-glass-medium text-ink-1 hover:bg-bg-3'
+                      ? 'border-acc bg-acc/20 text-ink-0 ring-acc ring-2'
+                      : 'border-glass-border bg-glass-medium text-ink-1 hover:bg-bg-3'
                 }`}
                 title={option.description}
               >
-                <div className="font-medium">{option.label}</div>
+                <div className="flex items-center gap-1.5 font-medium">
+                  {isSelected ? <Check className="h-3.5 w-3.5" /> : null}
+                  {option.label}
+                </div>
                 {option.description ? (
                   <div className="mt-0.5 text-xs leading-tight text-current/80">
                     {option.description}
@@ -81,6 +87,8 @@ function QuestionInput({
         {question.options.map((option, index) => (
           <Button
             key={option.label}
+            variant="unstyled"
+            aria-pressed={value === option.label && !isOtherOpen}
             onFocus={() => {
               onActivate({ questionIndex, optionIndex: index });
             }}
@@ -88,16 +96,21 @@ function QuestionInput({
               onActivate({ questionIndex, optionIndex: index });
               onSelectOption({ questionIndex, optionIndex: index });
             }}
-            className={`focus-visible:ring-acc rounded-md px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${
+            className={`focus-visible:ring-acc rounded-md border px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${
               value === option.label && !isOtherOpen
-                ? 'bg-acc text-white'
+                ? 'border-teal-400/80 bg-teal-500/25 text-teal-50 ring-1 ring-teal-400/60'
                 : isActive && activeOptionIndex === index
-                  ? 'bg-acc/20 text-ink-0 ring-acc ring-2'
-                  : 'bg-glass-medium text-ink-1 hover:bg-bg-3'
+                  ? 'border-acc bg-acc/20 text-ink-0 ring-acc ring-2'
+                  : 'border-glass-border bg-glass-medium text-ink-1 hover:bg-bg-3'
             }`}
             title={option.description}
           >
-            <div className="font-medium">{option.label}</div>
+            <div className="flex items-center gap-1.5 font-medium">
+              {value === option.label && !isOtherOpen ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : null}
+              {option.label}
+            </div>
             {option.description ? (
               <div className="mt-0.5 text-xs leading-tight text-current/80">
                 {option.description}
@@ -106,6 +119,8 @@ function QuestionInput({
           </Button>
         ))}
         <Button
+          variant="unstyled"
+          aria-pressed={isOtherOpen}
           onFocus={() => {
             onActivate({ questionIndex, optionIndex: optionCount - 1 });
           }}
@@ -113,15 +128,18 @@ function QuestionInput({
             onActivate({ questionIndex, optionIndex: optionCount - 1 });
             onSelectOption({ questionIndex, optionIndex: optionCount - 1 });
           }}
-          className={`focus-visible:ring-acc rounded-md px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${
+          className={`focus-visible:ring-acc rounded-md border px-3 py-2 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${
             isOtherOpen
-              ? 'bg-acc text-white'
+              ? 'border-teal-400/80 bg-teal-500/25 text-teal-50 ring-1 ring-teal-400/60'
               : isActive && activeOptionIndex === optionCount - 1
-                ? 'bg-acc/20 text-ink-0 ring-acc ring-2'
-                : 'bg-glass-medium text-ink-1 hover:bg-bg-3'
+                ? 'border-acc bg-acc/20 text-ink-0 ring-acc ring-2'
+                : 'border-glass-border bg-glass-medium text-ink-1 hover:bg-bg-3'
           }`}
         >
-          <div className="font-medium">Other</div>
+          <div className="flex items-center gap-1.5 font-medium">
+            {isOtherOpen ? <Check className="h-3.5 w-3.5" /> : null}
+            Other
+          </div>
           <div className="mt-0.5 text-xs leading-tight text-current/80">
             Enter a custom answer
           </div>
