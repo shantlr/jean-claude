@@ -1691,7 +1691,11 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               <div className="pointer-events-auto">
                 {/* Skill publish action for skill-creation steps */}
                 {activeStep?.type === 'skill-creation' && (
-                  <SkillPublishAction step={activeStep} />
+                  <SkillPublishAction
+                    step={activeStep}
+                    taskId={taskId}
+                    taskCompleted={task?.userCompleted ?? false}
+                  />
                 )}
                 <TaskInputFooter
                   taskId={taskId}

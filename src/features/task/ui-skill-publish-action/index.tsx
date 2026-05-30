@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 
 import { Button } from '@/common/ui/button';
 import { usePublishSkillFromWorkspace } from '@/hooks/use-managed-skills';
+import { useCompleteTask } from '@/hooks/use-tasks';
 import { useToastStore } from '@/stores/toasts';
 import {
   type SkillCreationStepMeta,
@@ -10,22 +11,42 @@ import {
   isSkillCreationStepMeta,
 } from '@shared/types';
 
-export function SkillPublishAction({ step }: { step: TaskStep }) {
+export function SkillPublishAction({
+  step,
+  taskId,
+  taskCompleted,
+}: {
+  step: TaskStep;
+  taskId: string;
+  taskCompleted: boolean;
+}) {
   if (step.type !== 'skill-creation' || !isSkillCreationStepMeta(step.meta)) {
     return null;
   }
 
-  return <SkillPublishActionInner step={step} meta={step.meta} />;
+  return (
+    <SkillPublishActionInner
+      step={step}
+      meta={step.meta}
+      taskId={taskId}
+      taskCompleted={taskCompleted}
+    />
+  );
 }
 
 function SkillPublishActionInner({
   step,
   meta,
+  taskId,
+  taskCompleted,
 }: {
   step: TaskStep;
   meta: SkillCreationStepMeta;
+  taskId: string;
+  taskCompleted: boolean;
 }) {
   const publishMutation = usePublishSkillFromWorkspace();
+  const completeTask = useCompleteTask();
   const addToast = useToastStore((s) => s.addToast);
   const [localPublished, setLocalPublished] = useState(false);
 
@@ -46,12 +67,27 @@ function SkillPublishActionInner({
       setLocalPublished(true);
 
       const names = skills.map((s) => s.name).join(', ');
+      let taskCompletedByPublish = false;
+
+      try {
+        if (!taskCompleted) {
+          await completeTask.mutateAsync({ id: taskId });
+          taskCompletedByPublish = true;
+        }
+      } catch (err) {
+        addToast({
+          type: 'error',
+          message: `Skill "${names}" ${meta.mode === 'improve' ? 'updated' : 'published'}, but task completion failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        });
+        return;
+      }
+
       addToast({
         type: 'success',
         message:
           meta.mode === 'improve'
-            ? `Skill "${names}" updated successfully`
-            : `Skill "${names}" published successfully`,
+            ? `Skill "${names}" updated successfully${taskCompletedByPublish ? ' and task completed' : ''}`
+            : `Skill "${names}" published successfully${taskCompletedByPublish ? ' and task completed' : ''}`,
       });
     } catch (err) {
       addToast({
@@ -59,7 +95,15 @@ function SkillPublishActionInner({
         message: err instanceof Error ? err.message : 'Failed to publish skill',
       });
     }
-  }, [publishMutation, step.id, meta, addToast]);
+  }, [
+    publishMutation,
+    step.id,
+    meta,
+    taskCompleted,
+    addToast,
+    completeTask,
+    taskId,
+  ]);
 
   return (
     <div className="border-glass-border bg-bg-0 flex items-center gap-2 border-b px-4 py-3">
@@ -73,7 +117,9 @@ function SkillPublishActionInner({
           <Button
             type="button"
             onClick={handlePublish}
-            disabled={!canPublish || publishMutation.isPending}
+            disabled={
+              !canPublish || publishMutation.isPending || completeTask.isPending
+            }
             className="bg-acc text-ink-0 hover:bg-acc flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Package className="h-4 w-4" />

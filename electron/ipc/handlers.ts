@@ -47,6 +47,7 @@ import {
   type NewToken,
   type UpdateToken,
   type NewTaskStep,
+  type Task,
   type UpdateTaskStep,
   type SkillCreationStepMeta,
   isSkillCreationStepMeta,
@@ -1285,11 +1286,16 @@ export function registerIpcHandlers() {
       const task = await TaskRepository.findById(id);
       if (!task) throw new Error('Task not found');
 
-      // Stop running commands and compact messages
-      await runCommandService.stopCommandsForTask(id);
-      await closeEditorWindowsForTaskWorktree(task);
-      const updatedTask = await TaskRepository.toggleUserCompleted(id);
-      await agentService.compactRawMessages(id);
+      let updatedTask: Task = task;
+
+      if (!task.userCompleted) {
+        // Stop running commands and compact messages
+        await runCommandService.stopCommandsForTask(id);
+        await closeEditorWindowsForTaskWorktree(task);
+
+        updatedTask = await TaskRepository.markUserCompleted(id);
+        await agentService.compactRawMessages(id);
+      }
 
       // If worktree cleanup requested, eagerly clear worktree fields so the
       // task appears "deworktree'd" immediately. The actual git cleanup runs

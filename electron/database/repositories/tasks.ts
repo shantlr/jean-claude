@@ -405,6 +405,47 @@ export const TaskRepository = {
     return toTask(row) as Task;
   },
 
+  markUserCompleted: async (id: string): Promise<Task> => {
+    return db.transaction().execute(async (trx) => {
+      const current = await trx
+        .selectFrom('tasks')
+        .select(['userCompleted', 'projectId'])
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+
+      if (current.userCompleted) {
+        const row = await trx
+          .selectFrom('tasks')
+          .selectAll()
+          .where('id', '=', id)
+          .executeTakeFirstOrThrow();
+        return toTask(row) as Task;
+      }
+
+      await trx
+        .updateTable('tasks')
+        .set((eb) => ({
+          sortOrder: eb('sortOrder', '+', 1),
+        }))
+        .where('projectId', '=', current.projectId)
+        .where('userCompleted', '=', 1)
+        .execute();
+
+      const row = await trx
+        .updateTable('tasks')
+        .set({
+          userCompleted: 1,
+          sortOrder: 0,
+          updatedAt: new Date().toISOString(),
+        })
+        .where('id', '=', id)
+        .returningAll()
+        .executeTakeFirstOrThrow();
+
+      return toTask(row) as Task;
+    });
+  },
+
   clearUserCompleted: async (id: string): Promise<Task> => {
     const row = await db
       .updateTable('tasks')
