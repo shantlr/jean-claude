@@ -1289,12 +1289,9 @@ export async function getCurrentUser(
 
   // Extract org-level identity ID (matches reviewer IDs in PRs)
   let identityId: string | undefined;
-  let identitySource: 'connectionData' | 'identityLookup' | 'unresolved' =
-    'unresolved';
   if (connectionResponse.ok) {
     const connectionData = JSON.parse(connectionBody);
     identityId = connectionData?.authenticatedUser?.id;
-    if (identityId) identitySource = 'connectionData';
   }
 
   dbg.azure('current-user:connection-identity', {
@@ -1314,17 +1311,8 @@ export async function getCurrentUser(
     });
     if (resolvedIdentityId) {
       identityId = resolvedIdentityId;
-      identitySource = 'identityLookup';
     }
   }
-
-  dbg.azure('current-user:resolved', {
-    orgName,
-    profileId: profile.id,
-    email: maskEmail(profile.emailAddress),
-    identityId: identityId ?? null,
-    identitySource,
-  });
 
   return {
     id: profile.id,
