@@ -141,6 +141,63 @@ button {
   cursor: pointer;
 }
 
+.jc-markdown-ul > .jc-markdown-li {
+  padding-left: 1.25rem;
+}
+
+.jc-markdown-ul > .jc-markdown-li::before {
+  position: absolute;
+  top: 0.7em;
+  left: 0.25rem;
+  width: 0.375rem;
+  height: 0.375rem;
+  content: '';
+  background: var(--color-acc);
+  border-radius: 1px;
+  transform: rotate(45deg);
+}
+
+.jc-markdown-ul > .jc-markdown-li:has(> input[type='checkbox']) {
+  padding-left: 0;
+}
+
+.jc-markdown-ul > .jc-markdown-li:has(> input[type='checkbox'])::before {
+  display: none;
+}
+
+.jc-markdown-li > input[type='checkbox'] {
+  margin-right: 0.5rem;
+  accent-color: var(--color-acc);
+}
+
+.jc-markdown-ol {
+  counter-reset: jc-markdown-list;
+}
+
+.jc-markdown-ol > .jc-markdown-li {
+  padding-left: 1.75rem;
+  counter-increment: jc-markdown-list;
+}
+
+.jc-markdown-ol > .jc-markdown-li::before {
+  position: absolute;
+  top: 0.125rem;
+  left: 0;
+  display: flex;
+  width: 17px;
+  height: 17px;
+  align-items: center;
+  justify-content: center;
+  content: counter(jc-markdown-list);
+  color: var(--color-acc-ink);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--color-acc-soft);
+  border: 1px solid var(--color-acc-line);
+  border-radius: 5px;
+}
+
 .feed-note-blocknote {
   overflow-x: hidden;
 }

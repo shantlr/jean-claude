@@ -15,6 +15,104 @@ import { sanitizeMarkdownUrl } from '@/lib/markdown-urls';
 const FILE_PATH_PATTERN =
   /([\w\-./]+\.(ts|tsx|js|jsx|py|go|rs|md|json|yaml|yml|toml|sql|sh|css|html|rb|java|kt|swift|c|cpp|h|hpp|cs|php|scss|less|xml|ini|dockerfile))(?::(\d+)(?:-(\d+))?)?/g;
 
+function getTextContent(node: React.ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') {
+    return String(node);
+  }
+
+  if (Array.isArray(node)) {
+    return node.map(getTextContent).join('');
+  }
+
+  if (React.isValidElement<{ children?: React.ReactNode }>(node)) {
+    return getTextContent(node.props.children);
+  }
+
+  return '';
+}
+
+function isStrongElement(node: React.ReactNode): node is React.ReactElement<{
+  children?: React.ReactNode;
+  className?: string;
+}> {
+  return React.isValidElement(node) && node.type === 'strong';
+}
+
+function startsWithSectionLabel(children: React.ReactNode): boolean {
+  const nodes = React.Children.toArray(children);
+  const firstContentNode = nodes.find((node) => getTextContent(node).trim());
+
+  return (
+    isStrongElement(firstContentNode) &&
+    getTextContent(firstContentNode).trim().endsWith(':')
+  );
+}
+
+function promoteSectionLabel(children: React.ReactNode): React.ReactNode {
+  let promoted = false;
+
+  return React.Children.map(children, (child) => {
+    if (promoted || !isStrongElement(child)) {
+      return child;
+    }
+
+    const text = getTextContent(child).trim();
+    if (!text.endsWith(':')) {
+      return child;
+    }
+
+    promoted = true;
+    return React.cloneElement(child, {
+      className: clsx(child.props.className, 'text-acc-ink'),
+    });
+  });
+}
+
+function getCollapsedUrlLabel(url: string): string {
+  try {
+    const parsedUrl = new URL(url);
+    const host = parsedUrl.hostname.replace(/^www\./, '');
+    const pathSegments = parsedUrl.pathname.split('/').filter(Boolean);
+
+    if (pathSegments.length === 0) {
+      return `${host}/`;
+    }
+
+    if (pathSegments.length === 1) {
+      return `${host}/${pathSegments[0]}/`;
+    }
+
+    const firstPathSegment = pathSegments[0];
+    const lastPathSegment = pathSegments.at(-1);
+    return `${host}/${firstPathSegment}/…/${lastPathSegment}${parsedUrl.search ? '?' : ''}`;
+  } catch {
+    return url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 32);
+  }
+}
+
+function isBareUrlLink(href: string | undefined, children: React.ReactNode) {
+  if (!href?.startsWith('http')) {
+    return false;
+  }
+
+  const label = getTextContent(children).trim();
+  return label === href || /^https?:\/\//.test(label);
+}
+
+function getCalloutKind(children: React.ReactNode): 'note' | 'warning' | null {
+  const text = getTextContent(children).trim();
+  const match = text.match(/^(note|tip|warning|caution|important)\s*:/i);
+
+  if (!match) {
+    return null;
+  }
+
+  const label = match[1].toLowerCase();
+  return label === 'warning' || label === 'caution' || label === 'important'
+    ? 'warning'
+    : 'note';
+}
+
 function parseFilePath(match: string): {
   path: string;
   lineStart?: number;
@@ -223,23 +321,35 @@ export function MarkdownContent({
 
   return (
     <>
-      <div className="break-words">
+      <div className="jc-markdown text-ink-1 max-w-[64ch] text-[12.5px] leading-[1.66] break-words">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           urlTransform={customUrlTransform}
           components={{
-            p: ({ children }) => (
-              <p className="mb-3 whitespace-pre-line last:mb-0">
-                {typeof children === 'string' ? (
-                  <TextWithFilePaths
-                    text={children}
-                    onFilePathClick={onFilePathClick}
-                  />
-                ) : (
-                  children
-                )}
-              </p>
-            ),
+            p: ({ children }) => {
+              const hasLabel = startsWithSectionLabel(children);
+              const renderedChildren = hasLabel
+                ? promoteSectionLabel(children)
+                : children;
+
+              return (
+                <p
+                  className={clsx(
+                    'mb-[13px] text-pretty whitespace-pre-line last:mb-0',
+                    hasLabel && 'mt-[22px] first:mt-0',
+                  )}
+                >
+                  {typeof renderedChildren === 'string' ? (
+                    <TextWithFilePaths
+                      text={renderedChildren}
+                      onFilePathClick={onFilePathClick}
+                    />
+                  ) : (
+                    renderedChildren
+                  )}
+                </p>
+              );
+            },
             code: ({ className, children, ...props }) => {
               const matchLang = /language-(\w+)/.exec(className || '');
               const isInline =
@@ -249,7 +359,7 @@ export function MarkdownContent({
               if (isInline) {
                 return (
                   <code
-                    className="border-glass-border bg-bg-1 rounded border px-1 py-0.5"
+                    className="border-line-soft bg-bg-2 text-acc-ink rounded border px-1.5 py-0.5 font-mono text-[11.5px]"
                     {...props}
                   >
                     {children}
@@ -272,66 +382,126 @@ export function MarkdownContent({
                 );
               }
 
+              if (href && isBareUrlLink(href, children)) {
+                const url = href;
+
+                return (
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={url}
+                    title={url}
+                    className="bg-acc-soft border-acc-line text-acc-ink hover:text-ink-0 inline-flex items-center gap-1 rounded-full border px-2 py-1 align-baseline font-mono text-[11.5px] leading-none no-underline transition-colors hover:bg-[oklch(0.72_0.2_295_/_0.26)]"
+                  >
+                    {getCollapsedUrlLabel(url)}
+                    <span className="text-[10px] opacity-70">↗</span>
+                  </a>
+                );
+              }
+
               return (
                 <a
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-acc-ink hover:text-acc-ink underline"
+                  className="text-acc-ink border-acc-line hover:text-ink-0 hover:border-acc-ink border-b no-underline transition-colors"
                 >
                   {children}
                 </a>
               );
             },
             ul: ({ children }) => (
-              <ul className="mb-3 list-inside list-disc space-y-1">
+              <ul className="jc-markdown-ul mb-3 list-none space-y-1.5 pl-0">
                 {children}
               </ul>
             ),
             ol: ({ children }) => (
-              <ol className="mb-3 list-inside list-decimal space-y-1">
+              <ol className="jc-markdown-ol mb-3 list-none space-y-1.5 pl-0">
                 {children}
               </ol>
             ),
             li: ({ children }) => (
-              <li className="ml-2 [&>*:first-child]:inline">{children}</li>
+              <li className="jc-markdown-li relative ml-0 leading-[1.6] [&>*:first-child]:inline [&>ol]:mt-1.5 [&>ul]:mt-1.5">
+                {children}
+              </li>
             ),
             h1: ({ children }) => (
-              <h1 className="mb-3 font-bold" style={{ fontSize: '1.5em' }}>
+              <h1 className="border-line text-acc-ink mb-3.5 border-b pb-2.5 text-lg leading-[1.3] font-semibold tracking-[-0.015em]">
                 {children}
               </h1>
             ),
             h2: ({ children }) => (
-              <h2 className="mb-3 font-bold" style={{ fontSize: '1.25em' }}>
+              <h2 className="border-line-soft text-acc-ink mt-[26px] mb-2.5 border-b pb-2 text-[14.5px] leading-[1.3] font-semibold tracking-[-0.015em]">
                 {children}
               </h2>
             ),
             h3: ({ children }) => (
-              <h3 className="mb-2 font-semibold" style={{ fontSize: '1.1em' }}>
+              <h3 className="text-acc-ink mt-5 mb-2 text-[12.5px] leading-[1.3] font-semibold tracking-[0.7px] uppercase">
                 {children}
               </h3>
             ),
-            blockquote: ({ children }) => (
-              <blockquote className="border-glass-border text-ink-2 mb-3 border-l-4 pl-4 italic">
+            h4: ({ children }) => (
+              <h4 className="text-ink-0 mt-4 mb-1.5 text-[13px] leading-[1.3] font-semibold tracking-[-0.015em]">
                 {children}
-              </blockquote>
+              </h4>
             ),
+            strong: ({ children }) => (
+              <strong className="text-ink-0 font-semibold">{children}</strong>
+            ),
+            blockquote: ({ children }) => {
+              const calloutKind = getCalloutKind(children);
+              const isWarning = calloutKind === 'warning';
+
+              return (
+                <blockquote
+                  className={clsx(
+                    'mb-4 rounded-lg border border-l-2 px-3.5 py-3 not-italic',
+                    isWarning
+                      ? 'bg-status-run-soft border-status-run/40'
+                      : 'bg-acc-soft border-acc-line',
+                  )}
+                >
+                  {calloutKind && (
+                    <span
+                      className={clsx(
+                        'mb-1.5 inline-flex items-center gap-1.5 text-[10.5px] font-semibold tracking-[0.7px] uppercase',
+                        isWarning ? 'text-status-run' : 'text-acc-ink',
+                      )}
+                    >
+                      <span
+                        className={clsx(
+                          'text-bg-0 flex h-3.5 w-3.5 items-center justify-center rounded-full font-serif text-[9px] font-black italic',
+                          isWarning ? 'bg-status-run' : 'bg-acc',
+                        )}
+                      >
+                        i
+                      </span>
+                      {isWarning ? 'Warning' : 'Note'}
+                    </span>
+                  )}
+                  <div className="text-ink-2 [&_strong]:text-acc-ink text-[12.5px] leading-[1.6] [&_p]:mb-0 [&_p+p]:mt-2">
+                    {children}
+                  </div>
+                </blockquote>
+              );
+            },
             table: ({ children }) => (
-              <div className="mb-3 overflow-x-auto">
-                <table className="min-w-full border-collapse">{children}</table>
+              <div className="border-line mb-3 overflow-x-auto rounded-lg border">
+                <table className="min-w-full border-collapse text-left">
+                  {children}
+                </table>
               </div>
             ),
             th: ({ children }) => (
-              <th className="border-glass-border bg-bg-1 border px-3 py-2 text-left font-semibold">
+              <th className="border-line-soft bg-bg-2 text-ink-0 border px-3 py-2 text-left font-semibold">
                 {children}
               </th>
             ),
             td: ({ children }) => (
-              <td className="border-glass-border border px-3 py-2">
-                {children}
-              </td>
+              <td className="border-line-soft border px-3 py-2">{children}</td>
             ),
-            hr: () => <hr className="border-glass-border my-4" />,
+            hr: () => <hr className="border-line my-[22px]" />,
             img: ({ src, alt, ...props }) => {
               if (imagePresentation === 'footer-thumbnails') {
                 return null;
