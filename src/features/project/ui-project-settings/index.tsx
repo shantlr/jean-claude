@@ -1,5 +1,6 @@
+import { useQuery } from '@tanstack/react-query';
 import isEqual from 'lodash-es/isEqual';
-import { FolderOpen, Sparkles, Trash2 } from 'lucide-react';
+import { FolderOpen, ImagePlus, Sparkles, Trash2, X } from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -9,6 +10,7 @@ import {
   type ReactElement,
 } from 'react';
 
+import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { Button } from '@/common/ui/button';
 import { Input } from '@/common/ui/input';
 import {
@@ -27,6 +29,8 @@ import {
   SlotDetail,
 } from '@/features/common/ui-ai-skill-slot';
 import { ProjectColorPicker } from '@/features/project/ui-project-color-picker';
+import { ProjectLogo } from '@/features/project/ui-project-logo';
+import { ProjectLogoSuggestions } from '@/features/project/ui-project-logo-suggestions';
 import { ProjectMcpSettings } from '@/features/project/ui-project-mcp-settings';
 import { ProjectPermissionsSettings } from '@/features/project/ui-project-permissions-settings';
 import { ProjectPipelineSettings } from '@/features/project/ui-project-pipeline-settings';
@@ -42,12 +46,16 @@ import {
   useUpdateProject,
   useDeleteProject,
   useDeleteProjectWorktreesFolder,
+  useGenerateProjectLogo,
+  useRemoveProjectLogo,
+  useUploadProjectLogo,
 } from '@/hooks/use-projects';
 import {
   useBackendModelPresetsSetting,
   useBackendsSetting,
 } from '@/hooks/use-settings';
 import { api } from '@/lib/api';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useNavigationStore } from '@/stores/navigation';
 import { useToastStore } from '@/stores/toasts';
 import type { AgentBackendType } from '@shared/agent-backend-types';
@@ -96,12 +104,28 @@ export function ProjectSettings({
     [branchInfos],
   );
   const { mutateAsync: updateProject } = useUpdateProject();
+  const uploadProjectLogo = useUploadProjectLogo();
+  const generateProjectLogo = useGenerateProjectLogo();
+  const removeProjectLogo = useRemoveProjectLogo();
   const deleteProject = useDeleteProject();
   const deleteWorktreesFolder = useDeleteProjectWorktreesFolder();
   const clearProjectNavHistoryState = useNavigationStore(
     (s) => s.clearProjectNavHistoryState,
   );
   const addToast = useToastStore((s) => s.addToast);
+  const addRunningJob = useBackgroundJobsStore((s) => s.addRunningJob);
+  const markJobSucceeded = useBackgroundJobsStore((s) => s.markJobSucceeded);
+  const markJobFailed = useBackgroundJobsStore((s) => s.markJobFailed);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { triggerAnimation } = useShrinkToTarget({
+    panelRef,
+    targetSelector: '[data-animation-target="jobs-button"]',
+  });
+  const { data: detectedLogos = [] } = useQuery({
+    queryKey: ['project-logo-suggestions', project?.path],
+    queryFn: () => api.projects.detectLogos(project?.path ?? ''),
+    enabled: !!project?.path,
+  });
 
   const [name, setName] = useState('');
   const [path, setPath] = useState('');
@@ -312,6 +336,62 @@ export function ProjectSettings({
     }
   }
 
+  async function handleUploadLogo() {
+    const sourcePath = await api.dialog.openImageFile();
+    if (!sourcePath) return;
+    try {
+      await uploadProjectLogo.mutateAsync({ projectId, sourcePath });
+    } catch (error) {
+      addToast({
+        message:
+          error instanceof Error ? error.message : 'Failed to upload logo.',
+        type: 'error',
+      });
+    }
+  }
+
+  async function handleGenerateLogo() {
+    if (!project) return;
+
+    const jobId = addRunningJob({
+      type: 'logo-generation',
+      title: `Generating logo for ${project.name}`,
+      projectId,
+      details: {
+        projectName: project.name,
+      },
+    });
+
+    void triggerAnimation();
+
+    void generateProjectLogo
+      .mutateAsync(projectId)
+      .then(() => {
+        markJobSucceeded(jobId, { projectId });
+      })
+      .catch((error: unknown) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Failed to generate logo. Check AI generation settings.';
+        markJobFailed(jobId, message);
+        addToast({
+          message,
+          type: 'error',
+        });
+      });
+  }
+
+  async function handleSelectLogoSuggestion(sourcePath: string) {
+    try {
+      await uploadProjectLogo.mutateAsync({ projectId, sourcePath });
+    } catch (error) {
+      addToast({
+        message: error instanceof Error ? error.message : 'Failed to use logo.',
+        type: 'error',
+      });
+    }
+  }
   let content: ReactElement;
 
   switch (menuItem) {
@@ -370,6 +450,71 @@ export function ProjectSettings({
               Color
             </label>
             <ProjectColorPicker value={color} onChange={setColor} />
+          </div>
+
+          <div>
+            <label className="text-ink-1 mb-1 block text-sm font-medium">
+              Logo
+            </label>
+            <div className="border-glass-border bg-glass-light flex flex-col gap-4 rounded-xl border p-4 sm:flex-row sm:items-center">
+              <ProjectLogo project={{ ...project, color }} size="lg" />
+              <div className="min-w-0 flex-1">
+                <p className="text-ink-1 text-sm font-medium">
+                  {project.logoPath
+                    ? project.logoSource === 'generated'
+                      ? 'Generated logo'
+                      : 'Uploaded logo'
+                    : 'No logo set'}
+                </p>
+                <p className="text-ink-3 mt-1 text-xs">
+                  Logos are stored in Jean-Claude app data and shown anywhere
+                  projects are listed.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleUploadLogo}
+                  disabled={uploadProjectLogo.isPending}
+                  icon={<ImagePlus />}
+                >
+                  Upload
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleGenerateLogo}
+                  disabled={generateProjectLogo.isPending}
+                  icon={<Sparkles />}
+                >
+                  {generateProjectLogo.isPending ? 'Generating...' : 'Generate'}
+                </Button>
+                {project.logoPath && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => removeProjectLogo.mutate(projectId)}
+                    disabled={removeProjectLogo.isPending}
+                    icon={<X />}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+            </div>
+            {detectedLogos.length > 0 && (
+              <div className="mt-3">
+                <p className="text-ink-3 mb-2 text-xs">
+                  Suggestions found in this project folder
+                </p>
+                <ProjectLogoSuggestions
+                  logos={detectedLogos}
+                  selectedPath={project.logoPath}
+                  onSelect={handleSelectLogoSuggestion}
+                />
+              </div>
+            )}
           </div>
 
           <div>
@@ -675,6 +820,7 @@ export function ProjectSettings({
 
   return (
     <div
+      ref={panelRef}
       className={
         fillHeight ? 'flex min-h-0 min-w-0 flex-1 flex-col' : 'space-y-6'
       }

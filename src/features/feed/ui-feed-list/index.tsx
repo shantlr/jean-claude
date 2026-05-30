@@ -20,6 +20,7 @@ import { createPortal } from 'react-dom';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { Dropdown, DropdownDivider, DropdownItem } from '@/common/ui/dropdown';
+import { ProjectLogo } from '@/features/project/ui-project-logo';
 import { useFeed } from '@/hooks/use-feed';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useFeedStore } from '@/stores/feed';
@@ -35,6 +36,32 @@ type PrReviewContextMenuState = {
   x: number;
   y: number;
 } | null;
+
+function MiniProjectLabel({ item }: { item: FeedItem }) {
+  if (item.projectLogoPath) {
+    return (
+      <span className="inline-flex min-w-0 items-center gap-1.5">
+        <ProjectLogo
+          project={{
+            name: item.projectName,
+            color: item.projectColor,
+            logoPath: item.projectLogoPath,
+          }}
+          size="xs"
+        />
+        <span className="text-ink-2 truncate text-[10.5px]">
+          {item.projectName}
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span className="text-ink-2 truncate text-[10.5px]">
+      {item.projectName}
+    </span>
+  );
+}
 
 function useClampedContextMenuPosition(x: number, y: number) {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -482,7 +509,7 @@ function HorizontalPrReviewStack({
           {safeIndex + 1} / {items.length}
         </span>
         <span className="opacity-40">·</span>
-        <span className="truncate">{focusedItem.projectName}</span>
+        <MiniProjectLabel item={focusedItem} />
       </div>
       {contextMenu && (
         <PrReviewContextMenu
@@ -582,13 +609,7 @@ function PrReviewCarouselCard({
           {item.title}
         </div>
         <div className="mb-2 flex items-center gap-1.5">
-          <span
-            className="h-2 w-2 shrink-0 rounded-full"
-            style={{ background: item.projectColor || 'var(--color-ink-4)' }}
-          />
-          <span className="text-ink-2 truncate text-[10.5px]">
-            {item.projectName}
-          </span>
+          <MiniProjectLabel item={item} />
           <span className="text-status-pr bg-status-pr/10 border-status-pr/25 ml-auto inline-flex items-center gap-1 rounded border border-dashed px-1.5 py-0 font-mono text-[9.5px]">
             <GitPullRequest className="h-2.5 w-2.5" />#{item.pullRequestId}
           </span>

@@ -58,6 +58,7 @@ import * as m056 from './migrations/056_project_default_model_preference';
 import * as m057 from './migrations/057_command_names_and_groups';
 import * as m058 from './migrations/058_feed_notes_blocknote_content';
 import * as m059 from './migrations/059_task_step_thinking_effort';
+import * as m060 from './migrations/060_project_logos';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -118,6 +119,7 @@ const migrations: Record<string, Migration> = {
   '057_command_names_and_groups': m057,
   '058_feed_notes_blocknote_content': m058,
   '059_task_step_thinking_effort': m059,
+  '060_project_logos': m060,
 };
 
 export const migrationProvider: MigrationProvider = {

@@ -51,6 +51,7 @@ import {
   PromptTextarea,
   type PromptTextareaRef,
 } from '@/features/common/ui-prompt-textarea';
+import { ProjectLogoBackground } from '@/features/project/ui-project-logo';
 import { WorkItemPicker } from '@/features/work-item/ui-work-item-picker';
 import { useBackendModels } from '@/hooks/use-backend-models';
 import {
@@ -1828,23 +1829,11 @@ export function NewTaskOverlay({
   );
 }
 
-function ProjectButtonContent({
-  project,
-  isSelected,
-}: {
-  project: Project;
-  isSelected: boolean;
-}) {
+function ProjectButtonContent({ project }: { project: Project }) {
   return (
     <>
-      <span
-        className="h-[7px] w-[7px] shrink-0 rounded-full"
-        style={{
-          backgroundColor: project.color,
-          boxShadow: isSelected ? `0 0 6px ${project.color}` : 'none',
-        }}
-      />
-      <span className="truncate">{project.name}</span>
+      <ProjectLogoBackground project={project} showColorFallback size="sm" />
+      <span className="relative z-10 truncate">{project.name}</span>
     </>
   );
 }
@@ -1888,7 +1877,7 @@ function SortableProjectButton({
       ref={setNodeRef}
       data-project-tab={project.id}
       onClick={isDragging ? undefined : onSelect}
-      className="flex min-w-0 items-center gap-[7px] rounded-md px-[11px] py-[5px] text-left text-[12.5px] tracking-tight"
+      className="relative flex min-w-0 items-center gap-[7px] overflow-hidden rounded-md px-[11px] py-[5px] text-left text-[12.5px] tracking-tight"
       style={{
         ...getProjectButtonStyle(project, isSelected),
         transform: DndCSS.Translate.toString(transform),
@@ -1900,7 +1889,7 @@ function SortableProjectButton({
       {...attributes}
       {...listeners}
     >
-      <ProjectButtonContent project={project} isSelected={isSelected} />
+      <ProjectButtonContent project={project} />
     </button>
   );
 }

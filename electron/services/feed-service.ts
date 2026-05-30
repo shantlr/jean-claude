@@ -190,6 +190,7 @@ export async function getFeedItems(): Promise<FeedItem[]> {
     const taskWithProject = task as typeof task & {
       projectName: string;
       projectColor: string;
+      projectLogoPath: string | null;
     };
 
     const taskFeedItem: FeedItem = {
@@ -200,6 +201,7 @@ export async function getFeedItems(): Promise<FeedItem[]> {
       projectId: task.projectId,
       projectName: taskWithProject.projectName,
       projectColor: taskWithProject.projectColor,
+      projectLogoPath: taskWithProject.projectLogoPath,
       projectPriority: 'normal',
       title: task.name ?? task.prompt.slice(0, 80),
       subtitle,
@@ -238,6 +240,7 @@ export async function getFeedItems(): Promise<FeedItem[]> {
       const child = childRow as typeof childRow & {
         projectName: string;
         projectColor: string;
+        projectLogoPath: string | null;
       };
       const steps = childStepsByTaskId[child.id] ?? [];
       const childAttention = deriveTaskAttention({
@@ -257,6 +260,7 @@ export async function getFeedItems(): Promise<FeedItem[]> {
         projectId: child.projectId,
         projectName: child.projectName,
         projectColor: child.projectColor,
+        projectLogoPath: child.projectLogoPath,
         projectPriority: 'normal' as const,
         title: child.name ?? (child.prompt as string).slice(0, 80),
         subtitle: childSubtitle,
@@ -440,6 +444,7 @@ async function fetchNoteFeedItems(): Promise<FeedItem[]> {
         projectId: '',
         projectName: '',
         projectColor: '',
+        projectLogoPath: null,
         projectPriority: 'normal' as const,
         title: markdown,
         noteId: note.id,
@@ -537,6 +542,7 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
             projectId: project.id,
             projectName: project.name,
             projectColor: project.color,
+            projectLogoPath: project.logoPath,
             projectPriority: project.prPriority as 'high' | 'normal' | 'low',
             title: pr.title,
             subtitle: pr.createdBy.displayName,
@@ -796,6 +802,7 @@ async function fetchWorkItemFeedItems(
           projectId: project.id,
           projectName: project.name,
           projectColor: project.color,
+          projectLogoPath: project.logoPath,
           projectPriority:
             (project.workItemPriority as 'high' | 'normal' | 'low') ?? 'normal',
           title: wi.fields.title,

@@ -202,6 +202,13 @@ import { pipelineTrackingService } from '../services/pipeline-tracking-service';
 import { generatePrDescriptionForTask } from '../services/pr-description-generation-service';
 import { detectProjects } from '../services/project-detection-service';
 import { projectFileIndexService } from '../services/project-file-index-service';
+import { detectProjectLogos } from '../services/project-logo-detection-service';
+import {
+  generateProjectLogo,
+  cleanupProjectLogoPath,
+  removeProjectLogo,
+  uploadProjectLogo,
+} from '../services/project-logo-service';
 import { runCommandService } from '../services/run-command-service';
 import {
   getAllManagedSkills,
@@ -431,9 +438,40 @@ export function registerIpcHandlers() {
       return result;
     },
   );
-  ipcMain.handle('projects:delete', (_, id: string) => {
+  ipcMain.handle(
+    'projects:uploadLogo',
+    async (_, projectId: string, sourcePath: string) => {
+      dbg.ipc('projects:uploadLogo %s', projectId);
+      const result = await uploadProjectLogo({ projectId, sourcePath });
+      invalidatePrCache();
+      invalidateWorkItemCache();
+      return result;
+    },
+  );
+  ipcMain.handle('projects:generateLogo', async (_, projectId: string) => {
+    dbg.ipc('projects:generateLogo %s', projectId);
+    const result = await generateProjectLogo(projectId);
+    invalidatePrCache();
+    invalidateWorkItemCache();
+    return result;
+  });
+  ipcMain.handle('projects:detectLogos', (_, projectPath: string) => {
+    dbg.ipc('projects:detectLogos %s', projectPath);
+    return detectProjectLogos(projectPath);
+  });
+  ipcMain.handle('projects:removeLogo', async (_, projectId: string) => {
+    dbg.ipc('projects:removeLogo %s', projectId);
+    const result = await removeProjectLogo(projectId);
+    invalidatePrCache();
+    invalidateWorkItemCache();
+    return result;
+  });
+  ipcMain.handle('projects:delete', async (_, id: string) => {
     dbg.ipc('projects:delete %s', id);
-    return ProjectRepository.delete(id);
+    const project = await ProjectRepository.findById(id);
+    const result = await ProjectRepository.delete(id);
+    await cleanupProjectLogoPath(project?.logoPath);
+    return result;
   });
   ipcMain.handle('projects:deleteWorktreesFolder', (_, projectId: string) => {
     dbg.ipc('projects:deleteWorktreesFolder %s', projectId);
@@ -2617,6 +2655,32 @@ export function registerIpcHandlers() {
       properties: ['openDirectory'],
     });
     dbg.ipc('dialog:openDirectory result: %o', result);
+    return result.canceled ? null : result.filePaths[0];
+  });
+
+  ipcMain.handle('dialog:openImageFile', async (event) => {
+    dbg.ipc('dialog:openImageFile called');
+    const window = BrowserWindow.fromWebContents(event.sender);
+    const result = await dialog.showOpenDialog(window!, {
+      properties: ['openFile'],
+      filters: [
+        {
+          name: 'Images',
+          extensions: [
+            'png',
+            'jpg',
+            'jpeg',
+            'gif',
+            'webp',
+            'avif',
+            'svg',
+            'ico',
+            'bmp',
+          ],
+        },
+      ],
+    });
+    dbg.ipc('dialog:openImageFile result: %o', result);
     return result.canceled ? null : result.filePaths[0];
   });
 

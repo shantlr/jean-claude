@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
@@ -5,13 +6,16 @@ import { Button } from '@/common/ui/button';
 import { Input } from '@/common/ui/input';
 import { Select } from '@/common/ui/select';
 import { ProjectColorPicker } from '@/features/project/ui-project-color-picker';
+import { ProjectLogoSuggestions } from '@/features/project/ui-project-logo-suggestions';
 import { useProviders, useProviderDetails } from '@/hooks/use-providers';
+import { api } from '@/lib/api';
 import type { Provider } from '@shared/types';
 
 export interface ProjectFormData {
   name: string;
   path: string;
   color: string;
+  selectedLogoPath: string | null;
   // Repository settings (optional)
   repoProviderId: string | null;
   repoProjectId: string | null;
@@ -341,6 +345,12 @@ export function AddProjectForm({
   repoSectionExpanded?: boolean;
   workItemSectionExpanded?: boolean;
 }) {
+  const { data: detectedLogos = [] } = useQuery({
+    queryKey: ['project-logo-suggestions', formData.path],
+    queryFn: () => api.projects.detectLogos(formData.path),
+    enabled: !!formData.path,
+  });
+
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       {/* Name */}
@@ -381,6 +391,19 @@ export function AddProjectForm({
           onChange={(color) => onChange({ color })}
         />
       </div>
+
+      {detectedLogos.length > 0 && (
+        <div>
+          <label className="text-ink-1 mb-1 block text-sm font-medium">
+            Suggested logo
+          </label>
+          <ProjectLogoSuggestions
+            logos={detectedLogos}
+            selectedPath={formData.selectedLogoPath}
+            onSelect={(selectedLogoPath) => onChange({ selectedLogoPath })}
+          />
+        </div>
+      )}
 
       {/* Repository section */}
       <RepoSection

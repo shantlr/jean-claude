@@ -99,6 +99,7 @@ import type {
   ThinkingEffort,
   AppSettings,
   ProjectTodo,
+  DetectedProjectLogo,
 } from '@shared/types';
 import type { UsageProviderMap, UsageSnapshot } from '@shared/usage-types';
 import type { CreateWorkItemVerificationNoteParams } from '@shared/work-item-verification-note-types';
@@ -374,6 +375,9 @@ export interface Api {
     findById: (id: string) => Promise<Project | undefined>;
     create: (data: NewProject) => Promise<Project>;
     update: (id: string, data: UpdateProject) => Promise<Project>;
+    uploadLogo: (projectId: string, sourcePath: string) => Promise<Project>;
+    generateLogo: (projectId: string) => Promise<Project>;
+    removeLogo: (projectId: string) => Promise<Project>;
     delete: (id: string) => Promise<void>;
     deleteWorktreesFolder: (projectId: string) => Promise<void>;
     reorder: (orderedIds: string[]) => Promise<Project[]>;
@@ -381,6 +385,7 @@ export interface Api {
     getCurrentBranch: (projectId: string) => Promise<string>;
     isGitRepository: (projectId: string) => Promise<boolean>;
     getDetected: () => Promise<DetectedProject[]>;
+    detectLogos: (projectPath: string) => Promise<DetectedProjectLogo[]>;
     getSkills: (projectId: string) => Promise<Skill[]>;
   };
   tasks: {
@@ -779,6 +784,7 @@ export interface Api {
   };
   dialog: {
     openDirectory: () => Promise<string | null>;
+    openImageFile: () => Promise<string | null>;
     openApplication: () => Promise<{ path: string; name: string } | null>;
   };
   fs: {
@@ -1350,6 +1356,15 @@ export const api: Api = hasWindowApi
         update: async () => {
           throw new Error('API not available');
         },
+        uploadLogo: async () => {
+          throw new Error('API not available');
+        },
+        generateLogo: async () => {
+          throw new Error('API not available');
+        },
+        removeLogo: async () => {
+          throw new Error('API not available');
+        },
         delete: async () => {},
         deleteWorktreesFolder: async () => {},
         reorder: async () => [],
@@ -1357,6 +1372,7 @@ export const api: Api = hasWindowApi
         getCurrentBranch: async () => '',
         isGitRepository: async () => false,
         getDetected: async () => [],
+        detectLogos: async () => [],
         getSkills: async () => [],
       },
       tasks: {
@@ -1567,6 +1583,7 @@ export const api: Api = hasWindowApi
       },
       dialog: {
         openDirectory: async () => null,
+        openImageFile: async () => null,
         openApplication: async () => null,
       },
       fs: {

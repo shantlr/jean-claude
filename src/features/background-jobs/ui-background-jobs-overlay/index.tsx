@@ -370,6 +370,17 @@ function JobDetails({ job }: { job: BackgroundJob }) {
         </div>
       );
     },
+    'logo-generation': (typedJob) => {
+      if (typedJob.type !== 'logo-generation') return null;
+
+      return (
+        <div className="text-ink-2 mt-1 space-y-0.5 text-xs">
+          {typedJob.details.projectName && (
+            <p>Project: {typedJob.details.projectName}</p>
+          )}
+        </div>
+      );
+    },
     'verification-note': (typedJob) => {
       if (typedJob.type !== 'verification-note') return null;
 

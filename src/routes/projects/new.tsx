@@ -14,7 +14,7 @@ import {
   CloneRepoPane,
   type CloneResult,
 } from '@/features/project/ui-clone-repo-pane';
-import { useCreateProject } from '@/hooks/use-projects';
+import { useCreateProject, useUploadProjectLogo } from '@/hooks/use-projects';
 import { api, type DetectedProject } from '@/lib/api';
 import { getRandomColor } from '@/lib/colors';
 
@@ -49,6 +49,7 @@ const SOURCE_BADGE_CONFIG: Record<
 function AddProjectPage() {
   const navigate = useNavigate();
   const createProject = useCreateProject();
+  const uploadProjectLogo = useUploadProjectLogo();
 
   const [pageState, setPageState] = useState<PageState>('source-selection');
   const [formData, setFormData] = useState<ProjectFormData | null>(null);
@@ -80,10 +81,12 @@ function AddProjectPage() {
     if (!selectedPath) return;
 
     const name = await inferProjectName(selectedPath);
+    const selectedLogoPath = await getDefaultLogoPath(selectedPath);
     setFormData({
       name,
       path: selectedPath,
       color: getRandomColor(),
+      selectedLogoPath,
       repoProviderId: null,
       repoProjectId: null,
       repoProjectName: null,
@@ -101,12 +104,14 @@ function AddProjectPage() {
     setShowClonePane(true);
   }
 
-  function handleCloneSuccess(result: CloneResult) {
+  async function handleCloneSuccess(result: CloneResult) {
     setShowClonePane(false);
+    const selectedLogoPath = await getDefaultLogoPath(result.path);
     setFormData({
       name: result.repoName,
       path: result.path,
       color: getRandomColor(),
+      selectedLogoPath,
       repoProviderId: result.repoProviderId,
       repoProjectId: result.repoProjectId,
       repoProjectName: result.repoProjectName,
@@ -122,10 +127,12 @@ function AddProjectPage() {
 
   async function handleSelectDetectedProject(project: DetectedProject) {
     const name = await inferProjectName(project.path);
+    const selectedLogoPath = await getDefaultLogoPath(project.path);
     setFormData({
       name,
       path: project.path,
       color: getRandomColor(),
+      selectedLogoPath,
       repoId: null,
       repoName: null,
       repoProviderId: null,
@@ -156,6 +163,16 @@ function AddProjectPage() {
       workItemProjectName: formData.workItemProjectName,
       updatedAt: new Date().toISOString(),
     });
+    if (formData.selectedLogoPath) {
+      try {
+        await uploadProjectLogo.mutateAsync({
+          projectId: project.id,
+          sourcePath: formData.selectedLogoPath,
+        });
+      } catch {
+        // Project creation should still succeed if detected logo copy fails.
+      }
+    }
     navigate({ to: '/projects/$projectId', params: { projectId: project.id } });
   }
 
@@ -321,4 +338,9 @@ async function inferProjectName(folderPath: string): Promise<string> {
   const pkg = await api.fs.readPackageJson(folderPath);
   if (pkg?.name) return pkg.name;
   return folderPath.split(/[/\\]/).pop() || 'Untitled';
+}
+
+async function getDefaultLogoPath(projectPath: string): Promise<string | null> {
+  const logos = await api.projects.detectLogos(projectPath);
+  return logos[0]?.path ?? null;
 }

@@ -177,6 +177,12 @@ export interface BranchInfo {
   lastCommitDate: string;
 }
 
+export interface DetectedProjectLogo {
+  path: string;
+  label: string;
+  source: 'web' | 'ios' | 'android' | 'asset';
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -185,6 +191,8 @@ export interface Project {
   providerId: string | null;
   remoteUrl: string | null;
   color: string;
+  logoPath: string | null;
+  logoSource: 'uploaded' | 'generated' | null;
   sortOrder: number;
   worktreesPath: string | null;
   defaultBranch: string | null;
@@ -218,6 +226,8 @@ export interface NewProject {
   providerId?: string | null;
   remoteUrl?: string | null;
   color: string;
+  logoPath?: string | null;
+  logoSource?: 'uploaded' | 'generated' | null;
   sortOrder?: number;
   defaultBranch?: string | null;
   repoProviderId?: string | null;
@@ -249,6 +259,8 @@ export interface UpdateProject {
   providerId?: string | null;
   remoteUrl?: string | null;
   color?: string;
+  logoPath?: string | null;
+  logoSource?: 'uploaded' | 'generated' | null;
   sortOrder?: number;
   worktreesPath?: string | null;
   defaultBranch?: string | null;
@@ -629,7 +641,8 @@ export type AiSkillSlotKey =
   | 'commit-message'
   | 'pr-description'
   | 'task-name'
-  | 'verification-note';
+  | 'verification-note'
+  | 'logo-generation';
 export type AiSkillSlotsSetting = Partial<
   Record<AiSkillSlotKey, AiSkillSlotConfig>
 >;
@@ -802,6 +815,7 @@ const VALID_SLOT_KEYS: AiSkillSlotKey[] = [
   'pr-description',
   'task-name',
   'verification-note',
+  'logo-generation',
 ];
 
 /** Note: returns true for `{}` (empty object) — this is intentional as it represents "no slots configured". */

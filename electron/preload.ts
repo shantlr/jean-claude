@@ -34,6 +34,12 @@ contextBridge.exposeInMainWorld('api', {
     create: (data: unknown) => ipcRenderer.invoke('projects:create', data),
     update: (id: string, data: unknown) =>
       ipcRenderer.invoke('projects:update', id, data),
+    uploadLogo: (projectId: string, sourcePath: string) =>
+      ipcRenderer.invoke('projects:uploadLogo', projectId, sourcePath),
+    generateLogo: (projectId: string) =>
+      ipcRenderer.invoke('projects:generateLogo', projectId),
+    removeLogo: (projectId: string) =>
+      ipcRenderer.invoke('projects:removeLogo', projectId),
     delete: (id: string) => ipcRenderer.invoke('projects:delete', id),
     deleteWorktreesFolder: (projectId: string) =>
       ipcRenderer.invoke('projects:deleteWorktreesFolder', projectId),
@@ -46,6 +52,8 @@ contextBridge.exposeInMainWorld('api', {
     isGitRepository: (projectId: string) =>
       ipcRenderer.invoke('projects:isGitRepository', projectId),
     getDetected: () => ipcRenderer.invoke('projects:getDetected'),
+    detectLogos: (projectPath: string) =>
+      ipcRenderer.invoke('projects:detectLogos', projectPath),
     getSkills: (projectId: string) =>
       ipcRenderer.invoke('projects:getSkills', projectId),
   },
@@ -448,6 +456,7 @@ contextBridge.exposeInMainWorld('api', {
   },
   dialog: {
     openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),
+    openImageFile: () => ipcRenderer.invoke('dialog:openImageFile'),
     openApplication: () => ipcRenderer.invoke('dialog:openApplication'),
   },
   settings: {

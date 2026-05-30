@@ -46,6 +46,51 @@ export function useUpdateProject() {
   });
 }
 
+export function useUploadProjectLogo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      sourcePath,
+    }: {
+      projectId: string;
+      sourcePath: string;
+    }) => api.projects.uploadLogo(projectId, sourcePath),
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-logo'] });
+      queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+    },
+  });
+}
+
+export function useGenerateProjectLogo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (projectId: string) => api.projects.generateLogo(projectId),
+    onSuccess: (_, projectId) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-logo'] });
+      queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+    },
+  });
+}
+
+export function useRemoveProjectLogo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (projectId: string) => api.projects.removeLogo(projectId),
+    onSuccess: (_, projectId) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-logo'] });
+      queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+    },
+  });
+}
+
 export function useDeleteProject() {
   const queryClient = useQueryClient();
   return useMutation({

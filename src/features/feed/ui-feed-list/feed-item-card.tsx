@@ -30,6 +30,7 @@ import {
   DropdownInfo,
   DropdownItem,
 } from '@/common/ui/dropdown';
+import { ProjectLogoBackground } from '@/features/project/ui-project-logo';
 import { CompleteTaskDialog } from '@/features/task/ui-task-panel/complete-task-dialog';
 import { useCompleteTask, useTask } from '@/hooks/use-tasks';
 import { formatRelativeTime } from '@/lib/time';
@@ -69,6 +70,28 @@ function statusColor(attention: FeedItemAttention): string {
     default:
       return 'var(--color-ink-4)';
   }
+}
+
+function FeedProjectLabel({ item }: { item: FeedItem }) {
+  return (
+    <span className="min-w-0">
+      <span className="text-ink-3 text-[11px]">{item.projectName}</span>
+    </span>
+  );
+}
+
+function FeedProjectBackgroundLogo({ item }: { item: FeedItem }) {
+  return (
+    <ProjectLogoBackground
+      project={{
+        name: item.projectName,
+        color: item.projectColor,
+        logoPath: item.projectLogoPath ?? null,
+      }}
+      showColorFallback
+      fixedHeight
+    />
+  );
 }
 
 // ─── Rail constants ──────────────────────────────────────────────
@@ -478,7 +501,7 @@ export function FeedItemCard({
               }
             }}
             className={clsx(
-              'group/row relative flex cursor-pointer transition-colors',
+              'group/row relative flex cursor-pointer overflow-hidden transition-colors',
               !showRail && 'border-b',
               isRunning
                 ? [
@@ -507,6 +530,7 @@ export function FeedItemCard({
             )}
             style={{ minHeight: isSubtask ? 36 : 50 }}
           >
+            {!isSubtask && <FeedProjectBackgroundLogo item={item} />}
             {hasRunningCommand && (
               <div className="feed-command-running-bottom-border" />
             )}
@@ -597,20 +621,8 @@ export function FeedItemCard({
               </div>
 
               {/* Bottom row: project + time + status */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                {!isSubtask && (
-                  <span
-                    className="inline-block h-2 w-2 shrink-0 rounded-full"
-                    style={{
-                      background: item.projectColor || 'var(--color-ink-4)',
-                    }}
-                  />
-                )}
-                {!isSubtask && (
-                  <span className="text-ink-3 text-[11px]">
-                    {item.projectName}
-                  </span>
-                )}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {!isSubtask && <FeedProjectLabel item={item} />}
                 <span className="text-ink-3/80 ml-auto shrink-0 font-mono text-[9.5px]">
                   {formatRelativeTime(item.timestamp)}
                 </span>

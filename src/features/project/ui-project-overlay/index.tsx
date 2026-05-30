@@ -7,6 +7,7 @@ import FocusLock from 'react-focus-lock';
 
 import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
 import { useCommands } from '@/common/hooks/use-commands';
+import { ProjectLogoBackground } from '@/features/project/ui-project-logo';
 import { useProjects } from '@/hooks/use-projects';
 import { useCurrentVisibleProject } from '@/stores/navigation';
 
@@ -194,7 +195,7 @@ export function ProjectOverlay({ onClose }: { onClose: () => void }) {
 
           <div
             className={clsx(
-              'grid gap-3 overflow-y-auto p-4 sm:grid-cols-2',
+              'grid min-h-0 flex-1 gap-3 overflow-y-auto p-4 sm:grid-cols-2',
               PROJECT_OVERLAY_LG_GRID_CLASS[PROJECT_OVERLAY_GRID_COLUMNS] ??
                 'lg:grid-cols-3',
             )}
@@ -229,7 +230,7 @@ export function ProjectOverlay({ onClose }: { onClose: () => void }) {
                   onClick={() => selectIndex(optionIndex)}
                   onMouseEnter={() => setHighlightedIndex(optionIndex)}
                   className={clsx(
-                    'rounded-lg border px-3 py-4 text-left transition-colors',
+                    'relative overflow-hidden rounded-lg border px-3 py-4 text-left transition-colors',
                     projectId === project.id
                       ? 'border-acc bg-acc/10'
                       : highlightedIndex === optionIndex
@@ -238,16 +239,13 @@ export function ProjectOverlay({ onClose }: { onClose: () => void }) {
                     highlightedIndex === optionIndex && 'ring-1 ring-white/35',
                   )}
                 >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: project.color }}
-                    />
+                  <ProjectLogoBackground project={project} showColorFallback />
+                  <div className="relative z-10 flex items-center gap-2">
                     <p className="text-ink-0 truncate text-sm font-medium">
                       {project.name}
                     </p>
                   </div>
-                  <p className="text-ink-2 mt-2 truncate text-xs">
+                  <p className="text-ink-2 relative z-10 mt-2 truncate text-xs">
                     {project.path}
                   </p>
                 </button>

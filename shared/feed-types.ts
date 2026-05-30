@@ -24,6 +24,7 @@ export interface FeedItem {
   projectId: string;
   projectName: string;
   projectColor: string;
+  projectLogoPath?: string | null;
   projectPriority: ProjectPriority;
   title: string;
   subtitle?: string;

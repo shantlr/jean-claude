@@ -77,6 +77,8 @@ export interface ProjectTable {
   providerId: string | null;
   remoteUrl: string | null;
   color: string;
+  logoPath: string | null;
+  logoSource: string | null;
   sortOrder: number;
   worktreesPath: string | null;
   defaultBranch: string | null;

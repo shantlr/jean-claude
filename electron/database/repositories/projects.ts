@@ -58,6 +58,10 @@ function parseProjectRow(row: ProjectRow) {
   }
   return {
     ...row,
+    logoSource:
+      row.logoSource === 'uploaded' || row.logoSource === 'generated'
+        ? row.logoSource
+        : null,
     aiSkillSlots,
     protectedBranches,
     favoriteBranches,
