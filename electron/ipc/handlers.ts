@@ -209,6 +209,7 @@ import {
   removeProjectLogo,
   uploadProjectLogo,
 } from '../services/project-logo-service';
+import { runReloadPreviewCommand } from '../services/reload-preview-service';
 import { runCommandService } from '../services/run-command-service';
 import {
   getAllManagedSkills,
@@ -448,6 +449,9 @@ async function activateAssociatedWorkItems(params: {
 }
 
 const MAX_FILE_ATTACHMENT_SIZE = 50 * 1024 * 1024;
+const PREVIEW_RELOAD_GIT_PULL_TIMEOUT_MS = 2 * 60 * 1000;
+const PREVIEW_RELOAD_INSTALL_TIMEOUT_MS = 10 * 60 * 1000;
+const PREVIEW_RELOAD_BUILD_TIMEOUT_MS = 10 * 60 * 1000;
 
 export function registerIpcHandlers() {
   dbg.ipc('Registering IPC handlers');
@@ -4608,115 +4612,126 @@ export function registerIpcHandlers() {
       event.sender.send('app:reloadPreviewProgress', progress);
     };
 
-    dbg.ipc('app:reloadPreview — stopping all running commands');
-    sendReloadProgress({
-      step: 'stopping-commands',
-      label: 'Stopping running commands',
-      detail: 'Waiting for project commands to stop',
-    });
-    await runCommandService.stopAllCommands();
+    try {
+      dbg.ipc('app:reloadPreview — stopping all running commands');
+      sendReloadProgress({
+        step: 'stopping-commands',
+        label: 'Stopping running commands',
+        detail: 'Waiting for project commands to stop',
+      });
+      await runCommandService.stopAllCommands();
 
-    dbg.ipc('app:reloadPreview — running git pull in %s', projectRoot);
-    sendReloadProgress({
-      step: 'pulling',
-      label: 'Pulling latest changes',
-      detail: 'git pull',
-    });
+      dbg.ipc('app:reloadPreview — running git pull in %s', projectRoot);
+      sendReloadProgress({
+        step: 'pulling',
+        label: 'Pulling latest changes',
+        detail: 'git pull',
+      });
 
-    await new Promise<void>((resolve, reject) => {
-      const child = spawn('git', ['pull'], {
+      await runReloadPreviewCommand({
+        command: 'git',
+        args: ['pull'],
         cwd: projectRoot,
-        stdio: ['ignore', 'pipe', 'pipe'],
+        label: 'Git pull',
+        timeoutMs: PREVIEW_RELOAD_GIT_PULL_TIMEOUT_MS,
+        onStdout: (data) => {
+          dbg.ipc(
+            'app:reloadPreview git pull stdout: %s',
+            data.toString().trim(),
+          );
+        },
+        onStderr: (data) => {
+          dbg.ipc(
+            'app:reloadPreview git pull stderr: %s',
+            data.toString().trim(),
+          );
+        },
       });
 
-      child.stdout?.on('data', (data: Buffer) => {
-        dbg.ipc(
-          'app:reloadPreview git pull stdout: %s',
-          data.toString().trim(),
-        );
-      });
-      child.stderr?.on('data', (data: Buffer) => {
-        dbg.ipc(
-          'app:reloadPreview git pull stderr: %s',
-          data.toString().trim(),
-        );
+      dbg.ipc('app:reloadPreview — running pnpm install in %s', projectRoot);
+      sendReloadProgress({
+        step: 'building',
+        label: 'Installing and building',
+        detail: 'pnpm install',
       });
 
-      child.on('error', reject);
-      child.on('close', (code) => {
-        if (code === 0) {
-          resolve();
-          return;
-        }
-
-        reject(new Error(`Git pull failed with exit code ${code}`));
-      });
-    }).catch((error) => {
-      previewReloadInProgress = false;
-      throw error;
-    });
-
-    dbg.ipc(
-      'app:reloadPreview — running pnpm install && pnpm build in %s',
-      projectRoot,
-    );
-    sendReloadProgress({
-      step: 'building',
-      label: 'Installing and building',
-      detail: 'pnpm install && pnpm build',
-    });
-
-    await new Promise<void>((resolve, reject) => {
-      const child = spawn('pnpm install && pnpm build', [], {
+      await runReloadPreviewCommand({
+        command: 'pnpm',
+        args: ['install'],
         cwd: projectRoot,
-        stdio: ['ignore', 'pipe', 'pipe'],
+        label: 'pnpm install',
+        timeoutMs: PREVIEW_RELOAD_INSTALL_TIMEOUT_MS,
+        onStdout: (data) => {
+          dbg.ipc(
+            'app:reloadPreview pnpm install stdout: %s',
+            data.toString().trim(),
+          );
+        },
+        onStderr: (data) => {
+          dbg.ipc(
+            'app:reloadPreview pnpm install stderr: %s',
+            data.toString().trim(),
+          );
+        },
+      });
+
+      dbg.ipc('app:reloadPreview — running pnpm build in %s', projectRoot);
+      sendReloadProgress({
+        step: 'building',
+        label: 'Installing and building',
+        detail: 'pnpm build',
+      });
+
+      await runReloadPreviewCommand({
+        command: 'pnpm',
+        args: ['build'],
+        cwd: projectRoot,
+        label: 'pnpm build',
+        timeoutMs: PREVIEW_RELOAD_BUILD_TIMEOUT_MS,
+        onStdout: (data) => {
+          dbg.ipc(
+            'app:reloadPreview pnpm build stdout: %s',
+            data.toString().trim(),
+          );
+        },
+        onStderr: (data) => {
+          dbg.ipc(
+            'app:reloadPreview pnpm build stderr: %s',
+            data.toString().trim(),
+          );
+        },
+      });
+
+      dbg.ipc(
+        'app:reloadPreview — launching pnpm preview:skip-build in %s',
+        projectRoot,
+      );
+      sendReloadProgress({
+        step: 'launching',
+        label: 'Launching preview',
+        detail: 'pnpm preview:skip-build',
+      });
+      app.releaseSingleInstanceLock();
+      const child = spawn('pnpm preview:skip-build', [], {
+        cwd: projectRoot,
+        detached: true,
+        stdio: 'ignore',
         shell: true,
       });
+      child.unref();
 
-      child.stdout?.on('data', (data: Buffer) => {
-        dbg.ipc('app:reloadPreview stdout: %s', data.toString().trim());
+      sendReloadProgress({
+        step: 'restarting',
+        label: 'Restarting app',
+        detail: 'New preview is starting',
       });
-      child.stderr?.on('data', (data: Buffer) => {
-        dbg.ipc('app:reloadPreview stderr: %s', data.toString().trim());
-      });
-
-      child.on('error', reject);
-      child.on('close', (code) => {
-        if (code === 0) {
-          resolve();
-          return;
-        }
-
-        reject(new Error(`Reload preparation failed with exit code ${code}`));
-      });
-    }).catch((error) => {
+      setTimeout(() => {
+        app.exit(0);
+      }, 500);
+    } catch (error) {
       previewReloadInProgress = false;
       throw error;
-    });
-
-    dbg.ipc('app:reloadPreview — launching pnpm preview in %s', projectRoot);
-    sendReloadProgress({
-      step: 'launching',
-      label: 'Launching preview',
-      detail: 'pnpm preview',
-    });
-    app.releaseSingleInstanceLock();
-    const child = spawn('pnpm preview', [], {
-      cwd: projectRoot,
-      detached: true,
-      stdio: 'ignore',
-      shell: true,
-    });
-    child.unref();
-
-    sendReloadProgress({
-      step: 'restarting',
-      label: 'Restarting app',
-      detail: 'New preview is starting',
-    });
-    setTimeout(() => {
-      app.exit(0);
-    }, 500);
+    }
   });
 
   // ─── System ───────────────────────────────────────────────────────
