@@ -2,6 +2,10 @@ import { useMemo } from 'react';
 import TurndownService from 'turndown';
 
 import { MarkdownContent } from '@/features/agent/ui-markdown-content';
+import {
+  replaceAzureDevOpsMentions,
+  type MentionDisplayNames,
+} from '@/lib/azure-devops-mentions';
 import { rewriteAzureImageUrls } from '@/lib/azure-image-proxy';
 
 // Shared Turndown instance for HTML to Markdown conversion
@@ -77,6 +81,7 @@ export function AzureHtmlContent({
 export function AzureMarkdownContent({
   markdown,
   providerId,
+  mentionDisplayNames,
   className,
   imageClassName,
   enableImageModal,
@@ -85,6 +90,8 @@ export function AzureMarkdownContent({
   markdown: string;
   /** The provider ID for authenticating image requests */
   providerId?: string;
+  /** Azure DevOps identity IDs to display names for @<guid> mention tokens */
+  mentionDisplayNames?: MentionDisplayNames;
   /** Optional className for the wrapper */
   className?: string;
   /** Optional className for rendered markdown images */
@@ -96,8 +103,14 @@ export function AzureMarkdownContent({
     if (!markdown) return '';
 
     // Rewrite Azure DevOps image URLs to use the proxy protocol
-    return providerId ? rewriteAzureImageUrls(markdown, providerId) : markdown;
-  }, [markdown, providerId]);
+    const withImages = providerId
+      ? rewriteAzureImageUrls(markdown, providerId)
+      : markdown;
+
+    return replaceAzureDevOpsMentions(withImages, mentionDisplayNames, {
+      renderMarkdownLinks: true,
+    });
+  }, [markdown, providerId, mentionDisplayNames]);
 
   if (!processedMarkdown.trim()) {
     return null;

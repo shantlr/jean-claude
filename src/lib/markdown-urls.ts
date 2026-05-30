@@ -3,6 +3,10 @@ export function sanitizeMarkdownUrl(url: string): string {
     return url;
   }
 
+  if (url.startsWith('azure-devops-mention:')) {
+    return url;
+  }
+
   if (url.startsWith('data:image/')) {
     return url;
   }

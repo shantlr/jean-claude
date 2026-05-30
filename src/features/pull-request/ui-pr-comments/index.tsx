@@ -22,6 +22,10 @@ import {
   useUpdateThreadStatus,
 } from '@/hooks/use-pull-requests';
 import type { AzureDevOpsCommentThread } from '@/lib/api';
+import {
+  replaceAzureDevOpsMentions,
+  type MentionDisplayNames,
+} from '@/lib/azure-devops-mentions';
 import { encodeProxyUrl } from '@/lib/azure-image-proxy';
 import { formatRelativeTime } from '@/lib/time';
 import type { PromptImagePart } from '@shared/agent-backend-types';
@@ -62,6 +66,7 @@ export function PrComments({
   onUploadImage,
   isAddingComment,
   onOpenFilePreview,
+  mentionDisplayNames,
 }: {
   threads: AzureDevOpsCommentThread[];
   providerId?: string;
@@ -75,6 +80,7 @@ export function PrComments({
     lineStart: number;
     lineEnd: number;
   }) => void;
+  mentionDisplayNames?: MentionDisplayNames;
 }) {
   const [expandedResolved, setExpandedResolved] = useState<
     Record<number, boolean>
@@ -167,6 +173,7 @@ export function PrComments({
                 onToggleResolved={() => toggleResolvedThread(thread.id)}
                 showDivider={index > 0}
                 onOpenFilePreview={onOpenFilePreview}
+                mentionDisplayNames={mentionDisplayNames}
               />
             );
           })}
@@ -499,6 +506,7 @@ function CommentThread({
   onToggleResolved,
   showDivider,
   onOpenFilePreview,
+  mentionDisplayNames,
 }: {
   thread: AzureDevOpsCommentThread;
   providerId?: string;
@@ -512,6 +520,7 @@ function CommentThread({
     lineStart: number;
     lineEnd: number;
   }) => void;
+  mentionDisplayNames?: MentionDisplayNames;
 }) {
   const resolved = !isActiveThread(thread);
 
@@ -527,7 +536,11 @@ function CommentThread({
       )}
     >
       {collapsed ? (
-        <CollapsedThread thread={thread} onExpand={onToggleResolved} />
+        <CollapsedThread
+          thread={thread}
+          onExpand={onToggleResolved}
+          mentionDisplayNames={mentionDisplayNames}
+        />
       ) : (
         <ExpandedThread
           thread={thread}
@@ -536,6 +549,7 @@ function CommentThread({
           prId={prId}
           onCollapseResolved={onToggleResolved}
           onOpenFilePreview={onOpenFilePreview}
+          mentionDisplayNames={mentionDisplayNames}
         />
       )}
     </div>
@@ -549,6 +563,7 @@ function ExpandedThread({
   prId,
   onCollapseResolved,
   onOpenFilePreview,
+  mentionDisplayNames,
 }: {
   thread: AzureDevOpsCommentThread;
   providerId?: string;
@@ -560,6 +575,7 @@ function ExpandedThread({
     lineStart: number;
     lineEnd: number;
   }) => void;
+  mentionDisplayNames?: MentionDisplayNames;
 }) {
   const resolved = !isActiveThread(thread);
   const updateStatus = useUpdateThreadStatus(projectId, prId);
@@ -646,6 +662,7 @@ function ExpandedThread({
               comment={comment}
               providerId={providerId}
               connect={index < thread.comments.length - 1 || !resolved}
+              mentionDisplayNames={mentionDisplayNames}
             />
           ))}
         </div>
@@ -674,10 +691,12 @@ function ThreadComment({
   comment,
   providerId,
   connect,
+  mentionDisplayNames,
 }: {
   comment: AzureDevOpsCommentThread['comments'][number];
   providerId?: string;
   connect: boolean;
+  mentionDisplayNames?: MentionDisplayNames;
 }) {
   const avatarUrl =
     comment.author.imageUrl && providerId
@@ -709,6 +728,7 @@ function ThreadComment({
           <AzureMarkdownContent
             markdown={comment.content}
             providerId={providerId}
+            mentionDisplayNames={mentionDisplayNames}
           />
         </div>
       </div>
@@ -723,6 +743,7 @@ export function PrInlineCommentTimeline({
   projectId,
   prId,
   canResolve = false,
+  mentionDisplayNames,
 }: {
   comments: PrTimelineComment[];
   providerId?: string;
@@ -730,6 +751,7 @@ export function PrInlineCommentTimeline({
   projectId?: string;
   prId?: number;
   canResolve?: boolean;
+  mentionDisplayNames?: MentionDisplayNames;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const firstComment = comments[0];
@@ -776,6 +798,7 @@ export function PrInlineCommentTimeline({
             <AzureMarkdownContent
               markdown={firstComment.content}
               providerId={providerId}
+              mentionDisplayNames={mentionDisplayNames}
             />
           </div>
         </div>
@@ -815,6 +838,7 @@ export function PrInlineCommentTimeline({
                   <AzureMarkdownContent
                     markdown={comment.content}
                     providerId={providerId}
+                    mentionDisplayNames={mentionDisplayNames}
                   />
                 </div>
               </div>
@@ -859,9 +883,11 @@ function TimelineAvatar({
 function CollapsedThread({
   thread,
   onExpand,
+  mentionDisplayNames,
 }: {
   thread: AzureDevOpsCommentThread;
   onExpand: () => void;
+  mentionDisplayNames?: MentionDisplayNames;
 }) {
   const firstComment = thread.comments[0];
   const lastComment = thread.comments[thread.comments.length - 1];
@@ -883,7 +909,7 @@ function CollapsedThread({
             {firstComment.author.displayName}
           </span>
           <span className="text-ink-3 truncate text-xs">
-            {plainText(firstComment.content)}
+            {plainText(firstComment.content, mentionDisplayNames)}
           </span>
         </div>
         {showLast && (
@@ -893,7 +919,7 @@ function CollapsedThread({
               {lastComment.author.displayName}
             </span>
             <span className="text-ink-4 truncate text-xs">
-              {plainText(lastComment.content)}
+              {plainText(lastComment.content, mentionDisplayNames)}
             </span>
           </div>
         )}
@@ -929,9 +955,11 @@ function isActiveThread(thread: AzureDevOpsCommentThread) {
   return ACTIVE_STATUSES.has(thread.status);
 }
 
-function plainText(value: string) {
-  return value
-    .replace(/<[^>]*>/g, '')
+function plainText(value: string, mentionDisplayNames?: MentionDisplayNames) {
+  return replaceAzureDevOpsMentions(value, mentionDisplayNames, {
+    escapeMarkdown: false,
+  })
+    .replace(/(?<!@)<[^>]*>/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }

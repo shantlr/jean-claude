@@ -29,6 +29,10 @@ import type {
   AzureDevOpsCommentThread,
   AzureDevOpsFileChange,
 } from '@/lib/api';
+import {
+  normalizeMentionId,
+  type MentionDisplayNames,
+} from '@/lib/azure-devops-mentions';
 import type { PromptImagePart } from '@shared/agent-backend-types';
 
 import { PrChecks } from '../ui-pr-checks';
@@ -91,6 +95,30 @@ export function PrOverview({
     (currentUser.identityId === pr.createdBy.id ||
       currentUser.id === pr.createdBy.id ||
       currentUserEmail === ownerEmail);
+
+  const mentionDisplayNames = useMemo(() => {
+    const names: MentionDisplayNames = {};
+    const addName = (
+      id: string | undefined,
+      displayName: string | undefined,
+    ) => {
+      if (id && displayName) names[normalizeMentionId(id)] = displayName;
+    };
+
+    addName(pr.createdBy.id, pr.createdBy.displayName);
+    for (const reviewer of pr.reviewers) {
+      addName(reviewer.id, reviewer.displayName);
+    }
+    addName(currentUser?.id, currentUser?.displayName);
+    addName(currentUser?.identityId, currentUser?.displayName);
+    for (const thread of threads) {
+      for (const comment of thread.comments) {
+        addName(comment.author.id, comment.author.displayName);
+      }
+    }
+
+    return names;
+  }, [currentUser, pr.createdBy, pr.reviewers, threads]);
 
   useEffect(() => {
     if (!isEditingDescription) {
@@ -425,6 +453,7 @@ export function PrOverview({
                   className="text-ink-1 text-sm"
                   imageClassName="max-h-[520px] object-contain"
                   enableImageModal
+                  mentionDisplayNames={mentionDisplayNames}
                 />
               ) : (
                 <p className="text-ink-3 text-sm italic">No description</p>
@@ -442,6 +471,7 @@ export function PrOverview({
             onUploadImage={onUploadImage}
             isAddingComment={isAddingComment}
             onOpenFilePreview={setFilePreview}
+            mentionDisplayNames={mentionDisplayNames}
           />
         </div>
 
@@ -479,6 +509,7 @@ export function PrOverview({
                 threads={threads}
                 files={files}
                 providerId={providerId}
+                mentionDisplayNames={mentionDisplayNames}
                 onClose={() => setFilePreview(null)}
               />
             ) : (
@@ -515,6 +546,7 @@ function PrFilePreviewPane({
   threads,
   files,
   providerId,
+  mentionDisplayNames,
   onClose,
 }: {
   projectId: string;
@@ -526,6 +558,7 @@ function PrFilePreviewPane({
   threads: AzureDevOpsCommentThread[];
   files: AzureDevOpsFileChange[];
   providerId?: string;
+  mentionDisplayNames: MentionDisplayNames;
   onClose: () => void;
 }) {
   const { data: headContent = '', isLoading: isHeadLoading } =
@@ -603,6 +636,7 @@ function PrFilePreviewPane({
                   comment.publishedDate ?? new Date().toISOString(),
               }))}
               providerId={providerId}
+              mentionDisplayNames={mentionDisplayNames}
             />
           )}
           scrollToLine={scrollToLine}

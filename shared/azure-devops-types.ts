@@ -103,6 +103,7 @@ export interface AzureDevOpsComment {
   content: string;
   commentType: 'text' | 'codeChange' | 'system' | 'unknown';
   author: {
+    id?: string;
     displayName: string;
     uniqueName: string;
     imageUrl?: string;

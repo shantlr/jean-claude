@@ -265,16 +265,24 @@ export function MarkdownContent({
               );
             },
             pre: ({ children }) => <>{children}</>,
-            a: ({ href, children }) => (
-              <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-acc-ink hover:text-acc-ink underline"
-              >
-                {children}
-              </a>
-            ),
+            a: ({ href, children }) => {
+              if (href?.startsWith('azure-devops-mention:')) {
+                return (
+                  <span className="text-acc-ink font-medium">{children}</span>
+                );
+              }
+
+              return (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-acc-ink hover:text-acc-ink underline"
+                >
+                  {children}
+                </a>
+              );
+            },
             ul: ({ children }) => (
               <ul className="mb-3 list-inside list-disc space-y-1">
                 {children}

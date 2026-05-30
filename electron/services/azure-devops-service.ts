@@ -1467,6 +1467,7 @@ interface CommentResponse {
   commentType?: string; // 'unknown', 'text', 'codeChange', 'system'
   isDeleted?: boolean;
   author: {
+    id?: string;
     displayName: string;
     uniqueName: string;
     imageUrl?: string;
@@ -2393,6 +2394,7 @@ export async function getPullRequestThreads(params: {
             content: comment.content,
             commentType: mapCommentType(comment.commentType),
             author: {
+              id: comment.author.id,
               displayName: comment.author.displayName,
               uniqueName: comment.author.uniqueName,
               imageUrl: comment.author.imageUrl,
@@ -2451,6 +2453,7 @@ export async function addPullRequestComment(params: {
       content: comment.content,
       commentType: mapCommentType(comment.commentType),
       author: {
+        id: comment.author.id,
         displayName: comment.author.displayName,
         uniqueName: comment.author.uniqueName,
         imageUrl: comment.author.imageUrl,
@@ -2653,6 +2656,7 @@ export async function addThreadReply(params: {
     content: comment.content,
     commentType: mapCommentType(comment.commentType),
     author: {
+      id: comment.author.id,
       displayName: comment.author.displayName,
       uniqueName: comment.author.uniqueName,
       imageUrl: comment.author.imageUrl,
@@ -2760,6 +2764,7 @@ export async function addPullRequestFileComment(params: {
       content: comment.content,
       commentType: mapCommentType(comment.commentType),
       author: {
+        id: comment.author.id,
         displayName: comment.author.displayName,
         uniqueName: comment.author.uniqueName,
         imageUrl: comment.author.imageUrl,
