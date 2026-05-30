@@ -8,6 +8,7 @@ import {
   Workflow,
 } from 'lucide-react';
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -204,6 +205,9 @@ export function Header() {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [isReloadingPreview, setIsReloadingPreview] = useState(false);
   const [reloadError, setReloadError] = useState<string | null>(null);
+  const [reloadUpdateCount, setReloadUpdateCount] = useState<number | null>(
+    null,
+  );
   const [reloadStartedAt, setReloadStartedAt] = useState(() => Date.now());
   const { projectId } = useCurrentVisibleProject();
   const { data: projects = [] } = useProjects();
@@ -215,6 +219,7 @@ export function Header() {
 
   const runCommandRunning = useTaskMessagesStore((s) => s.runCommandRunning);
   const menuDropdownRef = useRef<{ toggle: () => void } | null>(null);
+  const reloadUpdateRequestRef = useRef(0);
 
   useCommands('header-menu-trigger', [
     {
@@ -247,6 +252,26 @@ export function Header() {
       );
     });
   };
+
+  const refreshReloadUpdateInfo = useCallback(() => {
+    if (!isPreviewMode || !commitHash) return;
+
+    const requestId = reloadUpdateRequestRef.current + 1;
+    reloadUpdateRequestRef.current = requestId;
+    setReloadUpdateCount(null);
+    api.app
+      .getReloadUpdateInfo({ builtCommitHash: commitHash })
+      .then((info) => {
+        if (reloadUpdateRequestRef.current === requestId) {
+          setReloadUpdateCount(info.commitCount);
+        }
+      })
+      .catch(() => {
+        if (reloadUpdateRequestRef.current === requestId) {
+          setReloadUpdateCount(null);
+        }
+      });
+  }, [commitHash, isPreviewMode]);
 
   const selectedProjectLabel = useMemo(() => {
     if (projectId === 'all') {
@@ -300,6 +325,7 @@ export function Header() {
       >
         <Dropdown
           dropdownRef={menuDropdownRef}
+          onOpen={refreshReloadUpdateInfo}
           trigger={
             <Button
               variant="ghost"
@@ -376,6 +402,12 @@ export function Header() {
                   });
                 }}
               >
+                {typeof reloadUpdateCount === 'number' &&
+                  reloadUpdateCount > 0 && (
+                    <span className="bg-acc text-bg-0 mr-1 rounded-full px-1.5 py-0.5 text-[10px] leading-none shadow-[0_0_6px_oklch(0.6_0.2_264)]">
+                      {reloadUpdateCount}
+                    </span>
+                  )}
                 Reload App
               </DropdownItem>
             </>

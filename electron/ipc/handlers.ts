@@ -264,6 +264,61 @@ const execAsync = promisify(exec);
 
 const VALID_BACKENDS = new Set<string>(['claude-code', 'opencode']);
 
+async function runGit(
+  args: string[],
+  cwd: string,
+  options: { timeoutMs?: number } = {},
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let isSettled = false;
+    const child = spawn('git', args, {
+      cwd,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const stdout: Buffer[] = [];
+    const stderr: Buffer[] = [];
+    const timeout = setTimeout(() => {
+      if (isSettled) return;
+      isSettled = true;
+      child.kill('SIGTERM');
+      reject(new Error(`git ${args.join(' ')} timed out`));
+    }, options.timeoutMs ?? 15000);
+
+    child.stdout?.on('data', (data: Buffer) => stdout.push(data));
+    child.stderr?.on('data', (data: Buffer) => stderr.push(data));
+    child.on('error', (error) => {
+      if (isSettled) return;
+      isSettled = true;
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.on('close', (code) => {
+      if (isSettled) return;
+      isSettled = true;
+      clearTimeout(timeout);
+      if (code === 0) {
+        resolve(Buffer.concat(stdout).toString('utf8').trim());
+        return;
+      }
+
+      reject(
+        new Error(
+          Buffer.concat(stderr).toString('utf8').trim() ||
+            `git ${args.join(' ')} failed with exit code ${code}`,
+        ),
+      );
+    });
+  });
+}
+
+async function getCommitDate(commitHash: string, cwd: string): Promise<number> {
+  const timestamp = await runGit(
+    ['show', '-s', '--format=%ct', commitHash],
+    cwd,
+  );
+  return Number(timestamp) || 0;
+}
+
 function assertValidSkillCreationInput(data: {
   mode: string;
   enabledBackends: string[];
@@ -4483,6 +4538,55 @@ export function registerIpcHandlers() {
   ipcMain.handle('app:getIsPreviewMode', () => {
     return !!process.env.JC_PREVIEW;
   });
+
+  ipcMain.handle(
+    'app:getReloadUpdateInfo',
+    async (_event, params: { builtCommitHash?: string }) => {
+      const projectRoot = app.getAppPath();
+      const builtCommitHash = params.builtCommitHash?.trim();
+      if (!builtCommitHash) {
+        return { commitCount: 0, latestCommitHash: null };
+      }
+
+      await runGit(['fetch', '--quiet'], projectRoot, {
+        timeoutMs: 10000,
+      }).catch((error) => {
+        dbg.ipc('app:getReloadUpdateInfo git fetch failed: %s', error.message);
+      });
+
+      const builtCommit = await runGit(
+        ['rev-parse', '--verify', `${builtCommitHash}^{commit}`],
+        projectRoot,
+      );
+      const localCommit = await runGit(['rev-parse', 'HEAD'], projectRoot);
+      const upstreamCommit = await runGit(
+        ['rev-parse', '--verify', '@{upstream}^{commit}'],
+        projectRoot,
+      ).catch(() => null);
+      const availableCommits = upstreamCommit
+        ? [localCommit, upstreamCommit]
+        : [localCommit];
+
+      const latestCommit = (
+        await Promise.all(
+          availableCommits.map(async (commit) => ({
+            commit,
+            date: await getCommitDate(commit, projectRoot),
+          })),
+        )
+      ).sort((a, b) => b.date - a.date)[0].commit;
+
+      const countText = await runGit(
+        ['rev-list', '--count', `^${builtCommit}`, ...availableCommits],
+        projectRoot,
+      );
+
+      return {
+        commitCount: Number(countText) || 0,
+        latestCommitHash: latestCommit.slice(0, 7),
+      };
+    },
+  );
 
   ipcMain.handle('app:reloadPreview', async (event) => {
     if (previewReloadInProgress) {

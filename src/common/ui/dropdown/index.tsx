@@ -39,6 +39,7 @@ export function Dropdown({
   className,
   dropdownRef,
   variant = 'default',
+  onOpen,
 }: {
   variant?: 'default' | 'bright';
   trigger:
@@ -51,6 +52,7 @@ export function Dropdown({
   dropdownRef?:
     | React.MutableRefObject<{ toggle: () => void } | null>
     | ((handle: { toggle: () => void } | null) => void);
+  onOpen?: () => void;
 }) {
   const id = useId();
   const menuId = `dropdown-menu-${id}`;
@@ -60,6 +62,10 @@ export function Dropdown({
   const contentRef = useRef<HTMLDivElement | null>(null);
 
   const position = useDropdownPosition({ isOpen, triggerRef, side, align });
+
+  useEffect(() => {
+    if (isOpen) onOpen?.();
+  }, [isOpen, onOpen]);
 
   const close = useCallback(() => {
     setIsOpen(false);

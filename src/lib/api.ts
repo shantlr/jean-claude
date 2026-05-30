@@ -1292,6 +1292,9 @@ export interface Api {
   app: {
     isDevMode: boolean;
     getIsPreviewMode: () => Promise<boolean>;
+    getReloadUpdateInfo: (params: {
+      builtCommitHash: string;
+    }) => Promise<ReloadUpdateInfo>;
     reloadPreview: () => Promise<void>;
     onReloadPreviewProgress: (
       callback: (progress: ReloadPreviewProgress) => void,
@@ -1328,6 +1331,11 @@ export type ReloadPreviewProgress = {
     | 'restarting';
   label: string;
   detail?: string;
+};
+
+export type ReloadUpdateInfo = {
+  commitCount: number;
+  latestCommitHash: string | null;
 };
 
 declare global {
@@ -1928,6 +1936,10 @@ export const api: Api = hasWindowApi
       app: {
         isDevMode: false,
         getIsPreviewMode: async () => false,
+        getReloadUpdateInfo: async () => ({
+          commitCount: 0,
+          latestCommitHash: null,
+        }),
         reloadPreview: async () => {},
         onReloadPreviewProgress: () => () => {},
       },

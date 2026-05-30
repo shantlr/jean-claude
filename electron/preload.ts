@@ -1059,6 +1059,11 @@ contextBridge.exposeInMainWorld('api', {
     isDevMode: !!process.env.ELECTRON_RENDERER_URL,
     getIsPreviewMode: () =>
       ipcRenderer.invoke('app:getIsPreviewMode') as Promise<boolean>,
+    getReloadUpdateInfo: (params: { builtCommitHash: string }) =>
+      ipcRenderer.invoke('app:getReloadUpdateInfo', params) as Promise<{
+        commitCount: number;
+        latestCommitHash: string | null;
+      }>,
     reloadPreview: () =>
       ipcRenderer.invoke('app:reloadPreview') as Promise<void>,
     onReloadPreviewProgress: (
