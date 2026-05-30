@@ -819,6 +819,7 @@ export function FeedItemCard({
     >
       <DropdownItem
         onClick={handlePin}
+        shortcut="cmd+shift+p"
         icon={
           isPinned ? (
             <PinOff className="text-ink-2" />
@@ -831,12 +832,14 @@ export function FeedItemCard({
       </DropdownItem>
       <DropdownItem
         onClick={handleToggleLowPriority}
+        shortcut="cmd+shift+l"
         icon={<ArrowDownNarrowWide className="text-ink-2" />}
       >
         {isLowPriority ? 'Remove low priority' : 'Mark low priority'}
       </DropdownItem>
       <DropdownItem
         onClick={handleDismiss}
+        shortcut="cmd+shift+d"
         icon={<XCircle className="text-ink-2" />}
       >
         Dismiss
@@ -852,6 +855,7 @@ export function FeedItemCard({
       <DropdownDivider />
       <DropdownItem
         onClick={handleOpenInProject}
+        shortcut="cmd+shift+o"
         icon={<FolderOpen className="text-ink-2" />}
       >
         Open in project
