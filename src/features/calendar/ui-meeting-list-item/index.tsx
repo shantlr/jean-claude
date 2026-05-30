@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { BellOff, MapPin, Repeat, Video } from 'lucide-react';
+import { MapPin, Repeat, Video } from 'lucide-react';
 
 import {
   extractTeamsUrl,
@@ -106,6 +106,29 @@ export function MeetingListItem({
   const dim = isIgnored;
   const teamsUrl = extractTeamsUrl(meeting);
 
+  if (isIgnored) {
+    return (
+      <button
+        type="button"
+        data-selected={selected ? 'true' : undefined}
+        onClick={onSelect}
+        className={clsx(
+          'flex w-full items-center gap-3 rounded-md border px-2.5 py-1.5 text-left text-[12px] opacity-60 transition-colors',
+          selected
+            ? 'border-acc/30 bg-acc/10 opacity-75'
+            : 'border-glass-border/60 bg-bg-1 hover:bg-glass-medium',
+        )}
+      >
+        <span className="text-ink-3 min-w-0 flex-1 truncate font-medium">
+          {meeting.title}
+        </span>
+        <span className="text-ink-4 shrink-0 font-mono text-[10px]">
+          {formatTimeRange(meeting.startAt, meeting.endAt)}
+        </span>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -153,11 +176,6 @@ export function MeetingListItem({
           {meeting.recurring && (
             <span className="text-ink-3 flex items-center gap-1 font-mono text-[10px] tracking-wide uppercase">
               <Repeat className="h-2.5 w-2.5" /> recurring
-            </span>
-          )}
-          {isIgnored && (
-            <span className="text-ink-3 flex items-center gap-1 font-mono text-[10px] tracking-wide uppercase">
-              <BellOff className="h-2.5 w-2.5" /> ignored
             </span>
           )}
         </div>
