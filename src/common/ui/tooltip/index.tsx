@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import React, {
   cloneElement,
   isValidElement,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -50,6 +51,12 @@ export function Tooltip({
   minWidth?: number;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [contentElement, setContentElement] = useState<HTMLDivElement | null>(
+    null,
+  );
+  const [contentWidth, setContentWidth] = useState<number | undefined>(
+    minWidth,
+  );
   const triggerRef = useRef<HTMLElement | null>(null);
   const delayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -59,7 +66,38 @@ export function Tooltip({
     side,
     align,
     autoAlign: true,
+    minHorizontalSpace: contentWidth ?? minWidth,
   });
+
+  const updateContentWidth = useCallback((element: HTMLDivElement) => {
+    setContentWidth(Math.ceil(element.getBoundingClientRect().width));
+  }, []);
+
+  const handleContentRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      setContentElement(node);
+      if (node) updateContentWidth(node);
+    },
+    [updateContentWidth],
+  );
+
+  useEffect(() => {
+    if (!isOpen) {
+      setContentElement(null);
+      setContentWidth(minWidth);
+      return;
+    }
+    if (!contentElement) return;
+
+    updateContentWidth(contentElement);
+
+    const observer = new ResizeObserver(() => {
+      updateContentWidth(contentElement);
+    });
+    observer.observe(contentElement);
+
+    return () => observer.disconnect();
+  }, [contentElement, isOpen, minWidth, updateContentWidth]);
 
   // Clean up pending delay timeout on unmount
   useEffect(() => {
@@ -122,6 +160,7 @@ export function Tooltip({
         position &&
         createPortal(
           <div
+            ref={handleContentRef}
             role="tooltip"
             className={clsx(
               'border-glass-border bg-bg-1 text-ink-1 pointer-events-none fixed z-50 rounded-md border px-3 py-2 text-xs shadow-lg',
@@ -139,6 +178,7 @@ export function Tooltip({
                   ? window.innerWidth - position.left
                   : undefined,
               minWidth,
+              maxWidth: 'calc(100vw - 16px)',
             }}
           >
             {content}

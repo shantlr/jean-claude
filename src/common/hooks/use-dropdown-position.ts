@@ -28,6 +28,7 @@ export function useDropdownPosition({
   side = 'bottom',
   align = 'left',
   autoAlign = false,
+  minHorizontalSpace = MIN_HORIZONTAL_SPACE,
 }: {
   isOpen: boolean;
   triggerRef: RefObject<HTMLElement | null>;
@@ -35,6 +36,8 @@ export function useDropdownPosition({
   align?: 'left' | 'right';
   /** When true, automatically flip horizontal alignment when space is limited */
   autoAlign?: boolean;
+  /** Minimum horizontal space required before auto-flipping alignment */
+  minHorizontalSpace?: number;
 }): DropdownPosition | null {
   const [position, setPosition] = useState<DropdownPosition | null>(null);
 
@@ -70,9 +73,9 @@ export function useDropdownPosition({
         const spaceRight = window.innerWidth - rect.left - VIEWPORT_PADDING;
         const spaceLeft = rect.right - VIEWPORT_PADDING;
 
-        if (align === 'left' && spaceRight < MIN_HORIZONTAL_SPACE) {
+        if (align === 'left' && spaceRight < minHorizontalSpace) {
           actualAlign = 'right';
-        } else if (align === 'right' && spaceLeft < MIN_HORIZONTAL_SPACE) {
+        } else if (align === 'right' && spaceLeft < minHorizontalSpace) {
           actualAlign = 'left';
         }
       }
@@ -94,7 +97,7 @@ export function useDropdownPosition({
       window.removeEventListener('scroll', updatePosition, true);
       window.removeEventListener('resize', updatePosition);
     };
-  }, [isOpen, side, align, autoAlign, triggerRef]);
+  }, [isOpen, side, align, autoAlign, minHorizontalSpace, triggerRef]);
 
   return position;
 }
