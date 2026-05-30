@@ -405,7 +405,7 @@ function HorizontalPrReviewStack({
 
   return (
     <section className="bg-bg-0/95 border-status-pr/15 border-b py-2 backdrop-blur-sm">
-      <div ref={carouselRef} className="relative h-[140px] overflow-hidden">
+      <div ref={carouselRef} className="relative h-[128px] overflow-hidden">
         {items.map((item, index) => (
           <PrReviewCarouselCard
             key={item.id}
@@ -419,7 +419,7 @@ function HorizontalPrReviewStack({
           />
         ))}
       </div>
-      <div className="mt-1.5 flex items-center gap-2 px-3">
+      <div className="mt-0.5 flex items-center gap-2 px-3">
         <button
           type="button"
           onClick={goFirst}
