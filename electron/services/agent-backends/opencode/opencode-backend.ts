@@ -173,6 +173,8 @@ interface OpenCodeSessionState {
       resolve: () => void;
     }
   >;
+  /** Pending question requests waiting for user response */
+  pendingQuestions: Set<string>;
   /** Start time for duration tracking */
   startTime: number;
   /** Accumulated cost */
@@ -197,6 +199,14 @@ interface OpenCodeSessionState {
 type PromptResultEvent =
   | { type: 'entries'; events: AgentEvent[] }
   | { type: 'error'; error: string };
+
+type SubscriptionReadResult =
+  | { type: 'event'; result: IteratorResult<unknown> }
+  | { type: 'idle-timeout' }
+  | { type: 'prompt-result'; result: PromptResultEvent | null };
+
+const IDLE_COMPLETION_TIMEOUT_MS = 3 * 60 * 1000;
+const IDLE_TIMEOUT_SETTLE_GRACE_MS = 250;
 
 export class OpenCodeBackend implements AgentBackend {
   private sessions = new Map<string, OpenCodeSessionState>();
@@ -274,6 +284,7 @@ export class OpenCodeBackend implements AgentBackend {
       abortController: new AbortController(),
       messages: new Map(),
       pendingPermissions: new Map(),
+      pendingQuestions: new Set(),
       startTime: Date.now(),
       totalCost: 0,
       normalizationCtx: {
@@ -322,6 +333,7 @@ export class OpenCodeBackend implements AgentBackend {
       pending.resolve();
     }
     state.pendingPermissions.clear();
+    state.pendingQuestions.clear();
 
     this.sessions.delete(sessionId);
     this.closeDedicatedServer(state);
@@ -481,6 +493,7 @@ export class OpenCodeBackend implements AgentBackend {
           error,
         );
       });
+    state.pendingQuestions.delete(requestId);
   }
 
   async setMode(_sessionId: string, _mode: InteractionMode): Promise<void> {
@@ -622,11 +635,17 @@ export class OpenCodeBackend implements AgentBackend {
     // Track whether we've received the prompt response
     let promptComplete = false;
     let sessionIdle = false;
+    let idleDeadline: number | null = null;
+    let idleTimedOut = false;
     let emittedError = false;
     let sessionErrored = false;
+    let capturedPromptResult: PromptResultEvent | null = null;
+    let hasCapturedPromptResult = false;
 
     // Send the initial prompt (fire and forget — events arrive via SSE)
     const model = this.parseModel(config.model);
+
+    let promptSettled = false;
 
     const promptPromise: Promise<PromptResultEvent | null> = client.session
       .prompt({
@@ -653,6 +672,7 @@ export class OpenCodeBackend implements AgentBackend {
       })
       .then(async (result): Promise<PromptResultEvent | null> => {
         promptComplete = true;
+        promptSettled = true;
 
         // Emit the final assistant message from prompt response using V2 normalizer
         if (result.data) {
@@ -711,6 +731,7 @@ export class OpenCodeBackend implements AgentBackend {
       })
       .catch((error): PromptResultEvent => {
         promptComplete = true;
+        promptSettled = true;
         dbg.agent('OpenCode prompt error: %O', error);
         return {
           type: 'error',
@@ -720,7 +741,33 @@ export class OpenCodeBackend implements AgentBackend {
 
     try {
       // Process SSE events
-      for await (const event of subscription.stream) {
+      const iterator = subscription.stream[Symbol.asyncIterator]();
+      while (true) {
+        const read = await this.readSubscriptionEvent({
+          iterator,
+          idleDeadline,
+          promptPromise,
+          promptSettled,
+        });
+
+        if (read.type === 'idle-timeout') {
+          idleTimedOut = true;
+          this.closeSubscriptionIterator(iterator);
+          break;
+        }
+
+        if (read.type === 'prompt-result') {
+          capturedPromptResult = read.result;
+          hasCapturedPromptResult = true;
+          this.closeSubscriptionIterator(iterator);
+          break;
+        }
+
+        const { value: event, done } = read.result;
+        if (done) {
+          break;
+        }
+
         if (state.abortController.signal.aborted) {
           break;
         }
@@ -738,7 +785,34 @@ export class OpenCodeBackend implements AgentBackend {
           continue;
         }
 
+        const isIdleEvent =
+          ocEvent.type === 'session.idle' &&
+          'properties' in ocEvent &&
+          (ocEvent.properties as { sessionID: string }).sessionID === sessionId;
+
         const rawMessageId = await this.persistRawForMessage(state, ocEvent);
+
+        // Treat session.idle as a possible completion signal, not definitive.
+        // Do not yield the normalizer's complete event here; the final complete
+        // is emitted after the idle timeout/prompt-result handling below.
+        if (isIdleEvent && this.hasPendingUserInput(state)) {
+          continue;
+        }
+
+        if (isIdleEvent) {
+          sessionIdle = true;
+          idleDeadline = Date.now() + IDLE_COMPLETION_TIMEOUT_MS;
+          if (promptSettled) {
+            break;
+          }
+          continue;
+        }
+
+        if (sessionIdle) {
+          sessionIdle = false;
+          idleDeadline = null;
+        }
+
         const agentEvents = this.mapEvent(ocEvent, state, rawMessageId);
 
         for (const agentEvent of agentEvents) {
@@ -784,19 +858,25 @@ export class OpenCodeBackend implements AgentBackend {
               });
               continue; // Don't yield the permission-request event
             }
+
+            state.pendingPermissions.set(req.requestId, {
+              permission: {
+                id: req.requestId,
+                sessionID: sessionId,
+                permission: req.toolName,
+                patterns: [],
+                metadata: req.input,
+                always: [],
+              } as OcPermission,
+              resolve: () => {},
+            });
+          }
+
+          if (agentEvent.type === 'question') {
+            state.pendingQuestions.add(agentEvent.request.requestId);
           }
 
           yield agentEvent;
-        }
-
-        // Check if session went idle (completion)
-        if (
-          ocEvent.type === 'session.idle' &&
-          'properties' in ocEvent &&
-          (ocEvent.properties as { sessionID: string }).sessionID === sessionId
-        ) {
-          sessionIdle = true;
-          break;
         }
 
         // Check for session errors
@@ -816,8 +896,11 @@ export class OpenCodeBackend implements AgentBackend {
       }
     }
 
-    // Wait for the prompt response to complete
-    const promptResult = await promptPromise;
+    const promptResult = hasCapturedPromptResult
+      ? capturedPromptResult
+      : idleTimedOut || sessionErrored || state.abortController.signal.aborted
+        ? null
+        : await promptPromise;
     if (promptResult) {
       if (promptResult.type === 'entries') {
         for (const event of promptResult.events) {
@@ -837,7 +920,7 @@ export class OpenCodeBackend implements AgentBackend {
     const hasError =
       emittedError ||
       sessionErrored ||
-      !promptComplete ||
+      (!promptComplete && !sessionIdle) ||
       (!sessionIdle && state.abortController.signal.aborted);
 
     yield {
@@ -865,6 +948,82 @@ export class OpenCodeBackend implements AgentBackend {
       'Closed dedicated OpenCode server for session %s',
       state.session.id,
     );
+  }
+
+  private hasPendingUserInput(state: OpenCodeSessionState): boolean {
+    return state.pendingPermissions.size > 0 || state.pendingQuestions.size > 0;
+  }
+
+  private closeSubscriptionIterator(iterator: AsyncIterator<unknown>): void {
+    iterator.return?.().catch((error) => {
+      dbg.agent('[opencode] error closing event stream: %O', error);
+    });
+  }
+
+  private async readSubscriptionEvent({
+    iterator,
+    idleDeadline,
+    promptPromise,
+    promptSettled,
+  }: {
+    iterator: AsyncIterator<unknown>;
+    idleDeadline: number | null;
+    promptPromise: Promise<PromptResultEvent | null>;
+    promptSettled: boolean;
+  }): Promise<SubscriptionReadResult> {
+    if (!idleDeadline) {
+      return { type: 'event', result: await iterator.next() };
+    }
+
+    const remainingMs = idleDeadline - Date.now();
+    if (remainingMs <= 0) {
+      return { type: 'idle-timeout' };
+    }
+
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    let settleTimeout: ReturnType<typeof setTimeout> | undefined;
+    const eventPromise = iterator
+      .next()
+      .then((result): SubscriptionReadResult => ({ type: 'event', result }));
+    const promptResultPromise = promptSettled
+      ? null
+      : promptPromise.then(
+          (result): SubscriptionReadResult => ({
+            type: 'prompt-result',
+            result,
+          }),
+        );
+
+    try {
+      const result = await Promise.race([
+        eventPromise,
+        new Promise<SubscriptionReadResult>((resolve) => {
+          timeout = setTimeout(
+            () => resolve({ type: 'idle-timeout' }),
+            remainingMs,
+          );
+        }),
+        ...(promptResultPromise ? [promptResultPromise] : []),
+      ]);
+
+      if (result.type !== 'idle-timeout') {
+        return result;
+      }
+
+      return await Promise.race([
+        eventPromise,
+        ...(promptResultPromise ? [promptResultPromise] : []),
+        new Promise<SubscriptionReadResult>((resolve) => {
+          settleTimeout = setTimeout(
+            () => resolve({ type: 'idle-timeout' }),
+            IDLE_TIMEOUT_SETTLE_GRACE_MS,
+          );
+        }),
+      ]);
+    } finally {
+      if (timeout) clearTimeout(timeout);
+      if (settleTimeout) clearTimeout(settleTimeout);
+    }
   }
 
   /**
