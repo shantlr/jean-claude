@@ -3,6 +3,7 @@ import { useEffect, useMemo } from 'react';
 
 import { api } from '@/lib/api';
 import { partitionFeedItems } from '@/lib/feed-partition';
+import { feedQueryKeys } from '@/lib/feed-query-keys';
 import { useFeedStore } from '@/stores/feed';
 import { useNavigationStore } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
@@ -13,6 +14,39 @@ function shouldHideReviewPr(item: FeedItem) {
     item.source === 'pull-request' &&
     (item.isOwnedByCurrentUser || item.isApprovedByMe)
   );
+}
+
+function mergeTaskPrInfo(taskItems: FeedItem[], prItems: FeedItem[]) {
+  const prByKey = new Map(
+    prItems
+      .filter((item) => item.pullRequestId != null)
+      .map((item) => [`${item.projectId}:${item.pullRequestId}`, item]),
+  );
+
+  const mergeItem = (item: FeedItem): FeedItem => {
+    const children = item.children?.map(mergeItem);
+    const withChildren = children ? { ...item, children } : item;
+
+    if (item.source !== 'task' || item.pullRequestId == null)
+      return withChildren;
+
+    const pr = prByKey.get(`${item.projectId}:${item.pullRequestId}`);
+    if (!pr) {
+      return withChildren;
+    }
+
+    return {
+      ...withChildren,
+      isDraft: pr.isDraft,
+      workItemPrStatus: 'active',
+      pullRequestMergeStatus: pr.pullRequestMergeStatus,
+      approvedBy: pr.approvedBy,
+      activeThreadCount: pr.activeThreadCount,
+      workItemPrUrl: pr.pullRequestUrl,
+    };
+  };
+
+  return taskItems.map(mergeItem);
 }
 
 export function useFeed() {
@@ -35,17 +69,65 @@ export function useFeed() {
     [hiddenProjectIds],
   );
 
-  const query = useQuery({
-    queryKey: ['feed', 'items'],
-    queryFn: async () => api.feed.getItems(),
+  const taskQuery = useQuery({
+    queryKey: feedQueryKeys.tasks,
+    queryFn: async () => api.feed.getTaskItems(),
     refetchInterval: 3 * 60 * 1000,
   });
+  const prQuery = useQuery({
+    queryKey: feedQueryKeys.pullRequests,
+    queryFn: async () => api.feed.getPullRequestItems(),
+    refetchInterval: 3 * 60 * 1000,
+  });
+  const noteQuery = useQuery({
+    queryKey: feedQueryKeys.notes,
+    queryFn: async () => api.feed.getNoteItems(),
+    refetchInterval: 3 * 60 * 1000,
+  });
+  const workItemQuery = useQuery({
+    queryKey: feedQueryKeys.workItems,
+    queryFn: async () => api.feed.getWorkItemItems(),
+    refetchInterval: 3 * 60 * 1000,
+  });
+
+  const queryData = useMemo(() => {
+    const prItems = prQuery.data ?? [];
+    const taskItems = mergeTaskPrInfo(taskQuery.data ?? [], prItems);
+    const noteItems = (noteQuery.data ?? []).filter(
+      (item) => !item.isCompleted,
+    );
+    const taskWorkItemIds = new Set(
+      taskItems.flatMap((item) => (item.workItemIds ?? []).map(Number)),
+    );
+    const workItemItems = (workItemQuery.data ?? []).filter(
+      (item) =>
+        item.workItemId === undefined || !taskWorkItemIds.has(item.workItemId),
+    );
+
+    return [...taskItems, ...prItems, ...noteItems, ...workItemItems];
+  }, [noteQuery.data, prQuery.data, taskQuery.data, workItemQuery.data]);
+
+  const isLoading =
+    taskQuery.isLoading ||
+    prQuery.isLoading ||
+    noteQuery.isLoading ||
+    workItemQuery.isLoading;
+  const isError =
+    taskQuery.isError ||
+    prQuery.isError ||
+    noteQuery.isError ||
+    workItemQuery.isError;
+  const hasAnyFeedData =
+    taskQuery.data !== undefined ||
+    prQuery.data !== undefined ||
+    noteQuery.data !== undefined ||
+    workItemQuery.data !== undefined;
 
   const reconcilePrState = useNavigationStore((s) => s.reconcilePrState);
 
   useEffect(() => {
-    const items = query.data;
-    if (!items) {
+    const items = queryData;
+    if (!hasAnyFeedData) {
       return;
     }
 
@@ -65,20 +147,28 @@ export function useFeed() {
     // Reconcile persisted PR view state — prune entries for PRs that are
     // no longer active (completed, abandoned, or gone from feed).
     // Only reconcile on a successful fetch to avoid nuking state on errors.
-    if (!query.isError) {
+    if (prQuery.data && !prQuery.isError) {
       const activePrKeys = new Set<string>();
-      for (const item of items) {
+      for (const item of prQuery.data) {
         if (item.source === 'pull-request' && item.pullRequestId != null) {
           activePrKeys.add(`${item.projectId}:${item.pullRequestId}`);
         }
       }
       reconcilePrState(activePrKeys);
     }
-  }, [lastAttention, query.data, query.isError, reconcile, reconcilePrState]);
+  }, [
+    hasAnyFeedData,
+    lastAttention,
+    prQuery.data,
+    prQuery.isError,
+    queryData,
+    reconcile,
+    reconcilePrState,
+  ]);
 
   // Refine waiting/permission attention from in-memory pending request state.
   const refinedItems = useMemo(() => {
-    const raw = query.data ?? [];
+    const raw = queryData;
     const steps = Object.values(taskSteps);
 
     const taskIdsWithQuestions = new Set<string>();
@@ -139,7 +229,7 @@ export function useFeed() {
       // event triggers a feed query refetch which updates the server state.
       return item;
     });
-  }, [query.data, taskSteps, pendingRequestsByTaskId]);
+  }, [queryData, taskSteps, pendingRequestsByTaskId]);
 
   const visibleFeedItems = useMemo(
     () => refinedItems.filter((item) => !shouldHideReviewPr(item)),
@@ -249,7 +339,17 @@ export function useFeed() {
   );
 
   return {
-    ...query,
+    data: refinedItems,
+    isLoading,
+    isError,
+    refetch: async () => {
+      await Promise.all([
+        taskQuery.refetch(),
+        prQuery.refetch(),
+        noteQuery.refetch(),
+        workItemQuery.refetch(),
+      ]);
+    },
     pinnedItems,
     actionNeededItems,
     prReviewItems,

@@ -80,6 +80,7 @@ import {
   useRelatedTestCasesForWorkItems,
 } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
+import { feedQueryKeys } from '@/lib/feed-query-keys';
 import { buildAttachedFilesXml } from '@/lib/file-attachment-utils';
 import { compressImage } from '@/lib/image-compression';
 import {
@@ -1085,7 +1086,8 @@ export function NewTaskOverlay({
       .mutateAsync(creationInput)
       .then((note) => {
         markJobSucceeded(jobId, { noteId: note.id });
-        queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+        queryClient.invalidateQueries({ queryKey: feedQueryKeys.tasks });
+        queryClient.invalidateQueries({ queryKey: feedQueryKeys.workItems });
       })
       .catch((error: unknown) => {
         const message =

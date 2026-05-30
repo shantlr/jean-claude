@@ -1042,6 +1042,10 @@ contextBridge.exposeInMainWorld('api', {
   },
   feed: {
     getItems: () => ipcRenderer.invoke('feed:getItems'),
+    getTaskItems: () => ipcRenderer.invoke('feed:getTaskItems'),
+    getPullRequestItems: () => ipcRenderer.invoke('feed:getPullRequestItems'),
+    getNoteItems: () => ipcRenderer.invoke('feed:getNoteItems'),
+    getWorkItemItems: () => ipcRenderer.invoke('feed:getWorkItemItems'),
     createNote: (params: { content: string }) =>
       ipcRenderer.invoke('feed:createNote', params),
     createWorkItemVerificationNote: (

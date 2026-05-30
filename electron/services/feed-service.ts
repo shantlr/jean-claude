@@ -162,14 +162,18 @@ function getSubtitleFromSteps({
 /**
  * Aggregates active and recently completed tasks into FeedItem[].
  */
-export async function getFeedItems(): Promise<FeedItem[]> {
-  dbg.feed('getFeedItems: fetching active tasks');
+export async function getTaskFeedItems({
+  prItems = [],
+}: {
+  prItems?: FeedItem[];
+} = {}): Promise<FeedItem[]> {
+  dbg.feed('getTaskFeedItems: fetching active tasks');
 
   const activeTasks = await TaskRepository.findAllActive();
   const stepsByTaskId = await TaskStepRepository.findByTaskIds(
     activeTasks.map((task) => task.id),
   );
-  dbg.feed('getFeedItems: %d active', activeTasks.length);
+  dbg.feed('getTaskFeedItems: %d active', activeTasks.length);
 
   const feedItems: FeedItem[] = [];
 
@@ -283,23 +287,58 @@ export async function getFeedItems(): Promise<FeedItem[]> {
     });
   }
 
-  // Fetch PR items (with cache to avoid hammering Azure DevOps API)
+  await enrichTaskFeedItemsWithPrStatus({ feedItems, prItems });
+
+  dbg.feed('getTaskFeedItems: returning %d tasks', feedItems.length);
+  return feedItems;
+}
+
+/**
+ * Aggregates feed items across sources. Kept for older callers; the renderer
+ * fetches source-specific endpoints so each query can invalidate separately.
+ */
+export async function getFeedItems(): Promise<FeedItem[]> {
   const prItems = await fetchPrFeedItems();
+  const [taskItems, noteItems, workItemItems] = await Promise.all([
+    getTaskFeedItems({ prItems }),
+    fetchNoteFeedItems(),
+    fetchWorkItemFeedItems(prItems),
+  ]);
+  const activeNoteItems = noteItems.filter((item) => !item.isCompleted);
 
-  // Fetch note items
-  const noteItems = await fetchNoteFeedItems();
-
-  const workItemItems = await fetchWorkItemFeedItems(prItems);
-
-  // Filter out work items that already have an associated task
   const taskWorkItemIds = new Set(
-    activeTasks.flatMap((t) => (t.workItemIds ?? []).map(Number)),
+    taskItems.flatMap((t) => (t.workItemIds ?? []).map(Number)),
   );
-
   const filteredWorkItems = workItemItems.filter(
     (wi) => wi.workItemId === undefined || !taskWorkItemIds.has(wi.workItemId),
   );
 
+  const allItems = [
+    ...taskItems,
+    ...prItems,
+    ...activeNoteItems,
+    ...filteredWorkItems,
+  ];
+
+  dbg.feed(
+    'getFeedItems: returning %d items (%d tasks, %d PRs, %d notes, %d work items [%d filtered])',
+    allItems.length,
+    taskItems.length,
+    prItems.length,
+    activeNoteItems.length,
+    filteredWorkItems.length,
+    workItemItems.length - filteredWorkItems.length,
+  );
+  return allItems;
+}
+
+async function enrichTaskFeedItemsWithPrStatus({
+  feedItems,
+  prItems,
+}: {
+  feedItems: FeedItem[];
+  prItems: FeedItem[];
+}): Promise<void> {
   // --- Enrich task feed items with PR status ---
   // Build a set of known active PR IDs from the PR feed
   const activePrMap = new Map(
@@ -409,48 +448,33 @@ export async function getFeedItems(): Promise<FeedItem[]> {
       }
     }
   }
-
-  const allItems = [
-    ...feedItems,
-    ...prItems,
-    ...noteItems,
-    ...filteredWorkItems,
-  ];
-
-  dbg.feed(
-    'getFeedItems: returning %d items (%d tasks, %d PRs, %d notes, %d work items [%d filtered])',
-    allItems.length,
-    feedItems.length,
-    prItems.length,
-    noteItems.length,
-    filteredWorkItems.length,
-    workItemItems.length - filteredWorkItems.length,
-  );
-  return allItems;
 }
 
 async function fetchNoteFeedItems(): Promise<FeedItem[]> {
   const notes = await FeedNoteRepository.findAll();
-  return notes
-    .filter((note) => !note.completedAt)
-    .map((note) => {
-      const markdown = blockNoteJsonToMarkdown(note.content);
+  return notes.map((note) => {
+    const markdown = blockNoteJsonToMarkdown(note.content);
 
-      return {
-        id: `note:${note.id}`,
-        source: 'note' as const,
-        attention: 'note' as const,
-        timestamp: note.updatedAt,
-        projectId: '',
-        projectName: '',
-        projectColor: '',
-        projectLogoPath: null,
-        projectPriority: 'normal' as const,
-        title: markdown,
-        noteId: note.id,
-        noteContent: note.content,
-      };
-    });
+    return {
+      id: `note:${note.id}`,
+      source: 'note' as const,
+      attention: 'note' as const,
+      timestamp: note.updatedAt,
+      projectId: '',
+      projectName: '',
+      projectColor: '',
+      projectLogoPath: null,
+      projectPriority: 'normal' as const,
+      title: markdown,
+      noteId: note.id,
+      noteContent: note.content,
+      isCompleted: Boolean(note.completedAt),
+    };
+  });
+}
+
+export async function getNoteFeedItems(): Promise<FeedItem[]> {
+  return fetchNoteFeedItems();
 }
 
 // --- Feed note CRUD ---
@@ -721,6 +745,10 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
   return enrichedItems;
 }
 
+export async function getPrFeedItems(): Promise<FeedItem[]> {
+  return fetchPrFeedItems();
+}
+
 async function fetchWorkItemFeedItems(
   prFeedItems: FeedItem[],
 ): Promise<FeedItem[]> {
@@ -880,4 +908,8 @@ async function fetchWorkItemFeedItems(
     feedItems.length,
   );
   return feedItems;
+}
+
+export async function getWorkItemFeedItems(): Promise<FeedItem[]> {
+  return fetchWorkItemFeedItems([]);
 }

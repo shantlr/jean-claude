@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
+import { feedQueryKeys } from '@/lib/feed-query-keys';
 import { NewProject, Project, UpdateProject } from '@shared/types';
 
 export function useProjects() {
@@ -41,7 +42,7 @@ export function useUpdateProject() {
       queryClient.invalidateQueries({
         queryKey: ['project-current-branch', id],
       });
-      queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+      queryClient.invalidateQueries({ queryKey: feedQueryKeys.all });
     },
   });
 }
@@ -60,7 +61,7 @@ export function useUploadProjectLogo() {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-logo'] });
-      queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+      queryClient.invalidateQueries({ queryKey: feedQueryKeys.all });
     },
   });
 }
@@ -73,7 +74,7 @@ export function useGenerateProjectLogo() {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-logo'] });
-      queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+      queryClient.invalidateQueries({ queryKey: feedQueryKeys.all });
     },
   });
 }
@@ -86,7 +87,7 @@ export function useRemoveProjectLogo() {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-logo'] });
-      queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+      queryClient.invalidateQueries({ queryKey: feedQueryKeys.all });
     },
   });
 }
@@ -100,7 +101,7 @@ export function useDeleteProject() {
       queryClient.invalidateQueries({
         queryKey: ['project-is-git-repository', id],
       });
-      queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+      queryClient.invalidateQueries({ queryKey: feedQueryKeys.all });
     },
   });
 }

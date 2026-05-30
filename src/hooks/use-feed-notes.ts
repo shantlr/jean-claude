@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { api } from '@/lib/api';
+import { feedQueryKeys } from '@/lib/feed-query-keys';
 import type { FeedItem } from '@shared/feed-types';
 import type { CreateWorkItemVerificationNoteParams } from '@shared/work-item-verification-note-types';
 
@@ -10,7 +11,7 @@ export function useCreateFeedNote() {
   return useMutation({
     mutationFn: (params: { content: string }) => api.feed.createNote(params),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+      queryClient.invalidateQueries({ queryKey: feedQueryKeys.notes });
     },
   });
 }
@@ -21,7 +22,7 @@ export function useCreateWorkItemVerificationNote() {
     mutationFn: (params: CreateWorkItemVerificationNoteParams) =>
       api.feed.createWorkItemVerificationNote(params),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+      queryClient.invalidateQueries({ queryKey: feedQueryKeys.notes });
     },
   });
 }
@@ -35,7 +36,7 @@ export function useUpdateFeedNote() {
       completedAt?: string | null;
     }) => api.feed.updateNote(params),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+      queryClient.invalidateQueries({ queryKey: feedQueryKeys.notes });
     },
   });
 }
@@ -45,8 +46,8 @@ export function useUpdateFeedNote() {
  */
 export function useFeedNoteById(noteId: string) {
   const { data: items, isLoading } = useQuery({
-    queryKey: ['feed', 'items'],
-    queryFn: async () => api.feed.getItems(),
+    queryKey: feedQueryKeys.notes,
+    queryFn: async () => api.feed.getNoteItems(),
   });
 
   const note = useMemo(
@@ -66,7 +67,7 @@ export function useDeleteFeedNote() {
   return useMutation({
     mutationFn: (params: { id: string }) => api.feed.deleteNote(params),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+      queryClient.invalidateQueries({ queryKey: feedQueryKeys.notes });
     },
   });
 }

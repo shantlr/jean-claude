@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
+import { feedQueryKeys } from '@/lib/feed-query-keys';
 
 export function useCreatePullRequest() {
   const queryClient = useQueryClient();
@@ -16,7 +17,8 @@ export function useCreatePullRequest() {
     onSuccess: (_, params) => {
       queryClient.invalidateQueries({ queryKey: ['tasks', params.taskId] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+      queryClient.invalidateQueries({ queryKey: feedQueryKeys.tasks });
+      queryClient.invalidateQueries({ queryKey: feedQueryKeys.pullRequests });
       queryClient.invalidateQueries({ queryKey: ['pull-requests'] });
       queryClient.invalidateQueries({
         queryKey: ['all-projects-pull-requests'],

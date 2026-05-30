@@ -1278,6 +1278,10 @@ export interface Api {
   };
   feed: {
     getItems: () => Promise<FeedItem[]>;
+    getTaskItems: () => Promise<FeedItem[]>;
+    getPullRequestItems: () => Promise<FeedItem[]>;
+    getNoteItems: () => Promise<FeedItem[]>;
+    getWorkItemItems: () => Promise<FeedItem[]>;
     createNote: (params: { content: string }) => Promise<FeedNote>;
     createWorkItemVerificationNote: (
       params: CreateWorkItemVerificationNoteParams,
@@ -1907,6 +1911,10 @@ export const api: Api = hasWindowApi
       },
       feed: {
         getItems: async () => [],
+        getTaskItems: async () => [],
+        getPullRequestItems: async () => [],
+        getNoteItems: async () => [],
+        getWorkItemItems: async () => [],
         createNote: async () => ({
           id: '',
           content: '',

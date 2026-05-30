@@ -23,6 +23,7 @@ import {
   useAddPullRequestFileComment,
   useUploadPullRequestAttachment,
 } from '@/hooks/use-pull-requests';
+import { feedQueryKeys } from '@/lib/feed-query-keys';
 import { usePrDetailState } from '@/stores/navigation';
 import type { PrDetailTab } from '@/stores/navigation';
 import type { PromptImagePart } from '@shared/agent-backend-types';
@@ -108,7 +109,7 @@ export function PrDetail({
 
     const prFeedItemId = `pr:${projectId}:${prId}`;
 
-    queryClient.setQueryData<FeedItem[]>(['feed', 'items'], (old) => {
+    queryClient.setQueryData<FeedItem[]>(feedQueryKeys.pullRequests, (old) => {
       if (!old) return old;
       return old.map((item) =>
         item.id === prFeedItemId ? { ...item, hasNewActivity: false } : item,

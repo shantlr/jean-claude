@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
 import { api } from '@/lib/api';
+import { feedQueryKeys } from '@/lib/feed-query-keys';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { NormalizedEntry } from '@shared/normalized-message-v2';
 
@@ -89,7 +90,7 @@ export function TaskMessageManager() {
           queryClient.invalidateQueries({ queryKey: ['steps', stepId] });
           // Invalidate feed so status changes appear instantly
           queryClient.invalidateQueries({
-            queryKey: ['feed', 'items'],
+            queryKey: feedQueryKeys.tasks,
           });
           break;
         case 'permission':
@@ -104,7 +105,7 @@ export function TaskMessageManager() {
           });
           // Invalidate feed so attention changes to needs-permission
           queryClient.invalidateQueries({
-            queryKey: ['feed', 'items'],
+            queryKey: feedQueryKeys.tasks,
           });
           break;
         case 'question':
@@ -119,7 +120,7 @@ export function TaskMessageManager() {
           });
           // Invalidate feed so attention changes to has-question
           queryClient.invalidateQueries({
-            queryKey: ['feed', 'items'],
+            queryKey: feedQueryKeys.tasks,
           });
           break;
         case 'name-updated':

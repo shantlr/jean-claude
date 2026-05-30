@@ -163,6 +163,10 @@ import {
   createFeedNote,
   deleteFeedNote,
   getFeedItems,
+  getNoteFeedItems,
+  getPrFeedItems,
+  getTaskFeedItems,
+  getWorkItemFeedItems,
   invalidatePrCache,
   invalidateWorkItemCache,
   updateFeedNote,
@@ -4359,6 +4363,22 @@ export function registerIpcHandlers() {
   // Feed
   ipcMain.handle('feed:getItems', async () => {
     return getFeedItems();
+  });
+
+  ipcMain.handle('feed:getTaskItems', async () => {
+    return getTaskFeedItems();
+  });
+
+  ipcMain.handle('feed:getPullRequestItems', async () => {
+    return getPrFeedItems();
+  });
+
+  ipcMain.handle('feed:getNoteItems', async () => {
+    return getNoteFeedItems();
+  });
+
+  ipcMain.handle('feed:getWorkItemItems', async () => {
+    return getWorkItemFeedItems();
   });
 
   ipcMain.handle(

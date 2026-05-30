@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
+import { feedQueryKeys } from '@/lib/feed-query-keys';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { AgentBackendType } from '@shared/agent-backend-types';
@@ -29,7 +30,8 @@ type CreateTaskPayload = NewTask & {
 export function invalidateFeedItems(
   queryClient: ReturnType<typeof useQueryClient>,
 ) {
-  queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
+  queryClient.invalidateQueries({ queryKey: feedQueryKeys.tasks });
+  queryClient.invalidateQueries({ queryKey: feedQueryKeys.workItems });
 }
 
 export function useTasks() {
