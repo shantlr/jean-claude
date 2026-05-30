@@ -12,6 +12,7 @@ import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
 import { Button } from '@/common/ui/button';
 import { IconButton } from '@/common/ui/icon-button';
 import { Kbd } from '@/common/ui/kbd';
+import type { ComponentSize } from '@/common/ui/styles';
 import {
   PromptTextarea,
   PromptTextareaRef,
@@ -49,6 +50,11 @@ export function MessageInput({
   snippetVariableContext,
   allowEmptySubmit = false,
   toolbarLeading,
+  controlsAboveButtons,
+  controlsBeforeButtons,
+  buttonSize = 'lg',
+  fillAvailableHeight = false,
+  textareaClassName,
   isCompact = false,
 }: {
   onSend: (parts: PromptPart[]) => void;
@@ -78,6 +84,16 @@ export function MessageInput({
   allowEmptySubmit?: boolean;
   /** Content rendered at the left of the bottom toolbar row (compact stacked layout only) */
   toolbarLeading?: ReactNode;
+  /** Content stacked above send/stop controls in the default horizontal layout */
+  controlsAboveButtons?: ReactNode;
+  /** Content rendered immediately before send/stop controls. */
+  controlsBeforeButtons?: ReactNode;
+  /** Size for send/stop controls. Defaults to legacy large buttons. */
+  buttonSize?: ComponentSize;
+  /** Stretch the textarea to match available input row height. */
+  fillAvailableHeight?: boolean;
+  /** Optional textarea class override. */
+  textareaClassName?: string;
   /** When true, use stacked layout: textarea on top, toolbar below. When false, horizontal layout. */
   isCompact?: boolean;
 }) {
@@ -210,7 +226,7 @@ export function MessageInput({
     <Button
       onClick={handleSubmit}
       disabled={isSubmitDisabled}
-      size="lg"
+      size={buttonSize}
       variant="primary"
       icon={isRunning ? <ListPlus /> : <Send />}
       className={clsx(
@@ -238,7 +254,7 @@ export function MessageInput({
     <IconButton
       onClick={onStop}
       disabled={isStopping}
-      size="lg"
+      size={buttonSize}
       variant="danger"
       icon={isStopping ? <Loader2 className="animate-spin" /> : <Square />}
       className="bg-status-fail text-bg-0 shadow-status-fail/25 hover:shadow-status-fail/40 shrink-0 shadow-md transition-all duration-200 hover:scale-105 hover:shadow-lg hover:brightness-110"
@@ -280,6 +296,8 @@ export function MessageInput({
       disabled={disabled && !isRunning}
       onFocus={() => onFocusChange?.(true)}
       onBlur={() => onFocusChange?.(false)}
+      fillAvailableHeight={fillAvailableHeight}
+      className={textareaClassName}
     />
   );
 
@@ -291,8 +309,11 @@ export function MessageInput({
         <div className="flex items-center gap-2">
           {toolbarLeading}
           <div className="flex-1" />
-          {sendButton}
-          {stopButton}
+          <div className="flex items-center gap-2">
+            {controlsBeforeButtons}
+            {sendButton}
+            {stopButton}
+          </div>
         </div>
       </div>
     );
@@ -300,10 +321,16 @@ export function MessageInput({
 
   // Default horizontal layout: selectors + textarea + buttons in one row
   return (
-    <div className="relative flex flex-1 items-end gap-2">
+    <div className="relative flex flex-1 items-stretch gap-2">
       {textarea}
-      {sendButton}
-      {stopButton}
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        {controlsAboveButtons}
+        <div className="flex items-center gap-2">
+          {controlsBeforeButtons}
+          {sendButton}
+          {stopButton}
+        </div>
+      </div>
     </div>
   );
 }

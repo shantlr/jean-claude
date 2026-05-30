@@ -12,6 +12,7 @@ export interface DropdownPosition {
   actualSide: 'top' | 'bottom';
   actualAlign: 'left' | 'right';
   maxHeight: number;
+  maxWidth: number;
 }
 
 /**
@@ -27,7 +28,7 @@ export function useDropdownPosition({
   triggerRef,
   side = 'bottom',
   align = 'left',
-  autoAlign = false,
+  autoAlign = true,
   minHorizontalSpace = MIN_HORIZONTAL_SPACE,
 }: {
   isOpen: boolean;
@@ -81,8 +82,12 @@ export function useDropdownPosition({
       }
 
       const left = actualAlign === 'right' ? rect.right : rect.left;
+      const maxWidth =
+        actualAlign === 'right'
+          ? Math.max(0, rect.right - VIEWPORT_PADDING)
+          : Math.max(0, window.innerWidth - rect.left - VIEWPORT_PADDING);
 
-      setPosition({ top, left, actualSide, actualAlign, maxHeight });
+      setPosition({ top, left, actualSide, actualAlign, maxHeight, maxWidth });
     };
 
     updatePosition();

@@ -142,6 +142,7 @@ export function ComposerCommentsChip({
                 position.actualAlign === 'right'
                   ? window.innerWidth - position.left
                   : undefined,
+              maxWidth: position.maxWidth,
             }}
           >
             {/* Header */}

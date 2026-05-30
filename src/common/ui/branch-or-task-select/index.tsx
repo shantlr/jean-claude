@@ -394,9 +394,13 @@ export function BranchOrTaskSelect({
                 position.actualSide === 'top'
                   ? window.innerHeight - position.top
                   : undefined,
-              left: position.left,
+              left: position.actualAlign === 'left' ? position.left : undefined,
+              right:
+                position.actualAlign === 'right'
+                  ? window.innerWidth - position.left
+                  : undefined,
               minWidth: triggerRef.current?.getBoundingClientRect().width,
-              maxWidth: 320,
+              maxWidth: Math.min(320, position.maxWidth),
               maxHeight: position.maxHeight,
               display: 'flex',
               flexDirection: 'column',

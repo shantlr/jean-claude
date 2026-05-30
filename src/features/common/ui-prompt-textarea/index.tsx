@@ -161,6 +161,8 @@ export interface PromptTextareaProps extends Omit<
   snippetVariableContext?: SnippetVariableContext;
   /** Classes for the droppable composer container */
   containerClassName?: string;
+  /** Expand textarea height to fill the available cross-axis space. */
+  fillAvailableHeight?: boolean;
 }
 
 export const PromptTextarea = forwardRef<
@@ -188,6 +190,7 @@ export const PromptTextarea = forwardRef<
     promptSnippets = [],
     snippetVariableContext,
     containerClassName,
+    fillAvailableHeight = false,
     className,
     style,
     onKeyDown: externalOnKeyDown,
@@ -203,6 +206,7 @@ export const PromptTextarea = forwardRef<
   const [completionCursorPosition, setCompletionCursorPosition] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const textareaWrapperRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const ghostRef = useRef<HTMLDivElement>(null);
   const trailingControlsRef = useRef<HTMLDivElement>(null);
@@ -595,8 +599,11 @@ export const PromptTextarea = forwardRef<
     // so multiline completions expand the textarea
     const ghostHeight = ghostRef.current?.scrollHeight ?? 0;
     const neededHeight = Math.max(textarea.scrollHeight, ghostHeight);
-    textarea.style.height = `${Math.min(neededHeight, maxHeight)}px`;
-  }, [maxHeight]);
+    const fillHeight = fillAvailableHeight
+      ? (textareaWrapperRef.current?.clientHeight ?? 0)
+      : 0;
+    textarea.style.height = `${Math.min(Math.max(neededHeight, fillHeight), maxHeight)}px`;
+  }, [fillAvailableHeight, maxHeight]);
 
   const syncScrollTop = useCallback(() => {
     setTextareaScrollTop(textareaRef.current?.scrollTop ?? 0);
@@ -871,7 +878,7 @@ export const PromptTextarea = forwardRef<
           <div
             ref={dropdownRef}
             className={clsx(
-              'border-glass-border bg-bg-1 fixed z-50 max-h-80 overflow-y-auto rounded-md border py-1 shadow-lg',
+              'border-glass-border bg-bg-1 fixed z-50 max-h-80 overflow-x-hidden overflow-y-auto rounded-md border py-1 shadow-lg',
             )}
             style={{
               top:
@@ -882,9 +889,17 @@ export const PromptTextarea = forwardRef<
                 dropdownPosition.actualSide === 'top'
                   ? window.innerHeight - dropdownPosition.top
                   : undefined,
-              left: dropdownPosition.left,
+              left:
+                dropdownPosition.actualAlign === 'left'
+                  ? dropdownPosition.left
+                  : undefined,
+              right:
+                dropdownPosition.actualAlign === 'right'
+                  ? window.innerWidth - dropdownPosition.left
+                  : undefined,
               width: containerRef.current?.getBoundingClientRect().width,
               maxHeight: dropdownPosition.maxHeight,
+              maxWidth: dropdownPosition.maxWidth,
             }}
           >
             {/* File paths */}
@@ -1055,7 +1070,7 @@ export const PromptTextarea = forwardRef<
         )}
 
       {/* Textarea wrapper — relative for ghost overlay + absolute elements */}
-      <div className="relative flex items-end">
+      <div ref={textareaWrapperRef} className="relative flex flex-1 items-end">
         <textarea
           ref={textareaRef}
           value={value}

@@ -303,9 +303,14 @@ export function BranchSelect({
                 position.actualSide === 'top'
                   ? window.innerHeight - position.top
                   : undefined,
-              left: position.left,
+              left: position.actualAlign === 'left' ? position.left : undefined,
+              right:
+                position.actualAlign === 'right'
+                  ? window.innerWidth - position.left
+                  : undefined,
               minWidth: triggerRef.current?.getBoundingClientRect().width,
               maxHeight: position.maxHeight,
+              maxWidth: position.maxWidth,
               display: 'flex',
               flexDirection: 'column',
             }}

@@ -2098,6 +2098,31 @@ const TaskInputFooter = memo(function TaskInputFooter({
   // Allow send with just pills (no typed text)
   const effectiveCanSend = canSendMessage || openReviewComments.length > 0;
 
+  const selectorGroup = (
+    <div className="[&>button:not(:last-child)]:border-glass-border flex items-center gap-0 rounded-md [&>button]:rounded-none [&>button:first-child]:rounded-l-md [&>button:last-child]:rounded-r-md [&>button:not(:last-child)]:border-r">
+      <ModeSelector
+        value={effectiveMode}
+        onChange={handleModeChange}
+        backend={effectiveBackend}
+        disabled={isRunning}
+        size="sm"
+      />
+      <ModelSelector
+        value={effectiveModel}
+        onChange={handleModelChange}
+        models={getModelsForBackend(effectiveBackend, dynamicModels)}
+        size="sm"
+      />
+      <ThinkingSelector
+        value={effectiveThinkingEffort}
+        onChange={handleThinkingEffortChange}
+        options={thinkingOptions}
+        disabled={isRunning || thinkingOptions.length <= 1}
+        size="sm"
+      />
+    </div>
+  );
+
   return (
     <div
       ref={containerRef}
@@ -2140,7 +2165,6 @@ const TaskInputFooter = memo(function TaskInputFooter({
             isCompact
             toolbarLeading={
               <>
-                <ContextUsageDisplay contextUsage={contextUsage} />
                 <ModeModelComboSelector
                   mode={effectiveMode}
                   onModeChange={handleModeChange}
@@ -2155,29 +2179,16 @@ const TaskInputFooter = memo(function TaskInputFooter({
                 />
               </>
             }
+            controlsBeforeButtons={
+              <ContextUsageDisplay contextUsage={contextUsage} />
+            }
+            buttonSize="sm"
+            textareaClassName="bg-transparent px-1 py-0 text-sm leading-[20px]"
           />
         </div>
       ) : (
         /* Wide layout: selectors + textarea + send in one row */
-        <div className="flex items-center gap-2 p-2 px-3">
-          <ContextUsageDisplay contextUsage={contextUsage} />
-          <ModeSelector
-            value={effectiveMode}
-            onChange={handleModeChange}
-            backend={effectiveBackend}
-            disabled={isRunning}
-          />
-          <ModelSelector
-            value={effectiveModel}
-            onChange={handleModelChange}
-            models={getModelsForBackend(effectiveBackend, dynamicModels)}
-          />
-          <ThinkingSelector
-            value={effectiveThinkingEffort}
-            onChange={handleThinkingEffortChange}
-            options={thinkingOptions}
-            disabled={isRunning || thinkingOptions.length <= 1}
-          />
+        <div className="flex items-center gap-2 px-3 py-2">
           <MessageInput
             onSend={handleSendMessage}
             onQueue={handleQueuePrompt}
@@ -2197,6 +2208,13 @@ const TaskInputFooter = memo(function TaskInputFooter({
             onFocusChange={setInputFocused}
             promptSnippets={footerSnippets}
             snippetVariableContext={snippetVariableContext}
+            controlsAboveButtons={selectorGroup}
+            controlsBeforeButtons={
+              <ContextUsageDisplay contextUsage={contextUsage} />
+            }
+            buttonSize="sm"
+            fillAvailableHeight
+            textareaClassName="bg-transparent px-1 py-0 text-sm leading-[20px]"
           />
         </div>
       )}

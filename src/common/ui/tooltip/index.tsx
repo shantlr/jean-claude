@@ -178,7 +178,7 @@ export function Tooltip({
                   ? window.innerWidth - position.left
                   : undefined,
               minWidth,
-              maxWidth: 'calc(100vw - 16px)',
+              maxWidth: position.maxWidth,
             }}
           >
             {content}

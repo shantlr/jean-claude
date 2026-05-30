@@ -3,6 +3,7 @@ import { forwardRef } from 'react';
 import type { KeyboardLayer } from '@/common/context/keyboard-bindings';
 import type { BindingKey } from '@/common/context/keyboard-bindings/types';
 import { Select, type SelectRef } from '@/common/ui/select';
+import type { ComponentSize } from '@/common/ui/styles';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import {
   getInteractionModeOptions,
@@ -21,6 +22,7 @@ export const ModeSelector = forwardRef<
     shortcutBehavior?: 'cycle' | 'open';
     side?: 'top' | 'bottom';
     className?: string;
+    size?: ComponentSize;
     layer?: KeyboardLayer;
   }
 >(function ModeSelector(
@@ -33,6 +35,7 @@ export const ModeSelector = forwardRef<
     shortcutBehavior,
     side,
     className,
+    size,
     layer,
   },
   ref,
@@ -55,6 +58,7 @@ export const ModeSelector = forwardRef<
       shortcutBehavior={shortcutBehavior}
       side={side}
       className={className}
+      size={size}
       layer={layer}
     />
   );

@@ -3,6 +3,7 @@ import { forwardRef } from 'react';
 import type { KeyboardLayer } from '@/common/context/keyboard-bindings';
 import type { BindingKey } from '@/common/context/keyboard-bindings/types';
 import { Select, type SelectRef } from '@/common/ui/select';
+import type { ComponentSize } from '@/common/ui/styles';
 import type { ThinkingEffortOption } from '@shared/thinking-settings';
 import { THINKING_EFFORT_OPTIONS } from '@shared/thinking-settings';
 import type { ThinkingEffort } from '@shared/types';
@@ -18,6 +19,7 @@ export const ThinkingSelector = forwardRef<
     shortcutBehavior?: 'cycle' | 'open';
     side?: 'top' | 'bottom';
     className?: string;
+    size?: ComponentSize;
     layer?: KeyboardLayer;
   }
 >(function ThinkingSelector(
@@ -30,6 +32,7 @@ export const ThinkingSelector = forwardRef<
     shortcutBehavior,
     side,
     className,
+    size,
     layer,
   },
   ref,
@@ -46,6 +49,7 @@ export const ThinkingSelector = forwardRef<
       shortcutBehavior={shortcutBehavior}
       side={side}
       className={className}
+      size={size}
       layer={layer}
     />
   );

@@ -284,7 +284,7 @@ export function Dropdown({
             aria-orientation="vertical"
             className={clsx(
               variant === 'default' ? 'bg-bg-1' : 'bg-bg-1',
-              'border-glass-border fixed z-50 min-w-48 overflow-y-auto rounded-xl border py-1 shadow-lg',
+              'border-glass-border fixed z-50 min-w-48 overflow-x-hidden overflow-y-auto rounded-xl border py-1 shadow-lg',
               className,
             )}
             style={{
@@ -299,6 +299,7 @@ export function Dropdown({
                   ? window.innerWidth - position.left
                   : undefined,
               maxHeight: position.maxHeight,
+              maxWidth: position.maxWidth,
             }}
           >
             {children}
