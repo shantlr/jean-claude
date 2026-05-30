@@ -717,8 +717,10 @@ export function useCurrentVisibleProject() {
             to: '/all/prs/$projectId',
             params: { projectId },
           });
+          return;
         }
 
+        navigate({ to: '/all' });
         return;
       }
 
