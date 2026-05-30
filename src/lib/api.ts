@@ -801,6 +801,7 @@ export interface Api {
       projectPath: string,
       sourcePath: string,
     ) => Promise<{ filePath: string; filename: string }>;
+    getPathForFile: (file: File) => string | null;
   };
   settings: {
     get: <K extends keyof AppSettings>(key: K) => Promise<AppSettings[K]>;
@@ -1574,6 +1575,7 @@ export const api: Api = hasWindowApi
         listProjectFiles: async () => [],
         writeAttachmentFile: async () => '',
         copyAttachmentFile: async () => ({ filePath: '', filename: '' }),
+        getPathForFile: () => null,
       },
       settings: {
         get: async () => {

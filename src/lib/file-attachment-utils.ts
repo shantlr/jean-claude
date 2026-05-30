@@ -60,9 +60,9 @@ export async function processAttachmentFile(
   onAttach: (file: PromptFilePart) => void,
   onError?: (message: string) => void,
 ): Promise<void> {
-  // Electron File objects from file picker and drag/drop have a .path property
-  // with the absolute filesystem path.
-  const electronPath = (file as File & { path?: string }).path;
+  const electronPath =
+    window.api.fs.getPathForFile(file) ??
+    (file as File & { path?: string }).path;
 
   if (file.size > MAX_FILE_ATTACHMENT_SIZE) {
     if (electronPath && electronPath.length > 0) {

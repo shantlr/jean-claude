@@ -384,6 +384,8 @@ async function activateAssociatedWorkItems(params: {
   }
 }
 
+const MAX_FILE_ATTACHMENT_SIZE = 50 * 1024 * 1024;
+
 export function registerIpcHandlers() {
   dbg.ipc('Registering IPC handlers');
   let previewReloadInProgress = false;
@@ -629,6 +631,7 @@ export function registerIpcHandlers() {
 
           // Reset regex lastIndex after test()
           attachedFileRegex.lastIndex = 0;
+          const projectTmpDir = path.join(project.path, '.jean-claude', 'tmp');
           const relocations: Array<{
             oldPath: string;
             newPath: string;
@@ -636,9 +639,22 @@ export function registerIpcHandlers() {
           let match;
           while ((match = attachedFileRegex.exec(taskData.prompt)) !== null) {
             const oldFilePath = match[2];
+            const relativeToProjectTmp = path.relative(
+              projectTmpDir,
+              oldFilePath,
+            );
+            const isProjectTempAttachment =
+              relativeToProjectTmp !== '' &&
+              !relativeToProjectTmp.startsWith('..') &&
+              !path.isAbsolute(relativeToProjectTmp);
+            if (!isProjectTempAttachment) continue;
+
             const basename = path.basename(oldFilePath);
             const newFilePath = path.join(wtTmpDir, basename);
             try {
+              const stats = await fs.stat(oldFilePath);
+              if (stats.size > MAX_FILE_ATTACHMENT_SIZE) continue;
+
               await fs.copyFile(oldFilePath, newFilePath);
               relocations.push({
                 oldPath: oldFilePath,

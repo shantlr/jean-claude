@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
 import { AGENT_CHANNELS } from '@shared/agent-types';
 import type { DebugLogEntry } from '@shared/debug-log-types';
@@ -552,6 +552,7 @@ contextBridge.exposeInMainWorld('api', {
       ),
     copyAttachmentFile: (projectPath: string, sourcePath: string) =>
       ipcRenderer.invoke('fs:copyAttachmentFile', projectPath, sourcePath),
+    getPathForFile: (file: File) => webUtils.getPathForFile(file) || null,
   },
   shell: {
     openInEditor: (dirPath: string, folderContext?: string) =>
