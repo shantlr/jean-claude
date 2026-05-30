@@ -1,3 +1,4 @@
+import clsx from 'clsx';
 import { Edit3, Image, Loader2, Save, X } from 'lucide-react';
 import type { ChangeEvent } from 'react';
 import { useCallback, useState, useMemo, useEffect, useRef } from 'react';
@@ -6,8 +7,16 @@ import { Button } from '@/common/ui/button';
 import { Textarea } from '@/common/ui/textarea';
 import { AzureMarkdownContent } from '@/features/common/ui-azure-html-content';
 import {
+  FileDiffContent,
+  normalizeAzureChangeType,
+  type CommentThread,
+  type DiffFile,
+} from '@/features/common/ui-file-diff';
+import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
+import {
   useCurrentAzureUser,
   useLinkWorkItemToPr,
+  usePullRequestFileContent,
   usePullRequestPolicyEvaluations,
   usePullRequestWorkItems,
   useRequeuePolicyEvaluation,
@@ -18,13 +27,13 @@ import {
 import type {
   AzureDevOpsPullRequestDetails,
   AzureDevOpsCommentThread,
+  AzureDevOpsFileChange,
 } from '@/lib/api';
 import type { PromptImagePart } from '@shared/agent-backend-types';
 
 import { PrChecks } from '../ui-pr-checks';
 import { CIInlinePanel } from '../ui-pr-ci-inline';
-import { PrCommentForm } from '../ui-pr-comment-form';
-import { PrComments } from '../ui-pr-comments';
+import { PrComments, PrInlineCommentTimeline } from '../ui-pr-comments';
 import { PrMetaPanel } from '../ui-pr-meta-panel';
 
 export function PrOverview({
@@ -41,6 +50,7 @@ export function PrOverview({
   isAddingComment,
   bottomPadding = 0,
   fileCount = 0,
+  files = [],
 }: {
   pr: AzureDevOpsPullRequestDetails;
   projectId: string;
@@ -55,7 +65,14 @@ export function PrOverview({
   isAddingComment?: boolean;
   bottomPadding?: number;
   fileCount?: number;
+  files?: AzureDevOpsFileChange[];
 }) {
+  const [filePreview, setFilePreview] = useState<{
+    filePath: string;
+    lineStart: number;
+    lineEnd: number;
+  } | null>(null);
+  const [filePreviewWidth, setFilePreviewWidth] = useState(560);
   // Track which build is expanded inline in the checks block
   const [expandedBuildId, setExpandedBuildId] = useState<number | null>(null);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -85,6 +102,18 @@ export function PrOverview({
   const handleExpandCheck = useCallback((buildId: number | null) => {
     setExpandedBuildId(buildId);
   }, []);
+
+  const {
+    containerRef: previewResizeContainerRef,
+    isDragging: isPreviewDragging,
+    handleMouseDown: handlePreviewResizeMouseDown,
+  } = useHorizontalResize({
+    initialWidth: filePreviewWidth,
+    minWidth: 320,
+    maxWidthFraction: 0.75,
+    direction: 'left',
+    onWidthChange: setFilePreviewWidth,
+  });
 
   // Track which evaluations were recently queued by the user
   const [queuedIds, setQueuedIds] = useState<Set<string>>(new Set());
@@ -247,10 +276,22 @@ export function PrOverview({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="grid min-h-0 flex-1 grid-cols-[1fr_280px] gap-5 overflow-hidden p-5">
+      <div
+        ref={previewResizeContainerRef}
+        className={clsx(
+          'grid min-h-0 flex-1 overflow-hidden',
+          filePreview
+            ? 'grid-cols-[minmax(0,1fr)_auto] gap-0 py-5 pr-0 pl-5'
+            : 'grid-cols-[1fr_280px] gap-5 p-5',
+          isPreviewDragging && 'select-none',
+        )}
+      >
         {/* Main column */}
         <div
-          className="min-h-0 min-w-0 space-y-4 overflow-y-auto pr-1"
+          className={clsx(
+            'min-h-0 min-w-0 space-y-4 overflow-y-auto',
+            filePreview ? 'pr-0' : 'pr-1',
+          )}
           style={
             bottomPadding > 0 ? { paddingBottom: bottomPadding } : undefined
           }
@@ -397,40 +438,210 @@ export function PrOverview({
             providerId={providerId}
             projectId={projectId}
             prId={prId}
+            onAddComment={onAddComment}
+            onUploadImage={onUploadImage}
+            isAddingComment={isAddingComment}
+            onOpenFilePreview={setFilePreview}
           />
-
-          {/* Comment form */}
-          {onAddComment && (
-            <PrCommentForm
-              onSubmit={onAddComment}
-              isSubmitting={isAddingComment}
-              uploadImage={onUploadImage}
-            />
-          )}
         </div>
 
-        {/* Right meta sidebar */}
+        {/* Right sidebar */}
         <div
-          className="min-h-0 min-w-0 overflow-y-auto"
-          style={
-            bottomPadding > 0 ? { paddingBottom: bottomPadding } : undefined
-          }
+          className={clsx(
+            'relative min-h-0 min-w-0 overflow-y-auto',
+            filePreview && 'pl-3',
+          )}
+          style={{
+            width: filePreview ? filePreviewWidth : undefined,
+            ...(bottomPadding > 0 ? { paddingBottom: bottomPadding } : {}),
+          }}
         >
-          <PrMetaPanel
-            pr={pr}
-            fileCount={fileCount}
-            providerId={providerId}
-            workItems={workItems}
-            isWorkItemsLoading={isWorkItemsLoading}
-            azureProjectId={azureProjectId}
-            azureProjectName={azureProjectName}
-            onLinkWorkItem={(workItemId) => linkWorkItem.mutate(workItemId)}
-            onUnlinkWorkItem={(workItemId) => unlinkWorkItem.mutate(workItemId)}
-            isLinkingWorkItem={linkWorkItem.isPending}
-            isUnlinkingWorkItem={unlinkWorkItem.isPending}
-          />
+          {filePreview && (
+            <div
+              onMouseDown={handlePreviewResizeMouseDown}
+              className={clsx(
+                'hover:bg-acc/50 absolute top-0 left-0 h-full w-1 cursor-col-resize transition-colors',
+                isPreviewDragging && 'bg-acc/50',
+              )}
+            />
+          )}
+          <div
+            className={clsx('h-full min-h-0', filePreview ? 'pr-0' : undefined)}
+          >
+            {filePreview ? (
+              <PrFilePreviewPane
+                projectId={projectId}
+                prId={prId}
+                filePath={filePreview.filePath}
+                lineStart={filePreview.lineStart}
+                lineEnd={filePreview.lineEnd}
+                scrollToLine={filePreview.lineStart}
+                threads={threads}
+                files={files}
+                providerId={providerId}
+                onClose={() => setFilePreview(null)}
+              />
+            ) : (
+              <PrMetaPanel
+                pr={pr}
+                fileCount={fileCount}
+                providerId={providerId}
+                workItems={workItems}
+                isWorkItemsLoading={isWorkItemsLoading}
+                azureProjectId={azureProjectId}
+                azureProjectName={azureProjectName}
+                onLinkWorkItem={(workItemId) => linkWorkItem.mutate(workItemId)}
+                onUnlinkWorkItem={(workItemId) =>
+                  unlinkWorkItem.mutate(workItemId)
+                }
+                isLinkingWorkItem={linkWorkItem.isPending}
+                isUnlinkingWorkItem={unlinkWorkItem.isPending}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
+}
+
+function PrFilePreviewPane({
+  projectId,
+  prId,
+  filePath,
+  lineStart,
+  lineEnd,
+  scrollToLine,
+  threads,
+  files,
+  providerId,
+  onClose,
+}: {
+  projectId: string;
+  prId: number;
+  filePath: string;
+  lineStart: number;
+  lineEnd: number;
+  scrollToLine: number;
+  threads: AzureDevOpsCommentThread[];
+  files: AzureDevOpsFileChange[];
+  providerId?: string;
+  onClose: () => void;
+}) {
+  const { data: headContent = '', isLoading: isHeadLoading } =
+    usePullRequestFileContent(projectId, prId, filePath, 'head');
+  const { data: baseContent = '', isLoading: isBaseLoading } =
+    usePullRequestFileContent(projectId, prId, filePath, 'base');
+
+  const file = useMemo<DiffFile>(() => {
+    const change = files.find(
+      (candidate) =>
+        candidate.path === filePath ||
+        candidate.path === stripLeadingSlash(filePath),
+    );
+    return {
+      path: filePath,
+      status: change ? normalizeAzureChangeType(change.changeType) : 'modified',
+      originalPath: change?.originalPath,
+    };
+  }, [filePath, files]);
+
+  const fileThreads = useMemo<CommentThread[]>(
+    () => convertThreadsForFile(threads, filePath),
+    [threads, filePath],
+  );
+
+  return (
+    <div className="border-glass-border bg-bg-1 flex h-full min-h-0 flex-col overflow-hidden rounded-lg border">
+      <div className="border-glass-border/60 flex items-center gap-2 border-b px-3 py-2.5">
+        <div className="min-w-0 flex-1">
+          <div className="text-ink-0 truncate text-xs font-medium">
+            File diff preview
+          </div>
+          <div className="text-ink-3 truncate font-mono text-[11px]">
+            {filePath}:
+            {lineStart === lineEnd ? lineStart : `${lineStart}-${lineEnd}`}
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          icon={<X className="h-3.5 w-3.5" />}
+          onClick={onClose}
+        >
+          Close
+        </Button>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <FileDiffContent
+          file={file}
+          oldContent={baseContent}
+          newContent={headContent}
+          isLoading={isHeadLoading || isBaseLoading}
+          headerClassName="hidden"
+          threads={fileThreads}
+          renderThread={(thread) => (
+            <PrInlineCommentTimeline
+              threadId={thread.id}
+              projectId={projectId}
+              prId={prId}
+              canResolve={isActiveThreadStatus(thread.status)}
+              comments={thread.comments.map((comment) => ({
+                id: comment.id ?? 0,
+                content: comment.content,
+                commentType: 'text',
+                author: {
+                  displayName: comment.author,
+                  uniqueName: comment.uniqueName ?? comment.author,
+                  imageUrl: comment.imageUrl,
+                },
+                publishedDate:
+                  comment.publishedDate ?? new Date().toISOString(),
+                lastUpdatedDate:
+                  comment.publishedDate ?? new Date().toISOString(),
+              }))}
+              providerId={providerId}
+            />
+          )}
+          scrollToLine={scrollToLine}
+        />
+      </div>
+    </div>
+  );
+}
+
+function convertThreadsForFile(
+  threads: AzureDevOpsCommentThread[],
+  filePath: string,
+): CommentThread[] {
+  const normalizedPath = stripLeadingSlash(filePath);
+  return threads
+    .filter(
+      (thread) =>
+        stripLeadingSlash(thread.threadContext?.filePath ?? '') ===
+          normalizedPath && thread.threadContext?.rightFileStart?.line,
+    )
+    .map((thread) => ({
+      id: thread.id,
+      line: thread.threadContext?.rightFileStart?.line,
+      status: thread.status,
+      comments: thread.comments.map((comment) => ({
+        id: comment.id,
+        author: comment.author.displayName,
+        content: comment.content,
+        publishedDate: comment.publishedDate,
+        imageUrl: comment.author.imageUrl,
+        uniqueName: comment.author.uniqueName,
+      })),
+    }));
+}
+
+function stripLeadingSlash(value: string) {
+  return value.replace(/^\/+/, '');
+}
+
+function isActiveThreadStatus(status: string | undefined) {
+  return status === 'active' || status === 'pending' || status === 'unknown';
 }

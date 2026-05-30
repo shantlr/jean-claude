@@ -1,29 +1,34 @@
 import clsx from 'clsx';
 import {
-  ChevronDown,
-  Send,
-  MessageCircle,
   CheckCircle2,
-  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  GitPullRequest,
+  Send,
 } from 'lucide-react';
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
 
 import { Button } from '@/common/ui/button';
 import { IconButton } from '@/common/ui/icon-button';
-import { Separator } from '@/common/ui/separator';
 import { Textarea } from '@/common/ui/textarea';
 import { UserAvatar } from '@/common/ui/user-avatar';
 import { getLanguageFromPath } from '@/features/agent/ui-diff-view/language-utils';
 import { AzureMarkdownContent } from '@/features/common/ui-azure-html-content';
 import {
   useAddThreadReply,
-  useUpdateThreadStatus,
   usePullRequestFileContent,
+  useUpdateThreadStatus,
 } from '@/hooks/use-pull-requests';
 import type { AzureDevOpsCommentThread } from '@/lib/api';
 import { encodeProxyUrl } from '@/lib/azure-image-proxy';
 import { formatRelativeTime } from '@/lib/time';
+import type { PromptImagePart } from '@shared/agent-backend-types';
+
+import { PrCommentForm } from '../ui-pr-comment-form';
+
+export type PrTimelineComment = AzureDevOpsCommentThread['comments'][number];
 
 type ThreadStatus = AzureDevOpsCommentThread['status'];
 
@@ -34,10 +39,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   fixed: { label: 'Resolved', color: 'bg-status-done/50 text-status-done' },
   wontFix: { label: "Won't fix", color: 'bg-glass-medium text-ink-2' },
   closed: { label: 'Closed', color: 'bg-glass-medium text-ink-2' },
-  byDesign: {
-    label: 'By design',
-    color: 'bg-acc/50 text-acc-ink',
-  },
+  byDesign: { label: 'By design', color: 'bg-acc/50 text-acc-ink' },
   pending: { label: 'Pending', color: 'bg-yellow-900/50 text-status-run' },
   unknown: { label: 'Unknown', color: 'bg-glass-medium text-ink-2' },
 };
@@ -56,100 +58,121 @@ export function PrComments({
   providerId,
   projectId,
   prId,
+  onAddComment,
+  onUploadImage,
+  isAddingComment,
+  onOpenFilePreview,
 }: {
   threads: AzureDevOpsCommentThread[];
   providerId?: string;
   projectId: string;
   prId: number;
+  onAddComment?: (content: string) => void;
+  onUploadImage?: (image: PromptImagePart, fileName: string) => Promise<string>;
+  isAddingComment?: boolean;
+  onOpenFilePreview?: (params: {
+    filePath: string;
+    lineStart: number;
+    lineEnd: number;
+  }) => void;
 }) {
-  const [showResolved, setShowResolved] = useState(false);
+  const [expandedResolved, setExpandedResolved] = useState<
+    Record<number, boolean>
+  >({});
 
-  // Filter out deleted threads and system-generated threads
   const visibleThreads = useMemo(
     () =>
       threads.filter(
-        (t) => !t.isDeleted && t.comments.length > 0 && t.comments[0].content,
+        (thread) =>
+          !thread.isDeleted &&
+          thread.comments.length > 0 &&
+          thread.comments[0].content,
       ),
     [threads],
   );
 
-  // Split into active vs resolved/closed
-  const { activeThreads, resolvedThreads } = useMemo(() => {
-    const active: AzureDevOpsCommentThread[] = [];
-    const resolved: AzureDevOpsCommentThread[] = [];
-    for (const t of visibleThreads) {
-      if (ACTIVE_STATUSES.has(t.status)) {
-        active.push(t);
-      } else {
-        resolved.push(t);
-      }
-    }
-    return { activeThreads: active, resolvedThreads: resolved };
-  }, [visibleThreads]);
+  const orderedThreads = useMemo(
+    () =>
+      [...visibleThreads].sort(
+        (a, b) =>
+          new Date(b.comments[0]?.publishedDate ?? 0).getTime() -
+          new Date(a.comments[0]?.publishedDate ?? 0).getTime(),
+      ),
+    [visibleThreads],
+  );
 
-  if (visibleThreads.length === 0) {
-    return (
-      <div className="text-ink-3 py-4 text-center text-sm">No comments yet</div>
-    );
-  }
+  const unresolvedCount = useMemo(
+    () => orderedThreads.filter((thread) => isActiveThread(thread)).length,
+    [orderedThreads],
+  );
+
+  const toggleResolvedThread = useCallback((threadId: number) => {
+    setExpandedResolved((current) => ({
+      ...current,
+      [threadId]: !current[threadId],
+    }));
+  }, []);
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Active threads */}
-      {activeThreads.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <div className="text-acc-ink flex items-center gap-2 text-xs font-medium">
-            <MessageCircle className="h-3.5 w-3.5" />
-            Active
-            <span className="text-acc-ink bg-acc/50 rounded-full px-1.5 py-0.5 text-[10px]">
-              {activeThreads.length}
-            </span>
-          </div>
-          {activeThreads.map((thread) => (
-            <CommentThread
-              key={thread.id}
-              thread={thread}
-              providerId={providerId}
-              projectId={projectId}
-              prId={prId}
-            />
-          ))}
+    <section className="border-glass-border bg-bg-1/60 overflow-hidden rounded-lg border">
+      <div className="border-glass-border/60 flex items-center gap-2 border-b px-3.5 py-2.5">
+        <GitPullRequest className="text-ink-3 h-3.5 w-3.5" />
+        <h3 className="text-ink-0 text-sm font-medium">Conversation</h3>
+        <span className="bg-glass-medium text-ink-3 rounded px-1.5 py-0.5 font-mono text-[11px]">
+          {orderedThreads.length}
+        </span>
+        <div className="flex-1" />
+        {unresolvedCount > 0 ? (
+          <span className="text-ink-2 inline-flex items-center gap-1.5 text-xs">
+            <span className="bg-acc h-1.5 w-1.5 rounded-full" />
+            {unresolvedCount} unresolved
+          </span>
+        ) : (
+          <span className="text-status-done inline-flex items-center gap-1.5 text-xs">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            All resolved
+          </span>
+        )}
+      </div>
+
+      {onAddComment && (
+        <div className="border-glass-border/60 bg-bg-1/50 border-b px-3.5 py-3">
+          <PrCommentForm
+            onSubmit={onAddComment}
+            isSubmitting={isAddingComment}
+            uploadImage={onUploadImage}
+            placeholder="Start a new comment thread..."
+          />
         </div>
       )}
 
-      {/* Resolved threads */}
-      {resolvedThreads.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <button
-            onClick={() => setShowResolved((v) => !v)}
-            className="text-ink-3 hover:text-ink-2 flex items-center gap-2 text-xs font-medium transition-colors"
-          >
-            <ChevronRight
-              className={clsx(
-                'h-3.5 w-3.5 transition-transform',
-                showResolved && 'rotate-90',
-              )}
-            />
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            Resolved
-            <span className="text-ink-2 bg-glass-medium rounded-full px-1.5 py-0.5 text-[10px]">
-              {resolvedThreads.length}
-            </span>
-          </button>
-          {showResolved &&
-            resolvedThreads.map((thread) => (
+      {orderedThreads.length === 0 ? (
+        <div className="text-ink-3 py-6 text-center text-sm">
+          No comments yet
+        </div>
+      ) : (
+        <div>
+          {orderedThreads.map((thread, index) => {
+            const resolved = !isActiveThread(thread);
+            const collapsed = resolved && !expandedResolved[thread.id];
+
+            return (
               <CommentThread
                 key={thread.id}
                 thread={thread}
                 providerId={providerId}
                 projectId={projectId}
                 prId={prId}
-                dimmed
+                collapsed={collapsed}
+                onToggleResolved={() => toggleResolvedThread(thread.id)}
+                showDivider={index > 0}
+                onOpenFilePreview={onOpenFilePreview}
               />
-            ))}
+            );
+          })}
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -170,11 +193,8 @@ function StatusDropdown({
 
   useEffect(() => {
     if (!isOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!dropdownRef.current?.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -197,7 +217,8 @@ function StatusDropdown({
   return (
     <div ref={dropdownRef} className="relative">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        type="button"
+        onClick={() => setIsOpen((value) => !value)}
         className={clsx(
           'flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase transition-opacity hover:opacity-80',
           config.color,
@@ -208,21 +229,25 @@ function StatusDropdown({
       </button>
       {isOpen && (
         <div className="border-glass-border bg-bg-1 absolute top-full right-0 z-50 mt-1 min-w-[120px] rounded-lg border py-1 shadow-lg">
-          {SETTABLE_STATUSES.map((s) => {
-            const c = STATUS_CONFIG[s];
+          {SETTABLE_STATUSES.map((settableStatus) => {
+            const settableConfig = STATUS_CONFIG[settableStatus];
             return (
               <button
-                key={s}
-                onClick={() => handleSelect(s)}
+                key={settableStatus}
+                type="button"
+                onClick={() => handleSelect(settableStatus)}
                 className={clsx(
                   'hover:bg-glass-medium flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors',
-                  s === status ? 'text-ink-0' : 'text-ink-2',
+                  settableStatus === status ? 'text-ink-0' : 'text-ink-2',
                 )}
               >
                 <span
-                  className={clsx('inline-block h-2 w-2 rounded-full', c.color)}
+                  className={clsx(
+                    'inline-block h-2 w-2 rounded-full',
+                    settableConfig.color,
+                  )}
                 />
-                {c.label}
+                {settableConfig.label}
               </button>
             );
           })}
@@ -236,14 +261,17 @@ function ThreadReplyForm({
   threadId,
   projectId,
   prId,
+  canResolve,
 }: {
   threadId: number;
   projectId: string;
   prId: number;
+  canResolve: boolean;
 }) {
   const [content, setContent] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const addReply = useAddThreadReply(projectId, prId);
+  const updateStatus = useUpdateThreadStatus(projectId, prId);
 
   const handleSubmit = useCallback(() => {
     if (content.trim() && !addReply.isPending) {
@@ -259,54 +287,91 @@ function ThreadReplyForm({
     }
   }, [content, threadId, addReply]);
 
+  const handleResolve = useCallback(() => {
+    updateStatus.mutate({ threadId, status: 'fixed' });
+  }, [threadId, updateStatus]);
+
+  const handleBlur = useCallback(() => {
+    window.setTimeout(() => {
+      if (!content.trim()) {
+        setIsExpanded(false);
+      }
+    }, 0);
+  }, [content]);
+
   if (!isExpanded) {
     return (
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setIsExpanded(true)}
-        className="mt-2"
-      >
-        Reply…
-      </Button>
+      <div className="mt-3 flex items-center gap-2 pl-[37px]">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(true)}
+          className="border-glass-border bg-bg-2/70 text-ink-3 hover:text-ink-1 flex min-h-8 flex-1 items-center rounded-md border px-3 text-left text-xs transition-colors"
+        >
+          Reply...
+        </button>
+        {canResolve && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleResolve}
+            loading={updateStatus.isPending}
+            icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+            className="text-status-done"
+          >
+            Resolve
+          </Button>
+        )}
+      </div>
     );
   }
 
   return (
-    <div className="mt-2 flex gap-2">
+    <div className="mt-3 flex gap-2 pl-[37px]">
       <Textarea
         size="sm"
         value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder="Write a reply…"
+        onChange={(event) => setContent(event.target.value)}
+        onBlur={handleBlur}
+        placeholder="Write a reply..."
         className="flex-1"
         rows={2}
         autoFocus
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault();
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+            event.preventDefault();
             handleSubmit();
           }
-          if (e.key === 'Escape') {
+          if (event.key === 'Escape') {
             setIsExpanded(false);
             setContent('');
           }
         }}
       />
-      <IconButton
-        variant="primary"
-        size="sm"
-        onClick={handleSubmit}
-        disabled={!content.trim() || addReply.isPending}
-        icon={<Send />}
-        tooltip="Send reply"
-        className="self-end"
-      />
+      <div className="flex items-center gap-2">
+        {canResolve && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleResolve}
+            loading={updateStatus.isPending}
+            className="text-status-done"
+          >
+            Resolve
+          </Button>
+        )}
+        <IconButton
+          variant="primary"
+          size="sm"
+          onClick={handleSubmit}
+          disabled={!content.trim() || addReply.isPending}
+          icon={<Send />}
+          tooltip="Send reply"
+        />
+      </div>
     </div>
   );
 }
 
-/** Number of context lines to show above and below the commented range */
 const CONTEXT_LINES = 2;
 
 function ThreadCodePreview({
@@ -315,12 +380,18 @@ function ThreadCodePreview({
   endLine,
   projectId,
   prId,
+  onOpenFilePreview,
 }: {
   filePath: string;
   startLine: number;
   endLine: number;
   projectId: string;
   prId: number;
+  onOpenFilePreview?: (params: {
+    filePath: string;
+    lineStart: number;
+    lineEnd: number;
+  }) => void;
 }) {
   const { data: fileContent } = usePullRequestFileContent(
     projectId,
@@ -330,7 +401,6 @@ function ThreadCodePreview({
   );
   const [tokens, setTokens] = useState<ThemedToken[][]>([]);
 
-  // Extract the relevant lines with context
   const { snippetLines, firstLineNumber } = useMemo(() => {
     if (!fileContent) return { snippetLines: [], firstLineNumber: startLine };
     const allLines = fileContent.split('\n');
@@ -358,19 +428,20 @@ function ThreadCodePreview({
 
   if (!fileContent || snippetLines.length === 0) return null;
 
-  return (
-    <div className="border-glass-border mb-2 overflow-hidden rounded-md border">
+  const preview = (
+    <div className="border-glass-border overflow-hidden rounded-md border">
       <div className="bg-bg-0/30 overflow-x-auto font-mono text-xs">
         <table className="w-full border-collapse">
           <tbody>
-            {snippetLines.map((line, i) => {
-              const lineNum = firstLineNumber + i;
-              const isHighlighted = lineNum >= startLine && lineNum <= endLine;
-              const lineTokens = tokens[i] ?? [];
+            {snippetLines.map((line, index) => {
+              const lineNumber = firstLineNumber + index;
+              const isHighlighted =
+                lineNumber >= startLine && lineNumber <= endLine;
+              const lineTokens = tokens[index] ?? [];
 
               return (
                 <tr
-                  key={lineNum}
+                  key={lineNumber}
                   className={clsx(isHighlighted && 'bg-acc/10')}
                 >
                   <td
@@ -379,12 +450,12 @@ function ThreadCodePreview({
                       isHighlighted ? 'text-acc-ink' : 'text-ink-4',
                     )}
                   >
-                    {lineNum}
+                    {lineNumber}
                   </td>
                   <td className="pr-2 whitespace-pre-wrap">
                     {lineTokens.length > 0 ? (
-                      lineTokens.map((token, ti) => (
-                        <span key={ti} style={{ color: token.color }}>
+                      lineTokens.map((token, tokenIndex) => (
+                        <span key={tokenIndex} style={{ color: token.color }}>
                           {token.content}
                         </span>
                       ))
@@ -400,6 +471,23 @@ function ThreadCodePreview({
       </div>
     </div>
   );
+
+  if (!onOpenFilePreview) return <div className="mb-3">{preview}</div>;
+
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        onOpenFilePreview({ filePath, lineStart: startLine, lineEnd: endLine })
+      }
+      className="group mb-3 block w-full cursor-pointer text-left"
+      title="Open file preview"
+    >
+      <div className="ring-acc/0 group-hover:ring-acc/45 rounded-md transition-shadow group-hover:ring-1">
+        {preview}
+      </div>
+    </button>
+  );
 }
 
 function CommentThread({
@@ -407,93 +495,443 @@ function CommentThread({
   providerId,
   projectId,
   prId,
-  dimmed,
+  collapsed,
+  onToggleResolved,
+  showDivider,
+  onOpenFilePreview,
 }: {
   thread: AzureDevOpsCommentThread;
   providerId?: string;
   projectId: string;
   prId: number;
-  dimmed?: boolean;
+  collapsed: boolean;
+  onToggleResolved: () => void;
+  showDivider: boolean;
+  onOpenFilePreview?: (params: {
+    filePath: string;
+    lineStart: number;
+    lineEnd: number;
+  }) => void;
 }) {
+  const resolved = !isActiveThread(thread);
+
   return (
     <div
       className={clsx(
-        'relative rounded-lg p-3',
-        dimmed ? 'bg-bg-1/30 opacity-70' : 'bg-bg-1/50',
+        showDivider &&
+          'border-glass-border-strong border-t shadow-[0_-1px_0_rgba(255,255,255,0.03)]',
+        resolved
+          ? 'border-l-status-done/50 border-l-2'
+          : 'border-l-acc-line border-l-2',
+        collapsed ? 'bg-bg-0/30 hover:bg-bg-1/70' : 'bg-bg-1/50',
       )}
     >
-      {/* Thread status dropdown - top right */}
-      <div className="absolute top-3 right-3">
-        <StatusDropdown
-          status={thread.status}
-          threadId={thread.id}
+      {collapsed ? (
+        <CollapsedThread thread={thread} onExpand={onToggleResolved} />
+      ) : (
+        <ExpandedThread
+          thread={thread}
+          providerId={providerId}
           projectId={projectId}
           prId={prId}
+          onCollapseResolved={onToggleResolved}
+          onOpenFilePreview={onOpenFilePreview}
         />
-      </div>
+      )}
+    </div>
+  );
+}
 
-      {/* File context if present */}
-      {thread.threadContext && (
-        <div className="text-ink-3 mb-2 flex items-center gap-2 pr-20 text-xs">
-          <span className="font-mono">{thread.threadContext.filePath}</span>
-          {thread.threadContext.rightFileStart && (
-            <span>Line {thread.threadContext.rightFileStart.line}</span>
-          )}
+function ExpandedThread({
+  thread,
+  providerId,
+  projectId,
+  prId,
+  onCollapseResolved,
+  onOpenFilePreview,
+}: {
+  thread: AzureDevOpsCommentThread;
+  providerId?: string;
+  projectId: string;
+  prId: number;
+  onCollapseResolved: () => void;
+  onOpenFilePreview?: (params: {
+    filePath: string;
+    lineStart: number;
+    lineEnd: number;
+  }) => void;
+}) {
+  const resolved = !isActiveThread(thread);
+  const updateStatus = useUpdateThreadStatus(projectId, prId);
+  const fileStart = thread.threadContext?.rightFileStart?.line;
+  const fileEnd = thread.threadContext?.rightFileEnd?.line ?? fileStart;
+  const lastComment = thread.comments[thread.comments.length - 1];
+
+  const handleReopen = useCallback(() => {
+    updateStatus.mutate({ threadId: thread.id, status: 'active' });
+  }, [thread.id, updateStatus]);
+
+  return (
+    <div>
+      {resolved && (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={onCollapseResolved}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              onCollapseResolved();
+            }
+          }}
+          className="border-glass-border/60 bg-glass-light/40 hover:bg-glass-light flex w-full items-center gap-2 border-b px-4 py-3 text-left transition-colors"
+        >
+          <CheckCircle2 className="text-status-done h-4 w-4" />
+          <span className="text-ink-2 flex-1 text-xs">
+            Resolved by{' '}
+            <span className="text-ink-1 font-medium">
+              {lastComment?.author.displayName ?? 'someone'}
+            </span>
+            {lastComment && (
+              <span className="text-ink-4">
+                {' '}
+                - {formatRelativeTime(lastComment.publishedDate)}
+              </span>
+            )}
+          </span>
+          <div className="flex-1" />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(event) => {
+              event.stopPropagation();
+              handleReopen();
+            }}
+            loading={updateStatus.isPending}
+          >
+            Reopen
+          </Button>
+          <ChevronUp className="text-ink-3 h-3.5 w-3.5" />
         </div>
       )}
 
-      {/* Code preview for file-level comments */}
-      {thread.threadContext?.rightFileStart && (
-        <ThreadCodePreview
-          filePath={thread.threadContext.filePath}
-          startLine={thread.threadContext.rightFileStart.line}
-          endLine={
-            thread.threadContext.rightFileEnd?.line ??
-            thread.threadContext.rightFileStart.line
-          }
+      <div className={resolved ? 'px-4 pt-4 pb-4' : 'px-4 py-4'}>
+        {thread.threadContext && (
+          <div className="mb-3 flex items-center gap-2 pl-[37px]">
+            <FileText className="text-ink-4 h-3 w-3" />
+            <span className="border-glass-border bg-bg-2 text-ink-3 rounded border px-1.5 py-0.5 font-mono text-[11px]">
+              {thread.threadContext.filePath}
+              {fileStart ? `:${fileStart}` : ''}
+            </span>
+          </div>
+        )}
+
+        {thread.threadContext && fileStart && fileEnd && (
+          <div className="pl-[37px]">
+            <ThreadCodePreview
+              filePath={thread.threadContext.filePath}
+              startLine={fileStart}
+              endLine={fileEnd}
+              projectId={projectId}
+              prId={prId}
+              onOpenFilePreview={onOpenFilePreview}
+            />
+          </div>
+        )}
+
+        <div className="relative">
+          {thread.comments.map((comment, index) => (
+            <ThreadComment
+              key={comment.id}
+              comment={comment}
+              providerId={providerId}
+              connect={index < thread.comments.length - 1 || !resolved}
+            />
+          ))}
+        </div>
+
+        <ThreadReplyForm
+          threadId={thread.id}
           projectId={projectId}
           prId={prId}
+          canResolve={!resolved}
         />
-      )}
 
-      {/* Comments in thread */}
-      <div className="flex flex-col gap-3 pr-16">
-        {thread.comments.map((comment, index) => {
-          // Proxy avatar URL through authenticated image proxy when provider is available
-          const avatarUrl =
-            comment.author.imageUrl && providerId
-              ? encodeProxyUrl(providerId, comment.author.imageUrl)
-              : comment.author.imageUrl;
-
-          return (
-            <div key={comment.id}>
-              {index > 0 && <Separator className="mb-3" />}
-              <div className="mb-1 flex items-center gap-2">
-                <UserAvatar
-                  name={comment.author.displayName}
-                  imageUrl={avatarUrl}
-                  size="sm"
-                />
-                <span className="text-ink-1 text-sm font-medium">
-                  {comment.author.displayName}
-                </span>
-                <span className="text-ink-3 text-xs">
-                  {formatRelativeTime(comment.publishedDate)}
-                </span>
-              </div>
-              <div className="text-ink-1 text-xs [&_code]:text-[11px] [&_pre]:text-[11px]">
-                <AzureMarkdownContent
-                  markdown={comment.content}
-                  providerId={providerId}
-                />
-              </div>
-            </div>
-          );
-        })}
+        <div className="mt-3 flex justify-end">
+          <StatusDropdown
+            status={thread.status}
+            threadId={thread.id}
+            projectId={projectId}
+            prId={prId}
+          />
+        </div>
       </div>
-
-      {/* Reply form */}
-      <ThreadReplyForm threadId={thread.id} projectId={projectId} prId={prId} />
     </div>
   );
+}
+
+function ThreadComment({
+  comment,
+  providerId,
+  connect,
+}: {
+  comment: AzureDevOpsCommentThread['comments'][number];
+  providerId?: string;
+  connect: boolean;
+}) {
+  const avatarUrl =
+    comment.author.imageUrl && providerId
+      ? encodeProxyUrl(providerId, comment.author.imageUrl)
+      : comment.author.imageUrl;
+
+  return (
+    <div className="flex items-stretch gap-3">
+      <div className="flex w-[26px] shrink-0 flex-col items-center">
+        <UserAvatar
+          name={comment.author.displayName}
+          imageUrl={avatarUrl}
+          size="sm"
+        />
+        {connect && (
+          <div className="bg-glass-border mt-1.5 w-px flex-1 rounded" />
+        )}
+      </div>
+      <div className={clsx('min-w-0 flex-1', connect && 'pb-4')}>
+        <div className="mb-1 flex flex-wrap items-center gap-2">
+          <span className="text-ink-0 shrink-0 text-sm font-medium">
+            {comment.author.displayName}
+          </span>
+          <span className="text-ink-3 shrink-0 text-xs">
+            {formatRelativeTime(comment.publishedDate)}
+          </span>
+        </div>
+        <div className="text-ink-1 pr-1 text-xs leading-relaxed [&_code]:text-[11px] [&_pre]:text-[11px]">
+          <AzureMarkdownContent
+            markdown={comment.content}
+            providerId={providerId}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function PrInlineCommentTimeline({
+  comments,
+  providerId,
+  threadId,
+  projectId,
+  prId,
+  canResolve = false,
+}: {
+  comments: PrTimelineComment[];
+  providerId?: string;
+  threadId?: number;
+  projectId?: string;
+  prId?: number;
+  canResolve?: boolean;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+  const firstComment = comments[0];
+  const remainingComments = comments.slice(1);
+
+  if (!firstComment) return null;
+
+  return (
+    <div className="border-glass-border/70 bg-bg-1/90 border-y px-4 py-3 font-sans">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setCollapsed((value) => !value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setCollapsed((value) => !value);
+          }
+        }}
+        className="hover:bg-glass-light -mx-1 flex w-[calc(100%+0.5rem)] items-start gap-3 rounded px-1 py-1 text-left transition-colors"
+      >
+        <TimelineAvatar comment={firstComment} providerId={providerId} />
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex items-center gap-2">
+            <span className="text-ink-0 text-sm font-medium">
+              {firstComment.author.displayName}
+            </span>
+            <span className="text-ink-3 text-xs">
+              {formatRelativeTime(firstComment.publishedDate)}
+            </span>
+            {remainingComments.length > 0 && (
+              <span className="bg-glass-medium text-ink-3 rounded px-1.5 py-0.5 text-[10px]">
+                {remainingComments.length} repl
+                {remainingComments.length === 1 ? 'y' : 'ies'}
+              </span>
+            )}
+          </div>
+          <div
+            className={clsx(
+              'text-ink-1 text-xs leading-relaxed',
+              collapsed && 'line-clamp-2',
+            )}
+          >
+            <AzureMarkdownContent
+              markdown={firstComment.content}
+              providerId={providerId}
+            />
+          </div>
+        </div>
+        {remainingComments.length > 0 && (
+          <ChevronDown
+            className={clsx(
+              'text-ink-3 mt-1 h-3.5 w-3.5 transition-transform',
+              !collapsed && 'rotate-180',
+            )}
+          />
+        )}
+      </div>
+
+      {!collapsed && remainingComments.length > 0 && (
+        <div className="mt-2">
+          {remainingComments.map((comment, index) => (
+            <div
+              key={comment.id}
+              className="flex items-stretch gap-3 pb-3 last:pb-0"
+            >
+              <div className="flex w-[26px] shrink-0 flex-col items-center">
+                <TimelineAvatar comment={comment} providerId={providerId} />
+                {index < remainingComments.length - 1 && (
+                  <div className="bg-glass-border mt-1.5 w-px flex-1 rounded" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="text-ink-0 text-sm font-medium">
+                    {comment.author.displayName}
+                  </span>
+                  <span className="text-ink-3 text-xs">
+                    {formatRelativeTime(comment.publishedDate)}
+                  </span>
+                </div>
+                <div className="text-ink-1 text-xs leading-relaxed">
+                  <AzureMarkdownContent
+                    markdown={comment.content}
+                    providerId={providerId}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {threadId !== undefined && projectId && prId !== undefined && (
+        <ThreadReplyForm
+          threadId={threadId}
+          projectId={projectId}
+          prId={prId}
+          canResolve={canResolve}
+        />
+      )}
+    </div>
+  );
+}
+
+function TimelineAvatar({
+  comment,
+  providerId,
+}: {
+  comment: PrTimelineComment;
+  providerId?: string;
+}) {
+  const avatarUrl =
+    comment.author.imageUrl && providerId
+      ? encodeProxyUrl(providerId, comment.author.imageUrl)
+      : comment.author.imageUrl;
+
+  return (
+    <UserAvatar
+      name={comment.author.displayName}
+      imageUrl={avatarUrl}
+      size="sm"
+    />
+  );
+}
+
+function CollapsedThread({
+  thread,
+  onExpand,
+}: {
+  thread: AzureDevOpsCommentThread;
+  onExpand: () => void;
+}) {
+  const firstComment = thread.comments[0];
+  const lastComment = thread.comments[thread.comments.length - 1];
+  const replyCount = Math.max(0, thread.comments.length - 1);
+  const showLast = lastComment && lastComment.id !== firstComment.id;
+
+  return (
+    <button
+      type="button"
+      onClick={onExpand}
+      className="group flex w-full items-start gap-3 px-4 py-3 text-left transition-colors"
+    >
+      <div className="flex w-[26px] shrink-0 justify-center pt-0.5">
+        <CheckCircle2 className="text-status-done h-4.5 w-4.5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-baseline gap-2">
+          <span className="text-ink-2 shrink-0 text-xs font-semibold">
+            {firstComment.author.displayName}
+          </span>
+          <span className="text-ink-3 truncate text-xs">
+            {plainText(firstComment.content)}
+          </span>
+        </div>
+        {showLast && (
+          <div className="mt-1.5 flex min-w-0 items-baseline gap-2">
+            <span className="text-status-done shrink-0 text-xs">-&gt;</span>
+            <span className="text-ink-3 shrink-0 text-xs font-medium">
+              {lastComment.author.displayName}
+            </span>
+            <span className="text-ink-4 truncate text-xs">
+              {plainText(lastComment.content)}
+            </span>
+          </div>
+        )}
+        <div className="text-ink-4 mt-1.5 flex items-center gap-1.5 text-[11px]">
+          {replyCount > 0 && (
+            <>
+              <span>
+                {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+              </span>
+              <span>-</span>
+            </>
+          )}
+          <span>
+            resolved by {lastComment?.author.displayName ?? 'someone'}
+          </span>
+          {lastComment && (
+            <>
+              <span>-</span>
+              <span>{formatRelativeTime(lastComment.publishedDate)}</span>
+            </>
+          )}
+        </div>
+      </div>
+      <div className="text-ink-3 group-hover:text-ink-1 flex shrink-0 items-center gap-1 self-center text-xs">
+        Show
+        <ChevronDown className="h-3.5 w-3.5" />
+      </div>
+    </button>
+  );
+}
+
+function isActiveThread(thread: AzureDevOpsCommentThread) {
+  return ACTIVE_STATUSES.has(thread.status);
+}
+
+function plainText(value: string) {
+  return value
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

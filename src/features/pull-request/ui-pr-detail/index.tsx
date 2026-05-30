@@ -263,6 +263,7 @@ export function PrDetail({
             onUploadImage={handleUploadImage}
             bottomPadding={bottomPadding}
             fileCount={files.length}
+            files={files}
           />
         )}
 

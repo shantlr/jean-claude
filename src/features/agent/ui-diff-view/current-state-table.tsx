@@ -268,6 +268,7 @@ function CurrentStateRow({
     <>
       <tr
         data-line-index={lineIndex}
+        data-new-line={lineNumber}
         className={clsx({
           'bg-blue-500/30': isSelected,
           'bg-blue-500/10': !isSelected && isInCommentRange,

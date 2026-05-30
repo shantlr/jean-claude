@@ -278,6 +278,7 @@ export function SideBySideDiffTable({
               }
               inlineComments={lineComments}
               commentForm={showCommentForm ? commentForm : undefined}
+              newLineNumber={newLineNumber}
               isFoldable={isFoldable}
               isFoldCollapsed={isFoldCollapsed}
               foldRange={foldRange}
@@ -314,6 +315,7 @@ function SideBySideRowComponent({
   onMouseUp,
   inlineComments,
   commentForm,
+  newLineNumber,
   isFoldable,
   isFoldCollapsed,
   foldRange,
@@ -338,6 +340,7 @@ function SideBySideRowComponent({
   onMouseUp: () => void;
   inlineComments?: InlineComment[];
   commentForm?: ReactNode;
+  newLineNumber?: number;
   isFoldable?: boolean;
   isFoldCollapsed?: boolean;
   foldRange?: { startLine: number; endLine: number };
@@ -347,6 +350,7 @@ function SideBySideRowComponent({
     <>
       <tr
         data-line-index={rowIndex}
+        data-new-line={newLineNumber}
         className={clsx({
           'bg-blue-500/30': isSelected,
           'bg-blue-500/10': !isSelected && isInCommentRange,

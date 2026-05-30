@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { useState, useCallback, useMemo } from 'react';
 
 import {
@@ -36,6 +36,8 @@ export function FileDiffContent({
   newImageDataUrl,
   // Optional comment support
   threads,
+  renderThread,
+  scrollToLine,
   onAddComment,
   isAddingComment,
   CommentForm,
@@ -59,6 +61,8 @@ export function FileDiffContent({
   newImageDataUrl?: string | null;
   // Comment props - all optional
   threads?: CommentThread[];
+  renderThread?: (thread: CommentThread) => ReactNode;
+  scrollToLine?: number;
   onAddComment?: (params: {
     filePath: string;
     line: number;
@@ -161,7 +165,9 @@ export function FileDiffContent({
   const threadComments: InlineComment[] = useMemo(() => {
     return fileThreads.map((thread) => ({
       line: thread.line!,
-      content: (
+      content: renderThread ? (
+        renderThread(thread)
+      ) : (
         <div className="flex flex-col gap-2">
           {thread.comments.map((comment, i) => (
             <div key={i} className="flex gap-2">
@@ -176,7 +182,7 @@ export function FileDiffContent({
         </div>
       ),
     }));
-  }, [fileThreads]);
+  }, [fileThreads, renderThread]);
 
   // Convert review comments to inline comments for DiffView
   const reviewInlineComments: InlineComment[] = useMemo(() => {
@@ -407,6 +413,7 @@ export function FileDiffContent({
           commentedLines={commentedLines}
           commentFormLineRange={commentFormLineRange}
           commentForm={commentFormElement}
+          scrollToLine={scrollToLine}
         />
       </div>
     </div>

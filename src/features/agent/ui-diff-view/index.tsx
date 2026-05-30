@@ -54,6 +54,7 @@ export function DiffView({
   commentedLines,
   commentFormLineRange,
   commentForm,
+  scrollToLine,
 }: {
   filePath: string;
   oldString: string;
@@ -70,6 +71,8 @@ export function DiffView({
   commentFormLineRange?: LineRange | null;
   /** Comment form to render inline */
   commentForm?: ReactNode;
+  /** New-file line to scroll into view after render */
+  scrollToLine?: number;
 }) {
   const [state, setState] = useState<DiffState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,6 +101,19 @@ export function DiffView({
       handleScroll();
     }
   }, [state, handleScroll]);
+
+  useEffect(() => {
+    if (!state || !scrollToLine || !scrollContainerRef.current) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      const row = scrollContainerRef.current?.querySelector(
+        `[data-new-line="${scrollToLine}"]`,
+      );
+      row?.scrollIntoView({ block: 'center' });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [state, scrollToLine, viewMode]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -616,6 +632,7 @@ function DiffLineRow({
     <>
       <tr
         data-line-index={lineIndex}
+        data-new-line={line.newLineNumber ?? undefined}
         className={clsx({
           'bg-blue-500/30': isSelected,
           'bg-blue-500/10': !isSelected && isInCommentRange,
