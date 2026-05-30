@@ -4,8 +4,8 @@ import { useState, type FormEvent } from 'react';
 import { Button } from '@/common/ui/button';
 import { Input } from '@/common/ui/input';
 import { Select } from '@/common/ui/select';
+import { ProjectColorPicker } from '@/features/project/ui-project-color-picker';
 import { useProviders, useProviderDetails } from '@/hooks/use-providers';
-import { PROJECT_COLORS } from '@/lib/colors';
 import type { Provider } from '@shared/types';
 
 export interface ProjectFormData {
@@ -376,28 +376,10 @@ export function AddProjectForm({
         <label className="text-ink-1 mb-1 block text-sm font-medium">
           Color
         </label>
-        <div
-          className="flex flex-wrap gap-2"
-          role="radiogroup"
-          aria-label="Project color"
-        >
-          {PROJECT_COLORS.map((color) => (
-            <button
-              key={color}
-              type="button"
-              role="radio"
-              aria-checked={formData.color === color}
-              aria-label={`Select color ${color}`}
-              onClick={() => onChange({ color })}
-              className={`h-8 w-8 cursor-pointer rounded-lg transition-transform ${
-                formData.color === color
-                  ? 'ring-offset-bg-0 ring-2 ring-white ring-offset-2'
-                  : 'hover:scale-110'
-              }`}
-              style={{ backgroundColor: color }}
-            />
-          ))}
-        </div>
+        <ProjectColorPicker
+          value={formData.color}
+          onChange={(color) => onChange({ color })}
+        />
       </div>
 
       {/* Repository section */}

@@ -25,6 +25,7 @@ import {
   SLOT_DEFINITIONS,
   SlotDetail,
 } from '@/features/common/ui-ai-skill-slot';
+import { ProjectColorPicker } from '@/features/project/ui-project-color-picker';
 import { ProjectMcpSettings } from '@/features/project/ui-project-mcp-settings';
 import { ProjectPermissionsSettings } from '@/features/project/ui-project-permissions-settings';
 import { ProjectPipelineSettings } from '@/features/project/ui-project-pipeline-settings';
@@ -46,7 +47,6 @@ import {
   useBackendsSetting,
 } from '@/hooks/use-settings';
 import { api } from '@/lib/api';
-import { PROJECT_COLORS } from '@/lib/colors';
 import { useNavigationStore } from '@/stores/navigation';
 import { useToastStore } from '@/stores/toasts';
 import type { AgentBackendType } from '@shared/agent-backend-types';
@@ -310,21 +310,7 @@ export function ProjectSettings({
             <label className="text-ink-1 mb-1 block text-sm font-medium">
               Color
             </label>
-            <div className="flex flex-wrap gap-2">
-              {PROJECT_COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  className={`h-8 w-8 cursor-pointer rounded-lg transition-all ${
-                    color === c
-                      ? 'ring-offset-bg-0 ring-2 ring-white ring-offset-2'
-                      : 'hover:scale-110'
-                  }`}
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-            </div>
+            <ProjectColorPicker value={color} onChange={setColor} />
           </div>
 
           <div>
