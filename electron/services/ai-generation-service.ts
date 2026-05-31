@@ -20,6 +20,8 @@ export async function generateText({
   prompt,
   skillName,
   outputSchema,
+  cwd,
+  allowedTools,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   throwOnError = false,
 }: {
@@ -28,6 +30,8 @@ export async function generateText({
   prompt: string;
   skillName?: string | null;
   outputSchema?: Record<string, unknown>;
+  cwd?: string;
+  allowedTools?: string[];
   timeoutMs?: number;
   throwOnError?: boolean;
 }): Promise<unknown | null> {
@@ -44,6 +48,8 @@ export async function generateText({
           prompt,
           skillName,
           outputSchema,
+          cwd,
+          allowedTools,
           abortController,
         });
 
@@ -53,6 +59,7 @@ export async function generateText({
           prompt,
           skillName,
           outputSchema,
+          cwd,
           abortController,
         });
 
@@ -102,12 +109,16 @@ async function generateWithClaudeCode({
   prompt,
   skillName,
   outputSchema,
+  cwd,
+  allowedTools,
   abortController,
 }: {
   model: string;
   prompt: string;
   skillName?: string | null;
   outputSchema?: Record<string, unknown>;
+  cwd?: string;
+  allowedTools?: string[];
   abortController: AbortController;
 }): Promise<unknown | null> {
   const effectivePrompt = skillName
@@ -117,9 +128,10 @@ async function generateWithClaudeCode({
   const generator = query({
     prompt: effectivePrompt,
     options: {
-      allowedTools: [],
+      allowedTools: allowedTools ?? [],
       model,
       abortController,
+      ...(cwd ? { cwd } : {}),
       ...(outputSchema && {
         outputFormat: {
           type: 'json_schema' as const,
@@ -155,12 +167,14 @@ async function generateWithOpenCode({
   prompt,
   skillName,
   outputSchema,
+  cwd,
   abortController,
 }: {
   model: string;
   prompt: string;
   skillName?: string | null;
   outputSchema?: Record<string, unknown>;
+  cwd?: string;
   abortController: AbortController;
 }): Promise<unknown | null> {
   const { client } = await getOrCreateServer();
@@ -174,8 +188,8 @@ async function generateWithOpenCode({
     : effectivePrompt;
 
   // Create a temporary session for this one-off generation
-  const cwd = homedir();
-  const session = await client.session.create({ directory: cwd });
+  const directory = cwd ?? homedir();
+  const session = await client.session.create({ directory });
   const sessionId = session.data?.id;
 
   if (!sessionId) {
@@ -184,16 +198,14 @@ async function generateWithOpenCode({
 
   // Abort handling: abort the session on signal
   const onAbort = () => {
-    client.session
-      .abort({ sessionID: sessionId, directory: cwd })
-      .catch(() => {});
+    client.session.abort({ sessionID: sessionId, directory }).catch(() => {});
   };
   abortController.signal.addEventListener('abort', onAbort, { once: true });
 
   try {
     const response = await client.session.prompt({
       sessionID: sessionId,
-      directory: cwd,
+      directory,
       parts: [{ type: 'text', text: promptWithStructuredFallback }],
       ...(outputSchema && {
         format: {
@@ -228,7 +240,7 @@ async function generateWithOpenCode({
 
     // Clean up the temporary session (independent of parent abort)
     client.session
-      .delete({ sessionID: sessionId, directory: cwd })
+      .delete({ sessionID: sessionId, directory })
       .catch((error) => {
         dbg.agent(
           'Failed to delete temporary generation session %s: %O',

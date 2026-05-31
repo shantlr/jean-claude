@@ -44,6 +44,8 @@ export async function generateProjectSummary({
       backend,
       model,
       skillName,
+      cwd: project.path,
+      allowedTools: ['Read'],
       outputSchema: PROJECT_SUMMARY_SCHEMA,
       timeoutMs: PROJECT_SUMMARY_TIMEOUT_MS,
       prompt,
