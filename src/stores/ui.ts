@@ -8,6 +8,7 @@ interface UISettings {
   workItemsPanelWidth: number;
   diffViewMode: DiffViewMode;
   reactScanEnabled: boolean;
+  prProjectOrder: string[];
 }
 
 const UI_SETTINGS_DEFAULTS: UISettings = {
@@ -15,11 +16,15 @@ const UI_SETTINGS_DEFAULTS: UISettings = {
   workItemsPanelWidth: 50,
   diffViewMode: 'inline',
   reactScanEnabled: false,
+  prProjectOrder: [],
 };
 
 function validateSettings(settings: UISettings): UISettings {
   return {
     ...settings,
+    prProjectOrder: Array.isArray(settings.prProjectOrder)
+      ? settings.prProjectOrder.filter((id) => typeof id === 'string')
+      : [],
     workItemsPanelWidth: Math.min(
       80,
       Math.max(20, settings.workItemsPanelWidth),
@@ -50,6 +55,10 @@ function migrateLegacyKeys(raw: Record<string, unknown>): Partial<UISettings> {
     legacy.diffViewMode = raw.diffViewMode;
   if (typeof raw.reactScanEnabled === 'boolean')
     legacy.reactScanEnabled = raw.reactScanEnabled;
+  if (Array.isArray(raw.prProjectOrder))
+    legacy.prProjectOrder = raw.prProjectOrder.filter(
+      (id): id is string => typeof id === 'string',
+    );
   return legacy;
 }
 

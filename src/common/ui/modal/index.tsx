@@ -24,6 +24,7 @@ export function Modal({
   showHeader = true,
   contentClassName = 'min-h-0 overflow-y-auto p-4',
   panelClassName = '',
+  ariaLabel,
   children,
 }: {
   isOpen: boolean;
@@ -36,6 +37,7 @@ export function Modal({
   showHeader?: boolean;
   contentClassName?: string;
   panelClassName?: string;
+  ariaLabel?: string;
   children: ReactNode;
 }) {
   const id = useId();
@@ -69,6 +71,9 @@ export function Modal({
         >
           <div
             ref={contentRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={ariaLabel}
             className={`flex max-h-[85vh] w-full ${modalSizeClasses[size]} bg-bg-1 flex-col rounded-lg shadow-xl ${panelClassName}`}
             onClick={(e) => e.stopPropagation()}
           >

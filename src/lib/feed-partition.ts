@@ -19,17 +19,32 @@ const PRIORITY_ORDER: Record<FeedItem['projectPriority'], number> = {
   low: 2,
 };
 
-const byManualLowPriorityThenProjectPriority = (
-  lowPriorityIds: Set<string>,
-) => {
+const byManualLowPriorityThenProjectPriority = ({
+  lowPriorityIds,
+  prProjectOrder,
+}: {
+  lowPriorityIds: Set<string>;
+  prProjectOrder: Map<string, number>;
+}) => {
   return (a: FeedItem, b: FeedItem) => {
     const manualLow =
       Number(lowPriorityIds.has(a.id)) - Number(lowPriorityIds.has(b.id));
     if (manualLow !== 0) return manualLow;
 
-    const aPriority = a.isDraft ? 'low' : a.projectPriority;
-    const bPriority = b.isDraft ? 'low' : b.projectPriority;
-    const priority = PRIORITY_ORDER[aPriority] - PRIORITY_ORDER[bPriority];
+    const draftLow = Number(Boolean(a.isDraft)) - Number(Boolean(b.isDraft));
+    if (draftLow !== 0) return draftLow;
+
+    const aProjectOrder = prProjectOrder.get(a.projectId);
+    const bProjectOrder = prProjectOrder.get(b.projectId);
+    if (aProjectOrder !== undefined || bProjectOrder !== undefined) {
+      const projectOrder =
+        (aProjectOrder ?? Number.MAX_SAFE_INTEGER) -
+        (bProjectOrder ?? Number.MAX_SAFE_INTEGER);
+      if (projectOrder !== 0) return projectOrder;
+    }
+
+    const priority =
+      PRIORITY_ORDER[a.projectPriority] - PRIORITY_ORDER[b.projectPriority];
     if (priority !== 0) return priority;
 
     return b.timestamp < a.timestamp ? -1 : b.timestamp > a.timestamp ? 1 : 0;
@@ -57,6 +72,7 @@ export function partitionFeedItems({
   dismissedIds,
   lowPriorityIds,
   taskOwnedPrIds,
+  prProjectOrder = [],
 }: {
   visibleFeedItems: FeedItem[];
   hiddenProjectIdSet: Set<string>;
@@ -65,6 +81,7 @@ export function partitionFeedItems({
   dismissedIds: Set<string>;
   lowPriorityIds: Set<string>;
   taskOwnedPrIds: Set<number>;
+  prProjectOrder?: string[];
 }) {
   const items = visibleFeedItems.filter(
     (item) => !hiddenProjectIdSet.has(item.projectId),
@@ -138,7 +155,14 @@ export function partitionFeedItems({
   }
 
   actionNeeded.sort(bySourceThenTimestamp);
-  prReviews.sort(byManualLowPriorityThenProjectPriority(lowPriorityIds));
+  prReviews.sort(
+    byManualLowPriorityThenProjectPriority({
+      lowPriorityIds,
+      prProjectOrder: new Map(
+        prProjectOrder.map((projectId, index) => [projectId, index]),
+      ),
+    }),
+  );
   activeTasks.sort(bySourceThenTimestamp);
   high.sort(bySourceThenTimestamp);
   rest.sort(bySourceThenTimestamp);

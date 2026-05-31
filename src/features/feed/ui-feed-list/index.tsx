@@ -9,10 +9,12 @@ import {
   ChevronsRight,
   Filter,
   GitPullRequest,
+  GripVertical,
   ListTodo,
   Loader2,
   MessageSquare,
   Plus,
+  Settings2,
 } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -20,12 +22,15 @@ import { createPortal } from 'react-dom';
 
 import { useCommands } from '@/common/hooks/use-commands';
 import { Dropdown, DropdownDivider, DropdownItem } from '@/common/ui/dropdown';
+import { Modal } from '@/common/ui/modal';
 import { ProjectLogo } from '@/features/project/ui-project-logo';
 import { useFeed } from '@/hooks/use-feed';
+import { useProjects } from '@/hooks/use-projects';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useFeedStore } from '@/stores/feed';
 import { useNavigationStore } from '@/stores/navigation';
 import { useOverlaysStore } from '@/stores/overlays';
+import { useUIStore } from '@/stores/ui';
 import type { FeedItem } from '@shared/feed-types';
 
 import { FeedItemCard } from './feed-item-card';
@@ -36,6 +41,14 @@ type PrReviewContextMenuState = {
   x: number;
   y: number;
 } | null;
+
+type PrProjectOrderOption = {
+  id: string;
+  name: string;
+  color: string;
+  logoPath?: string | null | undefined;
+  prCount: number;
+};
 
 function MiniProjectLabel({ item }: { item: FeedItem }) {
   if (item.projectLogoPath) {
@@ -227,6 +240,117 @@ function StackableZone({
   );
 }
 
+function PrProjectOrderModal({
+  projects,
+  onClose,
+  onMoveProject,
+}: {
+  projects: PrProjectOrderOption[];
+  onClose: () => void;
+  onMoveProject: (
+    fromProjectId: string,
+    toProjectId: string,
+    placement: 'before' | 'after',
+  ) => void;
+}) {
+  const [draggedProjectId, setDraggedProjectId] = useState<string | null>(null);
+  const [dragOverProjectId, setDragOverProjectId] = useState<string | null>(
+    null,
+  );
+
+  const handleDrop = useCallback(
+    (event: React.DragEvent, targetProjectId: string) => {
+      event.preventDefault();
+      if (draggedProjectId && draggedProjectId !== targetProjectId) {
+        const rect = event.currentTarget.getBoundingClientRect();
+        const placement =
+          event.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+        onMoveProject(draggedProjectId, targetProjectId, placement);
+      }
+      setDraggedProjectId(null);
+      setDragOverProjectId(null);
+    },
+    [draggedProjectId, onMoveProject],
+  );
+
+  return (
+    <Modal
+      isOpen
+      onClose={onClose}
+      ariaLabel="PR project priority"
+      showHeader={false}
+      contentClassName="p-0"
+      panelClassName="border border-line-soft overflow-hidden rounded-2xl bg-bg-0 shadow-2xl shadow-black/35"
+    >
+      <div className="from-status-pr/14 border-line-soft border-b bg-gradient-to-br to-transparent px-5 pt-4 pb-3">
+        <div className="flex items-start gap-3">
+          <div className="border-status-pr/25 bg-status-pr/10 text-status-pr flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border">
+            <Settings2 className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2
+              id="pr-project-order-title"
+              className="text-ink-0 text-sm font-semibold"
+            >
+              PR project priority
+            </h2>
+            <p className="text-ink-2 mt-1 text-xs leading-relaxed">
+              Drag projects into review priority. Top projects appear first in
+              PR carousel.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-h-[55vh] space-y-2 overflow-y-auto p-3">
+        {projects.map((project, index) => (
+          <div
+            key={project.id}
+            draggable
+            onDragStart={() => setDraggedProjectId(project.id)}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDragOverProjectId(project.id);
+            }}
+            onDragLeave={() => setDragOverProjectId(null)}
+            onDrop={(event) => handleDrop(event, project.id)}
+            onDragEnd={() => {
+              setDraggedProjectId(null);
+              setDragOverProjectId(null);
+            }}
+            className={clsx(
+              'border-line-soft bg-bg-1 flex cursor-grab items-center gap-3 rounded-xl border px-3 py-2.5 transition-[border-color,background-color,opacity,transform] active:cursor-grabbing',
+              draggedProjectId === project.id && 'scale-[0.99] opacity-45',
+              dragOverProjectId === project.id &&
+                draggedProjectId !== project.id &&
+                'border-status-pr bg-status-pr/10',
+            )}
+          >
+            <GripVertical className="text-ink-3 h-4 w-4 shrink-0" />
+            <span className="text-ink-3 w-5 text-right font-mono text-[10px]">
+              {index + 1}
+            </span>
+            <ProjectLogo
+              project={{
+                name: project.name,
+                color: project.color,
+                logoPath: project.logoPath ?? null,
+              }}
+              size="sm"
+            />
+            <span className="text-ink-1 min-w-0 flex-1 truncate text-sm font-medium">
+              {project.name}
+            </span>
+            <span className="text-ink-3 rounded-full bg-white/5 px-2 py-0.5 font-mono text-[10px]">
+              {project.prCount} PR{project.prCount === 1 ? '' : 's'}
+            </span>
+          </div>
+        ))}
+      </div>
+    </Modal>
+  );
+}
+
 function HorizontalPrReviewStack({
   items,
   isItemSelected,
@@ -239,9 +363,13 @@ function HorizontalPrReviewStack({
   onMarkLowPriority: (item: FeedItem) => void;
 }) {
   const [focusedIndex, setFocusedIndex] = useState(0);
+  const [projectOrderModalOpen, setProjectOrderModalOpen] = useState(false);
   const [contextMenu, setContextMenu] =
     useState<PrReviewContextMenuState>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
+  const prProjectOrder = useUIStore((s) => s.settings.prProjectOrder);
+  const setSetting = useUIStore((s) => s.setSetting);
+  const { data: allProjects = [] } = useProjects();
   const wheelGesture = useRef<{
     accumulated: number;
     consumed: boolean;
@@ -266,6 +394,42 @@ function HorizontalPrReviewStack({
   const maxIndex = items.length - 1;
   const safeIndex = Math.min(focusedIndex, Math.max(0, maxIndex));
   const focusedItem = items[safeIndex];
+  const projectOrderIndex = useMemo(
+    () => new Map(prProjectOrder.map((projectId, index) => [projectId, index])),
+    [prProjectOrder],
+  );
+  const projectOptions = useMemo(() => {
+    const prCountByProjectId = new Map<string, number>();
+    for (const item of items) {
+      prCountByProjectId.set(
+        item.projectId,
+        (prCountByProjectId.get(item.projectId) ?? 0) + 1,
+      );
+    }
+
+    return allProjects
+      .filter(
+        (project) =>
+          project.repoProviderId &&
+          project.repoProjectId &&
+          project.repoId &&
+          project.showPrsInFeed,
+      )
+      .map((project) => ({
+        id: project.id,
+        name: project.name,
+        color: project.color,
+        logoPath: project.logoPath,
+        prCount: prCountByProjectId.get(project.id) ?? 0,
+      }))
+      .sort((a, b) => {
+        const order =
+          (projectOrderIndex.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+          (projectOrderIndex.get(b.id) ?? Number.MAX_SAFE_INTEGER);
+        if (order !== 0) return order;
+        return a.name.localeCompare(b.name);
+      });
+  }, [allProjects, items, projectOrderIndex]);
   const dotIndexes = useMemo(() => {
     const maxDots = 7;
     if (items.length <= maxDots) {
@@ -304,6 +468,37 @@ function HorizontalPrReviewStack({
       setContextMenu({ item, x: event.clientX, y: event.clientY });
     },
     [],
+  );
+
+  const handleMoveProject = useCallback(
+    (
+      fromProjectId: string,
+      toProjectId: string,
+      placement: 'before' | 'after',
+    ) => {
+      const visibleProjectIds = projectOptions.map((project) => project.id);
+      const fromIndex = visibleProjectIds.indexOf(fromProjectId);
+      if (fromIndex === -1 || !visibleProjectIds.includes(toProjectId)) return;
+
+      const nextVisibleProjectIds = [...visibleProjectIds];
+      const [movedProjectId] = nextVisibleProjectIds.splice(fromIndex, 1);
+      const targetIndex = nextVisibleProjectIds.indexOf(toProjectId);
+      if (targetIndex === -1) return;
+      nextVisibleProjectIds.splice(
+        placement === 'before' ? targetIndex : targetIndex + 1,
+        0,
+        movedProjectId,
+      );
+
+      const visibleProjectIdSet = new Set(nextVisibleProjectIds);
+      setSetting('prProjectOrder', [
+        ...nextVisibleProjectIds,
+        ...prProjectOrder.filter(
+          (projectId) => !visibleProjectIdSet.has(projectId),
+        ),
+      ]);
+    },
+    [prProjectOrder, projectOptions, setSetting],
   );
 
   const handleContextMenuKeyDown = useCallback(
@@ -503,6 +698,14 @@ function HorizontalPrReviewStack({
         >
           <ChevronsRight className="h-3 w-3" />
         </button>
+        <button
+          type="button"
+          onClick={() => setProjectOrderModalOpen(true)}
+          className="border-line-soft text-ink-2 hover:bg-glass-light hover:text-ink-1 ml-1 flex h-5 w-5 items-center justify-center rounded border transition-colors"
+          aria-label="Configure PR project priority"
+        >
+          <Settings2 className="h-3 w-3" />
+        </button>
       </div>
       <div className="text-ink-3 mt-1 flex items-center gap-1.5 px-3 font-mono text-[9.5px]">
         <span>
@@ -516,6 +719,13 @@ function HorizontalPrReviewStack({
           state={contextMenu}
           onClose={() => setContextMenu(null)}
           onMarkLowPriority={onMarkLowPriority}
+        />
+      )}
+      {projectOrderModalOpen && (
+        <PrProjectOrderModal
+          projects={projectOptions}
+          onClose={() => setProjectOrderModalOpen(false)}
+          onMoveProject={handleMoveProject}
         />
       )}
     </section>

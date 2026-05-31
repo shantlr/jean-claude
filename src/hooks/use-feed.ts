@@ -8,6 +8,7 @@ import { feedQueryKeys } from '@/lib/feed-query-keys';
 import { useFeedStore } from '@/stores/feed';
 import { useNavigationStore } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
+import { useUIStore } from '@/stores/ui';
 import type { FeedItem } from '@shared/feed-types';
 
 function shouldHideReviewPr(item: FeedItem) {
@@ -56,6 +57,7 @@ export function useFeed() {
   const dismissed = useFeedStore((s) => s.dismissed);
   const lowPriority = useFeedStore((s) => s.lowPriority);
   const hiddenProjectIds = useFeedStore((s) => s.hiddenProjectIds);
+  const prProjectOrder = useUIStore((s) => s.settings.prProjectOrder);
   const reconcile = useFeedStore((s) => s.reconcile);
   const lastAttention = useFeedStore((s) => s.lastAttention);
   const pendingRequestsByTaskId = useTaskMessagesStore(
@@ -295,6 +297,7 @@ export function useFeed() {
       dismissedIds,
       lowPriorityIds,
       taskOwnedPrIds,
+      prProjectOrder,
     });
   }, [
     visibleFeedItems,
@@ -303,6 +306,7 @@ export function useFeed() {
     dismissedIds,
     hiddenProjectIdSet,
     lowPriorityIds,
+    prProjectOrder,
     taskOwnedPrIds,
   ]);
 

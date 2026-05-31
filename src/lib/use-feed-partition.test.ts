@@ -66,4 +66,36 @@ describe('partitionFeedItems', () => {
     ]);
     expect(result.lowPriorityItems.map((item) => item.id)).toEqual([]);
   });
+
+  it('orders PR reviews by custom project order', async () => {
+    const firstProject = prItem({
+      id: 'pr:project-1:1',
+      projectId: 'project-1',
+    });
+    const secondProject = prItem({
+      id: 'pr:project-2:2',
+      projectId: 'project-2',
+    });
+    const unorderedProject = prItem({
+      id: 'pr:project-3:3',
+      projectId: 'project-3',
+    });
+
+    const result = partitionFeedItems({
+      visibleFeedItems: [firstProject, unorderedProject, secondProject],
+      hiddenProjectIdSet: new Set(),
+      pinned: [],
+      pinnedIds: new Set(),
+      dismissedIds: new Set(),
+      lowPriorityIds: new Set(),
+      taskOwnedPrIds: new Set(),
+      prProjectOrder: ['project-2', 'project-1'],
+    });
+
+    expect(result.prReviewItems.map((item) => item.id)).toEqual([
+      secondProject.id,
+      firstProject.id,
+      unorderedProject.id,
+    ]);
+  });
 });
