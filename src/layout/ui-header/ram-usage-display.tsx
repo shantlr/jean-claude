@@ -2,6 +2,7 @@ import { MemoryStick } from 'lucide-react';
 
 import { Tooltip } from '@/common/ui/tooltip';
 import {
+  MAX_MEMORY_USAGE_SAMPLES,
   useMemoryUsage,
   type MemoryUsageSample,
 } from '@/hooks/use-memory-usage';
@@ -16,17 +17,28 @@ function formatCpu(percent: number): string {
   return `${Math.max(0, percent).toFixed(1)}%`;
 }
 
-function getSparklinePath(values: number[], width: number, height: number) {
+function getSparklinePath({
+  values,
+  width,
+  height,
+  expectedSampleCount,
+}: {
+  values: number[];
+  width: number;
+  height: number;
+  expectedSampleCount: number;
+}) {
   if (values.length === 0) return '';
 
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min;
-  const xStep = values.length > 1 ? width / (values.length - 1) : 0;
+  const xStep = expectedSampleCount > 1 ? width / (expectedSampleCount - 1) : 0;
 
   return values
     .map((value, index) => {
-      const x = index * xStep;
+      const samplesFromLatest = values.length - 1 - index;
+      const x = width - samplesFromLatest * xStep;
       const normalized = range === 0 ? 0.5 : (value - min) / range;
       const y = height - normalized * height;
       return `${index === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
@@ -47,7 +59,12 @@ function ResourceMetricRow({
 }) {
   const width = 96;
   const height = 22;
-  const path = getSparklinePath(values, width, height);
+  const path = getSparklinePath({
+    values,
+    width,
+    height,
+    expectedSampleCount: MAX_MEMORY_USAGE_SAMPLES,
+  });
 
   return (
     <div className="grid grid-cols-[74px_66px_96px] items-center gap-2 text-[11px]">
@@ -152,7 +169,8 @@ export function RamUsageDisplay() {
           <div className="flex items-baseline justify-between gap-5">
             <div className="text-ink-1 font-medium">Jean-Claude Resources</div>
             <div className="text-ink-4 font-mono text-[10px]">
-              {history.length} samples · {historyMinutes}m
+              {history.length}/{MAX_MEMORY_USAGE_SAMPLES} samples ·{' '}
+              {historyMinutes}m
             </div>
           </div>
           <div className="space-y-1.5">
