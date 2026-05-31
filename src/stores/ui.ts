@@ -7,12 +7,14 @@ interface UISettings {
   sidebarCollapsed: boolean;
   workItemsPanelWidth: number;
   diffViewMode: DiffViewMode;
+  reactScanEnabled: boolean;
 }
 
 const UI_SETTINGS_DEFAULTS: UISettings = {
   sidebarCollapsed: false,
   workItemsPanelWidth: 50,
   diffViewMode: 'inline',
+  reactScanEnabled: false,
 };
 
 function validateSettings(settings: UISettings): UISettings {
@@ -46,6 +48,8 @@ function migrateLegacyKeys(raw: Record<string, unknown>): Partial<UISettings> {
     raw.diffViewMode === 'current-state'
   )
     legacy.diffViewMode = raw.diffViewMode;
+  if (typeof raw.reactScanEnabled === 'boolean')
+    legacy.reactScanEnabled = raw.reactScanEnabled;
   return legacy;
 }
 

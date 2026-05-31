@@ -5,7 +5,8 @@ import {
   useRouter,
   useRouterState,
 } from '@tanstack/react-router';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { scan, setOptions } from 'react-scan';
 
 import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
 import { useCommands } from '@/common/hooks/use-commands';
@@ -36,6 +37,7 @@ import { useNewTaskDraft } from '@/stores/new-task-draft';
 import { useOverlaysStore } from '@/stores/overlays';
 import { pruneOrphanedReviewComments } from '@/stores/review-comments';
 import { pruneOrphanedTaskPrompts } from '@/stores/task-prompts';
+import { useUISetting } from '@/stores/ui';
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -379,6 +381,7 @@ function RootLayout() {
 
   return (
     <div className="aurora-app-bg flex h-screen w-screen overflow-hidden">
+      <ReactScanBridge />
       <NotificationTaskOpenBridge />
       <TaskMessageManager />
       <GlobalPromptFromBackModal />
@@ -408,6 +411,38 @@ function RootLayout() {
       </div>
     </div>
   );
+}
+
+function ReactScanBridge() {
+  const enabled = useUISetting('reactScanEnabled');
+  const wasEnabledRef = useRef(enabled);
+
+  useEffect(() => {
+    if (enabled) {
+      window.localStorage.removeItem('react-scan-options');
+
+      scan({
+        enabled: true,
+        showToolbar: true,
+        animationSpeed: 'fast',
+        dangerouslyForceRunInProduction: true,
+      });
+      wasEnabledRef.current = true;
+      return;
+    }
+
+    window.localStorage.removeItem('react-scan-options');
+
+    setOptions({
+      enabled: false,
+      ...(wasEnabledRef.current ? { showToolbar: false } : {}),
+      animationSpeed: 'fast',
+      dangerouslyForceRunInProduction: false,
+    });
+    wasEnabledRef.current = false;
+  }, [enabled]);
+
+  return null;
 }
 
 function NotificationTaskOpenBridge() {

@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react';
 
 import { Button } from '@/common/ui/button';
 import { Input } from '@/common/ui/input';
+import { Switch } from '@/common/ui/switch';
 import {
   useDeleteOldCompletedTasks,
   useDebugDatabaseSize,
@@ -10,10 +11,13 @@ import {
   useDebugTableQuery,
   useOldCompletedTasksCount,
 } from '@/hooks/use-debug';
+import { useUISetting, useUIStore } from '@/stores/ui';
 
 const PAGE_SIZE = 20;
 
 export function DebugDatabase() {
+  const reactScanEnabled = useUISetting('reactScanEnabled');
+  const setUISetting = useUIStore((state) => state.setSetting);
   const { data: tableNames = [] } = useDebugTableNames();
   const { data: databaseSize } = useDebugDatabaseSize();
   const { data: oldCompletedTasksCount } = useOldCompletedTasksCount();
@@ -73,9 +77,9 @@ export function DebugDatabase() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h2 className="text-ink-1 text-lg font-semibold">Database Browser</h2>
+        <h2 className="text-ink-1 text-lg font-semibold">Debug</h2>
         <p className="text-ink-3 mt-1 text-sm">
-          Browse database tables and rows for debugging
+          Diagnostics for inspecting app behavior during development.
         </p>
         {databaseSize && (
           <div className="text-ink-2 mt-2 space-y-1 text-sm">
@@ -85,6 +89,32 @@ export function DebugDatabase() {
             </p>
           </div>
         )}
+      </div>
+
+      <div className="border-glass-border bg-bg-0 rounded-lg border p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h3 className="text-ink-1 text-sm font-medium">React Scan</h3>
+            <p className="text-ink-2 mt-1 max-w-xl text-sm">
+              Highlight components as they re-render. This adds runtime
+              overhead, so leave it off unless you are debugging render
+              performance.
+            </p>
+          </div>
+          <Switch
+            checked={reactScanEnabled}
+            onChange={(enabled) => setUISetting('reactScanEnabled', enabled)}
+            label={reactScanEnabled ? 'Enabled' : 'Disabled'}
+            className="shrink-0"
+          />
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-ink-1 text-lg font-semibold">Database Browser</h2>
+        <p className="text-ink-3 mt-1 text-sm">
+          Browse database tables and rows for debugging
+        </p>
       </div>
 
       <div className="border-glass-border bg-bg-0 rounded-lg border p-4">
