@@ -133,7 +133,7 @@ describe('generateProjectLogo', () => {
       }),
     } as Response);
 
-    const result = await generateProjectLogo('project-1');
+    const result = await generateProjectLogo({ projectId: 'project-1' });
 
     expect(fetch).toHaveBeenCalledWith(
       'https://api.openai.com/v1/images/generations',
@@ -172,7 +172,7 @@ describe('generateProjectLogo', () => {
       }),
     } as Response);
 
-    await generateProjectLogo('project-1');
+    await generateProjectLogo({ projectId: 'project-1' });
 
     const [, request] = vi.mocked(fetch).mock.calls[0];
     expect(JSON.parse(String(request?.body))).toEqual(
@@ -201,7 +201,7 @@ describe('generateProjectLogo', () => {
       }),
     } as Response);
 
-    await generateProjectLogo('project-1');
+    await generateProjectLogo({ projectId: 'project-1' });
 
     expect(fetch).toHaveBeenCalledWith(
       'https://api.openai.com/v1/images/edits',
@@ -221,6 +221,62 @@ describe('generateProjectLogo', () => {
       'Desktop app for managing coding agents across projects.',
     );
     expect(prompt).not.toContain('Style requirements');
+  });
+
+  it('adds custom prompt context to generated logo prompts', async () => {
+    const imageBytes = PNG_BYTES;
+    getSettingMock.mockResolvedValue({
+      openAiApiKey: 'encrypted-key',
+      openAiImageGenerationEnabled: true,
+      openAiImageModel: 'gpt-image-2',
+      openAiLogoPromptContext: 'Use the cozy adventurer icon family.',
+    });
+    decryptMock.mockReturnValue('stored-key');
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [{ b64_json: imageBytes.toString('base64') }],
+      }),
+    } as Response);
+
+    await generateProjectLogo({
+      projectId: 'project-1',
+      customPrompt: 'Add a tiny terminal and purple backpack.',
+    });
+
+    const [, request] = vi.mocked(fetch).mock.calls[0];
+    const prompt = JSON.parse(String(request?.body)).prompt;
+    expect(prompt).toContain('Use the cozy adventurer icon family.');
+    expect(prompt).toContain('Add a tiny terminal and purple backpack.');
+  });
+
+  it('adds custom prompt context to edited logo prompts', async () => {
+    const imageBytes = PNG_BYTES;
+    const baseImagePath = '/tmp/base-logo.png';
+    vol.writeFileSync(baseImagePath, PNG_BYTES);
+    getSettingMock.mockResolvedValue({
+      openAiApiKey: 'encrypted-key',
+      openAiImageGenerationEnabled: true,
+      openAiImageModel: 'gpt-image-2',
+      openAiBaseImagePath: baseImagePath,
+      openAiBaseImageName: 'base-logo.png',
+    });
+    decryptMock.mockReturnValue('stored-key');
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [{ b64_json: imageBytes.toString('base64') }],
+      }),
+    } as Response);
+
+    await generateProjectLogo({
+      projectId: 'project-1',
+      customPrompt: 'Make the mascot hold a map.',
+    });
+
+    const [, request] = vi.mocked(fetch).mock.calls[0];
+    const prompt = (request?.body as FormData).get('prompt');
+    expect(prompt).toContain('Make the mascot hold a map.');
   });
 
   it('generates and stores a project summary when missing', async () => {
@@ -245,7 +301,7 @@ describe('generateProjectLogo', () => {
       }),
     } as Response);
 
-    await generateProjectLogo('project-1');
+    await generateProjectLogo({ projectId: 'project-1' });
 
     expect(resolveAiSkillSlotMock).toHaveBeenCalledWith(
       'project-summary',
@@ -280,9 +336,9 @@ describe('generateProjectLogo', () => {
       openAiImageModel: 'gpt-image-2',
     });
 
-    await expect(generateProjectLogo('project-1')).rejects.toThrow(
-      'OpenAI API key is required to generate project logos',
-    );
+    await expect(
+      generateProjectLogo({ projectId: 'project-1' }),
+    ).rejects.toThrow('OpenAI API key is required to generate project logos');
 
     expect(fetch).not.toHaveBeenCalled();
     expect(generateTextMock).not.toHaveBeenCalled();
@@ -301,9 +357,9 @@ describe('generateProjectLogo', () => {
     decryptMock.mockReturnValue('stored-key');
     generateTextMock.mockResolvedValue(null);
 
-    await expect(generateProjectLogo('project-1')).rejects.toThrow(
-      'Project summary is required to generate project logos',
-    );
+    await expect(
+      generateProjectLogo({ projectId: 'project-1' }),
+    ).rejects.toThrow('Project summary is required to generate project logos');
 
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -324,7 +380,9 @@ describe('generateProjectLogo', () => {
       }),
     } as Response);
 
-    await expect(generateProjectLogo('project-1')).rejects.toThrow(
+    await expect(
+      generateProjectLogo({ projectId: 'project-1' }),
+    ).rejects.toThrow(
       'OpenAI image generation failed (401 Unauthorized): Invalid API key',
     );
   });
@@ -337,9 +395,9 @@ describe('generateProjectLogo', () => {
     });
     decryptMock.mockReturnValue('stored-key');
 
-    await expect(generateProjectLogo('project-1')).rejects.toThrow(
-      'OpenAI image model must be a GPT-image model',
-    );
+    await expect(
+      generateProjectLogo({ projectId: 'project-1' }),
+    ).rejects.toThrow('OpenAI image model must be a GPT-image model');
 
     expect(fetch).not.toHaveBeenCalled();
   });

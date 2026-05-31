@@ -36,8 +36,8 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('projects:update', id, data),
     uploadLogo: (projectId: string, sourcePath: string) =>
       ipcRenderer.invoke('projects:uploadLogo', projectId, sourcePath),
-    generateLogo: (projectId: string) =>
-      ipcRenderer.invoke('projects:generateLogo', projectId),
+    generateLogo: (projectId: string, customPrompt?: string) =>
+      ipcRenderer.invoke('projects:generateLogo', projectId, customPrompt),
     listGeneratedLogos: (projectId: string) =>
       ipcRenderer.invoke('projects:listGeneratedLogos', projectId),
     selectGeneratedLogo: (projectId: string, logoId: string) =>

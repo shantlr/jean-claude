@@ -389,6 +389,9 @@ function JobDetails({ job }: { job: BackgroundJob }) {
           {typedJob.details.projectName && (
             <p>Project: {typedJob.details.projectName}</p>
           )}
+          {typedJob.details.customPrompt && (
+            <p className="truncate">Prompt: {typedJob.details.customPrompt}</p>
+          )}
         </div>
       );
     },

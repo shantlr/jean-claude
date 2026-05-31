@@ -534,13 +534,16 @@ export function registerIpcHandlers() {
       return result;
     },
   );
-  ipcMain.handle('projects:generateLogo', async (_, projectId: string) => {
-    dbg.ipc('projects:generateLogo %s', projectId);
-    const result = await generateProjectLogo(projectId);
-    invalidatePrCache();
-    invalidateWorkItemCache();
-    return result;
-  });
+  ipcMain.handle(
+    'projects:generateLogo',
+    async (_, projectId: string, customPrompt?: string) => {
+      dbg.ipc('projects:generateLogo %s', projectId);
+      const result = await generateProjectLogo({ projectId, customPrompt });
+      invalidatePrCache();
+      invalidateWorkItemCache();
+      return result;
+    },
+  );
   ipcMain.handle('projects:listGeneratedLogos', (_, projectId: string) => {
     dbg.ipc('projects:listGeneratedLogos %s', projectId);
     return listGeneratedProjectLogos(projectId);

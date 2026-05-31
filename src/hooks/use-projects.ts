@@ -72,8 +72,14 @@ export function useUploadProjectLogo() {
 export function useGenerateProjectLogo() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (projectId: string) => api.projects.generateLogo(projectId),
-    onSuccess: (_, projectId) => {
+    mutationFn: ({
+      projectId,
+      customPrompt,
+    }: {
+      projectId: string;
+      customPrompt?: string;
+    }) => api.projects.generateLogo(projectId, customPrompt),
+    onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-logo'] });

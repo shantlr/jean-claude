@@ -39,9 +39,14 @@ function buildLogoImagePrompt(project: {
   path: string;
   color: string;
   logoPromptContext?: string | null;
+  customPrompt?: string | null;
 }): string {
-  const extraContext = project.logoPromptContext?.trim()
-    ? `\nAdditional user context:\n${project.logoPromptContext.trim()}\n`
+  const promptParts = [
+    project.logoPromptContext?.trim(),
+    project.customPrompt?.trim(),
+  ].filter(Boolean);
+  const extraContext = promptParts.length
+    ? `\nAdditional user context:\n${promptParts.join('\n\n')}\n`
     : '';
 
   return `Create one polished square app icon for this software project. Use the provided reference direction: friendly geometric adventurer mascot, cute project avatar, soft vector-like rendering, consistent dark outline, simple face, tiny contextual accessory.
@@ -81,9 +86,14 @@ function buildLogoImageEditPrompt(project: {
   color: string;
   summary?: string | null;
   logoPromptContext?: string | null;
+  customPrompt?: string | null;
 }): string {
-  const extraContext = project.logoPromptContext?.trim()
-    ? `\nAdditional user context: ${project.logoPromptContext.trim()}\n`
+  const promptParts = [
+    project.logoPromptContext?.trim(),
+    project.customPrompt?.trim(),
+  ].filter(Boolean);
+  const extraContext = promptParts.length
+    ? `\nAdditional user context:\n${promptParts.join('\n\n')}\n`
     : '';
 
   return `Create one polished square app icon for this software project.
@@ -174,6 +184,7 @@ async function buildOpenAiImageEditBody({
     color: string;
     summary?: string | null;
     logoPromptContext?: string | null;
+    customPrompt?: string | null;
   };
 }): Promise<FormData> {
   const buffer = await fs.readFile(config.baseImagePath);
@@ -220,6 +231,7 @@ async function readOpenAiError(response: Response): Promise<string> {
 async function generateLogoImage({
   config,
   project,
+  customPrompt,
 }: {
   config: Awaited<ReturnType<typeof getOpenAiLogoConfig>>;
   project: {
@@ -229,6 +241,7 @@ async function generateLogoImage({
     summary?: string | null;
     logoPromptContext?: string | null;
   };
+  customPrompt?: string | null;
 }): Promise<Buffer> {
   const abortController = new AbortController();
   const timeout = setTimeout(() => abortController.abort(), LOGO_TIMEOUT_MS);
@@ -251,6 +264,7 @@ async function generateLogoImage({
             project: {
               ...project,
               logoPromptContext: config.logoPromptContext,
+              customPrompt: customPrompt ?? null,
             },
           }),
         }
@@ -265,6 +279,7 @@ async function generateLogoImage({
             prompt: buildLogoImagePrompt({
               ...project,
               logoPromptContext: config.logoPromptContext,
+              customPrompt: customPrompt ?? null,
             }),
           }),
         };
@@ -422,7 +437,13 @@ export async function uploadProjectLogo({
   }
 }
 
-export async function generateProjectLogo(projectId: string) {
+export async function generateProjectLogo({
+  projectId,
+  customPrompt,
+}: {
+  projectId: string;
+  customPrompt?: string | null;
+}) {
   let project = await ProjectRepository.findById(projectId);
   if (!project) throw new Error('Project not found');
   const config = await getOpenAiLogoConfig();
@@ -436,7 +457,7 @@ export async function generateProjectLogo(projectId: string) {
     await ProjectRepository.updateSummaryIfBlank(projectId, summary);
   }
 
-  const image = await generateLogoImage({ config, project });
+  const image = await generateLogoImage({ config, project, customPrompt });
   const logoPath = await writeLogoFile({
     projectId,
     source: 'generated',

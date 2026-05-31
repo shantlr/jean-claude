@@ -77,6 +77,7 @@ export type BackgroundJob =
       type: 'logo-generation';
       details: {
         projectName: string | null;
+        customPrompt: string | null;
       };
     })
   | (BackgroundJobBase & {
@@ -181,6 +182,7 @@ type NewBackgroundJobInput =
       projectId?: string | null;
       details: {
         projectName: string | null;
+        customPrompt: string | null;
       };
     }
   | {

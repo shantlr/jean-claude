@@ -211,6 +211,12 @@ function JobRow({
             </p>
           )}
 
+        {job.type === 'logo-generation' && job.details.customPrompt && (
+          <p className="text-ink-3 mt-0.5 truncate text-[11px] italic">
+            {job.details.customPrompt}
+          </p>
+        )}
+
         <div className="mt-1 flex items-center gap-2">
           <ProjectPill
             project={project}

@@ -377,7 +377,10 @@ export interface Api {
     create: (data: NewProject) => Promise<Project>;
     update: (id: string, data: UpdateProject) => Promise<Project>;
     uploadLogo: (projectId: string, sourcePath: string) => Promise<Project>;
-    generateLogo: (projectId: string) => Promise<Project>;
+    generateLogo: (
+      projectId: string,
+      customPrompt?: string,
+    ) => Promise<Project>;
     listGeneratedLogos: (
       projectId: string,
     ) => Promise<ProjectLogoHistoryItem[]>;

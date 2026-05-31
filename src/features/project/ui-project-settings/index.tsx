@@ -18,16 +18,19 @@ import {
   type ReactElement,
 } from 'react';
 
+import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { Button } from '@/common/ui/button';
 import { ImagePreviewModal } from '@/common/ui/image-preview-modal';
 import { Input } from '@/common/ui/input';
+import { Kbd } from '@/common/ui/kbd';
 import {
   ListDetailLayout,
   ListGroupHeader,
   ListItemButton,
   ListPane,
 } from '@/common/ui/list-detail-layout';
+import { Modal } from '@/common/ui/modal';
 import { Select } from '@/common/ui/select';
 import { Textarea } from '@/common/ui/textarea';
 import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
@@ -170,6 +173,8 @@ export function ProjectSettings({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [completionContext, setCompletionContext] = useState('');
   const [summary, setSummary] = useState('');
+  const [isLogoPromptModalOpen, setIsLogoPromptModalOpen] = useState(false);
+  const [logoPromptDraft, setLogoPromptDraft] = useState('');
   const [prPriority, setPrPriority] = useState<ProjectPriority>('normal');
   const [workItemPriority, setWorkItemPriority] =
     useState<ProjectPriority>('normal');
@@ -189,6 +194,19 @@ export function ProjectSettings({
   const canGenerateLogoWithOpenAi =
     !!aiGenerationSetting?.openAiApiKey &&
     aiGenerationSetting.openAiImageGenerationEnabled === true;
+
+  useRegisterKeyboardBindings(
+    'project-logo-prompt-modal',
+    {
+      'cmd+enter': () => {
+        if (generateProjectLogo.isPending || !canGenerateLogoWithOpenAi) {
+          return false;
+        }
+        handleConfirmGenerateLogo();
+      },
+    },
+    { enabled: isLogoPromptModalOpen },
+  );
 
   const projectData = useMemo(() => {
     if (!project) return null;
@@ -463,8 +481,9 @@ export function ProjectSettings({
     }
   }
 
-  async function handleGenerateLogo() {
+  async function startLogoGeneration(customPrompt: string) {
     if (!project) return;
+    const trimmedCustomPrompt = customPrompt.trim();
 
     const jobId = addRunningJob({
       type: 'logo-generation',
@@ -472,13 +491,17 @@ export function ProjectSettings({
       projectId,
       details: {
         projectName: project.name,
+        customPrompt: trimmedCustomPrompt || null,
       },
     });
 
     void triggerAnimation();
 
     void generateProjectLogo
-      .mutateAsync(projectId)
+      .mutateAsync({
+        projectId,
+        customPrompt: trimmedCustomPrompt || undefined,
+      })
       .then((updatedProject) => {
         setSummary((current) =>
           current.trim() ? current : (updatedProject.summary ?? ''),
@@ -496,6 +519,15 @@ export function ProjectSettings({
           type: 'error',
         });
       });
+  }
+
+  function handleGenerateLogo() {
+    setIsLogoPromptModalOpen(true);
+  }
+
+  function handleConfirmGenerateLogo() {
+    setIsLogoPromptModalOpen(false);
+    void startLogoGeneration(logoPromptDraft);
   }
 
   async function handleSelectLogoSuggestion(sourcePath: string) {
@@ -1077,6 +1109,57 @@ export function ProjectSettings({
         imageUrl={logoPreviewDataUrl ?? null}
         onClose={() => setIsLogoPreviewOpen(false)}
       />
+      <Modal
+        isOpen={isLogoPromptModalOpen}
+        onClose={() => setIsLogoPromptModalOpen(false)}
+        title="Generate Logo"
+      >
+        <div className="space-y-4">
+          <div>
+            <label
+              htmlFor="logoCustomPrompt"
+              className="text-ink-1 mb-1 block text-sm font-medium"
+            >
+              Custom prompt
+            </label>
+            <Textarea
+              id="logoCustomPrompt"
+              size="md"
+              value={logoPromptDraft}
+              onChange={(event) => setLogoPromptDraft(event.target.value)}
+              placeholder="Optional details like mascot, mood, symbols, or colors"
+              rows={4}
+              autoFocus
+            />
+            <p className="text-ink-3 mt-1 text-xs">
+              Added to the base image instructions and saved project summary for
+              this generation only.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsLogoPromptModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleConfirmGenerateLogo}
+              disabled={
+                generateProjectLogo.isPending || !canGenerateLogoWithOpenAi
+              }
+              loading={generateProjectLogo.isPending}
+              icon={<Sparkles />}
+            >
+              {generateProjectLogo.isPending ? 'Generating...' : 'Generate'}
+              <Kbd shortcut="cmd+enter" />
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
