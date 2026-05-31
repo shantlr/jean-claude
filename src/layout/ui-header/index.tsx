@@ -402,13 +402,15 @@ export function Header() {
                   });
                 }}
               >
-                {typeof reloadUpdateCount === 'number' &&
-                  reloadUpdateCount > 0 && (
-                    <span className="bg-acc text-bg-0 mr-1 rounded-full px-1.5 py-0.5 text-[10px] leading-none shadow-[0_0_6px_oklch(0.6_0.2_264)]">
-                      {reloadUpdateCount}
-                    </span>
-                  )}
-                Reload App
+                <span className="flex w-full items-center">
+                  Reload App
+                  {typeof reloadUpdateCount === 'number' &&
+                    reloadUpdateCount > 0 && (
+                      <span className="bg-acc text-bg-0 ml-auto rounded-full px-1.5 py-0.5 text-[10px] leading-none shadow-[0_0_6px_oklch(0.6_0.2_264)]">
+                        {reloadUpdateCount}
+                      </span>
+                    )}
+                </span>
               </DropdownItem>
             </>
           )}
