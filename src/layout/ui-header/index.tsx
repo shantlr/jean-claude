@@ -10,6 +10,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -57,6 +58,9 @@ const initialReloadProgress: ReloadPreviewProgress = {
   label: 'Starting reload',
   detail: 'Preparing preview reload',
 };
+
+const DEFAULT_ACTIVITY_RESERVE_PX = 220;
+const ACTIVITY_GAP_PX = 30;
 
 function formatReloadElapsed(ms: number) {
   const seconds = ms / 1000;
@@ -227,7 +231,29 @@ export function Header() {
     return count;
   });
   const menuDropdownRef = useRef<{ toggle: () => void } | null>(null);
+  const activityButtonRef = useRef<HTMLDivElement | null>(null);
   const reloadUpdateRequestRef = useRef(0);
+  const [activityWidth, setActivityWidth] = useState(0);
+
+  useLayoutEffect(() => {
+    const element = activityButtonRef.current;
+    if (!element) return;
+
+    const updateActivityWidth = () => {
+      setActivityWidth(Math.ceil(element.getBoundingClientRect().width));
+    };
+
+    updateActivityWidth();
+
+    const resizeObserver = new ResizeObserver(updateActivityWidth);
+    resizeObserver.observe(element);
+
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  const activityReservePx = activityWidth
+    ? activityWidth / 2 + ACTIVITY_GAP_PX
+    : DEFAULT_ACTIVITY_RESERVE_PX;
 
   useCommands('header-menu-trigger', [
     {
@@ -430,6 +456,7 @@ export function Header() {
       {/* CENTER — Activity (absolutely centered) */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
         <div
+          ref={activityButtonRef}
           className="pointer-events-auto"
           style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
         >
@@ -446,7 +473,7 @@ export function Header() {
         style={
           {
             WebkitAppRegion: 'no-drag',
-            maxWidth: 'max(0px, calc(50vw - 220px))',
+            maxWidth: `max(0px, calc(50vw - ${activityReservePx}px))`,
           } as CSSProperties
         }
       >
