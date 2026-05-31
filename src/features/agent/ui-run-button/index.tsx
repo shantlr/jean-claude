@@ -298,10 +298,8 @@ export function RunButton({
             size="xs"
             icon={<FileText />}
             aria-label="Open command logs"
-          >
-            Logs
-            <Kbd shortcut="cmd+l" />
-          </Button>
+            title="Open command logs (⌘L)"
+          ></Button>
         )}
 
         {runningCount > 0 && (
