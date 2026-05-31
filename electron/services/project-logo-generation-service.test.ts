@@ -69,6 +69,7 @@ describe('generateProjectLogo', () => {
     path: '/workspace/jean-claude',
     color: '#7c3aed',
     logoPath: null,
+    logoSource: null,
     defaultAgentBackend: 'claude-code',
     defaultAgentModelPreference: 'default',
     aiSkillSlots: null,
@@ -141,6 +142,7 @@ describe('generateProjectLogo', () => {
     );
     expect(result.logoPath).toMatch(/\.png$/);
     expect(result.logoPath).not.toBeNull();
+    expect(result.logoPath).toContain('/project-logos/project-1/generated-');
     await expect(fs.readFile(result.logoPath!)).resolves.toEqual(imageBytes);
   });
 

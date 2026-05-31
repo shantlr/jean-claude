@@ -38,6 +38,12 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('projects:uploadLogo', projectId, sourcePath),
     generateLogo: (projectId: string) =>
       ipcRenderer.invoke('projects:generateLogo', projectId),
+    listGeneratedLogos: (projectId: string) =>
+      ipcRenderer.invoke('projects:listGeneratedLogos', projectId),
+    selectGeneratedLogo: (projectId: string, logoId: string) =>
+      ipcRenderer.invoke('projects:selectGeneratedLogo', projectId, logoId),
+    deleteGeneratedLogo: (projectId: string, logoId: string) =>
+      ipcRenderer.invoke('projects:deleteGeneratedLogo', projectId, logoId),
     regenerateSummary: (projectId: string) =>
       ipcRenderer.invoke('projects:regenerateSummary', projectId),
     removeLogo: (projectId: string) =>

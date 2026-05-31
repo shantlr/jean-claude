@@ -219,8 +219,12 @@ import { detectProjectLogos } from '../services/project-logo-detection-service';
 import {
   generateProjectLogo,
   cleanupProjectLogoPath,
+  cleanupProjectLogos,
+  deleteGeneratedProjectLogo,
+  listGeneratedProjectLogos,
   removeProjectLogo,
   uploadProjectLogo,
+  selectGeneratedProjectLogo,
 } from '../services/project-logo-service';
 import { regenerateProjectSummary } from '../services/project-summary-generation-service';
 import { runReloadPreviewCommand } from '../services/reload-preview-service';
@@ -537,6 +541,29 @@ export function registerIpcHandlers() {
     invalidateWorkItemCache();
     return result;
   });
+  ipcMain.handle('projects:listGeneratedLogos', (_, projectId: string) => {
+    dbg.ipc('projects:listGeneratedLogos %s', projectId);
+    return listGeneratedProjectLogos(projectId);
+  });
+  ipcMain.handle(
+    'projects:selectGeneratedLogo',
+    async (_, projectId: string, logoId: string) => {
+      dbg.ipc('projects:selectGeneratedLogo %s %s', projectId, logoId);
+      const result = await selectGeneratedProjectLogo({ projectId, logoId });
+      invalidatePrCache();
+      invalidateWorkItemCache();
+      return result;
+    },
+  );
+  ipcMain.handle(
+    'projects:deleteGeneratedLogo',
+    async (_, projectId: string, logoId: string) => {
+      dbg.ipc('projects:deleteGeneratedLogo %s %s', projectId, logoId);
+      await deleteGeneratedProjectLogo({ projectId, logoId });
+      invalidatePrCache();
+      invalidateWorkItemCache();
+    },
+  );
   ipcMain.handle('projects:regenerateSummary', async (_, projectId: string) => {
     dbg.ipc('projects:regenerateSummary %s', projectId);
     return regenerateProjectSummary(projectId);
@@ -556,7 +583,10 @@ export function registerIpcHandlers() {
     dbg.ipc('projects:delete %s', id);
     const project = await ProjectRepository.findById(id);
     const result = await ProjectRepository.delete(id);
-    await cleanupProjectLogoPath(project?.logoPath);
+    if (project) {
+      await cleanupProjectLogos(id);
+      await cleanupProjectLogoPath(project.logoPath);
+    }
     return result;
   });
   ipcMain.handle('projects:deleteWorktreesFolder', (_, projectId: string) => {

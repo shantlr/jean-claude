@@ -310,33 +310,75 @@ function getLogosDir(): string {
   return path.join(app.getPath('userData'), 'project-logos');
 }
 
+function getProjectLogosDir(projectId: string): string {
+  return path.join(getLogosDir(), projectId);
+}
+
+function getSafeProjectLogosDir(projectId: string): string {
+  const logosDir = getLogosDir();
+  const projectLogosDir = getProjectLogosDir(projectId);
+  const relativePath = path.relative(logosDir, projectLogosDir);
+  if (
+    !relativePath ||
+    relativePath.startsWith('..') ||
+    path.isAbsolute(relativePath)
+  ) {
+    throw new Error('Invalid project logo path');
+  }
+  return projectLogosDir;
+}
+
 async function writeLogoFile({
   projectId,
+  source,
   extension,
   content,
 }: {
   projectId: string;
+  source: 'uploaded' | 'generated';
   extension: string;
   content: Buffer | string;
 }): Promise<string> {
-  const logosDir = getLogosDir();
-  await fs.mkdir(logosDir, { recursive: true });
-  const filePath = path.join(
-    logosDir,
-    `${projectId}-${randomUUID()}${extension}`,
-  );
+  const filePath = getUnusedLogoPath({ projectId, source, extension });
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, content);
   return filePath;
+}
+
+function isManagedLogoPath(logoPath: string): boolean {
+  const relativePath = path.relative(getLogosDir(), logoPath);
+  return !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
+}
+
+function getUnusedLogoPath({
+  projectId,
+  source,
+  extension,
+}: {
+  projectId: string;
+  source: 'uploaded' | 'generated';
+  extension: string;
+}) {
+  const logosDir = getSafeProjectLogosDir(projectId);
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  return path.join(
+    logosDir,
+    `${source}-${timestamp}-${randomUUID()}${extension}`,
+  );
 }
 
 async function removeOldLogo(logoPath: string | null | undefined) {
   if (!logoPath) return;
   try {
-    if (path.dirname(logoPath) !== getLogosDir()) return;
+    if (!isManagedLogoPath(logoPath)) return;
     await fs.unlink(logoPath);
   } catch {
     // Best effort cleanup; stale logo files are harmless.
   }
+}
+
+async function removeLogoFile(logoPath: string | null | undefined) {
+  await removeOldLogo(logoPath);
 }
 
 export async function uploadProjectLogo({
@@ -361,6 +403,7 @@ export async function uploadProjectLogo({
   const buffer = await fs.readFile(sourcePath);
   const logoPath = await writeLogoFile({
     projectId,
+    source: 'uploaded',
     extension: ext,
     content: buffer,
   });
@@ -369,10 +412,12 @@ export async function uploadProjectLogo({
       logoPath,
       logoSource: 'uploaded',
     });
-    await removeOldLogo(project.logoPath);
+    if (project.logoSource !== 'generated') {
+      await removeLogoFile(project.logoPath);
+    }
     return updatedProject;
   } catch (error) {
-    await removeOldLogo(logoPath);
+    await removeLogoFile(logoPath);
     throw error;
   }
 }
@@ -393,6 +438,7 @@ export async function generateProjectLogo(projectId: string) {
   const image = await generateLogoImage({ config, project });
   const logoPath = await writeLogoFile({
     projectId,
+    source: 'generated',
     extension: '.png',
     content: image,
   });
@@ -401,12 +447,108 @@ export async function generateProjectLogo(projectId: string) {
       logoPath,
       logoSource: 'generated',
     });
-    await removeOldLogo(project.logoPath);
+    if (project.logoSource === 'uploaded') {
+      await removeLogoFile(project.logoPath);
+    }
     return updatedProject;
   } catch (error) {
-    await removeOldLogo(logoPath);
+    await removeLogoFile(logoPath);
     throw error;
   }
+}
+
+export async function listGeneratedProjectLogos(projectId: string) {
+  const project = await ProjectRepository.findById(projectId);
+  if (!project) throw new Error('Project not found');
+
+  const projectLogosDir = getSafeProjectLogosDir(projectId);
+  let fileNames: string[];
+  try {
+    fileNames = await fs.readdir(projectLogosDir);
+  } catch {
+    return [];
+  }
+
+  const logos = await Promise.all(
+    fileNames
+      .filter((fileName) => fileName.startsWith('generated-'))
+      .map(async (fileName) => {
+        const filePath = path.join(projectLogosDir, fileName);
+        const stat = await fs.stat(filePath);
+        if (!stat.isFile()) return null;
+        return {
+          id: fileName,
+          projectId,
+          path: filePath,
+          createdAt: stat.birthtime.toISOString(),
+        };
+      }),
+  );
+
+  return logos
+    .filter((logo) => logo !== null)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+function getGeneratedLogoPath(projectId: string, logoId: string) {
+  if (logoId !== path.basename(logoId) || !logoId.startsWith('generated-')) {
+    throw new Error('Generated logo not found');
+  }
+  return path.join(getSafeProjectLogosDir(projectId), logoId);
+}
+
+export async function selectGeneratedProjectLogo({
+  projectId,
+  logoId,
+}: {
+  projectId: string;
+  logoId: string;
+}) {
+  const project = await ProjectRepository.findById(projectId);
+  if (!project) throw new Error('Project not found');
+
+  const logoPath = getGeneratedLogoPath(projectId, logoId);
+  try {
+    await fs.access(logoPath);
+  } catch {
+    throw new Error('Generated logo not found');
+  }
+
+  const updatedProject = await ProjectRepository.update(projectId, {
+    logoPath,
+    logoSource: 'generated',
+  });
+  if (project.logoSource !== 'generated') {
+    await removeLogoFile(project.logoPath);
+  }
+  return updatedProject;
+}
+
+export async function deleteGeneratedProjectLogo({
+  projectId,
+  logoId,
+}: {
+  projectId: string;
+  logoId: string;
+}) {
+  const project = await ProjectRepository.findById(projectId);
+  if (!project) throw new Error('Project not found');
+
+  const logoPath = getGeneratedLogoPath(projectId, logoId);
+  try {
+    await fs.access(logoPath);
+  } catch {
+    throw new Error('Generated logo not found');
+  }
+
+  if (project.logoPath === logoPath) {
+    await ProjectRepository.update(projectId, {
+      logoPath: null,
+      logoSource: null,
+    });
+  }
+
+  await removeLogoFile(logoPath);
 }
 
 export async function removeProjectLogo(projectId: string) {
@@ -416,12 +558,19 @@ export async function removeProjectLogo(projectId: string) {
     logoPath: null,
     logoSource: null,
   });
-  await removeOldLogo(project.logoPath);
+  await removeLogoFile(project.logoPath);
   return updatedProject;
 }
 
 export async function cleanupProjectLogoPath(
   logoPath: string | null | undefined,
 ): Promise<void> {
-  await removeOldLogo(logoPath);
+  await removeLogoFile(logoPath);
+}
+
+export async function cleanupProjectLogos(projectId: string): Promise<void> {
+  await fs.rm(getSafeProjectLogosDir(projectId), {
+    recursive: true,
+    force: true,
+  });
 }

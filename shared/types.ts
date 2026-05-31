@@ -189,6 +189,13 @@ export interface DetectedProjectLogo {
   source: 'web' | 'ios' | 'android' | 'asset';
 }
 
+export interface ProjectLogoHistoryItem {
+  id: string;
+  projectId: string;
+  path: string;
+  createdAt: string;
+}
+
 export interface Project {
   id: string;
   name: string;

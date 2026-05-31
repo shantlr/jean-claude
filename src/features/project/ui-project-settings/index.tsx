@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import isEqual from 'lodash-es/isEqual';
 import {
+  Check,
   FolderOpen,
   ImagePlus,
   RefreshCw,
@@ -54,9 +55,12 @@ import {
   useUpdateProject,
   useDeleteProject,
   useDeleteProjectWorktreesFolder,
+  useDeleteGeneratedProjectLogo,
   useGenerateProjectLogo,
+  useGeneratedProjectLogos,
   useRegenerateProjectSummary,
   useRemoveProjectLogo,
+  useSelectGeneratedProjectLogo,
   useUploadProjectLogo,
 } from '@/hooks/use-projects';
 import {
@@ -75,6 +79,7 @@ import type {
   AiSkillSlotKey,
   AiSkillSlotsSetting,
   ModelPreference,
+  ProjectLogoHistoryItem,
 } from '@shared/types';
 
 import { FavoriteBranchesInput } from './favorite-branches-input';
@@ -116,6 +121,8 @@ export function ProjectSettings({
   const { mutateAsync: updateProject } = useUpdateProject();
   const uploadProjectLogo = useUploadProjectLogo();
   const generateProjectLogo = useGenerateProjectLogo();
+  const selectGeneratedProjectLogo = useSelectGeneratedProjectLogo();
+  const deleteGeneratedProjectLogo = useDeleteGeneratedProjectLogo();
   const regenerateProjectSummary = useRegenerateProjectSummary();
   const removeProjectLogo = useRemoveProjectLogo();
   const deleteProject = useDeleteProject();
@@ -143,6 +150,8 @@ export function ProjectSettings({
     enabled: !!project?.logoPath,
     staleTime: Infinity,
   });
+  const { data: generatedLogoHistory = [] } =
+    useGeneratedProjectLogos(projectId);
 
   const [name, setName] = useState('');
   const [path, setPath] = useState('');
@@ -455,6 +464,29 @@ export function ProjectSettings({
       });
     }
   }
+
+  async function handleUseGeneratedLogo(logoId: string) {
+    try {
+      await selectGeneratedProjectLogo.mutateAsync({ projectId, logoId });
+    } catch (error) {
+      addToast({
+        message: error instanceof Error ? error.message : 'Failed to use logo.',
+        type: 'error',
+      });
+    }
+  }
+
+  async function handleDeleteGeneratedLogo(logoId: string) {
+    try {
+      await deleteGeneratedProjectLogo.mutateAsync({ projectId, logoId });
+    } catch (error) {
+      addToast({
+        message:
+          error instanceof Error ? error.message : 'Failed to delete logo.',
+        type: 'error',
+      });
+    }
+  }
   let content: ReactElement;
 
   switch (menuItem) {
@@ -623,6 +655,24 @@ export function ProjectSettings({
                   selectedPath={project.logoPath}
                   onSelect={handleSelectLogoSuggestion}
                 />
+              </div>
+            )}
+            {generatedLogoHistory.length > 0 && (
+              <div className="mt-3">
+                <p className="text-ink-3 mb-2 text-xs">
+                  Generated logo history
+                </p>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(76px,1fr))] gap-2 sm:grid-cols-[repeat(auto-fill,minmax(88px,1fr))]">
+                  {generatedLogoHistory.map((logo) => (
+                    <GeneratedLogoHistoryItem
+                      key={logo.id}
+                      logo={logo}
+                      isActive={project.logoPath === logo.path}
+                      onUse={handleUseGeneratedLogo}
+                      onDelete={handleDeleteGeneratedLogo}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -942,6 +992,65 @@ export function ProjectSettings({
         imageUrl={logoPreviewDataUrl ?? null}
         onClose={() => setIsLogoPreviewOpen(false)}
       />
+    </div>
+  );
+}
+
+function GeneratedLogoHistoryItem({
+  logo,
+  isActive,
+  onUse,
+  onDelete,
+}: {
+  logo: ProjectLogoHistoryItem;
+  isActive: boolean;
+  onUse: (logoId: string) => void | Promise<void>;
+  onDelete: (logoId: string) => void | Promise<void>;
+}) {
+  const { data: imageUrl } = useQuery({
+    queryKey: ['project-logo-history-image', logo.path],
+    queryFn: () => api.fs.readImageAsDataUrl(logo.path),
+    staleTime: Infinity,
+  });
+
+  return (
+    <div className="border-glass-border bg-glass-light rounded-lg border p-1.5">
+      <button
+        type="button"
+        className="bg-glass-medium border-glass-border flex aspect-square w-full items-center justify-center overflow-hidden rounded-md border disabled:cursor-default"
+        onClick={() => onUse(logo.id)}
+        disabled={isActive}
+        aria-label="Use generated logo"
+      >
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt="Generated logo"
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <Sparkles className="text-ink-3 h-5 w-5" />
+        )}
+      </button>
+      <div className="mt-1.5 flex items-center justify-center gap-1">
+        <div className="flex shrink-0 gap-1">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => onUse(logo.id)}
+            disabled={isActive}
+            icon={<Check />}
+            aria-label="Use generated logo"
+          />
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => onDelete(logo.id)}
+            icon={<Trash2 />}
+            aria-label="Delete generated logo"
+          />
+        </div>
+      </div>
     </div>
   );
 }

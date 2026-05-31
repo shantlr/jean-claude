@@ -100,6 +100,7 @@ import type {
   AppSettings,
   ProjectTodo,
   DetectedProjectLogo,
+  ProjectLogoHistoryItem,
 } from '@shared/types';
 import type { UsageProviderMap, UsageSnapshot } from '@shared/usage-types';
 import type { CreateWorkItemVerificationNoteParams } from '@shared/work-item-verification-note-types';
@@ -377,6 +378,14 @@ export interface Api {
     update: (id: string, data: UpdateProject) => Promise<Project>;
     uploadLogo: (projectId: string, sourcePath: string) => Promise<Project>;
     generateLogo: (projectId: string) => Promise<Project>;
+    listGeneratedLogos: (
+      projectId: string,
+    ) => Promise<ProjectLogoHistoryItem[]>;
+    selectGeneratedLogo: (
+      projectId: string,
+      logoId: string,
+    ) => Promise<Project>;
+    deleteGeneratedLogo: (projectId: string, logoId: string) => Promise<void>;
     regenerateSummary: (projectId: string) => Promise<Project>;
     removeLogo: (projectId: string) => Promise<Project>;
     delete: (id: string) => Promise<void>;
@@ -1395,6 +1404,13 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         generateLogo: async () => {
+          throw new Error('API not available');
+        },
+        listGeneratedLogos: async () => [],
+        selectGeneratedLogo: async () => {
+          throw new Error('API not available');
+        },
+        deleteGeneratedLogo: async () => {
           throw new Error('API not available');
         },
         regenerateSummary: async () => {

@@ -61,6 +61,9 @@ export function useUploadProjectLogo() {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-logo'] });
+      queryClient.invalidateQueries({
+        queryKey: ['project-logo-history', projectId],
+      });
       queryClient.invalidateQueries({ queryKey: feedQueryKeys.all });
     },
   });
@@ -74,6 +77,61 @@ export function useGenerateProjectLogo() {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-logo'] });
+      queryClient.invalidateQueries({
+        queryKey: ['project-logo-history', projectId],
+      });
+      queryClient.invalidateQueries({ queryKey: feedQueryKeys.all });
+    },
+  });
+}
+
+export function useGeneratedProjectLogos(projectId: string) {
+  return useQuery({
+    queryKey: ['project-logo-history', projectId],
+    queryFn: () => api.projects.listGeneratedLogos(projectId),
+    enabled: !!projectId,
+  });
+}
+
+export function useSelectGeneratedProjectLogo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      logoId,
+    }: {
+      projectId: string;
+      logoId: string;
+    }) => api.projects.selectGeneratedLogo(projectId, logoId),
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-logo'] });
+      queryClient.invalidateQueries({
+        queryKey: ['project-logo-history', projectId],
+      });
+      queryClient.invalidateQueries({ queryKey: feedQueryKeys.all });
+    },
+  });
+}
+
+export function useDeleteGeneratedProjectLogo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      logoId,
+    }: {
+      projectId: string;
+      logoId: string;
+    }) => api.projects.deleteGeneratedLogo(projectId, logoId),
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-logo'] });
+      queryClient.invalidateQueries({
+        queryKey: ['project-logo-history', projectId],
+      });
       queryClient.invalidateQueries({ queryKey: feedQueryKeys.all });
     },
   });

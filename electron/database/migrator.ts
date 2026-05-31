@@ -60,6 +60,7 @@ import * as m058 from './migrations/058_feed_notes_blocknote_content';
 import * as m059 from './migrations/059_task_step_thinking_effort';
 import * as m060 from './migrations/060_project_logos';
 import * as m061 from './migrations/061_project_summary';
+import * as m062 from './migrations/062_migrate_project_logo_files';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -122,6 +123,7 @@ const migrations: Record<string, Migration> = {
   '059_task_step_thinking_effort': m059,
   '060_project_logos': m060,
   '061_project_summary': m061,
+  '062_migrate_project_logo_files': m062,
 };
 
 export const migrationProvider: MigrationProvider = {
