@@ -80,10 +80,12 @@ import type {
   AiSkillSlotsSetting,
   ModelPreference,
   ProjectLogoHistoryItem,
+  UpdateProject,
 } from '@shared/types';
 
 import { FavoriteBranchesInput } from './favorite-branches-input';
 import { ProtectedBranchesInput } from './protected-branches-input';
+import { getProjectSettingsSaveData } from './utils-project-settings-save-data';
 
 export type ProjectSettingsMenuItem =
   | 'details'
@@ -247,7 +249,20 @@ export function ProjectSettings({
   const hasChanges = projectData ? !isEqual(draftData, projectData) : false;
   const hasChangesRef = useRef(false);
   const savingProjectRef = useRef(false);
-  const pendingProjectSaveRef = useRef<typeof draftData | null>(null);
+  const pendingProjectSaveRef = useRef<{
+    data: UpdateProject;
+    fieldVersions: Map<keyof UpdateProject, number>;
+  } | null>(null);
+  const dirtyFieldsRef = useRef(new Set<keyof UpdateProject>());
+  const dirtyFieldVersionsRef = useRef(new Map<keyof UpdateProject, number>());
+
+  const markFieldDirty = useCallback((field: keyof UpdateProject) => {
+    dirtyFieldsRef.current.add(field);
+    dirtyFieldVersionsRef.current.set(
+      field,
+      (dirtyFieldVersionsRef.current.get(field) ?? 0) + 1,
+    );
+  }, []);
 
   useEffect(() => {
     hasChangesRef.current = hasChanges;
@@ -277,6 +292,8 @@ export function ProjectSettings({
       setWorkItemPriority(project.workItemPriority ?? 'normal');
       setCompletionContext(project.completionContext ?? '');
       setSummary(project.summary ?? '');
+      dirtyFieldsRef.current.clear();
+      dirtyFieldVersionsRef.current.clear();
       setWorktreesPath(project.worktreesPath ?? '');
       setProtectedBranches(project.protectedBranches ?? []);
       setFavoriteBranches(project.favoriteBranches ?? []);
@@ -286,19 +303,33 @@ export function ProjectSettings({
   }, [backendModelPresets, project]);
 
   const saveProjectSettings = useCallback(
-    async (data: typeof draftData) => {
-      pendingProjectSaveRef.current = data;
+    async (save: {
+      data: UpdateProject;
+      fieldVersions: Map<keyof UpdateProject, number>;
+    }) => {
+      pendingProjectSaveRef.current = save;
       if (savingProjectRef.current) return;
 
       savingProjectRef.current = true;
       try {
         while (pendingProjectSaveRef.current) {
-          const nextData = pendingProjectSaveRef.current;
+          const nextSave = pendingProjectSaveRef.current;
           pendingProjectSaveRef.current = null;
           await updateProject({
             id: projectId,
-            data: nextData,
+            data: nextSave.data,
           });
+          const pendingSave = pendingProjectSaveRef.current as
+            | typeof nextSave
+            | null;
+          for (const [field, version] of nextSave.fieldVersions) {
+            const currentVersion = dirtyFieldVersionsRef.current.get(field);
+            const pendingVersion = pendingSave?.fieldVersions.get(field);
+            if (currentVersion === version && pendingVersion === undefined) {
+              dirtyFieldsRef.current.delete(field);
+              dirtyFieldVersionsRef.current.delete(field);
+            }
+          }
         }
       } catch (error) {
         addToast({
@@ -317,9 +348,18 @@ export function ProjectSettings({
 
   useEffect(() => {
     if (!projectData || !hasChanges) return;
+    const saveData = getProjectSettingsSaveData({
+      data: draftData,
+      dirtyFields: dirtyFieldsRef.current,
+    });
+    if (Object.keys(saveData).length === 0) return;
+    const fieldVersions = new Map<keyof UpdateProject, number>();
+    for (const field of Object.keys(saveData) as (keyof UpdateProject)[]) {
+      fieldVersions.set(field, dirtyFieldVersionsRef.current.get(field) ?? 0);
+    }
 
     const saveTimeout = window.setTimeout(() => {
-      void saveProjectSettings(draftData);
+      void saveProjectSettings({ data: saveData, fieldVersions });
     }, 500);
 
     return () => window.clearTimeout(saveTimeout);
@@ -341,7 +381,10 @@ export function ProjectSettings({
 
   async function handlePickFolder() {
     const selected = await api.dialog.openDirectory();
-    if (selected) setPath(selected);
+    if (selected) {
+      markFieldDirty('path');
+      setPath(selected);
+    }
   }
 
   async function handleDelete() {
@@ -355,6 +398,7 @@ export function ProjectSettings({
     try {
       const result = await api.completion.generateContext({ projectId });
       if (result) {
+        markFieldDirty('completionContext');
         setCompletionContext(result);
       } else {
         addToast({
@@ -504,7 +548,10 @@ export function ProjectSettings({
               id="name"
               size="md"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                markFieldDirty('name');
+                setName(e.target.value);
+              }}
             />
           </div>
 
@@ -544,7 +591,13 @@ export function ProjectSettings({
             <label className="text-ink-1 mb-1 block text-sm font-medium">
               Color
             </label>
-            <ProjectColorPicker value={color} onChange={setColor} />
+            <ProjectColorPicker
+              value={color}
+              onChange={(value) => {
+                markFieldDirty('color');
+                setColor(value);
+              }}
+            />
           </div>
 
           <div>
@@ -568,7 +621,10 @@ export function ProjectSettings({
             <Textarea
               size="md"
               value={summary}
-              onChange={(e) => setSummary(e.target.value)}
+              onChange={(e) => {
+                markFieldDirty('summary');
+                setSummary(e.target.value);
+              }}
               placeholder="Short project summary used as context for generated app icons"
               rows={3}
             />
@@ -695,7 +751,10 @@ export function ProjectSettings({
                         label: branch,
                       }))
               }
-              onChange={setDefaultBranch}
+              onChange={(value) => {
+                markFieldDirty('defaultBranch');
+                setDefaultBranch(value);
+              }}
               disabled={branchesLoading || !branches?.length}
               className="w-full justify-between"
             />
@@ -708,14 +767,20 @@ export function ProjectSettings({
             branches={branches ?? []}
             branchesLoading={branchesLoading}
             protectedBranches={protectedBranches}
-            onChange={setProtectedBranches}
+            onChange={(value) => {
+              markFieldDirty('protectedBranches');
+              setProtectedBranches(value);
+            }}
           />
 
           <FavoriteBranchesInput
             branches={branches ?? []}
             branchesLoading={branchesLoading}
             favoriteBranches={favoriteBranches}
-            onChange={setFavoriteBranches}
+            onChange={(value) => {
+              markFieldDirty('favoriteBranches');
+              setFavoriteBranches(value);
+            }}
           />
 
           <div>
@@ -726,7 +791,10 @@ export function ProjectSettings({
               <Input
                 size="md"
                 value={worktreesPath}
-                onChange={(e) => setWorktreesPath(e.target.value)}
+                onChange={(e) => {
+                  markFieldDirty('worktreesPath');
+                  setWorktreesPath(e.target.value);
+                }}
                 placeholder="Auto-created on first use"
                 className="min-w-0 flex-1"
               />
@@ -735,7 +803,10 @@ export function ProjectSettings({
                 size="md"
                 onClick={async () => {
                   const selected = await api.dialog.openDirectory();
-                  if (selected) setWorktreesPath(selected);
+                  if (selected) {
+                    markFieldDirty('worktreesPath');
+                    setWorktreesPath(selected);
+                  }
                 }}
                 icon={<FolderOpen />}
                 className="shrink-0"
@@ -774,6 +845,8 @@ export function ProjectSettings({
                 { value: 'project', label: 'Use project default' },
               ]}
               onChange={(value) => {
+                markFieldDirty('defaultAgentBackend');
+                markFieldDirty('defaultAgentModelPreference');
                 if (value === 'global') {
                   setDefaultAgentBackend(null);
                   setDefaultAgentModelPreference(null);
@@ -802,6 +875,8 @@ export function ProjectSettings({
                   className="w-full justify-between sm:w-auto"
                   modelClassName="w-full justify-between sm:w-auto"
                   onChange={(selection) => {
+                    markFieldDirty('defaultAgentBackend');
+                    markFieldDirty('defaultAgentModelPreference');
                     setDefaultAgentBackend(selection.backend);
                     setDefaultAgentModelPreference(selection.model);
                     setDefaultAgentPresetId(selection.presetId);
@@ -825,7 +900,10 @@ export function ProjectSettings({
                 { value: 'normal', label: 'Normal' },
                 { value: 'low', label: 'Low' },
               ]}
-              onChange={(value) => setPrPriority(value as ProjectPriority)}
+              onChange={(value) => {
+                markFieldDirty('prPriority');
+                setPrPriority(value as ProjectPriority);
+              }}
               className="w-full justify-between"
             />
             <p className="text-ink-3 mt-1 text-xs">
@@ -844,9 +922,10 @@ export function ProjectSettings({
                 { value: 'normal', label: 'Normal' },
                 { value: 'low', label: 'Low' },
               ]}
-              onChange={(value) =>
-                setWorkItemPriority(value as ProjectPriority)
-              }
+              onChange={(value) => {
+                markFieldDirty('workItemPriority');
+                setWorkItemPriority(value as ProjectPriority);
+              }}
               className="w-full justify-between"
             />
             <p className="text-ink-3 mt-1 text-xs">
@@ -876,7 +955,10 @@ export function ProjectSettings({
           <Textarea
             size="md"
             value={completionContext}
-            onChange={(e) => setCompletionContext(e.target.value)}
+            onChange={(e) => {
+              markFieldDirty('completionContext');
+              setCompletionContext(e.target.value);
+            }}
             placeholder={`Project: An e-commerce platform for artisan goods\n\nExample prompts:\n- add filtering by price range to the product catalog\n- fix the checkout flow when cart has mixed shipping`}
             rows={8}
           />
@@ -924,7 +1006,10 @@ export function ProjectSettings({
         <ProjectAiGenerationSettings
           aiSkillSlots={aiSkillSlots}
           projectPath={project.path}
-          onUpdate={setAiSkillSlots}
+          onUpdate={(value) => {
+            markFieldDirty('aiSkillSlots');
+            setAiSkillSlots(value);
+          }}
         />
       );
       break;

@@ -171,6 +171,23 @@ export const ProjectRepository = {
     return parseProjectRow(row);
   },
 
+  updateSummaryIfBlank: async (id: string, summary: string) => {
+    dbg.db('projects.updateSummaryIfBlank id=%s', id);
+    const row = await db
+      .updateTable('projects')
+      .set({
+        summary,
+        updatedAt: new Date().toISOString(),
+      })
+      .where('id', '=', id)
+      .where((eb) => eb.or([eb('summary', 'is', null), eb('summary', '=', '')]))
+      .returningAll()
+      .executeTakeFirst();
+
+    if (row) return parseProjectRow(row);
+    return ProjectRepository.findById(id);
+  },
+
   delete: (id: string) => {
     dbg.db('projects.delete id=%s', id);
     return db.deleteFrom('projects').where('id', '=', id).execute();

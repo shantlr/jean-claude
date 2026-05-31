@@ -11,6 +11,7 @@ const {
   decryptMock,
   resolveAiSkillSlotMock,
   updateProjectMock,
+  updateSummaryIfBlankMock,
 } = vi.hoisted(() => ({
   appGetPathMock: vi.fn(),
   decryptMock: vi.fn(),
@@ -19,6 +20,7 @@ const {
   getSettingMock: vi.fn(),
   resolveAiSkillSlotMock: vi.fn(),
   updateProjectMock: vi.fn(),
+  updateSummaryIfBlankMock: vi.fn(),
 }));
 
 vi.mock('electron', () => ({
@@ -31,6 +33,7 @@ vi.mock('../database/repositories/projects', () => ({
   ProjectRepository: {
     findById: findProjectByIdMock,
     update: updateProjectMock,
+    updateSummaryIfBlank: updateSummaryIfBlankMock,
   },
 }));
 
@@ -81,10 +84,18 @@ describe('generateProjectLogo', () => {
     vol.mkdirSync(userDataDir, { recursive: true });
     appGetPathMock.mockReturnValue(userDataDir);
     findProjectByIdMock.mockResolvedValue(project);
+    updateProjectMock.mockReset();
     updateProjectMock.mockImplementation(
       async (_id: string, update: Record<string, unknown>) => ({
         ...project,
         ...update,
+      }),
+    );
+    updateSummaryIfBlankMock.mockReset();
+    updateSummaryIfBlankMock.mockImplementation(
+      async (_id: string, summary: string) => ({
+        ...project,
+        summary,
       }),
     );
     getSettingMock.mockReset();
@@ -247,8 +258,14 @@ describe('generateProjectLogo', () => {
         prompt: expect.stringContaining('Write one short product summary'),
       }),
     );
+    expect(updateSummaryIfBlankMock).toHaveBeenCalledWith(
+      'project-1',
+      'Desktop app for coordinating multiple coding agents.',
+    );
+    expect(updateProjectMock).toHaveBeenCalledOnce();
     expect(updateProjectMock).toHaveBeenCalledWith('project-1', {
-      summary: 'Desktop app for coordinating multiple coding agents.',
+      logoPath: expect.any(String),
+      logoSource: 'generated',
     });
   });
 

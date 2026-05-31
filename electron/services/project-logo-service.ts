@@ -432,7 +432,8 @@ export async function generateProjectLogo(projectId: string) {
     if (!summary) {
       throw new Error('Project summary is required to generate project logos');
     }
-    project = await ProjectRepository.update(projectId, { summary });
+    project = { ...project, summary };
+    await ProjectRepository.updateSummaryIfBlank(projectId, summary);
   }
 
   const image = await generateLogoImage({ config, project });
