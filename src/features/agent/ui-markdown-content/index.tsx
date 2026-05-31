@@ -321,7 +321,7 @@ export function MarkdownContent({
 
   return (
     <>
-      <div className="jc-markdown text-ink-1 max-w-[64ch] text-[12.5px] leading-[1.66] break-words">
+      <div className="jc-markdown text-ink-1 w-fit max-w-full min-w-0 text-[12.5px] leading-[1.66] break-words">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           urlTransform={customUrlTransform}
