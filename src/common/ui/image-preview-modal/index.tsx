@@ -1,3 +1,7 @@
+import {
+  KeyboardLayerProvider,
+  useKeyboardLayer,
+} from '@/common/context/keyboard-bindings';
 import { Modal } from '@/common/ui/modal';
 
 export function ImagePreviewModal({
@@ -11,23 +15,27 @@ export function ImagePreviewModal({
   imageUrl: string | null;
   onClose: () => void;
 }) {
+  const layer = useKeyboardLayer('dialog', { exclusive: isOpen });
+
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={title}
-      size="lg"
-      contentClassName="p-4"
-    >
-      <div className="border-glass-border bg-bg-0/60 flex max-h-[70vh] items-center justify-center rounded-xl border p-4">
-        {imageUrl && (
-          <img
-            src={imageUrl}
-            alt={title}
-            className="max-h-[62vh] max-w-full rounded-lg object-contain shadow-2xl"
-          />
-        )}
-      </div>
-    </Modal>
+    <KeyboardLayerProvider layer={layer}>
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={title}
+        size="lg"
+        contentClassName="p-4"
+      >
+        <div className="border-glass-border bg-bg-0/60 flex max-h-[70vh] items-center justify-center rounded-xl border p-4">
+          {imageUrl && (
+            <img
+              src={imageUrl}
+              alt={title}
+              className="max-h-[62vh] max-w-full rounded-lg object-contain shadow-2xl"
+            />
+          )}
+        </div>
+      </Modal>
+    </KeyboardLayerProvider>
   );
 }
