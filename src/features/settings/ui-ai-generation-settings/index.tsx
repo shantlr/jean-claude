@@ -31,10 +31,19 @@ const SUMMARY_MODEL_ITEMS = [
   { key: 'summary-model:claude-code', label: 'Claude Code Summary' },
   { key: 'summary-model:opencode', label: 'OpenCode Summary' },
 ] as const;
-const OPENAI_ITEM = { key: 'provider:openai', label: 'OpenAI' } as const;
+const OPENAI_API_ITEM = {
+  key: 'provider:openai-api',
+  label: 'OpenAI API Key',
+} as const;
+const OPENAI_IMAGE_ITEM = {
+  key: 'provider:openai-image-generation',
+  label: 'OpenAI Image Generation',
+} as const;
 
 type SummaryModelSelection = (typeof SUMMARY_MODEL_ITEMS)[number]['key'];
-type OpenAiSelection = typeof OPENAI_ITEM.key;
+type OpenAiSelection =
+  | typeof OPENAI_API_ITEM.key
+  | typeof OPENAI_IMAGE_ITEM.key;
 type AiGenerationSelection =
   | AiSkillSlotKey
   | SummaryModelSelection
@@ -93,8 +102,10 @@ export function AiGenerationSettings() {
             enabledBackends={enabledBackends}
             onUpdate={(config) => handleUpdate(selectedSlot.key, config)}
           />
-        ) : selectedItem === OPENAI_ITEM.key ? (
-          <OpenAiSettingsDetail />
+        ) : selectedItem === OPENAI_API_ITEM.key ? (
+          <OpenAiApiKeyDetail />
+        ) : selectedItem === OPENAI_IMAGE_ITEM.key ? (
+          <OpenAiImageGenerationDetail />
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto p-6">
             <div className="max-w-3xl">
@@ -131,7 +142,7 @@ function AiGenerationRail({
       maxWidth={420}
       onWidthChange={setWidth}
       title="AI Generation"
-      count={SLOT_DEFINITIONS.length + SUMMARY_MODEL_ITEMS.length + 1}
+      count={SLOT_DEFINITIONS.length + SUMMARY_MODEL_ITEMS.length + 2}
       headerSupplement={
         <p className="text-[12px] leading-relaxed text-white/45">
           Configure AI-powered content generation by feature.
@@ -166,13 +177,29 @@ function AiGenerationRail({
 
       <ListGroupHeader label="Shared" />
       <ListItemButton
-        key={OPENAI_ITEM.key}
-        label={OPENAI_ITEM.label}
-        isActive={selectedItem === OPENAI_ITEM.key}
+        key={OPENAI_API_ITEM.key}
+        label={OPENAI_API_ITEM.label}
+        isActive={selectedItem === OPENAI_API_ITEM.key}
         size="compact"
-        onClick={() => onSelect(OPENAI_ITEM.key)}
+        onClick={() => onSelect(OPENAI_API_ITEM.key)}
         renderIcon={({ isActive }) => (
           <KeyRound
+            size={14}
+            className="shrink-0"
+            style={{
+              color: isActive ? 'oklch(0.78 0.18 295)' : 'oklch(0.78 0.16 295)',
+            }}
+          />
+        )}
+      />
+      <ListItemButton
+        key={OPENAI_IMAGE_ITEM.key}
+        label={OPENAI_IMAGE_ITEM.label}
+        isActive={selectedItem === OPENAI_IMAGE_ITEM.key}
+        size="compact"
+        onClick={() => onSelect(OPENAI_IMAGE_ITEM.key)}
+        renderIcon={({ isActive }) => (
+          <Sparkles
             size={14}
             className="shrink-0"
             style={{
@@ -205,11 +232,94 @@ function AiGenerationRail({
   );
 }
 
-function OpenAiSettingsDetail() {
+function OpenAiApiKeyDetail() {
+  const { data: setting } = useAiGenerationSetting();
+  const saveSetting = useSaveAiGenerationSetting();
+  const [openAiApiKey, setOpenAiApiKey] = useState('');
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const hasStoredKey = !!setting?.openAiApiKey;
+  const hasChanges = !!openAiApiKey.trim();
+
+  useEffect(() => {
+    setOpenAiApiKey('');
+    setSaveMessage(null);
+  }, [setting?.openAiApiKey]);
+
+  const handleSave = async () => {
+    setSaveMessage(null);
+    await saveSetting.mutateAsync({
+      openAiApiKey: openAiApiKey.trim(),
+      openAiImageGenerationEnabled:
+        setting?.openAiImageGenerationEnabled ?? false,
+      openAiImageModel: setting?.openAiImageModel ?? 'gpt-image-2',
+      openAiLogoPromptContext: setting?.openAiLogoPromptContext ?? '',
+    });
+    setOpenAiApiKey('');
+    setSaveMessage('OpenAI API key saved.');
+  };
+
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto p-6">
+      <div className="max-w-3xl">
+        <h2 className="text-ink-1 text-lg font-semibold">OpenAI API Key</h2>
+        <p className="text-ink-3 mt-1 text-sm">
+          Store your OpenAI API key for features that call OpenAI services.
+        </p>
+
+        <div className="border-glass-border bg-bg-1 mt-5 rounded-lg border p-4">
+          <label className="text-ink-2 block text-sm font-medium">
+            OpenAI API Key
+          </label>
+          <Input
+            type="password"
+            value={openAiApiKey}
+            onChange={(event) => setOpenAiApiKey(event.target.value)}
+            placeholder={
+              hasStoredKey ? '••••••••••••••••' : 'Enter your OpenAI API key'
+            }
+            className="mt-2 max-w-md"
+          />
+          <p className="text-ink-3 mt-2 text-xs">
+            {hasStoredKey
+              ? 'Leave empty to keep the existing key. Enter a new value to replace it.'
+              : 'Stored encrypted locally.'}
+          </p>
+
+          <div className="mt-5 flex items-center gap-3">
+            <Button
+              variant="primary"
+              loading={saveSetting.isPending}
+              disabled={saveSetting.isPending || !hasChanges}
+              onClick={handleSave}
+            >
+              Save
+            </Button>
+            {hasChanges && (
+              <span className="text-ink-3 text-xs">Unsaved changes</span>
+            )}
+            {saveMessage && !hasChanges && (
+              <span className="text-ink-3 text-xs">{saveMessage}</span>
+            )}
+          </div>
+
+          {saveSetting.error && (
+            <p className="text-danger mt-3 text-sm">
+              {saveSetting.error instanceof Error
+                ? saveSetting.error.message
+                : 'Failed to save OpenAI API key.'}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OpenAiImageGenerationDetail() {
   const { data: setting } = useAiGenerationSetting();
   const saveSetting = useSaveAiGenerationSetting();
   const queryClient = useQueryClient();
-  const [openAiApiKey, setOpenAiApiKey] = useState('');
   const [openAiImageGenerationEnabled, setOpenAiImageGenerationEnabled] =
     useState(false);
   const [openAiImageModel, setOpenAiImageModel] = useState('gpt-image-2');
@@ -223,19 +333,17 @@ function OpenAiSettingsDetail() {
   } | null>(null);
 
   const hasStoredKey = !!setting?.openAiApiKey;
-  const canEnableImageGeneration = hasStoredKey || !!openAiApiKey.trim();
+  const canEnableImageGeneration = hasStoredKey;
   const activeBaseImageMode = setting?.openAiBaseImageMode ?? 'builtin';
   const activeBuiltinId =
     setting?.openAiBaseImageBuiltin ?? 'geometric-adventurers';
   const hasChanges =
-    !!openAiApiKey.trim() ||
     openAiImageGenerationEnabled !==
       (setting?.openAiImageGenerationEnabled ?? false) ||
     openAiImageModel !== (setting?.openAiImageModel ?? 'gpt-image-2') ||
     openAiLogoPromptContext !== (setting?.openAiLogoPromptContext ?? '');
 
   useEffect(() => {
-    setOpenAiApiKey('');
     setOpenAiImageGenerationEnabled(
       setting?.openAiImageGenerationEnabled ?? false,
     );
@@ -252,14 +360,13 @@ function OpenAiSettingsDetail() {
   const handleSave = async () => {
     setSaveMessage(null);
     await saveSetting.mutateAsync({
-      openAiApiKey: openAiApiKey.trim(),
+      openAiApiKey: '',
       openAiImageGenerationEnabled:
         openAiImageGenerationEnabled && canEnableImageGeneration,
       openAiImageModel: openAiImageModel.trim() || 'gpt-image-2',
       openAiLogoPromptContext: openAiLogoPromptContext.trim(),
     });
-    setOpenAiApiKey('');
-    setSaveMessage('OpenAI settings saved.');
+    setSaveMessage('OpenAI image generation settings saved.');
   };
 
   const { data: baseImageOptions } = useQuery({
@@ -346,7 +453,9 @@ function OpenAiSettingsDetail() {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-6">
       <div className="max-w-3xl">
-        <h2 className="text-ink-1 text-lg font-semibold">OpenAI</h2>
+        <h2 className="text-ink-1 text-lg font-semibold">
+          OpenAI Image Generation
+        </h2>
         <p className="text-ink-3 mt-1 text-sm">
           Configure OpenAI image generation for high-fidelity project logos.
           Project logo generation requires a saved OpenAI key and produces PNG
@@ -354,25 +463,7 @@ function OpenAiSettingsDetail() {
         </p>
 
         <div className="border-glass-border bg-bg-1 mt-5 rounded-lg border p-4">
-          <label className="text-ink-2 block text-sm font-medium">
-            OpenAI API Key
-          </label>
-          <Input
-            type="password"
-            value={openAiApiKey}
-            onChange={(event) => setOpenAiApiKey(event.target.value)}
-            placeholder={
-              hasStoredKey ? '••••••••••••••••' : 'Enter your OpenAI API key'
-            }
-            className="mt-2 max-w-md"
-          />
-          <p className="text-ink-3 mt-2 text-xs">
-            {hasStoredKey
-              ? 'Leave empty to keep the existing key. Enter a new value to replace it.'
-              : 'Stored encrypted locally and used only for AI image generation.'}
-          </p>
-
-          <div className="border-glass-border mt-5 flex max-w-md items-center justify-between gap-4 rounded-lg border p-3">
+          <div className="border-glass-border flex max-w-md items-center justify-between gap-4 rounded-lg border p-3">
             <div>
               <p className="text-ink-2 text-sm font-medium">
                 GPT-image project logos
@@ -568,7 +659,7 @@ function OpenAiSettingsDetail() {
             <p className="text-danger mt-3 text-sm">
               {saveSetting.error instanceof Error
                 ? saveSetting.error.message
-                : 'Failed to save OpenAI key.'}
+                : 'Failed to save OpenAI image generation settings.'}
             </p>
           )}
         </div>
