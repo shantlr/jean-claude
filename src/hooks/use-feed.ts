@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
 
+import { useWindowFocused } from '@/hooks/use-window-focused';
 import { api } from '@/lib/api';
 import { partitionFeedItems } from '@/lib/feed-partition';
 import { feedQueryKeys } from '@/lib/feed-query-keys';
@@ -50,16 +51,17 @@ function mergeTaskPrInfo(taskItems: FeedItem[], prItems: FeedItem[]) {
 }
 
 export function useFeed() {
+  const windowFocused = useWindowFocused();
   const pinned = useFeedStore((s) => s.pinned);
   const dismissed = useFeedStore((s) => s.dismissed);
   const lowPriority = useFeedStore((s) => s.lowPriority);
   const hiddenProjectIds = useFeedStore((s) => s.hiddenProjectIds);
   const reconcile = useFeedStore((s) => s.reconcile);
   const lastAttention = useFeedStore((s) => s.lastAttention);
-  const taskSteps = useTaskMessagesStore((s) => s.steps);
   const pendingRequestsByTaskId = useTaskMessagesStore(
     (s) => s.pendingRequestsByTaskId,
   );
+  const feedRefetchInterval = windowFocused ? 3 * 60 * 1000 : false;
 
   const pinnedIds = useMemo(() => new Set(pinned.map((p) => p.id)), [pinned]);
   const dismissedIds = useMemo(() => new Set(dismissed), [dismissed]);
@@ -72,22 +74,22 @@ export function useFeed() {
   const taskQuery = useQuery({
     queryKey: feedQueryKeys.tasks,
     queryFn: async () => api.feed.getTaskItems(),
-    refetchInterval: 3 * 60 * 1000,
+    refetchInterval: feedRefetchInterval,
   });
   const prQuery = useQuery({
     queryKey: feedQueryKeys.pullRequests,
     queryFn: async () => api.feed.getPullRequestItems(),
-    refetchInterval: 3 * 60 * 1000,
+    refetchInterval: feedRefetchInterval,
   });
   const noteQuery = useQuery({
     queryKey: feedQueryKeys.notes,
     queryFn: async () => api.feed.getNoteItems(),
-    refetchInterval: 3 * 60 * 1000,
+    refetchInterval: feedRefetchInterval,
   });
   const workItemQuery = useQuery({
     queryKey: feedQueryKeys.workItems,
     queryFn: async () => api.feed.getWorkItemItems(),
-    refetchInterval: 3 * 60 * 1000,
+    refetchInterval: feedRefetchInterval,
   });
 
   const queryData = useMemo(() => {
@@ -169,26 +171,11 @@ export function useFeed() {
   // Refine waiting/permission attention from in-memory pending request state.
   const refinedItems = useMemo(() => {
     const raw = queryData;
-    const steps = Object.values(taskSteps);
-
     const taskIdsWithQuestions = new Set<string>();
     const taskIdsWithPermissions = new Set<string>();
 
-    // Check loaded steps (for tasks whose panel has been opened)
-    for (const step of steps) {
-      const questionTaskId = step.pendingQuestion?.taskId;
-      if (questionTaskId) {
-        taskIdsWithQuestions.add(questionTaskId);
-      }
-
-      const permissionTaskId = step.pendingPermission?.taskId;
-      if (permissionTaskId) {
-        taskIdsWithPermissions.add(permissionTaskId);
-      }
-    }
-
-    // Also check the lightweight task-level pending request map, which is
-    // always populated regardless of whether the step is loaded.
+    // Check the lightweight task-level pending request map instead of the full
+    // loaded message cache; message streaming should not recompute the feed.
     for (const [taskId, req] of Object.entries(pendingRequestsByTaskId)) {
       if (req.type === 'question') {
         taskIdsWithQuestions.add(taskId);
@@ -229,7 +216,7 @@ export function useFeed() {
       // event triggers a feed query refetch which updates the server state.
       return item;
     });
-  }, [queryData, taskSteps, pendingRequestsByTaskId]);
+  }, [queryData, pendingRequestsByTaskId]);
 
   const visibleFeedItems = useMemo(
     () => refinedItems.filter((item) => !shouldHideReviewPr(item)),

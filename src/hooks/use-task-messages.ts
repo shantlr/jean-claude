@@ -30,6 +30,9 @@ export function useTaskMessages({
   const unloadStep = useTaskMessagesStore((s) => s.unloadStep);
   const setPermission = useTaskMessagesStore((s) => s.setPermission);
   const setQuestion = useTaskMessagesStore((s) => s.setQuestion);
+  const setPendingRequestForTask = useTaskMessagesStore(
+    (s) => s.setPendingRequestForTask,
+  );
   const isLoaded = !!stepState;
   // Track which step we're currently fetching to prevent duplicate requests
   const fetchingRef = useRef<string | null>(null);
@@ -42,11 +45,19 @@ export function useTaskMessages({
     if (pendingRequest) {
       if (pendingRequest.type === 'permission') {
         setPermission(stepId, pendingRequest.data);
+        setPendingRequestForTask(taskId, {
+          type: 'permission',
+          permission: pendingRequest.data,
+        });
       } else {
         setQuestion(stepId, pendingRequest.data);
+        setPendingRequestForTask(taskId, {
+          type: 'question',
+          question: pendingRequest.data,
+        });
       }
     }
-  }, [stepId, setPermission, setQuestion]);
+  }, [stepId, taskId, setPermission, setQuestion, setPendingRequestForTask]);
 
   const fetchMessages = useCallback(() => {
     if (!stepId) return;

@@ -19,6 +19,28 @@ import { useOverlaysStore } from '@/stores/overlays';
 import { useToastStore } from '@/stores/toasts';
 import type { UpcomingMeeting } from '@shared/calendar-types';
 
+const SECOND_MS = 1000;
+const MINUTE_MS = 60 * SECOND_MS;
+
+function getNextClockDelay(meeting: UpcomingMeeting, now: number) {
+  const start = new Date(meeting.startAt).getTime();
+  const end = new Date(meeting.endAt).getTime();
+
+  if (start <= now) {
+    return Math.min(15 * SECOND_MS, Math.max(SECOND_MS, end - now));
+  }
+
+  const untilStart = start - now;
+  if (untilStart <= MINUTE_MS) return 10 * SECOND_MS;
+  if (untilStart <= 10 * MINUTE_MS) return 30 * SECOND_MS;
+  if (untilStart <= 30 * MINUTE_MS) return MINUTE_MS;
+
+  return Math.min(
+    5 * MINUTE_MS,
+    Math.max(MINUTE_MS, untilStart - 30 * MINUTE_MS),
+  );
+}
+
 export function NextMeetingButton() {
   const { data: calendarNotificationsSetting } =
     useCalendarNotificationsSetting();
@@ -44,6 +66,7 @@ export function NextMeetingButton() {
         if (!cancelled) {
           setMeetings(result);
           setHasLoaded(true);
+          setNow(Date.now());
         }
       } catch (error) {
         if (!cancelled) {
@@ -65,12 +88,7 @@ export function NextMeetingButton() {
     };
   }, [addToast, canShow]);
 
-  // Refresh `now` every 30s for countdown updates
   const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 30_000);
-    return () => window.clearInterval(id);
-  }, []);
 
   const ignoredSet = useMemo(() => new Set(ignoredIds), [ignoredIds]);
 
@@ -84,6 +102,15 @@ export function NextMeetingButton() {
       ),
     [meetings, ignoredSet, now],
   );
+
+  useEffect(() => {
+    if (!canShow || activeMeetings.length === 0) return;
+    const id = window.setTimeout(
+      () => setNow(Date.now()),
+      getNextClockDelay(activeMeetings[0], now),
+    );
+    return () => window.clearTimeout(id);
+  }, [activeMeetings, canShow, now]);
 
   if (!canShow) return null;
 

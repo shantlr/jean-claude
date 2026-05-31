@@ -217,7 +217,15 @@ export function Header() {
   const modal = useModal();
   const commitHash = import.meta.env.VITE_COMMIT_HASH;
 
-  const runCommandRunning = useTaskMessagesStore((s) => s.runCommandRunning);
+  const runningCommandsCount = useTaskMessagesStore((s) => {
+    let count = 0;
+    for (const status of Object.values(s.runCommandRunning)) {
+      for (const cmd of status.commands) {
+        if (cmd.status === 'running') count++;
+      }
+    }
+    return count;
+  });
   const menuDropdownRef = useRef<{ toggle: () => void } | null>(null);
   const reloadUpdateRequestRef = useRef(0);
 
@@ -231,16 +239,6 @@ export function Header() {
       },
     },
   ]);
-
-  const runningCommandsCount = useMemo(() => {
-    let count = 0;
-    for (const status of Object.values(runCommandRunning)) {
-      for (const cmd of status.commands) {
-        if (cmd.status === 'running') count++;
-      }
-    }
-    return count;
-  }, [runCommandRunning]);
 
   const startPreviewReload = () => {
     setReloadError(null);
