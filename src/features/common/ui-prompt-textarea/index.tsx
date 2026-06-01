@@ -41,6 +41,7 @@ import {
 } from '@/hooks/use-project-file-paths';
 import { processAttachmentFile, MAX_FILES } from '@/lib/file-attachment-utils';
 import { processImageFile, MAX_IMAGES } from '@/lib/image-utils';
+import { resolveMessageInputText } from '@/lib/resolve-message-input-text';
 import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
 import { resolvePromptSnippet } from '@/lib/resolve-snippet-template';
 import { useToastStore } from '@/stores/toasts';
@@ -476,11 +477,14 @@ export const PromptTextarea = forwardRef<
           textareaRef.current.selectionEnd = nextCursorPosition;
         });
       } else if (item.type === 'snippet') {
-        const { output } = resolvePromptSnippet(
-          item.snippet,
-          snippetVariableContext ?? {},
+        const { output } = resolvePromptSnippet(item.snippet, {
+          ...(snippetVariableContext ?? {}),
+        });
+        const resolvedOutput = resolveMessageInputText(
+          output,
+          snippetVariableContext,
         );
-        onChange(output);
+        onChange(resolvedOutput);
       } else {
         const command =
           item.type === 'command' ? item.command : `/${item.skill.name}`;
@@ -845,6 +849,13 @@ export const PromptTextarea = forwardRef<
   const skillItems = filteredItems.filter((item) => item.type === 'skill');
   const trailingPaddingRight =
     trailingControlsWidth > 0 ? `${trailingControlsWidth + 16}px` : undefined;
+
+  useEffect(() => {
+    if (!value.includes('{{')) return;
+    const resolved = resolveMessageInputText(value, snippetVariableContext);
+    if (resolved === value) return;
+    onChange(resolved);
+  }, [value, snippetVariableContext, onChange]);
 
   // Get the flat index for an item (used for selection highlighting)
   const getItemIndex = (

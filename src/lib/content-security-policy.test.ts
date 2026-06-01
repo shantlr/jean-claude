@@ -20,6 +20,7 @@ describe('Content-Security-Policy', () => {
 
     expect(editor).toContain("import * as monaco from 'monaco-editor'");
     expect(editor).toContain('loader.config({ monaco })');
+    expect(editor).toContain('fixedOverflowWidgets: true');
     expect(editor).not.toContain('cdn.jsdelivr.net');
   });
 });

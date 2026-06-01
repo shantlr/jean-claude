@@ -19,6 +19,7 @@ import {
 } from '@/features/common/ui-prompt-textarea';
 import { useCompletionSetting } from '@/hooks/use-settings';
 import { buildAttachedFilesXml } from '@/lib/file-attachment-utils';
+import { resolveMessageInputText } from '@/lib/resolve-message-input-text';
 import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
 import type {
   PromptPart,
@@ -137,7 +138,7 @@ export function MessageInput({
   const handleSubmit = useCallback(() => {
     if (forceDisabled) return;
 
-    const trimmed = value.trim();
+    const trimmed = resolveMessageInputText(value, snippetVariableContext);
     if (
       !trimmed &&
       images.length === 0 &&
@@ -186,6 +187,7 @@ export function MessageInput({
     onQueue,
     setValue,
     allowEmptySubmit,
+    snippetVariableContext,
   ]);
 
   const handleEnterKey = useCallback(

@@ -120,6 +120,7 @@ import { ComposerCommentsChip } from '../ui-composer-comments-chip';
 import { ComposerFileExplorer } from '../ui-composer-file-explorer';
 import {
   PromptComposer,
+  buildWorkItemSnippetContext,
   generateInitialTemplate,
   getWorkItemCommentSelectionId,
   expandTemplate,
@@ -852,12 +853,16 @@ export function NewTaskOverlay({
         // Expand the template to get the final prompt
         // Use Handlebars if template contains `{{`, otherwise use old {#id} regex
         if (promptTemplate.includes('{{')) {
-          const workItemsContext = selectedWorkItems.map((wi) => ({
-            id: wi.id.toString(),
-            title: wi.fields.title,
-            description: wi.fields.description ?? '',
-            testCases: testCasesByWorkItem[wi.id] ?? [],
-          }));
+          const selectedComments = workItemComments.filter((c) =>
+            (draft.selectedCommentIds ?? []).includes(
+              getWorkItemCommentSelectionId(c),
+            ),
+          );
+          const workItemsContext = buildWorkItemSnippetContext({
+            workItems: selectedWorkItems,
+            comments: selectedComments,
+            testCasesByWorkItem,
+          });
           const result = resolveSnippetTemplate(promptTemplate, {
             ...snippetVariableContext,
             workItems: workItemsContext,
@@ -1522,6 +1527,7 @@ export function NewTaskOverlay({
                   onDeselectAllComments={handleDeselectAllComments}
                   isLoadingComments={isLoadingComments}
                   snippets={promptSnippets}
+                  snippetVariableContext={snippetVariableContext}
                   testCasesByWorkItem={testCasesByWorkItem}
                 />
               </div>

@@ -27,7 +27,10 @@ import { FileEditorDialog } from '@/features/common/ui-file-editor-dialog';
 import type { AzureDevOpsWorkItem, WorkItemComment } from '@/lib/api';
 import { processAttachmentFile, MAX_FILES } from '@/lib/file-attachment-utils';
 import { processImageFile, MAX_IMAGES } from '@/lib/image-utils';
-import { resolveSnippetTemplate } from '@/lib/resolve-snippet-template';
+import {
+  resolveSnippetTemplate,
+  type SnippetVariableContext,
+} from '@/lib/resolve-snippet-template';
 import { useToastStore } from '@/stores/toasts';
 import type {
   PromptFilePart,
@@ -424,6 +427,39 @@ export function expandTemplate(
   });
 }
 
+export function buildWorkItemSnippetContext({
+  workItems,
+  comments = [],
+  testCasesByWorkItem,
+}: {
+  workItems: AzureDevOpsWorkItem[];
+  comments?: WorkItemComment[];
+  testCasesByWorkItem?: Record<
+    number,
+    Array<{
+      id: number;
+      title: string;
+      steps?: Array<{ action: string; expectedResult: string }>;
+    }>
+  >;
+}) {
+  return workItems.map((wi) => ({
+    id: wi.id.toString(),
+    title: wi.fields.title,
+    description: wi.fields.description
+      ? simplifyHtml(wi.fields.description)
+      : '',
+    comments: comments
+      .filter((comment) => comment.workItemId === wi.id)
+      .map((comment) => ({
+        author: comment.createdBy,
+        date: comment.createdDate,
+        body: simplifyHtml(comment.text),
+      })),
+    testCases: testCasesByWorkItem?.[wi.id] ?? [],
+  }));
+}
+
 export function PromptComposer({
   template,
   workItems,
@@ -444,6 +480,7 @@ export function PromptComposer({
   onDeselectAllComments,
   isLoadingComments,
   snippets,
+  snippetVariableContext,
   testCasesByWorkItem,
 }: {
   template: string;
@@ -465,6 +502,7 @@ export function PromptComposer({
   onDeselectAllComments?: () => void;
   isLoadingComments?: boolean;
   snippets?: PromptSnippet[];
+  snippetVariableContext?: SnippetVariableContext;
   testCasesByWorkItem?: Record<
     number,
     Array<{
@@ -516,19 +554,24 @@ export function PromptComposer({
   // Expand template to preview — use Handlebars if template contains `{{`, else old {#id} regex
   const preview = useMemo(() => {
     if (template.includes('{{')) {
-      const workItemsContext = workItems.map((wi) => ({
-        id: wi.id.toString(),
-        title: wi.fields.title,
-        description: wi.fields.description
-          ? simplifyHtml(wi.fields.description)
-          : '',
-        testCases: testCasesByWorkItem?.[wi.id] ?? [],
-      }));
-      return resolveSnippetTemplate(template, { workItems: workItemsContext })
-        .output;
+      const workItemsContext = buildWorkItemSnippetContext({
+        workItems,
+        comments: selectedComments,
+        testCasesByWorkItem,
+      });
+      return resolveSnippetTemplate(template, {
+        ...snippetVariableContext,
+        workItems: workItemsContext,
+      }).output;
     }
     return expandTemplate(template, workItems, selectedComments);
-  }, [template, workItems, selectedComments, testCasesByWorkItem]);
+  }, [
+    template,
+    workItems,
+    selectedComments,
+    testCasesByWorkItem,
+    snippetVariableContext,
+  ]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nonImageFileInputRef = useRef<HTMLInputElement>(null);
