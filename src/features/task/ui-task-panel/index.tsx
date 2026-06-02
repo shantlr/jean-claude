@@ -150,7 +150,6 @@ import { CompleteTaskDialog } from './complete-task-dialog';
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
 import { DebugMessagesPane } from './debug-messages-pane';
 import { DeleteTaskDialog } from './delete-task-dialog';
-import { FileExplorerPane } from './file-explorer-pane';
 import { getTaskTitle, TaskNameEditor } from './task-name-editor';
 import { TaskPendingNoteInput } from './task-pending-note-input';
 import { TaskSettingsPane } from './task-settings-pane';
@@ -290,7 +289,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     setActiveStepId,
     openFilePreview,
     openToolDiffPreview,
-    openFileExplorer,
     openCommandLogs,
     selectCommandLogsTab,
     openSettings,
@@ -325,6 +323,16 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       setReviewMode('files');
     }
   }, [hasGitReviewModes, reviewMode, setReviewMode]);
+
+  const toggleReviewFiles = useCallback(() => {
+    if (isDiffViewOpen && reviewMode === 'files') {
+      closeDiffView();
+      return;
+    }
+
+    setReviewMode('files');
+    openDiffView();
+  }, [closeDiffView, isDiffViewOpen, openDiffView, reviewMode, setReviewMode]);
 
   // PR view state
   const {
@@ -905,19 +913,10 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       },
     },
     {
-      label:
-        rightPane?.type === 'fileExplorer'
-          ? 'Close File Explorer'
-          : 'Open File Explorer',
+      label: 'Open Review Files',
       shortcut: 'cmd+e',
       section: 'Task',
-      handler: () => {
-        if (rightPane?.type === 'fileExplorer') {
-          closeRightPane();
-        } else {
-          openFileExplorer();
-        }
-      },
+      handler: toggleReviewFiles,
     },
     {
       label:
@@ -953,19 +952,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           return;
         }
         setReviewMode('changes');
-        openDiffView();
-      },
-    },
-    {
-      label: 'Toggle Review Files',
-      shortcut: 'cmd+f',
-      section: 'Task',
-      handler: () => {
-        if (isDiffViewOpen && reviewMode === 'files') {
-          closeDiffView();
-          return;
-        }
-        setReviewMode('files');
         openDiffView();
       },
     },
@@ -1355,14 +1341,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                 {/* Group 1: View toggles */}
                 <DropdownItem
                   icon={<FolderTree />}
-                  onClick={() => {
-                    if (rightPane?.type === 'fileExplorer') {
-                      closeRightPane();
-                    } else {
-                      openFileExplorer();
-                    }
-                  }}
-                  checked={rightPane?.type === 'fileExplorer'}
+                  onClick={toggleReviewFiles}
+                  checked={isDiffViewOpen && reviewMode === 'files'}
                   shortcut="cmd+e"
                 >
                   Files
@@ -1760,11 +1740,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             scrollToEntryId={rightPane.scrollToEntryId}
             onClose={closeRightPane}
           />
-        )}
-
-        {/* File explorer pane */}
-        {rightPane?.type === 'fileExplorer' && (
-          <FileExplorerPane taskId={taskId} onClose={closeRightPane} />
         )}
 
         {/* Command logs pane */}
