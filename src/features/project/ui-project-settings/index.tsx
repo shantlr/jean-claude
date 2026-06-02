@@ -21,6 +21,7 @@ import {
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
 import { ImagePreviewModal } from '@/common/ui/image-preview-modal';
 import { Input } from '@/common/ui/input';
 import { Kbd } from '@/common/ui/kbd';
@@ -162,6 +163,7 @@ export function ProjectSettings({
   const [path, setPath] = useState('');
   const [color, setColor] = useState('');
   const [defaultBranch, setDefaultBranch] = useState('');
+  const [autoPullSourceBranch, setAutoPullSourceBranch] = useState(false);
   const [defaultAgentBackend, setDefaultAgentBackend] =
     useState<AgentBackendType | null>(null);
   const [defaultAgentModelPreference, setDefaultAgentModelPreference] =
@@ -216,6 +218,7 @@ export function ProjectSettings({
       path: project.path,
       color: project.color,
       defaultBranch: project.defaultBranch ?? null,
+      autoPullSourceBranch: project.autoPullSourceBranch,
       defaultAgentBackend: project.defaultAgentBackend,
       defaultAgentModelPreference: project.defaultAgentModelPreference,
       prPriority: project.prPriority ?? 'normal',
@@ -235,6 +238,7 @@ export function ProjectSettings({
       path,
       color,
       defaultBranch: defaultBranch || null,
+      autoPullSourceBranch,
       defaultAgentBackend,
       defaultAgentModelPreference,
       prPriority,
@@ -248,6 +252,7 @@ export function ProjectSettings({
     }),
     [
       aiSkillSlots,
+      autoPullSourceBranch,
       color,
       completionContext,
       defaultAgentBackend,
@@ -297,6 +302,7 @@ export function ProjectSettings({
       setPath(project.path);
       setColor(project.color);
       setDefaultBranch(project.defaultBranch ?? '');
+      setAutoPullSourceBranch(project.autoPullSourceBranch);
       setDefaultAgentBackend(project.defaultAgentBackend);
       setDefaultAgentModelPreference(project.defaultAgentModelPreference);
       setDefaultAgentPresetId(
@@ -792,6 +798,21 @@ export function ProjectSettings({
             />
             <p className="text-ink-3 mt-1 text-xs">
               The branch that worktrees will merge into
+            </p>
+          </div>
+
+          <div>
+            <Checkbox
+              id="autoPullSourceBranch"
+              checked={autoPullSourceBranch}
+              onChange={(checked) => {
+                markFieldDirty('autoPullSourceBranch');
+                setAutoPullSourceBranch(checked);
+              }}
+              label="Auto-pull source branch when creating tasks"
+            />
+            <p className="text-ink-3 mt-1 text-xs">
+              Pulls the selected base branch before creating a task worktree.
             </p>
           </div>
 

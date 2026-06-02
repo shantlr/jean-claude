@@ -104,6 +104,7 @@ export interface ProjectTable {
   workItemPriority: string;
   showWorkItemsInFeed: number; // SQLite boolean: 1 = show (default), 0 = hide
   showPrsInFeed: number; // SQLite boolean: 1 = show (default), 0 = hide
+  autoPullSourceBranch: number; // SQLite boolean: 1 = pull before creating worktree, 0 = skip
   createdAt: Generated<string>;
   updatedAt: string;
 }

@@ -62,6 +62,9 @@ function parseProjectRow(row: ProjectRow) {
       row.logoSource === 'uploaded' || row.logoSource === 'generated'
         ? row.logoSource
         : null,
+    showWorkItemsInFeed: row.showWorkItemsInFeed === 1,
+    showPrsInFeed: row.showPrsInFeed === 1,
+    autoPullSourceBranch: row.autoPullSourceBranch === 1,
     aiSkillSlots,
     protectedBranches,
     favoriteBranches,
@@ -110,6 +113,7 @@ export const ProjectRepository = {
     const {
       showWorkItemsInFeed,
       showPrsInFeed,
+      autoPullSourceBranch,
       aiSkillSlots,
       protectedBranches,
       favoriteBranches,
@@ -124,6 +128,7 @@ export const ProjectRepository = {
         workItemPriority: data.workItemPriority ?? 'normal',
         showWorkItemsInFeed: showWorkItemsInFeed === false ? 0 : 1,
         showPrsInFeed: showPrsInFeed === false ? 0 : 1,
+        autoPullSourceBranch: autoPullSourceBranch === true ? 1 : 0,
         aiSkillSlots: aiSkillSlots ? JSON.stringify(aiSkillSlots) : null,
         protectedBranches: sanitizeBranchList(protectedBranches),
         favoriteBranches: sanitizeBranchList(favoriteBranches),
@@ -139,6 +144,7 @@ export const ProjectRepository = {
     const {
       showWorkItemsInFeed,
       showPrsInFeed,
+      autoPullSourceBranch,
       aiSkillSlots,
       protectedBranches,
       favoriteBranches,
@@ -153,6 +159,9 @@ export const ProjectRepository = {
         }),
         ...(showPrsInFeed !== undefined && {
           showPrsInFeed: showPrsInFeed ? 1 : 0,
+        }),
+        ...(autoPullSourceBranch !== undefined && {
+          autoPullSourceBranch: autoPullSourceBranch ? 1 : 0,
         }),
         ...(aiSkillSlots !== undefined && {
           aiSkillSlots: aiSkillSlots ? JSON.stringify(aiSkillSlots) : null,

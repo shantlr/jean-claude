@@ -290,6 +290,38 @@ function redactAiGenerationSetting(
 
 const execAsync = promisify(exec);
 
+async function pullSourceBranch({
+  repoPath,
+  sourceBranch,
+}: {
+  repoPath: string;
+  sourceBranch: string;
+}): Promise<string> {
+  const remoteBranch = sourceBranch.startsWith('origin/')
+    ? sourceBranch.slice('origin/'.length)
+    : sourceBranch;
+  await runGit(
+    [
+      'fetch',
+      'origin',
+      `+refs/heads/${remoteBranch}:refs/remotes/origin/${remoteBranch}`,
+    ],
+    repoPath,
+  );
+
+  const currentBranch = await runGit(
+    ['rev-parse', '--abbrev-ref', 'HEAD'],
+    repoPath,
+  );
+
+  if (currentBranch === sourceBranch) {
+    await runGit(['pull', '--ff-only', 'origin', remoteBranch], repoPath);
+    return sourceBranch;
+  }
+
+  return `origin/${remoteBranch}`;
+}
+
 const VALID_BACKENDS = new Set<string>(['claude-code', 'opencode']);
 
 async function runGit(
@@ -793,6 +825,17 @@ export function registerIpcHandlers() {
         // Create the worktree using the generated task name
         // Use provided sourceBranch, fall back to project defaultBranch, or undefined for current HEAD
         const effectiveSourceBranch = sourceBranch ?? project.defaultBranch;
+        let worktreeStartPoint = effectiveSourceBranch ?? undefined;
+        if (project.autoPullSourceBranch && effectiveSourceBranch) {
+          dbg.ipc(
+            'Pulling source branch before worktree: %s',
+            effectiveSourceBranch,
+          );
+          worktreeStartPoint = await pullSourceBranch({
+            repoPath: project.path,
+            sourceBranch: effectiveSourceBranch,
+          });
+        }
         dbg.ipc(
           'Creating worktree from branch: %s',
           effectiveSourceBranch ?? 'HEAD',
@@ -809,6 +852,7 @@ export function registerIpcHandlers() {
           taskData.prompt,
           taskName ?? undefined,
           effectiveSourceBranch ?? undefined,
+          worktreeStartPoint,
         );
 
         dbg.ipc('Worktree created: %s, branch: %s', worktreePath, branchName);

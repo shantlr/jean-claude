@@ -300,40 +300,34 @@ async function getDiffBaseCommit(
     return startCommitHash;
   }
 
-  try {
-    // Try local branch first (the worktree was created from the local branch)
-    const { stdout: mergeBase } = await execAsync(
-      `git merge-base HEAD ${sourceBranch}`,
-      {
-        cwd: worktreePath,
-        encoding: 'utf-8',
-      },
-    );
-    const base = mergeBase.trim();
-    dbg.worktree('Using merge-base with %s: %s', sourceBranch, base);
-    return base;
-  } catch {
-    // Try with origin/ prefix if local branch doesn't exist
+  const refs = sourceBranch.startsWith('origin/')
+    ? [sourceBranch]
+    : [`origin/${sourceBranch}`, sourceBranch];
+
+  for (const ref of refs) {
     try {
-      const { stdout: mergeBase } = await execAsync(
-        `git merge-base HEAD origin/${sourceBranch}`,
+      const mergeBase = await execFileAsync(
+        'git',
+        ['merge-base', 'HEAD', ref],
         {
           cwd: worktreePath,
           encoding: 'utf-8',
         },
       );
-      const base = mergeBase.trim();
-      dbg.worktree('Using merge-base with origin/%s: %s', sourceBranch, base);
+      const base = mergeBase.stdout.trim();
+      dbg.worktree('Using merge-base with %s: %s', ref, base);
       return base;
     } catch {
-      // Fall back to startCommitHash if merge-base fails
-      dbg.worktree(
-        'merge-base failed, falling back to startCommitHash: %s',
-        startCommitHash,
-      );
-      return startCommitHash;
+      continue;
     }
   }
+
+  // Fall back to startCommitHash if merge-base fails
+  dbg.worktree(
+    'merge-base failed, falling back to startCommitHash: %s',
+    startCommitHash,
+  );
+  return startCommitHash;
 }
 
 /**
@@ -353,8 +347,9 @@ async function getTaskChangedFiles(
   // Try origin/ first (most up-to-date after fetch), then local
   for (const ref of [`origin/${sourceBranch}`, sourceBranch]) {
     try {
-      const { stdout } = await execAsync(
-        `git diff --name-only ${JSON.stringify(ref)}`,
+      const { stdout } = await execFileAsync(
+        'git',
+        ['diff', '--name-only', ref],
         {
           cwd: worktreePath,
           encoding: 'utf-8',
@@ -769,6 +764,7 @@ async function copyWorktreeFiles(
  * @param prompt - The task prompt (fallback for worktree naming if taskName not provided)
  * @param taskName - Optional task name to use for worktree naming (preferred over prompt)
  * @param sourceBranch - Optional branch to base the worktree on (defaults to current HEAD)
+ * @param startPoint - Optional git ref to create the worktree from while preserving sourceBranch metadata
  * @returns The path to the created worktree and the starting commit hash
  */
 export async function createWorktree(
@@ -778,12 +774,14 @@ export async function createWorktree(
   prompt: string,
   taskName?: string,
   sourceBranch?: string,
+  startPoint?: string,
 ): Promise<CreateWorktreeResult> {
   dbg.worktree('createWorktree called %o', {
     projectPath,
     projectId,
     taskName,
     sourceBranch,
+    startPoint,
   });
 
   // Verify this is a git repository
@@ -815,10 +813,11 @@ export async function createWorktree(
   // Create the worktree with a new branch
   // If sourceBranch is provided, use it as the start point; otherwise use current HEAD
   try {
-    const startPoint = sourceBranch ? ` "${sourceBranch}"` : '';
-    const cmd = `git worktree add "${worktreePath}" -b "${branchName}"${startPoint}`;
-    dbg.worktree('Running: %s', cmd);
-    await execAsync(cmd, {
+    const startPointArg = startPoint ?? sourceBranch;
+    const args = ['worktree', 'add', worktreePath, '-b', branchName];
+    if (startPointArg) args.push(startPointArg);
+    dbg.worktree('Running: git %s', args.join(' '));
+    await execFileAsync('git', args, {
       cwd: projectPath,
       encoding: 'utf-8',
     });

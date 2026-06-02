@@ -219,6 +219,7 @@ export interface Project {
   workItemProjectName: string | null;
   showWorkItemsInFeed: boolean;
   showPrsInFeed: boolean;
+  autoPullSourceBranch: boolean;
   defaultAgentBackend: AgentBackendType | null; // null = use global default
   defaultAgentModelPreference: ModelPreference | null;
   completionContext: string | null;
@@ -254,6 +255,7 @@ export interface NewProject {
   workItemProjectName?: string | null;
   showWorkItemsInFeed?: boolean;
   showPrsInFeed?: boolean;
+  autoPullSourceBranch?: boolean;
   defaultAgentBackend?: AgentBackendType | null;
   defaultAgentModelPreference?: ModelPreference | null;
   completionContext?: string | null;
@@ -289,6 +291,7 @@ export interface UpdateProject {
   workItemProjectName?: string | null;
   showWorkItemsInFeed?: boolean;
   showPrsInFeed?: boolean;
+  autoPullSourceBranch?: boolean;
   defaultAgentBackend?: AgentBackendType | null;
   defaultAgentModelPreference?: ModelPreference | null;
   completionContext?: string | null;
