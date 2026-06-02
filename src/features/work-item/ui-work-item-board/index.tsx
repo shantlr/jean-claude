@@ -6,7 +6,11 @@ import { UserAvatar } from '@/common/ui/user-avatar';
 import { useCurrentAzureUser } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
 
-import { WorkItemTypeIcon, SelectionCheckbox } from '../ui-work-item-shared';
+import {
+  HighlightedSearchText,
+  WorkItemTypeIcon,
+  SelectionCheckbox,
+} from '../ui-work-item-shared';
 
 // Status workflow order for board column positioning (lower = further left in flow)
 const STATUS_WORKFLOW_ORDER: Record<string, number> = {
@@ -54,6 +58,7 @@ export function WorkItemBoard({
   highlightedWorkItemId,
   selectedWorkItemIds,
   providerId,
+  search,
   onToggleSelect,
   onHighlight,
 }: {
@@ -61,6 +66,7 @@ export function WorkItemBoard({
   highlightedWorkItemId: string | null;
   selectedWorkItemIds: string[];
   providerId?: string;
+  search: string;
   onToggleSelect: (workItem: AzureDevOpsWorkItem) => void;
   onHighlight: (workItem: AzureDevOpsWorkItem) => void;
 }) {
@@ -237,7 +243,10 @@ export function WorkItemBoard({
                       size="sm"
                     />
                     <span className="text-ink-3 text-[10px]">
-                      #{workItem.id}
+                      <HighlightedSearchText
+                        text={`#${workItem.id}`}
+                        search={search}
+                      />
                     </span>
                     <span className="text-ink-2 max-w-[80px] truncate text-[10px]">
                       {workItem.fields.workItemType}
@@ -266,7 +275,10 @@ export function WorkItemBoard({
 
                   {/* Title (2-line clamp) */}
                   <span className="text-ink-1 line-clamp-2 text-xs">
-                    {workItem.fields.title}
+                    <HighlightedSearchText
+                      text={workItem.fields.title}
+                      search={search}
+                    />
                   </span>
                 </button>
               );

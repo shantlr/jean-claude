@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import { Bug, BookOpen, CheckSquare, FileText, Check } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 const ICON_SIZE = {
   sm: 'h-3 w-3',
@@ -53,4 +54,64 @@ export function SelectionCheckbox({
       {checked ? <Check className={s.check} /> : null}
     </div>
   );
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function getSearchTerms(search: string): string[] {
+  const terms = new Set<string>();
+
+  for (const rawTerm of search.trim().split(/\s+/)) {
+    const term = rawTerm.trim();
+    if (!term) continue;
+
+    terms.add(term);
+
+    if (term.startsWith('#') && term.length > 1) {
+      terms.add(term.slice(1));
+    } else if (/^\d+$/.test(term)) {
+      terms.add(`#${term}`);
+    }
+  }
+
+  return [...terms].sort((a, b) => b.length - a.length);
+}
+
+export function HighlightedSearchText({
+  text,
+  search,
+}: {
+  text: string;
+  search: string;
+}) {
+  const terms = getSearchTerms(search);
+  if (terms.length === 0) return text;
+
+  const regex = new RegExp(`(${terms.map(escapeRegExp).join('|')})`, 'gi');
+  const nodes: ReactNode[] = [];
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(regex)) {
+    const index = match.index ?? 0;
+    if (index > lastIndex) {
+      nodes.push(text.slice(lastIndex, index));
+    }
+    nodes.push(
+      <mark
+        key={`${index}-${match[0]}`}
+        className="bg-acc/25 text-acc-ink rounded-sm px-0.5"
+      >
+        {match[0]}
+      </mark>,
+    );
+    lastIndex = index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return nodes.length > 0 ? nodes : text;
 }

@@ -6,7 +6,11 @@ import { UserAvatar } from '@/common/ui/user-avatar';
 import { useCurrentAzureUser } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
 
-import { WorkItemTypeIcon, SelectionCheckbox } from '../ui-work-item-shared';
+import {
+  HighlightedSearchText,
+  WorkItemTypeIcon,
+  SelectionCheckbox,
+} from '../ui-work-item-shared';
 
 // Group work items so children appear right after their parents
 function groupWorkItemsByParent(
@@ -69,6 +73,7 @@ export function WorkItemList({
   highlightedWorkItemId,
   selectedWorkItemIds,
   providerId,
+  search,
   onToggleSelect,
   onHighlight,
 }: {
@@ -76,6 +81,7 @@ export function WorkItemList({
   highlightedWorkItemId: string | null;
   selectedWorkItemIds: string[];
   providerId?: string;
+  search: string;
   onToggleSelect: (workItem: AzureDevOpsWorkItem) => void;
   onHighlight: (workItem: AzureDevOpsWorkItem) => void;
 }) {
@@ -217,11 +223,16 @@ export function WorkItemList({
             <WorkItemTypeIcon type={workItem.fields.workItemType} />
 
             {/* Work item ID */}
-            <span className="text-ink-3 shrink-0 text-xs">#{workItem.id}</span>
+            <span className="text-ink-3 shrink-0 text-xs">
+              <HighlightedSearchText text={`#${workItem.id}`} search={search} />
+            </span>
 
             {/* Title (truncated) */}
             <span className="text-ink-1 min-w-0 flex-1 truncate text-sm">
-              {workItem.fields.title}
+              <HighlightedSearchText
+                text={workItem.fields.title}
+                search={search}
+              />
             </span>
 
             {/* Status badge */}

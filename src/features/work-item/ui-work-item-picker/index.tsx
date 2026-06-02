@@ -364,6 +364,7 @@ export function WorkItemPicker({
               highlightedWorkItemId={highlightedId}
               selectedWorkItemIds={selectedWorkItemIds}
               providerId={providerId}
+              search={filter ?? ''}
               onToggleSelect={onToggleSelect}
               onHighlight={handleHighlight}
             />
@@ -373,6 +374,7 @@ export function WorkItemPicker({
               highlightedWorkItemId={highlightedId}
               selectedWorkItemIds={selectedWorkItemIds}
               providerId={providerId}
+              search={filter ?? ''}
               onToggleSelect={onToggleSelect}
               onHighlight={handleHighlight}
             />
