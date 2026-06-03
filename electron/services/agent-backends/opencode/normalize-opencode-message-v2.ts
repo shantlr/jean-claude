@@ -31,6 +31,7 @@ import type {
   NormalizedEntry,
   NormalizedToolUse,
   NormalizationEvent,
+  TokenUsage,
 } from '@shared/normalized-message-v2';
 
 // --- Exported types ---
@@ -59,6 +60,8 @@ export type OpenCodeNormalizationContext = {
   sessionStartTime: number;
   /** Accumulated cost in USD — backend updates from assistant message cost fields */
   totalCost: number;
+  /** Accumulated token usage — backend updates from assistant message token fields */
+  totalUsage?: TokenUsage;
 };
 
 // --- Main normalization function ---
@@ -163,6 +166,7 @@ function normalizeEvent(
             isError: false,
             durationMs: Date.now() - ctx.sessionStartTime,
             cost: ctx.totalCost > 0 ? { costUsd: ctx.totalCost } : undefined,
+            usage: ctx.totalUsage,
           },
         },
       ];

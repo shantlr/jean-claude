@@ -1,4 +1,4 @@
-import type { Part } from '@opencode-ai/sdk/v2';
+import type { AssistantMessage, Part } from '@opencode-ai/sdk/v2';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AgentEvent, AgentTaskContext } from '@shared/agent-backend-types';
@@ -100,6 +100,137 @@ describe('OpenCodeBackend event stream', () => {
     });
     expect(updateRaw).toHaveBeenCalledOnce();
     expect(state.messageIndex).toBe(2);
+  });
+
+  it('aggregates OpenCode token usage without double-counting message updates', () => {
+    const backend = new OpenCodeBackend({
+      taskId: 'task-1',
+      sessionStartIndex: 0,
+      persistRaw: vi.fn(async () => 'raw-1'),
+    });
+    const state = createOpenCodeState({});
+    const info = {
+      id: 'msg-1',
+      sessionID: 'session-1',
+      role: 'assistant',
+      providerID: 'openai',
+      modelID: 'gpt-5.4',
+      time: { created: Date.now(), completed: Date.now() },
+      cost: 0.25,
+      tokens: {
+        input: 10,
+        output: 5,
+        reasoning: 0,
+        cache: { read: 3, write: 2 },
+      },
+    } as AssistantMessage;
+
+    mapEventForTest(backend, state, {
+      type: 'message.updated',
+      properties: { info },
+    });
+    mapEventForTest(backend, state, {
+      type: 'message.updated',
+      properties: { info },
+    });
+
+    expect(state.totalCost).toBe(0.25);
+    expect(state.totalUsage).toEqual({
+      inputTokens: 10,
+      outputTokens: 5,
+      cacheReadTokens: 3,
+      cacheCreationTokens: 2,
+    });
+    expect(state.normalizationCtx.totalUsage).toEqual(state.totalUsage);
+  });
+
+  it('removes token usage when OpenCode removes an assistant message', () => {
+    const backend = new OpenCodeBackend({
+      taskId: 'task-1',
+      sessionStartIndex: 0,
+      persistRaw: vi.fn(async () => 'raw-1'),
+    });
+    const state = createOpenCodeState({});
+    const info = {
+      id: 'msg-1',
+      sessionID: 'session-1',
+      role: 'assistant',
+      providerID: 'openai',
+      modelID: 'gpt-5.4',
+      time: { created: Date.now(), completed: Date.now() },
+      cost: 0.25,
+      tokens: {
+        input: 10,
+        output: 5,
+        reasoning: 0,
+        cache: { read: 3, write: 2 },
+      },
+    } as AssistantMessage;
+
+    mapEventForTest(backend, state, {
+      type: 'message.updated',
+      properties: { info },
+    });
+    mapEventForTest(backend, state, {
+      type: 'message.removed',
+      properties: { messageID: 'msg-1' },
+    });
+
+    expect(state.totalCost).toBe(0);
+    expect(state.totalUsage).toBeUndefined();
+    expect(state.normalizationCtx.totalUsage).toBeUndefined();
+  });
+
+  it('emits token usage on completed OpenCode sessions', async () => {
+    async function* emptyStream() {}
+
+    const info = {
+      id: 'msg-1',
+      sessionID: 'session-1',
+      role: 'assistant',
+      providerID: 'openai',
+      modelID: 'gpt-5.4',
+      time: { created: Date.now(), completed: Date.now() },
+      cost: 0.25,
+      tokens: {
+        input: 10,
+        output: 5,
+        reasoning: 0,
+        cache: { read: 3, write: 2 },
+      },
+    } as AssistantMessage;
+    const client = {
+      event: {
+        subscribe: vi.fn(async () => ({ stream: emptyStream() })),
+      },
+      session: {
+        prompt: vi.fn(async () => ({ data: { info, parts: [] } })),
+      },
+    };
+    const backend = new OpenCodeBackend({
+      taskId: 'task-1',
+      sessionStartIndex: 0,
+      persistRaw: vi.fn(async () => 'raw-1'),
+    });
+    const state = createOpenCodeState(client);
+
+    const events = await collectEvents(
+      createEventStreamForTest(backend, client, state),
+    );
+
+    expect(events.at(-1)).toMatchObject({
+      type: 'complete',
+      result: {
+        isError: false,
+        cost: { costUsd: 0.25 },
+        usage: {
+          inputTokens: 10,
+          outputTokens: 5,
+          cacheReadTokens: 3,
+          cacheCreationTokens: 2,
+        },
+      },
+    });
   });
 
   it('completes after idle timeout if session.prompt never resolves', async () => {
@@ -310,12 +441,14 @@ function createOpenCodeState(client: unknown) {
     pendingQuestions: new Set(),
     startTime: Date.now(),
     totalCost: 0,
+    totalUsage: undefined,
     normalizationCtx: {
       emittedEntryIds: new Set(),
       rawMessages: new Map(),
       rawParts: new Map(),
       sessionStartTime: Date.now(),
       totalCost: 0,
+      totalUsage: undefined,
     },
     messageIndex: 0,
     rawDeltaRows: new Map(),
@@ -328,6 +461,22 @@ function createOpenCodeState(client: unknown) {
     ownsServerHandle: false,
     serverClosed: false,
   };
+}
+
+function mapEventForTest(
+  backend: OpenCodeBackend,
+  state: unknown,
+  event: unknown,
+) {
+  return (
+    backend as unknown as {
+      mapEvent: (
+        event: unknown,
+        state: unknown,
+        rawMessageId: string | null,
+      ) => AgentEvent[];
+    }
+  ).mapEvent(event, state, null);
 }
 
 function createEventStreamForTest(

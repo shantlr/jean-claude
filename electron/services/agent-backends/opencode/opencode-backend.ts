@@ -30,6 +30,7 @@ import type {
   NormalizedQuestionRequest,
   PromptPart,
 } from '@shared/agent-backend-types';
+import type { TokenUsage } from '@shared/normalized-message-v2';
 import type { InteractionMode } from '@shared/types';
 
 import type { ResolvedPermissionRule } from '../../../../shared/permission-types';
@@ -179,6 +180,8 @@ interface OpenCodeSessionState {
   startTime: number;
   /** Accumulated cost */
   totalCost: number;
+  /** Accumulated token usage */
+  totalUsage?: TokenUsage;
   /** V2 normalization context */
   normalizationCtx: OpenCodeNormalizationContext;
   /** Current message index for raw persistence ordering */
@@ -292,12 +295,14 @@ export class OpenCodeBackend implements AgentBackend {
       pendingQuestions: new Set(),
       startTime: Date.now(),
       totalCost: 0,
+      totalUsage: undefined,
       normalizationCtx: {
         emittedEntryIds: new Set(),
         rawMessages: new Map(),
         rawParts: new Map(),
         sessionStartTime: Date.now(),
         totalCost: 0,
+        totalUsage: undefined,
       },
       messageIndex: this.taskContext.sessionStartIndex,
       rawDeltaRows: new Map(),
@@ -688,11 +693,9 @@ export class OpenCodeBackend implements AgentBackend {
           ctx.rawMessages.set(result.data.info.id, result.data.info);
           ctx.rawParts.set(result.data.info.id, result.data.parts);
 
-          // Track cost
+          // Track cost/tokens from unique assistant messages.
           if (result.data.info.role === 'assistant') {
-            const cost = (result.data.info as OcAssistantMessage).cost ?? 0;
-            state.totalCost += cost;
-            ctx.totalCost = state.totalCost;
+            this.updateUsageTotals(state);
           }
 
           // Persist raw prompt result
@@ -938,6 +941,7 @@ export class OpenCodeBackend implements AgentBackend {
         text: hasError ? 'Session ended' : undefined,
         durationMs,
         cost: state.totalCost > 0 ? { costUsd: state.totalCost } : undefined,
+        usage: state.totalUsage,
       },
     };
 
@@ -1034,6 +1038,42 @@ export class OpenCodeBackend implements AgentBackend {
     }
   }
 
+  private updateUsageTotals(state: OpenCodeSessionState): void {
+    let totalCost = 0;
+    const totalUsage: TokenUsage = {
+      inputTokens: 0,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+    };
+
+    for (const message of state.normalizationCtx.rawMessages.values()) {
+      if (message.role !== 'assistant') continue;
+
+      const assistant = message as OcAssistantMessage;
+      totalCost += assistant.cost ?? 0;
+      if (!assistant.tokens) continue;
+
+      totalUsage.inputTokens += assistant.tokens.input;
+      totalUsage.outputTokens += assistant.tokens.output;
+      totalUsage.cacheReadTokens =
+        (totalUsage.cacheReadTokens ?? 0) + assistant.tokens.cache.read;
+      totalUsage.cacheCreationTokens =
+        (totalUsage.cacheCreationTokens ?? 0) + assistant.tokens.cache.write;
+    }
+
+    const hasUsage =
+      totalUsage.inputTokens > 0 ||
+      totalUsage.outputTokens > 0 ||
+      (totalUsage.cacheReadTokens ?? 0) > 0 ||
+      (totalUsage.cacheCreationTokens ?? 0) > 0;
+
+    state.totalCost = totalCost;
+    state.totalUsage = hasUsage ? totalUsage : undefined;
+    state.normalizationCtx.totalCost = totalCost;
+    state.normalizationCtx.totalUsage = state.totalUsage;
+  }
+
   /**
    * Extract session ID from an OpenCode event (if applicable).
    */
@@ -1097,12 +1137,10 @@ export class OpenCodeBackend implements AgentBackend {
           parts: existing?.parts ?? [],
         });
 
-        // Track cost from assistant messages
+        // Track cost/tokens from assistant messages. Recompute from rawMessages
+        // because OpenCode can emit the same message.updated more than once.
         if (msg.role === 'assistant') {
-          const assistantMsg = msg as OcAssistantMessage;
-          const cost = assistantMsg.cost ?? 0;
-          state.totalCost += cost;
-          ctx.totalCost = state.totalCost;
+          this.updateUsageTotals(state);
         }
         break;
       }
@@ -1159,6 +1197,7 @@ export class OpenCodeBackend implements AgentBackend {
         ctx.rawMessages.delete(props.messageID);
         ctx.rawParts.delete(props.messageID);
         state.messages.delete(props.messageID);
+        this.updateUsageTotals(state);
         break;
       }
 
