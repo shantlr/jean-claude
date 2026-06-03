@@ -19,6 +19,7 @@ import {
   buildWorktreeSettings,
   readSettings,
 } from './permission-settings-service';
+import { formatCreateWorktreeError } from './utils-worktree-errors';
 
 const execAsync = promisify(exec);
 
@@ -824,7 +825,7 @@ export async function createWorktree(
     dbg.worktree('Worktree created successfully');
   } catch (error) {
     dbg.worktree('Failed to create worktree: %O', error);
-    throw new Error(`Failed to create git worktree: ${error}`);
+    throw new Error(formatCreateWorktreeError(error));
   }
 
   // Build backend-specific permission settings for the worktree
