@@ -523,9 +523,11 @@ export function useSetAutoComplete(projectId: string, prId: number) {
         pullRequestId: prId,
         ...params,
       }),
-    onSuccess: () => {
+    onSuccess: (updatedPr) => {
+      queryClient.setQueryData(['pull-request', projectId, prId], updatedPr);
+      queryClient.invalidateQueries({ queryKey: ['pull-requests', projectId] });
       queryClient.invalidateQueries({
-        queryKey: ['pull-request', projectId, prId],
+        queryKey: ['all-projects-pull-requests'],
       });
     },
   });

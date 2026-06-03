@@ -217,6 +217,12 @@ export function PrAutoComplete({
             'Enable auto-complete'
           )}
         </button>
+
+        {autoCompleteMutation.error && (
+          <p className="mt-2 text-xs text-red-400">
+            {autoCompleteMutation.error.message}
+          </p>
+        )}
       </div>
     </Dropdown>
   );

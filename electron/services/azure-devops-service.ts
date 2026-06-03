@@ -1969,6 +1969,20 @@ export async function setPullRequestAutoComplete(params: {
   }
 
   const pr: PullRequestResponse = await response.json();
+  const isAutoCompleteSet = !!pr.autoCompleteSetBy;
+
+  if (params.enabled && !isAutoCompleteSet) {
+    throw new Error(
+      'Azure DevOps accepted the request but did not enable auto-complete',
+    );
+  }
+
+  if (!params.enabled && isAutoCompleteSet) {
+    throw new Error(
+      'Azure DevOps accepted the request but did not cancel auto-complete',
+    );
+  }
+
   const webUrl = `https://dev.azure.com/${orgName}/${params.projectId}/_git/${params.repoId}/pullrequest/${pr.pullRequestId}`;
 
   return mapPullRequestResponse(pr, webUrl);
