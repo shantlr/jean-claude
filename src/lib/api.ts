@@ -559,6 +559,9 @@ export interface Api {
     createPrReview: (params: {
       projectId: string;
       pullRequestId: number;
+      agentBackend?: AgentBackendType | null;
+      modelPreference?: string | null;
+      thinkingEffort?: ThinkingEffort | null;
     }) => Promise<Task>;
   };
   steps: {

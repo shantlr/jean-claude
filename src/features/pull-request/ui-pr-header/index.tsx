@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import {
   AlertTriangle,
@@ -17,7 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/common/ui/button';
 import { Chip } from '@/common/ui/chip';
@@ -30,14 +31,18 @@ import {
   useUpdatePullRequestTitle,
 } from '@/hooks/use-pull-requests';
 import { getEditorLabel, useEditorSetting } from '@/hooks/use-settings';
+import { invalidateFeedItems } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
 import type { AzureDevOpsPullRequestDetails } from '@/lib/api';
 import { encodeProxyUrl } from '@/lib/azure-image-proxy';
 import { formatRelativeTime } from '@/lib/time';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useNewTaskFormStore } from '@/stores/new-task-form';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import type { ModelPreference, ThinkingEffort } from '@shared/types';
 
 import { PrAutoComplete } from '../ui-pr-auto-complete';
+import { PrReviewSetupDialog } from '../ui-pr-review-setup-dialog';
 import { PrVoteDropdown } from '../ui-pr-vote-dropdown';
 
 function getStatusBadge(
@@ -85,6 +90,7 @@ export function PrHeader({
   projectId: string;
 }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: project } = useProject(projectId);
   const addRunningJob = useBackgroundJobsStore((s) => s.addRunningJob);
   const markJobSucceeded = useBackgroundJobsStore((s) => s.markJobSucceeded);
@@ -95,6 +101,7 @@ export function PrHeader({
   const updateTitle = useUpdatePullRequestTitle(projectId, pr.id);
   const { data: currentUser } = useCurrentAzureUser(projectId);
   const [isCreating, setIsCreating] = useState(false);
+  const [isReviewSetupOpen, setIsReviewSetupOpen] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(pr.title);
   const [titleError, setTitleError] = useState<string | null>(null);
@@ -107,6 +114,16 @@ export function PrHeader({
     (currentUser.identityId === pr.createdBy.id ||
       currentUser.id === pr.createdBy.id ||
       currentUserEmail === ownerEmail);
+  const defaultReviewBackend = useMemo<AgentBackendType>(
+    () =>
+      (project?.defaultAgentBackend as AgentBackendType | null) ??
+      'claude-code',
+    [project?.defaultAgentBackend],
+  );
+  const defaultReviewModel = useMemo<ModelPreference>(
+    () => project?.defaultAgentModelPreference ?? 'default',
+    [project?.defaultAgentModelPreference],
+  );
 
   useEffect(() => {
     if (!isEditingTitle) {
@@ -121,40 +138,62 @@ export function PrHeader({
     }
   }, [project?.path]);
 
-  const handleReview = useCallback(async () => {
-    setIsCreating(true);
-    const jobId = addRunningJob({
-      type: 'pr-review-creation',
-      title: `Creating review for PR #${pr.id}`,
-      projectId,
-      details: { pullRequestId: pr.id },
-    });
-
-    try {
-      const task = await api.tasks.createPrReview({
+  const handleReview = useCallback(
+    async (selection: {
+      agentBackend: AgentBackendType;
+      modelPreference: ModelPreference;
+      thinkingEffort: ThinkingEffort;
+    }) => {
+      setIsReviewSetupOpen(false);
+      setIsCreating(true);
+      const jobId = addRunningJob({
+        type: 'pr-review-creation',
+        title: `Creating review for PR #${pr.id}`,
         projectId,
-        pullRequestId: pr.id,
+        details: { pullRequestId: pr.id },
       });
-      markJobSucceeded(jobId);
-      void navigate({
-        to: '/projects/$projectId/tasks/$taskId',
-        params: { projectId, taskId: task.id },
-      });
-    } catch (error) {
-      markJobFailed(
-        jobId,
-        error instanceof Error ? error.message : 'Failed to create review task',
-      );
-      setIsCreating(false);
-    }
-  }, [
-    pr.id,
-    projectId,
-    navigate,
-    addRunningJob,
-    markJobSucceeded,
-    markJobFailed,
-  ]);
+
+      try {
+        const task = await api.tasks.createPrReview({
+          projectId,
+          pullRequestId: pr.id,
+          agentBackend: selection.agentBackend,
+          modelPreference: selection.modelPreference,
+          thinkingEffort: selection.thinkingEffort,
+        });
+        markJobSucceeded(jobId, { taskId: task.id, projectId });
+        invalidateFeedItems(queryClient);
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['tasks', 'allActive'] });
+        queryClient.invalidateQueries({ queryKey: ['tasks', { projectId }] });
+        setIsCreating(false);
+
+        if (!window.location.pathname.startsWith('/all')) {
+          void navigate({
+            to: '/projects/$projectId/tasks/$taskId',
+            params: { projectId, taskId: task.id },
+          });
+        }
+      } catch (error) {
+        markJobFailed(
+          jobId,
+          error instanceof Error
+            ? error.message
+            : 'Failed to create review task',
+        );
+        setIsCreating(false);
+      }
+    },
+    [
+      pr.id,
+      projectId,
+      navigate,
+      queryClient,
+      addRunningJob,
+      markJobSucceeded,
+      markJobFailed,
+    ],
+  );
 
   const handleCreateTaskFromPrBranch = useCallback(() => {
     setNewTaskDraft({
@@ -193,6 +232,18 @@ export function PrHeader({
 
   return (
     <>
+      <PrReviewSetupDialog
+        isOpen={isReviewSetupOpen}
+        onClose={() => setIsReviewSetupOpen(false)}
+        onConfirm={handleReview}
+        prId={pr.id}
+        prTitle={pr.title}
+        defaultBackend={defaultReviewBackend}
+        defaultModel={defaultReviewModel}
+        defaultThinkingEffort="default"
+        isCreating={isCreating}
+      />
+
       {/* Top bar — breadcrumb + actions */}
       <div className="border-glass-border/50 flex h-[52px] shrink-0 items-center gap-2.5 border-b px-5">
         {/* Breadcrumb */}
@@ -232,7 +283,7 @@ export function PrHeader({
         </button>
         {pr.status === 'active' && (
           <button
-            onClick={handleReview}
+            onClick={() => setIsReviewSetupOpen(true)}
             disabled={isCreating}
             className="bg-acc text-ink-0 hover:bg-acc/90 flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
           >

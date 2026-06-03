@@ -46,6 +46,7 @@ import type {
 import {
   PRESET_EDITORS,
   type InteractionMode,
+  type ModelPreference,
   type ThinkingEffort,
   type AiGenerationSetting,
   type EditorSetting,
@@ -1071,6 +1072,9 @@ export function registerIpcHandlers() {
       params: {
         projectId: string;
         pullRequestId: number;
+        agentBackend?: AgentBackendType | null;
+        modelPreference?: ModelPreference | null;
+        thinkingEffort?: ThinkingEffort | null;
       },
     ) => {
       const { projectId, pullRequestId } = params;
@@ -1208,8 +1212,11 @@ export function registerIpcHandlers() {
 
       // 7. Build reviewer configs
       const defaultBackend =
+        params.agentBackend ??
         (project.defaultAgentBackend as AgentBackendType | null) ??
         'claude-code';
+      const modelPreference = params.modelPreference ?? 'default';
+      const thinkingEffort = params.thinkingEffort ?? 'default';
 
       const reviewers: ReviewerConfig[] = [
         {
@@ -1218,6 +1225,8 @@ export function registerIpcHandlers() {
           focusPrompt:
             'Look for potential bugs, logic errors, race conditions, off-by-one errors, null/undefined issues, and unhandled edge cases in the changed code.',
           backend: defaultBackend,
+          model: modelPreference,
+          thinkingEffort,
         },
         {
           id: crypto.randomUUID(),
@@ -1225,6 +1234,8 @@ export function registerIpcHandlers() {
           focusPrompt:
             'Evaluate code quality: naming, readability, DRY violations, overly complex logic, missing error handling, and adherence to project conventions.',
           backend: defaultBackend,
+          model: modelPreference,
+          thinkingEffort,
         },
         {
           id: crypto.randomUUID(),
@@ -1232,6 +1243,8 @@ export function registerIpcHandlers() {
           focusPrompt:
             'Check for security vulnerabilities (injection, XSS, auth issues, secrets exposure) and performance concerns (N+1 queries, unnecessary re-renders, memory leaks, large allocations).',
           backend: defaultBackend,
+          model: modelPreference,
+          thinkingEffort,
         },
       ];
 
@@ -1242,6 +1255,8 @@ export function registerIpcHandlers() {
           focusPrompt:
             'Verify that the code changes fulfill the requirements described in the associated work items. Check for missing acceptance criteria, incomplete implementations, and deviations from the specification.',
           backend: defaultBackend,
+          model: modelPreference,
+          thinkingEffort,
         });
       }
 
@@ -1266,6 +1281,8 @@ export function registerIpcHandlers() {
         ].join('\n'),
         interactionMode: 'auto',
         agentBackend: defaultBackend,
+        modelPreference,
+        thinkingEffort,
         meta: reviewMeta,
         sortOrder: 0,
       });

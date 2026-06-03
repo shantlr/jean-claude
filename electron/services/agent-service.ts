@@ -120,7 +120,7 @@ function buildReviewPrompt({
   const reviewerList = reviewers
     .map(
       (r, i) =>
-        `${i + 1}. **${r.label}** (backend: ${r.backend ?? 'claude-code'}${r.model && r.model !== 'default' ? `, model: ${r.model}` : ''}): ${r.focusPrompt}`,
+        `${i + 1}. **${r.label}** (backend: ${r.backend ?? 'claude-code'}${r.model && r.model !== 'default' ? `, model: ${r.model}` : ''}${r.thinkingEffort && r.thinkingEffort !== 'default' ? `, variant: ${r.thinkingEffort}` : ''}): ${r.focusPrompt}`,
     )
     .join('\n');
 
@@ -153,7 +153,7 @@ function buildReviewPrompt({
     '2. Wait for all reviews to complete.',
     '3. Synthesize the findings into a comprehensive summary organized by severity and category.',
     '',
-    'When calling `run_review`, set the `backend` field to the backend listed for each reviewer. If a model is specified, set the `model` field accordingly.',
+    'When calling `run_review`, set the `backend` field to the backend listed for each reviewer. If a model is specified, set the `model` field accordingly. If a variant is specified, set the `thinkingEffort` field accordingly.',
     "Include the diff instructions below in each reviewer's prompt so they know how to find the changes.",
     '',
     '## Diff instructions (include in each reviewer prompt)',

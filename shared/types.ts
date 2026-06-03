@@ -433,6 +433,7 @@ export interface ReviewerConfig {
   focusPrompt: string;
   backend: AgentBackendType;
   model?: ModelPreference;
+  thinkingEffort?: ThinkingEffort;
 }
 
 /** Meta for `review` steps — single agent session using MCP tools for parallel review */

@@ -15,9 +15,19 @@ import { createOpencode } from '@opencode-ai/sdk/v2';
 import { z } from 'zod';
 
 import type { AgentBackendType } from '@shared/agent-backend-types';
+import type { ThinkingEffort } from '@shared/types';
 
 const MAX_DEPTH = 3;
 const BACKEND_ENUM = z.enum(['claude-code', 'opencode']);
+const THINKING_EFFORT_ENUM = z.enum([
+  'default',
+  'none',
+  'low',
+  'medium',
+  'high',
+  'max',
+  'xhigh',
+]);
 
 function getMcpWorkingDirectory(): string {
   const configured = process.env.JC_MCP_WORKDIR?.trim();
@@ -91,12 +101,16 @@ async function collectQueryResult(
 
 function parseOpenCodeModel(
   model?: string,
-): { providerID: string; modelID: string } | undefined {
+): { providerID: string; modelID: string; variant?: string } | undefined {
   if (!model || model === 'default') return undefined;
   if (!model.includes('/')) return undefined;
   const [providerID, ...rest] = model.split('/');
   if (!providerID || rest.length === 0) return undefined;
   return { providerID, modelID: rest.join('/') };
+}
+
+function getOpenCodeVariant(thinkingEffort?: ThinkingEffort): string | null {
+  return thinkingEffort && thinkingEffort !== 'default' ? thinkingEffort : null;
 }
 
 function extractOpenCodeText(response: {
@@ -115,11 +129,13 @@ function extractOpenCodeText(response: {
 async function runClaudeSubAgent({
   prompt,
   model,
+  thinkingEffort,
   currentDepth,
   readOnly,
 }: {
   prompt: string;
   model?: string;
+  thinkingEffort?: ThinkingEffort;
   currentDepth: number;
   readOnly: boolean;
 }): Promise<string> {
@@ -136,6 +152,15 @@ async function runClaudeSubAgent({
     options.model = model;
   }
 
+  if (
+    thinkingEffort === 'low' ||
+    thinkingEffort === 'medium' ||
+    thinkingEffort === 'high' ||
+    thinkingEffort === 'max'
+  ) {
+    options.effort = thinkingEffort;
+  }
+
   if (readOnly) {
     options.allowedTools = ['Read', 'Glob', 'Grep', 'Bash'];
   } else {
@@ -149,10 +174,12 @@ async function runClaudeSubAgent({
 async function runOpenCodeSubAgent({
   prompt,
   model,
+  thinkingEffort,
   readOnly,
 }: {
   prompt: string;
   model?: string;
+  thinkingEffort?: ThinkingEffort;
   readOnly: boolean;
 }): Promise<string> {
   const cwd = getMcpWorkingDirectory();
@@ -176,12 +203,14 @@ async function runOpenCodeSubAgent({
       : prompt;
 
     const modelConfig = parseOpenCodeModel(model);
+    const variant = getOpenCodeVariant(thinkingEffort);
     const response = await client.session.prompt({
       sessionID: sessionId,
       directory: cwd,
       parts: [{ type: 'text', text: enhancedPrompt }],
       agent: 'plan',
       ...(modelConfig ? { model: modelConfig } : {}),
+      ...(variant ? { variant } : {}),
     });
 
     await client.session.delete({
@@ -199,21 +228,24 @@ async function runSubAgent({
   backend,
   prompt,
   model,
+  thinkingEffort,
   currentDepth,
   readOnly,
 }: {
   backend: AgentBackendType;
   prompt: string;
   model?: string;
+  thinkingEffort?: ThinkingEffort;
   currentDepth: number;
   readOnly: boolean;
 }): Promise<string> {
   if (backend === 'opencode') {
-    return runOpenCodeSubAgent({ prompt, model, readOnly });
+    return runOpenCodeSubAgent({ prompt, model, thinkingEffort, readOnly });
   }
   return runClaudeSubAgent({
     prompt,
     model,
+    thinkingEffort,
     currentDepth,
     readOnly,
   });
@@ -308,8 +340,11 @@ async function main(): Promise<void> {
         .string()
         .optional()
         .describe('Model to use for the review (e.g. opus, sonnet, haiku)'),
+      thinkingEffort: THINKING_EFFORT_ENUM.optional().describe(
+        'Thinking effort / OpenCode variant to use for the review',
+      ),
     },
-    async ({ prompt, backend, model }) => {
+    async ({ prompt, backend, model, thinkingEffort }) => {
       const currentDepth = getCurrentDepth();
 
       if (currentDepth >= MAX_DEPTH) {
@@ -329,13 +364,14 @@ async function main(): Promise<void> {
 
       try {
         console.error(
-          `[jean-claude-mcp] run_review: depth=${currentDepth}, backend=${backend ?? 'claude-code'}, model=${model ?? 'default'}, prompt="${prompt.slice(0, 100)}..."`,
+          `[jean-claude-mcp] run_review: depth=${currentDepth}, backend=${backend ?? 'claude-code'}, model=${model ?? 'default'}, thinkingEffort=${thinkingEffort ?? 'default'}, prompt="${prompt.slice(0, 100)}..."`,
         );
 
         const result = await runSubAgent({
           backend: backend ?? 'claude-code',
           prompt,
           model,
+          thinkingEffort,
           currentDepth,
           readOnly: true,
         });

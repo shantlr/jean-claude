@@ -217,8 +217,13 @@ contextBridge.exposeInMainWorld('api', {
       isDraft: boolean;
       deleteWorktree?: boolean;
     }) => ipcRenderer.invoke('tasks:createPullRequest', params),
-    createPrReview: (params: { projectId: string; pullRequestId: number }) =>
-      ipcRenderer.invoke('tasks:createPrReview', params),
+    createPrReview: (params: {
+      projectId: string;
+      pullRequestId: number;
+      agentBackend?: string | null;
+      modelPreference?: string | null;
+      thinkingEffort?: string | null;
+    }) => ipcRenderer.invoke('tasks:createPrReview', params),
   },
   steps: {
     findByTaskId: (taskId: string) =>
