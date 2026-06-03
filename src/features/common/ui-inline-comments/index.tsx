@@ -24,6 +24,10 @@ export const COMMENT_ACCENT = {
   chipText: 'oklch(0.78 0.18 295)',
 };
 
+type InlineComposerImage = PromptImagePart & {
+  placeholderMarkdown?: string;
+};
+
 // ---------------------------------------------------------------------------
 // InlineCommentComposer — shared comment input form
 // ---------------------------------------------------------------------------
@@ -41,6 +45,7 @@ export function InlineCommentComposer({
   initialBody = '',
   initialImages = [],
   allowImages = true,
+  insertImagesInBody = false,
   isSubmitting = false,
   showCancel = true,
 }: {
@@ -66,15 +71,19 @@ export function InlineCommentComposer({
   initialImages?: PromptImagePart[];
   /** Whether users can attach images to the comment. */
   allowImages?: boolean;
+  /** Insert image markdown at the cursor instead of appending attachments. */
+  insertImagesInBody?: boolean;
   /** Whether submit is in progress. */
   isSubmitting?: boolean;
   /** Whether to show cancel action. */
   showCancel?: boolean;
 }) {
   const [body, setBody] = useState(initialBody);
-  const [images, setImages] = useState<PromptImagePart[]>(initialImages);
+  const [images, setImages] = useState<InlineComposerImage[]>(initialImages);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imagesRef = useRef<InlineComposerImage[]>(initialImages);
+  const imageTokenCounterRef = useRef(0);
   const bindingId = useId();
 
   useEffect(() => {
@@ -83,16 +92,62 @@ export function InlineCommentComposer({
 
   const lineLabel = formatLineRangeLabel(lineStart, lineEnd);
 
+  const insertTextAtCursor = useCallback((text: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      setBody((current) => `${current}${current ? '\n\n' : ''}${text}`);
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    setBody(
+      (current) => `${current.slice(0, start)}${text}${current.slice(end)}`,
+    );
+    requestAnimationFrame(() => {
+      textarea.focus();
+      const cursor = start + text.length;
+      textarea.setSelectionRange(cursor, cursor);
+    });
+  }, []);
+
   const handleImageAttach = useCallback(
     (image: PromptImagePart) => {
       if (!allowImages) return;
-      setImages((prev) => (prev.length < MAX_IMAGES ? [...prev, image] : prev));
+      if (imagesRef.current.length >= MAX_IMAGES) return;
+
+      let nextImage: InlineComposerImage = image;
+
+      if (insertImagesInBody) {
+        imageTokenCounterRef.current += 1;
+        const token = imageTokenCounterRef.current;
+        const extension = image.mimeType.split('/')[1] || 'png';
+        const fileName = image.filename || `image-${token}.${extension}`;
+        const safeAltText = fileName.replace(/[[\]()\\]/g, '_');
+        const placeholderMarkdown = `![${safeAltText}](jc-image://${token})`;
+
+        insertTextAtCursor(placeholderMarkdown);
+        nextImage = { ...image, placeholderMarkdown };
+      }
+
+      const nextImages = [...imagesRef.current, nextImage];
+      imagesRef.current = nextImages;
+      setImages(nextImages);
     },
-    [allowImages],
+    [allowImages, insertImagesInBody, insertTextAtCursor],
   );
 
   const handleImageRemove = useCallback((index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
+    const image = imagesRef.current[index];
+    if (image?.placeholderMarkdown) {
+      setBody((current) =>
+        current.replace(image.placeholderMarkdown ?? '', ''),
+      );
+    }
+
+    const nextImages = imagesRef.current.filter((_, i) => i !== index);
+    imagesRef.current = nextImages;
+    setImages(nextImages);
   }, []);
 
   const handleSubmit = useCallback(() => {

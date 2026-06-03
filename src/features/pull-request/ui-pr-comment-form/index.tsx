@@ -21,6 +21,13 @@ function escapeMarkdownAltText(value: string) {
   return value.replace(/[[\]()\\]/g, '_');
 }
 
+function getPlaceholderMarkdown(image: PromptImagePart) {
+  return 'placeholderMarkdown' in image &&
+    typeof image.placeholderMarkdown === 'string'
+    ? image.placeholderMarkdown
+    : null;
+}
+
 export function PrCommentForm({
   onSubmit,
   onCancel,
@@ -64,17 +71,46 @@ export function PrCommentForm({
 
     setIsUploadingImages(true);
     try {
-      const markdownImages = await Promise.all(
+      let contentWithImages = body.trimEnd();
+      const attachedMarkdownImages: string[] = [];
+
+      await Promise.all(
         images.map(async (image, index) => {
+          const placeholderMarkdown = getPlaceholderMarkdown(image);
+          if (placeholderMarkdown && !body.includes(placeholderMarkdown)) {
+            return;
+          }
+
           const fileName = imageFileName(image, index);
           const url = await uploadImage(image, fileName);
-          return `![${escapeMarkdownAltText(fileName)}](${url})`;
+          const markdownImage = `![${escapeMarkdownAltText(fileName)}](${url})`;
+          if (placeholderMarkdown) {
+            contentWithImages = contentWithImages.replaceAll(
+              placeholderMarkdown,
+              markdownImage,
+            );
+            return;
+          }
+
+          attachedMarkdownImages.push(markdownImage);
         }),
       );
       if (submitToken !== submitTokenRef.current) return;
 
-      const separator = body.trim() ? '\n\n' : '';
-      onSubmit(`${body.trimEnd()}${separator}${markdownImages.join('\n\n')}`);
+      const separator =
+        contentWithImages.trim() && attachedMarkdownImages.length ? '\n\n' : '';
+      const finalContent = `${contentWithImages}${separator}${attachedMarkdownImages.join('\n\n')}`;
+      if (!finalContent.trim()) {
+        setError('Add a comment or insert an image.');
+        return;
+      }
+
+      if (finalContent.includes('jc-image://')) {
+        setError('Remove incomplete image placeholders before sending.');
+        return;
+      }
+
+      onSubmit(finalContent);
       setComposerKey((current) => current + 1);
     } catch (submitError) {
       if (submitToken !== submitTokenRef.current) return;
@@ -150,6 +186,7 @@ export function PrCommentForm({
           placeholder={placeholder}
           submitLabel={isBusy ? 'Sending...' : 'Add comment'}
           allowImages={!!uploadImage}
+          insertImagesInBody={!!uploadImage}
           isSubmitting={isBusy}
           showCancel={!!onCancel}
         />
