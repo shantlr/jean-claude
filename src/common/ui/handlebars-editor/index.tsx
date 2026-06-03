@@ -1,7 +1,18 @@
 import Editor, { loader, type OnMount } from '@monaco-editor/react';
-import * as monaco from 'monaco-editor';
-import type { editor, IDisposable, languages } from 'monaco-editor';
+import type { editor, IDisposable, IPosition, languages } from 'monaco-editor';
+import * as monaco from 'monaco-editor/esm/vs/editor/edcore.main.js';
+import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 import { useCallback, useEffect, useRef, useState } from 'react';
+
+const monacoGlobal = globalThis as typeof globalThis & {
+  MonacoEnvironment?: {
+    getWorker: () => Worker;
+  };
+};
+
+monacoGlobal.MonacoEnvironment = {
+  getWorker: () => new EditorWorker(),
+};
 
 loader.config({ monaco });
 
@@ -116,6 +127,41 @@ export function HandlebarsEditor({
     (monacoEditor, monaco) => {
       editorRef.current = monacoEditor;
 
+      const isInsideOpenHandlebarsExpression = (
+        model: editor.ITextModel,
+        position: IPosition,
+      ) => {
+        const textUntilPosition = model.getValueInRange({
+          startLineNumber: position.lineNumber,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column,
+        });
+        const lastOpen = textUntilPosition.lastIndexOf('{{');
+        const lastClose = textUntilPosition.lastIndexOf('}}');
+        return lastOpen !== -1 && lastOpen > lastClose;
+      };
+
+      const keyDownDisposable = monacoEditor.onKeyDown((event) => {
+        if (event.ctrlKey && event.keyCode === monaco.KeyCode.Space) {
+          event.preventDefault();
+          event.stopPropagation();
+
+          const model = monacoEditor.getModel();
+          const position = monacoEditor.getPosition();
+          if (
+            model &&
+            position &&
+            isInsideOpenHandlebarsExpression(model, position)
+          ) {
+            monacoEditor.trigger('', 'editor.action.triggerSuggest', {});
+          } else {
+            monacoEditor.trigger('', 'hideSuggestWidget', {});
+          }
+        }
+      });
+      disposablesRef.current.push(keyDownDisposable);
+
       // Register completion provider for handlebars
       const completionDisposable =
         monaco.languages.registerCompletionItemProvider('handlebars', {
@@ -149,11 +195,26 @@ export function HandlebarsEditor({
             const isHelper =
               afterBraces.trimStart().startsWith('#') ||
               afterBraces.trimStart().startsWith('/');
-            const range = {
+            const lineRemainder = model.getValueInRange({
+              startLineNumber: position.lineNumber,
+              startColumn: position.column,
+              endLineNumber: position.lineNumber,
+              endColumn: model.getLineMaxColumn(position.lineNumber),
+            });
+            const endColumnAfterAutoClosedBraces = lineRemainder.startsWith(
+              '}}',
+            )
+              ? position.column + 2
+              : position.column;
+            const variableRange = {
               startLineNumber: position.lineNumber,
               endLineNumber: position.lineNumber,
               startColumn: expressionStartColumn,
               endColumn: position.column,
+            };
+            const snippetRange = {
+              ...variableRange,
+              endColumn: endColumnAfterAutoClosedBraces,
             };
 
             const suggestions: languages.CompletionItem[] = [];
@@ -168,7 +229,7 @@ export function HandlebarsEditor({
                   insertTextRules:
                     monaco.languages.CompletionItemInsertTextRule
                       .InsertAsSnippet,
-                  range,
+                  range: snippetRange,
                 });
               }
             } else {
@@ -178,7 +239,7 @@ export function HandlebarsEditor({
                   kind: monaco.languages.CompletionItemKind.Variable,
                   detail: v.detail,
                   insertText: v.insertText,
-                  range,
+                  range: variableRange,
                 });
               }
               for (const s of SNIPPET_SUGGESTIONS) {
@@ -190,7 +251,7 @@ export function HandlebarsEditor({
                   insertTextRules:
                     monaco.languages.CompletionItemInsertTextRule
                       .InsertAsSnippet,
-                  range,
+                  range: snippetRange,
                 });
               }
             }
@@ -260,6 +321,39 @@ export function HandlebarsEditor({
         }}
         onMount={handleMount}
         beforeMount={(monaco) => {
+          if (
+            !monaco.languages
+              .getLanguages()
+              .some((language: { id: string }) => language.id === 'handlebars')
+          ) {
+            monaco.languages.register({ id: 'handlebars' });
+          }
+
+          monaco.languages.setLanguageConfiguration('handlebars', {
+            brackets: [['{', '}']],
+            autoClosingPairs: [{ open: '{', close: '}' }],
+            surroundingPairs: [{ open: '{', close: '}' }],
+          });
+
+          monaco.languages.setMonarchTokensProvider('handlebars', {
+            tokenizer: {
+              root: [
+                [/\{\{!--/, 'comment.handlebars', '@comment'],
+                [/\{\{[#/]?/, 'delimiter.handlebars', '@handlebars'],
+              ],
+              comment: [
+                [/--\}\}/, 'comment.handlebars', '@pop'],
+                [/./, 'comment.handlebars'],
+              ],
+              handlebars: [
+                [/\}\}/, 'delimiter.handlebars', '@pop'],
+                [/#[\w-]+|\/[\w-]+/, 'keyword.handlebars'],
+                [/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/, 'string'],
+                [/\b[\w.]+\b/, 'variable.handlebars'],
+              ],
+            },
+          });
+
           // Define dark theme matching app
           monaco.editor.defineTheme('handlebars-dark', {
             base: 'vs-dark',
@@ -289,7 +383,7 @@ export function HandlebarsEditor({
         }}
         options={{
           theme: 'handlebars-dark',
-          fixedOverflowWidgets: true,
+          fixedOverflowWidgets: false,
           minimap: { enabled: false },
           lineNumbers: 'off',
           glyphMargin: false,
@@ -299,6 +393,7 @@ export function HandlebarsEditor({
           scrollBeyondLastLine: false,
           wordWrap: 'on',
           wrappingIndent: 'same',
+          links: false,
           fontSize: 13,
           fontFamily:
             'ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace',
@@ -315,12 +410,14 @@ export function HandlebarsEditor({
             showIcons: true,
             showStatusBar: false,
           },
+          wordBasedSuggestions: 'off',
           quickSuggestions: {
             other: true,
             strings: true,
             comments: false,
           },
           tabSize: 2,
+          autoClosingBrackets: 'always',
           renderLineHighlight: 'none',
           contextmenu: false,
         }}

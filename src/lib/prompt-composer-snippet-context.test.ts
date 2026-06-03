@@ -6,6 +6,7 @@ vi.mock('@monaco-editor/react', () => ({
 }));
 
 vi.mock('monaco-editor', () => ({}));
+vi.mock('monaco-editor/esm/vs/editor/edcore.main.js', () => ({}));
 
 import { buildWorkItemSnippetContext } from '@/features/new-task/ui-prompt-composer';
 import type { AzureDevOpsWorkItem, WorkItemComment } from '@/lib/api';

@@ -757,7 +757,14 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
   useRegisterKeyboardBindings(
     'settings-overlay',
     {
-      escape: () => {
+      escape: (event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        const isInMonaco = target?.closest('.monaco-editor') != null;
+        const hasOpenSuggestWidget =
+          document.querySelector('.monaco-editor .suggest-widget.visible') !=
+          null;
+        if (isInMonaco && hasOpenSuggestWidget) return false;
+
         onClose();
         return true;
       },

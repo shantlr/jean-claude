@@ -18,9 +18,10 @@ describe('Content-Security-Policy', () => {
       'utf8',
     );
 
-    expect(editor).toContain("import * as monaco from 'monaco-editor'");
+    expect(editor).toContain('edcore.main.js');
+    expect(editor).toContain('editor.worker?worker');
+    expect(editor).toContain('MonacoEnvironment');
     expect(editor).toContain('loader.config({ monaco })');
-    expect(editor).toContain('fixedOverflowWidgets: true');
     expect(editor).not.toContain('cdn.jsdelivr.net');
   });
 });
