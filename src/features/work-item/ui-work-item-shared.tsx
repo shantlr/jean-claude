@@ -101,7 +101,7 @@ export function HighlightedSearchText({
     nodes.push(
       <mark
         key={`${index}-${match[0]}`}
-        className="bg-acc/25 text-acc-ink rounded-sm px-0.5"
+        className="bg-acc/75 text-ink-0 ring-acc rounded-sm px-0.5 font-medium ring-1"
       >
         {match[0]}
       </mark>,
