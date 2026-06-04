@@ -285,6 +285,7 @@ export function ReviewFilesTree({
             filterPaths={searchFilterPaths}
             diffFiles={diffFiles}
             hideUnchanged={!isSearching && hideUnchanged}
+            searchQuery={searchQuery}
           />
         )}
       </div>

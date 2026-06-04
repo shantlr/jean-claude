@@ -40,6 +40,7 @@ export function FileTree({
   filterPaths,
   diffFiles,
   hideUnchanged,
+  searchQuery,
 }: {
   rootPath: string;
   projectRoot: string;
@@ -55,6 +56,8 @@ export function FileTree({
   diffFiles?: Map<string, DiffInfo>;
   /** When true, only show files that have changes (and their ancestor dirs) */
   hideUnchanged?: boolean;
+  /** Optional: highlights matching characters in file and folder names */
+  searchQuery?: string;
 }) {
   const { entries, isLoading } = useDirectoryListing({
     dirPath: rootPath,
@@ -102,9 +105,55 @@ export function FileTree({
           filterPaths={filterPaths}
           diffFiles={diffFiles}
           hideUnchanged={hideUnchanged}
+          searchQuery={searchQuery}
         />
       ))}
     </div>
+  );
+}
+
+function getHighlightedCharacterIndexes(text: string, searchQuery?: string) {
+  const tokens = searchQuery
+    ?.toLowerCase()
+    .split(/\s+/)
+    .filter((token) => token.length > 0);
+  if (!tokens?.length) return new Set<number>();
+
+  const lowerText = text.toLowerCase();
+  const indexes = new Set<number>();
+
+  for (const token of tokens) {
+    let textIndex = 0;
+
+    for (const character of token) {
+      const matchIndex = lowerText.indexOf(character, textIndex);
+      if (matchIndex === -1) break;
+      indexes.add(matchIndex);
+      textIndex = matchIndex + 1;
+    }
+  }
+
+  return indexes;
+}
+
+function HighlightedTreeName({
+  name,
+  searchQuery,
+}: {
+  name: string;
+  searchQuery?: string;
+}) {
+  const highlightedIndexes = getHighlightedCharacterIndexes(name, searchQuery);
+  if (highlightedIndexes.size === 0) return name;
+
+  return [...name].map((character, index) =>
+    highlightedIndexes.has(index) ? (
+      <span key={index} className="bg-acc/60 text-white">
+        {character}
+      </span>
+    ) : (
+      character
+    ),
   );
 }
 
@@ -120,6 +169,7 @@ function FileTreeNode({
   filterPaths,
   diffFiles,
   hideUnchanged,
+  searchQuery,
 }: {
   entry: { name: string; path: string; isDirectory: boolean };
   projectRoot: string;
@@ -132,6 +182,7 @@ function FileTreeNode({
   filterPaths?: Set<string> | null;
   diffFiles?: Map<string, DiffInfo>;
   hideUnchanged?: boolean;
+  searchQuery?: string;
 }) {
   // When filtering, force directories open so matches are visible
   const isExpanded = filterPaths ? true : expandedDirs.has(entry.path);
@@ -181,7 +232,7 @@ function FileTreeNode({
           <span
             className={clsx('truncate', hasChangedDescendants && 'font-medium')}
           >
-            {entry.name}
+            <HighlightedTreeName name={entry.name} searchQuery={searchQuery} />
           </span>
           {!isExpanded && hasChangedDescendants && (
             <span className="mr-2 ml-auto shrink-0 rounded-full bg-orange-500/15 px-1.5 py-px font-mono text-[9px] leading-none font-medium text-orange-400">
@@ -208,6 +259,7 @@ function FileTreeNode({
             filterPaths={filterPaths}
             diffFiles={diffFiles}
             hideUnchanged={hideUnchanged}
+            searchQuery={searchQuery}
           />
         )}
       </div>
@@ -233,7 +285,7 @@ function FileTreeNode({
     >
       <File className="text-ink-3 h-3.5 w-3.5 shrink-0" />
       <span className={clsx('truncate', isDeleted && 'line-through')}>
-        {entry.name}
+        <HighlightedTreeName name={entry.name} searchQuery={searchQuery} />
       </span>
       {fileDiffInfo && (
         <span
@@ -272,6 +324,7 @@ function DirectoryChildren({
   filterPaths,
   diffFiles,
   hideUnchanged,
+  searchQuery,
 }: {
   dirPath: string;
   projectRoot: string;
@@ -284,6 +337,7 @@ function DirectoryChildren({
   filterPaths?: Set<string> | null;
   diffFiles?: Map<string, DiffInfo>;
   hideUnchanged?: boolean;
+  searchQuery?: string;
 }) {
   const { entries, isLoading } = useDirectoryListing({
     dirPath,
@@ -342,6 +396,7 @@ function DirectoryChildren({
           filterPaths={filterPaths}
           diffFiles={diffFiles}
           hideUnchanged={hideUnchanged}
+          searchQuery={searchQuery}
         />
       ))}
     </>
