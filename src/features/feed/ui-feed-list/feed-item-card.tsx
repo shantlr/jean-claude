@@ -31,7 +31,9 @@ import {
   DropdownItem,
 } from '@/common/ui/dropdown';
 import { ProjectLogoBackground } from '@/features/project/ui-project-logo';
+import { PrAutoComplete } from '@/features/pull-request/ui-pr-auto-complete';
 import { CompleteTaskDialog } from '@/features/task/ui-task-panel/complete-task-dialog';
+import { usePullRequest } from '@/hooks/use-pull-requests';
 import { useCompleteTask, useTask } from '@/hooks/use-tasks';
 import { formatRelativeTime } from '@/lib/time';
 import {
@@ -260,6 +262,31 @@ function CompleteTaskButton({ taskId }: { taskId: string }) {
   );
 }
 
+function RailPrAutoCompleteButton({
+  projectId,
+  prId,
+}: {
+  projectId: string;
+  prId: number;
+}) {
+  const { data: pr, isLoading } = usePullRequest(projectId, prId);
+
+  if (isLoading) {
+    return (
+      <span className="text-ink-3 ml-auto flex items-center gap-1 px-1.5 py-0.5 text-[10px]">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Loading
+      </span>
+    );
+  }
+
+  if (!pr || pr.status !== 'active' || pr.isDraft || pr.autoCompleteSetBy) {
+    return null;
+  }
+
+  return <PrAutoComplete pr={pr} projectId={projectId} variant="compact" />;
+}
+
 // ─── Main FeedItemCard ───────────────────────────────────────────
 export function FeedItemCard({
   item,
@@ -323,6 +350,13 @@ export function FeedItemCard({
   const prApprovalCount = item.approvedBy?.length ?? 0;
   const showRail = isTask && !isSubtask && (hasChildren || hasPr);
   const isPrFocused = hasPr && currentPrId === String(item.pullRequestId);
+  const showAutoCompleteButton =
+    hasPr &&
+    prApprovalCount > 0 &&
+    !prMerged &&
+    !prHasConflicts &&
+    !item.isDraft &&
+    !!item.pullRequestId;
 
   // Complete task (for merged PRs)
   const canComplete = isTask && prMerged && !!item.taskId && !item.isCompleted;
@@ -794,56 +828,64 @@ export function FeedItemCard({
                 />
                 <PrDiamond merged={prMerged} />
               </div>
-              <div className="text-ink-3 flex flex-1 items-center gap-1.5 py-1.5 pr-3.5 text-[10.5px]">
-                <span
-                  className={clsx(
-                    'font-mono',
-                    prMerged ? 'text-status-done' : 'text-status-pr',
-                  )}
-                >
-                  {prMerged ? (
-                    <GitMerge className="inline h-3 w-3" />
-                  ) : (
-                    <GitPullRequest className="inline h-3 w-3" />
-                  )}{' '}
-                  #{item.pullRequestId}
-                </span>
-                <span>{prMerged ? 'merged' : 'open'}</span>
-                {item.isDraft && (
-                  <span className="border-glass-border text-ink-3 rounded border px-1 py-0 text-[9px]">
-                    Draft
-                  </span>
-                )}
-                {prApprovalCount > 0 && (
+              <div className="flex flex-1 flex-col gap-1 py-1.5 pr-3.5">
+                <div className="text-ink-3 flex items-center gap-1.5 text-[10.5px]">
                   <span
-                    className="text-status-done flex items-center gap-0.5"
-                    title={item.approvedBy
-                      ?.map((reviewer) => reviewer.displayName)
-                      .join(', ')}
+                    className={clsx(
+                      'font-mono',
+                      prMerged ? 'text-status-done' : 'text-status-pr',
+                    )}
                   >
-                    <CheckCircle2 className="h-2.5 w-2.5" />
-                    <span className="text-[9.5px]">
-                      {prApprovalCount === 1
-                        ? 'Approved'
-                        : `${prApprovalCount} approvals`}
+                    {prMerged ? (
+                      <GitMerge className="inline h-3 w-3" />
+                    ) : (
+                      <GitPullRequest className="inline h-3 w-3" />
+                    )}{' '}
+                    #{item.pullRequestId}
+                  </span>
+                  <span>{prMerged ? 'merged' : 'open'}</span>
+                  {item.isDraft && (
+                    <span className="border-glass-border text-ink-3 rounded border px-1 py-0 text-[9px]">
+                      Draft
                     </span>
-                  </span>
-                )}
-                {prHasConflicts && (
-                  <span className="text-status-fail flex items-center gap-0.5">
-                    <XCircle className="h-2.5 w-2.5" />
-                    <span className="text-[9.5px]">Conflicts</span>
-                  </span>
-                )}
-                {(item.activeThreadCount ?? 0) > 0 && (
-                  <span className="text-status-pr flex items-center gap-0.5">
-                    <MessageSquare className="h-2.5 w-2.5" />
-                    <span className="text-[9.5px]">
-                      {item.activeThreadCount}
+                  )}
+                  {prApprovalCount > 0 && (
+                    <span
+                      className="text-status-done flex items-center gap-0.5"
+                      title={item.approvedBy
+                        ?.map((reviewer) => reviewer.displayName)
+                        .join(', ')}
+                    >
+                      <CheckCircle2 className="h-2.5 w-2.5" />
+                      <span className="text-[9.5px]">
+                        {prApprovalCount === 1
+                          ? 'Approved'
+                          : `${prApprovalCount} approvals`}
+                      </span>
                     </span>
-                  </span>
+                  )}
+                  {prHasConflicts && (
+                    <span className="text-status-fail flex items-center gap-0.5">
+                      <XCircle className="h-2.5 w-2.5" />
+                      <span className="text-[9.5px]">Conflicts</span>
+                    </span>
+                  )}
+                  {(item.activeThreadCount ?? 0) > 0 && (
+                    <span className="text-status-pr flex items-center gap-0.5">
+                      <MessageSquare className="h-2.5 w-2.5" />
+                      <span className="text-[9.5px]">
+                        {item.activeThreadCount}
+                      </span>
+                    </span>
+                  )}
+                  {canComplete && <CompleteTaskButton taskId={item.taskId!} />}
+                </div>
+                {showAutoCompleteButton && item.pullRequestId && (
+                  <RailPrAutoCompleteButton
+                    projectId={item.projectId}
+                    prId={item.pullRequestId}
+                  />
                 )}
-                {canComplete && <CompleteTaskButton taskId={item.taskId!} />}
               </div>
             </div>
           )}
