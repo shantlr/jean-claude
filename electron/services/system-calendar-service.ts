@@ -674,34 +674,38 @@ class SystemCalendarService {
         });
       }
 
-      const ongoingEvents = await this.fetchUpcomingEvents({
-        lookaheadMinutes: 0,
-        includeOngoing: true,
-        lookBehindMinutes: Math.ceil(MEETING_START_POPUP_GRACE_MS / 60_000),
-        logDiagnostics: false,
-      });
-      for (const event of ongoingEvents) {
-        const notificationKey = buildCalendarNotificationKey(event);
-        if (this.startPopupEvents.has(notificationKey)) {
-          continue;
-        }
+      if (settings.showStartWindow) {
+        const ongoingEvents = await this.fetchUpcomingEvents({
+          lookaheadMinutes: 0,
+          includeOngoing: true,
+          lookBehindMinutes: Math.ceil(MEETING_START_POPUP_GRACE_MS / 60_000),
+          logDiagnostics: false,
+        });
+        for (const event of ongoingEvents) {
+          const notificationKey = buildCalendarNotificationKey(event);
+          if (this.startPopupEvents.has(notificationKey)) {
+            continue;
+          }
 
-        const startAtMs = new Date(event.startAt).getTime();
-        const endAtMs = new Date(event.endAt).getTime();
-        const nowMs = Date.now();
-        if (
-          !Number.isFinite(startAtMs) ||
-          !Number.isFinite(endAtMs) ||
-          startAtMs > nowMs ||
-          endAtMs <= nowMs ||
-          nowMs - startAtMs > MEETING_START_POPUP_GRACE_MS
-        ) {
-          continue;
-        }
+          const startAtMs = new Date(event.startAt).getTime();
+          const endAtMs = new Date(event.endAt).getTime();
+          const nowMs = Date.now();
+          if (
+            !Number.isFinite(startAtMs) ||
+            !Number.isFinite(endAtMs) ||
+            startAtMs > nowMs ||
+            endAtMs <= nowMs ||
+            nowMs - startAtMs > MEETING_START_POPUP_GRACE_MS
+          ) {
+            continue;
+          }
 
-        if (this.showMeetingStartPopup(event, notificationKey)) {
-          this.startPopupEvents.set(notificationKey, endAtMs);
+          if (this.showMeetingStartPopup(event, notificationKey)) {
+            this.startPopupEvents.set(notificationKey, endAtMs);
+          }
         }
+      } else {
+        this.closeMeetingStartPopups();
       }
 
       this.cleanupExpiredNotifiedEvents();

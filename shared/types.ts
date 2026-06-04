@@ -650,6 +650,7 @@ export const DEFAULT_TASK_NOTIFICATION_MODES: Record<
 export interface CalendarNotificationsSetting {
   enabled: boolean;
   leadTimeMinutes: number;
+  showStartWindow: boolean;
 }
 
 export const DEFAULT_CALENDAR_NOTIFICATION_LEAD_TIME_MINUTES = 5;
@@ -868,6 +869,7 @@ function isCalendarNotificationsSetting(
   const obj = v as Record<string, unknown>;
   return (
     typeof obj.enabled === 'boolean' &&
+    typeof obj.showStartWindow === 'boolean' &&
     typeof obj.leadTimeMinutes === 'number' &&
     Number.isInteger(obj.leadTimeMinutes) &&
     obj.leadTimeMinutes >= 1 &&
@@ -1035,6 +1037,7 @@ export const SETTINGS_DEFINITIONS = {
     defaultValue: {
       enabled: false,
       leadTimeMinutes: DEFAULT_CALENDAR_NOTIFICATION_LEAD_TIME_MINUTES,
+      showStartWindow: false,
     } as CalendarNotificationsSetting,
     validate: isCalendarNotificationsSetting,
   },

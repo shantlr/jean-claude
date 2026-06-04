@@ -557,6 +557,7 @@ function CalendarNotificationSettings() {
     calendarNotificationsSetting ?? {
       enabled: false,
       leadTimeMinutes: DEFAULT_CALENDAR_NOTIFICATION_LEAD_TIME_MINUTES,
+      showStartWindow: false,
     };
   const isSupported = api.platform === 'darwin';
   const [leadTimeInput, setLeadTimeInput] = useState(
@@ -612,6 +613,21 @@ function CalendarNotificationSettings() {
                 ? 'Calendar reminders are currently supported on macOS only.'
                 : 'Jean-Claude reads your macOS Calendar events and shows a reminder shortly before a meeting begins.'
             }
+          />
+        </div>
+
+        <div className="border-glass-border bg-bg-1 rounded-lg border px-4 py-3">
+          <Checkbox
+            checked={settings.showStartWindow}
+            onChange={() =>
+              updateSetting({
+                ...settings,
+                showStartWindow: !settings.showStartWindow,
+              })
+            }
+            disabled={!settings.enabled || !isSupported}
+            label="Show a window when meetings start"
+            description="Display an always-on-top meeting window at the scheduled start time, with a quick join action when available."
           />
         </div>
 

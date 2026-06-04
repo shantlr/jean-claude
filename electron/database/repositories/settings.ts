@@ -2,6 +2,7 @@ import {
   DEFAULT_TASK_NOTIFICATION_MODES,
   SETTINGS_DEFINITIONS,
   AppSettings,
+  type CalendarNotificationsSetting,
   type TaskEventNotificationsSetting,
   type TaskNotificationEvent,
   type TaskNotificationMode,
@@ -42,6 +43,24 @@ function migrateTaskEventNotificationsSetting(
   return { modes };
 }
 
+function normalizeCalendarNotificationsSetting(
+  value: unknown,
+): CalendarNotificationsSetting | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const obj = value as Record<string, unknown>;
+  if (typeof obj.showStartWindow === 'boolean' || 'showStartWindow' in obj) {
+    return null;
+  }
+
+  return {
+    ...obj,
+    showStartWindow: false,
+  } as CalendarNotificationsSetting;
+}
+
 export const SettingsRepository = {
   async get<K extends keyof AppSettings>(key: K): Promise<AppSettings[K]> {
     const def = SETTINGS_DEFINITIONS[key];
@@ -61,6 +80,12 @@ export const SettingsRepository = {
         const migrated = migrateTaskEventNotificationsSetting(parsed);
         if (migrated && def.validate(migrated)) {
           return migrated as AppSettings[K];
+        }
+      }
+      if (key === 'calendarNotifications') {
+        const normalized = normalizeCalendarNotificationsSetting(parsed);
+        if (normalized && def.validate(normalized)) {
+          return normalized as AppSettings[K];
         }
       }
       if (def.validate(parsed)) {
