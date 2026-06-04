@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, screen, shell } from 'electron';
 
 import type { UpcomingMeeting } from '@shared/calendar-types';
 import type { AppNotification } from '@shared/notification-types';
@@ -25,6 +25,13 @@ const CALENDAR_MEETINGS_LOOKAHEAD_MINUTES = 31 * 24 * 60;
 const CALENDAR_MEETINGS_LOOKBEHIND_MINUTES = 31 * 24 * 60;
 const CALENDAR_MEETINGS_MAX = 250;
 const REVEAL_MEETING_TIMEOUT_MS = 15_000;
+const MEETING_START_POPUP_GRACE_MS = 5 * 60_000;
+const MEETING_START_POPUP_WIDTH = 440;
+const MEETING_START_POPUP_HEIGHT = 220;
+const MEETING_START_POPUP_SCHEME = 'jean-claude-meeting-popup:';
+
+const TEAMS_URL_PATTERN =
+  /https?:\/\/(?:[^\s<>()"']+\.)?(?:teams\.microsoft\.com|teams\.live\.com|teams\.cloud\.microsoft)\/[^\s<>()"']+/gi;
 
 function compareCalendarDateTime(a: string, b: string): number {
   const timestampDiff = new Date(a).getTime() - new Date(b).getTime();
@@ -84,6 +91,163 @@ function safeJsonParse(value: string | null): Record<string, unknown> | null {
 function formatMeetingBody(event: CalendarEventRecord): string {
   const locationSuffix = event.location ? ` - ${event.location}` : '';
   return `Starts at ${event.startLabel}${locationSuffix}`;
+}
+
+function formatMeetingTimeRange(event: CalendarEventRecord): string {
+  const start = new Date(event.startAt);
+  const end = new Date(event.endAt);
+  return `${start.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  })} - ${end.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  })}`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function extractTeamsUrl(event: CalendarEventRecord): string | null {
+  const haystack = [event.url, event.location, event.notes].join('\n');
+  const matches = haystack.matchAll(TEAMS_URL_PATTERN);
+  for (const match of matches) {
+    const rawUrl = match[0].replaceAll('&amp;', '&').replace(/[.,;:!?]+$/, '');
+    if (isValidTeamsUrl(rawUrl)) {
+      return new URL(rawUrl).toString();
+    }
+  }
+  return null;
+}
+
+function isValidTeamsUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === 'https:' &&
+      (url.hostname === 'teams.microsoft.com' ||
+        url.hostname.endsWith('.teams.microsoft.com') ||
+        url.hostname === 'teams.live.com' ||
+        url.hostname.endsWith('.teams.live.com') ||
+        url.hostname === 'teams.cloud.microsoft' ||
+        url.hostname.endsWith('.teams.cloud.microsoft'))
+    );
+  } catch {
+    return false;
+  }
+}
+
+function buildMeetingStartPopupHtml(event: CalendarEventRecord): string {
+  const teamsUrl = extractTeamsUrl(event);
+  const timeRange = formatMeetingTimeRange(event);
+  const joinHref = teamsUrl
+    ? `${MEETING_START_POPUP_SCHEME}//join?url=${encodeURIComponent(teamsUrl)}`
+    : null;
+  const dismissHref = `${MEETING_START_POPUP_SCHEME}//dismiss`;
+  const secondaryText = [timeRange, event.calendarName]
+    .filter(Boolean)
+    .join(' · ');
+
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; navigate-to ${MEETING_START_POPUP_SCHEME};" />
+    <title>Meeting started</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: stretch;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: radial-gradient(circle at 18% 12%, rgba(250, 204, 21, 0.28), transparent 34%), #101014;
+        color: #f8fafc;
+      }
+      main {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 24px;
+        border: 1px solid rgba(250, 204, 21, 0.32);
+        background: linear-gradient(145deg, rgba(24, 24, 27, 0.96), rgba(9, 9, 11, 0.96));
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+        min-height: 100vh;
+      }
+      .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #fde68a;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+      .pulse {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        background: #facc15;
+        box-shadow: 0 0 0 8px rgba(250, 204, 21, 0.16);
+      }
+      h1 {
+        margin: 0;
+        font-size: 26px;
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+      }
+      .meta {
+        color: #cbd5e1;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .actions {
+        display: flex;
+        gap: 10px;
+        margin-top: auto;
+      }
+      a {
+        flex: 1;
+        border-radius: 12px;
+        padding: 12px 14px;
+        text-align: center;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 800;
+      }
+      .join {
+        background: #facc15;
+        color: #111827;
+      }
+      .dismiss {
+        background: rgba(255, 255, 255, 0.08);
+        color: #e5e7eb;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow"><span class="pulse"></span>Meeting started</div>
+      <h1>${escapeHtml(event.subject)}</h1>
+      <div class="meta">${escapeHtml(secondaryText)}</div>
+      ${event.location ? `<div class="meta">${escapeHtml(event.location)}</div>` : ''}
+      <div class="actions">
+        ${joinHref ? `<a class="join" href="${joinHref}">Open Teams call</a>` : ''}
+        <a class="dismiss" href="${dismissHref}">Dismiss</a>
+      </div>
+    </main>
+  </body>
+</html>`;
 }
 
 function parseSystemCalendarEvents(rawOutput: string): CalendarEventRecord[] {
@@ -348,6 +512,7 @@ class SystemCalendarService {
   private isPolling = false;
   private lastErrorKey: string | null = null;
   private notifiedEvents = new Map<string, number>();
+  private startPopupEvents = new Map<string, number>();
 
   start() {
     if (process.platform !== 'darwin') {
@@ -374,6 +539,7 @@ class SystemCalendarService {
       clearInterval(this.timer);
       this.timer = null;
     }
+    this.closeMeetingStartPopups();
   }
 
   async listUpcomingMeetings(): Promise<UpcomingMeeting[]> {
@@ -483,6 +649,7 @@ class SystemCalendarService {
       const settings = await SettingsRepository.get('calendarNotifications');
       if (!settings.enabled) {
         this.cleanupExpiredNotifiedEvents();
+        this.closeMeetingStartPopups();
         return;
       }
 
@@ -507,6 +674,36 @@ class SystemCalendarService {
         });
       }
 
+      const ongoingEvents = await this.fetchUpcomingEvents({
+        lookaheadMinutes: 0,
+        includeOngoing: true,
+        lookBehindMinutes: Math.ceil(MEETING_START_POPUP_GRACE_MS / 60_000),
+        logDiagnostics: false,
+      });
+      for (const event of ongoingEvents) {
+        const notificationKey = buildCalendarNotificationKey(event);
+        if (this.startPopupEvents.has(notificationKey)) {
+          continue;
+        }
+
+        const startAtMs = new Date(event.startAt).getTime();
+        const endAtMs = new Date(event.endAt).getTime();
+        const nowMs = Date.now();
+        if (
+          !Number.isFinite(startAtMs) ||
+          !Number.isFinite(endAtMs) ||
+          startAtMs > nowMs ||
+          endAtMs <= nowMs ||
+          nowMs - startAtMs > MEETING_START_POPUP_GRACE_MS
+        ) {
+          continue;
+        }
+
+        if (this.showMeetingStartPopup(event, notificationKey)) {
+          this.startPopupEvents.set(notificationKey, endAtMs);
+        }
+      }
+
       this.cleanupExpiredNotifiedEvents();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -523,10 +720,12 @@ class SystemCalendarService {
     lookaheadMinutes,
     includeOngoing,
     lookBehindMinutes,
+    logDiagnostics = true,
   }: {
     lookaheadMinutes: number;
     includeOngoing: boolean;
     lookBehindMinutes?: number;
+    logDiagnostics?: boolean;
   }): Promise<CalendarEventRecord[]> {
     const script = buildSystemCalendarSwiftScript({
       lookaheadMinutes,
@@ -543,7 +742,7 @@ class SystemCalendarService {
       events.length,
       lookaheadMinutes,
     );
-    if (events.length === 0) {
+    if (events.length === 0 && logDiagnostics) {
       await this.logCalendarDiagnostics();
     }
     return events;
@@ -624,6 +823,114 @@ class SystemCalendarService {
     for (const [notificationKey, endAtMs] of this.notifiedEvents) {
       if (!Number.isFinite(endAtMs) || endAtMs < cutoff) {
         this.notifiedEvents.delete(notificationKey);
+      }
+    }
+    for (const [notificationKey, endAtMs] of this.startPopupEvents) {
+      if (!Number.isFinite(endAtMs) || endAtMs < cutoff) {
+        this.startPopupEvents.delete(notificationKey);
+      }
+    }
+  }
+
+  private showMeetingStartPopup(
+    event: CalendarEventRecord,
+    notificationKey: string,
+  ): boolean {
+    const existing = BrowserWindow.getAllWindows().find(
+      (win) =>
+        !win.isDestroyed() &&
+        win.getTitle() === `Meeting started: ${notificationKey}`,
+    );
+    if (existing) {
+      existing.show();
+      existing.focus();
+      return true;
+    }
+
+    const cursor = screen.getCursorScreenPoint();
+    const display = screen.getDisplayNearestPoint(cursor);
+    const area = display.workArea;
+    const x = area.x + (area.width - MEETING_START_POPUP_WIDTH) / 2;
+    const y = area.y + (area.height - MEETING_START_POPUP_HEIGHT) / 2;
+
+    const popup = new BrowserWindow({
+      width: MEETING_START_POPUP_WIDTH,
+      height: MEETING_START_POPUP_HEIGHT,
+      x: Math.round(x),
+      y: Math.round(y),
+      title: `Meeting started: ${notificationKey}`,
+      alwaysOnTop: true,
+      fullscreenable: false,
+      maximizable: false,
+      minimizable: false,
+      resizable: false,
+      skipTaskbar: true,
+      show: false,
+      webPreferences: {
+        sandbox: true,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    popup.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    popup.setAlwaysOnTop(true, 'floating');
+    popup.webContents.setWindowOpenHandler(({ url }) => {
+      this.handleMeetingPopupNavigation(url, popup);
+      return { action: 'deny' };
+    });
+    popup.webContents.on('will-navigate', (event, url) => {
+      if (this.handleMeetingPopupNavigation(url, popup)) {
+        event.preventDefault();
+      }
+    });
+    popup.once('ready-to-show', () => {
+      popup.show();
+      popup.focus();
+    });
+
+    popup
+      .loadURL(
+        `data:text/html;charset=utf-8,${encodeURIComponent(
+          buildMeetingStartPopupHtml(event),
+        )}`,
+      )
+      .catch((error) => {
+        dbg.notification('Meeting start popup failed to load: %O', error);
+        this.startPopupEvents.delete(notificationKey);
+        if (!popup.isDestroyed()) {
+          popup.close();
+        }
+      });
+    return true;
+  }
+
+  private handleMeetingPopupNavigation(url: string, popup: BrowserWindow) {
+    if (!url.startsWith(MEETING_START_POPUP_SCHEME)) {
+      return false;
+    }
+
+    if (url.startsWith(`${MEETING_START_POPUP_SCHEME}//join`)) {
+      const parsed = new URL(url);
+      const teamsUrl = parsed.searchParams.get('url');
+      if (teamsUrl && isValidTeamsUrl(teamsUrl)) {
+        void shell.openExternal(teamsUrl);
+      }
+    }
+
+    if (!popup.isDestroyed()) {
+      popup.close();
+    }
+    return true;
+  }
+
+  private closeMeetingStartPopups() {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (
+        !win.isDestroyed() &&
+        win.getTitle().startsWith('Meeting started: ')
+      ) {
+        win.close();
       }
     }
   }
