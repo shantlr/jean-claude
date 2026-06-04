@@ -535,14 +535,14 @@ export interface Api {
       delete: (
         taskId: string,
         options?: { keepBranch?: boolean },
-      ) => Promise<void>;
+      ) => Promise<{ editorCloseWarning?: string }>;
       cleanupAfterCompletion: (
         taskId: string,
         params: {
           worktreePath: string;
           branchName: string;
         },
-      ) => Promise<void>;
+      ) => Promise<{ editorCloseWarning?: string }>;
     };
     summary: {
       get: (taskId: string) => Promise<TaskSummary | undefined>;
@@ -555,7 +555,7 @@ export interface Api {
       isDraft: boolean;
       deleteWorktree?: boolean;
       commitUnstaged?: boolean;
-    }) => Promise<{ id: number; url: string }>;
+    }) => Promise<{ id: number; url: string; editorCloseWarning?: string }>;
     createPrReview: (params: {
       projectId: string;
       pullRequestId: number;
@@ -1537,8 +1537,8 @@ export const api: Api = hasWindowApi
             }) as MergeWorktreeResult,
           getBranches: async () => [],
           pushBranch: async () => {},
-          delete: async () => {},
-          cleanupAfterCompletion: async () => {},
+          delete: async () => ({}),
+          cleanupAfterCompletion: async () => ({}),
         },
         summary: {
           get: async () => undefined,

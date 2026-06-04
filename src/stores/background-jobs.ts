@@ -27,6 +27,7 @@ interface BackgroundJobBase {
   createdAt: string;
   completedAt: string | null;
   errorMessage: string | null;
+  warningMessage: string | null;
   taskId: string | null;
   projectId: string | null;
   noteId: string | null;
@@ -246,6 +247,7 @@ interface BackgroundJobsState {
       taskId?: string | null;
       projectId?: string | null;
       noteId?: string | null;
+      warningMessage?: string | null;
     },
   ) => void;
   markJobFailed: (id: string, errorMessage: string) => void;
@@ -277,6 +279,7 @@ export const useBackgroundJobsStore = create<BackgroundJobsState>()(
           createdAt,
           completedAt: null,
           errorMessage: null,
+          warningMessage: null,
           taskId,
           projectId,
           noteId,
@@ -299,6 +302,7 @@ export const useBackgroundJobsStore = create<BackgroundJobsState>()(
                   status: 'succeeded',
                   completedAt,
                   errorMessage: null,
+                  warningMessage: data?.warningMessage ?? job.warningMessage,
                   taskId: data?.taskId ?? job.taskId,
                   projectId: data?.projectId ?? job.projectId,
                   noteId: data?.noteId ?? job.noteId,
@@ -318,6 +322,7 @@ export const useBackgroundJobsStore = create<BackgroundJobsState>()(
                   status: 'failed',
                   completedAt,
                   errorMessage,
+                  warningMessage: null,
                 }
               : job,
           ),
@@ -333,6 +338,7 @@ export const useBackgroundJobsStore = create<BackgroundJobsState>()(
                   status: 'running',
                   completedAt: null,
                   errorMessage: null,
+                  warningMessage: null,
                 }
               : job,
           ),

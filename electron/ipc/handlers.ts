@@ -173,7 +173,7 @@ import {
   resetClient as resetCompletionClient,
   getDailyUsage as getCompletionDailyUsage,
 } from '../services/completion-service';
-import { closeEditorWindowsForWorktree } from '../services/editor-window-service';
+import { closeEditorWindowsForTaskWorktree } from '../services/editor-automation-service';
 import {
   createFeedNote,
   deleteFeedNote,
@@ -510,23 +510,6 @@ function validateUpdateSourceInstallParams(
       'overwriteLocalChanges',
     ),
   };
-}
-
-async function closeEditorWindowsForTaskWorktree(task: {
-  id: string;
-  worktreePath: string | null;
-}): Promise<void> {
-  if (!task.worktreePath) return;
-
-  const automationSetting = await SettingsRepository.get('editorAutomation');
-  if (!automationSetting.closeWindowsOnTaskCompletion) return;
-
-  const editorSetting = await SettingsRepository.get('editor');
-  await closeEditorWindowsForWorktree({
-    worktreePath: task.worktreePath,
-    editorSetting,
-  });
-  dbg.ipc('Closed editor windows for task %s worktree', task.id);
 }
 
 function buildSkillCreationPrompt({
@@ -1560,6 +1543,10 @@ export function registerIpcHandlers() {
       if (!project) throw new Error('Project not found');
 
       const worktreeExists = await pathExists(params.worktreePath);
+      const editorCloseWarning = await closeEditorWindowsForTaskWorktree({
+        id: taskId,
+        worktreePath: params.worktreePath,
+      });
       if (worktreeExists) {
         await cleanupWorktree({
           worktreePath: params.worktreePath,
@@ -1573,6 +1560,7 @@ export function registerIpcHandlers() {
           branchName: params.branchName,
         });
       }
+      return { editorCloseWarning };
     },
   );
   ipcMain.handle('tasks:clearUserCompleted', (_, id: string) =>
@@ -2798,13 +2786,14 @@ export function registerIpcHandlers() {
     'tasks:worktree:delete',
     async (_, taskId: string, options?: { keepBranch?: boolean }) => {
       const task = await TaskRepository.findById(taskId);
-      if (!task?.worktreePath) return;
+      if (!task?.worktreePath) return {};
 
       const project = await ProjectRepository.findById(task.projectId);
-      if (!project) return;
+      if (!project) return {};
 
       const shouldKeepBranch = options?.keepBranch ?? false;
       const worktreeExists = await pathExists(task.worktreePath);
+      const editorCloseWarning = await closeEditorWindowsForTaskWorktree(task);
 
       if (worktreeExists) {
         await cleanupWorktree({
@@ -2827,6 +2816,7 @@ export function registerIpcHandlers() {
         startCommitHash: null,
         sourceBranch: null,
       });
+      return { editorCloseWarning };
     },
   );
 
@@ -2929,7 +2919,9 @@ export function registerIpcHandlers() {
       });
 
       // Step 6: Optionally delete worktree (keep branch)
+      let editorCloseWarning: string | undefined;
       if (params.deleteWorktree) {
+        editorCloseWarning = await closeEditorWindowsForTaskWorktree(task);
         await cleanupWorktree({
           worktreePath: task.worktreePath,
           projectPath: project.path,
@@ -2939,7 +2931,7 @@ export function registerIpcHandlers() {
         await TaskRepository.update(params.taskId, { worktreePath: null });
       }
 
-      return { id: pr.id, url: pr.url };
+      return { id: pr.id, url: pr.url, editorCloseWarning };
     },
   );
 

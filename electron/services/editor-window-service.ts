@@ -2,12 +2,19 @@ import { execFile } from 'child_process';
 import * as path from 'path';
 import { promisify } from 'util';
 
+import { systemPreferences } from 'electron';
+
 import { PRESET_EDITORS, type EditorSetting } from '@shared/types';
 
 import { dbg } from '../lib/debug';
 
 const execFileAsync = promisify(execFile);
 const CLOSE_WINDOW_TIMEOUT_MS = 3_000;
+
+export interface EditorWindowCloseResult {
+  attempted: boolean;
+  warning?: string;
+}
 
 const PRESET_PROCESS_NAMES: Record<string, string[]> = {
   vscode: ['Visual Studio Code', 'Code'],
@@ -66,7 +73,8 @@ on run argv
         try
           set editorWindowName to name of editorWindow as text
           if editorWindowName contains worktreeName or editorWindowName contains worktreePath then
-            click (first button of editorWindow whose subrole is "AXCloseButton")
+            set closeButton to first button of editorWindow whose subrole is "AXCloseButton"
+            perform action "AXPress" of closeButton
           end if
         end try
       end repeat
@@ -81,24 +89,40 @@ export async function closeEditorWindowsForWorktree({
 }: {
   worktreePath: string;
   editorSetting: EditorSetting;
-}): Promise<void> {
-  if (process.platform !== 'darwin') return;
+}): Promise<EditorWindowCloseResult> {
+  if (process.platform !== 'darwin') return { attempted: false };
+
+  if (!systemPreferences.isTrustedAccessibilityClient(false)) {
+    const trusted = systemPreferences.isTrustedAccessibilityClient(true);
+    const warning =
+      'Editor windows could not be closed because Accessibility permission is not granted.';
+    if (!trusted) {
+      dbg.ipc('%s Worktree: %s', warning, worktreePath);
+      return { attempted: false, warning };
+    }
+  }
 
   const appNames = Array.from(
     new Set(getEditorAppNames(editorSetting).filter(Boolean)),
   );
-  if (appNames.length === 0) return;
+  if (appNames.length === 0) {
+    return {
+      attempted: false,
+      warning: 'Editor windows could not be closed for the selected editor.',
+    };
+  }
 
   const worktreeName = path.basename(worktreePath);
 
-  await Promise.allSettled(
-    appNames.map(async (appName) => {
+  const results = await Promise.all(
+    appNames.map(async (appName): Promise<boolean> => {
       try {
         await execFileAsync(
           'osascript',
           ['-e', CLOSE_WINDOWS_SCRIPT, appName, worktreeName, worktreePath],
           { timeout: CLOSE_WINDOW_TIMEOUT_MS },
         );
+        return true;
       } catch (error) {
         dbg.ipc(
           'Failed to close editor windows for app %s and worktree %s: %O',
@@ -106,7 +130,18 @@ export async function closeEditorWindowsForWorktree({
           worktreePath,
           error,
         );
+        return false;
       }
     }),
   );
+
+  if (results.every((success) => !success)) {
+    return {
+      attempted: true,
+      warning:
+        'Editor windows could not be closed. Worktree cleanup continued.',
+    };
+  }
+
+  return { attempted: true };
 }

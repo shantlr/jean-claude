@@ -243,6 +243,11 @@ function JobRow({
           {job.errorMessage && (
             <p className="text-status-fail mt-1 text-xs">{job.errorMessage}</p>
           )}
+          {job.warningMessage && (
+            <p className="text-status-fail mt-1 text-xs">
+              {job.warningMessage}
+            </p>
+          )}
           <div className="mt-2 flex items-center gap-2">
             {job.type === 'task-creation' &&
               job.details.creationInput.prompt.trim() && (

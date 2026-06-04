@@ -196,7 +196,9 @@ export function PrCreationForm({
           }
         }
 
-        markJobSucceeded(jobId);
+        markJobSucceeded(jobId, {
+          warningMessage: result.editorCloseWarning ?? null,
+        });
       })
       .catch((err: unknown) => {
         const message =

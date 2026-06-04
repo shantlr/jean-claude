@@ -2,9 +2,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
 import { feedQueryKeys } from '@/lib/feed-query-keys';
+import { useToastStore } from '@/stores/toasts';
 
 export function useCreatePullRequest() {
   const queryClient = useQueryClient();
+  const addToast = useToastStore((s) => s.addToast);
   return useMutation({
     mutationFn: (params: {
       taskId: string;
@@ -14,7 +16,10 @@ export function useCreatePullRequest() {
       deleteWorktree?: boolean;
       commitUnstaged?: boolean;
     }) => api.tasks.createPullRequest(params),
-    onSuccess: (_, params) => {
+    onSuccess: (result, params) => {
+      if (result.editorCloseWarning) {
+        addToast({ type: 'error', message: result.editorCloseWarning });
+      }
       queryClient.invalidateQueries({ queryKey: ['tasks', params.taskId] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: feedQueryKeys.tasks });
