@@ -912,6 +912,7 @@ export interface Api {
     listUpcomingMeetings: () => Promise<UpcomingMeeting[]>;
     listTodayMeetings: () => Promise<UpcomingMeeting[]>;
     revealMeeting: (meeting: UpcomingMeeting) => Promise<void>;
+    setIgnoredMeetingIds: (ids: string[]) => Promise<void>;
   };
   agent: {
     start: (stepId: string) => Promise<void>;
@@ -1725,6 +1726,7 @@ export const api: Api = hasWindowApi
         listUpcomingMeetings: async () => [],
         listTodayMeetings: async () => [],
         revealMeeting: async () => {},
+        setIgnoredMeetingIds: async () => {},
       },
       agent: {
         start: async () => {

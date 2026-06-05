@@ -513,6 +513,9 @@ class SystemCalendarService {
   private lastErrorKey: string | null = null;
   private notifiedEvents = new Map<string, number>();
   private startPopupEvents = new Map<string, number>();
+  private startPopupWindows = new Map<string, BrowserWindow>();
+  private ignoredMeetingIds = new Set<string>();
+  private hasReceivedIgnoredMeetingIds = false;
 
   start() {
     if (process.platform !== 'darwin') {
@@ -540,6 +543,12 @@ class SystemCalendarService {
       this.timer = null;
     }
     this.closeMeetingStartPopups();
+  }
+
+  setIgnoredMeetingIds(ids: string[]) {
+    this.ignoredMeetingIds = new Set(ids);
+    this.hasReceivedIgnoredMeetingIds = true;
+    this.closeIgnoredMeetingStartPopups();
   }
 
   async listUpcomingMeetings(): Promise<UpcomingMeeting[]> {
@@ -674,7 +683,7 @@ class SystemCalendarService {
         });
       }
 
-      if (settings.showStartWindow) {
+      if (settings.showStartWindow && this.hasReceivedIgnoredMeetingIds) {
         const ongoingEvents = await this.fetchUpcomingEvents({
           lookaheadMinutes: 0,
           includeOngoing: true,
@@ -683,6 +692,10 @@ class SystemCalendarService {
         });
         for (const event of ongoingEvents) {
           const notificationKey = buildCalendarNotificationKey(event);
+          if (this.ignoredMeetingIds.has(notificationKey)) {
+            continue;
+          }
+
           if (this.startPopupEvents.has(notificationKey)) {
             continue;
           }
@@ -836,15 +849,22 @@ class SystemCalendarService {
     }
   }
 
+  private closeIgnoredMeetingStartPopups() {
+    for (const notificationKey of this.ignoredMeetingIds) {
+      const popup = this.startPopupWindows.get(notificationKey);
+      if (popup && !popup.isDestroyed()) {
+        popup.close();
+      }
+      this.startPopupEvents.delete(notificationKey);
+      this.startPopupWindows.delete(notificationKey);
+    }
+  }
+
   private showMeetingStartPopup(
     event: CalendarEventRecord,
     notificationKey: string,
   ): boolean {
-    const existing = BrowserWindow.getAllWindows().find(
-      (win) =>
-        !win.isDestroyed() &&
-        win.getTitle() === `Meeting started: ${notificationKey}`,
-    );
+    const existing = this.startPopupWindows.get(notificationKey);
     if (existing) {
       existing.show();
       existing.focus();
@@ -876,6 +896,10 @@ class SystemCalendarService {
         nodeIntegration: false,
       },
     });
+    this.startPopupWindows.set(notificationKey, popup);
+    popup.once('closed', () => {
+      this.startPopupWindows.delete(notificationKey);
+    });
 
     popup.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     popup.setAlwaysOnTop(true, 'floating');
@@ -902,6 +926,7 @@ class SystemCalendarService {
       .catch((error) => {
         dbg.notification('Meeting start popup failed to load: %O', error);
         this.startPopupEvents.delete(notificationKey);
+        this.startPopupWindows.delete(notificationKey);
         if (!popup.isDestroyed()) {
           popup.close();
         }
@@ -929,14 +954,12 @@ class SystemCalendarService {
   }
 
   private closeMeetingStartPopups() {
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (
-        !win.isDestroyed() &&
-        win.getTitle().startsWith('Meeting started: ')
-      ) {
-        win.close();
+    for (const popup of this.startPopupWindows.values()) {
+      if (!popup.isDestroyed()) {
+        popup.close();
       }
     }
+    this.startPopupWindows.clear();
   }
 
   private rowToAppNotification(row: {

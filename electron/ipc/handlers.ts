@@ -3272,6 +3272,10 @@ export function registerIpcHandlers() {
     await systemCalendarService.revealMeeting(meeting);
   });
 
+  ipcMain.handle('calendar:setIgnoredMeetingIds', async (_, ids: string[]) => {
+    systemCalendarService.setIgnoredMeetingIds(ids);
+  });
+
   ipcMain.handle(
     'shell:openInEditor',
     async (_, dirPath: string, folderContext?: string) => {

@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+import { api } from '@/lib/api';
+
 interface CalendarIgnoredState {
   ignoredIds: string[];
   toggleIgnored: (id: string) => void;
@@ -30,3 +32,12 @@ export const useCalendarIgnoredStore = create<CalendarIgnoredState>()(
     { name: 'jean-claude-calendar-ignored' },
   ),
 );
+
+function syncIgnoredIds(ids: string[]) {
+  api.calendar.setIgnoredMeetingIds(ids).catch(() => {
+    // Main process may be unavailable in renderer tests or web fallback.
+  });
+}
+
+syncIgnoredIds(useCalendarIgnoredStore.getState().ignoredIds);
+useCalendarIgnoredStore.subscribe((state) => syncIgnoredIds(state.ignoredIds));
