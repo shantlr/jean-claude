@@ -414,6 +414,17 @@ function JobDetails({ job }: { job: BackgroundJob }) {
         </div>
       );
     },
+    'task-completion': (typedJob) => {
+      if (typedJob.type !== 'task-completion') return null;
+
+      return (
+        <div className="text-ink-2 mt-1 space-y-0.5 text-xs">
+          {typedJob.details.cleanupWorktree && (
+            <p>Worktree cleanup requested</p>
+          )}
+        </div>
+      );
+    },
     'task-deletion': (typedJob) => {
       if (typedJob.type !== 'task-deletion') return null;
 

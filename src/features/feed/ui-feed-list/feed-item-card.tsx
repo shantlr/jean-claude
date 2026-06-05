@@ -332,6 +332,7 @@ export function FeedItemCard({
   const runningBgJobs = useRunningBackgroundJobsForTask(item.taskId ?? null);
   const pendingCommentCount = useOpenReviewCommentCount(item.taskId ?? '');
   const isDeleting = runningBgJobs.some((j) => j.type === 'task-deletion');
+  const isCompleting = runningBgJobs.some((j) => j.type === 'task-completion');
   const hasNonDeleteBgJob =
     runningBgJobs.length > 0 &&
     runningBgJobs.some((j) => j.type !== 'task-deletion');
@@ -359,7 +360,8 @@ export function FeedItemCard({
     !!item.pullRequestId;
 
   // Complete task (for merged PRs)
-  const canComplete = isTask && prMerged && !!item.taskId && !item.isCompleted;
+  const canComplete =
+    isTask && prMerged && !!item.taskId && !item.isCompleted && !isCompleting;
 
   const handleClick = useCallback(
     (e?: React.MouseEvent) => {

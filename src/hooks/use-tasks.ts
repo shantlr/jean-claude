@@ -272,9 +272,21 @@ export function useCompleteTask() {
       id: string;
       cleanupWorktree?: boolean;
     }) => api.tasks.complete(id, { cleanupWorktree }),
-    onSuccess: (result, { id }) => {
+    onMutate: ({ id, cleanupWorktree }) =>
+      addRunningJob({
+        type: 'task-completion',
+        title: 'Completing task',
+        taskId: id,
+        details: {
+          cleanupWorktree: cleanupWorktree ?? null,
+        },
+      }),
+    onSuccess: (result, { id }, jobId) => {
       const { task, worktreeCleanup } = result;
 
+      if (jobId) {
+        markJobSucceeded(jobId, { projectId: task.projectId });
+      }
       clearAllRunCommandLogs(id);
       setRunCommandRunning(id, false);
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
@@ -321,6 +333,13 @@ export function useCompleteTask() {
             markJobFailed(jobId, message);
           });
       }
+    },
+    onError: (error, _variables, jobId) => {
+      if (!jobId) return;
+
+      const message =
+        error instanceof Error ? error.message : 'Task completion failed';
+      markJobFailed(jobId, message);
     },
   });
 }

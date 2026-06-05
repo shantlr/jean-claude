@@ -14,6 +14,7 @@ export type BackgroundJobType =
   | 'project-summary-generation'
   | 'logo-generation'
   | 'verification-note'
+  | 'task-completion'
   | 'task-deletion'
   | 'commit'
   | 'merge'
@@ -86,6 +87,12 @@ export type BackgroundJob =
       details: {
         workItemCount: number;
         workItemTitles: string[];
+      };
+    })
+  | (BackgroundJobBase & {
+      type: 'task-completion';
+      details: {
+        cleanupWorktree: boolean | null;
       };
     })
   | (BackgroundJobBase & {
@@ -195,6 +202,15 @@ type NewBackgroundJobInput =
       details: {
         workItemCount: number;
         workItemTitles: string[];
+      };
+    }
+  | {
+      type: 'task-completion';
+      title: string;
+      taskId?: string | null;
+      projectId?: string | null;
+      details: {
+        cleanupWorktree: boolean | null;
       };
     }
   | {
@@ -382,6 +398,8 @@ export function bgJobLabel(type: BackgroundJobType): string {
       return 'Generating logo…';
     case 'verification-note':
       return 'Generating verification note…';
+    case 'task-completion':
+      return 'Completing…';
     case 'task-creation':
       return 'Creating…';
     case 'skill-creation':
