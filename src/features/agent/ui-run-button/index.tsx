@@ -301,16 +301,6 @@ export function RunButton({
             title="Open command logs (⌘L)"
           ></Button>
         )}
-
-        {runningCount > 0 && (
-          <Chip
-            size="sm"
-            color={runningCount === commands.length ? 'green' : 'yellow'}
-            pill
-          >
-            {runningCount}/{commands.length}
-          </Chip>
-        )}
       </div>
 
       {pendingConfirm && (
