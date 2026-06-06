@@ -4,6 +4,12 @@ import type { ReactNode } from 'react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import {
+  EMPTY_MENTION_OPTIONS,
+  MENTION_TEXTAREA_CLASS,
+  MentionTextarea,
+  type MentionOption,
+} from '@/common/ui/mention-textarea';
 import { MAX_IMAGES, processImageFile } from '@/lib/image-utils';
 import { formatLineRangeLabel } from '@/stores/utils-comment-store';
 import type { PromptImagePart } from '@shared/agent-backend-types';
@@ -48,6 +54,8 @@ export function InlineCommentComposer({
   insertImagesInBody = false,
   isSubmitting = false,
   showCancel = true,
+  mentionOptions = EMPTY_MENTION_OPTIONS,
+  onSearchMentions,
 }: {
   lineStart: number;
   lineEnd?: number;
@@ -77,6 +85,9 @@ export function InlineCommentComposer({
   isSubmitting?: boolean;
   /** Whether to show cancel action. */
   showCancel?: boolean;
+  /** People available for @ mention insertion. */
+  mentionOptions?: MentionOption[];
+  onSearchMentions?: (query: string) => Promise<MentionOption[]>;
 }) {
   const [body, setBody] = useState(initialBody);
   const [images, setImages] = useState<InlineComposerImage[]>(initialImages);
@@ -240,16 +251,19 @@ export function InlineCommentComposer({
 
       {renderBeforeTextarea}
 
-      <textarea
+      <MentionTextarea
         ref={textareaRef}
-        className="bg-bg-2 text-ink-1 border-stroke-1 min-h-[60px] w-full resize-y rounded border px-2 py-1.5 text-xs focus:outline-none"
+        className={MENTION_TEXTAREA_CLASS}
         value={body}
-        onChange={(e) => setBody(e.target.value)}
+        onChange={setBody}
+        mentionOptions={mentionOptions}
+        onSearchMentions={onSearchMentions}
         placeholder={placeholder}
         onPaste={handlePaste}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         disabled={isSubmitting}
+        minHeight={60}
       />
 
       {images.length > 0 && (

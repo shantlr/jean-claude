@@ -15,6 +15,7 @@ import type {
   AzureDevOpsPullRequestDetails,
   AzureDevOpsCommit,
   AzureDevOpsFileChange,
+  AzureDevOpsIdentity,
   AzureDevOpsCommentThread,
   AzureDevOpsComment,
   AzureDevOpsPolicyEvaluation,
@@ -753,6 +754,15 @@ export interface Api {
       threadId: number;
       content: string;
     }) => Promise<AzureDevOpsComment>;
+    updateThreadComment: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      threadId: number;
+      commentId: number;
+      content: string;
+    }) => Promise<AzureDevOpsComment>;
     updateThreadStatus: (params: {
       providerId: string;
       projectId: string;
@@ -761,6 +771,10 @@ export interface Api {
       threadId: number;
       status: string;
     }) => Promise<void>;
+    searchIdentities: (params: {
+      providerId: string;
+      query: string;
+    }) => Promise<AzureDevOpsIdentity[]>;
     fetchImageAsBase64: (params: {
       providerId: string;
       imageUrl: string;
@@ -1653,9 +1667,13 @@ export const api: Api = hasWindowApi
         addThreadReply: async () => {
           throw new Error('API not available');
         },
+        updateThreadComment: async () => {
+          throw new Error('API not available');
+        },
         updateThreadStatus: async () => {
           throw new Error('API not available');
         },
+        searchIdentities: async () => [],
         fetchImageAsBase64: async () => null,
         getPullRequestPolicyEvaluations: async () => [],
         requeuePolicyEvaluation: async () => {},

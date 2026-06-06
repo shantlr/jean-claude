@@ -97,6 +97,12 @@ export interface AzureDevOpsFileChange {
   originalPath?: string; // For renames
 }
 
+export interface AzureDevOpsIdentity {
+  id: string;
+  displayName: string;
+  uniqueName?: string;
+}
+
 export interface AzureDevOpsComment {
   id: number;
   parentCommentId?: number;

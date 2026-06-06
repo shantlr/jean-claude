@@ -4,6 +4,7 @@ import type { ChangeEvent } from 'react';
 import { useCallback, useState, useMemo, useEffect, useRef } from 'react';
 
 import { Button } from '@/common/ui/button';
+import type { MentionOption } from '@/common/ui/mention-textarea';
 import { Textarea } from '@/common/ui/textarea';
 import { AzureMarkdownContent } from '@/features/common/ui-azure-html-content';
 import {
@@ -58,6 +59,8 @@ export function PrOverview({
   bottomPadding = 0,
   fileCount = 0,
   files = [],
+  mentionOptions = [],
+  onSearchMentions,
 }: {
   pr: AzureDevOpsPullRequestDetails;
   projectId: string;
@@ -73,6 +76,8 @@ export function PrOverview({
   bottomPadding?: number;
   fileCount?: number;
   files?: AzureDevOpsFileChange[];
+  mentionOptions?: MentionOption[];
+  onSearchMentions?: (query: string) => Promise<MentionOption[]>;
 }) {
   const [filePreview, setFilePreview] = useState<{
     filePath: string;
@@ -475,6 +480,8 @@ export function PrOverview({
             isAddingComment={isAddingComment}
             onOpenFilePreview={setFilePreview}
             mentionDisplayNames={mentionDisplayNames}
+            mentionOptions={mentionOptions}
+            onSearchMentions={onSearchMentions}
           />
         </div>
 
@@ -513,6 +520,8 @@ export function PrOverview({
                 files={files}
                 providerId={providerId}
                 mentionDisplayNames={mentionDisplayNames}
+                mentionOptions={mentionOptions}
+                onSearchMentions={onSearchMentions}
                 onClose={() => setFilePreview(null)}
               />
             ) : (
@@ -550,6 +559,8 @@ function PrFilePreviewPane({
   files,
   providerId,
   mentionDisplayNames,
+  mentionOptions,
+  onSearchMentions,
   onClose,
 }: {
   projectId: string;
@@ -562,6 +573,8 @@ function PrFilePreviewPane({
   files: AzureDevOpsFileChange[];
   providerId?: string;
   mentionDisplayNames: MentionDisplayNames;
+  mentionOptions: MentionOption[];
+  onSearchMentions?: (query: string) => Promise<MentionOption[]>;
   onClose: () => void;
 }) {
   const { data: headContent = '', isLoading: isHeadLoading } =
@@ -625,6 +638,8 @@ function PrFilePreviewPane({
               prId={prId}
               providerId={providerId}
               mentionDisplayNames={mentionDisplayNames}
+              mentionOptions={mentionOptions}
+              onSearchMentions={onSearchMentions}
             />
           )}
           scrollToLine={scrollToLine}

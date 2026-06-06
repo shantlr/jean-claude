@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import type { MentionOption } from '@/common/ui/mention-textarea';
 import {
   FileDiffContent,
   normalizeAzureChangeType,
@@ -9,6 +10,7 @@ import type {
   AzureDevOpsFileChange,
   AzureDevOpsCommentThread,
 } from '@/lib/api';
+import type { MentionDisplayNames } from '@/lib/azure-devops-mentions';
 import type { PromptImagePart } from '@shared/agent-backend-types';
 
 import { PrCommentForm } from '../ui-pr-comment-form';
@@ -29,6 +31,9 @@ export function PrDiffView({
   onAddFileComment,
   onUploadImage,
   isAddingComment,
+  mentionDisplayNames,
+  mentionOptions = [],
+  onSearchMentions,
 }: {
   file: AzureDevOpsFileChange;
   baseContent: string;
@@ -46,6 +51,9 @@ export function PrDiffView({
   }) => void;
   onUploadImage?: (image: PromptImagePart, fileName: string) => Promise<string>;
   isAddingComment?: boolean;
+  mentionDisplayNames?: MentionDisplayNames;
+  mentionOptions?: MentionOption[];
+  onSearchMentions?: (query: string) => Promise<MentionOption[]>;
 }) {
   // Convert to unified DiffFile type
   const diffFile: DiffFile = useMemo(
@@ -77,12 +85,20 @@ export function PrDiffView({
           projectId={projectId}
           prId={prId}
           providerId={providerId}
+          mentionDisplayNames={mentionDisplayNames}
+          mentionOptions={mentionOptions}
+          onSearchMentions={onSearchMentions}
         />
       )}
       onAddComment={onAddFileComment}
       isAddingComment={isAddingComment}
       CommentForm={(props) => (
-        <PrCommentForm {...props} uploadImage={onUploadImage} />
+        <PrCommentForm
+          {...props}
+          uploadImage={onUploadImage}
+          mentionOptions={mentionOptions}
+          onSearchMentions={onSearchMentions}
+        />
       )}
     />
   );

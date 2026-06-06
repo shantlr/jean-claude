@@ -141,7 +141,9 @@ import {
   addPullRequestComment,
   addPullRequestFileComment,
   addThreadReply,
+  updateThreadComment,
   updateThreadStatus,
+  searchIdentities,
   getCurrentUser,
   activateWorkItem,
   listBuilds,
@@ -2641,6 +2643,22 @@ export function registerIpcHandlers() {
   );
 
   ipcMain.handle(
+    'azureDevOps:updateThreadComment',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        pullRequestId: number;
+        threadId: number;
+        commentId: number;
+        content: string;
+      },
+    ) => updateThreadComment(params),
+  );
+
+  ipcMain.handle(
     'azureDevOps:updateThreadStatus',
     (
       _,
@@ -2653,6 +2671,12 @@ export function registerIpcHandlers() {
         status: string;
       },
     ) => updateThreadStatus(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:searchIdentities',
+    (_, params: { providerId: string; query: string }) =>
+      searchIdentities(params),
   );
 
   ipcMain.handle(

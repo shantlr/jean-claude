@@ -5,6 +5,7 @@ import {
   ChevronUp,
   FileText,
   GitPullRequest,
+  Pencil,
   Send,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -12,13 +13,22 @@ import { codeToTokens, type ThemedToken } from 'shiki';
 
 import { Button } from '@/common/ui/button';
 import { IconButton } from '@/common/ui/icon-button';
-import { Textarea } from '@/common/ui/textarea';
+import {
+  EMPTY_MENTION_OPTIONS,
+  decodeMentionDisplayNames,
+  encodeMentionDisplayNames,
+  MENTION_TEXTAREA_SM_CLASS,
+  MentionTextarea,
+  type MentionOption,
+} from '@/common/ui/mention-textarea';
 import { UserAvatar } from '@/common/ui/user-avatar';
 import { getLanguageFromPath } from '@/features/agent/ui-diff-view/language-utils';
 import { AzureMarkdownContent } from '@/features/common/ui-azure-html-content';
 import {
   useAddThreadReply,
+  useCurrentAzureUser,
   usePullRequestFileContent,
+  useUpdateThreadComment,
   useUpdateThreadStatus,
 } from '@/hooks/use-pull-requests';
 import type { AzureDevOpsCommentThread } from '@/lib/api';
@@ -67,6 +77,8 @@ export function PrComments({
   isAddingComment,
   onOpenFilePreview,
   mentionDisplayNames,
+  mentionOptions = EMPTY_MENTION_OPTIONS,
+  onSearchMentions,
 }: {
   threads: AzureDevOpsCommentThread[];
   providerId?: string;
@@ -81,6 +93,8 @@ export function PrComments({
     lineEnd: number;
   }) => void;
   mentionDisplayNames?: MentionDisplayNames;
+  mentionOptions?: MentionOption[];
+  onSearchMentions?: (query: string) => Promise<MentionOption[]>;
 }) {
   const [expandedResolved, setExpandedResolved] = useState<
     Record<number, boolean>
@@ -120,7 +134,7 @@ export function PrComments({
   }, []);
 
   return (
-    <section className="border-glass-border bg-bg-1/60 overflow-hidden rounded-lg border">
+    <section className="border-glass-border bg-bg-1/60 overflow-visible rounded-lg border">
       <div className="border-glass-border/60 flex items-center gap-2 border-b px-3.5 py-2.5">
         <GitPullRequest className="text-ink-3 h-3.5 w-3.5" />
         <h3 className="text-ink-0 text-sm font-medium">Conversation</h3>
@@ -148,6 +162,8 @@ export function PrComments({
             isSubmitting={isAddingComment}
             uploadImage={onUploadImage}
             placeholder="Start a new comment thread..."
+            mentionOptions={mentionOptions}
+            onSearchMentions={onSearchMentions}
           />
         </div>
       )}
@@ -174,6 +190,8 @@ export function PrComments({
                 showDivider={index > 0}
                 onOpenFilePreview={onOpenFilePreview}
                 mentionDisplayNames={mentionDisplayNames}
+                mentionOptions={mentionOptions}
+                onSearchMentions={onSearchMentions}
               />
             );
           })}
@@ -269,11 +287,15 @@ function ThreadReplyForm({
   projectId,
   prId,
   canResolve,
+  mentionOptions = EMPTY_MENTION_OPTIONS,
+  onSearchMentions,
 }: {
   threadId: number;
   projectId: string;
   prId: number;
   canResolve: boolean;
+  mentionOptions?: MentionOption[];
+  onSearchMentions?: (query: string) => Promise<MentionOption[]>;
 }) {
   const [content, setContent] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
@@ -283,7 +305,10 @@ function ThreadReplyForm({
   const handleSubmit = useCallback(() => {
     if (content.trim() && !addReply.isPending) {
       addReply.mutate(
-        { threadId, content: content.trim() },
+        {
+          threadId,
+          content: encodeMentionDisplayNames(content.trim(), mentionOptions),
+        },
         {
           onSuccess: () => {
             setContent('');
@@ -292,7 +317,7 @@ function ThreadReplyForm({
         },
       );
     }
-  }, [content, threadId, addReply]);
+  }, [content, mentionOptions, threadId, addReply]);
 
   const handleResolve = useCallback(() => {
     updateStatus.mutate({ threadId, status: 'fixed' });
@@ -334,14 +359,15 @@ function ThreadReplyForm({
 
   return (
     <div className="mt-3 flex gap-2 pl-[37px]">
-      <Textarea
-        size="sm"
+      <MentionTextarea
         value={content}
-        onChange={(event) => setContent(event.target.value)}
+        onChange={setContent}
         onBlur={handleBlur}
         placeholder="Write a reply..."
-        className="flex-1"
-        rows={2}
+        className={MENTION_TEXTAREA_SM_CLASS}
+        mentionOptions={mentionOptions}
+        onSearchMentions={onSearchMentions}
+        minHeight={36}
         autoFocus
         onKeyDown={(event) => {
           if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
@@ -507,6 +533,8 @@ function CommentThread({
   showDivider,
   onOpenFilePreview,
   mentionDisplayNames,
+  mentionOptions,
+  onSearchMentions,
 }: {
   thread: AzureDevOpsCommentThread;
   providerId?: string;
@@ -521,6 +549,8 @@ function CommentThread({
     lineEnd: number;
   }) => void;
   mentionDisplayNames?: MentionDisplayNames;
+  mentionOptions?: MentionOption[];
+  onSearchMentions?: (query: string) => Promise<MentionOption[]>;
 }) {
   const resolved = !isActiveThread(thread);
 
@@ -550,6 +580,8 @@ function CommentThread({
           onCollapseResolved={onToggleResolved}
           onOpenFilePreview={onOpenFilePreview}
           mentionDisplayNames={mentionDisplayNames}
+          mentionOptions={mentionOptions}
+          onSearchMentions={onSearchMentions}
         />
       )}
     </div>
@@ -564,6 +596,8 @@ function ExpandedThread({
   onCollapseResolved,
   onOpenFilePreview,
   mentionDisplayNames,
+  mentionOptions,
+  onSearchMentions,
 }: {
   thread: AzureDevOpsCommentThread;
   providerId?: string;
@@ -576,6 +610,8 @@ function ExpandedThread({
     lineEnd: number;
   }) => void;
   mentionDisplayNames?: MentionDisplayNames;
+  mentionOptions?: MentionOption[];
+  onSearchMentions?: (query: string) => Promise<MentionOption[]>;
 }) {
   const resolved = !isActiveThread(thread);
   const updateStatus = useUpdateThreadStatus(projectId, prId);
@@ -663,6 +699,11 @@ function ExpandedThread({
               providerId={providerId}
               connect={index < thread.comments.length - 1 || !resolved}
               mentionDisplayNames={mentionDisplayNames}
+              threadId={thread.id}
+              projectId={projectId}
+              prId={prId}
+              mentionOptions={mentionOptions}
+              onSearchMentions={onSearchMentions}
             />
           ))}
         </div>
@@ -672,6 +713,8 @@ function ExpandedThread({
           projectId={projectId}
           prId={prId}
           canResolve={!resolved}
+          mentionOptions={mentionOptions}
+          onSearchMentions={onSearchMentions}
         />
 
         <div className="mt-3 flex justify-end">
@@ -692,16 +735,54 @@ function ThreadComment({
   providerId,
   connect,
   mentionDisplayNames,
+  threadId,
+  projectId,
+  prId,
+  mentionOptions = EMPTY_MENTION_OPTIONS,
+  onSearchMentions,
 }: {
   comment: AzureDevOpsCommentThread['comments'][number];
   providerId?: string;
   connect: boolean;
   mentionDisplayNames?: MentionDisplayNames;
+  threadId: number;
+  projectId: string;
+  prId: number;
+  mentionOptions?: MentionOption[];
+  onSearchMentions?: (query: string) => Promise<MentionOption[]>;
 }) {
   const avatarUrl =
     comment.author.imageUrl && providerId
       ? encodeProxyUrl(providerId, comment.author.imageUrl)
       : comment.author.imageUrl;
+  const decodedCommentContent = useMemo(
+    () => decodeMentionDisplayNames(comment.content, mentionOptions),
+    [comment.content, mentionOptions],
+  );
+  const { data: currentUser } = useCurrentAzureUser(projectId);
+  const updateComment = useUpdateThreadComment(projectId, prId);
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState(decodedCommentContent);
+  const currentUserEmail = currentUser?.emailAddress.toLowerCase();
+  const commentUserEmail = comment.author.uniqueName.toLowerCase();
+  const canEdit =
+    !!currentUser &&
+    (currentUser.id === comment.author.id ||
+      currentUser.identityId === comment.author.id ||
+      currentUserEmail === commentUserEmail);
+
+  const saveEdit = () => {
+    const content = encodeMentionDisplayNames(draft.trim(), mentionOptions);
+    if (!content || content === comment.content || updateComment.isPending) {
+      setIsEditing(false);
+      setDraft(decodedCommentContent);
+      return;
+    }
+    updateComment.mutate(
+      { threadId, commentId: comment.id, content },
+      { onSuccess: () => setIsEditing(false) },
+    );
+  };
 
   return (
     <div className="flex items-stretch gap-3">
@@ -716,21 +797,83 @@ function ThreadComment({
         )}
       </div>
       <div className={clsx('min-w-0 flex-1', connect && 'pb-4')}>
-        <div className="mb-1 flex flex-wrap items-center gap-2">
-          <span className="text-ink-0 shrink-0 text-sm font-medium">
-            {comment.author.displayName}
-          </span>
-          <span className="text-ink-3 shrink-0 text-xs">
-            {formatRelativeTime(comment.publishedDate)}
-          </span>
+        <div className="mb-1 flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <span className="text-ink-0 shrink-0 text-sm font-medium">
+              {comment.author.displayName}
+            </span>
+            <span className="text-ink-3 shrink-0 text-xs">
+              {formatRelativeTime(comment.publishedDate)}
+            </span>
+          </div>
+          {canEdit && !isEditing && (
+            <IconButton
+              variant="ghost"
+              size="sm"
+              icon={<Pencil className="h-3.5 w-3.5" />}
+              tooltip="Edit comment"
+              onClick={() => {
+                setDraft(decodedCommentContent);
+                setIsEditing(true);
+              }}
+              className="shrink-0"
+            />
+          )}
         </div>
-        <div className="text-ink-1 pr-1 text-xs leading-relaxed [&_code]:text-[11px] [&_pre]:text-[11px]">
-          <AzureMarkdownContent
-            markdown={comment.content}
-            providerId={providerId}
-            mentionDisplayNames={mentionDisplayNames}
-          />
-        </div>
+        {isEditing ? (
+          <div className="flex flex-col gap-2 pr-1">
+            <MentionTextarea
+              value={draft}
+              onChange={setDraft}
+              className={MENTION_TEXTAREA_SM_CLASS}
+              mentionOptions={mentionOptions}
+              onSearchMentions={onSearchMentions}
+              minHeight={52}
+              autoFocus
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                  event.preventDefault();
+                  saveEdit();
+                }
+                if (event.key === 'Escape') {
+                  setDraft(decodedCommentContent);
+                  setIsEditing(false);
+                }
+              }}
+            />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={saveEdit}
+                loading={updateComment.isPending}
+                disabled={
+                  !draft.trim() || draft.trim() === decodedCommentContent
+                }
+              >
+                Save
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setDraft(decodedCommentContent);
+                  setIsEditing(false);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-ink-1 pr-1 text-xs leading-relaxed [&_code]:text-[11px] [&_pre]:text-[11px]">
+            <AzureMarkdownContent
+              markdown={comment.content}
+              providerId={providerId}
+              mentionDisplayNames={mentionDisplayNames}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -744,6 +887,8 @@ export function PrInlineCommentTimeline({
   prId,
   canResolve = false,
   mentionDisplayNames,
+  mentionOptions = EMPTY_MENTION_OPTIONS,
+  onSearchMentions,
 }: {
   comments: PrTimelineComment[];
   providerId?: string;
@@ -752,6 +897,8 @@ export function PrInlineCommentTimeline({
   prId?: number;
   canResolve?: boolean;
   mentionDisplayNames?: MentionDisplayNames;
+  mentionOptions?: MentionOption[];
+  onSearchMentions?: (query: string) => Promise<MentionOption[]>;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const firstComment = comments[0];
@@ -853,6 +1000,8 @@ export function PrInlineCommentTimeline({
           projectId={projectId}
           prId={prId}
           canResolve={canResolve}
+          mentionOptions={mentionOptions}
+          onSearchMentions={onSearchMentions}
         />
       )}
     </div>

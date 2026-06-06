@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 
 import { useCommands } from '@/common/hooks/use-commands';
+import type { MentionOption } from '@/common/ui/mention-textarea';
 import {
   DiffFileTree,
   normalizeAzureChangeType,
@@ -23,6 +24,11 @@ import {
   useAddPullRequestFileComment,
   useUploadPullRequestAttachment,
 } from '@/hooks/use-pull-requests';
+import { api } from '@/lib/api';
+import {
+  normalizeMentionId,
+  type MentionDisplayNames,
+} from '@/lib/azure-devops-mentions';
 import { feedQueryKeys } from '@/lib/feed-query-keys';
 import { usePrDetailState } from '@/stores/navigation';
 import type { PrDetailTab } from '@/stores/navigation';
@@ -49,6 +55,9 @@ export function PrDetail({
   const { selectedFile, activeTab, setSelectedFile, setActiveTab } =
     usePrDetailState(projectId, prId);
   const [fileTreeWidth, setFileTreeWidth] = useState(250);
+  const [searchedMentionOptions, setSearchedMentionOptions] = useState<
+    MentionOption[]
+  >([]);
   const queryClient = useQueryClient();
 
   const navigateTab = useCallback(
@@ -205,6 +214,58 @@ export function PrDetail({
     return getCommentCountByPrFile({ files, threads });
   }, [files, threads]);
 
+  const { mentionDisplayNames, mentionOptions } = useMemo(() => {
+    const names: MentionDisplayNames = {};
+    const optionsById = new Map<string, MentionOption>();
+    const addPerson = (person?: {
+      id?: string;
+      displayName?: string;
+      uniqueName?: string;
+      isContainer?: boolean;
+    }) => {
+      if (!person?.id || !person.displayName || person.isContainer) return;
+      const id = normalizeMentionId(person.id);
+      names[id] = person.displayName;
+      optionsById.set(id, {
+        id: person.id,
+        displayName: person.displayName,
+        uniqueName: person.uniqueName,
+      });
+    };
+
+    addPerson(pr?.createdBy);
+    for (const reviewer of pr?.reviewers ?? []) addPerson(reviewer);
+    for (const thread of threads) {
+      for (const comment of thread.comments) addPerson(comment.author);
+    }
+    for (const option of searchedMentionOptions) addPerson(option);
+
+    return {
+      mentionDisplayNames: names,
+      mentionOptions: [...optionsById.values()].sort((a, b) =>
+        a.displayName.localeCompare(b.displayName),
+      ),
+    };
+  }, [pr?.createdBy, pr?.reviewers, searchedMentionOptions, threads]);
+
+  const handleSearchMentions = useCallback(
+    async (query: string) => {
+      if (!project?.repoProviderId) return [];
+      const options = await api.azureDevOps.searchIdentities({
+        providerId: project.repoProviderId,
+        query,
+      });
+      setSearchedMentionOptions((current) => {
+        const byId = new Map<string, MentionOption>();
+        for (const option of current) byId.set(option.id.toLowerCase(), option);
+        for (const option of options) byId.set(option.id.toLowerCase(), option);
+        return [...byId.values()];
+      });
+      return options;
+    },
+    [project?.repoProviderId],
+  );
+
   if (isPrLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -270,6 +331,8 @@ export function PrDetail({
             bottomPadding={bottomPadding}
             fileCount={files.length}
             files={files}
+            mentionOptions={mentionOptions}
+            onSearchMentions={handleSearchMentions}
           />
         )}
 
@@ -323,6 +386,9 @@ export function PrDetail({
                   onAddFileComment={handleAddFileComment}
                   onUploadImage={handleUploadImage}
                   isAddingComment={addFileComment.isPending}
+                  mentionDisplayNames={mentionDisplayNames}
+                  mentionOptions={mentionOptions}
+                  onSearchMentions={handleSearchMentions}
                 />
               ) : (
                 <div className="text-ink-3 flex h-full items-center justify-center">

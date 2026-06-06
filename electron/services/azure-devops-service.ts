@@ -11,6 +11,7 @@ import type {
   AzureDevOpsFileChange,
   AzureDevOpsCommentThread,
   AzureDevOpsComment,
+  AzureDevOpsIdentity,
   ReviewerVoteStatus,
 } from '@shared/azure-devops-types';
 import type {
@@ -43,6 +44,7 @@ export type {
   AzureDevOpsFileChange,
   AzureDevOpsCommentThread,
   AzureDevOpsComment,
+  AzureDevOpsIdentity,
 };
 
 export interface AzureDevOpsOrganization {
@@ -158,11 +160,26 @@ interface IdentitiesResponse {
   value?: Array<{
     id?: string;
     providerDisplayName?: string;
+    isActive?: boolean;
     properties?: {
       Account?: { $value?: string };
       Mail?: { $value?: string };
     };
   }>;
+}
+
+interface GraphUsersResponse {
+  value?: Array<{
+    descriptor?: string;
+    displayName?: string;
+    principalName?: string;
+    mailAddress?: string;
+    isDeletedInOrigin?: boolean;
+  }>;
+}
+
+interface GraphStorageKeyResponse {
+  value?: string;
 }
 
 function maskEmail(emailAddress: string): string {
@@ -1379,6 +1396,145 @@ async function resolveIdentityIdByEmail({
   });
 
   return match?.id;
+}
+
+export async function searchIdentities(params: {
+  providerId: string;
+  query: string;
+}): Promise<AzureDevOpsIdentity[]> {
+  const query = params.query.trim();
+
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+  if (!query) {
+    return listGraphUsers({ authHeader, orgName });
+  }
+
+  const url = new URL(
+    `https://vssps.dev.azure.com/${orgName}/_apis/identities`,
+  );
+  url.searchParams.set('queryMembership', 'None');
+  url.searchParams.set('api-version', '7.1');
+  if (query) {
+    url.searchParams.set('searchFilter', 'General');
+    url.searchParams.set('filterValue', query);
+  }
+  const response = await fetch(url, {
+    headers: { Authorization: authHeader },
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    dbg.azure('identity-search:failed', {
+      orgName,
+      query,
+      status: response.status,
+      body: error,
+    });
+    return [];
+  }
+
+  const identities: IdentitiesResponse = await response.json();
+  return (identities.value ?? [])
+    .filter((identity) => !!identity.id && !!identity.providerDisplayName)
+    .filter((identity) => identity.isActive !== false)
+    .map((identity) => ({
+      id: identity.id!,
+      displayName: identity.providerDisplayName!,
+      uniqueName:
+        identity.properties?.Mail?.$value ??
+        identity.properties?.Account?.$value,
+    }))
+    .slice(0, 10);
+}
+
+async function listGraphUsers({
+  authHeader,
+  orgName,
+}: {
+  authHeader: string;
+  orgName: string;
+}): Promise<AzureDevOpsIdentity[]> {
+  const url = new URL(
+    `https://vssps.dev.azure.com/${orgName}/_apis/graph/users`,
+  );
+  url.searchParams.set('api-version', '7.1-preview.1');
+
+  const graphUsers: NonNullable<GraphUsersResponse['value']> = [];
+  let continuationToken: string | null = null;
+  for (let page = 0; page < 5; page += 1) {
+    if (continuationToken) {
+      url.searchParams.set('continuationToken', continuationToken);
+    }
+
+    const response = await fetch(url, {
+      headers: { Authorization: authHeader },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      dbg.azure('graph-users:list-failed', {
+        orgName,
+        status: response.status,
+        reason:
+          response.status === 401
+            ? 'Azure DevOps token is missing Graph Read scope (vso.graph)'
+            : undefined,
+        body: error,
+      });
+      return [];
+    }
+
+    const users: GraphUsersResponse = await response.json();
+    graphUsers.push(...(users.value ?? []));
+    continuationToken = response.headers.get('x-ms-continuationtoken');
+    if (!continuationToken || graphUsers.length >= 500) break;
+  }
+
+  const people = graphUsers
+    .filter((user) => user.descriptor && user.displayName)
+    .filter((user) => user.isDeletedInOrigin !== true)
+    .filter((user) => user.mailAddress || user.principalName?.includes('@'))
+    .slice(0, 500);
+
+  const identities = await Promise.all(
+    people.map(async (user): Promise<AzureDevOpsIdentity | null> => {
+      const storageKey = await getGraphStorageKey({
+        authHeader,
+        orgName,
+        descriptor: user.descriptor!,
+      });
+      if (!storageKey) return null;
+      return {
+        id: storageKey,
+        displayName: user.displayName!,
+        uniqueName: user.mailAddress || user.principalName,
+      } satisfies AzureDevOpsIdentity;
+    }),
+  );
+
+  return identities
+    .filter((identity): identity is AzureDevOpsIdentity => !!identity)
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
+async function getGraphStorageKey({
+  authHeader,
+  orgName,
+  descriptor,
+}: {
+  authHeader: string;
+  orgName: string;
+  descriptor: string;
+}): Promise<string | null> {
+  const response = await fetch(
+    `https://vssps.dev.azure.com/${orgName}/_apis/graph/storagekeys/${encodeURIComponent(descriptor)}?api-version=7.1`,
+    { headers: { Authorization: authHeader } },
+  );
+
+  if (!response.ok) return null;
+
+  const data: GraphStorageKeyResponse = await response.json();
+  return data.value ?? null;
 }
 
 // Pull Request API response types
@@ -2676,6 +2832,51 @@ export async function addThreadReply(params: {
   if (!response.ok) {
     const error = await response.text();
     throw new Error(`Failed to add thread reply: ${error}`);
+  }
+
+  const comment: CommentResponse = await response.json();
+
+  return {
+    id: comment.id,
+    parentCommentId: comment.parentCommentId,
+    content: comment.content,
+    commentType: mapCommentType(comment.commentType),
+    author: {
+      id: comment.author.id,
+      displayName: comment.author.displayName,
+      uniqueName: comment.author.uniqueName,
+      imageUrl: comment.author.imageUrl,
+    },
+    publishedDate: comment.publishedDate,
+    lastUpdatedDate: comment.lastUpdatedDate,
+  };
+}
+
+export async function updateThreadComment(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+  threadId: number;
+  commentId: number;
+  content: string;
+}): Promise<AzureDevOpsComment> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}/threads/${params.threadId}/comments/${params.commentId}?api-version=7.0`;
+
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Authorization: authHeader,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ content: params.content }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to update thread comment: ${error}`);
   }
 
   const comment: CommentResponse = await response.json();

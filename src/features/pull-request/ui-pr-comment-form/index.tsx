@@ -1,9 +1,15 @@
 import { Send } from 'lucide-react';
-import type { ChangeEvent, FormEvent } from 'react';
+import type { FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/common/ui/button';
-import { Textarea } from '@/common/ui/textarea';
+import {
+  EMPTY_MENTION_OPTIONS,
+  encodeMentionDisplayNames,
+  MENTION_TEXTAREA_MD_CLASS,
+  MentionTextarea,
+  type MentionOption,
+} from '@/common/ui/mention-textarea';
 import {
   COMMENT_ACCENT,
   InlineCommentComposer,
@@ -36,6 +42,8 @@ export function PrCommentForm({
   isSubmitting,
   placeholder = 'Add a comment...',
   uploadImage,
+  mentionOptions = EMPTY_MENTION_OPTIONS,
+  onSearchMentions,
 }: {
   onSubmit: (content: string) => void;
   onCancel?: () => void;
@@ -44,6 +52,8 @@ export function PrCommentForm({
   isSubmitting?: boolean;
   placeholder?: string;
   uploadImage?: (image: PromptImagePart, fileName: string) => Promise<string>;
+  mentionOptions?: MentionOption[];
+  onSearchMentions?: (query: string) => Promise<MentionOption[]>;
 }) {
   const [content, setContent] = useState('');
   const [isUploadingImages, setIsUploadingImages] = useState(false);
@@ -62,22 +72,26 @@ export function PrCommentForm({
   const submitWithImages = async (body: string, images: PromptImagePart[]) => {
     const submitToken = submitTokenRef.current;
     setError(null);
+    const encodedBody = encodeMentionDisplayNames(body, mentionOptions);
 
     if (images.length === 0 || !uploadImage) {
-      onSubmit(body);
+      onSubmit(encodedBody);
       setComposerKey((current) => current + 1);
       return;
     }
 
     setIsUploadingImages(true);
     try {
-      let contentWithImages = body.trimEnd();
+      let contentWithImages = encodedBody.trimEnd();
       const attachedMarkdownImages: string[] = [];
 
       await Promise.all(
         images.map(async (image, index) => {
           const placeholderMarkdown = getPlaceholderMarkdown(image);
-          if (placeholderMarkdown && !body.includes(placeholderMarkdown)) {
+          if (
+            placeholderMarkdown &&
+            !encodedBody.includes(placeholderMarkdown)
+          ) {
             return;
           }
 
@@ -136,7 +150,7 @@ export function PrCommentForm({
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (content.trim() && !isBusy) {
-      onSubmit(content.trim());
+      onSubmit(encodeMentionDisplayNames(content.trim(), mentionOptions));
       setContent('');
     }
   };
@@ -144,14 +158,14 @@ export function PrCommentForm({
   if (!uploadImage && (lineStart === undefined || !onCancel)) {
     return (
       <form onSubmit={handleSubmit} className="flex gap-2">
-        <Textarea
+        <MentionTextarea
           value={content}
-          onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
-            setContent(e.target.value)
-          }
+          onChange={setContent}
+          mentionOptions={mentionOptions}
+          onSearchMentions={onSearchMentions}
           placeholder={placeholder}
-          className="flex-1"
-          rows={2}
+          className={MENTION_TEXTAREA_MD_CLASS}
+          minHeight={58}
           disabled={isBusy}
         />
         <Button
@@ -189,6 +203,8 @@ export function PrCommentForm({
           insertImagesInBody={!!uploadImage}
           isSubmitting={isBusy}
           showCancel={!!onCancel}
+          mentionOptions={mentionOptions}
+          onSearchMentions={onSearchMentions}
         />
         {error && <p className="text-status-fail mt-2 text-xs">{error}</p>}
       </div>

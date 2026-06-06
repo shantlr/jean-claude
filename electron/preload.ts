@@ -422,6 +422,15 @@ contextBridge.exposeInMainWorld('api', {
       threadId: number;
       content: string;
     }) => ipcRenderer.invoke('azureDevOps:addThreadReply', params),
+    updateThreadComment: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      threadId: number;
+      commentId: number;
+      content: string;
+    }) => ipcRenderer.invoke('azureDevOps:updateThreadComment', params),
     updateThreadStatus: (params: {
       providerId: string;
       projectId: string;
@@ -430,6 +439,8 @@ contextBridge.exposeInMainWorld('api', {
       threadId: number;
       status: string;
     }) => ipcRenderer.invoke('azureDevOps:updateThreadStatus', params),
+    searchIdentities: (params: { providerId: string; query: string }) =>
+      ipcRenderer.invoke('azureDevOps:searchIdentities', params),
     fetchImageAsBase64: (params: { providerId: string; imageUrl: string }) =>
       ipcRenderer.invoke('azureDevOps:fetchImageAsBase64', params),
     getPullRequestPolicyEvaluations: (params: {

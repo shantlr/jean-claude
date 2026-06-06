@@ -1,3 +1,4 @@
+import type { MentionOption } from '@/common/ui/mention-textarea';
 import type { CommentThread } from '@/features/common/ui-file-diff';
 import type { AzureDevOpsCommentThread } from '@/lib/api';
 import type { MentionDisplayNames } from '@/lib/azure-devops-mentions';
@@ -10,12 +11,16 @@ export function PrInlineCommentThread({
   prId,
   providerId,
   mentionDisplayNames,
+  mentionOptions,
+  onSearchMentions,
 }: {
   thread: CommentThread;
   projectId: string;
   prId: number;
   providerId?: string;
   mentionDisplayNames?: MentionDisplayNames;
+  mentionOptions?: MentionOption[];
+  onSearchMentions?: (query: string) => Promise<MentionOption[]>;
 }) {
   return (
     <PrInlineCommentTimeline
@@ -37,6 +42,8 @@ export function PrInlineCommentThread({
       }))}
       providerId={providerId}
       mentionDisplayNames={mentionDisplayNames}
+      mentionOptions={mentionOptions}
+      onSearchMentions={onSearchMentions}
     />
   );
 }
