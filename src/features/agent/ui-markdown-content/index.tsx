@@ -1,5 +1,10 @@
 import clsx from 'clsx';
-import { decompressFrames, parseGIF, type ParsedFrame } from 'gifuct-js';
+import {
+  decompressFrame,
+  decompressFrames,
+  parseGIF,
+  type ParsedFrame,
+} from 'gifuct-js';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -405,6 +410,8 @@ function getSizedFigureStyle(
   return { width: requestedSize.width, maxWidth: '100%' };
 }
 
+type GifFrame = Parameters<typeof decompressFrame>[0];
+
 function composeGifFrameImages({
   frames,
   width,
@@ -488,32 +495,24 @@ async function decodeGifFrameImages(src: string): Promise<{
   height: number;
 }> {
   const gif = parseGIF(await loadGifArrayBuffer(src));
-  type GifFrame = (typeof gif.frames)[number] & {
-    image: { descriptor: { width: number; height: number } };
-  };
   const imageFrames = gif.frames.filter(
-    (frame): frame is GifFrame => 'image' in frame,
+    (frame): frame is GifFrame => 'image' in frame && 'gce' in frame,
   );
   const frameCount = imageFrames.length;
   if (frameCount > MAX_GIF_SCRUB_FRAMES) {
     throw new Error(`GIF has too many frames (${frameCount})`);
   }
 
-  if (gif.lsd.width * gif.lsd.height * frameCount > MAX_GIF_SCRUB_PIXELS) {
+  if (gif.lsd.width * gif.lsd.height > MAX_GIF_CANVAS_PIXELS) {
     throw new Error('GIF is too large to scrub safely');
   }
 
-  const patchPixels = imageFrames.reduce((total, frame) => {
+  for (const frame of imageFrames) {
     const framePixels =
       frame.image.descriptor.width * frame.image.descriptor.height;
     if (framePixels > MAX_GIF_FRAME_PATCH_PIXELS) {
       throw new Error('GIF frame is too large to scrub safely');
     }
-
-    return total + framePixels;
-  }, 0);
-  if (patchPixels > MAX_GIF_TOTAL_PATCH_PIXELS) {
-    throw new Error('GIF frame data is too large to scrub safely');
   }
 
   const frames = decompressFrames(gif, true);
@@ -526,10 +525,9 @@ async function decodeGifFrameImages(src: string): Promise<{
   return { images, width: gif.lsd.width, height: gif.lsd.height };
 }
 
-const MAX_GIF_SCRUB_FRAMES = 180;
-const MAX_GIF_SCRUB_PIXELS = 10_000_000;
+const MAX_GIF_SCRUB_FRAMES = 240;
+const MAX_GIF_CANVAS_PIXELS = 10_000_000;
 const MAX_GIF_FRAME_PATCH_PIXELS = 4_000_000;
-const MAX_GIF_TOTAL_PATCH_PIXELS = 12_000_000;
 const MAX_GIF_FRAME_CACHE_ENTRIES = 1;
 
 const gifFrameCache = new Map<
@@ -622,6 +620,7 @@ function GifFrameScrubber({
 
     return () => {
       cancelled = true;
+      gifFrameCache.delete(src);
     };
   }, [src, isScrubbing]);
 
