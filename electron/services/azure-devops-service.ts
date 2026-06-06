@@ -2013,7 +2013,7 @@ export async function uploadPullRequestAttachment(params: {
     method: 'POST',
     headers: {
       Authorization: authHeader,
-      'Content-Type': params.mimeType || 'application/octet-stream',
+      'Content-Type': 'application/octet-stream',
     },
     body: Buffer.from(params.dataBase64, 'base64'),
   });

@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { Edit3, Image, Loader2, Save, X } from 'lucide-react';
-import type { ChangeEvent } from 'react';
+import type { ChangeEvent, ClipboardEvent, DragEvent } from 'react';
 import { useCallback, useState, useMemo, useEffect, useRef } from 'react';
 
 import { Button } from '@/common/ui/button';
@@ -33,6 +33,7 @@ import {
   normalizeMentionId,
   type MentionDisplayNames,
 } from '@/lib/azure-devops-mentions';
+import { MAX_IMAGES, processImageFile } from '@/lib/image-utils';
 import type { PromptImagePart } from '@shared/agent-backend-types';
 
 import { PrChecks } from '../ui-pr-checks';
@@ -43,6 +44,36 @@ import {
   PrInlineCommentThread,
 } from '../ui-pr-inline-comment-thread';
 import { PrMetaPanel } from '../ui-pr-meta-panel';
+
+type PendingDescriptionImage = PromptImagePart & {
+  placeholderMarkdown: string;
+};
+
+function placeholderToken(placeholderMarkdown: string) {
+  return placeholderMarkdown.match(/jc-image:\/\/([^)]+)/)?.[1] ?? null;
+}
+
+function placeholderPattern(placeholderMarkdown: string) {
+  const token = placeholderToken(placeholderMarkdown);
+  return token
+    ? new RegExp(`!\\[[^\\]]*\\]\\(jc-image:\\/\\/${token}\\)`, 'g')
+    : null;
+}
+
+function descriptionPreviewMarkdown(
+  markdown: string,
+  images: PendingDescriptionImage[],
+) {
+  return images.reduce((current, image) => {
+    const dataUrl = `data:${image.storageMimeType ?? image.mimeType};base64,${image.storageData ?? image.data}`;
+    const pattern = placeholderPattern(image.placeholderMarkdown);
+    if (!pattern) return current;
+    return current.replace(
+      pattern,
+      image.placeholderMarkdown.replace(/\]\([^)]*\)$/, `](${dataUrl})`),
+    );
+  }, markdown);
+}
 
 export function PrOverview({
   pr,
@@ -90,7 +121,12 @@ export function PrOverview({
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [descriptionDraft, setDescriptionDraft] = useState(pr.description);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
+  const [pendingDescriptionImages, setPendingDescriptionImages] = useState<
+    PendingDescriptionImage[]
+  >([]);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const descriptionTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const descriptionImageTokenCounterRef = useRef(0);
 
   const { data: currentUser } = useCurrentAzureUser(projectId);
   const updateDescription = useUpdatePullRequestDescription(projectId, prId);
@@ -128,10 +164,17 @@ export function PrOverview({
     return names;
   }, [currentUser, pr.createdBy, pr.reviewers, threads]);
 
+  const previewDescriptionDraft = useMemo(
+    () =>
+      descriptionPreviewMarkdown(descriptionDraft, pendingDescriptionImages),
+    [descriptionDraft, pendingDescriptionImages],
+  );
+
   useEffect(() => {
     if (!isEditingDescription) {
       setDescriptionDraft(pr.description);
       setDescriptionError(null);
+      setPendingDescriptionImages([]);
     }
   }, [isEditingDescription, pr.description]);
 
@@ -237,65 +280,165 @@ export function PrOverview({
     [requeueMutation],
   );
 
-  const handleSaveDescription = useCallback(() => {
+  const handleSaveDescription = useCallback(async () => {
     if (uploadAttachment.isPending) return;
 
     setDescriptionError(null);
-    updateDescription.mutate(descriptionDraft, {
-      onSuccess: () => {
-        setIsEditingDescription(false);
-      },
-      onError: (error) => {
-        setDescriptionError(error.message);
-      },
+
+    try {
+      let finalDescription = descriptionDraft;
+
+      for (const image of pendingDescriptionImages) {
+        const pattern = placeholderPattern(image.placeholderMarkdown);
+        if (!pattern || !finalDescription.match(pattern)) continue;
+        const fileName = image.filename || 'image.png';
+        const attachment = await uploadAttachment.mutateAsync({
+          fileName,
+          mimeType: image.mimeType || 'application/octet-stream',
+          dataBase64: image.data,
+        });
+        finalDescription = finalDescription.replace(pattern, (match) =>
+          match.replace(/\([^)]*\)$/, `(${attachment.url})`),
+        );
+      }
+
+      if (finalDescription.includes('jc-image://')) {
+        setDescriptionError(
+          'Remove incomplete image placeholders before saving.',
+        );
+        return;
+      }
+
+      await updateDescription.mutateAsync(finalDescription);
+      setPendingDescriptionImages([]);
+      setDescriptionDraft(finalDescription);
+      setIsEditingDescription(false);
+    } catch (error) {
+      setDescriptionError(
+        error instanceof Error ? error.message : 'Failed to save description',
+      );
+    }
+  }, [
+    descriptionDraft,
+    pendingDescriptionImages,
+    updateDescription,
+    uploadAttachment,
+  ]);
+
+  const insertDescriptionMarkdown = useCallback((markdown: string) => {
+    const textarea = descriptionTextareaRef.current;
+    if (!textarea) {
+      setDescriptionDraft((current) => {
+        const separator = current.trim() ? '\n\n' : '';
+        return `${current.trimEnd()}${separator}${markdown}`;
+      });
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    setDescriptionDraft(
+      (current) => `${current.slice(0, start)}${markdown}${current.slice(end)}`,
+    );
+    requestAnimationFrame(() => {
+      textarea.focus();
+      const cursor = start + markdown.length;
+      textarea.setSelectionRange(cursor, cursor);
     });
-  }, [descriptionDraft, updateDescription, uploadAttachment.isPending]);
+  }, []);
+
+  const stageDescriptionImage = useCallback(
+    (image: PromptImagePart) => {
+      descriptionImageTokenCounterRef.current += 1;
+      const token = descriptionImageTokenCounterRef.current;
+      const fileName = image.filename || `image-${token}.png`;
+      const safeAltText = fileName.replace(/[[\]()\\]/g, '_');
+      const placeholderMarkdown = `![${safeAltText}](jc-image://${token})`;
+
+      insertDescriptionMarkdown(placeholderMarkdown);
+      setPendingDescriptionImages((current) => [
+        ...current,
+        { ...image, placeholderMarkdown },
+      ]);
+    },
+    [insertDescriptionMarkdown],
+  );
+
+  const stageDescriptionImageFiles = useCallback(
+    async (files: File[]) => {
+      const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+      if (imageFiles.length === 0) return;
+      const allowed = MAX_IMAGES - pendingDescriptionImages.length;
+      if (allowed <= 0) return;
+
+      setDescriptionError(null);
+      try {
+        await Promise.all(
+          imageFiles.slice(0, allowed).map(
+            (file) =>
+              new Promise<void>((resolve, reject) => {
+                void processImageFile(
+                  file,
+                  (image) => {
+                    stageDescriptionImage(image);
+                    resolve();
+                  },
+                  reject,
+                ).catch(reject);
+              }),
+          ),
+        );
+      } catch (error) {
+        setDescriptionError(
+          error instanceof Error ? error.message : 'Failed to stage image',
+        );
+      }
+    },
+    [pendingDescriptionImages.length, stageDescriptionImage],
+  );
 
   const handleImageSelection = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files ?? []);
-      if (files.length === 0) return;
-
-      let markdownImages: string[];
-      try {
-        markdownImages = await Promise.all(
-          files.map(async (file) => {
-            const dataBase64 = await new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => {
-                if (typeof reader.result !== 'string') {
-                  reject(new Error(`Failed to read ${file.name}`));
-                  return;
-                }
-                resolve(reader.result.split(',')[1] ?? '');
-              };
-              reader.onerror = () => reject(reader.error);
-              reader.readAsDataURL(file);
-            });
-            const attachment = await uploadAttachment.mutateAsync({
-              fileName: file.name,
-              mimeType: file.type || 'application/octet-stream',
-              dataBase64,
-            });
-            const alt = file.name.replace(/[[\]()\\]/g, '_');
-            return `![${alt}](${attachment.url})`;
-          }),
-        );
-      } catch (error) {
-        setDescriptionError(
-          error instanceof Error ? error.message : 'Failed to read image',
-        );
-        event.target.value = '';
-        return;
-      }
-
-      setDescriptionDraft((current) => {
-        const separator = current.trim() ? '\n\n' : '';
-        return `${current.trimEnd()}${separator}${markdownImages.join('\n\n')}`;
-      });
+      await stageDescriptionImageFiles(files);
       event.target.value = '';
     },
-    [uploadAttachment],
+    [stageDescriptionImageFiles],
+  );
+
+  const handleDescriptionPaste = useCallback(
+    (event: ClipboardEvent<HTMLTextAreaElement>) => {
+      const files = Array.from(event.clipboardData.files);
+      const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+      if (imageFiles.length === 0) return;
+      event.preventDefault();
+      void stageDescriptionImageFiles(imageFiles);
+    },
+    [stageDescriptionImageFiles],
+  );
+
+  const handleDescriptionDrop = useCallback(
+    (event: DragEvent<HTMLTextAreaElement>) => {
+      const files = Array.from(event.dataTransfer.files);
+      const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+      if (imageFiles.length === 0) return;
+      event.preventDefault();
+      void stageDescriptionImageFiles(imageFiles);
+    },
+    [stageDescriptionImageFiles],
+  );
+
+  const handleDescriptionDragOver = useCallback(
+    (event: DragEvent<HTMLTextAreaElement>) => {
+      if (
+        Array.from(event.dataTransfer.items).some(
+          (item) => item.kind === 'file',
+        )
+      ) {
+        event.preventDefault();
+      }
+    },
+    [],
   );
 
   // Merge optimistic queued state with server data
@@ -381,10 +524,14 @@ export function PrOverview({
               {isEditingDescription ? (
                 <div className="space-y-3">
                   <Textarea
+                    ref={descriptionTextareaRef}
                     value={descriptionDraft}
                     onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
                       setDescriptionDraft(event.target.value)
                     }
+                    onPaste={handleDescriptionPaste}
+                    onDrop={handleDescriptionDrop}
+                    onDragOver={handleDescriptionDragOver}
                     rows={10}
                     className="min-h-56 font-mono text-xs"
                     placeholder="Describe the pull request..."
@@ -392,6 +539,21 @@ export function PrOverview({
                       updateDescription.isPending || uploadAttachment.isPending
                     }
                   />
+                  {previewDescriptionDraft.trim() && (
+                    <div className="border-glass-border/60 bg-bg-2/60 rounded-md border p-3">
+                      <div className="text-ink-4 mb-2 text-[10px] font-medium tracking-wide uppercase">
+                        Preview
+                      </div>
+                      <AzureMarkdownContent
+                        markdown={previewDescriptionDraft}
+                        providerId={providerId}
+                        className="text-ink-1 text-sm"
+                        imageClassName="max-h-[360px] object-contain"
+                        enableImageModal
+                        mentionDisplayNames={mentionDisplayNames}
+                      />
+                    </div>
+                  )}
                   {descriptionError && (
                     <p className="text-xs text-red-400">{descriptionError}</p>
                   )}
@@ -425,7 +587,10 @@ export function PrOverview({
                       variant="ghost"
                       size="sm"
                       icon={<X className="h-3.5 w-3.5" />}
-                      onClick={() => setIsEditingDescription(false)}
+                      onClick={() => {
+                        setPendingDescriptionImages([]);
+                        setIsEditingDescription(false);
+                      }}
                       disabled={
                         updateDescription.isPending ||
                         uploadAttachment.isPending
@@ -444,7 +609,7 @@ export function PrOverview({
                           <Save className="h-3.5 w-3.5" />
                         )
                       }
-                      onClick={handleSaveDescription}
+                      onClick={() => void handleSaveDescription()}
                       disabled={
                         updateDescription.isPending ||
                         uploadAttachment.isPending

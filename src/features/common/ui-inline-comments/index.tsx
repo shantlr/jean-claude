@@ -10,6 +10,7 @@ import {
   MentionTextarea,
   type MentionOption,
 } from '@/common/ui/mention-textarea';
+import { MarkdownContent } from '@/features/agent/ui-markdown-content';
 import { MAX_IMAGES, processImageFile } from '@/lib/image-utils';
 import { formatLineRangeLabel } from '@/stores/utils-comment-store';
 import type { PromptImagePart } from '@shared/agent-backend-types';
@@ -33,6 +34,32 @@ export const COMMENT_ACCENT = {
 type InlineComposerImage = PromptImagePart & {
   placeholderMarkdown?: string;
 };
+
+function imageDataUrl(image: PromptImagePart) {
+  return `data:${image.storageMimeType ?? image.mimeType};base64,${image.storageData ?? image.data}`;
+}
+
+function placeholderPattern(placeholderMarkdown: string) {
+  const token = placeholderMarkdown.match(/jc-image:\/\/([^)]+)/)?.[1];
+  return token
+    ? new RegExp(`!\\[[^\\]]*\\]\\(jc-image:\\/\\/${token}\\)`, 'g')
+    : null;
+}
+
+function markdownWithLocalImages(body: string, images: InlineComposerImage[]) {
+  return images.reduce((current, image) => {
+    if (!image.placeholderMarkdown) return current;
+    const pattern = placeholderPattern(image.placeholderMarkdown);
+    if (!pattern) return current;
+    return current.replace(
+      pattern,
+      image.placeholderMarkdown.replace(
+        /\]\([^)]*\)$/,
+        `](${imageDataUrl(image)})`,
+      ),
+    );
+  }, body);
+}
 
 // ---------------------------------------------------------------------------
 // InlineCommentComposer — shared comment input form
@@ -237,6 +264,7 @@ export function InlineCommentComposer({
 
   const isDisabled =
     isSubmitting || (!body.trim() && images.length === 0 && !canSubmitEmpty);
+  const previewMarkdown = markdownWithLocalImages(body, images);
 
   return (
     <div className="flex flex-col gap-2">
@@ -265,6 +293,19 @@ export function InlineCommentComposer({
         disabled={isSubmitting}
         minHeight={60}
       />
+
+      {previewMarkdown.trim() && (
+        <div className="border-glass-border/60 bg-bg-1/60 rounded border px-2.5 py-2">
+          <div className="text-ink-4 mb-1 text-[10px] font-medium tracking-wide uppercase">
+            Preview
+          </div>
+          <MarkdownContent
+            content={previewMarkdown}
+            imageClassName="max-h-64 object-contain"
+            enableImageModal
+          />
+        </div>
+      )}
 
       {images.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
@@ -460,6 +501,8 @@ export function InlineCommentBubble({
     setIsEditing(false);
   }, [editBody, editImages, body, currentImages, onEdit, cancelEditing]);
 
+  const editPreviewMarkdown = markdownWithLocalImages(editBody, editImages);
+
   // Focus textarea when entering edit mode
   useEffect(() => {
     if (isEditing) {
@@ -543,6 +586,18 @@ export function InlineCommentBubble({
               onDrop={handleEditDrop}
               onDragOver={handleEditDragOver}
             />
+            {editPreviewMarkdown.trim() && (
+              <div className="border-glass-border/60 bg-bg-1/60 rounded border px-2.5 py-2">
+                <div className="text-ink-4 mb-1 text-[10px] font-medium tracking-wide uppercase">
+                  Preview
+                </div>
+                <MarkdownContent
+                  content={editPreviewMarkdown}
+                  imageClassName="max-h-64 object-contain"
+                  enableImageModal
+                />
+              </div>
+            )}
             {editImages.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {editImages.map((img, index) => (
