@@ -36,6 +36,7 @@ import { AgentsSettings } from '@/features/settings/ui-agents-settings';
 import { AiGenerationSettings } from '@/features/settings/ui-ai-generation-settings';
 import { AutocompleteSettings } from '@/features/settings/ui-autocomplete-settings';
 import { AzureDevOpsTab } from '@/features/settings/ui-azure-devops-tab';
+import { BackendConfigSettings } from '@/features/settings/ui-backend-config-settings';
 import { DebugDatabase } from '@/features/settings/ui-debug-database';
 import {
   EditorSettings,
@@ -61,7 +62,10 @@ import { useCurrentSettingsProject } from './use-current-settings-project';
 type GlobalSubItem = {
   id: string;
   label: string;
+  layout?: SettingsContentLayout;
 };
+
+type SettingsContentLayout = 'standard' | 'fill';
 
 type GlobalSection = {
   id: string;
@@ -70,11 +74,13 @@ type GlobalSection = {
   title: string;
   subtitle: string;
   subs?: GlobalSubItem[];
+  layout?: SettingsContentLayout;
 };
 
 type ProjectSubItem = {
   id: string;
   label: string;
+  layout?: SettingsContentLayout;
 };
 
 type ProjectSection = {
@@ -82,6 +88,7 @@ type ProjectSection = {
   label: string;
   icon: React.ElementType;
   subs?: ProjectSubItem[];
+  layout?: SettingsContentLayout;
 };
 
 /* ── Section definitions ── */
@@ -117,6 +124,11 @@ function getGlobalSections(): GlobalSection[] {
       icon: Grid3X3,
       title: 'Coding Agents',
       subtitle: 'Backends, thinking defaults, and model presets',
+      subs: [
+        { id: 'presets', label: 'Model Presets' },
+        { id: 'claude-code', label: 'Claude Code', layout: 'fill' },
+        { id: 'opencode', label: 'OpenCode', layout: 'fill' },
+      ],
     },
     {
       id: 'ai-generation',
@@ -124,6 +136,7 @@ function getGlobalSections(): GlobalSection[] {
       icon: Sparkles,
       title: 'AI Generation',
       subtitle: 'Configure AI-powered content generation',
+      layout: 'fill',
     },
     {
       id: 'permissions',
@@ -139,9 +152,9 @@ function getGlobalSections(): GlobalSection[] {
       title: 'Skills & Agents',
       subtitle: 'Manage skills, sources, and backend subagents',
       subs: [
-        { id: 'sources', label: 'Sources' },
-        { id: 'skills', label: 'Skills' },
-        { id: 'agents', label: 'Agents' },
+        { id: 'sources', label: 'Sources', layout: 'fill' },
+        { id: 'skills', label: 'Skills', layout: 'fill' },
+        { id: 'agents', label: 'Agents', layout: 'fill' },
       ],
     },
     {
@@ -150,6 +163,7 @@ function getGlobalSections(): GlobalSection[] {
       icon: Terminal,
       title: 'Prompt Snippets',
       subtitle: 'Reusable prompt templates with variables',
+      layout: 'fill',
     },
     {
       id: 'mcp-servers',
@@ -213,9 +227,14 @@ const PROJECT_SECTIONS: ProjectSection[] = [
     ],
   },
   { id: 'run-commands', label: 'Run Commands', icon: Play },
-  { id: 'skills', label: 'Skills', icon: Box },
+  { id: 'skills', label: 'Skills', icon: Box, layout: 'fill' },
   { id: 'mcp-overrides', label: 'MCP Overrides', icon: Cpu },
-  { id: 'ai-generation', label: 'AI Generation', icon: Sparkles },
+  {
+    id: 'ai-generation',
+    label: 'AI Generation',
+    icon: Sparkles,
+    layout: 'fill',
+  },
   { id: 'danger-zone', label: 'Danger Zone', icon: AlertTriangle },
 ];
 
@@ -320,17 +339,35 @@ function getDefaultProjectSelection(): {
 
 /* ── Content rendering ── */
 
-// List/detail settings need fill-height flex layout.
-function isFillHeightGlobal(sel: ActiveSelection): boolean {
-  return (
-    sel.sectionId === 'skills-agents' ||
-    sel.sectionId === 'prompt-snippets' ||
-    sel.sectionId === 'ai-generation'
-  );
+function resolveGlobalContentLayout(
+  sel: ActiveSelection,
+): SettingsContentLayout {
+  const section = getGlobalSections().find((s) => s.id === sel.sectionId);
+  if (!section) return 'standard';
+  const subItem = section.subs?.find((s) => s.id === sel.subId);
+  return subItem?.layout ?? section.layout ?? 'standard';
 }
 
-function isFillHeightProject(menuItem: ProjectSettingsMenuItem): boolean {
-  return menuItem === 'skills' || menuItem === 'ai-generation';
+function resolveProjectContentLayout(sel: {
+  sectionId: string;
+  subId?: string;
+}): SettingsContentLayout {
+  const section = PROJECT_SECTIONS.find((s) => s.id === sel.sectionId);
+  if (!section) return 'standard';
+  const subItem = section.subs?.find((s) => s.id === sel.subId);
+  return subItem?.layout ?? section.layout ?? 'standard';
+}
+
+// List/detail settings need fill-height flex layout.
+function isFillHeightGlobal(sel: ActiveSelection): boolean {
+  return resolveGlobalContentLayout(sel) === 'fill';
+}
+
+function isFillHeightProject(sel: {
+  sectionId: string;
+  subId?: string;
+}): boolean {
+  return resolveProjectContentLayout(sel) === 'fill';
 }
 
 function GlobalContent({ selection }: { selection: ActiveSelection }) {
@@ -428,6 +465,12 @@ function GlobalContentInner({ selection }: { selection: ActiveSelection }) {
         return <SourcesSettings />;
       case 'skills-agents:agents':
         return <AgentsSettings />;
+      case 'coding-agents:presets':
+        return <ModelPresetsSettings />;
+      case 'coding-agents:claude-code':
+        return <BackendConfigSettings backend="claude-code" />;
+      case 'coding-agents:opencode':
+        return <BackendConfigSettings backend="opencode" />;
     }
   }
 
@@ -817,10 +860,9 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
     onClose();
   }, [onClose]);
 
-  const projectMenuItem = resolveProjectMenuItem(projectSelection);
   const fillHeight =
     (displayedActiveTab === 'global' && isFillHeightGlobal(globalSelection)) ||
-    (displayedActiveTab === 'project' && isFillHeightProject(projectMenuItem));
+    (displayedActiveTab === 'project' && isFillHeightProject(projectSelection));
 
   return createPortal(
     <FocusLock returnFocus>
@@ -1088,7 +1130,7 @@ function ProjectContent({
   const menuItem = resolveProjectMenuItem(selection);
   const section = PROJECT_SECTIONS.find((s) => s.id === selection.sectionId);
   const subItem = section?.subs?.find((s) => s.id === selection.subId);
-  const fillHeight = isFillHeightProject(menuItem);
+  const fillHeight = isFillHeightProject(selection);
 
   return (
     <>

@@ -493,6 +493,15 @@ contextBridge.exposeInMainWorld('api', {
     set: (key: string, value: unknown) =>
       ipcRenderer.invoke('settings:set', key, value),
   },
+  backendConfig: {
+    getUserConfig: (
+      backend: import('@shared/agent-backend-types').AgentBackendType,
+    ) => ipcRenderer.invoke('backendConfig:getUserConfig', backend),
+    setUserConfig: (
+      backend: import('@shared/agent-backend-types').AgentBackendType,
+      content: string,
+    ) => ipcRenderer.invoke('backendConfig:setUserConfig', backend, content),
+  },
   projectPromptPreface: {
     get: (projectPath: string) =>
       ipcRenderer.invoke('projectPromptPreface:get', projectPath),

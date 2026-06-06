@@ -853,6 +853,19 @@ export interface Api {
       value: AppSettings[K],
     ) => Promise<void>;
   };
+  backendConfig: {
+    getUserConfig: (
+      backend: import('@shared/agent-backend-types').AgentBackendType,
+    ) => Promise<
+      import('@shared/backend-config-settings-types').BackendUserConfig
+    >;
+    setUserConfig: (
+      backend: import('@shared/agent-backend-types').AgentBackendType,
+      content: string,
+    ) => Promise<
+      import('@shared/backend-config-settings-types').BackendUserConfig
+    >;
+  };
   projectPromptPreface: {
     get: (
       projectPath: string,
@@ -1707,6 +1720,14 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         set: async () => {
+          throw new Error('API not available');
+        },
+      },
+      backendConfig: {
+        getUserConfig: async () => {
+          throw new Error('API not available');
+        },
+        setUserConfig: async () => {
           throw new Error('API not available');
         },
       },

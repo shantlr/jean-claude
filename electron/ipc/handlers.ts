@@ -164,6 +164,10 @@ import {
   type CloneRepositoryParams,
 } from '../services/azure-devops-service';
 import { fetchImageAsBase64 } from '../services/azure-image-proxy-service';
+import {
+  readBackendUserConfig,
+  writeBackendUserConfig,
+} from '../services/backend-config-settings-service';
 import * as backendModelsService from '../services/backend-models-service';
 import {
   generateCommitMessageForTask,
@@ -3250,6 +3254,27 @@ export function registerIpcHandlers() {
         throw new Error('Use aiGeneration:saveSettings for OpenAI settings');
       }
       return SettingsRepository.set(key, value);
+    },
+  );
+  ipcMain.handle(
+    'backendConfig:getUserConfig',
+    (_: unknown, backend: unknown) => {
+      if (backend !== 'claude-code' && backend !== 'opencode') {
+        throw new Error('Invalid backend');
+      }
+      return readBackendUserConfig(backend);
+    },
+  );
+  ipcMain.handle(
+    'backendConfig:setUserConfig',
+    (_: unknown, backend: unknown, content: unknown) => {
+      if (backend !== 'claude-code' && backend !== 'opencode') {
+        throw new Error('Invalid backend');
+      }
+      if (typeof content !== 'string') {
+        throw new Error('Invalid config content');
+      }
+      return writeBackendUserConfig({ backend, content });
     },
   );
   ipcMain.handle('projectPromptPreface:get', async (_, projectPath: string) =>
