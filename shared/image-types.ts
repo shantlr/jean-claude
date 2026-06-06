@@ -74,3 +74,7 @@ export function isImagePath(filePath: string): boolean {
   const ext = filePath.slice(lastDot).toLowerCase();
   return IMAGE_EXTENSIONS.has(ext);
 }
+
+export function isSvgPath(filePath: string): boolean {
+  return filePath.toLowerCase().endsWith('.svg');
+}

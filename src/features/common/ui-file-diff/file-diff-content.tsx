@@ -14,15 +14,27 @@ import {
 import { MarkdownContent } from '@/features/agent/ui-markdown-content';
 import { ReviewCommentComposer } from '@/features/agent/ui-review-comments/review-comment-composer';
 import { ReviewCommentThread } from '@/features/agent/ui-review-comments/review-comment-thread';
+import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import type { FileAnnotation } from '@/lib/api';
 import type { ReviewComment, ReviewPresetId } from '@/stores/review-comments';
 import { getSelectedTextForRange } from '@/stores/utils-comment-prompt';
 import type { PromptImagePart } from '@shared/agent-backend-types';
+import { isSvgPath } from '@shared/image-types';
 
 import { FileDiffHeader } from './file-diff-header';
 import type { DiffFile, CommentThread } from './types';
 
 const EMPTY_INLINE_COMMENTS: InlineComment[] = [];
+const SVG_PREVIEW_WIDTH = 192;
+const SVG_PREVIEW_MIN_WIDTH = 140;
+const SVG_PREVIEW_MAX_WIDTH = 360;
+const TRANSPARENCY_GRID_STYLE = {
+  backgroundColor: '#f8fafc',
+  backgroundImage:
+    'linear-gradient(45deg, #cbd5e1 25%, transparent 25%), linear-gradient(-45deg, #cbd5e1 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #cbd5e1 75%), linear-gradient(-45deg, transparent 75%, #cbd5e1 75%)',
+  backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
+  backgroundSize: '16px 16px',
+};
 
 export function FileDiffContent({
   file,
@@ -102,6 +114,7 @@ export function FileDiffContent({
 }) {
   const [commentFormLineRange, setCommentFormLineRange] =
     useState<LineRange | null>(null);
+  const [svgPreviewWidth, setSvgPreviewWidth] = useState(SVG_PREVIEW_WIDTH);
 
   const handleAddComment = useCallback(
     (content: string) => {
@@ -149,6 +162,18 @@ export function FileDiffContent({
 
   const hasCommentSupport = !!onAddComment && !!CommentForm;
   const hasReviewSupport = !!onAddReviewComment;
+  const isSvg = isSvgPath(file.path);
+  const {
+    containerRef: svgPreviewContainerRef,
+    isDragging: isSvgPreviewDragging,
+    handleMouseDown: handleSvgPreviewResizeMouseDown,
+  } = useHorizontalResize({
+    initialWidth: svgPreviewWidth,
+    minWidth: SVG_PREVIEW_MIN_WIDTH,
+    maxWidth: SVG_PREVIEW_MAX_WIDTH,
+    direction: 'left',
+    onWidthChange: setSvgPreviewWidth,
+  });
 
   // Get annotation inline comments using the hook
   const { inlineComments: annotationComments } = useAnnotationsAsInlineComments(
@@ -336,7 +361,10 @@ export function FileDiffContent({
                   <span className="text-ink-3 text-xs font-medium tracking-wide uppercase">
                     Before
                   </span>
-                  <div className="border-red-6 overflow-hidden rounded-md border">
+                  <div
+                    className="border-red-6 overflow-hidden rounded-md border"
+                    style={TRANSPARENCY_GRID_STYLE}
+                  >
                     <img
                       src={oldImageDataUrl}
                       alt="Before"
@@ -348,7 +376,10 @@ export function FileDiffContent({
                   <span className="text-ink-3 text-xs font-medium tracking-wide uppercase">
                     After
                   </span>
-                  <div className="border-green-6 overflow-hidden rounded-md border">
+                  <div
+                    className="border-green-6 overflow-hidden rounded-md border"
+                    style={TRANSPARENCY_GRID_STYLE}
+                  >
                     <img
                       src={newImageDataUrl}
                       alt="After"
@@ -361,14 +392,25 @@ export function FileDiffContent({
               // Added or deleted image: show single image
               <div className="flex flex-col items-center gap-2">
                 <span className="text-ink-3 text-xs font-medium tracking-wide uppercase">
-                  {newImageDataUrl ? 'Added' : 'Deleted'}
+                  {file.status === 'unchanged'
+                    ? 'Preview'
+                    : newImageDataUrl
+                      ? 'Added'
+                      : 'Deleted'}
                 </span>
                 <div
-                  className={`overflow-hidden rounded-md border ${newImageDataUrl ? 'border-green-6' : 'border-red-6'}`}
+                  className={`overflow-hidden rounded-md border ${file.status === 'unchanged' ? 'border-line' : newImageDataUrl ? 'border-green-6' : 'border-red-6'}`}
+                  style={TRANSPARENCY_GRID_STYLE}
                 >
                   <img
                     src={(newImageDataUrl ?? oldImageDataUrl)!}
-                    alt={newImageDataUrl ? 'Added' : 'Deleted'}
+                    alt={
+                      file.status === 'unchanged'
+                        ? 'Preview'
+                        : newImageDataUrl
+                          ? 'Added'
+                          : 'Deleted'
+                    }
                     className="max-h-[70vh] max-w-[60vw] object-contain"
                   />
                 </div>
@@ -383,6 +425,75 @@ export function FileDiffContent({
       <div className="text-ink-3 flex h-full flex-col items-center justify-center gap-2">
         <p>Binary file changed</p>
         <p className="text-xs">{file.path}</p>
+      </div>
+    );
+  }
+
+  if (isSvg) {
+    const previewContent = file.status === 'deleted' ? oldContent : newContent;
+    const previewDataUrl = previewContent
+      ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(previewContent)}`
+      : null;
+
+    return (
+      <div className="flex h-full flex-col overflow-hidden">
+        <FileDiffHeader
+          file={file}
+          className={headerClassName}
+          commentCount={fileThreads.length + (reviewComments?.length ?? 0)}
+          hasAnnotations={hasAnnotations}
+        />
+        <div
+          ref={svgPreviewContainerRef}
+          className={`flex min-h-0 flex-1 ${isSvgPreviewDragging ? 'select-none' : ''}`}
+        >
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <DiffView
+              filePath={file.path}
+              oldString={oldContent}
+              newString={newContent}
+              withMinimap
+              onAddCommentClick={
+                hasReviewSupport || hasCommentSupport
+                  ? handleAddCommentClick
+                  : undefined
+              }
+              inlineComments={inlineComments}
+              commentedLines={commentedLines}
+              commentFormLineRange={commentFormLineRange}
+              commentForm={commentFormElement}
+              scrollToLine={scrollToLine}
+            />
+          </div>
+          <div
+            onMouseDown={handleSvgPreviewResizeMouseDown}
+            className="hover:bg-acc/30 w-1 shrink-0 cursor-col-resize border-l border-[var(--line)]"
+          />
+          <div
+            className="bg-bg-0/80 shrink-0 p-3"
+            style={{ width: svgPreviewWidth }}
+          >
+            <div className="flex flex-col gap-2">
+              <div className="text-ink-3 font-mono text-[10px] tracking-wide uppercase">
+                SVG Preview
+              </div>
+              <div
+                className="border-line flex aspect-square items-center justify-center overflow-hidden rounded-md border p-3"
+                style={TRANSPARENCY_GRID_STYLE}
+              >
+                {previewDataUrl ? (
+                  <img
+                    src={previewDataUrl}
+                    alt="SVG preview"
+                    className="max-h-full max-w-full"
+                  />
+                ) : (
+                  <span className="text-ink-4 text-xs">No preview</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

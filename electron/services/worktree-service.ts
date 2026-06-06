@@ -6,7 +6,7 @@ import { promisify } from 'util';
 import { app } from 'electron';
 import { nanoid } from 'nanoid';
 
-import { getImageMimeType } from '@shared/image-types';
+import { getImageMimeType, isSvgPath } from '@shared/image-types';
 import type { WorktreeFileCopyEntry } from '@shared/permission-types';
 import type { BranchInfo } from '@shared/types';
 
@@ -632,11 +632,12 @@ export async function getWorktreeFileContent(
   let newImageDataUrl: string | null = null;
 
   const mimeType = getImageMimeType(filePath);
+  const isSvg = isSvgPath(filePath);
 
   // Get old content from the base commit (unless file was added)
   if (status !== 'added') {
     try {
-      if (mimeType) {
+      if (mimeType && !isSvg) {
         // Read old image as base64 from git
         const { stdout } = await execAsync(
           `git show ${baseCommit}:"${escapeForShell(filePath)}" | base64`,
@@ -677,7 +678,7 @@ export async function getWorktreeFileContent(
   if (status !== 'deleted') {
     const fullPath = path.join(worktreePath, filePath);
     try {
-      if (mimeType) {
+      if (mimeType && !isSvg) {
         // Read new image as base64 from disk
         const buffer = await fs.readFile(fullPath);
         const base64 = buffer.toString('base64');
@@ -704,7 +705,7 @@ export async function getWorktreeFileContent(
   }
 
   // Mark as binary for images
-  if (mimeType) {
+  if (mimeType && !isSvg) {
     isBinary = true;
   }
 
@@ -1838,6 +1839,8 @@ export async function getWorktreeCommitFileContent(
   oldContent: string | null;
   newContent: string | null;
   isBinary: boolean;
+  oldImageDataUrl?: string | null;
+  newImageDataUrl?: string | null;
 }> {
   // Validate commit hash
   if (!/^[0-9a-f]{7,40}$/i.test(commitHash)) {
@@ -1847,18 +1850,34 @@ export async function getWorktreeCommitFileContent(
   try {
     let oldContent: string | null = null;
     let newContent: string | null = null;
+    let oldImageDataUrl: string | null = null;
+    let newImageDataUrl: string | null = null;
+    const mimeType = getImageMimeType(filePath);
+    const isSvg = isSvgPath(filePath);
 
     if (status !== 'added') {
       try {
-        const { stdout } = await execAsync(
-          `git show ${commitHash}^:${filePath}`,
-          {
-            cwd: worktreePath,
-            encoding: 'utf-8',
-            maxBuffer: 10 * 1024 * 1024,
-          },
-        );
-        oldContent = stdout;
+        if (mimeType && !isSvg) {
+          const { stdout } = await execAsync(
+            `git show ${commitHash}^:"${escapeForShell(filePath)}" | base64`,
+            {
+              cwd: worktreePath,
+              encoding: 'utf-8',
+              maxBuffer: 15 * 1024 * 1024,
+            },
+          );
+          oldImageDataUrl = `data:${mimeType};base64,${stdout.replace(/\s/g, '')}`;
+        } else {
+          const { stdout } = await execAsync(
+            `git show ${commitHash}^:"${escapeForShell(filePath)}"`,
+            {
+              cwd: worktreePath,
+              encoding: 'utf-8',
+              maxBuffer: 10 * 1024 * 1024,
+            },
+          );
+          oldContent = stdout;
+        }
       } catch {
         oldContent = null;
       }
@@ -1866,15 +1885,27 @@ export async function getWorktreeCommitFileContent(
 
     if (status !== 'deleted') {
       try {
-        const { stdout } = await execAsync(
-          `git show ${commitHash}:${filePath}`,
-          {
-            cwd: worktreePath,
-            encoding: 'utf-8',
-            maxBuffer: 10 * 1024 * 1024,
-          },
-        );
-        newContent = stdout;
+        if (mimeType && !isSvg) {
+          const { stdout } = await execAsync(
+            `git show ${commitHash}:"${escapeForShell(filePath)}" | base64`,
+            {
+              cwd: worktreePath,
+              encoding: 'utf-8',
+              maxBuffer: 15 * 1024 * 1024,
+            },
+          );
+          newImageDataUrl = `data:${mimeType};base64,${stdout.replace(/\s/g, '')}`;
+        } else {
+          const { stdout } = await execAsync(
+            `git show ${commitHash}:"${escapeForShell(filePath)}"`,
+            {
+              cwd: worktreePath,
+              encoding: 'utf-8',
+              maxBuffer: 10 * 1024 * 1024,
+            },
+          );
+          newContent = stdout;
+        }
       } catch {
         newContent = null;
       }
@@ -1882,10 +1913,17 @@ export async function getWorktreeCommitFileContent(
 
     // Simple binary detection
     const isBinary =
+      (mimeType !== null && !isSvg) ||
       (oldContent !== null && oldContent.includes('\0')) ||
       (newContent !== null && newContent.includes('\0'));
 
-    return { oldContent, newContent, isBinary };
+    return {
+      oldContent,
+      newContent,
+      isBinary,
+      oldImageDataUrl,
+      newImageDataUrl,
+    };
   } catch {
     return { oldContent: null, newContent: null, isBinary: false };
   }

@@ -46,6 +46,7 @@ import {
   type ReviewPresetId,
 } from '@/stores/review-comments';
 import type { PromptImagePart } from '@shared/agent-backend-types';
+import { isImagePath, isSvgPath } from '@shared/image-types';
 
 import { ReviewCommitsPanel } from './review-commits-panel';
 import { ReviewFilesTree } from './review-files-tree';
@@ -797,19 +798,53 @@ function PlainFileViewer({
   ) => void;
   onResolveReviewComment?: (commentId: string) => void;
 }) {
+  const isRasterImage = isImagePath(filePath) && !isSvgPath(filePath);
   const { data, isLoading } = useQuery({
     queryKey: ['file-content', filePath],
     queryFn: () => api.fs.readFile(filePath),
     staleTime: Infinity,
     refetchOnWindowFocus: false,
+    enabled: !isRasterImage,
+  });
+  const { data: imageDataUrl, isLoading: isImageLoading } = useQuery({
+    queryKey: ['image-content', filePath],
+    queryFn: () => api.fs.readImageAsDataUrl(filePath),
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    enabled: isRasterImage,
   });
   const fileReviewComments = useReviewCommentsForFile(taskId, relativePath);
 
-  if (isLoading) {
+  if (isLoading || isImageLoading) {
     return (
       <div className="text-ink-3 flex h-full items-center justify-center text-sm">
         Loading...
       </div>
+    );
+  }
+
+  if (isRasterImage) {
+    if (!imageDataUrl) {
+      return (
+        <div className="text-ink-3 flex h-full items-center justify-center text-sm">
+          Unable to read image
+        </div>
+      );
+    }
+
+    return (
+      <FileDiffContent
+        file={{ path: relativePath, status: 'unchanged' }}
+        oldContent=""
+        newContent=""
+        isBinary
+        newImageDataUrl={imageDataUrl}
+        reviewComments={fileReviewComments}
+        onAddReviewComment={onAddReviewComment}
+        onDeleteReviewComment={onDeleteReviewComment}
+        onEditReviewComment={onEditReviewComment}
+        onResolveReviewComment={onResolveReviewComment}
+      />
     );
   }
 
@@ -914,6 +949,8 @@ function CommitFileDiffContent({
       newContent={data?.newContent ?? ''}
       isLoading={isLoading}
       isBinary={data?.isBinary}
+      oldImageDataUrl={data?.oldImageDataUrl}
+      newImageDataUrl={data?.newImageDataUrl}
       reviewComments={fileReviewComments}
       onAddReviewComment={handleAddCommitReviewComment}
       onDeleteReviewComment={onDeleteReviewComment}
