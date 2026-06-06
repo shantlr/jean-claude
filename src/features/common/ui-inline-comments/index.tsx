@@ -11,6 +11,10 @@ import {
   type MentionOption,
 } from '@/common/ui/mention-textarea';
 import { MarkdownContent } from '@/features/agent/ui-markdown-content';
+import {
+  isVideoFile,
+  VideoGifConverter,
+} from '@/features/pull-request/ui-video-gif-converter';
 import { MAX_IMAGES, processImageFile } from '@/lib/image-utils';
 import { formatLineRangeLabel } from '@/stores/utils-comment-store';
 import type { PromptImagePart } from '@shared/agent-backend-types';
@@ -118,6 +122,7 @@ export function InlineCommentComposer({
 }) {
   const [body, setBody] = useState(initialBody);
   const [images, setImages] = useState<InlineComposerImage[]>(initialImages);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imagesRef = useRef<InlineComposerImage[]>(initialImages);
@@ -200,12 +205,15 @@ export function InlineCommentComposer({
       if (!allowImages) return;
       const files = Array.from(e.clipboardData.files);
       const imageFiles = files.filter((f) => f.type.startsWith('image/'));
-      if (imageFiles.length === 0) return;
+      const nextVideoFile = files.find(isVideoFile);
+      if (imageFiles.length === 0 && !nextVideoFile) return;
       e.preventDefault();
       const allowed = MAX_IMAGES - images.length;
       for (const file of imageFiles.slice(0, allowed)) {
         void processImageFile(file, handleImageAttach);
       }
+      if (nextVideoFile && allowed > imageFiles.length)
+        setVideoFile(nextVideoFile);
     },
     [allowImages, images.length, handleImageAttach],
   );
@@ -216,10 +224,13 @@ export function InlineCommentComposer({
       e.preventDefault();
       const files = Array.from(e.dataTransfer.files);
       const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+      const nextVideoFile = files.find(isVideoFile);
       const allowed = MAX_IMAGES - images.length;
       for (const file of imageFiles.slice(0, allowed)) {
         void processImageFile(file, handleImageAttach);
       }
+      if (nextVideoFile && allowed > imageFiles.length)
+        setVideoFile(nextVideoFile);
     },
     [allowImages, images.length, handleImageAttach],
   );
@@ -236,10 +247,14 @@ export function InlineCommentComposer({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!allowImages) return;
       const files = Array.from(e.target.files ?? []);
+      const nextVideoFile = files.find(isVideoFile);
       const allowed = MAX_IMAGES - images.length;
-      for (const file of files.slice(0, allowed)) {
+      for (const file of files
+        .filter((f) => f.type.startsWith('image/'))
+        .slice(0, allowed)) {
         void processImageFile(file, handleImageAttach);
       }
+      if (nextVideoFile && allowed > 0) setVideoFile(nextVideoFile);
       e.target.value = '';
     },
     [allowImages, images.length, handleImageAttach],
@@ -357,7 +372,7 @@ export function InlineCommentComposer({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,video/*"
               multiple
               className="hidden"
               onChange={handleFileSelect}
@@ -376,6 +391,11 @@ export function InlineCommentComposer({
         )}
         {renderAfterActions}
       </div>
+      <VideoGifConverter
+        file={videoFile}
+        onAttach={handleImageAttach}
+        onClose={() => setVideoFile(null)}
+      />
     </div>
   );
 }
@@ -420,6 +440,7 @@ export function InlineCommentBubble({
   const [editBody, setEditBody] = useState(body);
   const [editImages, setEditImages] =
     useState<PromptImagePart[]>(currentImages);
+  const [editVideoFile, setEditVideoFile] = useState<File | null>(null);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const editFileInputRef = useRef<HTMLInputElement>(null);
   const bindingId = useId();
@@ -446,12 +467,15 @@ export function InlineCommentBubble({
     (e: React.ClipboardEvent) => {
       const files = Array.from(e.clipboardData.files);
       const imageFiles = files.filter((f) => f.type.startsWith('image/'));
-      if (imageFiles.length === 0) return;
+      const nextVideoFile = files.find(isVideoFile);
+      if (imageFiles.length === 0 && !nextVideoFile) return;
       e.preventDefault();
       const allowed = MAX_IMAGES - editImages.length;
       for (const file of imageFiles.slice(0, allowed)) {
         void processImageFile(file, handleEditImageAttach);
       }
+      if (nextVideoFile && allowed > imageFiles.length)
+        setEditVideoFile(nextVideoFile);
     },
     [editImages.length, handleEditImageAttach],
   );
@@ -461,10 +485,13 @@ export function InlineCommentBubble({
       e.preventDefault();
       const files = Array.from(e.dataTransfer.files);
       const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+      const nextVideoFile = files.find(isVideoFile);
       const allowed = MAX_IMAGES - editImages.length;
       for (const file of imageFiles.slice(0, allowed)) {
         void processImageFile(file, handleEditImageAttach);
       }
+      if (nextVideoFile && allowed > imageFiles.length)
+        setEditVideoFile(nextVideoFile);
     },
     [editImages.length, handleEditImageAttach],
   );
@@ -476,10 +503,14 @@ export function InlineCommentBubble({
   const handleEditFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files ?? []);
+      const nextVideoFile = files.find(isVideoFile);
       const allowed = MAX_IMAGES - editImages.length;
-      for (const file of files.slice(0, allowed)) {
+      for (const file of files
+        .filter((f) => f.type.startsWith('image/'))
+        .slice(0, allowed)) {
         void processImageFile(file, handleEditImageAttach);
       }
+      if (nextVideoFile && allowed > 0) setEditVideoFile(nextVideoFile);
       e.target.value = '';
     },
     [editImages.length, handleEditImageAttach],
@@ -654,7 +685,7 @@ export function InlineCommentBubble({
               <input
                 ref={editFileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 multiple
                 className="hidden"
                 onChange={handleEditFileSelect}
@@ -694,6 +725,11 @@ export function InlineCommentBubble({
           </>
         )}
         {renderFooter}
+        <VideoGifConverter
+          file={editVideoFile}
+          onAttach={handleEditImageAttach}
+          onClose={() => setEditVideoFile(null)}
+        />
       </div>
     </div>
   );

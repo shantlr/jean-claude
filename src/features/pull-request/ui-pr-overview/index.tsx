@@ -44,6 +44,7 @@ import {
   PrInlineCommentThread,
 } from '../ui-pr-inline-comment-thread';
 import { PrMetaPanel } from '../ui-pr-meta-panel';
+import { isVideoFile, VideoGifConverter } from '../ui-video-gif-converter';
 
 type PendingDescriptionImage = PromptImagePart & {
   placeholderMarkdown: string;
@@ -124,6 +125,10 @@ export function PrOverview({
   const [pendingDescriptionImages, setPendingDescriptionImages] = useState<
     PendingDescriptionImage[]
   >([]);
+  const [descriptionVideoFile, setDescriptionVideoFile] = useState<File | null>(
+    null,
+  );
+  const pendingDescriptionImagesRef = useRef<PendingDescriptionImage[]>([]);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const descriptionTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const descriptionImageTokenCounterRef = useRef(0);
@@ -174,6 +179,7 @@ export function PrOverview({
     if (!isEditingDescription) {
       setDescriptionDraft(pr.description);
       setDescriptionError(null);
+      pendingDescriptionImagesRef.current = [];
       setPendingDescriptionImages([]);
     }
   }, [isEditingDescription, pr.description]);
@@ -310,6 +316,7 @@ export function PrOverview({
       }
 
       await updateDescription.mutateAsync(finalDescription);
+      pendingDescriptionImagesRef.current = [];
       setPendingDescriptionImages([]);
       setDescriptionDraft(finalDescription);
       setIsEditingDescription(false);
@@ -349,6 +356,13 @@ export function PrOverview({
 
   const stageDescriptionImage = useCallback(
     (image: PromptImagePart) => {
+      if (pendingDescriptionImagesRef.current.length >= MAX_IMAGES) {
+        setDescriptionError(
+          `Only ${MAX_IMAGES} images or GIFs can be attached.`,
+        );
+        return;
+      }
+
       descriptionImageTokenCounterRef.current += 1;
       const token = descriptionImageTokenCounterRef.current;
       const fileName = image.filename || `image-${token}.png`;
@@ -356,10 +370,12 @@ export function PrOverview({
       const placeholderMarkdown = `![${safeAltText}](jc-image://${token})`;
 
       insertDescriptionMarkdown(placeholderMarkdown);
-      setPendingDescriptionImages((current) => [
-        ...current,
+      const nextImages = [
+        ...pendingDescriptionImagesRef.current,
         { ...image, placeholderMarkdown },
-      ]);
+      ];
+      pendingDescriptionImagesRef.current = nextImages;
+      setPendingDescriptionImages(nextImages);
     },
     [insertDescriptionMarkdown],
   );
@@ -367,9 +383,13 @@ export function PrOverview({
   const stageDescriptionImageFiles = useCallback(
     async (files: File[]) => {
       const imageFiles = files.filter((file) => file.type.startsWith('image/'));
-      if (imageFiles.length === 0) return;
+      const videoFile = files.find(isVideoFile);
+      if (imageFiles.length === 0 && !videoFile) return;
       const allowed = MAX_IMAGES - pendingDescriptionImages.length;
       if (allowed <= 0) return;
+      if (videoFile && allowed > imageFiles.length) {
+        setDescriptionVideoFile(videoFile);
+      }
 
       setDescriptionError(null);
       try {
@@ -410,9 +430,10 @@ export function PrOverview({
     (event: ClipboardEvent<HTMLTextAreaElement>) => {
       const files = Array.from(event.clipboardData.files);
       const imageFiles = files.filter((file) => file.type.startsWith('image/'));
-      if (imageFiles.length === 0) return;
+      const hasVideo = files.some(isVideoFile);
+      if (imageFiles.length === 0 && !hasVideo) return;
       event.preventDefault();
-      void stageDescriptionImageFiles(imageFiles);
+      void stageDescriptionImageFiles(files);
     },
     [stageDescriptionImageFiles],
   );
@@ -421,9 +442,10 @@ export function PrOverview({
     (event: DragEvent<HTMLTextAreaElement>) => {
       const files = Array.from(event.dataTransfer.files);
       const imageFiles = files.filter((file) => file.type.startsWith('image/'));
-      if (imageFiles.length === 0) return;
+      const hasVideo = files.some(isVideoFile);
+      if (imageFiles.length === 0 && !hasVideo) return;
       event.preventDefault();
-      void stageDescriptionImageFiles(imageFiles);
+      void stageDescriptionImageFiles(files);
     },
     [stageDescriptionImageFiles],
   );
@@ -560,7 +582,7 @@ export function PrOverview({
                   <input
                     ref={imageInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,video/*"
                     multiple
                     className="hidden"
                     onChange={handleImageSelection}
@@ -579,7 +601,7 @@ export function PrOverview({
                     >
                       {uploadAttachment.isPending
                         ? 'Uploading...'
-                        : 'Add image'}
+                        : 'Add image/GIF'}
                     </Button>
                     <div className="flex-1" />
                     <Button
@@ -588,6 +610,7 @@ export function PrOverview({
                       size="sm"
                       icon={<X className="h-3.5 w-3.5" />}
                       onClick={() => {
+                        pendingDescriptionImagesRef.current = [];
                         setPendingDescriptionImages([]);
                         setIsEditingDescription(false);
                       }}
@@ -631,6 +654,11 @@ export function PrOverview({
               ) : (
                 <p className="text-ink-3 text-sm italic">No description</p>
               )}
+              <VideoGifConverter
+                file={descriptionVideoFile}
+                onAttach={stageDescriptionImage}
+                onClose={() => setDescriptionVideoFile(null)}
+              />
             </div>
           </div>
 

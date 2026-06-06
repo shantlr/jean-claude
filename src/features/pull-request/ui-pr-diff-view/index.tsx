@@ -88,6 +88,7 @@ export function PrDiffView({
           mentionDisplayNames={mentionDisplayNames}
           mentionOptions={mentionOptions}
           onSearchMentions={onSearchMentions}
+          onUploadImage={onUploadImage}
         />
       )}
       onAddComment={onAddFileComment}

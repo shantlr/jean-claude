@@ -34,6 +34,51 @@ function getPlaceholderMarkdown(image: PromptImagePart) {
     : null;
 }
 
+export async function uploadImagesIntoMarkdown({
+  body,
+  images,
+  uploadImage,
+  mentionOptions,
+}: {
+  body: string;
+  images: PromptImagePart[];
+  uploadImage?: (image: PromptImagePart, fileName: string) => Promise<string>;
+  mentionOptions?: MentionOption[];
+}) {
+  const encodedBody = encodeMentionDisplayNames(body, mentionOptions ?? []);
+
+  if (images.length === 0 || !uploadImage) return encodedBody;
+
+  let contentWithImages = encodedBody.trimEnd();
+  const attachedMarkdownImages: string[] = [];
+
+  await Promise.all(
+    images.map(async (image, index) => {
+      const placeholderMarkdown = getPlaceholderMarkdown(image);
+      if (placeholderMarkdown && !encodedBody.includes(placeholderMarkdown)) {
+        return;
+      }
+
+      const fileName = imageFileName(image, index);
+      const url = await uploadImage(image, fileName);
+      const markdownImage = `![${escapeMarkdownAltText(fileName)}](${url})`;
+      if (placeholderMarkdown) {
+        contentWithImages = contentWithImages.replaceAll(
+          placeholderMarkdown,
+          markdownImage,
+        );
+        return;
+      }
+
+      attachedMarkdownImages.push(markdownImage);
+    }),
+  );
+
+  const separator =
+    contentWithImages.trim() && attachedMarkdownImages.length ? '\n\n' : '';
+  return `${contentWithImages}${separator}${attachedMarkdownImages.join('\n\n')}`;
+}
+
 export function PrCommentForm({
   onSubmit,
   onCancel,
@@ -82,38 +127,13 @@ export function PrCommentForm({
 
     setIsUploadingImages(true);
     try {
-      let contentWithImages = encodedBody.trimEnd();
-      const attachedMarkdownImages: string[] = [];
-
-      await Promise.all(
-        images.map(async (image, index) => {
-          const placeholderMarkdown = getPlaceholderMarkdown(image);
-          if (
-            placeholderMarkdown &&
-            !encodedBody.includes(placeholderMarkdown)
-          ) {
-            return;
-          }
-
-          const fileName = imageFileName(image, index);
-          const url = await uploadImage(image, fileName);
-          const markdownImage = `![${escapeMarkdownAltText(fileName)}](${url})`;
-          if (placeholderMarkdown) {
-            contentWithImages = contentWithImages.replaceAll(
-              placeholderMarkdown,
-              markdownImage,
-            );
-            return;
-          }
-
-          attachedMarkdownImages.push(markdownImage);
-        }),
-      );
+      const finalContent = await uploadImagesIntoMarkdown({
+        body,
+        images,
+        uploadImage,
+        mentionOptions,
+      });
       if (submitToken !== submitTokenRef.current) return;
-
-      const separator =
-        contentWithImages.trim() && attachedMarkdownImages.length ? '\n\n' : '';
-      const finalContent = `${contentWithImages}${separator}${attachedMarkdownImages.join('\n\n')}`;
       if (!finalContent.trim()) {
         setError('Add a comment or insert an image.');
         return;

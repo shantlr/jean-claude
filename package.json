@@ -65,6 +65,7 @@
     "diff": "^8.0.3",
     "fix-path": "^5.0.0",
     "framer-motion": "^12.33.0",
+    "gifenc": "^1.0.3",
     "fuse.js": "^7.1.0",
     "gifuct-js": "^2.1.2",
     "glob": "^13.0.0",

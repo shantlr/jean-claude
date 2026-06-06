@@ -12,6 +12,12 @@ describe('Content-Security-Policy', () => {
     );
   });
 
+  it('allows local blob video previews', () => {
+    const html = readFileSync(resolve(__dirname, '../../index.html'), 'utf8');
+
+    expect(html).toContain("media-src 'self' blob:");
+  });
+
   it('uses bundled Monaco instead of the default CDN loader', () => {
     const editor = readFileSync(
       resolve(__dirname, '../common/ui/handlebars-editor/index.tsx'),

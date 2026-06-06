@@ -6,7 +6,6 @@ import {
   FileText,
   GitPullRequest,
   Pencil,
-  Send,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
@@ -17,13 +16,12 @@ import {
   EMPTY_MENTION_OPTIONS,
   decodeMentionDisplayNames,
   encodeMentionDisplayNames,
-  MENTION_TEXTAREA_SM_CLASS,
-  MentionTextarea,
   type MentionOption,
 } from '@/common/ui/mention-textarea';
 import { UserAvatar } from '@/common/ui/user-avatar';
 import { getLanguageFromPath } from '@/features/agent/ui-diff-view/language-utils';
 import { AzureMarkdownContent } from '@/features/common/ui-azure-html-content';
+import { InlineCommentComposer } from '@/features/common/ui-inline-comments';
 import {
   useAddThreadReply,
   useCurrentAzureUser,
@@ -40,7 +38,7 @@ import { encodeProxyUrl } from '@/lib/azure-image-proxy';
 import { formatRelativeTime } from '@/lib/time';
 import type { PromptImagePart } from '@shared/agent-backend-types';
 
-import { PrCommentForm } from '../ui-pr-comment-form';
+import { PrCommentForm, uploadImagesIntoMarkdown } from '../ui-pr-comment-form';
 
 export type PrTimelineComment = AzureDevOpsCommentThread['comments'][number];
 
@@ -192,6 +190,7 @@ export function PrComments({
                 mentionDisplayNames={mentionDisplayNames}
                 mentionOptions={mentionOptions}
                 onSearchMentions={onSearchMentions}
+                onUploadImage={onUploadImage}
               />
             );
           })}
@@ -289,6 +288,7 @@ function ThreadReplyForm({
   canResolve,
   mentionOptions = EMPTY_MENTION_OPTIONS,
   onSearchMentions,
+  onUploadImage,
 }: {
   threadId: number;
   projectId: string;
@@ -296,40 +296,15 @@ function ThreadReplyForm({
   canResolve: boolean;
   mentionOptions?: MentionOption[];
   onSearchMentions?: (query: string) => Promise<MentionOption[]>;
+  onUploadImage?: (image: PromptImagePart, fileName: string) => Promise<string>;
 }) {
-  const [content, setContent] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const addReply = useAddThreadReply(projectId, prId);
   const updateStatus = useUpdateThreadStatus(projectId, prId);
 
-  const handleSubmit = useCallback(() => {
-    if (content.trim() && !addReply.isPending) {
-      addReply.mutate(
-        {
-          threadId,
-          content: encodeMentionDisplayNames(content.trim(), mentionOptions),
-        },
-        {
-          onSuccess: () => {
-            setContent('');
-            setIsExpanded(false);
-          },
-        },
-      );
-    }
-  }, [content, mentionOptions, threadId, addReply]);
-
   const handleResolve = useCallback(() => {
     updateStatus.mutate({ threadId, status: 'fixed' });
   }, [threadId, updateStatus]);
-
-  const handleBlur = useCallback(() => {
-    window.setTimeout(() => {
-      if (!content.trim()) {
-        setIsExpanded(false);
-      }
-    }, 0);
-  }, [content]);
 
   if (!isExpanded) {
     return (
@@ -358,30 +333,23 @@ function ThreadReplyForm({
   }
 
   return (
-    <div className="mt-3 flex gap-2 pl-[37px]">
-      <MentionTextarea
-        value={content}
-        onChange={setContent}
-        onBlur={handleBlur}
+    <div className="mt-3 flex flex-col gap-2 pl-[37px]">
+      <PrCommentForm
+        onSubmit={(content) => {
+          addReply.mutate(
+            { threadId, content },
+            { onSuccess: () => setIsExpanded(false) },
+          );
+        }}
+        onCancel={() => setIsExpanded(false)}
         placeholder="Write a reply..."
-        className={MENTION_TEXTAREA_SM_CLASS}
+        uploadImage={onUploadImage}
         mentionOptions={mentionOptions}
         onSearchMentions={onSearchMentions}
-        minHeight={36}
-        autoFocus
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-            event.preventDefault();
-            handleSubmit();
-          }
-          if (event.key === 'Escape') {
-            setIsExpanded(false);
-            setContent('');
-          }
-        }}
+        isSubmitting={addReply.isPending}
       />
-      <div className="flex items-center gap-2">
-        {canResolve && (
+      {canResolve && (
+        <div className="flex justify-end">
           <Button
             variant="secondary"
             size="sm"
@@ -391,16 +359,8 @@ function ThreadReplyForm({
           >
             Resolve
           </Button>
-        )}
-        <IconButton
-          variant="primary"
-          size="sm"
-          onClick={handleSubmit}
-          disabled={!content.trim() || addReply.isPending}
-          icon={<Send />}
-          tooltip="Send reply"
-        />
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -535,6 +495,7 @@ function CommentThread({
   mentionDisplayNames,
   mentionOptions,
   onSearchMentions,
+  onUploadImage,
 }: {
   thread: AzureDevOpsCommentThread;
   providerId?: string;
@@ -551,6 +512,7 @@ function CommentThread({
   mentionDisplayNames?: MentionDisplayNames;
   mentionOptions?: MentionOption[];
   onSearchMentions?: (query: string) => Promise<MentionOption[]>;
+  onUploadImage?: (image: PromptImagePart, fileName: string) => Promise<string>;
 }) {
   const resolved = !isActiveThread(thread);
 
@@ -582,6 +544,7 @@ function CommentThread({
           mentionDisplayNames={mentionDisplayNames}
           mentionOptions={mentionOptions}
           onSearchMentions={onSearchMentions}
+          onUploadImage={onUploadImage}
         />
       )}
     </div>
@@ -598,6 +561,7 @@ function ExpandedThread({
   mentionDisplayNames,
   mentionOptions,
   onSearchMentions,
+  onUploadImage,
 }: {
   thread: AzureDevOpsCommentThread;
   providerId?: string;
@@ -612,6 +576,7 @@ function ExpandedThread({
   mentionDisplayNames?: MentionDisplayNames;
   mentionOptions?: MentionOption[];
   onSearchMentions?: (query: string) => Promise<MentionOption[]>;
+  onUploadImage?: (image: PromptImagePart, fileName: string) => Promise<string>;
 }) {
   const resolved = !isActiveThread(thread);
   const updateStatus = useUpdateThreadStatus(projectId, prId);
@@ -704,6 +669,7 @@ function ExpandedThread({
               prId={prId}
               mentionOptions={mentionOptions}
               onSearchMentions={onSearchMentions}
+              onUploadImage={onUploadImage}
             />
           ))}
         </div>
@@ -715,6 +681,7 @@ function ExpandedThread({
           canResolve={!resolved}
           mentionOptions={mentionOptions}
           onSearchMentions={onSearchMentions}
+          onUploadImage={onUploadImage}
         />
 
         <div className="mt-3 flex justify-end">
@@ -740,6 +707,7 @@ function ThreadComment({
   prId,
   mentionOptions = EMPTY_MENTION_OPTIONS,
   onSearchMentions,
+  onUploadImage,
 }: {
   comment: AzureDevOpsCommentThread['comments'][number];
   providerId?: string;
@@ -750,6 +718,7 @@ function ThreadComment({
   prId: number;
   mentionOptions?: MentionOption[];
   onSearchMentions?: (query: string) => Promise<MentionOption[]>;
+  onUploadImage?: (image: PromptImagePart, fileName: string) => Promise<string>;
 }) {
   const avatarUrl =
     comment.author.imageUrl && providerId
@@ -763,6 +732,8 @@ function ThreadComment({
   const updateComment = useUpdateThreadComment(projectId, prId);
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(decodedCommentContent);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [isUploadingEditImages, setIsUploadingEditImages] = useState(false);
   const currentUserEmail = currentUser?.emailAddress.toLowerCase();
   const commentUserEmail = comment.author.uniqueName.toLowerCase();
   const canEdit =
@@ -771,17 +742,41 @@ function ThreadComment({
       currentUser.identityId === comment.author.id ||
       currentUserEmail === commentUserEmail);
 
-  const saveEdit = () => {
-    const content = encodeMentionDisplayNames(draft.trim(), mentionOptions);
-    if (!content || content === comment.content || updateComment.isPending) {
+  const saveEdit = async (body: string, images: PromptImagePart[] = []) => {
+    if (updateComment.isPending || isUploadingEditImages) return;
+
+    const encodedBody = encodeMentionDisplayNames(body.trim(), mentionOptions);
+    if (
+      !encodedBody ||
+      (encodedBody === comment.content && images.length === 0)
+    ) {
       setIsEditing(false);
       setDraft(decodedCommentContent);
       return;
     }
-    updateComment.mutate(
-      { threadId, commentId: comment.id, content },
-      { onSuccess: () => setIsEditing(false) },
-    );
+
+    setEditError(null);
+    setIsUploadingEditImages(images.length > 0);
+    try {
+      const content = await uploadImagesIntoMarkdown({
+        body: body.trim(),
+        images,
+        uploadImage: onUploadImage,
+        mentionOptions,
+      });
+      if (content.includes('jc-image://')) {
+        setEditError('Remove incomplete image placeholders before saving.');
+        return;
+      }
+      updateComment.mutate(
+        { threadId, commentId: comment.id, content },
+        { onSuccess: () => setIsEditing(false) },
+      );
+    } catch (error) {
+      setEditError(error instanceof Error ? error.message : 'Failed to save');
+    } finally {
+      setIsUploadingEditImages(false);
+    }
   };
 
   return (
@@ -822,48 +817,28 @@ function ThreadComment({
         </div>
         {isEditing ? (
           <div className="flex flex-col gap-2 pr-1">
-            <MentionTextarea
-              value={draft}
-              onChange={setDraft}
-              className={MENTION_TEXTAREA_SM_CLASS}
+            <InlineCommentComposer
+              lineStart={0}
+              initialBody={draft}
+              onSubmit={(body, images) => void saveEdit(body, images)}
+              onCancel={() => {
+                setDraft(decodedCommentContent);
+                setEditError(null);
+                setIsEditing(false);
+              }}
+              placeholder="Edit comment..."
+              submitLabel={
+                updateComment.isPending || isUploadingEditImages
+                  ? 'Saving...'
+                  : 'Save'
+              }
+              allowImages={!!onUploadImage}
+              insertImagesInBody={!!onUploadImage}
+              isSubmitting={updateComment.isPending || isUploadingEditImages}
               mentionOptions={mentionOptions}
               onSearchMentions={onSearchMentions}
-              minHeight={52}
-              autoFocus
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-                  event.preventDefault();
-                  saveEdit();
-                }
-                if (event.key === 'Escape') {
-                  setDraft(decodedCommentContent);
-                  setIsEditing(false);
-                }
-              }}
             />
-            <div className="flex items-center gap-2">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={saveEdit}
-                loading={updateComment.isPending}
-                disabled={
-                  !draft.trim() || draft.trim() === decodedCommentContent
-                }
-              >
-                Save
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setDraft(decodedCommentContent);
-                  setIsEditing(false);
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
+            {editError && <p className="text-xs text-red-400">{editError}</p>}
           </div>
         ) : (
           <div className="text-ink-1 pr-1 text-xs leading-relaxed [&_code]:text-[11px] [&_pre]:text-[11px]">
@@ -889,6 +864,7 @@ export function PrInlineCommentTimeline({
   mentionDisplayNames,
   mentionOptions = EMPTY_MENTION_OPTIONS,
   onSearchMentions,
+  onUploadImage,
 }: {
   comments: PrTimelineComment[];
   providerId?: string;
@@ -899,6 +875,7 @@ export function PrInlineCommentTimeline({
   mentionDisplayNames?: MentionDisplayNames;
   mentionOptions?: MentionOption[];
   onSearchMentions?: (query: string) => Promise<MentionOption[]>;
+  onUploadImage?: (image: PromptImagePart, fileName: string) => Promise<string>;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const firstComment = comments[0];
@@ -1002,6 +979,7 @@ export function PrInlineCommentTimeline({
           canResolve={canResolve}
           mentionOptions={mentionOptions}
           onSearchMentions={onSearchMentions}
+          onUploadImage={onUploadImage}
         />
       )}
     </div>
