@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { type ReactNode, type RefObject, useId } from 'react';
+import { type ReactNode, type RefObject, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
 import { RemoveScroll } from 'react-remove-scroll';
@@ -53,6 +53,21 @@ export function Modal({
         }
       : {},
   );
+
+  useEffect(() => {
+    if (!isOpen || !closeOnEscape) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [isOpen, closeOnEscape, onClose]);
 
   if (!isOpen) return null;
 

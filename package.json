@@ -66,6 +66,7 @@
     "fix-path": "^5.0.0",
     "framer-motion": "^12.33.0",
     "fuse.js": "^7.1.0",
+    "gifuct-js": "^2.1.2",
     "glob": "^13.0.0",
     "handlebars": "^4.7.9",
     "ignore": "^7.0.5",

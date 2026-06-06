@@ -1,5 +1,6 @@
 import clsx from 'clsx';
-import React, { useEffect, useMemo, useState } from 'react';
+import { decompressFrames, parseGIF, type ParsedFrame } from 'gifuct-js';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { codeToHtml } from 'shiki';
@@ -265,6 +266,501 @@ function customUrlTransform(url: string): string {
   return sanitizedUrl;
 }
 
+function decodeAzureProxyParts(
+  src: string,
+): { providerId: string; imageUrl: string } | null {
+  if (!src.startsWith('azure-image-proxy://')) {
+    return null;
+  }
+
+  try {
+    const proxyUrl = new URL(src);
+    const encodedUrl = proxyUrl.pathname.slice(1);
+    if (!encodedUrl) {
+      return null;
+    }
+
+    const padded = encodedUrl.padEnd(
+      encodedUrl.length + ((4 - (encodedUrl.length % 4)) % 4),
+      '=',
+    );
+    return {
+      providerId: proxyUrl.hostname,
+      imageUrl: atob(padded.replace(/-/g, '+').replace(/_/g, '/')),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function decodeAzureProxyUrl(src: string): string | null {
+  return decodeAzureProxyParts(src)?.imageUrl ?? null;
+}
+
+function isGifSource(src: string): boolean {
+  if (src.startsWith('data:image/gif')) {
+    return true;
+  }
+
+  const inspectedSrc = decodeAzureProxyUrl(src) ?? src;
+
+  try {
+    const url = new URL(inspectedSrc, window.location.href);
+    return (
+      url.pathname.toLowerCase().endsWith('.gif') ||
+      url.searchParams.get('fileName')?.toLowerCase().endsWith('.gif') === true
+    );
+  } catch {
+    return inspectedSrc.toLowerCase().includes('.gif');
+  }
+}
+
+function normalizeMarkdownImageSizeSyntax(content: string): string {
+  let fence: { marker: '`' | '~'; length: number } | null = null;
+
+  return content
+    .split('\n')
+    .map((line) => {
+      const fenceMatch = line.match(/^\s*(`{3,}|~{3,})/);
+      if (fenceMatch) {
+        const marker = fenceMatch[1][0] as '`' | '~';
+        const length = fenceMatch[1].length;
+        if (!fence) {
+          fence = { marker, length };
+        } else if (fence.marker === marker && length >= fence.length) {
+          fence = null;
+        }
+
+        return line;
+      }
+
+      if (fence) {
+        return line;
+      }
+
+      let inInlineCode = false;
+      return line
+        .split(/(`+)/)
+        .map((part) => {
+          if (/^`+$/.test(part)) {
+            inInlineCode = !inInlineCode;
+            return part;
+          }
+
+          if (inInlineCode) {
+            return part;
+          }
+
+          return normalizeMarkdownImageSizeText(part);
+        })
+        .join('');
+    })
+    .join('\n');
+}
+
+function normalizeMarkdownImageSizeText(content: string): string {
+  return content.replace(
+    /(!\[[^\]]*\]\()([^\s)]+)\s+=(\d+)x(\d*)(\))/g,
+    '$1$2 "jc-size=$3x$4"$5',
+  );
+}
+
+function getMarkdownImageSizeFromTitle(
+  title: string | undefined,
+): { width: number; height?: number } | undefined {
+  const match = title?.match(/^jc-size=(\d+)x(\d*)$/);
+  if (!match) {
+    return undefined;
+  }
+
+  return {
+    width: Number(match[1]),
+    height: match[2] ? Number(match[2]) : undefined,
+  };
+}
+
+function getSizedImageStyle(
+  requestedSize: { width: number; height?: number } | undefined,
+  style?: React.CSSProperties,
+): React.CSSProperties | undefined {
+  if (!requestedSize) {
+    return style;
+  }
+
+  return {
+    ...style,
+    width: requestedSize.width,
+    height: requestedSize.height,
+    maxWidth: '100%',
+  };
+}
+
+function getSizedFigureStyle(
+  requestedSize: { width: number; height?: number } | undefined,
+): React.CSSProperties | undefined {
+  if (!requestedSize) {
+    return undefined;
+  }
+
+  return { width: requestedSize.width, maxWidth: '100%' };
+}
+
+function composeGifFrameImages({
+  frames,
+  width,
+  height,
+}: {
+  frames: ParsedFrame[];
+  width: number;
+  height: number;
+}): ImageData[] {
+  const canvas = document.createElement('canvas');
+  const patchCanvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  const patchContext = patchCanvas.getContext('2d');
+
+  if (!context || !patchContext) {
+    return [];
+  }
+
+  const renderedFrames: ImageData[] = [];
+
+  for (const frame of frames) {
+    const previousImage =
+      frame.disposalType === 3
+        ? context.getImageData(0, 0, width, height)
+        : null;
+
+    patchCanvas.width = frame.dims.width;
+    patchCanvas.height = frame.dims.height;
+    patchContext.clearRect(0, 0, frame.dims.width, frame.dims.height);
+    const patch = new Uint8ClampedArray(frame.patch.length);
+    patch.set(frame.patch);
+    patchContext.putImageData(
+      new ImageData(patch, frame.dims.width, frame.dims.height),
+      0,
+      0,
+    );
+    context.drawImage(patchCanvas, frame.dims.left, frame.dims.top);
+    renderedFrames.push(context.getImageData(0, 0, width, height));
+
+    if (frame.disposalType === 2) {
+      context.clearRect(
+        frame.dims.left,
+        frame.dims.top,
+        frame.dims.width,
+        frame.dims.height,
+      );
+    } else if (previousImage) {
+      context.putImageData(previousImage, 0, 0);
+    }
+  }
+
+  return renderedFrames;
+}
+
+async function loadGifArrayBuffer(src: string): Promise<ArrayBuffer> {
+  const proxyParts = decodeAzureProxyParts(src);
+
+  if (proxyParts) {
+    const data = await window.api.azureDevOps.fetchImageAsBase64(proxyParts);
+    if (!data) {
+      throw new Error('Failed to load proxied GIF');
+    }
+
+    return Uint8Array.from(atob(data.data), (char) => char.charCodeAt(0))
+      .buffer;
+  }
+
+  const response = await fetch(src);
+  if (!response.ok) {
+    throw new Error(`Failed to load GIF: ${response.status}`);
+  }
+
+  return response.arrayBuffer();
+}
+
+async function decodeGifFrameImages(src: string): Promise<{
+  images: ImageData[];
+  width: number;
+  height: number;
+}> {
+  const gif = parseGIF(await loadGifArrayBuffer(src));
+  type GifFrame = (typeof gif.frames)[number] & {
+    image: { descriptor: { width: number; height: number } };
+  };
+  const imageFrames = gif.frames.filter(
+    (frame): frame is GifFrame => 'image' in frame,
+  );
+  const frameCount = imageFrames.length;
+  if (frameCount > MAX_GIF_SCRUB_FRAMES) {
+    throw new Error(`GIF has too many frames (${frameCount})`);
+  }
+
+  if (gif.lsd.width * gif.lsd.height * frameCount > MAX_GIF_SCRUB_PIXELS) {
+    throw new Error('GIF is too large to scrub safely');
+  }
+
+  const patchPixels = imageFrames.reduce((total, frame) => {
+    const framePixels =
+      frame.image.descriptor.width * frame.image.descriptor.height;
+    if (framePixels > MAX_GIF_FRAME_PATCH_PIXELS) {
+      throw new Error('GIF frame is too large to scrub safely');
+    }
+
+    return total + framePixels;
+  }, 0);
+  if (patchPixels > MAX_GIF_TOTAL_PATCH_PIXELS) {
+    throw new Error('GIF frame data is too large to scrub safely');
+  }
+
+  const frames = decompressFrames(gif, true);
+  const images = composeGifFrameImages({
+    frames,
+    width: gif.lsd.width,
+    height: gif.lsd.height,
+  });
+
+  return { images, width: gif.lsd.width, height: gif.lsd.height };
+}
+
+const MAX_GIF_SCRUB_FRAMES = 180;
+const MAX_GIF_SCRUB_PIXELS = 10_000_000;
+const MAX_GIF_FRAME_PATCH_PIXELS = 4_000_000;
+const MAX_GIF_TOTAL_PATCH_PIXELS = 12_000_000;
+const MAX_GIF_FRAME_CACHE_ENTRIES = 1;
+
+const gifFrameCache = new Map<
+  string,
+  Promise<{ images: ImageData[]; width: number; height: number }>
+>();
+
+function getCachedGifFrameImages(src: string) {
+  const cached = gifFrameCache.get(src);
+  if (cached) {
+    return cached;
+  }
+
+  const decoded = decodeGifFrameImages(src).catch((error: unknown) => {
+    gifFrameCache.delete(src);
+    throw error;
+  });
+  gifFrameCache.set(src, decoded);
+
+  while (gifFrameCache.size > MAX_GIF_FRAME_CACHE_ENTRIES) {
+    const oldestKey = gifFrameCache.keys().next().value;
+    if (!oldestKey) break;
+    gifFrameCache.delete(oldestKey);
+  }
+
+  return decoded;
+}
+
+function GifFrameScrubber({
+  src,
+  alt,
+  imageClassName,
+  interactive,
+  requestedSize,
+  onOpen,
+}: {
+  src: string;
+  alt: string;
+  imageClassName?: string;
+  interactive: boolean;
+  requestedSize?: { width: number; height?: number };
+  onOpen: () => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [frameImages, setFrameImages] = useState<ImageData[]>([]);
+  const [frameIndex, setFrameIndex] = useState(0);
+  const [size, setSize] = useState<{ width: number; height: number } | null>(
+    null,
+  );
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [isDecoding, setIsDecoding] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setFrameImages([]);
+    setFrameIndex(0);
+    setSize(null);
+    setFailed(false);
+    setIsDecoding(false);
+
+    if (!isScrubbing) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setIsDecoding(true);
+    getCachedGifFrameImages(src)
+      .then(({ images, width, height }) => {
+        if (cancelled) {
+          return;
+        }
+
+        if (images.length === 0) {
+          throw new Error('GIF had no decodable frames');
+        }
+
+        setSize({ width, height });
+        setFrameImages(images);
+        setIsDecoding(false);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          console.warn('[MarkdownContent] Failed to decode GIF frames', error);
+          setFailed(true);
+          setIsDecoding(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [src, isScrubbing]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const image = frameImages[frameIndex];
+    const context = canvas?.getContext('2d');
+
+    if (!canvas || !image || !context) {
+      return;
+    }
+
+    context.putImageData(image, 0, 0);
+  }, [frameImages, frameIndex]);
+
+  if (!isScrubbing || failed || !size || frameImages.length <= 1) {
+    return (
+      <span className="my-2 block w-fit max-w-full">
+        <img
+          src={src}
+          alt={alt}
+          className={clsx(
+            'block max-w-full rounded',
+            interactive && 'cursor-zoom-in',
+            imageClassName,
+          )}
+          style={getSizedImageStyle(requestedSize)}
+          aria-label={interactive ? alt || 'Open image preview' : undefined}
+          role={interactive ? 'button' : undefined}
+          tabIndex={interactive ? 0 : undefined}
+          onClick={
+            interactive
+              ? (event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onOpen();
+                }
+              : undefined
+          }
+          onKeyDown={
+            interactive
+              ? (event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onOpen();
+                  }
+                }
+              : undefined
+          }
+        />
+        <span className="mt-1.5 block">
+          <span
+            role="button"
+            tabIndex={isDecoding ? undefined : 0}
+            aria-disabled={isDecoding}
+            className={clsx(
+              'border-line-soft bg-bg-1/80 text-ink-2 hover:text-ink-0 hover:border-line inline-flex rounded-md border px-2 py-1 text-[10.5px] transition-colors',
+              isDecoding && 'cursor-wait opacity-70',
+            )}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              if (!isDecoding) {
+                setIsScrubbing(true);
+              }
+            }}
+            onKeyDown={(event) => {
+              if (!isDecoding && (event.key === 'Enter' || event.key === ' ')) {
+                event.preventDefault();
+                event.stopPropagation();
+                setIsScrubbing(true);
+              }
+            }}
+          >
+            {isDecoding ? 'Loading frames...' : 'Scrub frames'}
+          </span>
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="my-2 block w-fit max-w-full"
+      style={getSizedFigureStyle(requestedSize)}
+    >
+      <canvas
+        ref={canvasRef}
+        width={size.width}
+        height={size.height}
+        className={clsx(
+          'block max-w-full rounded',
+          interactive && 'cursor-zoom-in',
+          imageClassName,
+        )}
+        style={getSizedImageStyle(requestedSize)}
+        aria-label={interactive ? alt || 'Open image preview' : alt}
+        role={interactive ? 'button' : 'img'}
+        tabIndex={interactive ? 0 : undefined}
+        onClick={
+          interactive
+            ? (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onOpen();
+              }
+            : undefined
+        }
+        onKeyDown={
+          interactive
+            ? (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onOpen();
+                }
+              }
+            : undefined
+        }
+      />
+      <span className="border-line-soft bg-bg-1/80 mt-1.5 flex items-center gap-2 rounded-md border px-2 py-1.5 text-[10.5px]">
+        <span className="text-ink-3 shrink-0 font-mono">
+          {frameIndex + 1}/{frameImages.length}
+        </span>
+        <input
+          type="range"
+          min={0}
+          max={frameImages.length - 1}
+          value={frameIndex}
+          aria-label="GIF frame"
+          className="accent-acc h-1.5 min-w-32 flex-1"
+          onChange={(event) => setFrameIndex(Number(event.target.value))}
+        />
+      </span>
+    </span>
+  );
+}
+
 export function MarkdownContent({
   content,
   onFilePathClick,
@@ -290,12 +786,17 @@ export function MarkdownContent({
     src: string;
     alt: string;
   } | null>(null);
+  const normalizedContent = useMemo(
+    () => normalizeMarkdownImageSizeSyntax(content),
+    [content],
+  );
   const resolvedExtractedContent = useMemo(
     () =>
-      (extractedContent ?? imagePresentation === 'footer-thumbnails')
-        ? extractImagesFromMarkdown(content)
-        : { contentWithoutImages: content, images: [] },
-    [content, extractedContent, imagePresentation],
+      extractedContent ??
+      (imagePresentation === 'footer-thumbnails'
+        ? extractImagesFromMarkdown(normalizedContent)
+        : { contentWithoutImages: normalizedContent, images: [] }),
+    [normalizedContent, extractedContent, imagePresentation],
   );
   const renderedContent = useMemo(() => {
     if (
@@ -318,7 +819,6 @@ export function MarkdownContent({
       ),
     [resolvedExtractedContent.images],
   );
-
   return (
     <>
       <div className="jc-markdown text-ink-1 w-fit max-w-full min-w-0 text-[12.5px] leading-[1.66] break-words">
@@ -502,7 +1002,7 @@ export function MarkdownContent({
               <td className="border-line-soft border px-3 py-2">{children}</td>
             ),
             hr: () => <hr className="border-line my-[22px]" />,
-            img: ({ src, alt, ...props }) => {
+            img: ({ src, alt, title, style, ...props }) => {
               if (imagePresentation === 'footer-thumbnails') {
                 return null;
               }
@@ -515,16 +1015,33 @@ export function MarkdownContent({
 
               const resolvedAlt = alt || '';
               const interactive = interactiveImages;
+              const requestedSize = getMarkdownImageSizeFromTitle(title);
+              const renderedTitle = requestedSize ? undefined : title;
+
+              if (isGifSource(src)) {
+                return (
+                  <GifFrameScrubber
+                    src={src}
+                    alt={resolvedAlt}
+                    imageClassName={imageClassName}
+                    interactive={interactive}
+                    requestedSize={requestedSize}
+                    onOpen={() => setSelectedImage({ src, alt: resolvedAlt })}
+                  />
+                );
+              }
 
               return (
                 <img
                   src={src}
                   alt={resolvedAlt}
+                  title={renderedTitle}
                   className={clsx(
                     'my-2 block max-w-full rounded',
                     interactive && 'cursor-zoom-in',
                     imageClassName,
                   )}
+                  style={getSizedImageStyle(requestedSize, style)}
                   aria-label={
                     interactive
                       ? resolvedAlt || 'Open image preview'
