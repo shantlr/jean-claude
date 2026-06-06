@@ -30,10 +30,21 @@ import { PromptGroupDiffModal } from './prompt-group-diff-modal';
 // ── Helpers ────────────────────────────────────────────────────────────
 
 const PROMPT_MAX_CHARS = 300;
+const RECENT_RUNNING_MESSAGE_COUNT = 3;
+
+type RunningActivityMessage =
+  | {
+      kind: 'text';
+      text: string;
+    }
+  | {
+      kind: 'bash';
+      command: string;
+    };
 
 /**
  * Get live activity for a running prompt group:
- * active subagents, active skills, latest todo, latest message.
+ * active subagents, active skills, latest todo, recent messages.
  */
 function getRunningActivity(childMessages: DisplayMessage[]): {
   subagents: Array<{
@@ -53,16 +64,7 @@ function getRunningActivity(childMessages: DisplayMessage[]): {
     current: boolean;
   }>;
   isCompacting: boolean;
-  latestMessage:
-    | {
-        kind: 'text';
-        text: string;
-      }
-    | {
-        kind: 'bash';
-        command: string;
-      }
-    | null;
+  recentMessages: RunningActivityMessage[];
 } {
   const subagents: Array<{
     id: string;
@@ -75,16 +77,7 @@ function getRunningActivity(childMessages: DisplayMessage[]): {
     id: string;
     summary: string;
   }> = [];
-  let latestMessage:
-    | {
-        kind: 'text';
-        text: string;
-      }
-    | {
-        kind: 'bash';
-        command: string;
-      }
-    | null = null;
+  const recentMessages: RunningActivityMessage[] = [];
 
   // Collect active subagents
   for (const dm of childMessages) {
@@ -157,40 +150,38 @@ function getRunningActivity(childMessages: DisplayMessage[]): {
     }
   }
 
-  // Latest message (always shown, even alongside subagents/running tools)
+  // Recent messages (always shown, even alongside subagents/running tools)
   for (let i = childMessages.length - 1; i >= 0; i--) {
     const dm = childMessages[i];
+    let message: RunningActivityMessage | null = null;
     if (dm.kind === 'entry') {
       if (dm.entry.type === 'tool-use') {
         if (dm.entry.name === 'bash') {
           const bashEntry = dm.entry as ToolUseByName<'bash'>;
           const firstLine = bashEntry.input.command.split('\n')[0];
           const command = firstLine.slice(0, 80);
-          latestMessage = {
+          message = {
             kind: 'bash',
             command:
               command.length < firstLine.length ? `${command}...` : command,
           };
         } else {
-          latestMessage = {
+          message = {
             kind: 'text',
             text: getToolActivitySummary(dm.entry as NormalizedToolUse),
           };
         }
-        break;
       }
       if (dm.entry.type === 'assistant-message' && dm.entry.value.trim()) {
         const preview = dm.entry.value.slice(0, 100);
-        latestMessage = {
+        message = {
           kind: 'text',
           text:
             preview.length < dm.entry.value.length ? `${preview}...` : preview,
         };
-        break;
       }
       if (dm.entry.type === 'thinking') {
-        latestMessage = { kind: 'text', text: 'Thinking...' };
-        break;
+        message = { kind: 'text', text: 'Thinking...' };
       }
     }
     if (dm.kind === 'subagent' && dm.toolUse.result) {
@@ -198,21 +189,27 @@ function getRunningActivity(childMessages: DisplayMessage[]): {
         dm.toolUse.name === 'sub-agent'
           ? (dm.toolUse as ToolUseByName<'sub-agent'>)
           : undefined;
-      latestMessage = {
+      message = {
         kind: 'text',
         text: `Completed: ${sa?.input.description ?? 'Sub-agent'}`,
       };
-      break;
+    }
+
+    if (message) {
+      recentMessages.unshift(message);
+      if (recentMessages.length >= RECENT_RUNNING_MESSAGE_COUNT) break;
     }
   }
-  if (!latestMessage) latestMessage = { kind: 'text', text: 'Working...' };
+  if (recentMessages.length === 0) {
+    recentMessages.push({ kind: 'text', text: 'Working...' });
+  }
 
   // Check if context compaction is in progress
   const isCompacting = childMessages.some(
     (dm) => dm.kind === 'compacting' && !dm.endEntry,
   );
 
-  return { subagents, runningTools, todos, isCompacting, latestMessage };
+  return { subagents, runningTools, todos, isCompacting, recentMessages };
 }
 
 function parseDateMs(date: string | undefined): number | null {
@@ -613,7 +610,7 @@ function ResultBlock({
   return content;
 }
 
-/** Running summary — subagent cards, todo checklist, latest message */
+/** Running summary — subagent cards, todo checklist, recent messages */
 function RunningSummary({
   activity,
 }: {
@@ -708,27 +705,44 @@ function RunningSummary({
         </div>
       )}
 
-      {/* Latest message */}
-      {activity.latestMessage && (
+      {/* Recent messages */}
+      {activity.recentMessages.length > 0 && (
         <div>
           <div className="text-ink-4 mb-1 font-mono text-[10px] tracking-wider uppercase">
-            latest
+            recent
           </div>
-          <div className="text-ink-2 flex items-baseline gap-2">
-            <span className="text-ink-4 w-3 shrink-0 text-center">·</span>
-            <span className="flex-1">
-              {activity.latestMessage.kind === 'bash' ? (
-                <span className="inline-flex items-baseline gap-1">
-                  <span className="text-acc-ink">$</span>
-                  <span className="text-ink-2">
-                    {activity.latestMessage.command}
+          <div className="flex flex-col gap-0.5">
+            {activity.recentMessages.map((message, index) => {
+              const isNewest = index === activity.recentMessages.length - 1;
+              const opacity =
+                activity.recentMessages.length === 1
+                  ? 1
+                  : 0.38 +
+                    (index / (activity.recentMessages.length - 1)) * 0.62;
+
+              return (
+                <div
+                  key={index}
+                  className="text-ink-2 flex items-baseline gap-2"
+                  style={{ opacity }}
+                >
+                  <span className="text-ink-4 w-3 shrink-0 text-center">·</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {message.kind === 'bash' ? (
+                      <span className="inline-flex min-w-0 items-baseline gap-1">
+                        <span className="text-acc-ink shrink-0">$</span>
+                        <span className="text-ink-2 truncate">
+                          {message.command}
+                        </span>
+                      </span>
+                    ) : (
+                      message.text
+                    )}
+                    {isNewest && <span className="rg-caret">▍</span>}
                   </span>
-                </span>
-              ) : (
-                activity.latestMessage.text
-              )}
-              <span className="rg-caret">▍</span>
-            </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
