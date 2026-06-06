@@ -35,7 +35,11 @@ import {
 } from '@/hooks/use-project-todos';
 import { useProjects } from '@/hooks/use-projects';
 import { useBackgroundNewTaskJobForBacklogItem } from '@/stores/background-jobs';
-import { useBacklogOverlayDraftStore } from '@/stores/backlog-overlay-draft';
+import {
+  useBacklogOverlayDraftStore,
+  useBacklogSelectedProjectId,
+  useSetBacklogSelectedProjectId,
+} from '@/stores/backlog-overlay-draft';
 import { useNewTaskDraftStore } from '@/stores/new-task-draft';
 import { useOverlaysStore } from '@/stores/overlays';
 import type { ProjectTodo } from '@shared/types';
@@ -196,20 +200,20 @@ function rangeSet(from: number, to: number): Set<number> {
   return s;
 }
 
-export function BacklogOverlay({
-  initialProjectId,
-  onClose,
-}: {
-  initialProjectId: string;
-  onClose: () => void;
-}) {
+export function BacklogOverlay({ onClose }: { onClose: () => void }) {
   const layer = useKeyboardLayer('overlay', {
     exclusive: true,
     passthrough: ['global-nav'],
   });
-
-  const [projectId, setProjectId] = useState(initialProjectId);
   const { data: projects = [] } = useProjects();
+  const selectedProjectId = useBacklogSelectedProjectId();
+  const setSelectedBacklogProjectId = useSetBacklogSelectedProjectId();
+
+  const projectId =
+    selectedProjectId &&
+    projects.some((project) => project.id === selectedProjectId)
+      ? selectedProjectId
+      : (projects[0]?.id ?? '');
 
   const projectOptions = useMemo(
     () => projects.map((p) => ({ value: p.id, label: p.name })),
@@ -289,12 +293,12 @@ export function BacklogOverlay({
 
   const handleProjectChange = useCallback(
     (nextProjectId: string) => {
-      setProjectId(nextProjectId);
+      setSelectedBacklogProjectId(nextProjectId);
       clearSelection();
       // Re-focus input after project switch
       requestAnimationFrame(() => inputRef.current?.focus());
     },
-    [clearSelection],
+    [clearSelection, setSelectedBacklogProjectId],
   );
 
   // Focus input on mount
@@ -530,7 +534,7 @@ export function BacklogOverlay({
   // Add todo
   const handleAdd = useCallback(() => {
     const content = inputValue.trim();
-    if (!content) return;
+    if (!content || !projectId) return;
     createTodo.mutate({ projectId, content });
     clearInputValue();
     inputRef.current?.focus();
@@ -600,7 +604,7 @@ export function BacklogOverlay({
 
   // Convert selected todos to task (single or multi)
   const handleConvertSelectedToTask = useCallback(() => {
-    if (selectedTodos.length === 0) return;
+    if (selectedTodos.length === 0 || !projectId) return;
     const prompt = selectedTodos.map((t) => t.content).join('\n\n');
     const ids = selectedTodos.map((t) => t.id);
     setSelectedProjectId(projectId);
@@ -623,6 +627,7 @@ export function BacklogOverlay({
   // Convert single todo to task (from context menu)
   const handleConvertToTask = useCallback(
     (todo: ProjectTodo) => {
+      if (!projectId) return;
       setSelectedProjectId(projectId);
       setDraft(projectId, {
         prompt: todo.content,
@@ -738,6 +743,7 @@ export function BacklogOverlay({
               autoFocus
               rows={1}
               value={inputValue}
+              disabled={!projectId}
               onKeyDown={(e) => {
                 if (e.key !== 'ArrowDown') return;
                 if (inputValue.trim()) return;
@@ -765,7 +771,9 @@ export function BacklogOverlay({
           <div ref={listRef} className="overflow-y-auto p-2">
             {todos.length === 0 ? (
               <div className="text-ink-3 py-8 text-center text-sm">
-                No backlog items yet. Type above and press Cmd+Enter to add one.
+                {projectId
+                  ? 'No backlog items yet. Type above and press Cmd+Enter to add one.'
+                  : 'No projects available.'}
               </div>
             ) : (
               todos.map((todo, index) => (

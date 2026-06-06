@@ -28,10 +28,10 @@ import {
   DropdownItem,
 } from '@/common/ui/dropdown';
 import { Kbd } from '@/common/ui/kbd';
-import { useBacklogProjectId } from '@/hooks/use-backlog-project-id';
 import { useProjectTodoCount } from '@/hooks/use-project-todos';
 import { useProjects } from '@/hooks/use-projects';
 import { api, type ReloadPreviewProgress } from '@/lib/api';
+import { useBacklogSelectedProjectId } from '@/stores/backlog-overlay-draft';
 import { useCurrentVisibleProject } from '@/stores/navigation';
 import { useOverlaysStore } from '@/stores/overlays';
 import { useTaskMessagesStore } from '@/stores/task-messages';
@@ -216,7 +216,12 @@ export function Header() {
   const { projectId } = useCurrentVisibleProject();
   const { data: projects = [] } = useProjects();
   const openOverlay = useOverlaysStore((state) => state.open);
-  const backlogProjectId = useBacklogProjectId();
+  const persistedBacklogProjectId = useBacklogSelectedProjectId();
+  const backlogProjectId = projects.some(
+    (project) => project.id === persistedBacklogProjectId,
+  )
+    ? persistedBacklogProjectId
+    : projects[0]?.id;
   const { data: todoCount } = useProjectTodoCount(backlogProjectId);
   const modal = useModal();
   const commitHash = import.meta.env.VITE_COMMIT_HASH;
@@ -377,10 +382,10 @@ export function Header() {
           >
             {selectedProjectLabel}
           </DropdownItem>
-          {backlogProjectId && (
+          {projects.length > 0 && (
             <DropdownItem
               icon={<ClipboardList />}
-              onClick={() => openOverlay('project-backlog')}
+              onClick={() => openOverlay('backlog')}
               shortcut="cmd+b"
             >
               Backlog

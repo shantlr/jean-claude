@@ -24,7 +24,6 @@ import { BacklogOverlay } from '@/features/project/ui-backlog-overlay';
 import { ProjectOverlay } from '@/features/project/ui-project-overlay';
 import { RunningCommandsOverlay } from '@/features/run-commands/ui-running-commands-overlay';
 import { SettingsOverlay } from '@/features/settings/ui-settings-overlay';
-import { useBacklogProjectId } from '@/hooks/use-backlog-project-id';
 import { Header } from '@/layout/ui-header';
 import { MainSidebar } from '@/layout/ui-main-sidebar';
 import { api } from '@/lib/api';
@@ -146,13 +145,14 @@ function NewTaskContainer() {
   const isOpen = useOverlaysStore((s) => s.activeOverlay === 'new-task');
   const toggle = useOverlaysStore((s) => s.toggle);
   const close = useOverlaysStore((s) => s.close);
-  const { discardDraft, setSelectedProjectId } = useNewTaskDraft();
+  const { draft, discardDraft, setSelectedProjectId } = useNewTaskDraft();
   const { projectId } = useCurrentVisibleProject();
 
   useEffect(() => {
     if (!isOpen || projectId === 'all') return;
+    if (draft?.backlogTodoIds?.length) return;
     setSelectedProjectId(projectId);
-  }, [isOpen, projectId, setSelectedProjectId]);
+  }, [draft?.backlogTodoIds?.length, isOpen, projectId, setSelectedProjectId]);
 
   const handleClose = useCallback(() => close('new-task'), [close]);
   const handleDiscardDraft = useCallback(() => {
@@ -265,37 +265,29 @@ function SettingsContainer() {
   return <SettingsOverlay onClose={() => close('settings')} />;
 }
 
-function ProjectBacklogContainer() {
+function BacklogContainer() {
   const layer = useKeyboardLayer('global-nav');
-  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'project-backlog');
+  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'backlog');
   const toggle = useOverlaysStore((s) => s.toggle);
   const close = useOverlaysStore((s) => s.close);
-  const projectId = useBacklogProjectId();
 
   useCommands(
-    'project-backlog-trigger',
+    'backlog-trigger',
     [
       {
         shortcut: 'cmd+b',
-        label: 'Open Project Backlog',
-        section: 'Projects',
+        label: 'Open Backlog',
+        section: 'General',
         handler: () => {
-          if (projectId) {
-            toggle('project-backlog');
-          }
+          toggle('backlog');
         },
       },
     ],
     { layer },
   );
 
-  if (!isOpen || !projectId) return null;
-  return (
-    <BacklogOverlay
-      initialProjectId={projectId}
-      onClose={() => close('project-backlog')}
-    />
-  );
+  if (!isOpen) return null;
+  return <BacklogOverlay onClose={() => close('backlog')} />;
 }
 
 function RunningCommandsContainer() {
@@ -402,7 +394,7 @@ function RootLayout() {
       <NewTaskContainer />
       <CommandPaletteContainer />
       <ProjectOverlayContainer />
-      <ProjectBacklogContainer />
+      <BacklogContainer />
       <ActivityCenterContainer />
       <CalendarContainer />
       <SettingsContainer />

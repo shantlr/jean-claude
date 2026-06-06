@@ -10,7 +10,7 @@ export type OverlayType =
   | 'keyboard-help'
   | 'activity-center'
   | 'settings'
-  | 'project-backlog'
+  | 'backlog'
   | 'pipelines'
   | 'running-commands'
   | 'calendar';
