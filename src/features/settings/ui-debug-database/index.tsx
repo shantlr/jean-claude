@@ -25,6 +25,7 @@ export function DebugDatabase() {
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
+  const [showTableSizes, setShowTableSizes] = useState(false);
 
   // Auto-select first table when loaded
   const activeTable = selectedTable ?? tableNames[0] ?? null;
@@ -57,6 +58,11 @@ export function DebugDatabase() {
   const showingTo = data ? Math.min((page + 1) * PAGE_SIZE, data.total) : 0;
 
   const staleCompletedTasksCount = oldCompletedTasksCount?.count ?? 0;
+  const tableSizeByName = useMemo(() => {
+    return new Map(
+      (databaseSize?.tables ?? []).map((table) => [table.name, table.bytes]),
+    );
+  }, [databaseSize?.tables]);
 
   const handleDeleteOldCompletedTasks = () => {
     if (staleCompletedTasksCount === 0 || deleteOldCompletedTasks.isPending) {
@@ -82,8 +88,35 @@ export function DebugDatabase() {
           Diagnostics for inspecting app behavior during development.
         </p>
         {databaseSize && (
-          <div className="text-ink-2 mt-2 space-y-1 text-sm">
-            <p>Current DB size: {formatBytes(databaseSize.bytes)}</p>
+          <div className="text-ink-2 relative mt-2 space-y-1 text-sm">
+            <button
+              type="button"
+              className="hover:text-ink-1 cursor-pointer underline decoration-dotted underline-offset-4"
+              onClick={() => setShowTableSizes((show) => !show)}
+              title={formatTableSizeTooltip(databaseSize.tables)}
+            >
+              Current DB size: {formatBytes(databaseSize.bytes)}
+            </button>
+            {showTableSizes && (
+              <div className="border-glass-border bg-bg-1 text-ink-2 absolute z-10 mt-2 max-h-72 w-72 overflow-y-auto rounded-lg border p-3 shadow-lg">
+                <div className="text-ink-1 mb-2 text-xs font-semibold tracking-wide uppercase">
+                  Table sizes
+                </div>
+                <div className="space-y-1">
+                  {databaseSize.tables.map((table) => (
+                    <div
+                      key={table.name}
+                      className="flex items-center justify-between gap-3 text-xs"
+                    >
+                      <span className="truncate font-mono">{table.name}</span>
+                      <span className="text-ink-3 shrink-0">
+                        {formatBytes(table.bytes)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <p>
               Vacuum reclaimable: {formatBytes(databaseSize.reclaimableBytes)}
             </p>
@@ -150,6 +183,7 @@ export function DebugDatabase() {
           <Button
             key={table}
             onClick={() => handleTableChange(table)}
+            title={formatTableTitle(table, tableSizeByName.get(table))}
             className={`cursor-pointer rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
               activeTable === table
                 ? 'border-acc bg-acc/20 text-acc-ink'
@@ -279,4 +313,24 @@ function formatBytes(bytes: number): string {
   }
 
   return `${value.toFixed(2)} ${units[unitIndex]}`;
+}
+
+function formatTableTitle(table: string, bytes: number | undefined): string {
+  if (bytes === undefined) {
+    return table;
+  }
+
+  return `${table}: ${formatBytes(bytes)}`;
+}
+
+function formatTableSizeTooltip(
+  tables: { name: string; bytes: number }[],
+): string {
+  if (tables.length === 0) {
+    return 'No table size data';
+  }
+
+  return tables
+    .map((table) => `${table.name}: ${formatBytes(table.bytes)}`)
+    .join('\n');
 }

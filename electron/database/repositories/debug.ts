@@ -46,6 +46,7 @@ export interface QueryTableResult {
 export interface DatabaseSizeResult {
   bytes: number;
   reclaimableBytes: number;
+  tables: { name: string; bytes: number }[];
 }
 
 export interface OldCompletedTasksCountResult {
@@ -85,10 +86,25 @@ export const DebugRepository = {
     const freelistCount = Number(
       freelistCountResult.rows[0]?.freelist_count ?? 0,
     );
+    const tableList = sql.join(ALLOWED_TABLES.map((table) => sql`${table}`));
+    const tableSizeResult = await sql<{
+      name: string;
+      bytes: number;
+    }>`
+      SELECT name, COALESCE(SUM(pgsize), 0) AS bytes
+      FROM dbstat
+      WHERE name IN (${tableList})
+      GROUP BY name
+      ORDER BY bytes DESC, name ASC
+    `.execute(db);
 
     return {
       bytes: pageSize * pageCount,
       reclaimableBytes: pageSize * freelistCount,
+      tables: tableSizeResult.rows.map((row) => ({
+        name: row.name,
+        bytes: Number(row.bytes ?? 0),
+      })),
     };
   },
 
