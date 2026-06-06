@@ -65,6 +65,7 @@ function parseProjectRow(row: ProjectRow) {
     showWorkItemsInFeed: row.showWorkItemsInFeed === 1,
     showPrsInFeed: row.showPrsInFeed === 1,
     autoPullSourceBranch: row.autoPullSourceBranch === 1,
+    commitWithNoVerify: row.commitWithNoVerify === 1,
     aiSkillSlots,
     protectedBranches,
     favoriteBranches,
@@ -114,6 +115,7 @@ export const ProjectRepository = {
       showWorkItemsInFeed,
       showPrsInFeed,
       autoPullSourceBranch,
+      commitWithNoVerify,
       aiSkillSlots,
       protectedBranches,
       favoriteBranches,
@@ -129,6 +131,7 @@ export const ProjectRepository = {
         showWorkItemsInFeed: showWorkItemsInFeed === false ? 0 : 1,
         showPrsInFeed: showPrsInFeed === false ? 0 : 1,
         autoPullSourceBranch: autoPullSourceBranch === true ? 1 : 0,
+        commitWithNoVerify: commitWithNoVerify === true ? 1 : 0,
         aiSkillSlots: aiSkillSlots ? JSON.stringify(aiSkillSlots) : null,
         protectedBranches: sanitizeBranchList(protectedBranches),
         favoriteBranches: sanitizeBranchList(favoriteBranches),
@@ -145,6 +148,7 @@ export const ProjectRepository = {
       showWorkItemsInFeed,
       showPrsInFeed,
       autoPullSourceBranch,
+      commitWithNoVerify,
       aiSkillSlots,
       protectedBranches,
       favoriteBranches,
@@ -162,6 +166,9 @@ export const ProjectRepository = {
         }),
         ...(autoPullSourceBranch !== undefined && {
           autoPullSourceBranch: autoPullSourceBranch ? 1 : 0,
+        }),
+        ...(commitWithNoVerify !== undefined && {
+          commitWithNoVerify: commitWithNoVerify ? 1 : 0,
         }),
         ...(aiSkillSlots !== undefined && {
           aiSkillSlots: aiSkillSlots ? JSON.stringify(aiSkillSlots) : null,

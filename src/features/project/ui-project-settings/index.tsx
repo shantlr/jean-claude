@@ -286,6 +286,7 @@ export function ProjectSettings({
   const [color, setColor] = useState('');
   const [defaultBranch, setDefaultBranch] = useState('');
   const [autoPullSourceBranch, setAutoPullSourceBranch] = useState(false);
+  const [commitWithNoVerify, setCommitWithNoVerify] = useState(false);
   const [defaultAgentBackend, setDefaultAgentBackend] =
     useState<AgentBackendType | null>(null);
   const [defaultAgentModelPreference, setDefaultAgentModelPreference] =
@@ -341,6 +342,7 @@ export function ProjectSettings({
       color: project.color,
       defaultBranch: project.defaultBranch ?? null,
       autoPullSourceBranch: project.autoPullSourceBranch,
+      commitWithNoVerify: project.commitWithNoVerify,
       defaultAgentBackend: project.defaultAgentBackend,
       defaultAgentModelPreference: project.defaultAgentModelPreference,
       prPriority: project.prPriority ?? 'normal',
@@ -361,6 +363,7 @@ export function ProjectSettings({
       color,
       defaultBranch: defaultBranch || null,
       autoPullSourceBranch,
+      commitWithNoVerify,
       defaultAgentBackend,
       defaultAgentModelPreference,
       prPriority,
@@ -375,6 +378,7 @@ export function ProjectSettings({
     [
       aiSkillSlots,
       autoPullSourceBranch,
+      commitWithNoVerify,
       color,
       completionContext,
       defaultAgentBackend,
@@ -425,6 +429,7 @@ export function ProjectSettings({
       setColor(project.color);
       setDefaultBranch(project.defaultBranch ?? '');
       setAutoPullSourceBranch(project.autoPullSourceBranch);
+      setCommitWithNoVerify(project.commitWithNoVerify);
       setDefaultAgentBackend(project.defaultAgentBackend);
       setDefaultAgentModelPreference(project.defaultAgentModelPreference);
       setDefaultAgentPresetId(
@@ -935,6 +940,21 @@ export function ProjectSettings({
             />
             <p className="text-ink-3 mt-1 text-xs">
               Pulls the selected base branch before creating a task worktree.
+            </p>
+          </div>
+
+          <div>
+            <Checkbox
+              id="commitWithNoVerify"
+              checked={commitWithNoVerify}
+              onChange={(checked) => {
+                markFieldDirty('commitWithNoVerify');
+                setCommitWithNoVerify(checked);
+              }}
+              label="Commit with --no-verify"
+            />
+            <p className="text-ink-3 mt-1 text-xs">
+              Skips Git hooks for app-created commits in this project.
             </p>
           </div>
 

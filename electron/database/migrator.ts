@@ -62,6 +62,7 @@ import * as m060 from './migrations/060_project_logos';
 import * as m061 from './migrations/061_project_summary';
 import * as m062 from './migrations/062_migrate_project_logo_files';
 import * as m063 from './migrations/063_project_auto_pull_source_branch';
+import * as m064 from './migrations/064_project_commit_no_verify';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -126,6 +127,7 @@ const migrations: Record<string, Migration> = {
   '061_project_summary': m061,
   '062_migrate_project_logo_files': m062,
   '063_project_auto_pull_source_branch': m063,
+  '064_project_commit_no_verify': m064,
 };
 
 export const migrationProvider: MigrationProvider = {

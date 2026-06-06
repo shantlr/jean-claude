@@ -2059,14 +2059,15 @@ export function registerIpcHandlers() {
         throw new Error(`Task ${taskId} does not have a worktree`);
       }
 
+      const project = await ProjectRepository.findById(task.projectId);
+      if (!project) {
+        throw new Error(`Project ${task.projectId} not found`);
+      }
+
       let { message } = params;
 
       // Auto-generate commit message if not provided
       if (!message) {
-        const project = await ProjectRepository.findById(task.projectId);
-        if (!project) {
-          throw new Error(`Project ${task.projectId} not found`);
-        }
         const generated = await generateCommitMessageForTask(
           task,
           project,
@@ -2084,6 +2085,7 @@ export function registerIpcHandlers() {
         worktreePath: task.worktreePath,
         message,
         stageAll: params.stageAll,
+        noVerify: project.commitWithNoVerify,
       });
     },
   );
@@ -2187,6 +2189,7 @@ export function registerIpcHandlers() {
             worktreePath: task.worktreePath,
             message: 'chore: commit unstaged changes before merge',
             stageAll: true,
+            noVerify: project.commitWithNoVerify,
           });
         }
       }
@@ -2197,6 +2200,7 @@ export function registerIpcHandlers() {
         targetBranch: params.targetBranch,
         squash: params.squash,
         commitMessage,
+        noVerify: project.commitWithNoVerify,
       });
 
       // On successful merge, clear worktree fields and mark the task as
@@ -2777,6 +2781,11 @@ export function registerIpcHandlers() {
         );
       }
 
+      const project = await ProjectRepository.findById(task.projectId);
+      if (!project) {
+        throw new Error(`Project ${task.projectId} not found`);
+      }
+
       let committedBeforePush = false;
 
       if (params?.commitUnstaged) {
@@ -2786,6 +2795,7 @@ export function registerIpcHandlers() {
             worktreePath: task.worktreePath,
             message: 'chore: commit unstaged changes before push',
             stageAll: true,
+            noVerify: project.commitWithNoVerify,
           });
           committedBeforePush = true;
         }
@@ -2908,6 +2918,7 @@ export function registerIpcHandlers() {
           worktreePath: task.worktreePath,
           message: 'chore: commit unstaged changes before PR creation',
           stageAll: true,
+          noVerify: project.commitWithNoVerify,
         });
       }
 

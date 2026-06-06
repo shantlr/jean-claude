@@ -28,14 +28,20 @@ const execFileAsync = promisify(execFile);
 async function gitCommit({
   cwd,
   message,
+  noVerify = false,
 }: {
   cwd: string;
   message: string;
+  noVerify?: boolean;
 }): Promise<void> {
-  await execFileAsync('git', ['commit', '-m', message], {
-    cwd,
-    encoding: 'utf-8',
-  });
+  await execFileAsync(
+    'git',
+    ['commit', ...(noVerify ? ['--no-verify'] : []), '-m', message],
+    {
+      cwd,
+      encoding: 'utf-8',
+    },
+  );
 }
 
 /**
@@ -999,6 +1005,7 @@ export interface CommitWorktreeParams {
   worktreePath: string;
   message: string;
   stageAll: boolean;
+  noVerify?: boolean;
 }
 
 /**
@@ -1007,10 +1014,11 @@ export interface CommitWorktreeParams {
 export async function commitWorktreeChanges(
   params: CommitWorktreeParams,
 ): Promise<void> {
-  const { worktreePath, message, stageAll } = params;
+  const { worktreePath, message, stageAll, noVerify = false } = params;
   dbg.worktree('commitWorktreeChanges: %o', {
     worktreePath,
     stageAll,
+    noVerify,
     messageLength: message.length,
   });
 
@@ -1023,7 +1031,7 @@ export async function commitWorktreeChanges(
 
     // Commit with the provided message
     dbg.worktree('Creating commit');
-    await gitCommit({ cwd: worktreePath, message });
+    await gitCommit({ cwd: worktreePath, message, noVerify });
     dbg.worktree('Commit successful');
   } catch (error) {
     dbg.worktree('Commit failed: %O', error);
@@ -1037,6 +1045,7 @@ export interface MergeWorktreeParams {
   targetBranch: string;
   squash?: boolean;
   commitMessage?: string;
+  noVerify?: boolean;
 }
 
 export interface MergeWorktreeResult {
@@ -1302,6 +1311,7 @@ async function mergeWorktreeInner(
     targetBranch,
     squash = false,
     commitMessage,
+    noVerify = false,
   } = params;
 
   dbg.worktree('mergeWorktree: %o', {
@@ -1384,14 +1394,18 @@ async function mergeWorktreeInner(
       // Commit the squashed changes with the provided message
       const message =
         commitMessage || `Squash merge branch '${worktreeBranch}'`;
-      await gitCommit({ cwd: mergeCwd, message });
+      await gitCommit({ cwd: mergeCwd, message, noVerify });
     } else {
       // Regular merge
       dbg.worktree('Performing regular merge');
-      await execAsync(`git merge ${JSON.stringify(worktreeBranch)}`, {
-        cwd: mergeCwd,
-        encoding: 'utf-8',
-      });
+      await execFileAsync(
+        'git',
+        ['merge', ...(noVerify ? ['--no-verify'] : []), worktreeBranch],
+        {
+          cwd: mergeCwd,
+          encoding: 'utf-8',
+        },
+      );
     }
 
     dbg.worktree('Merge successful');
