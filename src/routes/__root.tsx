@@ -5,6 +5,7 @@ import {
   useRouter,
   useRouterState,
 } from '@tanstack/react-router';
+import clsx from 'clsx';
 import { useCallback, useEffect, useRef } from 'react';
 import { scan, setOptions } from 'react-scan';
 
@@ -380,7 +381,13 @@ function RootLayout() {
   useCleanupNonActiveTasks();
 
   return (
-    <div className="aurora-app-bg flex h-screen w-screen overflow-hidden">
+    <div
+      className={clsx(
+        'aurora-app-bg flex h-screen w-screen overflow-hidden',
+        api.app.isDevMode &&
+          'rounded-xl border-2 border-amber-400/50 shadow-[inset_0_0_0_1px_oklch(0.8_0.18_80_/_0.22),inset_0_0_32px_oklch(0.8_0.18_80_/_0.18)]',
+      )}
+    >
       <ReactScanBridge />
       <NotificationTaskOpenBridge />
       <TaskMessageManager />
