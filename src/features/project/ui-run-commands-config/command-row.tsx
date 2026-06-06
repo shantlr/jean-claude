@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Trash2 } from 'lucide-react';
+import { Check, GripVertical, Settings, Terminal, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 import { Checkbox } from '@/common/ui/checkbox';
@@ -31,6 +31,7 @@ export function CommandRow({
   const [localConfirmMessage, setLocalConfirmMessage] = useState(
     command.confirmMessage ?? '',
   );
+  const [isOpen, setIsOpen] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const {
@@ -112,20 +113,20 @@ export function CommandRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={`border-glass-border bg-bg-1/50 rounded-lg border p-3 ${isDragging ? 'z-50 opacity-50' : ''}`}
+      className={`border-glass-border bg-glass-subtle overflow-visible rounded-lg border ${isDragging ? 'z-50 opacity-50' : ''}`}
     >
-      <div className="flex items-start gap-2">
+      <div className="flex items-center gap-2 px-2 py-2">
         <button
           type="button"
           ref={setActivatorNodeRef}
           aria-label="Reorder command"
-          className="text-ink-3 hover:text-ink-1 mt-1.5 shrink-0 cursor-grab touch-none active:cursor-grabbing"
+          className="text-ink-4 hover:text-ink-2 shrink-0 cursor-grab touch-none active:cursor-grabbing"
           {...attributes}
           {...listeners}
         >
           <GripVertical className="h-4 w-4" />
         </button>
-        <div className="min-w-0 flex-1 space-y-2">
+        <div className="border-glass-border w-28 shrink-0 border-r pr-2">
           <Input
             size="sm"
             value={localName}
@@ -135,8 +136,12 @@ export function CommandRow({
               if (e.key === 'Enter') e.currentTarget.blur();
             }}
             placeholder="Optional display name"
+            className="border-0 bg-transparent px-1"
           />
-          <div className="relative min-w-0">
+        </div>
+        <div className="relative flex min-w-0 flex-1 items-center gap-2">
+          <Terminal className="text-acc h-3.5 w-3.5 shrink-0" />
+          <div className="relative min-w-0 flex-1">
             <Input
               size="md"
               value={localCommand}
@@ -144,6 +149,7 @@ export function CommandRow({
               onFocus={() => setShowSuggestions(true)}
               onBlur={handleCommandBlur}
               placeholder="Enter command (e.g., pnpm dev)"
+              className="border-0 bg-transparent px-0 font-mono"
             />
             {showSuggestions && filteredSuggestions.length > 0 && (
               <div className="border-glass-border bg-bg-1 absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border py-1 shadow-lg">
@@ -164,6 +170,35 @@ export function CommandRow({
             )}
           </div>
         </div>
+        {!isOpen &&
+          command.ports.slice(0, 2).map((port) => (
+            <span
+              key={port}
+              className="bg-glass-light text-ink-3 rounded px-1.5 py-0.5 font-mono text-[10px]"
+            >
+              :{port}
+            </span>
+          ))}
+        {!isOpen && command.ports.length > 2 && (
+          <span className="bg-glass-light text-ink-3 rounded px-1.5 py-0.5 font-mono text-[10px]">
+            +{command.ports.length - 2}
+          </span>
+        )}
+        {!isOpen && command.confirmBeforeRun && (
+          <Check
+            className="text-ink-3 h-3.5 w-3.5"
+            aria-label="Requires confirmation"
+          />
+        )}
+        <button
+          type="button"
+          onClick={() => setIsOpen((open) => !open)}
+          className={`hover:bg-glass-light rounded-md p-1.5 ${isOpen ? 'bg-acc-soft text-acc-ink' : 'text-ink-3'}`}
+          aria-label="Ports and options"
+          aria-expanded={isOpen}
+        >
+          <Settings className="h-3.5 w-3.5" />
+        </button>
         <IconButton
           variant="ghost"
           size="md"
@@ -172,33 +207,37 @@ export function CommandRow({
           tooltip="Delete command"
         />
       </div>
-      <div className="mt-3 pl-6">
-        <label className="text-ink-2 mb-1.5 block text-xs">
-          Ports to check
-        </label>
-        <PortChipInput ports={command.ports} onChange={handlePortsChange} />
-      </div>
-      <div className="mt-3 pl-6">
-        <Checkbox
-          size="sm"
-          checked={command.confirmBeforeRun}
-          onChange={handleConfirmToggle}
-          label="Confirm before running"
-        />
-        {command.confirmBeforeRun && (
-          <Input
-            size="sm"
-            value={localConfirmMessage}
-            onChange={(e) => setLocalConfirmMessage(e.target.value)}
-            onBlur={handleConfirmMessageBlur}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') e.currentTarget.blur();
-            }}
-            placeholder="Custom confirmation message (optional)"
-            className="mt-2"
-          />
-        )}
-      </div>
+      {isOpen && (
+        <div className="bg-bg-0/30 border-glass-border flex flex-wrap items-start gap-4 border-t px-9 py-3">
+          <div className="min-w-56 flex-1">
+            <label className="text-ink-3 mb-1.5 block text-xs">
+              Ports to check
+            </label>
+            <PortChipInput ports={command.ports} onChange={handlePortsChange} />
+          </div>
+          <div className="min-w-60 pt-5">
+            <Checkbox
+              size="sm"
+              checked={command.confirmBeforeRun}
+              onChange={handleConfirmToggle}
+              label="Confirm before running"
+            />
+            {command.confirmBeforeRun && (
+              <Input
+                size="sm"
+                value={localConfirmMessage}
+                onChange={(e) => setLocalConfirmMessage(e.target.value)}
+                onBlur={handleConfirmMessageBlur}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur();
+                }}
+                placeholder="Custom confirmation message (optional)"
+                className="mt-2"
+              />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

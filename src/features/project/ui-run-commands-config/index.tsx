@@ -13,7 +13,7 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from '@dnd-kit/sortable';
-import { Plus } from 'lucide-react';
+import { GitBranch, Plus } from 'lucide-react';
 import { useMemo, useCallback } from 'react';
 
 import { usePackageScripts } from '@/hooks/use-package-scripts';
@@ -148,12 +148,22 @@ export function RunCommandsConfig({
   );
 
   return (
-    <div>
-      <h2 className="text-ink-0 mb-4 text-lg font-semibold">Run Commands</h2>
-      <p className="text-ink-2 mb-4 text-sm">
-        Configure commands to run from the task page. Each command can have
-        ports that will be checked before starting.
-      </p>
+    <div className="mx-auto max-w-3xl">
+      <div className="mb-4">
+        <div className="flex items-baseline gap-3">
+          <h2 className="text-ink-0 text-lg font-semibold tracking-tight">
+            Run Commands
+          </h2>
+          <span className="text-ink-3 font-mono text-[11px]">
+            {commands.length} command{commands.length === 1 ? '' : 's'} /{' '}
+            {groups.length} group{groups.length === 1 ? '' : 's'}
+          </span>
+        </div>
+        <p className="text-ink-2 mt-1 max-w-2xl text-sm leading-6">
+          Save commands you run often from tasks. Bundle commands into groups to
+          launch them together in parallel.
+        </p>
+      </div>
 
       <DndContext
         sensors={sensors}
@@ -161,7 +171,7 @@ export function RunCommandsConfig({
         onDragEnd={handleDragEnd}
       >
         <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {items.map((item) =>
               item.type === 'command' ? (
                 <CommandRow
@@ -187,28 +197,28 @@ export function RunCommandsConfig({
         </SortableContext>
       </DndContext>
 
-      <button
-        type="button"
-        onClick={handleAddCommand}
-        disabled={createCommand.isPending}
-        className="border-glass-border text-ink-2 hover:border-glass-border-strong hover:text-ink-1 mt-4 flex items-center gap-2 rounded-md border border-dashed px-4 py-2 text-sm disabled:opacity-50"
-      >
-        <Plus className="h-4 w-4" />
-        Add Command
-      </button>
-
-      <div className="mt-8 flex items-start gap-3">
+      <div className="border-glass-border bg-bg-1/20 mt-4 flex items-center gap-2 rounded-lg border border-dashed p-2">
+        <button
+          type="button"
+          onClick={handleAddCommand}
+          disabled={createCommand.isPending}
+          className="bg-acc text-bg-0 hover:bg-acc/90 flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+        >
+          <Plus className="h-4 w-4" />
+          Add command
+        </button>
         <button
           type="button"
           onClick={handleAddGroup}
           disabled={createGroup.isPending}
-          className="border-glass-border text-ink-2 hover:border-glass-border-strong hover:text-ink-1 flex items-center gap-2 rounded-md border border-dashed px-4 py-2 text-sm disabled:opacity-50"
+          className="border-glass-border text-ink-2 hover:border-glass-border-strong hover:text-ink-1 flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
         >
-          <Plus className="h-4 w-4" />
-          Add Group
+          <GitBranch className="h-4 w-4" />
+          Add group
         </button>
-        <p className="text-ink-3 pt-2 text-sm">
-          Drag commands and groups together to fully customize ordering.
+        <div className="flex-1" />
+        <p className="text-ink-3 hidden text-xs sm:block">
+          Drag items to reorder. Groups run selected commands in parallel.
         </p>
       </div>
     </div>
