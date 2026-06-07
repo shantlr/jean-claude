@@ -442,7 +442,7 @@ async function getDiffBaseCommit(
 
   const refs = sourceBranch.startsWith('origin/')
     ? [sourceBranch]
-    : [`origin/${sourceBranch}`, sourceBranch];
+    : [sourceBranch, `origin/${sourceBranch}`];
 
   for (const ref of refs) {
     try {
@@ -484,8 +484,13 @@ async function getTaskChangedFiles(
 ): Promise<Set<string> | null> {
   if (!sourceBranch) return null;
 
-  // Try origin/ first (most up-to-date after fetch), then local
-  for (const ref of [`origin/${sourceBranch}`, sourceBranch]) {
+  // Prefer the local source branch because it may have unpushed commits that
+  // were present when the worktree was created.
+  const refs = sourceBranch.startsWith('origin/')
+    ? [sourceBranch]
+    : [sourceBranch, `origin/${sourceBranch}`];
+
+  for (const ref of refs) {
     try {
       const { stdout } = await execFileAsync(
         'git',
