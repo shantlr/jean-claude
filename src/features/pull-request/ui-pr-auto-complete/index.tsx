@@ -8,6 +8,7 @@ import React, {
   useState,
 } from 'react';
 
+import { Checkbox } from '@/common/ui/checkbox';
 import { Modal } from '@/common/ui/modal';
 import {
   useSetAutoComplete,
@@ -326,25 +327,19 @@ export function PrAutoComplete({
               ))}
             </select>
 
-            <label className="mb-2 flex items-center gap-2 text-xs">
-              <input
-                type="checkbox"
-                checked={deleteSourceBranch}
-                onChange={(e) => setDeleteSourceBranch(e.target.checked)}
-                className="accent-acc rounded"
-              />
-              <span className="text-ink-1">Delete source branch</span>
-            </label>
+            <Checkbox
+              checked={deleteSourceBranch}
+              onChange={setDeleteSourceBranch}
+              label="Delete source branch"
+              className="mb-2 text-xs"
+            />
 
-            <label className="mb-3 flex items-center gap-2 text-xs">
-              <input
-                type="checkbox"
-                checked={transitionWorkItems}
-                onChange={(e) => setTransitionWorkItems(e.target.checked)}
-                className="accent-acc rounded"
-              />
-              <span className="text-ink-1">Transition work items</span>
-            </label>
+            <Checkbox
+              checked={transitionWorkItems}
+              onChange={setTransitionWorkItems}
+              label="Transition work items"
+              className="mb-3 text-xs"
+            />
 
             <button
               type="button"

@@ -4,6 +4,7 @@ import { ArrowRight, Check, Pencil, StickyNote, Trash2 } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 
+import { Checkbox } from '@/common/ui/checkbox';
 import { Dropdown, DropdownDivider, DropdownItem } from '@/common/ui/dropdown';
 import { useDeleteFeedNote, useUpdateFeedNote } from '@/hooks/use-feed-notes';
 import { useProjects } from '@/hooks/use-projects';
@@ -97,8 +98,7 @@ export function FeedNoteCard({
   }, [item.noteId, updateNote]);
 
   const handleToggleCheckbox = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>, lineIndex: number) => {
-      e.stopPropagation();
+    (checked: boolean, lineIndex: number) => {
       if (!item.noteId) return;
 
       updateNote.mutate({
@@ -109,7 +109,7 @@ export function FeedNoteCard({
             content: item.title,
             lineIndex,
           }),
-          checked: e.target.checked,
+          checked,
         }),
       });
     },
@@ -184,16 +184,17 @@ export function FeedNoteCard({
             {/* Title */}
             <div className="flex items-start gap-1.5">
               {notePreview.title.task && (
-                <input
-                  type="checkbox"
+                <Checkbox
+                  size="sm"
                   checked={notePreview.title.task.checked}
-                  onChange={(e) =>
-                    handleToggleCheckbox(e, notePreview.title.lineIndex)
+                  onChange={(checked) =>
+                    handleToggleCheckbox(checked, notePreview.title.lineIndex)
                   }
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
-                  className="border-glass-border bg-glass-medium text-acc-ink mt-0.5 h-3 w-3 shrink-0 rounded focus:ring-0"
-                  aria-label={`Toggle ${notePreview.title.text || 'note item'}`}
+                  className="mt-0.5"
+                  compact
+                  ariaLabel={`Toggle ${notePreview.title.text || 'note item'}`}
                 />
               )}
               <span
@@ -216,16 +217,16 @@ export function FeedNoteCard({
                     className="flex items-center gap-1 truncate"
                   >
                     {line.task && (
-                      <input
-                        type="checkbox"
+                      <Checkbox
+                        size="sm"
                         checked={line.task.checked}
-                        onChange={(e) =>
-                          handleToggleCheckbox(e, line.lineIndex)
+                        onChange={(checked) =>
+                          handleToggleCheckbox(checked, line.lineIndex)
                         }
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}
-                        className="border-glass-border bg-glass-medium text-acc-ink h-3 w-3 shrink-0 rounded focus:ring-0"
-                        aria-label={`Toggle ${line.text || 'note item'}`}
+                        compact
+                        ariaLabel={`Toggle ${line.text || 'note item'}`}
                       />
                     )}
                     <span

@@ -1,5 +1,6 @@
-import { Check, Circle, Loader2 } from 'lucide-react';
+import { Circle, Loader2 } from 'lucide-react';
 
+import { CheckboxIndicator } from '@/common/ui/checkbox';
 import type { TodoItem } from '@shared/agent-types';
 
 /**
@@ -53,13 +54,11 @@ function TodoCheckbox({
       {/* Checkbox icon */}
       <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
         {isCompleted ? (
-          <div
-            className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm ${
-              isChanged ? 'bg-status-done' : 'bg-bg-3'
-            }`}
-          >
-            <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
-          </div>
+          <CheckboxIndicator
+            size="sm"
+            checked
+            className={isChanged ? 'border-status-done bg-status-done' : ''}
+          />
         ) : isInProgress ? (
           <Loader2 className="text-acc-ink h-3.5 w-3.5 animate-spin" />
         ) : (

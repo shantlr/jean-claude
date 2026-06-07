@@ -1,6 +1,7 @@
 import { Shield } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { Checkbox } from '@/common/ui/checkbox';
 import { Modal } from '@/common/ui/modal';
 import { api } from '@/lib/api';
 import { useToastStore } from '@/stores/toasts';
@@ -109,11 +110,13 @@ export function AddPermissionModal({
           <div className="space-y-2">
             {entries.map((entry, index) => (
               <div key={index} className="flex items-start gap-2">
-                <input
-                  type="checkbox"
+                <Checkbox
+                  size="sm"
                   checked={entry.checked}
                   onChange={() => handleToggle(index)}
-                  className="border-glass-border bg-glass-medium text-acc focus:ring-acc/30 mt-2 h-3.5 w-3.5 shrink-0 cursor-pointer rounded"
+                  className="mt-2"
+                  compact
+                  ariaLabel={`Toggle permission command ${index + 1}`}
                 />
                 <input
                   type="text"

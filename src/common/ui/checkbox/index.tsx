@@ -1,11 +1,41 @@
 import clsx from 'clsx';
-import { useId } from 'react';
+import { Check } from 'lucide-react';
+import { type KeyboardEvent, type MouseEvent, useId } from 'react';
 
 import {
   checkboxSizeClasses,
   sizeClasses,
   type ComponentSize,
 } from '@/common/ui/styles';
+
+export function CheckboxIndicator({
+  size = 'md',
+  checked,
+  disabled,
+  className,
+}: {
+  size?: ComponentSize;
+  checked: boolean;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <span
+      aria-hidden="true"
+      className={clsx(
+        checkboxSizeClasses[size],
+        'peer-focus-visible:ring-acc flex shrink-0 items-center justify-center rounded-sm border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-offset-0',
+        checked
+          ? 'border-acc bg-acc text-white'
+          : 'border-white/20 bg-white/[0.05] text-transparent',
+        disabled ? 'cursor-not-allowed' : 'cursor-pointer',
+        className,
+      )}
+    >
+      {checked && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+    </span>
+  );
+}
 
 export function Checkbox({
   size = 'md',
@@ -16,6 +46,10 @@ export function Checkbox({
   disabled,
   id: externalId,
   className,
+  compact = false,
+  ariaLabel,
+  onClick,
+  onKeyDown,
 }: {
   size?: ComponentSize;
   checked: boolean;
@@ -25,6 +59,10 @@ export function Checkbox({
   disabled?: boolean;
   id?: string;
   className?: string;
+  compact?: boolean;
+  ariaLabel?: string;
+  onClick?: (event: MouseEvent<HTMLLabelElement>) => void;
+  onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
 }) {
   const generatedId = useId();
   const id = externalId ?? generatedId;
@@ -38,20 +76,23 @@ export function Checkbox({
         disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
         className,
       )}
+      onClick={onClick}
     >
       <input
         id={id}
         type="checkbox"
         checked={checked}
+        aria-label={ariaLabel}
         onChange={(e) => onChange(e.target.checked)}
+        onKeyDown={onKeyDown}
         disabled={disabled}
-        className={clsx(
-          checkboxSizeClasses[size],
-          'border-glass-border bg-glass-medium text-acc-ink focus:ring-acc shrink-0 rounded focus:ring-offset-0',
-          disabled ? 'cursor-not-allowed' : 'cursor-pointer',
-          // Vertically center with label text
-          label ? 'mt-0.5' : '',
-        )}
+        className="peer sr-only"
+      />
+      <CheckboxIndicator
+        size={size}
+        checked={checked}
+        disabled={disabled}
+        className={label && !compact ? 'mt-0.5' : ''}
       />
       {(label || description) && (
         <div className="flex flex-col">

@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS as DndCSS } from '@dnd-kit/utilities';
 import { useQueryClient } from '@tanstack/react-query';
-import { ChevronRight, Search } from 'lucide-react';
+import { ChevronRight, FileText, Search, X } from 'lucide-react';
 import React, {
   useCallback,
   useEffect,
@@ -38,6 +38,7 @@ import {
   type BranchOrTaskSelection,
 } from '@/common/ui/branch-or-task-select';
 import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
 import { Kbd } from '@/common/ui/kbd';
 import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
 import { findMatchingBackendModelPresetId } from '@/features/agent/ui-backend-preset-selector';
@@ -214,19 +215,15 @@ function buildFeatureContextXml(features: ProjectFeatureMapItem[]): string {
 
   const lines = ['<feature_context>'];
   for (const feature of features) {
-    appendFeatureXml(lines, feature, 1);
+    appendFeatureXml(lines, feature);
   }
   lines.push('</feature_context>');
 
   return `\n\n${lines.join('\n')}`;
 }
 
-function appendFeatureXml(
-  lines: string[],
-  feature: ProjectFeatureMapItem,
-  depth: number,
-) {
-  const indent = '  '.repeat(depth);
+function appendFeatureXml(lines: string[], feature: ProjectFeatureMapItem) {
+  const indent = '  ';
   lines.push(`${indent}<feature name="${escapeFeatureXml(feature.name)}">`);
   lines.push(
     `${indent}  <summary>${escapeFeatureXml(feature.summary)}</summary>`,
@@ -238,13 +235,6 @@ function appendFeatureXml(
     }
     lines.push(`${indent}  </key_files>`);
   }
-  if (feature.children.length > 0) {
-    lines.push(`${indent}  <subfeatures>`);
-    for (const child of feature.children) {
-      appendFeatureXml(lines, child, depth + 2);
-    }
-    lines.push(`${indent}  </subfeatures>`);
-  }
   lines.push(`${indent}</feature>`);
 }
 
@@ -255,6 +245,66 @@ function flattenFeatures(features: ProjectFeatureMapItem[]) {
     result.push(...flattenFeatures(feature.children));
   }
   return result;
+}
+
+function getFeatureFileCount(features: ProjectFeatureMapItem[]): number {
+  return new Set(features.flatMap((feature) => feature.key_files)).size;
+}
+
+function getFeatureTokenEstimate(features: ProjectFeatureMapItem[]): number {
+  const xml = buildFeatureContextXml(features);
+  return Math.ceil(xml.length / 4);
+}
+
+function featureMatches(
+  feature: ProjectFeatureMapItem,
+  query: string,
+): boolean {
+  const normalizedQuery = query.toLowerCase();
+  return (
+    feature.name.toLowerCase().includes(normalizedQuery) ||
+    feature.summary.toLowerCase().includes(normalizedQuery) ||
+    feature.key_files.some((file) =>
+      file.toLowerCase().includes(normalizedQuery),
+    )
+  );
+}
+
+function collectVisibleFeatureIds(
+  features: ProjectFeatureMapItem[],
+  query: string,
+): Set<string> | null {
+  if (!query) return null;
+  const visibleIds = new Set<string>();
+  const walk = (feature: ProjectFeatureMapItem): boolean => {
+    const childMatches = feature.children.some(walk);
+    const matches = featureMatches(feature, query);
+    if (matches || childMatches) visibleIds.add(feature.id);
+    return matches || childMatches;
+  };
+  features.forEach(walk);
+  return visibleIds;
+}
+
+function hasSelectedDescendant(
+  feature: ProjectFeatureMapItem,
+  selectedIds: string[],
+): boolean {
+  return feature.children.some(
+    (child) =>
+      selectedIds.includes(child.id) ||
+      hasSelectedDescendant(child, selectedIds),
+  );
+}
+
+function getInitialExpandedFeatureIds(
+  features: ProjectFeatureMapItem[],
+): Set<string> {
+  return new Set(
+    flattenFeatures(features)
+      .filter((feature) => feature.children.length > 0)
+      .map((feature) => feature.id),
+  );
 }
 
 function FeatureContextPicker({
@@ -269,26 +319,82 @@ function FeatureContextPicker({
   onClear: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() =>
+    getInitialExpandedFeatureIds(features),
+  );
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  const flatFeatures = useMemo(() => flattenFeatures(features), [features]);
+  const selectedFeatures = useMemo(
+    () => flatFeatures.filter((feature) => selectedIds.includes(feature.id)),
+    [flatFeatures, selectedIds],
+  );
+  const visibleIds = useMemo(
+    () => collectVisibleFeatureIds(features, query.trim()),
+    [features, query],
+  );
+  const matchCount = useMemo(
+    () =>
+      query.trim()
+        ? flatFeatures.filter((feature) =>
+            featureMatches(feature, query.trim()),
+          ).length
+        : 0,
+    [flatFeatures, query],
+  );
+  const selectedFileCount = getFeatureFileCount(selectedFeatures);
+  const selectedTokenEstimate = getFeatureTokenEstimate(selectedFeatures);
+  const expandableIds = useMemo(
+    () =>
+      flatFeatures
+        .filter((feature) => feature.children.length > 0)
+        .map((feature) => feature.id),
+    [flatFeatures],
+  );
+
+  useEffect(() => {
+    setExpandedIds(getInitialExpandedFeatureIds(features));
+    setQuery('');
+  }, [features]);
+
+  const toggleExpanded = useCallback((featureId: string) => {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (next.has(featureId)) next.delete(featureId);
+      else next.add(featureId);
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback(() => {
+    setExpandedIds((current) => {
+      const currentKnownCount = expandableIds.filter((id) =>
+        current.has(id),
+      ).length;
+      return currentKnownCount > 0 ? new Set() : new Set(expandableIds);
+    });
+  }, [expandableIds]);
+
   if (features.length === 0) return null;
 
   return (
-    <div className="border-glass-border border-t px-[18px] py-2">
-      <div className="flex items-center justify-between gap-2">
+    <div className="border-glass-border border-t bg-black/15 select-none">
+      <div className="flex items-center gap-2 px-[18px] pt-2.5 pb-1.5">
         <button
           type="button"
-          className="text-ink-2 hover:text-ink-1 flex items-center gap-1.5 text-xs"
+          className="text-ink-2 hover:text-ink-1 flex min-w-0 items-center gap-1.5 text-xs"
           onClick={() => setIsOpen((value) => !value)}
         >
           <ChevronRight
             className={`h-3.5 w-3.5 transition-transform ${isOpen ? 'rotate-90' : ''}`}
           />
           Feature context
-          {selectedIds.length > 0 && (
-            <span className="bg-accent-1/20 text-accent-1 rounded-full px-1.5 py-0.5 text-[10px]">
-              {selectedIds.length}
-            </span>
-          )}
         </button>
+        <span className="text-ink-3 shrink-0 font-mono text-xs">
+          {selectedIds.length} feat · {selectedFileCount} files
+        </span>
+        <div className="flex-1" />
         {selectedIds.length > 0 && (
           <button
             type="button"
@@ -299,17 +405,130 @@ function FeatureContextPicker({
           </button>
         )}
       </div>
-      {isOpen && (
-        <div className="mt-2 grid max-h-40 gap-1.5 overflow-y-auto pr-1">
-          {features.map((feature) => (
-            <FeatureContextPickerItem
+      {selectedFeatures.length > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto px-[18px] pb-2.5">
+          <span
+            className="shrink-0 font-mono text-[10px] font-semibold tracking-[0.22em] uppercase"
+            style={{ color: 'var(--color-acc-ink)' }}
+          >
+            Context
+          </span>
+          {selectedFeatures.map((feature) => (
+            <span
               key={feature.id}
-              feature={feature}
-              depth={0}
-              selectedIds={selectedIds}
-              onToggle={onToggle}
-            />
+              title={feature.name}
+              className="text-ink-1 flex max-w-56 shrink-0 items-center gap-1 rounded-full border py-0.5 pr-1.5 pl-2 text-[11px] shadow-[0_0_0_1px_oklch(1_0_0/0.04)_inset]"
+              style={{
+                background: 'var(--color-acc-soft)',
+                borderColor: 'var(--color-acc-line)',
+              }}
+            >
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ background: 'var(--color-acc-ink)' }}
+              />
+              <span className="truncate">{feature.name}</span>
+              <button
+                type="button"
+                className="text-ink-3 hover:text-ink-1 rounded-full p-0.5"
+                onClick={() => onToggle(feature.id)}
+                aria-label={`Remove ${feature.name}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
           ))}
+          <span className="text-ink-3 ml-auto shrink-0 font-mono text-[10px]">
+            ~{selectedTokenEstimate.toLocaleString()} tok
+          </span>
+        </div>
+      )}
+      {isOpen && (
+        <div className="border-glass-border border-t">
+          <div className="flex items-center gap-2 px-[18px] py-2">
+            <div className="border-glass-border bg-glass-light focus-within:border-accent-1/40 flex min-w-0 flex-1 items-center gap-2 rounded-lg border px-2.5 py-1.5">
+              <Search className="text-ink-3 h-3.5 w-3.5 shrink-0" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search features, summaries, files..."
+                className="text-ink-1 placeholder:text-ink-3 min-w-0 flex-1 bg-transparent text-xs outline-none"
+                spellCheck={false}
+              />
+              <span className="text-ink-3 shrink-0 font-mono text-[10px]">
+                {query.trim()
+                  ? `${matchCount} match${matchCount === 1 ? '' : 'es'}`
+                  : `${flatFeatures.length} features`}
+              </span>
+              {query && (
+                <button
+                  type="button"
+                  className="text-ink-3 hover:text-ink-1"
+                  onClick={() => setQuery('')}
+                  aria-label="Clear feature search"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              className="border-glass-border text-ink-3 hover:text-ink-1 hover:bg-glass-light shrink-0 rounded-md border px-2.5 py-1.5 text-[11px]"
+              onClick={query.trim() ? () => setQuery('') : toggleAll}
+            >
+              {query.trim()
+                ? 'Clear'
+                : expandedIds.size > 0
+                  ? 'Collapse all'
+                  : 'Expand all'}
+            </button>
+          </div>
+          <div className="max-h-80 overflow-y-auto px-2.5 pb-2">
+            {features.map((feature) => (
+              <FeatureContextPickerItem
+                key={feature.id}
+                feature={feature}
+                depth={0}
+                selectedIds={selectedIds}
+                expandedIds={expandedIds}
+                visibleIds={visibleIds}
+                query={query.trim()}
+                onToggle={onToggle}
+                onExpand={toggleExpanded}
+              />
+            ))}
+            {visibleIds?.size === 0 && (
+              <div className="text-ink-3 px-4 py-7 text-center text-xs">
+                No features match "{query.trim()}".
+              </div>
+            )}
+          </div>
+          <div className="border-glass-border border-t bg-black/20">
+            <button
+              type="button"
+              className="text-ink-2 hover:text-ink-1 flex w-full items-center gap-2 px-[18px] py-2 text-left text-[11px]"
+              onClick={() => setIsPreviewOpen((value) => !value)}
+            >
+              <ChevronRight
+                className={`h-3 w-3 transition-transform ${isPreviewOpen ? 'rotate-90' : ''}`}
+              />
+              Preview injected context
+              <span className="bg-accent-1/15 text-accent-1 rounded px-1.5 py-0.5 font-mono text-[9px]">
+                XML
+              </span>
+              <span className="text-ink-3 ml-auto font-mono text-[10px]">
+                {selectedIds.length} feat · {selectedFileCount} files · ~
+                {selectedTokenEstimate.toLocaleString()} tok
+              </span>
+            </button>
+            {isPreviewOpen && (
+              <pre className="border-glass-border text-ink-2 max-h-40 overflow-auto border-t bg-black/25 px-3.5 py-3 font-mono text-[11px] leading-relaxed whitespace-pre">
+                {selectedFeatures.length > 0
+                  ? buildFeatureContextXml(selectedFeatures).trimStart()
+                  : 'Select features to build the <feature_context> block'}
+              </pre>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -320,44 +539,126 @@ function FeatureContextPickerItem({
   feature,
   depth,
   selectedIds,
+  expandedIds,
+  visibleIds,
+  query,
   onToggle,
+  onExpand,
 }: {
   feature: ProjectFeatureMapItem;
   depth: number;
   selectedIds: string[];
+  expandedIds: Set<string>;
+  visibleIds: Set<string> | null;
+  query: string;
   onToggle: (featureId: string) => void;
+  onExpand: (featureId: string) => void;
 }) {
+  if (visibleIds && !visibleIds.has(feature.id)) return null;
   const selected = selectedIds.includes(feature.id);
+  const hasChildren = feature.children.length > 0;
+  const isExpanded = visibleIds ? true : expandedIds.has(feature.id);
+  const descSelected = hasSelectedDescendant(feature, selectedIds);
+
   return (
-    <div className="grid gap-1.5">
-      <button
-        type="button"
-        className={`rounded-lg border py-2 pr-2.5 text-left transition-colors ${
-          selected
-            ? 'border-accent-1/60 bg-accent-1/10'
-            : 'border-glass-border bg-glass-light hover:bg-glass-medium'
+    <div>
+      <div
+        className={`group relative flex min-h-[30px] cursor-pointer items-center gap-2 rounded-md py-1.5 pr-2.5 transition-colors ${
+          selected ? 'bg-accent-1/10' : 'hover:bg-white/[0.035]'
         }`}
-        style={{ paddingLeft: 10 + depth * 14 }}
+        style={{ paddingLeft: 10 + depth * 17 }}
         onClick={() => onToggle(feature.id)}
       >
-        <div className="text-ink-1 flex items-center gap-1.5 text-xs font-medium">
-          {depth > 0 && <span className="text-ink-3">-&gt;</span>}
-          {feature.name}
-        </div>
-        <div className="text-ink-3 mt-0.5 line-clamp-2 text-[11px] leading-relaxed">
-          {feature.summary}
-        </div>
-      </button>
-      {feature.children.map((child) => (
-        <FeatureContextPickerItem
-          key={child.id}
-          feature={child}
-          depth={depth + 1}
-          selectedIds={selectedIds}
-          onToggle={onToggle}
+        {(selected || descSelected) && (
+          <span
+            className={`absolute top-1 bottom-1 left-0 w-0.5 rounded-full ${
+              selected ? 'bg-accent-1' : 'bg-accent-1/40'
+            }`}
+          />
+        )}
+        {hasChildren ? (
+          <button
+            type="button"
+            className="text-ink-3 hover:text-ink-1 flex h-4 w-4 shrink-0 items-center justify-center"
+            onClick={(event) => {
+              event.stopPropagation();
+              if (!visibleIds) onExpand(feature.id);
+            }}
+            aria-label={isExpanded ? 'Collapse feature' : 'Expand feature'}
+          >
+            <ChevronRight
+              className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+            />
+          </button>
+        ) : (
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+            <span className="h-1 w-1 rounded-full bg-white/20" />
+          </span>
+        )}
+        <Checkbox
+          size="sm"
+          checked={selected}
+          onChange={() => onToggle(feature.id)}
+          onClick={(event) => event.stopPropagation()}
+          compact
         />
-      ))}
+        <span
+          className={`shrink-0 truncate text-xs font-medium ${
+            selected ? 'text-ink-1' : depth === 0 ? 'text-ink-1' : 'text-ink-2'
+          }`}
+        >
+          <FeatureHighlight text={feature.name} query={query} />
+        </span>
+        <span
+          className={`flex h-[15px] shrink-0 items-center gap-1 rounded px-1.5 font-mono text-[9px] font-semibold ${
+            selected
+              ? 'bg-accent-1/15 text-accent-1'
+              : 'text-ink-3 bg-white/[0.05]'
+          }`}
+        >
+          <FileText className="h-2 w-2" />
+          {feature.key_files.length}
+        </span>
+        <div className="text-ink-3 min-w-0 flex-1 truncate text-[11px]">
+          <FeatureHighlight text={feature.summary} query={query} />
+        </div>
+        {!selected && (
+          <span className="text-accent-1 hidden shrink-0 font-mono text-[9px] font-semibold group-hover:inline">
+            + add
+          </span>
+        )}
+      </div>
+      {hasChildren && isExpanded
+        ? feature.children.map((child) => (
+            <FeatureContextPickerItem
+              key={child.id}
+              feature={child}
+              depth={depth + 1}
+              selectedIds={selectedIds}
+              expandedIds={expandedIds}
+              visibleIds={visibleIds}
+              query={query}
+              onToggle={onToggle}
+              onExpand={onExpand}
+            />
+          ))
+        : null}
     </div>
+  );
+}
+
+function FeatureHighlight({ text, query }: { text: string; query: string }) {
+  if (!query) return text;
+  const index = text.toLowerCase().indexOf(query.toLowerCase());
+  if (index < 0) return text;
+  return (
+    <>
+      {text.slice(0, index)}
+      <mark className="bg-accent-1/25 text-ink-1 rounded px-0.5">
+        {text.slice(index, index + query.length)}
+      </mark>
+      {text.slice(index + query.length)}
+    </>
   );
 }
 
@@ -1565,7 +1866,7 @@ export function NewTaskOverlay({
         >
           <div
             ref={panelRef}
-            className="flex max-h-[80svh] w-[90svw] max-w-[1280px] flex-col overflow-hidden rounded-[14px] border border-white/10"
+            className="flex max-h-[86svh] w-[90svw] max-w-[1280px] flex-col overflow-hidden rounded-[14px] border border-white/10"
             style={{
               background: `
             radial-gradient(ellipse 700px 500px at 10% -10%, oklch(0.55 0.22 295 / 0.32), transparent 55%),
