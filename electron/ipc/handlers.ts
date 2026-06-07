@@ -293,7 +293,9 @@ import {
   getCurrentCommitHash,
   isGitRepository,
   getWorktreeStatus,
+  getProjectCommitIgnore,
   commitWorktreeChanges,
+  updateProjectCommitIgnore,
   cleanupWorktree,
   cleanupMissingWorktree,
   mergeWorktree,
@@ -750,6 +752,23 @@ export function registerIpcHandlers() {
     }
     return isGitRepository(project.path);
   });
+  ipcMain.handle('projects:getCommitIgnore', async (_, projectId: string) => {
+    const project = await ProjectRepository.findById(projectId);
+    if (!project) {
+      throw new Error(`Project ${projectId} not found`);
+    }
+    return getProjectCommitIgnore(project.path);
+  });
+  ipcMain.handle(
+    'projects:updateCommitIgnore',
+    async (_, projectId: string, content: string) => {
+      const project = await ProjectRepository.findById(projectId);
+      if (!project) {
+        throw new Error(`Project ${projectId} not found`);
+      }
+      await updateProjectCommitIgnore({ projectPath: project.path, content });
+    },
+  );
   ipcMain.handle('projects:getSkills', async (_, projectId: string) => {
     const project = await ProjectRepository.findById(projectId);
     if (!project) {
@@ -2083,6 +2102,7 @@ export function registerIpcHandlers() {
 
       return commitWorktreeChanges({
         worktreePath: task.worktreePath,
+        projectPath: project.path,
         message,
         stageAll: params.stageAll,
         noVerify: project.commitWithNoVerify,
@@ -2187,6 +2207,7 @@ export function registerIpcHandlers() {
         if (status.hasUnstagedChanges) {
           await commitWorktreeChanges({
             worktreePath: task.worktreePath,
+            projectPath: project.path,
             message: 'chore: commit unstaged changes before merge',
             stageAll: true,
             noVerify: project.commitWithNoVerify,
@@ -2810,6 +2831,7 @@ export function registerIpcHandlers() {
         if (status.hasUncommittedChanges) {
           await commitWorktreeChanges({
             worktreePath: task.worktreePath,
+            projectPath: project.path,
             message: 'chore: commit unstaged changes before push',
             stageAll: true,
             noVerify: project.commitWithNoVerify,
@@ -2933,6 +2955,7 @@ export function registerIpcHandlers() {
       if (status.hasUncommittedChanges) {
         await commitWorktreeChanges({
           worktreePath: task.worktreePath,
+          projectPath: project.path,
           message: 'chore: commit unstaged changes before PR creation',
           stageAll: true,
           noVerify: project.commitWithNoVerify,
@@ -3372,6 +3395,7 @@ export function registerIpcHandlers() {
 
     const ENTRIES = [
       '**/.jean-claude/settings.local.json',
+      '**/.jean-claude/ignore',
       '**/.jean-claude/tmp/',
     ];
 

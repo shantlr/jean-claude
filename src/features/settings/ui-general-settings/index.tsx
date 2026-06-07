@@ -1221,6 +1221,8 @@ function GlobalGitignoreSetup() {
       <p className="text-ink-4 mt-1 font-mono text-xs">
         **/.jean-claude/settings.local.json
         <br />
+        **/.jean-claude/ignore
+        <br />
         **/.jean-claude/tmp/
       </p>
 

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import isEqual from 'lodash-es/isEqual';
 import {
   Check,
@@ -111,6 +111,7 @@ const PROMPT_PREFACE_FREQUENCY_OPTIONS = [
 
 export type ProjectSettingsMenuItem =
   | 'details'
+  | 'commit-ignore'
   | 'permissions'
   | 'worktree'
   | 'prompt-preface'
@@ -225,6 +226,106 @@ function ProjectPromptPrefaceSettings({
             className="w-full justify-between"
           />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ProjectCommitIgnoreSettings({ projectId }: { projectId: string }) {
+  const queryClient = useQueryClient();
+  const addToast = useToastStore((s) => s.addToast);
+  const { data: content = '', isLoading } = useQuery({
+    queryKey: ['project-commit-ignore', projectId],
+    queryFn: () => api.projects.getCommitIgnore(projectId),
+  });
+  const [draft, setDraft] = useState('');
+  const lastLoadedContentRef = useRef('');
+  const saveVersionRef = useRef(0);
+  const pendingSaveContentRef = useRef<string | null>(null);
+  const updateCommitIgnore = useMutation({
+    mutationFn: ({
+      content: nextContent,
+    }: {
+      content: string;
+      version: number;
+    }) => api.projects.updateCommitIgnore(projectId, nextContent),
+    onSuccess: (_, { content: nextContent, version }) => {
+      if (version !== saveVersionRef.current) return;
+      lastLoadedContentRef.current = nextContent;
+      queryClient.setQueryData(
+        ['project-commit-ignore', projectId],
+        nextContent,
+      );
+    },
+    onError: (error, { version }) => {
+      if (version !== saveVersionRef.current) return;
+      addToast({
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to save commit ignore rules',
+        type: 'error',
+      });
+    },
+    onSettled: (_, __, { content: nextContent }) => {
+      if (pendingSaveContentRef.current === nextContent) {
+        pendingSaveContentRef.current = null;
+      }
+    },
+  });
+
+  useEffect(() => {
+    setDraft((current) =>
+      current === lastLoadedContentRef.current ? content : current,
+    );
+    lastLoadedContentRef.current = content;
+  }, [content]);
+
+  if (isLoading) return <p className="text-ink-3">Loading...</p>;
+
+  const hasChanges = draft !== content;
+
+  function saveDraft() {
+    if (!hasChanges || pendingSaveContentRef.current === draft) return;
+    pendingSaveContentRef.current = draft;
+    const version = saveVersionRef.current + 1;
+    saveVersionRef.current = version;
+    updateCommitIgnore.mutate({ content: draft, version });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-ink-1 text-lg font-semibold">Commit Ignore</h2>
+        <p className="text-ink-3 mt-1 text-sm">
+          Gitignore-style rules stored at <code>.jean-claude/ignore</code>.
+          Jean-Claude skips matching paths when committing all changes.
+        </p>
+      </div>
+      <Textarea
+        size="md"
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => {
+          saveDraft();
+        }}
+        placeholder={`# Examples\ndist/\n.env.local\n*.log`}
+        rows={12}
+      />
+      <div className="flex items-center gap-3">
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={saveDraft}
+          disabled={!hasChanges || updateCommitIgnore.isPending}
+          loading={updateCommitIgnore.isPending}
+        >
+          {updateCommitIgnore.isPending ? 'Saving...' : 'Save'}
+        </Button>
+        <p className="text-ink-3 text-xs">
+          Existing Git ignore still applies. These rules only affect Jean-Claude
+          commits.
+        </p>
       </div>
     </div>
   );
@@ -1129,6 +1230,9 @@ export function ProjectSettings({
           </div>
         </div>
       );
+      break;
+    case 'commit-ignore':
+      content = <ProjectCommitIgnoreSettings projectId={projectId} />;
       break;
     case 'permissions':
       content = <ProjectPermissionsSettings projectPath={project.path} />;

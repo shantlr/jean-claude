@@ -405,6 +405,8 @@ export interface Api {
     getBranches: (projectId: string) => Promise<BranchInfo[]>;
     getCurrentBranch: (projectId: string) => Promise<string>;
     isGitRepository: (projectId: string) => Promise<boolean>;
+    getCommitIgnore: (projectId: string) => Promise<string>;
+    updateCommitIgnore: (projectId: string, content: string) => Promise<void>;
     getDetected: () => Promise<DetectedProject[]>;
     detectLogos: (projectPath: string) => Promise<DetectedProjectLogo[]>;
     getSkills: (projectId: string) => Promise<Skill[]>;
@@ -1493,6 +1495,8 @@ export const api: Api = hasWindowApi
         getBranches: async () => [],
         getCurrentBranch: async () => '',
         isGitRepository: async () => false,
+        getCommitIgnore: async () => '',
+        updateCommitIgnore: async () => {},
         getDetected: async () => [],
         detectLogos: async () => [],
         getSkills: async () => [],

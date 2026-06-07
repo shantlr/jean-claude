@@ -64,6 +64,10 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('projects:getCurrentBranch', projectId),
     isGitRepository: (projectId: string) =>
       ipcRenderer.invoke('projects:isGitRepository', projectId),
+    getCommitIgnore: (projectId: string) =>
+      ipcRenderer.invoke('projects:getCommitIgnore', projectId),
+    updateCommitIgnore: (projectId: string, content: string) =>
+      ipcRenderer.invoke('projects:updateCommitIgnore', projectId, content),
     getDetected: () => ipcRenderer.invoke('projects:getDetected'),
     detectLogos: (projectPath: string) =>
       ipcRenderer.invoke('projects:detectLogos', projectPath),

@@ -4,6 +4,7 @@ import * as path from 'path';
 import { promisify } from 'util';
 
 import { app } from 'electron';
+import ignore from 'ignore';
 import { nanoid } from 'nanoid';
 
 import { getImageMimeType, isSvgPath } from '@shared/image-types';
@@ -24,6 +25,135 @@ import { formatCreateWorktreeError } from './utils-worktree-errors';
 const execAsync = promisify(exec);
 
 const execFileAsync = promisify(execFile);
+
+const COMMIT_IGNORE_RELATIVE_PATH = path.join('.jean-claude', 'ignore');
+
+function getCommitIgnorePath(projectPath: string): string {
+  return path.join(projectPath, COMMIT_IGNORE_RELATIVE_PATH);
+}
+
+export async function getProjectCommitIgnore(
+  projectPath: string,
+): Promise<string> {
+  const ignorePath = getCommitIgnorePath(projectPath);
+  try {
+    return await fs.readFile(ignorePath, 'utf-8');
+  } catch (error) {
+    if (isEnoent(error)) return '';
+    throw error;
+  }
+}
+
+export async function updateProjectCommitIgnore({
+  projectPath,
+  content,
+}: {
+  projectPath: string;
+  content: string;
+}): Promise<void> {
+  const ignorePath = getCommitIgnorePath(projectPath);
+  await fs.mkdir(path.dirname(ignorePath), { recursive: true });
+  await fs.writeFile(ignorePath, content, 'utf-8');
+}
+
+async function getIgnoredCommitPaths({
+  worktreePath,
+  projectPath,
+}: {
+  worktreePath: string;
+  projectPath?: string;
+}): Promise<{ ignoredPaths: Set<string>; ignoredStagedPaths: Set<string> }> {
+  if (!projectPath) {
+    return { ignoredPaths: new Set(), ignoredStagedPaths: new Set() };
+  }
+
+  const ignoreContent = await getProjectCommitIgnore(projectPath);
+  if (!ignoreContent.trim()) {
+    return { ignoredPaths: new Set(), ignoredStagedPaths: new Set() };
+  }
+
+  const matcher = ignore().add(ignoreContent);
+  const { stdout } = await execFileAsync(
+    'git',
+    ['status', '--porcelain', '-z', '--untracked-files=all'],
+    { cwd: worktreePath, encoding: 'utf-8' },
+  );
+  const entries = stdout.split('\0').filter(Boolean);
+  const ignoredPaths = new Set<string>();
+  const ignoredStagedPaths = new Set<string>();
+
+  for (let i = 0; i < entries.length; i += 1) {
+    const entry = entries[i];
+    const status = entry.slice(0, 2);
+    const filePath = entry.slice(3);
+    const sourcePath =
+      status[0] === 'R' || status[0] === 'C' ? entries[i + 1] : undefined;
+    const isIgnored =
+      matcher.ignores(filePath) ||
+      (status[0] === 'R' &&
+        sourcePath !== undefined &&
+        matcher.ignores(sourcePath));
+    if (isIgnored) {
+      ignoredPaths.add(filePath);
+      if (status[0] !== ' ' && status[0] !== '?') {
+        ignoredStagedPaths.add(filePath);
+      }
+    }
+    if (sourcePath !== undefined) i += 1;
+  }
+
+  return { ignoredPaths, ignoredStagedPaths };
+}
+
+async function getStatusPaths(worktreePath: string): Promise<string[]> {
+  const { stdout } = await execFileAsync(
+    'git',
+    ['status', '--porcelain', '-z', '--untracked-files=all'],
+    { cwd: worktreePath, encoding: 'utf-8' },
+  );
+  const entries = stdout.split('\0').filter(Boolean);
+  const paths: string[] = [];
+
+  for (let i = 0; i < entries.length; i += 1) {
+    const entry = entries[i];
+    const status = entry.slice(0, 2);
+    paths.push(entry.slice(3));
+    if (status[0] === 'R' || status[0] === 'C') i += 1;
+  }
+
+  return paths;
+}
+
+async function runGitPathCommand({
+  worktreePath,
+  args,
+  paths,
+}: {
+  worktreePath: string;
+  args: string[];
+  paths: string[];
+}): Promise<void> {
+  for (let i = 0; i < paths.length; i += 100) {
+    await execFileAsync('git', [...args, '--', ...paths.slice(i, i + 100)], {
+      cwd: worktreePath,
+      encoding: 'utf-8',
+    });
+  }
+}
+
+async function hasStagedChanges(worktreePath: string): Promise<boolean> {
+  try {
+    await execFileAsync('git', ['diff', '--cached', '--quiet', '--exit-code'], {
+      cwd: worktreePath,
+      encoding: 'utf-8',
+    });
+    return false;
+  } catch (error) {
+    const code = (error as { code?: number }).code;
+    if (code === 1) return true;
+    throw error;
+  }
+}
 
 async function gitCommit({
   cwd,
@@ -1004,6 +1134,7 @@ export async function getWorktreeStatus(
 
 export interface CommitWorktreeParams {
   worktreePath: string;
+  projectPath?: string;
   message: string;
   stageAll: boolean;
   noVerify?: boolean;
@@ -1015,7 +1146,13 @@ export interface CommitWorktreeParams {
 export async function commitWorktreeChanges(
   params: CommitWorktreeParams,
 ): Promise<void> {
-  const { worktreePath, message, stageAll, noVerify = false } = params;
+  const {
+    worktreePath,
+    projectPath,
+    message,
+    stageAll,
+    noVerify = false,
+  } = params;
   dbg.worktree('commitWorktreeChanges: %o', {
     worktreePath,
     stageAll,
@@ -1025,9 +1162,38 @@ export async function commitWorktreeChanges(
 
   try {
     if (stageAll) {
-      // Stage all changes including untracked files
-      dbg.worktree('Staging all changes');
-      await execAsync('git add -A', { cwd: worktreePath, encoding: 'utf-8' });
+      const { ignoredPaths, ignoredStagedPaths } = await getIgnoredCommitPaths({
+        worktreePath,
+        projectPath,
+      });
+      const paths = await getStatusPaths(worktreePath);
+      const includedPaths = paths.filter(
+        (filePath) => !ignoredPaths.has(filePath),
+      );
+
+      dbg.worktree(
+        'Staging %d changes, skipping %d ignored paths',
+        includedPaths.length,
+        ignoredPaths.size,
+      );
+      if (includedPaths.length > 0) {
+        await runGitPathCommand({
+          worktreePath,
+          args: ['add', '-A'],
+          paths: includedPaths,
+        });
+      }
+      if (ignoredStagedPaths.size > 0) {
+        await runGitPathCommand({
+          worktreePath,
+          args: ['restore', '--staged'],
+          paths: [...ignoredStagedPaths],
+        });
+      }
+      if (!(await hasStagedChanges(worktreePath))) {
+        dbg.worktree('No non-ignored staged changes to commit');
+        return;
+      }
     }
 
     // Commit with the provided message

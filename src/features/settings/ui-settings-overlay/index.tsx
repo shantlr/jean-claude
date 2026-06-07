@@ -211,6 +211,7 @@ const PROJECT_SECTIONS: ProjectSection[] = [
     icon: Settings,
     subs: [
       { id: 'details', label: 'Details' },
+      { id: 'commit-ignore', label: 'Commit Ignore' },
       { id: 'worktree', label: 'Worktree' },
       { id: 'prompt-preface', label: 'Prompt Preface' },
       { id: 'autocomplete', label: 'Autocomplete' },
