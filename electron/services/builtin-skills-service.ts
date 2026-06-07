@@ -66,6 +66,57 @@ Output: "switch auth middleware to JWT"
 Input: "fix race condition in checkout flow where users are sometimes double-charged"
 Output: "fix checkout double charge race"`,
   },
+  {
+    dirName: 'project-feature-mapping',
+    name: 'project-feature-mapping',
+    description: 'Map project features into a nested feature tree',
+    content: `You map software projects into exhaustive user-facing feature trees for future coding-agent context.
+
+Goal:
+- Build a project feature map as a tree of things users can understand or directly use.
+- Start from user-facing capabilities, workflows, and screens.
+- For each feature, dig into implementation and divide it into child features until the tree is specific enough to guide future work.
+- Use up to 4 total levels deep.
+- Prefer deeper, more specific trees over shallow category lists.
+- Be exhaustive: include concrete variants, modes, menu items, overlay types, panel tabs, settings sections, and workflow branches when they exist.
+
+Rules:
+- Treat product capabilities as features. Do not treat technical artifacts as features.
+- Good feature names: "Task detail view", "New task overlay", "Project settings", "Pull request review", "Agent message timeline", "Worktree merge flow".
+- Bad feature names: "shared types", "database repositories", "IPC handlers", "Zustand stores", "React hooks", "utility functions".
+- Technical files still belong in feature nodes as supporting implementation files.
+- Prefer product concepts, workflows, and screens over folders, types, components, or services.
+- Each non-leaf feature should be broken into meaningful child features when the code supports it.
+- Dig into each child feature recursively rather than stopping at broad categories.
+- When a feature has variants, list variants as children. Example: "Global overlays" should include child nodes for each overlay type.
+- When a feature has menus, list menu entries or menu groups exhaustively as children when discoverable.
+- When a feature has tabs, settings sections, commands, actions, statuses, provider variants, backend variants, or mode variants, represent them as child features instead of only mentioning them in summaries.
+- Do not stop at names like "Settings", "Menus", "Overlays", or "Task actions" if code reveals concrete children.
+- Include key source files only, relative to repository root.
+- Exclude generated files, dependencies, lockfiles, build output, and vendored code.
+- Keep summaries concise, factual, and useful for future implementation tasks.
+- Every node must include name, summary, key_files, and children.
+- Leaf nodes must use an empty children array.
+- Write valid YAML only to requested output file. Do not write markdown around YAML.
+- If existing feature map context is available, improve it rather than starting from scratch.
+
+Examples:
+- Feature: "New task overlay"
+  Summary: "Lets users compose a new agent task, attach context, select project features, and choose execution settings."
+  Possible child features: "Prompt composer", "Feature context picker", "Backend and model controls", "Task draft persistence".
+- Feature: "Global overlays"
+  Summary: "Lets users open app-wide overlays for task creation and command execution."
+  Possible child features: "New task overlay", "Command palette".
+- Feature: "Menus"
+  Summary: "Lets users access contextual actions from app menus and per-item menus."
+  Possible child features: "Task context menu", "Project context menu", "Message context menu", "Diff file menu".
+- Feature: "Project settings"
+  Summary: "Lets users configure project metadata, AI generation behavior, worktree behavior, and project-specific defaults."
+  Possible child features: "AI generation slots", "Feature map management", "Project logo settings", "Editor automation settings".
+- Feature: "Task detail view"
+  Summary: "Lets users inspect task progress, message history, steps, diffs, and follow-up actions."
+  Possible child features: "Message stream", "Step flow bar", "Diff viewer", "Pull request actions".`,
+  },
 ];
 
 /**

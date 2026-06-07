@@ -62,6 +62,7 @@ import { useDeleteProjectTodo } from '@/hooks/use-project-todos';
 import {
   useProjects,
   useProjectBranches,
+  useProjectFeatureMap,
   useProjectIsGitRepository,
   useReorderProjects,
 } from '@/hooks/use-projects';
@@ -112,6 +113,7 @@ import {
 } from '@shared/thinking-settings';
 import {
   normalizeInteractionModeForBackend,
+  type ProjectFeatureMapItem,
   type ThinkingEffort,
   type Project,
 } from '@shared/types';
@@ -196,6 +198,167 @@ function getProjectGridColumns(): number {
   if (window.innerWidth >= 1024) return 10;
   if (window.innerWidth >= 640) return 8;
   return 7;
+}
+
+function escapeFeatureXml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');
+}
+
+function buildFeatureContextXml(features: ProjectFeatureMapItem[]): string {
+  if (features.length === 0) return '';
+
+  const lines = ['<feature_context>'];
+  for (const feature of features) {
+    appendFeatureXml(lines, feature, 1);
+  }
+  lines.push('</feature_context>');
+
+  return `\n\n${lines.join('\n')}`;
+}
+
+function appendFeatureXml(
+  lines: string[],
+  feature: ProjectFeatureMapItem,
+  depth: number,
+) {
+  const indent = '  '.repeat(depth);
+  lines.push(`${indent}<feature name="${escapeFeatureXml(feature.name)}">`);
+  lines.push(
+    `${indent}  <summary>${escapeFeatureXml(feature.summary)}</summary>`,
+  );
+  if (feature.key_files.length > 0) {
+    lines.push(`${indent}  <key_files>`);
+    for (const file of feature.key_files) {
+      lines.push(`${indent}    <file>${escapeFeatureXml(file)}</file>`);
+    }
+    lines.push(`${indent}  </key_files>`);
+  }
+  if (feature.children.length > 0) {
+    lines.push(`${indent}  <subfeatures>`);
+    for (const child of feature.children) {
+      appendFeatureXml(lines, child, depth + 2);
+    }
+    lines.push(`${indent}  </subfeatures>`);
+  }
+  lines.push(`${indent}</feature>`);
+}
+
+function flattenFeatures(features: ProjectFeatureMapItem[]) {
+  const result: ProjectFeatureMapItem[] = [];
+  for (const feature of features) {
+    result.push(feature);
+    result.push(...flattenFeatures(feature.children));
+  }
+  return result;
+}
+
+function FeatureContextPicker({
+  features,
+  selectedIds,
+  onToggle,
+  onClear,
+}: {
+  features: ProjectFeatureMapItem[];
+  selectedIds: string[];
+  onToggle: (featureId: string) => void;
+  onClear: () => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  if (features.length === 0) return null;
+
+  return (
+    <div className="border-glass-border border-t px-[18px] py-2">
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          className="text-ink-2 hover:text-ink-1 flex items-center gap-1.5 text-xs"
+          onClick={() => setIsOpen((value) => !value)}
+        >
+          <ChevronRight
+            className={`h-3.5 w-3.5 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+          />
+          Feature context
+          {selectedIds.length > 0 && (
+            <span className="bg-accent-1/20 text-accent-1 rounded-full px-1.5 py-0.5 text-[10px]">
+              {selectedIds.length}
+            </span>
+          )}
+        </button>
+        {selectedIds.length > 0 && (
+          <button
+            type="button"
+            className="text-ink-3 hover:text-ink-1 text-[11px]"
+            onClick={onClear}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      {isOpen && (
+        <div className="mt-2 grid max-h-40 gap-1.5 overflow-y-auto pr-1">
+          {features.map((feature) => (
+            <FeatureContextPickerItem
+              key={feature.id}
+              feature={feature}
+              depth={0}
+              selectedIds={selectedIds}
+              onToggle={onToggle}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FeatureContextPickerItem({
+  feature,
+  depth,
+  selectedIds,
+  onToggle,
+}: {
+  feature: ProjectFeatureMapItem;
+  depth: number;
+  selectedIds: string[];
+  onToggle: (featureId: string) => void;
+}) {
+  const selected = selectedIds.includes(feature.id);
+  return (
+    <div className="grid gap-1.5">
+      <button
+        type="button"
+        className={`rounded-lg border py-2 pr-2.5 text-left transition-colors ${
+          selected
+            ? 'border-accent-1/60 bg-accent-1/10'
+            : 'border-glass-border bg-glass-light hover:bg-glass-medium'
+        }`}
+        style={{ paddingLeft: 10 + depth * 14 }}
+        onClick={() => onToggle(feature.id)}
+      >
+        <div className="text-ink-1 flex items-center gap-1.5 text-xs font-medium">
+          {depth > 0 && <span className="text-ink-3">-&gt;</span>}
+          {feature.name}
+        </div>
+        <div className="text-ink-3 mt-0.5 line-clamp-2 text-[11px] leading-relaxed">
+          {feature.summary}
+        </div>
+      </button>
+      {feature.children.map((child) => (
+        <FeatureContextPickerItem
+          key={child.id}
+          feature={child}
+          depth={depth + 1}
+          selectedIds={selectedIds}
+          onToggle={onToggle}
+        />
+      ))}
+    </div>
+  );
 }
 
 export function NewTaskOverlay({
@@ -293,6 +456,8 @@ export function NewTaskOverlay({
     selectedProjectId ?? undefined,
   );
   const isNoteMode = selectedProjectId === null;
+  const { data: selectedProjectFeatureMap = null } =
+    useProjectFeatureMap(selectedProjectId);
 
   // Fetch work items for the selected project (used for navigation)
   const { data: workItems = [] } = useWorkItems({
@@ -329,6 +494,14 @@ export function NewTaskOverlay({
     const ids = draft?.workItemIds ?? [];
     return workItems.filter((wi) => ids.includes(wi.id.toString()));
   }, [workItems, draft?.workItemIds]);
+
+  const selectedFeatures = useMemo(() => {
+    const ids = draft?.selectedFeatureIds ?? [];
+    const features = selectedProjectFeatureMap?.features ?? [];
+    return flattenFeatures(features).filter((feature) =>
+      ids.includes(feature.id),
+    );
+  }, [draft?.selectedFeatureIds, selectedProjectFeatureMap?.features]);
 
   // Fetch comments for selected work items
   const workItemIdNumbers = useMemo(
@@ -436,7 +609,11 @@ export function NewTaskOverlay({
     if (inputMode === 'prompt') {
       const hasPrompt = !!(draft.prompt ?? '').trim();
       const hasFileComments = fileCommentCount > 0;
-      return (hasPrompt || hasFileComments) && !!selectedProjectId;
+      const hasFeatureContext = selectedFeatures.length > 0;
+      return (
+        (hasPrompt || hasFileComments || hasFeatureContext) &&
+        !!selectedProjectId
+      );
     }
 
     return false;
@@ -449,6 +626,7 @@ export function NewTaskOverlay({
     selectedProjectId,
     isWorktreeDataFetching,
     fileCommentCount,
+    selectedFeatures.length,
   ]);
 
   // Navigate project tabs
@@ -839,6 +1017,23 @@ export function NewTaskOverlay({
     updateDraft({ selectedCommentIds: [] });
   }, [updateDraft]);
 
+  const handleFeatureToggle = useCallback(
+    (featureId: string) => {
+      updateDraft((prev) => {
+        const current = prev?.selectedFeatureIds ?? [];
+        const next = current.includes(featureId)
+          ? current.filter((id) => id !== featureId)
+          : [...current, featureId];
+        return { selectedFeatureIds: next };
+      });
+    },
+    [updateDraft],
+  );
+
+  const handleClearFeatures = useCallback(() => {
+    updateDraft({ selectedFeatureIds: [] });
+  }, [updateDraft]);
+
   // Start task handler
   const handleStartTask = useCallback(async () => {
     if (!canStartTask || !draft || !selectedProjectId) return;
@@ -911,6 +1106,7 @@ export function NewTaskOverlay({
       }
 
       // Append file attachment references to prompt text
+      finalPrompt += buildFeatureContextXml(selectedFeatures);
       finalPrompt += buildAttachedFilesXml(draftFiles);
 
       const backlogTodoIds = draft.backlogTodoIds ?? [];
@@ -1016,6 +1212,7 @@ export function NewTaskOverlay({
     searchStep,
     promptTemplate,
     selectedWorkItems,
+    selectedFeatures,
     workItemComments,
     snippetVariableContext,
     testCasesByWorkItem,
@@ -1532,6 +1729,17 @@ export function NewTaskOverlay({
                 />
               </div>
             )}
+
+            {!isNoteMode && selectedProjectFeatureMap?.features.length ? (
+              <div className="shrink-0">
+                <FeatureContextPicker
+                  features={selectedProjectFeatureMap.features}
+                  selectedIds={draft?.selectedFeatureIds ?? []}
+                  onToggle={handleFeatureToggle}
+                  onClear={handleClearFeatures}
+                />
+              </div>
+            ) : null}
 
             {/* Footer */}
             <div

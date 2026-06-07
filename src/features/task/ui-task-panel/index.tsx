@@ -62,6 +62,7 @@ import {
   ReviewPillsQueue,
   reviewCommentToPill,
 } from '@/features/common/ui-review-pills';
+import { FeatureMapSaveAction } from '@/features/task/ui-feature-map-save-action';
 import { PrReviewValidation } from '@/features/task/ui-pr-review-validation';
 import { SkillPublishAction } from '@/features/task/ui-skill-publish-action';
 import { StepFlowBar } from '@/features/task/ui-step-flow-bar';
@@ -1798,6 +1799,9 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                     taskId={taskId}
                     taskCompleted={task?.userCompleted ?? false}
                   />
+                )}
+                {activeStep?.type === 'feature-map' && (
+                  <FeatureMapSaveAction step={activeStep} />
                 )}
                 <TaskInputFooter
                   taskId={taskId}

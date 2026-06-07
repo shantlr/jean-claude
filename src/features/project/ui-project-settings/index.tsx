@@ -62,6 +62,8 @@ import {
   useDeleteGeneratedProjectLogo,
   useGenerateProjectLogo,
   useGeneratedProjectLogos,
+  useCreateProjectFeatureMapTask,
+  useProjectFeatureMap,
   useRegenerateProjectSummary,
   useRemoveProjectLogo,
   useSelectGeneratedProjectLogo,
@@ -85,6 +87,8 @@ import type {
   AiSkillSlotKey,
   AiSkillSlotsSetting,
   ModelPreference,
+  ProjectFeatureMap,
+  ProjectFeatureMapItem,
   ProjectLogoHistoryItem,
   UpdateProject,
 } from '@shared/types';
@@ -114,6 +118,7 @@ export type ProjectSettingsMenuItem =
   | 'commit-ignore'
   | 'permissions'
   | 'worktree'
+  | 'feature-map'
   | 'prompt-preface'
   | 'autocomplete'
   | 'integrations'
@@ -227,6 +232,114 @@ function ProjectPromptPrefaceSettings({
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+function ProjectFeatureMapSettings({
+  featureMap,
+  onCreateTask,
+  isGenerating,
+}: {
+  featureMap: ProjectFeatureMap | null;
+  onCreateTask: () => void;
+  isGenerating: boolean;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-ink-1 text-lg font-semibold">Feature Map</h2>
+          <p className="text-ink-3 mt-1 text-sm">
+            File-backed project feature tree. Create a task to draft or improve
+            it, then save from task details when reviewed.
+          </p>
+          {featureMap?.generatedAt && (
+            <p className="text-ink-3 mt-1 text-xs">
+              Generated {new Date(featureMap.generatedAt).toLocaleString()}
+            </p>
+          )}
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onCreateTask}
+          disabled={isGenerating}
+          loading={isGenerating}
+          icon={<RefreshCw />}
+        >
+          {isGenerating ? 'Creating...' : 'Create feature map task'}
+        </Button>
+      </div>
+
+      {!featureMap || featureMap.features.length === 0 ? (
+        <div className="border-glass-border bg-glass-light rounded-xl border p-5">
+          <p className="text-ink-2 text-sm">No feature map yet.</p>
+          <p className="text-ink-3 mt-1 text-xs">
+            Generate one to make project features selectable in new tasks.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          {featureMap.features.map((feature) => (
+            <ProjectFeatureMapCard
+              key={feature.id}
+              feature={feature}
+              depth={0}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProjectFeatureMapCard({
+  feature,
+  depth,
+}: {
+  feature: ProjectFeatureMapItem;
+  depth: number;
+}) {
+  return (
+    <div
+      className="border-glass-border bg-glass-light rounded-xl border p-4"
+      style={{ marginLeft: depth * 16 }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-ink-1 text-sm font-semibold">{feature.name}</h3>
+          <p className="text-ink-2 mt-1 text-sm leading-relaxed">
+            {feature.summary}
+          </p>
+        </div>
+        <span className="text-ink-3 bg-glass-medium shrink-0 rounded-full px-2 py-0.5 text-xs">
+          {feature.key_files.length} files
+        </span>
+      </div>
+      {feature.key_files.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {feature.key_files.map((file) => (
+            <code
+              key={file}
+              className="border-glass-border bg-glass-medium text-ink-2 rounded-md border px-1.5 py-0.5 text-[11px]"
+            >
+              {file}
+            </code>
+          ))}
+        </div>
+      )}
+      {feature.children.length > 0 && (
+        <div className="mt-3 grid gap-2">
+          {feature.children.map((child) => (
+            <ProjectFeatureMapCard
+              key={child.id}
+              feature={child}
+              depth={depth + 1}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -353,6 +466,7 @@ export function ProjectSettings({
   const selectGeneratedProjectLogo = useSelectGeneratedProjectLogo();
   const deleteGeneratedProjectLogo = useDeleteGeneratedProjectLogo();
   const regenerateProjectSummary = useRegenerateProjectSummary();
+  const createProjectFeatureMapTask = useCreateProjectFeatureMapTask();
   const removeProjectLogo = useRemoveProjectLogo();
   const deleteProject = useDeleteProject();
   const deleteWorktreesFolder = useDeleteProjectWorktreesFolder();
@@ -381,6 +495,7 @@ export function ProjectSettings({
   });
   const { data: generatedLogoHistory = [] } =
     useGeneratedProjectLogos(projectId);
+  const { data: featureMap = null } = useProjectFeatureMap(projectId);
 
   const [name, setName] = useState('');
   const [path, setPath] = useState('');
@@ -694,6 +809,29 @@ export function ProjectSettings({
             ? error.message
             : 'Failed to regenerate project summary.';
         markJobFailed(jobId, message);
+        addToast({
+          message,
+          type: 'error',
+        });
+      });
+  }
+
+  function handleCreateFeatureMapTask() {
+    if (!project) return;
+
+    void createProjectFeatureMapTask
+      .mutateAsync(projectId)
+      .then(() => {
+        addToast({
+          message: 'Feature map task created.',
+          type: 'success',
+        });
+      })
+      .catch((error: unknown) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Failed to create project feature map task.';
         addToast({
           message,
           type: 'error',
@@ -1239,6 +1377,15 @@ export function ProjectSettings({
       break;
     case 'worktree':
       content = <ProjectWorktreeSettings projectPath={project.path} />;
+      break;
+    case 'feature-map':
+      content = (
+        <ProjectFeatureMapSettings
+          featureMap={featureMap}
+          onCreateTask={handleCreateFeatureMapTask}
+          isGenerating={createProjectFeatureMapTask.isPending}
+        />
+      );
       break;
     case 'prompt-preface':
       content = <ProjectPromptPrefaceSettings projectPath={project.path} />;

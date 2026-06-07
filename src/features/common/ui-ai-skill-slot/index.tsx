@@ -3,9 +3,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Select } from '@/common/ui/select';
 import { Switch } from '@/common/ui/switch';
 import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
+import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
 import { useManagedSkills } from '@/hooks/use-managed-skills';
 import type { AgentBackendType } from '@shared/agent-backend-types';
-import type { AiSkillSlotConfig, AiSkillSlotKey } from '@shared/types';
+import type {
+  AiSkillSlotConfig,
+  AiSkillSlotKey,
+  ThinkingEffort,
+} from '@shared/types';
 
 /** Sentinel value used when no skill is selected in the dropdown. */
 const NO_SKILL_VALUE = '__none__';
@@ -52,6 +57,12 @@ export const SLOT_DEFINITIONS: {
     description:
       'Generate short project summaries used as context for project logo generation',
   },
+  {
+    key: 'project-feature-map',
+    label: 'Project Feature Map',
+    description:
+      'Map project features for selectable context in the new task overlay',
+  },
 ];
 
 export function SlotDetail({
@@ -88,6 +99,8 @@ export function SlotDetail({
     config?.backend ?? fallbackBackend,
   );
   const [localModel, setLocalModel] = useState(config?.model ?? fallbackModel);
+  const [localThinkingEffort, setLocalThinkingEffort] =
+    useState<ThinkingEffort>(config?.thinkingEffort ?? 'default');
   const [localPresetId, setLocalPresetId] = useState<string | null>(null);
   const [localSkillName, setLocalSkillName] = useState<string | null>(
     config?.skillName ?? null,
@@ -97,6 +110,7 @@ export function SlotDetail({
   useEffect(() => {
     setLocalBackend(config?.backend ?? fallbackBackend);
     setLocalModel(config?.model ?? fallbackModel);
+    setLocalThinkingEffort(config?.thinkingEffort ?? 'default');
     setLocalPresetId(null);
     setLocalSkillName(config?.skillName ?? null);
   }, [config, fallbackBackend, fallbackModel]);
@@ -132,14 +146,16 @@ export function SlotDetail({
     onUpdate({
       backend: localBackend,
       model: localModel,
+      thinkingEffort: localThinkingEffort,
       skillName: localSkillName,
     });
-  }, [localBackend, localModel, localSkillName, onUpdate]);
+  }, [localBackend, localModel, localThinkingEffort, localSkillName, onUpdate]);
 
   const hasChanges =
     config !== null &&
     (localBackend !== config.backend ||
       localModel !== config.model ||
+      localThinkingEffort !== (config.thinkingEffort ?? 'default') ||
       localSkillName !== (config.skillName ?? null));
 
   useEffect(() => {
@@ -157,6 +173,7 @@ export function SlotDetail({
         onUpdate({
           backend: localBackend,
           model: localModel,
+          thinkingEffort: localThinkingEffort,
           skillName: localSkillName,
         });
       } else {
@@ -164,7 +181,7 @@ export function SlotDetail({
         onUpdate(null);
       }
     },
-    [localBackend, localModel, localSkillName, onUpdate],
+    [localBackend, localModel, localThinkingEffort, localSkillName, onUpdate],
   );
 
   // Build summary string
@@ -173,8 +190,13 @@ export function SlotDetail({
         enabledBackends.find((b) => b.value === config.backend)?.label ??
           config.backend,
         config.model,
+        config.thinkingEffort && config.thinkingEffort !== 'default'
+          ? config.thinkingEffort
+          : null,
         config.skillName ?? 'Builtin',
-      ].join(' \u00b7 ')
+      ]
+        .filter(Boolean)
+        .join(' \u00b7 ')
     : emptySummary;
 
   // Allow enabling even without a skill (slots can use builtin/default prompt)
@@ -222,6 +244,24 @@ export function SlotDetail({
                       setLocalSkillName(null);
                     }
                   }}
+                />
+              </div>
+            </div>
+
+            <div className="border-glass-border border-t" />
+
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <label className="text-ink-2 text-sm">Thinking</label>
+                <p className="text-ink-3 mt-0.5 text-xs">
+                  Optional thinking level for compatible models.
+                </p>
+              </div>
+              <div className="shrink-0">
+                <ThinkingSelector
+                  value={localThinkingEffort}
+                  onChange={setLocalThinkingEffort}
+                  size="sm"
                 />
               </div>
             </div>

@@ -1,4 +1,5 @@
 import {
+  DEFAULT_PROJECT_FEATURE_MAP_SLOT,
   isAiSkillSlotsSetting,
   type AiSkillSlotConfig,
   type AiSkillSlotKey,
@@ -30,6 +31,10 @@ export async function resolveAiSkillSlot(
   const globalSlots = await SettingsRepository.get('aiSkillSlots');
   if (globalSlots[slotKey] !== undefined) {
     return globalSlots[slotKey];
+  }
+
+  if (slotKey === 'project-feature-map') {
+    return DEFAULT_PROJECT_FEATURE_MAP_SLOT;
   }
 
   // 3. Not configured

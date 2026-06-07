@@ -213,6 +213,7 @@ const PROJECT_SECTIONS: ProjectSection[] = [
       { id: 'details', label: 'Details' },
       { id: 'commit-ignore', label: 'Commit Ignore' },
       { id: 'worktree', label: 'Worktree' },
+      { id: 'feature-map', label: 'Feature Map' },
       { id: 'prompt-preface', label: 'Prompt Preface' },
       { id: 'autocomplete', label: 'Autocomplete' },
     ],

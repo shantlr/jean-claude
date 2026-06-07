@@ -156,6 +156,29 @@ export function useRegenerateProjectSummary() {
   });
 }
 
+export function useProjectFeatureMap(projectId: string | null) {
+  return useQuery({
+    queryKey: ['project-feature-map', projectId],
+    queryFn: () => {
+      if (!projectId) return null;
+      return api.projects.getFeatureMap(projectId);
+    },
+    enabled: !!projectId,
+  });
+}
+
+export function useCreateProjectFeatureMapTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (projectId: string) =>
+      api.projects.createFeatureMapTask(projectId),
+    onSuccess: (_, projectId) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', { projectId }] });
+    },
+  });
+}
+
 export function useRemoveProjectLogo() {
   const queryClient = useQueryClient();
   return useMutation({

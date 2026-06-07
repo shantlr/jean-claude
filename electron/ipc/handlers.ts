@@ -57,7 +57,9 @@ import {
   type Task,
   type UpdateTaskStep,
   type SkillCreationStepMeta,
+  type FeatureMapStepMeta,
   isSkillCreationStepMeta,
+  isFeatureMapStepMeta,
   isAiSkillSlotsSetting,
   type ReviewerConfig,
   type ReviewStepMeta,
@@ -115,6 +117,7 @@ import {
   saveOpenAiBaseImage,
   setOpenAiBaseImageSelection,
 } from '../services/ai-generation-settings-service';
+import { resolveAiSkillSlot } from '../services/ai-skill-slot-resolver';
 import {
   getOrganizationsByTokenId,
   validateTokenAndGetOrganizations,
@@ -228,6 +231,14 @@ import {
 import { pipelineTrackingService } from '../services/pipeline-tracking-service';
 import { generatePrDescriptionForTask } from '../services/pr-description-generation-service';
 import { detectProjects } from '../services/project-detection-service';
+import {
+  buildProjectFeatureMapPrompt,
+  cleanupFeatureMapTempDir,
+  FEATURE_MAP_GIT_PATH,
+  getFeatureMapTempPaths,
+  getProjectFeatureMap,
+  saveProjectFeatureMapFromTemp,
+} from '../services/project-feature-map-generation-service';
 import { projectFileIndexService } from '../services/project-file-index-service';
 import { detectProjectLogos } from '../services/project-logo-detection-service';
 import {
@@ -347,6 +358,57 @@ async function pullSourceBranch({
 }
 
 const VALID_BACKENDS = new Set<string>(['claude-code', 'opencode']);
+
+async function cleanupFeatureMapTempDirsForTask(taskId: string): Promise<void> {
+  const steps = await TaskStepRepository.findByTaskId(taskId);
+  await Promise.all(
+    steps
+      .filter(
+        (step) =>
+          step.type === 'feature-map' && isFeatureMapStepMeta(step.meta),
+      )
+      .map((step) => {
+        const meta = step.meta as FeatureMapStepMeta;
+        return cleanupFeatureMapTempDir(meta.tempDir).catch((err) => {
+          dbg.ipc(
+            'Failed to cleanup feature map temp dir %s: %O',
+            meta.tempDir,
+            err,
+          );
+        });
+      }),
+  );
+}
+
+async function ensureFeatureMapFileInDiff(
+  task: Task,
+  diffRootPath: string,
+  diff: Awaited<ReturnType<typeof getWorktreeDiff>>,
+) {
+  if (task.type !== 'feature-map') return diff;
+  if (diff.files.some((file) => file.path === FEATURE_MAP_GIT_PATH)) {
+    return diff;
+  }
+
+  try {
+    await fs.access(path.join(diffRootPath, FEATURE_MAP_GIT_PATH));
+  } catch {
+    return diff;
+  }
+
+  return {
+    ...diff,
+    files: [
+      ...diff.files,
+      {
+        path: FEATURE_MAP_GIT_PATH,
+        status: 'added' as const,
+        additions: 0,
+        deletions: 0,
+      },
+    ],
+  };
+}
 
 async function runGit(
   args: string[],
@@ -703,6 +765,126 @@ export function registerIpcHandlers() {
     dbg.ipc('projects:regenerateSummary %s', projectId);
     return regenerateProjectSummary(projectId);
   });
+  ipcMain.handle('projects:getFeatureMap', async (_, projectId: string) => {
+    dbg.ipc('projects:getFeatureMap %s', projectId);
+    const project = await ProjectRepository.findById(projectId);
+    if (!project) throw new Error('Project not found');
+    return getProjectFeatureMap(project.path);
+  });
+  ipcMain.handle(
+    'projects:createFeatureMapTask',
+    async (_, projectId: string) => {
+      dbg.ipc('projects:createFeatureMapTask %s', projectId);
+      const project = await ProjectRepository.findById(projectId);
+      if (!project) throw new Error('Project not found');
+
+      const task = await TaskRepository.create({
+        projectId,
+        type: 'feature-map',
+        name: 'Map project features',
+        prompt: 'Map project features',
+        startCommitHash: await getCurrentCommitHash(project.path),
+        updatedAt: new Date().toISOString(),
+      });
+
+      let createdTempDir: string | null = null;
+      try {
+        const paths = getFeatureMapTempPaths({
+          projectPath: project.path,
+          taskId: task.id,
+        });
+        createdTempDir = paths.tempDir;
+        await fs.mkdir(paths.tempDir, { recursive: true });
+        const slotConfig = await resolveAiSkillSlot(
+          'project-feature-map',
+          project.aiSkillSlots,
+        );
+        const prompt = buildProjectFeatureMapPrompt({
+          project,
+          tempFilePath: paths.tempFilePath,
+          skillName: slotConfig?.skillName,
+        });
+        const meta: FeatureMapStepMeta = {
+          projectId,
+          projectPath: project.path,
+          tempDir: paths.tempDir,
+          tempFilePath: paths.tempFilePath,
+          savedFilePath: paths.savedFilePath,
+        };
+
+        const step = await StepService.create({
+          taskId: task.id,
+          name: 'Draft feature map',
+          type: 'feature-map',
+          promptTemplate: prompt,
+          interactionMode: 'auto',
+          modelPreference: slotConfig?.model ?? 'default',
+          thinkingEffort: slotConfig?.thinkingEffort ?? null,
+          agentBackend:
+            slotConfig?.backend ??
+            (VALID_BACKENDS.has(project.defaultAgentBackend ?? '')
+              ? (project.defaultAgentBackend as AgentBackendType)
+              : 'claude-code'),
+          meta,
+        });
+
+        agentService.start(step.id).catch((err) => {
+          dbg.ipc(
+            'Error auto-starting feature map agent for step %s: %O',
+            step.id,
+            err,
+          );
+        });
+
+        return task;
+      } catch (err) {
+        await cleanupFeatureMapTempDirsForTask(task.id);
+        if (createdTempDir) {
+          await cleanupFeatureMapTempDir(createdTempDir).catch(() => {});
+        }
+        await TaskRepository.delete(task.id).catch(() => {});
+        throw err;
+      }
+    },
+  );
+  ipcMain.handle(
+    'projects:saveFeatureMapFromTask',
+    async (_, stepId: string) => {
+      dbg.ipc('projects:saveFeatureMapFromTask %s', stepId);
+      const step = await TaskStepRepository.findById(stepId);
+      if (!step || step.type !== 'feature-map') {
+        throw new Error('Invalid stepId: must reference a feature-map step');
+      }
+      if (!isFeatureMapStepMeta(step.meta)) {
+        throw new Error(
+          'Invalid step: missing or malformed feature-map metadata',
+        );
+      }
+      const meta = step.meta;
+
+      const project = await ProjectRepository.findById(meta.projectId);
+      if (!project || project.path !== meta.projectPath) {
+        throw new Error('Feature map project metadata is stale');
+      }
+
+      const featureMap = await saveProjectFeatureMapFromTemp({
+        tempFilePath: meta.tempFilePath,
+        savedFilePath: meta.savedFilePath,
+      });
+      await TaskStepRepository.update(stepId, {
+        meta: { ...meta, saved: true },
+      });
+      await cleanupFeatureMapTempDir(meta.tempDir).catch((err) => {
+        dbg.ipc(
+          'Failed to cleanup feature map temp dir %s after save: %O',
+          meta.tempDir,
+          err,
+        );
+      });
+      await TaskRepository.markUserCompleted(step.taskId);
+      return featureMap;
+    },
+  );
   ipcMain.handle('projects:detectLogos', (_, projectPath: string) => {
     dbg.ipc('projects:detectLogos %s', projectPath);
     return detectProjectLogos(projectPath);
@@ -1365,21 +1547,27 @@ export function registerIpcHandlers() {
         }
       }
 
-      // Clean up skill workspaces for skill-creation steps (in parallel)
+      // Clean up task-scoped temporary workspaces (in parallel)
       const steps = await TaskStepRepository.findByTaskId(id);
       await Promise.all(
         steps
           .filter(
             (step) =>
-              step.type === 'skill-creation' &&
-              isSkillCreationStepMeta(step.meta),
+              (step.type === 'skill-creation' &&
+                isSkillCreationStepMeta(step.meta)) ||
+              (step.type === 'feature-map' && isFeatureMapStepMeta(step.meta)),
           )
           .map((step) => {
-            const meta = step.meta as SkillCreationStepMeta;
-            return cleanupSkillWorkspace(meta.workspacePath).catch((err) => {
+            const cleanup =
+              step.type === 'feature-map' && isFeatureMapStepMeta(step.meta)
+                ? cleanupFeatureMapTempDir(step.meta.tempDir)
+                : cleanupSkillWorkspace(
+                    (step.meta as SkillCreationStepMeta).workspacePath,
+                  );
+            return cleanup.catch((err) => {
               dbg.ipc(
-                'Failed to cleanup skill workspace %s: %O',
-                meta.workspacePath,
+                'Failed to cleanup temp workspace for step %s: %O',
+                step.id,
                 err,
               );
             });
@@ -1507,6 +1695,7 @@ export function registerIpcHandlers() {
     const updatedTask = await TaskRepository.toggleUserCompleted(id);
 
     if (isCompleting) {
+      await cleanupFeatureMapTempDirsForTask(id);
       await agentService.compactRawMessages(id);
     }
 
@@ -1526,6 +1715,7 @@ export function registerIpcHandlers() {
         await closeEditorWindowsForTaskWorktree(task);
 
         updatedTask = await TaskRepository.markUserCompleted(id);
+        await cleanupFeatureMapTempDirsForTask(id);
         await agentService.compactRawMessages(id);
       }
 
@@ -1977,11 +2167,12 @@ export function registerIpcHandlers() {
 
     const startCommitHash =
       task.startCommitHash ?? (await getCurrentCommitHash(diffRootPath));
-    return getWorktreeDiff(
+    const diff = await getWorktreeDiff(
       diffRootPath,
       startCommitHash,
       task.worktreePath ? task.sourceBranch : null,
     );
+    return ensureFeatureMapFileInDiff(task, diffRootPath, diff);
   });
 
   ipcMain.handle('tasks:worktree:getCommits', async (_, taskId: string) => {

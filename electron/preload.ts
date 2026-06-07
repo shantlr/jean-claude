@@ -51,6 +51,12 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('projects:deleteGeneratedLogo', projectId, logoId),
     regenerateSummary: (projectId: string) =>
       ipcRenderer.invoke('projects:regenerateSummary', projectId),
+    getFeatureMap: (projectId: string) =>
+      ipcRenderer.invoke('projects:getFeatureMap', projectId),
+    createFeatureMapTask: (projectId: string) =>
+      ipcRenderer.invoke('projects:createFeatureMapTask', projectId),
+    saveFeatureMapFromTask: (stepId: string) =>
+      ipcRenderer.invoke('projects:saveFeatureMapFromTask', stepId),
     removeLogo: (projectId: string) =>
       ipcRenderer.invoke('projects:removeLogo', projectId),
     delete: (id: string) => ipcRenderer.invoke('projects:delete', id),

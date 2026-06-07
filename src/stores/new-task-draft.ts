@@ -34,6 +34,8 @@ export interface NewTaskDraft {
   workItemsViewMode: WorkItemsViewMode;
   /** Selected work item/comment composite IDs to include in prompt. */
   selectedCommentIds: string[];
+  /** Selected generated feature-map IDs to include as prompt context. */
+  selectedFeatureIds: string[];
   // Prompt mode state
   prompt: string;
   /** Image attachments for the initial prompt (transient, not persisted) */

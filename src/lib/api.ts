@@ -87,6 +87,7 @@ import type {
 } from '@shared/source-management-types';
 import type {
   Project,
+  ProjectFeatureMap,
   NewProject,
   UpdateProject,
   Task,
@@ -398,6 +399,9 @@ export interface Api {
     ) => Promise<Project>;
     deleteGeneratedLogo: (projectId: string, logoId: string) => Promise<void>;
     regenerateSummary: (projectId: string) => Promise<Project>;
+    getFeatureMap: (projectId: string) => Promise<ProjectFeatureMap | null>;
+    createFeatureMapTask: (projectId: string) => Promise<Task>;
+    saveFeatureMapFromTask: (stepId: string) => Promise<ProjectFeatureMap>;
     removeLogo: (projectId: string) => Promise<Project>;
     delete: (id: string) => Promise<void>;
     deleteWorktreesFolder: (projectId: string) => Promise<void>;
@@ -1484,6 +1488,13 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         regenerateSummary: async () => {
+          throw new Error('API not available');
+        },
+        getFeatureMap: async () => null,
+        createFeatureMapTask: async () => {
+          throw new Error('API not available');
+        },
+        saveFeatureMapFromTask: async () => {
           throw new Error('API not available');
         },
         removeLogo: async () => {

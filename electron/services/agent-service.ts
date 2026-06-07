@@ -598,11 +598,14 @@ class AgentService {
 
     // Start the backend
     dbg.agentSession('Starting backend for step %s', stepId);
-    const effectiveParts = await applyConfiguredPromptPreface({
-      parts,
-      projectPath: project.path,
-      isInitialPrompt: options?.isInitialPrompt ?? false,
-    });
+    const effectiveParts =
+      step?.type === 'feature-map'
+        ? parts
+        : await applyConfiguredPromptPreface({
+            parts,
+            projectPath: project.path,
+            isInitialPrompt: options?.isInitialPrompt ?? false,
+          });
 
     const agentSession = await session.backend.start(
       {

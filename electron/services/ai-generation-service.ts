@@ -3,6 +3,7 @@ import { homedir } from 'os';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 
 import type { AgentBackendType } from '@shared/agent-backend-types';
+import type { ThinkingEffort } from '@shared/types';
 
 import { dbg } from '../lib/debug';
 
@@ -19,6 +20,7 @@ export async function generateText({
   model,
   prompt,
   skillName,
+  thinkingEffort,
   outputSchema,
   cwd,
   allowedTools,
@@ -29,6 +31,7 @@ export async function generateText({
   model: string;
   prompt: string;
   skillName?: string | null;
+  thinkingEffort?: ThinkingEffort | null;
   outputSchema?: Record<string, unknown>;
   cwd?: string;
   allowedTools?: string[];
@@ -47,6 +50,7 @@ export async function generateText({
           model,
           prompt,
           skillName,
+          thinkingEffort,
           outputSchema,
           cwd,
           allowedTools,
@@ -58,6 +62,7 @@ export async function generateText({
           model,
           prompt,
           skillName,
+          thinkingEffort,
           outputSchema,
           cwd,
           abortController,
@@ -108,6 +113,7 @@ async function generateWithClaudeCode({
   model,
   prompt,
   skillName,
+  thinkingEffort,
   outputSchema,
   cwd,
   allowedTools,
@@ -116,6 +122,7 @@ async function generateWithClaudeCode({
   model: string;
   prompt: string;
   skillName?: string | null;
+  thinkingEffort?: ThinkingEffort | null;
   outputSchema?: Record<string, unknown>;
   cwd?: string;
   allowedTools?: string[];
@@ -131,6 +138,12 @@ async function generateWithClaudeCode({
       allowedTools: allowedTools ?? [],
       model: model !== 'default' ? model : undefined,
       abortController,
+      ...(thinkingEffort === 'low' ||
+      thinkingEffort === 'medium' ||
+      thinkingEffort === 'high' ||
+      thinkingEffort === 'max'
+        ? { effort: thinkingEffort }
+        : {}),
       ...(cwd ? { cwd } : {}),
       ...(outputSchema && {
         outputFormat: {
@@ -166,6 +179,7 @@ async function generateWithOpenCode({
   model,
   prompt,
   skillName,
+  thinkingEffort,
   outputSchema,
   cwd,
   abortController,
@@ -173,6 +187,7 @@ async function generateWithOpenCode({
   model: string;
   prompt: string;
   skillName?: string | null;
+  thinkingEffort?: ThinkingEffort | null;
   outputSchema?: Record<string, unknown>;
   cwd?: string;
   abortController: AbortController;
@@ -214,6 +229,9 @@ async function generateWithOpenCode({
           retryCount: 1,
         },
       }),
+      ...(thinkingEffort && thinkingEffort !== 'default'
+        ? { variant: thinkingEffort }
+        : {}),
       ...(parsedModel ? { model: parsedModel } : {}),
     });
 
