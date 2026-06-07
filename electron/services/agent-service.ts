@@ -73,6 +73,50 @@ import { assertValidWorkspacePath } from './system-project-service';
  *  field which crosses IPC to the renderer for display. */
 const queuedPromptParts = new Map<string, PromptPart[]>();
 
+function appendPromptParts(
+  existingParts: PromptPart[],
+  incomingParts: PromptPart[],
+): PromptPart[] {
+  const combinedParts = [...existingParts];
+
+  for (const part of incomingParts) {
+    if (part.type !== 'text') {
+      combinedParts.push(part);
+      continue;
+    }
+
+    const lastPart = combinedParts[combinedParts.length - 1];
+    if (!lastPart || lastPart.type !== 'text') {
+      combinedParts.push(part);
+      continue;
+    }
+
+    combinedParts[combinedParts.length - 1] = {
+      type: 'text',
+      text: [lastPart.text, part.text]
+        .filter((text) => text.trim().length > 0)
+        .join('\n\n'),
+    };
+  }
+
+  return combinedParts;
+}
+
+function replacePromptText(parts: PromptPart[], content: string): PromptPart[] {
+  const textPartIndex = parts.findIndex((part) => part.type === 'text');
+  const nonTextParts = parts.filter((part) => part.type !== 'text');
+
+  if (textPartIndex === -1) {
+    return [{ type: 'text', text: content }, ...nonTextParts];
+  }
+
+  return [
+    ...parts.slice(0, textPartIndex).filter((part) => part.type !== 'text'),
+    { type: 'text' as const, text: content },
+    ...parts.slice(textPartIndex + 1).filter((part) => part.type !== 'text'),
+  ];
+}
+
 const TASK_NOTIFICATION_TITLE_PREFIX: Record<TaskNotificationEvent, string> = {
   completed: '✅',
   'permission-required': '🔐',
@@ -1340,6 +1384,28 @@ class AgentService {
       throw new Error(`No active session for step ${stepId}`);
     }
 
+    const existingPrompt = session.queuedPrompts[0];
+    if (existingPrompt) {
+      const existingParts =
+        queuedPromptParts.get(existingPrompt.id) ??
+        textPrompt(existingPrompt.content);
+      const combinedParts = appendPromptParts(existingParts, parts);
+      existingPrompt.content = getPromptText(combinedParts);
+      queuedPromptParts.set(existingPrompt.id, combinedParts);
+
+      this.emitEvent(session.taskId, stepId, {
+        type: 'queue-update',
+        queuedPrompts: session.queuedPrompts,
+      });
+
+      dbg.agent(
+        'Coalesced queued prompt %s for step %s',
+        existingPrompt.id,
+        stepId,
+      );
+      return { promptId: existingPrompt.id };
+    }
+
     const id = nanoid();
     queuedPromptParts.set(id, parts);
 
@@ -1375,16 +1441,7 @@ class AgentService {
 
     const existingParts =
       queuedPromptParts.get(promptId) ?? textPrompt(queuedPrompt.content);
-    const textPartIndex = existingParts.findIndex(
-      (part) => part.type === 'text',
-    );
-    const updatedParts = [...existingParts];
-
-    if (textPartIndex >= 0) {
-      updatedParts[textPartIndex] = { type: 'text', text: content };
-    } else {
-      updatedParts.unshift({ type: 'text', text: content });
-    }
+    const updatedParts = replacePromptText(existingParts, content);
 
     queuedPrompt.content = content;
     queuedPromptParts.set(promptId, updatedParts);
