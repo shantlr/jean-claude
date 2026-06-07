@@ -21,9 +21,11 @@ function WorkItemPage() {
   );
 
   return (
-    <WorkItemDetails
-      projectId={debouncedProjectId}
-      workItemId={Number(debouncedWorkItemId)}
-    />
+    <div className="h-full min-w-0 flex-1">
+      <WorkItemDetails
+        projectId={debouncedProjectId}
+        workItemId={Number(debouncedWorkItemId)}
+      />
+    </div>
   );
 }

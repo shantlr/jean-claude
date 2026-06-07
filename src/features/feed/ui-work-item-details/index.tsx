@@ -294,7 +294,7 @@ export function WorkItemDetails({
       >
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-6 py-4">
           {hasContent ? (
-            <div>
+            <div className="w-full">
               {fields.description && (
                 <AzureHtmlContent
                   html={fields.description}
@@ -321,7 +321,7 @@ export function WorkItemDetails({
               )}
             </div>
           ) : (
-            <p className="text-ink-3 text-sm italic">
+            <p className="text-ink-3 w-full text-sm italic">
               No description provided.
             </p>
           )}
