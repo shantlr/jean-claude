@@ -324,10 +324,24 @@ function ProjectFeatureMapSettings({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-ink-1 text-lg font-semibold">Feature Map</h2>
-          <p className="text-ink-3 mt-1 text-sm">
-            File-backed project feature tree. Create a task to draft or improve
-            it, then save from task details when reviewed.
-          </p>
+          <div className="text-ink-3 mt-1 space-y-1 text-sm">
+            <p>
+              Project feature tree used as reusable prompt context. Create a
+              task to draft or improve it, review the result, then save from
+              task details.
+            </p>
+            <p>
+              Use <span className="font-mono">#Feature Name</span> in prompt
+              composers to quickly contextualize prompts with that feature's
+              summary and key files.
+            </p>
+            <p>
+              Jean-Claude replaces the reference with the feature name and
+              appends a
+              <span className="font-mono"> &lt;feature_context&gt;</span> block
+              to the prompt sent to the agent.
+            </p>
+          </div>
           {featureMap?.generatedAt && (
             <p className="text-ink-3 mt-2 flex items-center gap-1.5 font-mono text-[11px]">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
@@ -351,7 +365,8 @@ function ProjectFeatureMapSettings({
         <div className="border-glass-border bg-glass-light rounded-xl border p-5">
           <p className="text-ink-2 text-sm">No feature map yet.</p>
           <p className="text-ink-3 mt-1 text-xs">
-            Generate one to make project features selectable in new tasks.
+            Generate one to make project features searchable from prompt
+            composers with #Feature Name references.
           </p>
         </div>
       ) : (
