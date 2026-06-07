@@ -818,8 +818,8 @@ export function PromptGroupEntry({
   const isError = group.status === 'error';
   const isInterrupted = group.status === 'interrupted';
   const isRunning = group.status === 'running';
-  // Show running indicator in header when this is the last group and task is active
-  const showRunningHeader = isRunning || (isLast && isTaskRunning);
+  // Last group can still be active while backend has no open tool/result yet.
+  const isActiveGroup = isRunning || (isLast && isTaskRunning);
   const [diffModalOpen, setDiffModalOpen] = useState(false);
   // Details expand/collapse:
   // - error/interrupted on last group: start expanded
@@ -864,19 +864,19 @@ export function PromptGroupEntry({
   }, [group.childMessages, group.durationMs, group.resultEntry]);
 
   const completedDurationLabel = useMemo(() => {
-    if (showRunningHeader) return null;
+    if (isActiveGroup) return null;
 
     const durationMs = group.durationMs ?? group.resultEntry?.durationMs;
     if (durationMs === undefined || durationMs < 0) return null;
 
     return formatDuration(durationMs);
-  }, [group.durationMs, group.resultEntry?.durationMs, showRunningHeader]);
+  }, [group.durationMs, group.resultEntry?.durationMs, isActiveGroup]);
 
   // Activity for running state
   const activity = useMemo(() => {
-    if (!isRunning) return null;
+    if (!isActiveGroup) return null;
     return getRunningActivity(group.childMessages);
-  }, [isRunning, group.childMessages]);
+  }, [isActiveGroup, group.childMessages]);
 
   const visibleChildMessages = useMemo(
     () => group.childMessages.filter(shouldRenderChildMessage),
@@ -885,7 +885,7 @@ export function PromptGroupEntry({
 
   // Extract todos for collapsed non-running state
   const completedTodos = useMemo(() => {
-    if (isRunning) return null;
+    if (isActiveGroup) return null;
     const allEntries: NormalizedEntry[] = [];
     for (const dm of group.childMessages) {
       if (dm.kind === 'entry') allEntries.push(dm.entry);
@@ -912,7 +912,7 @@ export function PromptGroupEntry({
       }
     }
     return todos.length > 0 ? todos : null;
-  }, [isRunning, group.childMessages]);
+  }, [isActiveGroup, group.childMessages]);
 
   const toggleDetails = useCallback(
     () =>
@@ -1051,7 +1051,7 @@ export function PromptGroupEntry({
 
         <div
           className={
-            isLast && showRunningHeader
+            isLast && isActiveGroup
               ? 'task-agent-running-shell min-w-0 flex-1 rounded-md'
               : 'min-w-0 flex-1 rounded-md'
           }
@@ -1082,7 +1082,7 @@ export function PromptGroupEntry({
               <ChevronRight className="h-2.5 w-2.5" />
             )}
 
-            {showRunningHeader ? (
+            {isActiveGroup ? (
               <>
                 <span className="inline-flex items-center gap-1.5">
                   <span
@@ -1207,7 +1207,7 @@ export function PromptGroupEntry({
                   );
                 })}
                 {/* Append result or running summary at bottom when expanded */}
-                {!isRunning && group.resultEntry && (
+                {!isActiveGroup && group.resultEntry && (
                   <div
                     className="mt-2.5 border-t border-dashed border-white/[0.08] pt-2.5"
                     onContextMenu={
@@ -1230,13 +1230,13 @@ export function PromptGroupEntry({
                     />
                   </div>
                 )}
-                {isRunning && activity && (
+                {isActiveGroup && activity && (
                   <div className="mt-2.5 border-t border-dashed border-white/[0.08] pt-2.5">
                     <RunningSummary activity={activity} />
                   </div>
                 )}
               </div>
-            ) : isRunning && activity ? (
+            ) : isActiveGroup && activity ? (
               /* Collapsed running: live summary */
               <RunningSummary activity={activity} />
             ) : (
