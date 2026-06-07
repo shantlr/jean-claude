@@ -95,6 +95,78 @@ const SNIPPET_SUGGESTIONS: Array<{
   },
 ];
 
+function getFuzzyScore(value: string, query: string): number | null {
+  if (!query) return 1;
+
+  const normalizedValue = value.toLowerCase();
+  const normalizedQuery = query.toLowerCase();
+  const compactValue = normalizedValue.replace(/[^a-z0-9]/g, '');
+  const compactQuery = normalizedQuery.replace(/[^a-z0-9]/g, '');
+
+  if (normalizedValue === normalizedQuery) return 1000;
+  if (normalizedValue.startsWith(normalizedQuery)) return 800;
+  if (compactValue === compactQuery) return 950;
+  if (compactValue.startsWith(compactQuery)) return 760;
+
+  const index = normalizedValue.indexOf(normalizedQuery);
+  if (index >= 0) return 600 - index;
+  const compactIndex = compactValue.indexOf(compactQuery);
+  if (compactIndex >= 0) return 560 - compactIndex;
+
+  let score = 0;
+  let searchIndex = 0;
+  let consecutive = 0;
+
+  for (const char of normalizedQuery) {
+    const matchIndex = normalizedValue.indexOf(char, searchIndex);
+    if (matchIndex === -1) return null;
+
+    const gap = matchIndex - searchIndex;
+    const isWordBoundary =
+      matchIndex === 0 || /[^a-z0-9]/.test(normalizedValue[matchIndex - 1]);
+    consecutive = matchIndex === searchIndex ? consecutive + 1 : 0;
+    score += 10;
+    if (isWordBoundary) score += 90;
+    if (consecutive > 0) score += 55 + consecutive * 15;
+    score -= gap * 8;
+    searchIndex = matchIndex + 1;
+  }
+
+  return score - normalizedValue.length;
+}
+
+function getWeightedFeatureScore({
+  query,
+  name,
+  referenceText,
+  path,
+  summary,
+  keyFiles,
+}: {
+  query: string;
+  name: string;
+  referenceText: string;
+  path: string;
+  summary: string;
+  keyFiles: string;
+}): number | null {
+  const scores = [
+    { value: name, weight: 12 },
+    { value: referenceText, weight: 8 },
+    { value: path, weight: 3 },
+    { value: summary, weight: 1 },
+    { value: keyFiles, weight: 1 },
+  ]
+    .map(({ value, weight }) => {
+      const score = getFuzzyScore(value, query);
+      return score === null ? null : score * weight;
+    })
+    .filter((score): score is number => score !== null);
+
+  if (scores.length === 0) return null;
+  return Math.max(...scores);
+}
+
 export function HandlebarsEditor({
   value,
   onChange,
@@ -188,6 +260,30 @@ export function HandlebarsEditor({
       });
       disposablesRef.current.push(keyDownDisposable);
 
+      const featureSuggestRefreshDisposable =
+        monacoEditor.onDidChangeModelContent(() => {
+          const model = monacoEditor.getModel();
+          const position = monacoEditor.getPosition();
+          if (!model || !position) return;
+
+          const textUntilPosition = model.getValueInRange({
+            startLineNumber: position.lineNumber,
+            startColumn: 1,
+            endLineNumber: position.lineNumber,
+            endColumn: position.column,
+          });
+
+          const activeFeatureReference =
+            getActiveFeatureReference(textUntilPosition);
+          if (
+            activeFeatureReference &&
+            !/\s\S/.test(activeFeatureReference.query)
+          ) {
+            monacoEditor.trigger('', 'editor.action.triggerSuggest', {});
+          }
+        });
+      disposablesRef.current.push(featureSuggestRefreshDisposable);
+
       // Register completion provider for handlebars
       const completionDisposable =
         monaco.languages.registerCompletionItemProvider('handlebars', {
@@ -215,22 +311,59 @@ export function HandlebarsEditor({
               const features = flattenProjectFeatures(
                 featureMapRef.current?.features,
               );
-              return {
-                suggestions: features.map((feature) => {
+              const query = activeFeatureReference.query.trim();
+              const scoredFeatures = features
+                .map((feature) => {
                   const referenceText = getFeatureReferenceText(
                     feature,
                     features,
                   );
+                  const score = getWeightedFeatureScore({
+                    query,
+                    name: feature.name,
+                    referenceText,
+                    path: feature.path.join(' '),
+                    summary: feature.summary,
+                    keyFiles: feature.key_files.join(' '),
+                  });
+
+                  if (score === null) return null;
+                  return { feature, referenceText, score };
+                })
+                .filter(
+                  (
+                    entry,
+                  ): entry is {
+                    feature: (typeof features)[number];
+                    referenceText: string;
+                    score: number;
+                  } => entry !== null,
+                )
+                .sort((a, b) => {
+                  if (a.score !== b.score) return b.score - a.score;
+                  return a.feature.name.localeCompare(b.feature.name);
+                });
+
+              return {
+                suggestions: scoredFeatures.map((entry, index) => {
+                  const { feature, referenceText } = entry;
                   return {
                     label: `#${feature.name}`,
                     kind: monaco.languages.CompletionItemKind.Reference,
                     detail: feature.path.join(' › '),
                     documentation: feature.summary,
                     insertText: `#${referenceText}`,
+                    sortText: String(index).padStart(4, '0'),
                     filterText: [
                       feature.name,
+                      feature.name,
+                      feature.name,
+                      feature.name,
+                      feature.name.replace(/[^a-zA-Z0-9]/g, ''),
                       referenceText,
+                      referenceText.replace(/[^a-zA-Z0-9]/g, ''),
                       feature.path.join(' '),
+                      feature.path.join('').replace(/[^a-zA-Z0-9]/g, ''),
                       feature.summary,
                       feature.key_files.join(' '),
                     ].join(' '),

@@ -30,6 +30,7 @@ export function useDropdownPosition({
   align = 'left',
   autoAlign = true,
   minHorizontalSpace = MIN_HORIZONTAL_SPACE,
+  preferredMaxHeight = PREFERRED_MAX_HEIGHT,
 }: {
   isOpen: boolean;
   triggerRef: RefObject<HTMLElement | null>;
@@ -39,6 +40,7 @@ export function useDropdownPosition({
   autoAlign?: boolean;
   /** Minimum horizontal space required before auto-flipping alignment */
   minHorizontalSpace?: number;
+  preferredMaxHeight?: number;
 }): DropdownPosition | null {
   const [position, setPosition] = useState<DropdownPosition | null>(null);
 
@@ -53,16 +55,16 @@ export function useDropdownPosition({
 
       const actualSide =
         side === 'bottom'
-          ? spaceBelow >= PREFERRED_MAX_HEIGHT || spaceBelow >= spaceAbove
+          ? spaceBelow >= preferredMaxHeight || spaceBelow >= spaceAbove
             ? 'bottom'
             : 'top'
-          : spaceAbove >= PREFERRED_MAX_HEIGHT || spaceAbove >= spaceBelow
+          : spaceAbove >= preferredMaxHeight || spaceAbove >= spaceBelow
             ? 'top'
             : 'bottom';
 
       const availableSpace = actualSide === 'bottom' ? spaceBelow : spaceAbove;
       const maxHeight = Math.min(
-        PREFERRED_MAX_HEIGHT,
+        preferredMaxHeight,
         availableSpace - GAP - VIEWPORT_PADDING,
       );
 
@@ -102,7 +104,15 @@ export function useDropdownPosition({
       window.removeEventListener('scroll', updatePosition, true);
       window.removeEventListener('resize', updatePosition);
     };
-  }, [isOpen, side, align, autoAlign, minHorizontalSpace, triggerRef]);
+  }, [
+    isOpen,
+    side,
+    align,
+    autoAlign,
+    minHorizontalSpace,
+    preferredMaxHeight,
+    triggerRef,
+  ]);
 
   return position;
 }

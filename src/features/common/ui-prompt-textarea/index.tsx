@@ -164,6 +164,34 @@ type MentionToken = {
   query: string;
 };
 
+function getOrderedCharacterMatchScore(value: string, query: string) {
+  const normalizedValue = value.toLowerCase();
+  const normalizedQuery = query.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!normalizedQuery) return 0;
+
+  const compactValue = normalizedValue.replace(/[^a-z0-9]/g, '');
+  if (compactValue === normalizedQuery) return 0;
+  if (compactValue.startsWith(normalizedQuery)) return 10;
+
+  let valueIndex = 0;
+  const matchedIndexes: number[] = [];
+
+  for (const character of normalizedQuery) {
+    const matchIndex = normalizedValue.indexOf(character, valueIndex);
+    if (matchIndex === -1) return null;
+    matchedIndexes.push(matchIndex);
+    valueIndex = matchIndex + 1;
+  }
+
+  const span = matchedIndexes.at(-1)! - matchedIndexes[0];
+  const gapCount = span - normalizedQuery.length + 1;
+  const wordBoundaryMatches = matchedIndexes.filter(
+    (index) => index === 0 || /[^a-z0-9]/.test(normalizedValue[index - 1]),
+  ).length;
+
+  return span * 4 + gapCount * 12 - wordBoundaryMatches * 20;
+}
+
 export interface PromptTextareaRef {
   focus: () => void;
   blur: () => void;
@@ -262,6 +290,7 @@ export const PromptTextarea = forwardRef<
   const dropdownRef = useRef<HTMLDivElement>(null);
   const ghostRef = useRef<HTMLDivElement>(null);
   const trailingControlsRef = useRef<HTMLDivElement>(null);
+  const shouldScrollSelectionRef = useRef(false);
   const [trailingControlsWidth, setTrailingControlsWidth] = useState(0);
   const [textareaScrollTop, setTextareaScrollTop] = useState(0);
 
@@ -305,6 +334,7 @@ export const PromptTextarea = forwardRef<
     triggerRef: containerRef,
     side: 'top',
     align: 'left',
+    preferredMaxHeight: 440,
   });
   const searchText = value.slice(1).toLowerCase();
   const featureSearchText = activeFeatureToken?.query ?? '';
@@ -346,18 +376,44 @@ export const PromptTextarea = forwardRef<
       }));
     }
 
-    const matchedFeatures = new Fuse(flatFeatures, {
-      keys: ['name', 'summary', 'key_files', 'path'],
-      threshold: 0.4,
-      ignoreLocation: true,
-      includeScore: true,
-    }).search(featureSearchText);
+    return flatFeatures
+      .map((feature) => {
+        const referenceText = getFeatureReferenceText(feature, flatFeatures);
+        const nameScore = getOrderedCharacterMatchScore(
+          feature.name,
+          featureSearchText,
+        );
+        const referenceScore = getOrderedCharacterMatchScore(
+          referenceText,
+          featureSearchText,
+        );
+        const scores = [nameScore, referenceScore].filter(
+          (score): score is number => score !== null,
+        );
+        if (scores.length === 0) return null;
 
-    return matchedFeatures.slice(0, 40).map((match) => ({
-      type: 'feature' as const,
-      feature: match.item,
-      matchScore: match.score ?? null,
-    }));
+        return {
+          type: 'feature' as const,
+          feature,
+          matchScore: Math.min(...scores),
+        };
+      })
+      .filter(
+        (
+          item,
+        ): item is {
+          type: 'feature';
+          feature: FlatProjectFeature;
+          matchScore: number;
+        } => item !== null,
+      )
+      .sort((a, b) => {
+        if (a.matchScore !== b.matchScore) {
+          return (a.matchScore ?? 0) - (b.matchScore ?? 0);
+        }
+        return a.feature.name.localeCompare(b.feature.name);
+      })
+      .slice(0, 40);
   }, [flatFeatures, featureSearchText, showFeatureDropdown]);
 
   // Inline completion hook — paused when slash dropdown is open
@@ -514,11 +570,14 @@ export const PromptTextarea = forwardRef<
 
   // Reset selected index when filtered items change
   useEffect(() => {
+    shouldScrollSelectionRef.current = false;
     setSelectedIndex(defaultSelectedIndex);
   }, [defaultSelectedIndex, filteredItems]);
 
-  // Auto-scroll to selected item in dropdown
+  // Auto-scroll only for keyboard navigation, not mouse hover.
   useEffect(() => {
+    if (!shouldScrollSelectionRef.current) return;
+    shouldScrollSelectionRef.current = false;
     if (!dropdownRef.current) return;
     const selectedElement = dropdownRef.current.querySelector(
       `[data-index="${selectedIndex}"]`,
@@ -669,6 +728,7 @@ export const PromptTextarea = forwardRef<
     if (showDropdown && filteredItems.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
+        shouldScrollSelectionRef.current = true;
         setSelectedIndex((prev) =>
           prev < filteredItems.length - 1 ? prev + 1 : prev,
         );
@@ -676,6 +736,7 @@ export const PromptTextarea = forwardRef<
       }
       if (e.key === 'ArrowUp') {
         e.preventDefault();
+        shouldScrollSelectionRef.current = true;
         setSelectedIndex((prev) => (prev > 0 ? prev - 1 : prev));
         return;
       }
@@ -977,6 +1038,11 @@ export const PromptTextarea = forwardRef<
     [onImageAttach, onFileAttach],
   );
 
+  const handleItemMouseEnter = (index: number) => {
+    shouldScrollSelectionRef.current = false;
+    setSelectedIndex(index);
+  };
+
   // Separate item types for grouped display
   const fileItems = filteredItems.filter((item) => item.type === 'file');
   const featureItems = filteredItems.filter((item) => item.type === 'feature');
@@ -1037,7 +1103,7 @@ export const PromptTextarea = forwardRef<
           <div
             ref={dropdownRef}
             className={clsx(
-              'border-glass-border bg-bg-1 fixed z-50 max-h-80 overflow-x-hidden overflow-y-auto rounded-md border py-1 shadow-lg',
+              'border-glass-border bg-bg-1 fixed z-50 overflow-x-hidden overflow-y-auto rounded-md border py-0.5 shadow-lg',
             )}
             style={{
               top:
@@ -1072,9 +1138,9 @@ export const PromptTextarea = forwardRef<
                   type="button"
                   data-index={index}
                   onClick={() => selectItem(item)}
-                  onMouseEnter={() => setSelectedIndex(index)}
+                  onMouseEnter={() => handleItemMouseEnter(index)}
                   className={clsx(
-                    'flex w-full items-center gap-2 px-3 py-1.5 text-left',
+                    'flex w-full items-center gap-2 px-3 py-1 text-left',
                     index === selectedIndex
                       ? 'bg-glass-medium'
                       : 'hover:bg-glass-medium',
@@ -1099,7 +1165,7 @@ export const PromptTextarea = forwardRef<
 
             {/* Features */}
             {featureItems.length > 0 && (
-              <div className="text-ink-3 flex items-center justify-between px-3 py-1.5 text-xs font-medium">
+              <div className="text-ink-3 flex items-center justify-between px-3 py-1 text-[11px] font-medium">
                 <span>Features</span>
                 <span className="font-mono text-[10px]">
                   {featureSearchText.trim()
@@ -1121,15 +1187,15 @@ export const PromptTextarea = forwardRef<
                   type="button"
                   data-index={index}
                   onClick={() => selectItem(item)}
-                  onMouseEnter={() => setSelectedIndex(index)}
+                  onMouseEnter={() => handleItemMouseEnter(index)}
                   className={clsx(
-                    'w-full px-3 py-1.5 text-left',
+                    'w-full px-3 py-1 text-left',
                     index === selectedIndex
                       ? 'bg-glass-medium'
                       : 'hover:bg-glass-medium',
                   )}
                 >
-                  <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex min-w-0 items-center gap-1.5">
                     <span
                       className="bg-acc/70 shrink-0 rounded-full"
                       style={{
@@ -1140,7 +1206,7 @@ export const PromptTextarea = forwardRef<
                           : Math.min(feature.depth, 4) * 12,
                       }}
                     />
-                    <span className="text-ink-1 truncate text-xs font-medium">
+                    <span className="text-ink-1 truncate text-[11.5px] font-medium">
                       #{feature.name}
                     </span>
                     {isReferenced && (
@@ -1149,7 +1215,7 @@ export const PromptTextarea = forwardRef<
                       </span>
                     )}
                   </div>
-                  <div className="text-ink-3 mt-0.5 flex min-w-0 items-center gap-2 pl-4 text-[11px]">
+                  <div className="text-ink-3 flex min-w-0 items-center gap-1.5 pl-4 text-[10px]">
                     <span className="truncate">{feature.path.join(' › ')}</span>
                     {feature.key_files.length > 0 && (
                       <span className="shrink-0 font-mono">
@@ -1158,7 +1224,7 @@ export const PromptTextarea = forwardRef<
                     )}
                   </div>
                   {feature.summary && (
-                    <div className="text-ink-2 mt-0.5 line-clamp-1 pl-4 text-[11px]">
+                    <div className="text-ink-2 line-clamp-1 pl-4 text-[10.5px]">
                       {feature.summary}
                     </div>
                   )}
@@ -1176,18 +1242,20 @@ export const PromptTextarea = forwardRef<
                   type="button"
                   data-index={index}
                   onClick={() => selectItem(item)}
-                  onMouseEnter={() => setSelectedIndex(index)}
+                  onMouseEnter={() => handleItemMouseEnter(index)}
                   className={clsx(
-                    'w-full px-3 py-1.5 text-left',
+                    'w-full px-3 py-1 text-left',
                     index === selectedIndex
                       ? 'bg-glass-medium'
                       : 'hover:bg-glass-medium',
                   )}
                 >
-                  <div className="text-ink-1 text-xs font-medium">
+                  <div className="text-ink-1 text-[11.5px] font-medium">
                     {item.command}
                   </div>
-                  <div className="text-ink-2 text-xs">{item.description}</div>
+                  <div className="text-ink-2 text-[10.5px]">
+                    {item.description}
+                  </div>
                 </button>
               );
             })}
@@ -1199,7 +1267,7 @@ export const PromptTextarea = forwardRef<
 
             {/* Snippets section header */}
             {snippetItems.length > 0 && (
-              <div className="text-ink-3 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium">
+              <div className="text-ink-3 flex items-center gap-1.5 px-3 py-1 text-[11px] font-medium">
                 Snippets
               </div>
             )}
@@ -1215,26 +1283,28 @@ export const PromptTextarea = forwardRef<
                   type="button"
                   data-index={index}
                   onClick={() => selectItem(item)}
-                  onMouseEnter={() => setSelectedIndex(index)}
+                  onMouseEnter={() => handleItemMouseEnter(index)}
                   className={clsx(
-                    'w-full px-3 py-1.5 text-left',
+                    'w-full px-3 py-1 text-left',
                     index === selectedIndex
                       ? 'bg-glass-medium'
                       : 'hover:bg-glass-medium',
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-ink-1 text-xs font-medium">
+                    <span className="text-ink-1 text-[11.5px] font-medium">
                       /
                       {snippet.autocomplete.slugs.find((s) => s.trim()) ??
                         snippet.name}
                     </span>
                     {snippet.name && (
-                      <span className="text-ink-3 text-xs">{snippet.name}</span>
+                      <span className="text-ink-3 text-[10.5px]">
+                        {snippet.name}
+                      </span>
                     )}
                   </div>
                   {snippet.description && (
-                    <div className="text-ink-3 text-[11px]">
+                    <div className="text-ink-3 text-[10.5px]">
                       {snippet.description}
                     </div>
                   )}
@@ -1250,7 +1320,7 @@ export const PromptTextarea = forwardRef<
 
             {/* Skills section header */}
             {skillItems.length > 0 && (
-              <div className="text-ink-3 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium">
+              <div className="text-ink-3 flex items-center gap-1.5 px-3 py-1 text-[11px] font-medium">
                 <Wand2 className="h-3 w-3" aria-hidden />
                 Skills
               </div>
@@ -1267,26 +1337,26 @@ export const PromptTextarea = forwardRef<
                   type="button"
                   data-index={index}
                   onClick={() => selectItem(item)}
-                  onMouseEnter={() => setSelectedIndex(index)}
+                  onMouseEnter={() => handleItemMouseEnter(index)}
                   className={clsx(
-                    'w-full px-3 py-1.5 text-left',
+                    'w-full px-3 py-1 text-left',
                     index === selectedIndex
                       ? 'bg-glass-medium'
                       : 'hover:bg-glass-medium',
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-ink-1 text-xs font-medium">
+                    <span className="text-ink-1 text-[11.5px] font-medium">
                       /{skill.name}
                     </span>
                     {skill.source !== 'user' && (
-                      <span className="bg-glass-medium text-ink-2 rounded px-1 py-0.5 text-xs">
+                      <span className="bg-glass-medium text-ink-2 rounded px-1 py-0.5 text-[10px]">
                         {skill.pluginName ?? skill.source}
                       </span>
                     )}
                   </div>
                   {skill.description && (
-                    <div className="text-ink-2 line-clamp-2 text-xs">
+                    <div className="text-ink-2 line-clamp-2 text-[10.5px]">
                       {skill.description}
                     </div>
                   )}
