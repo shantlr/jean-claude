@@ -232,6 +232,7 @@ function DotEntry({
   isError,
   isPending,
   summary,
+  metadata,
   expandedContent,
   persistentContent,
   codeStyle = 'default',
@@ -241,6 +242,7 @@ function DotEntry({
   isError?: boolean;
   isPending?: boolean;
   summary: string;
+  metadata?: string;
   expandedContent?: ReactNode;
   persistentContent?: ReactNode;
   codeStyle?: CodeStyle;
@@ -312,6 +314,11 @@ function DotEntry({
           >
             <SummaryText text={summary} codeStyle={codeStyle} />
           </span>
+          {metadata && (
+            <span className="border-glass-border text-ink-3 rounded border px-1.5 py-0.5 text-[10px]">
+              {metadata}
+            </span>
+          )}
         </div>
 
         {persistentContent && (
@@ -624,6 +631,15 @@ function CompactDiffPreview({
   );
 }
 
+function getPermissionMetadata(toolUse: NormalizedToolUse): string | undefined {
+  if (!toolUse.permission) return undefined;
+  if (toolUse.permission.allowedBy === 'agent') return 'allowed by agent';
+
+  const rule = toolUse.permission.rule;
+  if (!rule) return 'allowed by system';
+  return `allowed by system: ${rule.tool}:${rule.pattern}`;
+}
+
 // Tool entry with expandable input/output
 function ToolEntry({
   toolUse,
@@ -637,6 +653,7 @@ function ToolEntry({
   ) => void;
 }) {
   const summary = getToolSummary(toolUse);
+  const permissionMetadata = getPermissionMetadata(toolUse);
   const hasResult = toolUse.result !== undefined;
   const isError =
     toolUse.name === 'bash'
@@ -715,6 +732,7 @@ function ToolEntry({
         type="tool"
         isPending={isPending}
         summary={summary}
+        metadata={permissionMetadata}
         expandedContent={
           <div className="space-y-3 text-xs">
             {ask.input.questions.map((question, index) => {
@@ -808,6 +826,7 @@ function ToolEntry({
         type="tool"
         isPending={isPending}
         summary={summary}
+        metadata={permissionMetadata}
         codeStyle={codeStyle}
         persistentContent={
           <CompactDiffPreview
@@ -894,6 +913,7 @@ function ToolEntry({
       isError={isError}
       isPending={isPending}
       summary={summary}
+      metadata={permissionMetadata}
       expandedContent={expandedContent}
       codeStyle={codeStyle}
     />

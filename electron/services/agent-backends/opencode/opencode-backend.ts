@@ -39,7 +39,7 @@ import { dbg } from '../../../lib/debug';
 import { calculateTheoreticalOpenCodeCost } from '../../backend-models-service';
 import {
   compileForOpenCode,
-  evaluatePermission,
+  evaluatePermissionWithMatch,
   normalizeToolRequest,
 } from '../../permission-settings-service';
 
@@ -307,6 +307,9 @@ export class OpenCodeBackend implements AgentBackend {
         totalCost: 0,
         totalApiCost: 0,
         totalUsage: undefined,
+        pendingToolPermissionDecisions: [],
+        toolPermissionsByEntryId: new Map(),
+        permissionRules: config.permissionRules ?? [],
       },
       messageIndex: this.taskContext.sessionStartIndex,
       rawDeltaRows: new Map(),
@@ -762,11 +765,12 @@ export class OpenCodeBackend implements AgentBackend {
               req.toolName,
               req.input,
             );
-            const action = evaluatePermission(
+            const permissionDecision = evaluatePermissionWithMatch(
               state.permissionRules,
               tool,
               matchValue,
             );
+            const action = permissionDecision.action;
 
             if (action === 'allow') {
               dbg.agentPermission(
@@ -778,6 +782,20 @@ export class OpenCodeBackend implements AgentBackend {
                 directory: state.cwd,
                 reply: 'once',
               });
+              (state.normalizationCtx.pendingToolPermissionDecisions ??=
+                []).push(
+                permissionDecision.matchedRule
+                  ? {
+                      allowedBy: 'system',
+                      tool,
+                      matchValue,
+                      rule: {
+                        tool: permissionDecision.matchedRule.tool,
+                        pattern: permissionDecision.matchedRule.pattern,
+                      },
+                    }
+                  : { allowedBy: 'system', tool, matchValue },
+              );
               continue; // Don't yield the permission-request event
             }
 
@@ -1144,6 +1162,7 @@ export class OpenCodeBackend implements AgentBackend {
         for (const entryId of ctx.emittedEntryIds) {
           if (entryId.startsWith(prefix)) {
             ctx.emittedEntryIds.delete(entryId);
+            ctx.toolPermissionsByEntryId?.delete(entryId);
           }
         }
         ctx.rawMessages.delete(props.messageID);

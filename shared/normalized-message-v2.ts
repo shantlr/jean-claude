@@ -42,6 +42,13 @@ export type NormalizedToolUse = {
   type: 'tool-use';
   toolId: string;
   parentToolId?: string;
+  permission?: {
+    allowedBy: 'agent' | 'system';
+    rule?: {
+      tool: string;
+      pattern: string;
+    };
+  };
 } & (
   | {
       name: 'sub-agent';

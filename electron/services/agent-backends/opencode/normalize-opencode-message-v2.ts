@@ -33,6 +33,12 @@ import type {
   NormalizationEvent,
   TokenUsage,
 } from '@shared/normalized-message-v2';
+import type { ResolvedPermissionRule } from '@shared/permission-types';
+
+import {
+  evaluatePermissionWithMatch,
+  normalizeToolRequest,
+} from '../../permission-settings-service';
 
 // --- Exported types ---
 
@@ -46,7 +52,7 @@ export type OpenCodeRawInput =
 
 /**
  * Context maintained by the backend per session.
- * The normalizer reads from this but never mutates it.
+ * The normalizer reads from this and consumes pending permission decisions.
  * The backend must update rawMessages/rawParts BEFORE calling the normalizer.
  */
 export type OpenCodeNormalizationContext = {
@@ -64,6 +70,17 @@ export type OpenCodeNormalizationContext = {
   totalApiCost?: number;
   /** Accumulated token usage — backend updates from assistant message token fields */
   totalUsage?: TokenUsage;
+  /** Permission decisions made before matching tool parts stream in. */
+  pendingToolPermissionDecisions?: ToolPermissionDecision[];
+  /** Permission attribution by entry id, reused when tool parts update. */
+  toolPermissionsByEntryId?: Map<string, NormalizedToolUse['permission']>;
+  /** Runtime rules used when OpenCode auto-allows without permission.asked. */
+  permissionRules?: ResolvedPermissionRule[];
+};
+
+type ToolPermissionDecision = NonNullable<NormalizedToolUse['permission']> & {
+  tool: string;
+  matchValue: string;
 };
 
 // --- Main normalization function ---
@@ -581,6 +598,7 @@ function normalizeToolPartToEntry(
   const mapped = mapOpenCodeTool(part.tool, state.input, stateMetadata);
   const entryId = `${messageId}:${part.id}`;
   const isUpdate = ctx.emittedEntryIds.has(entryId);
+  const permission = getToolPermission(ctx, entryId, mapped);
   const events: NormalizationEvent[] = [];
 
   // Build the base tool-use entry (without result — result comes as separate event)
@@ -590,6 +608,7 @@ function normalizeToolPartToEntry(
     model,
     type: 'tool-use',
     toolId: part.callID,
+    permission,
     ...mapped,
   } as NormalizedEntry;
 
@@ -654,6 +673,51 @@ function normalizeToolPartToEntry(
   }
 
   return events;
+}
+
+function getToolPermission(
+  ctx: OpenCodeNormalizationContext,
+  entryId: string,
+  toolUse: Omit<NormalizedToolUse, 'type' | 'toolId' | 'parentToolId'>,
+): NormalizedToolUse['permission'] {
+  const permissionsByEntryId = (ctx.toolPermissionsByEntryId ??= new Map());
+  const existingPermission = permissionsByEntryId.get(entryId);
+  if (existingPermission) return existingPermission;
+
+  const { tool, matchValue } = normalizeToolRequest(
+    toolUse.name,
+    (toolUse.input ?? {}) as Record<string, unknown>,
+  );
+  const decisions = (ctx.pendingToolPermissionDecisions ??= []);
+  const index = decisions.findIndex(
+    (decision) => decision.tool === tool && decision.matchValue === matchValue,
+  );
+  if (index !== -1) {
+    const [decision] = decisions.splice(index, 1);
+    const permission = decision.rule
+      ? { allowedBy: decision.allowedBy, rule: decision.rule }
+      : { allowedBy: decision.allowedBy };
+    permissionsByEntryId.set(entryId, permission);
+    return permission;
+  }
+
+  const permissionDecision = ctx.permissionRules
+    ? evaluatePermissionWithMatch(ctx.permissionRules, tool, matchValue)
+    : undefined;
+  const permission =
+    permissionDecision?.action === 'allow'
+      ? {
+          allowedBy: 'system' as const,
+          rule: permissionDecision.matchedRule
+            ? {
+                tool: permissionDecision.matchedRule.tool,
+                pattern: permissionDecision.matchedRule.pattern,
+              }
+            : undefined,
+        }
+      : { allowedBy: 'agent' as const };
+  permissionsByEntryId.set(entryId, permission);
+  return permission;
 }
 
 // --- Subtask part → sub-agent tool-use entry ---

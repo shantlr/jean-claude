@@ -38,7 +38,7 @@ import { dbg } from '../../../lib/debug';
 import {
   flattenScope,
   normalizeToolRequest,
-  evaluatePermission,
+  evaluatePermissionWithMatch,
 } from '../../permission-settings-service';
 import {
   getPromptText,
@@ -177,6 +177,7 @@ export class ClaudeCodeBackend implements AgentBackend {
       normalizationCtx: {
         sessionIdEmitted: false,
         pendingToolUses: new Map(),
+        pendingToolPermissionDecisions: [],
       },
       messageIndex: this.taskContext.sessionStartIndex,
     };
@@ -518,13 +519,27 @@ export class ClaudeCodeBackend implements AgentBackend {
 
     // Check against backend-agnostic permission rules
     const { tool, matchValue } = normalizeToolRequest(toolName, input);
-    const action = evaluatePermission(
+    const permissionDecision = evaluatePermissionWithMatch(
       session.permissionRules,
       tool,
       matchValue,
     );
+    const action = permissionDecision.action;
     if (action === 'allow') {
       dbg.agentPermission('Tool %s auto-allowed by permission rules', toolName);
+      (session.normalizationCtx.pendingToolPermissionDecisions ??= []).push(
+        permissionDecision.matchedRule
+          ? {
+              allowedBy: 'system',
+              tool,
+              matchValue,
+              rule: {
+                tool: permissionDecision.matchedRule.tool,
+                pattern: permissionDecision.matchedRule.pattern,
+              },
+            }
+          : { allowedBy: 'system', tool, matchValue },
+      );
       return Promise.resolve({ behavior: 'allow', updatedInput: input });
     }
     if (action === 'deny') {
@@ -543,6 +558,11 @@ export class ClaudeCodeBackend implements AgentBackend {
       (matchValue && session.sessionAllowedTools.includes(tool))
     ) {
       dbg.agentPermission('Tool %s is session-allowed', toolName);
+      (session.normalizationCtx.pendingToolPermissionDecisions ??= []).push({
+        allowedBy: 'agent',
+        tool,
+        matchValue,
+      });
       return Promise.resolve({ behavior: 'allow', updatedInput: input });
     }
 

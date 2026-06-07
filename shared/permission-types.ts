@@ -96,3 +96,8 @@ export interface ResolvedPermissionRule {
  * - `ask`: show the permission UI to the user
  */
 export type PermissionEvalResult = PermissionAction;
+
+export interface PermissionEvalDetails {
+  action: PermissionEvalResult;
+  matchedRule?: ResolvedPermissionRule;
+}

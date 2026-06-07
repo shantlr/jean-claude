@@ -26,6 +26,8 @@ import type {
   NormalizationEvent,
 } from '@shared/normalized-message-v2';
 
+import { normalizeToolRequest } from '../../permission-settings-service';
+
 export type { NormalizationEvent };
 
 // --- Exported types ---
@@ -35,6 +37,13 @@ export type NormalizationContext = {
   sessionIdEmitted: boolean;
   /** Tracks tool-use entries awaiting their result, keyed by toolId */
   pendingToolUses: Map<string, NormalizedEntry>;
+  /** Permission decisions made before SDK emits matching tool-use blocks. */
+  pendingToolPermissionDecisions?: ToolPermissionDecision[];
+};
+
+type ToolPermissionDecision = NonNullable<NormalizedToolUse['permission']> & {
+  tool: string;
+  matchValue: string;
 };
 
 // --- Constants ---
@@ -159,6 +168,7 @@ function normalizeAssistantRaw(
       }
     } else if (block.type === 'tool_use') {
       const toolUse = mapToolUseBlock(block as ToolUseBlock, parentToolId);
+      toolUse.permission = consumePermissionDecision(ctx, toolUse);
       const entry = {
         id: nanoid(),
         date: new Date().toISOString(),
@@ -193,6 +203,26 @@ function normalizeAssistantRaw(
   }
 
   return events;
+}
+
+function consumePermissionDecision(
+  ctx: NormalizationContext,
+  toolUse: NormalizedToolUse,
+): NormalizedToolUse['permission'] {
+  const { tool, matchValue } = normalizeToolRequest(
+    toolUse.name,
+    (toolUse.input ?? {}) as Record<string, unknown>,
+  );
+  const decisions = (ctx.pendingToolPermissionDecisions ??= []);
+  const index = decisions.findIndex(
+    (decision) => decision.tool === tool && decision.matchValue === matchValue,
+  );
+  if (index === -1) return { allowedBy: 'agent' };
+
+  const [decision] = decisions.splice(index, 1);
+  return decision.rule
+    ? { allowedBy: decision.allowedBy, rule: decision.rule }
+    : { allowedBy: decision.allowedBy };
 }
 
 // --- User messages ---
