@@ -614,6 +614,24 @@ function normalizeToolPartToEntry(
         type: isUpdate ? 'entry-update' : 'entry',
         entry: entryWithResult,
       });
+
+      if (mapped.name === 'skill' && typeof state.output === 'string') {
+        const skillContentEntryId = `${entryId}:skill-content`;
+        events.push({
+          type: ctx.emittedEntryIds.has(skillContentEntryId)
+            ? 'entry-update'
+            : 'entry',
+          entry: {
+            id: skillContentEntryId,
+            date,
+            model,
+            type: 'user-prompt',
+            value: state.output,
+            isSynthetic: true,
+            parentToolId: part.callID,
+          },
+        });
+      }
       break;
     }
 
