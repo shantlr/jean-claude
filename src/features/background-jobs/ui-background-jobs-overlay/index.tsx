@@ -414,6 +414,15 @@ function JobDetails({ job }: { job: BackgroundJob }) {
         </div>
       );
     },
+    'step-start': (typedJob) => {
+      if (typedJob.type !== 'step-start') return null;
+
+      return (
+        <div className="text-ink-2 mt-1 space-y-0.5 text-xs">
+          <p>Step: {typedJob.details.stepName}</p>
+        </div>
+      );
+    },
     'task-completion': (typedJob) => {
       if (typedJob.type !== 'task-completion') return null;
 

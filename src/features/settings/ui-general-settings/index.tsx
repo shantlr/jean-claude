@@ -932,7 +932,8 @@ export function SummaryModelsSettings() {
       <h2 className="text-ink-1 text-lg font-semibold">Summary Models</h2>
       <p className="text-ink-3 mt-1 text-sm">
         Model used for <code>{'{{summary(step.<id>)}}'}</code> template
-        functions. Summary generation runs on a forked session per backend.
+        functions, including Continue steps. Summaries are generated from saved
+        normalized messages without forking the original session.
       </p>
 
       <div className="mt-4 space-y-3">

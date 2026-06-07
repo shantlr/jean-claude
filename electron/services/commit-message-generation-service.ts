@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { exec, type ExecOptions } from 'child_process';
 import { promisify } from 'util';
 
 import type { AgentBackendType } from '@shared/agent-backend-types';
@@ -13,7 +13,10 @@ import {
   getWorktreeUnifiedDiff,
 } from './worktree-service';
 
-const execAsync = promisify(exec);
+const execAsync = promisify(exec) as (
+  command: string,
+  options?: ExecOptions,
+) => Promise<{ stdout: string; stderr: string }>;
 
 /** Schema for both merge and commit message generation. */
 const COMMIT_MESSAGE_SCHEMA = {

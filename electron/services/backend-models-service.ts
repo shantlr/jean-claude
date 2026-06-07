@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { exec, type ExecOptions } from 'child_process';
 import { promisify } from 'util';
 
 import type { AgentBackendType } from '@shared/agent-backend-types';
@@ -6,7 +6,10 @@ import type { ThinkingEffort } from '@shared/types';
 
 import { dbg } from '../lib/debug';
 
-const execAsync = promisify(exec);
+const execAsync = promisify(exec) as (
+  command: string,
+  options?: ExecOptions,
+) => Promise<{ stdout: string; stderr: string }>;
 const OPENCODE_THINKING_VARIANTS = new Set<ThinkingEffort>([
   'none',
   'low',

@@ -18,15 +18,14 @@ import { TaskStepRepository } from '../database/repositories/task-steps';
 import { TaskRepository } from '../database/repositories/tasks';
 import { createDebug } from '../lib/debug';
 
-import { summarizeForkedSession } from './session-summary-service';
+import { summarizeNormalizedMessages } from './session-summary-service';
 
 const debug = createDebug('jc:step-service');
 
 /**
  * Simple text condensation fallback for `{{summary(...)}}` when the argument
- * resolves to a raw value rather than a step reference (which uses the
- * AI-powered `summarizeForkedSession` instead). Collapses whitespace and
- * truncates to 320 characters.
+ * resolves to a raw value rather than a step reference (which uses normalized
+ * messages instead). Collapses whitespace and truncates to 320 characters.
  */
 function condenseText(value: string): string {
   const normalized = value.replace(/\r\n/g, '\n').trim();
@@ -50,14 +49,14 @@ async function resolvePromptTemplate({
   taskPrompt,
   taskName,
   steps,
-  cwd,
+  summaryBackend,
   summaryModels,
 }: {
   template: string;
   taskPrompt: string;
   taskName: string | null;
   steps: TaskStep[];
-  cwd: string;
+  summaryBackend: AgentBackendType;
   summaryModels: Record<
     import('@shared/agent-backend-types').AgentBackendType,
     import('@shared/types').ModelPreference
@@ -112,32 +111,25 @@ async function resolvePromptTemplate({
         );
       }
 
-      if (step.output === null) {
+      const messages = await AgentMessageRepository.findByStepId(step.id);
+      if (messages.length === 0) {
         throw new Error(
-          `Failed to summarize: step "${step.name}" (${stepId}) has no output`,
+          `Failed to summarize: step "${step.name}" (${stepId}) has no messages`,
         );
       }
 
-      if (!step.sessionId) {
-        throw new Error(
-          `Failed to summarize: step "${step.name}" (${stepId}) has no session ID`,
-        );
-      }
-
-      const backend = step.agentBackend ?? 'claude-code';
-      const model = summaryModels[backend] ?? 'default';
+      const model = summaryModels[summaryBackend] ?? 'default';
 
       try {
-        return await summarizeForkedSession({
-          backend,
-          sessionId: step.sessionId,
-          cwd,
+        return await summarizeNormalizedMessages({
+          backend: summaryBackend,
           model,
+          messages,
         });
       } catch (error) {
         debug('Summary generation failed for step %s: %O', step.id, error);
         throw new Error(
-          `Failed to summarize step "${step.name}" (${stepId}) using backend ${backend}`,
+          `Failed to summarize step "${step.name}" (${stepId}) using backend ${summaryBackend}`,
         );
       }
     }
@@ -425,13 +417,17 @@ export const StepService = {
       }
     }
 
+    const summaryBackend = (step.agentBackend ??
+      project.defaultAgentBackend ??
+      'claude-code') as AgentBackendType;
+
     // Resolve template
     const { resolvedPrompt, warnings } = await resolvePromptTemplate({
       template: step.promptTemplate,
       taskPrompt: task.prompt,
       taskName: task.name,
       steps,
-      cwd: task.worktreePath ?? project.path,
+      summaryBackend,
       summaryModels: summaryModelsSetting.models,
     });
 

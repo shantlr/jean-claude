@@ -1,73 +1,124 @@
-import type {
-  AgentBackend,
-  AgentBackendType,
-  AgentTaskContext,
-} from '@shared/agent-backend-types';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import type { NormalizedEntry } from '@shared/normalized-message-v2';
 import type { ModelPreference } from '@shared/types';
 
-import { AGENT_BACKEND_CLASSES } from './agent-backends';
+import { generateText } from './ai-generation-service';
+import {
+  SESSION_SUMMARY_PROMPT,
+  SESSION_SUMMARY_SCHEMA,
+} from './session-summary-prompt';
 
-/**
- * Shared prompt used by all backends when summarizing a forked session.
- * Kept here as the single source of truth so updates apply to every backend.
- */
-export const SESSION_SUMMARY_PROMPT = [
-  'Summarize the prior session context for continuation.',
-  'Return concise markdown with:',
-  '- What was done',
-  '- Key decisions',
-  '- Files/components touched (if known)',
-  '- Open risks or TODOs',
-  '',
-  'Keep it short and focused for an engineer continuing the task.',
-].join('\n');
+const MAX_TRANSCRIPT_CHARS = 60_000;
+const MAX_TOOL_RESULT_CHARS = 4_000;
 
-const summaryBackends = new Map<AgentBackendType, AgentBackend>();
-
-/**
- * Cross-backend summary behavior note:
- * - Claude Code backend can fork with non-persistent sessions.
- * - OpenCode backend currently does not expose a non-persistent fork flag,
- *   so it must explicitly delete the forked summary session after use.
- *
- * Safety: `summarizeSession()` is stateless — it does not use the backend's
- * `this.sessions` map or `this.taskContext`. The singleton instances cached
- * in `summaryBackends` are safe for concurrent use. The dummy taskContext
- * below is never invoked by the summarization flow.
- */
-
-const SUMMARY_TASK_CONTEXT: AgentTaskContext = {
-  taskId: '__session-summary__',
-  sessionStartIndex: 0,
-  persistRaw: async () => '__session-summary-raw__',
-};
-
-function getSummaryBackend(backendType: AgentBackendType): AgentBackend {
-  const existing = summaryBackends.get(backendType);
-  if (existing) return existing;
-
-  const BackendClass = AGENT_BACKEND_CLASSES[backendType];
-  const created = new BackendClass(SUMMARY_TASK_CONTEXT);
-  summaryBackends.set(backendType, created);
-  return created;
+function truncateMiddle(value: string, maxLength: number): string {
+  if (value.length <= maxLength) return value;
+  const keep = Math.floor((maxLength - 20) / 2);
+  return `${value.slice(0, keep)}\n...[truncated]...\n${value.slice(-keep)}`;
 }
 
-export async function summarizeForkedSession({
+function stringifyUnknown(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (value === undefined) return '';
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function formatToolEntry(
+  entry: Extract<NormalizedEntry, { type: 'tool-use' }>,
+) {
+  const lines = [`Tool: ${entry.name}`];
+
+  if ('input' in entry && entry.input !== undefined) {
+    lines.push(`Input: ${truncateMiddle(stringifyUnknown(entry.input), 1200)}`);
+  }
+  if ('filePath' in entry && typeof entry.filePath === 'string') {
+    lines.push(`File: ${entry.filePath}`);
+  }
+  if ('toolName' in entry && typeof entry.toolName === 'string') {
+    lines.push(`MCP tool: ${entry.toolName}`);
+  }
+  if ('result' in entry && entry.result !== undefined) {
+    lines.push(
+      `Result: ${truncateMiddle(stringifyUnknown(entry.result), MAX_TOOL_RESULT_CHARS)}`,
+    );
+  }
+
+  return lines.join('\n');
+}
+
+function formatEntry(entry: NormalizedEntry): string | null {
+  switch (entry.type) {
+    case 'user-prompt':
+      return `User:\n${entry.value}`;
+    case 'assistant-message':
+      return `Assistant:\n${entry.value}`;
+    case 'thinking':
+      return `Thinking:\n${entry.value}`;
+    case 'todo-update':
+      return `Todos updated:\n${stringifyUnknown(entry.newTodos)}`;
+    case 'file-edited':
+      return `File edited: ${entry.filePath}`;
+    case 'session-summary':
+    case 'system-status':
+      return null;
+    case 'result':
+      return entry.value ? `Result:\n${entry.value}` : null;
+    case 'tool-use':
+      return formatToolEntry(entry);
+    default: {
+      const _exhaustive: never = entry;
+      return _exhaustive;
+    }
+  }
+}
+
+function formatMessagesForSummary(messages: NormalizedEntry[]): string {
+  const transcript = messages
+    .map(formatEntry)
+    .filter((entry): entry is string => Boolean(entry?.trim()))
+    .join('\n\n---\n\n');
+
+  return truncateMiddle(transcript, MAX_TRANSCRIPT_CHARS);
+}
+
+export async function summarizeNormalizedMessages({
   backend,
-  sessionId,
-  cwd,
   model,
+  messages,
 }: {
   backend: AgentBackendType;
-  sessionId: string;
-  cwd: string;
   model: ModelPreference;
+  messages: NormalizedEntry[];
 }): Promise<string> {
-  const backendAdapter = getSummaryBackend(backend);
+  const transcript = formatMessagesForSummary(messages);
+  if (!transcript) {
+    throw new Error('Cannot summarize empty message history');
+  }
 
-  return backendAdapter.summarizeSession({
-    sessionId,
-    cwd,
-    model: model !== 'default' ? model : undefined,
+  const result = await generateText({
+    backend,
+    model,
+    outputSchema: SESSION_SUMMARY_SCHEMA,
+    prompt: `${SESSION_SUMMARY_PROMPT}\n\nPrior step normalized message history:\n\n${transcript}`,
   });
+
+  if (
+    result &&
+    typeof result === 'object' &&
+    typeof (result as { summary?: unknown }).summary === 'string'
+  ) {
+    const summary = (result as { summary: string }).summary.trim();
+    if (summary) return summary;
+  }
+
+  if (typeof result === 'string') {
+    const summary = result.trim();
+    if (summary) return summary;
+  }
+
+  throw new Error('Failed to generate summary from normalized messages');
 }

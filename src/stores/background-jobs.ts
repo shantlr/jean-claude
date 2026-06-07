@@ -14,6 +14,7 @@ export type BackgroundJobType =
   | 'project-summary-generation'
   | 'logo-generation'
   | 'verification-note'
+  | 'step-start'
   | 'task-completion'
   | 'task-deletion'
   | 'commit'
@@ -87,6 +88,13 @@ export type BackgroundJob =
       details: {
         workItemCount: number;
         workItemTitles: string[];
+      };
+    })
+  | (BackgroundJobBase & {
+      type: 'step-start';
+      details: {
+        stepId?: string;
+        stepName: string;
       };
     })
   | (BackgroundJobBase & {
@@ -202,6 +210,16 @@ type NewBackgroundJobInput =
       details: {
         workItemCount: number;
         workItemTitles: string[];
+      };
+    }
+  | {
+      type: 'step-start';
+      title: string;
+      taskId?: string | null;
+      projectId?: string | null;
+      details: {
+        stepId?: string;
+        stepName: string;
       };
     }
   | {
@@ -398,6 +416,8 @@ export function bgJobLabel(type: BackgroundJobType): string {
       return 'Generating logo…';
     case 'verification-note':
       return 'Generating verification note…';
+    case 'step-start':
+      return 'Starting step…';
     case 'task-completion':
       return 'Completing…';
     case 'task-creation':

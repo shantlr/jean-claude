@@ -129,7 +129,7 @@ async function generateWithClaudeCode({
     prompt: effectivePrompt,
     options: {
       allowedTools: allowedTools ?? [],
-      model,
+      model: model !== 'default' ? model : undefined,
       abortController,
       ...(cwd ? { cwd } : {}),
       ...(outputSchema && {

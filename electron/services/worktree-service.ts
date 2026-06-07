@@ -1,4 +1,4 @@
-import { exec, execFile, spawn } from 'child_process';
+import { exec, execFile, spawn, type ExecOptions } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { promisify } from 'util';
@@ -22,7 +22,10 @@ import {
 } from './permission-settings-service';
 import { formatCreateWorktreeError } from './utils-worktree-errors';
 
-const execAsync = promisify(exec);
+const execAsync = promisify(exec) as (
+  command: string,
+  options?: ExecOptions,
+) => Promise<{ stdout: string; stderr: string }>;
 
 const execFileAsync = promisify(execFile);
 

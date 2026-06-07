@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { exec, type ExecOptions } from 'child_process';
 import { promisify } from 'util';
 
 import type {
@@ -10,7 +10,10 @@ import type {
 import type { BackendUsageProvider } from './types';
 import { formatTimeUntil } from './utils';
 
-const execAsync = promisify(exec);
+const execAsync = promisify(exec) as (
+  command: string,
+  options?: ExecOptions,
+) => Promise<{ stdout: string; stderr: string }>;
 
 export class ClaudeUsageProvider implements BackendUsageProvider {
   private cachedToken: string | null = null;
