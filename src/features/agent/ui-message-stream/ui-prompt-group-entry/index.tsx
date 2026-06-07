@@ -845,6 +845,7 @@ export function PromptGroupEntry({
       };
     }
     const cost = entry.cost?.toFixed(2) || '0.00';
+    const apiCost = entry.apiCost?.toFixed(2);
     const tokens = formatNumber(
       (entry.usage?.inputTokens ?? 0) + (entry.usage?.outputTokens ?? 0),
     );
@@ -855,7 +856,7 @@ export function PromptGroupEntry({
         : null;
     return {
       isError: false,
-      stats: `${tokens} tok · ${formatDuration(durationMs)} · $${cost}`,
+      stats: `${tokens} tok · ${formatDuration(durationMs)} · $${cost}${apiCost ? ` · api cost $${apiCost}` : ''}`,
       text: entry.value || fallbackAssistantMessage?.text || null,
       entryId: fallbackAssistantMessage?.entryId ?? entry.id,
       isAssistantFallback: fallbackAssistantMessage !== null,

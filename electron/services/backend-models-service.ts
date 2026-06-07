@@ -6,6 +6,11 @@ import type { ThinkingEffort } from '@shared/types';
 
 import { dbg } from '../lib/debug';
 
+import {
+  getOpenCodeFallbackCost,
+  type OpenCodeModelCost,
+} from './opencode-pricing';
+
 const execAsync = promisify(exec) as (
   command: string,
   options?: ExecOptions,
@@ -24,6 +29,7 @@ export interface BackendModel {
   label: string;
   supportsThinking?: boolean;
   thinkingEfforts?: ThinkingEffort[];
+  cost?: OpenCodeModelCost;
 }
 
 // Claude Code models are static — they're defined by the SDK, not discoverable via CLI.
@@ -130,6 +136,7 @@ export function parseOpenCodeModelsVerbose(stdout: string): BackendModel[] {
     try {
       const metadata = JSON.parse(jsonLines.join('\n')) as {
         name?: string;
+        cost?: OpenCodeModelCost;
         capabilities?: { reasoning?: boolean };
         variants?: Record<string, unknown>;
       };
@@ -144,6 +151,7 @@ export function parseOpenCodeModelsVerbose(stdout: string): BackendModel[] {
           metadata.capabilities?.reasoning === true ||
           thinkingEfforts.length > 0,
         ...(thinkingEfforts.length > 0 ? { thinkingEfforts } : {}),
+        ...(metadata.cost ? { cost: metadata.cost } : {}),
       });
     } catch (error) {
       dbg.agent(
@@ -156,6 +164,52 @@ export function parseOpenCodeModelsVerbose(stdout: string): BackendModel[] {
   }
 
   return models;
+}
+
+export function calculateTheoreticalOpenCodeCost({
+  providerID,
+  modelID,
+  inputTokens,
+  outputTokens,
+  cacheReadTokens = 0,
+  cacheCreationTokens = 0,
+}: {
+  providerID?: string;
+  modelID?: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
+}): number {
+  const cost = getOpenCodeCost(providerID, modelID);
+  if (!cost) return 0;
+
+  return (
+    (inputTokens * cost.input +
+      outputTokens * cost.output +
+      cacheReadTokens * (cost.cache?.read ?? cost.input) +
+      cacheCreationTokens * (cost.cache?.write ?? cost.input)) /
+    1_000_000
+  );
+}
+
+function getOpenCodeCost(
+  providerID?: string,
+  modelID?: string,
+): OpenCodeModelCost | undefined {
+  if (!modelID) return undefined;
+
+  const fullId = providerID ? `${providerID}/${modelID}` : modelID;
+  const cached = modelCache
+    .get('opencode')
+    ?.models.find(
+      (model) =>
+        model.id === fullId ||
+        (!providerID && model.id.endsWith(`/${modelID}`)),
+    )?.cost;
+  if (cached && (cached.input > 0 || cached.output > 0)) return cached;
+
+  return getOpenCodeFallbackCost(providerID, modelID);
 }
 
 function countJsonDepthDelta(line: string): number {

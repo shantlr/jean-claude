@@ -885,6 +885,7 @@ class AgentService {
           isError: result.isError,
           durationMs: result.durationMs,
           cost: result.cost?.costUsd,
+          apiCost: result.cost?.apiCostUsd,
           usage: result.usage,
         });
 

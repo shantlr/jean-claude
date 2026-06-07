@@ -60,6 +60,8 @@ export type OpenCodeNormalizationContext = {
   sessionStartTime: number;
   /** Accumulated cost in USD — backend updates from assistant message cost fields */
   totalCost: number;
+  /** Estimated direct API cost in USD when actual backend cost is zero */
+  totalApiCost?: number;
   /** Accumulated token usage — backend updates from assistant message token fields */
   totalUsage?: TokenUsage;
 };
@@ -165,7 +167,15 @@ function normalizeEvent(
           result: {
             isError: false,
             durationMs: Date.now() - ctx.sessionStartTime,
-            cost: ctx.totalCost > 0 ? { costUsd: ctx.totalCost } : undefined,
+            cost:
+              ctx.totalCost > 0 || (ctx.totalApiCost ?? 0) > 0
+                ? {
+                    costUsd: ctx.totalCost,
+                    ...(ctx.totalCost === 0 && ctx.totalApiCost
+                      ? { apiCostUsd: ctx.totalApiCost }
+                      : {}),
+                  }
+                : undefined,
             usage: ctx.totalUsage,
           },
         },

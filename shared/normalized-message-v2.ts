@@ -26,6 +26,7 @@ export type NormalizedEntryBody =
       isError: boolean;
       durationMs?: number;
       cost?: number;
+      apiCost?: number;
       usage?: TokenUsage;
     }
   | NormalizedToolUse;
@@ -221,6 +222,7 @@ export type ToolUseByName<N extends string> = Extract<
 
 export interface CostInfo {
   costUsd: number;
+  apiCostUsd?: number;
   totalCostUsd?: number;
 }
 

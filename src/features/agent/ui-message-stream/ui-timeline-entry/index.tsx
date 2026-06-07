@@ -1043,6 +1043,7 @@ function ResultEntry({
   }
 
   const cost = entry.cost?.toFixed(2) || '0.00';
+  const apiCost = entry.apiCost?.toFixed(2);
   const tokens = formatNumber(
     (entry.usage?.inputTokens ?? 0) + (entry.usage?.outputTokens ?? 0),
   );
@@ -1056,7 +1057,8 @@ function ResultEntry({
           entry.durationMs >= 0
         ? entry.durationMs
         : 0;
-  const summary = `--- ${tokens} tokens, ${formatDuration(resolvedDurationMs)}, $${cost}`;
+  const costSummary = apiCost ? `$${cost}, api cost $${apiCost}` : `$${cost}`;
+  const summary = `--- ${tokens} tokens, ${formatDuration(resolvedDurationMs)}, ${costSummary}`;
 
   const expandedContent = entry.value ? (
     <div className="text-ink-1 text-xs">

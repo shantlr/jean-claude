@@ -36,6 +36,7 @@ import type { InteractionMode } from '@shared/types';
 import type { ResolvedPermissionRule } from '../../../../shared/permission-types';
 import { RawMessageRepository } from '../../../database/repositories';
 import { dbg } from '../../../lib/debug';
+import { calculateTheoreticalOpenCodeCost } from '../../backend-models-service';
 import {
   compileForOpenCode,
   evaluatePermission,
@@ -179,6 +180,8 @@ interface OpenCodeSessionState {
   startTime: number;
   /** Accumulated cost */
   totalCost: number;
+  /** Estimated direct API cost when actual cost is zero */
+  totalApiCost: number;
   /** Accumulated token usage */
   totalUsage?: TokenUsage;
   /** V2 normalization context */
@@ -294,6 +297,7 @@ export class OpenCodeBackend implements AgentBackend {
       pendingQuestions: new Set(),
       startTime: Date.now(),
       totalCost: 0,
+      totalApiCost: 0,
       totalUsage: undefined,
       normalizationCtx: {
         emittedEntryIds: new Set(),
@@ -301,6 +305,7 @@ export class OpenCodeBackend implements AgentBackend {
         rawParts: new Map(),
         sessionStartTime: Date.now(),
         totalCost: 0,
+        totalApiCost: 0,
         totalUsage: undefined,
       },
       messageIndex: this.taskContext.sessionStartIndex,
@@ -861,7 +866,15 @@ export class OpenCodeBackend implements AgentBackend {
         isError: hasError,
         text: hasError ? 'Session ended' : undefined,
         durationMs,
-        cost: state.totalCost > 0 ? { costUsd: state.totalCost } : undefined,
+        cost:
+          state.totalCost > 0 || state.totalApiCost > 0
+            ? {
+                costUsd: state.totalCost,
+                ...(state.totalCost === 0 && state.totalApiCost > 0
+                  ? { apiCostUsd: state.totalApiCost }
+                  : {}),
+              }
+            : undefined,
         usage: state.totalUsage,
       },
     };
@@ -961,6 +974,7 @@ export class OpenCodeBackend implements AgentBackend {
 
   private updateUsageTotals(state: OpenCodeSessionState): void {
     let totalCost = 0;
+    let totalApiCost = 0;
     const totalUsage: TokenUsage = {
       inputTokens: 0,
       outputTokens: 0,
@@ -972,8 +986,23 @@ export class OpenCodeBackend implements AgentBackend {
       if (message.role !== 'assistant') continue;
 
       const assistant = message as OcAssistantMessage;
-      totalCost += assistant.cost ?? 0;
-      if (!assistant.tokens) continue;
+      if (!assistant.tokens) {
+        totalCost += assistant.cost ?? 0;
+        continue;
+      }
+
+      if (assistant.cost && assistant.cost > 0) {
+        totalCost += assistant.cost;
+      } else if (assistant.cost === 0) {
+        totalApiCost += calculateTheoreticalOpenCodeCost({
+          providerID: assistant.providerID,
+          modelID: assistant.modelID,
+          inputTokens: assistant.tokens.input,
+          outputTokens: assistant.tokens.output,
+          cacheReadTokens: assistant.tokens.cache.read,
+          cacheCreationTokens: assistant.tokens.cache.write,
+        });
+      }
 
       totalUsage.inputTokens += assistant.tokens.input;
       totalUsage.outputTokens += assistant.tokens.output;
@@ -990,8 +1019,10 @@ export class OpenCodeBackend implements AgentBackend {
       (totalUsage.cacheCreationTokens ?? 0) > 0;
 
     state.totalCost = totalCost;
+    state.totalApiCost = totalCost === 0 ? totalApiCost : 0;
     state.totalUsage = hasUsage ? totalUsage : undefined;
     state.normalizationCtx.totalCost = totalCost;
+    state.normalizationCtx.totalApiCost = state.totalApiCost;
     state.normalizationCtx.totalUsage = state.totalUsage;
   }
 
