@@ -17,8 +17,10 @@ import {
   PromptTextarea,
   PromptTextareaRef,
 } from '@/features/common/ui-prompt-textarea';
+import { useProjectFeatureMap } from '@/hooks/use-projects';
 import { useCompletionSetting } from '@/hooks/use-settings';
 import { buildAttachedFilesXml } from '@/lib/file-attachment-utils';
+import { expandFeatureReferencesInPrompt } from '@/lib/prompt-feature-context';
 import { resolveMessageInputText } from '@/lib/resolve-message-input-text';
 import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
 import type {
@@ -102,6 +104,7 @@ export function MessageInput({
   isCompact?: boolean;
 }) {
   const { data: completionSetting } = useCompletionSetting();
+  const { data: featureMap = null } = useProjectFeatureMap(projectId ?? null);
   const [internalValue, setInternalValue] = useState('');
   const isControlled = externalValue !== undefined;
   const value = isControlled ? externalValue : internalValue;
@@ -138,7 +141,10 @@ export function MessageInput({
   const handleSubmit = useCallback(() => {
     if (forceDisabled) return;
 
-    const trimmed = resolveMessageInputText(value, snippetVariableContext);
+    const trimmed = expandFeatureReferencesInPrompt({
+      text: resolveMessageInputText(value, snippetVariableContext),
+      featureMap,
+    });
     if (
       !trimmed &&
       images.length === 0 &&
@@ -188,6 +194,7 @@ export function MessageInput({
     setValue,
     allowEmptySubmit,
     snippetVariableContext,
+    featureMap,
   ]);
 
   const handleEnterKey = useCallback(
@@ -289,6 +296,7 @@ export function MessageInput({
       getCompletionContextBeforePrompt={getCompletionContextBeforePrompt}
       projectRoot={projectRoot}
       enableFilePathAutocomplete
+      featureMap={featureMap}
       images={supportsImages ? images : undefined}
       onImageAttach={supportsImages ? handleImageAttach : undefined}
       onImageRemove={supportsImages ? handleImageRemove : undefined}

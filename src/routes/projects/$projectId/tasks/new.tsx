@@ -19,6 +19,7 @@ import { useBackendModels } from '@/hooks/use-backend-models';
 import {
   useProject,
   useProjectBranches,
+  useProjectFeatureMap,
   useProjectIsGitRepository,
 } from '@/hooks/use-projects';
 import {
@@ -29,6 +30,7 @@ import {
 } from '@/hooks/use-settings';
 import { useProjectSkills } from '@/hooks/use-skills';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
+import { expandFeatureReferencesInPrompt } from '@/lib/prompt-feature-context';
 import { useNewTaskFormStore } from '@/stores/new-task-form';
 import {
   getThinkingEffortOptions,
@@ -48,6 +50,7 @@ function NewTask() {
   const navigate = useNavigate();
   const createTask = useCreateTaskWithWorktree();
   const { data: project } = useProject(projectId);
+  const { data: featureMap = null } = useProjectFeatureMap(projectId);
   const { data: isGitRepository = false, isFetching: isGitRepositoryFetching } =
     useProjectIsGitRepository(projectId);
   const canUseWorktree = isGitRepository;
@@ -197,7 +200,7 @@ function NewTask() {
       id: nanoid(),
       projectId,
       name: taskName,
-      prompt,
+      prompt: expandFeatureReferencesInPrompt({ text: prompt, featureMap }),
       status: 'waiting',
       interactionMode,
       modelPreference,
@@ -286,6 +289,7 @@ function NewTask() {
               enableFilePathAutocomplete
               enableCompletion={completionSetting?.enabled ?? false}
               projectId={projectId}
+              featureMap={featureMap}
               maxHeight={400}
               className="focus:border-glass-border-strong border-glass-border bg-bg-1 text-ink-0 min-h-[200px] rounded-lg border px-3 py-2 focus:ring-1 focus:ring-white/10"
             />

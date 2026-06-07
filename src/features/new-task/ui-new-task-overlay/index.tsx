@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS as DndCSS } from '@dnd-kit/utilities';
 import { useQueryClient } from '@tanstack/react-query';
-import { ChevronRight, FileText, Search, X } from 'lucide-react';
+import { ChevronRight, Eye, Search } from 'lucide-react';
 import React, {
   useCallback,
   useEffect,
@@ -38,8 +38,8 @@ import {
   type BranchOrTaskSelection,
 } from '@/common/ui/branch-or-task-select';
 import { Button } from '@/common/ui/button';
-import { Checkbox } from '@/common/ui/checkbox';
 import { Kbd } from '@/common/ui/kbd';
+import { Modal } from '@/common/ui/modal';
 import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
 import { findMatchingBackendModelPresetId } from '@/features/agent/ui-backend-preset-selector';
 import {
@@ -86,6 +86,10 @@ import { feedQueryKeys } from '@/lib/feed-query-keys';
 import { buildAttachedFilesXml } from '@/lib/file-attachment-utils';
 import { compressImage } from '@/lib/image-compression';
 import {
+  expandFeatureReferencesInPrompt,
+  getReferencedFeatures,
+} from '@/lib/prompt-feature-context';
+import {
   resolveSnippetTemplate,
   type SnippetVariableContext,
 } from '@/lib/resolve-snippet-template';
@@ -95,6 +99,7 @@ import {
   useComposerFileComments,
   useComposerFileCommentsStore,
   synthesizeFileCommentsPrompt,
+  type ComposerFileComment,
 } from '@/stores/composer-file-comments';
 import {
   useNewTaskDraft,
@@ -114,12 +119,11 @@ import {
 } from '@shared/thinking-settings';
 import {
   normalizeInteractionModeForBackend,
-  type ProjectFeatureMapItem,
   type ThinkingEffort,
   type Project,
+  type ProjectFeatureMap,
 } from '@shared/types';
 
-import { ComposerCommentsChip } from '../ui-composer-comments-chip';
 import { ComposerFileExplorer } from '../ui-composer-file-explorer';
 import {
   PromptComposer,
@@ -137,6 +141,115 @@ function projectHasWorkItems(project: Project | null): boolean {
     project.workItemProviderId &&
     project.workItemProjectId &&
     project.workItemProjectName
+  );
+}
+
+function FinalPromptPreviewButton({
+  prompt,
+  projectRoot,
+  featureMap,
+  fileComments,
+  files,
+}: {
+  prompt: string;
+  projectRoot: string | null | undefined;
+  featureMap: ProjectFeatureMap | null | undefined;
+  fileComments: ComposerFileComment[];
+  files: PromptFilePart[];
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const referencedFeatures = useMemo(
+    () => getReferencedFeatures({ text: prompt, featureMap }),
+    [prompt, featureMap],
+  );
+
+  const fileContextParts = useMemo(
+    () => synthesizeFileCommentsPrompt(fileComments, projectRoot ?? undefined),
+    [fileComments, projectRoot],
+  );
+
+  const fileCommentText = useMemo(() => {
+    const textPart = fileContextParts?.find((part) => part.type === 'text');
+    return textPart?.type === 'text' ? textPart.text : '';
+  }, [fileContextParts]);
+
+  const finalPromptPreview = useMemo(() => {
+    let finalPrompt = prompt;
+    if (fileCommentText) {
+      finalPrompt = finalPrompt.trim()
+        ? `${finalPrompt}\n\n${fileCommentText}`
+        : fileCommentText;
+    }
+    finalPrompt = expandFeatureReferencesInPrompt({
+      text: finalPrompt,
+      featureMap,
+    });
+    finalPrompt += buildAttachedFilesXml(files);
+    return finalPrompt;
+  }, [prompt, fileCommentText, featureMap, files]);
+
+  const hasGeneratedContext =
+    referencedFeatures.length > 0 ||
+    fileComments.length > 0 ||
+    files.length > 0;
+  if (!hasGeneratedContext) return null;
+
+  return (
+    <>
+      <button
+        type="button"
+        className="border-glass-border bg-glass-light text-ink-2 hover:bg-glass-medium hover:text-ink-1 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors"
+        onClick={() => setIsOpen(true)}
+      >
+        <Eye className="h-3 w-3" />
+        <span className="text-acc font-mono text-[10px]">Preview</span>
+        <span className="text-ink-3 text-[10px]">final prompt</span>
+        {referencedFeatures.length > 0 && (
+          <span className="bg-acc-soft text-acc rounded px-1.5 py-px font-mono text-[10px]">
+            {referencedFeatures.length} feat
+          </span>
+        )}
+        {fileComments.length > 0 && (
+          <span className="bg-glass-medium text-ink-3 rounded px-1.5 py-px font-mono text-[10px]">
+            {fileComments.length} comments
+          </span>
+        )}
+        {files.length > 0 && (
+          <span className="bg-glass-medium text-ink-3 rounded px-1.5 py-px font-mono text-[10px]">
+            {files.length} files
+          </span>
+        )}
+      </button>
+
+      <Modal
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        title="Final prompt preview"
+        size="lg"
+        contentClassName="min-h-0 overflow-hidden p-0"
+      >
+        <div className="flex max-h-[70vh] min-h-0 flex-col">
+          <div className="border-glass-border text-ink-3 flex shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2 font-mono text-[10px]">
+            <span>{finalPromptPreview.length.toLocaleString()} chars</span>
+            <span>
+              ~{Math.ceil(finalPromptPreview.length / 4).toLocaleString()}{' '}
+              tokens
+            </span>
+            {referencedFeatures.length > 0 && (
+              <span>{referencedFeatures.length} feature refs</span>
+            )}
+            {fileComments.length > 0 && (
+              <span>{fileComments.length} comments</span>
+            )}
+            {files.length > 0 && <span>{files.length} files</span>}
+          </div>
+          <pre className="text-ink-2 flex-1 overflow-auto p-4 font-mono text-[11px] leading-relaxed whitespace-pre-wrap">
+            {finalPromptPreview}
+          </pre>
+        </div>
+      </Modal>
+    </>
   );
 }
 
@@ -199,467 +312,6 @@ function getProjectGridColumns(): number {
   if (window.innerWidth >= 1024) return 10;
   if (window.innerWidth >= 640) return 8;
   return 7;
-}
-
-function escapeFeatureXml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&apos;');
-}
-
-function buildFeatureContextXml(features: ProjectFeatureMapItem[]): string {
-  if (features.length === 0) return '';
-
-  const lines = ['<feature_context>'];
-  for (const feature of features) {
-    appendFeatureXml(lines, feature);
-  }
-  lines.push('</feature_context>');
-
-  return `\n\n${lines.join('\n')}`;
-}
-
-function appendFeatureXml(lines: string[], feature: ProjectFeatureMapItem) {
-  const indent = '  ';
-  lines.push(`${indent}<feature name="${escapeFeatureXml(feature.name)}">`);
-  lines.push(
-    `${indent}  <summary>${escapeFeatureXml(feature.summary)}</summary>`,
-  );
-  if (feature.key_files.length > 0) {
-    lines.push(`${indent}  <key_files>`);
-    for (const file of feature.key_files) {
-      lines.push(`${indent}    <file>${escapeFeatureXml(file)}</file>`);
-    }
-    lines.push(`${indent}  </key_files>`);
-  }
-  lines.push(`${indent}</feature>`);
-}
-
-function flattenFeatures(features: ProjectFeatureMapItem[]) {
-  const result: ProjectFeatureMapItem[] = [];
-  for (const feature of features) {
-    result.push(feature);
-    result.push(...flattenFeatures(feature.children));
-  }
-  return result;
-}
-
-function getFeatureFileCount(features: ProjectFeatureMapItem[]): number {
-  return new Set(features.flatMap((feature) => feature.key_files)).size;
-}
-
-function getFeatureTokenEstimate(features: ProjectFeatureMapItem[]): number {
-  const xml = buildFeatureContextXml(features);
-  return Math.ceil(xml.length / 4);
-}
-
-function featureMatches(
-  feature: ProjectFeatureMapItem,
-  query: string,
-): boolean {
-  const normalizedQuery = query.toLowerCase();
-  return (
-    feature.name.toLowerCase().includes(normalizedQuery) ||
-    feature.summary.toLowerCase().includes(normalizedQuery) ||
-    feature.key_files.some((file) =>
-      file.toLowerCase().includes(normalizedQuery),
-    )
-  );
-}
-
-function collectVisibleFeatureIds(
-  features: ProjectFeatureMapItem[],
-  query: string,
-): Set<string> | null {
-  if (!query) return null;
-  const visibleIds = new Set<string>();
-  const walk = (feature: ProjectFeatureMapItem): boolean => {
-    const childMatches = feature.children.some(walk);
-    const matches = featureMatches(feature, query);
-    if (matches || childMatches) visibleIds.add(feature.id);
-    return matches || childMatches;
-  };
-  features.forEach(walk);
-  return visibleIds;
-}
-
-function hasSelectedDescendant(
-  feature: ProjectFeatureMapItem,
-  selectedIds: string[],
-): boolean {
-  return feature.children.some(
-    (child) =>
-      selectedIds.includes(child.id) ||
-      hasSelectedDescendant(child, selectedIds),
-  );
-}
-
-function getInitialExpandedFeatureIds(
-  features: ProjectFeatureMapItem[],
-): Set<string> {
-  return new Set(
-    flattenFeatures(features)
-      .filter((feature) => feature.children.length > 0)
-      .map((feature) => feature.id),
-  );
-}
-
-function FeatureContextPicker({
-  features,
-  selectedIds,
-  onToggle,
-  onClear,
-}: {
-  features: ProjectFeatureMapItem[];
-  selectedIds: string[];
-  onToggle: (featureId: string) => void;
-  onClear: () => void;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(() =>
-    getInitialExpandedFeatureIds(features),
-  );
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-
-  const flatFeatures = useMemo(() => flattenFeatures(features), [features]);
-  const selectedFeatures = useMemo(
-    () => flatFeatures.filter((feature) => selectedIds.includes(feature.id)),
-    [flatFeatures, selectedIds],
-  );
-  const visibleIds = useMemo(
-    () => collectVisibleFeatureIds(features, query.trim()),
-    [features, query],
-  );
-  const matchCount = useMemo(
-    () =>
-      query.trim()
-        ? flatFeatures.filter((feature) =>
-            featureMatches(feature, query.trim()),
-          ).length
-        : 0,
-    [flatFeatures, query],
-  );
-  const selectedFileCount = getFeatureFileCount(selectedFeatures);
-  const selectedTokenEstimate = getFeatureTokenEstimate(selectedFeatures);
-  const expandableIds = useMemo(
-    () =>
-      flatFeatures
-        .filter((feature) => feature.children.length > 0)
-        .map((feature) => feature.id),
-    [flatFeatures],
-  );
-
-  useEffect(() => {
-    setExpandedIds(getInitialExpandedFeatureIds(features));
-    setQuery('');
-  }, [features]);
-
-  const toggleExpanded = useCallback((featureId: string) => {
-    setExpandedIds((current) => {
-      const next = new Set(current);
-      if (next.has(featureId)) next.delete(featureId);
-      else next.add(featureId);
-      return next;
-    });
-  }, []);
-
-  const toggleAll = useCallback(() => {
-    setExpandedIds((current) => {
-      const currentKnownCount = expandableIds.filter((id) =>
-        current.has(id),
-      ).length;
-      return currentKnownCount > 0 ? new Set() : new Set(expandableIds);
-    });
-  }, [expandableIds]);
-
-  if (features.length === 0) return null;
-
-  return (
-    <div className="border-glass-border border-t bg-black/15 select-none">
-      <div className="flex items-center gap-2 px-[18px] pt-2.5 pb-1.5">
-        <button
-          type="button"
-          className="text-ink-2 hover:text-ink-1 flex min-w-0 items-center gap-1.5 text-xs"
-          onClick={() => setIsOpen((value) => !value)}
-        >
-          <ChevronRight
-            className={`h-3.5 w-3.5 transition-transform ${isOpen ? 'rotate-90' : ''}`}
-          />
-          Feature context
-        </button>
-        <span className="text-ink-3 shrink-0 font-mono text-xs">
-          {selectedIds.length} feat · {selectedFileCount} files
-        </span>
-        <div className="flex-1" />
-        {selectedIds.length > 0 && (
-          <button
-            type="button"
-            className="text-ink-3 hover:text-ink-1 text-[11px]"
-            onClick={onClear}
-          >
-            Clear
-          </button>
-        )}
-      </div>
-      {selectedFeatures.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto px-[18px] pb-2.5">
-          <span
-            className="shrink-0 font-mono text-[10px] font-semibold tracking-[0.22em] uppercase"
-            style={{ color: 'var(--color-acc-ink)' }}
-          >
-            Context
-          </span>
-          {selectedFeatures.map((feature) => (
-            <span
-              key={feature.id}
-              title={feature.name}
-              className="text-ink-1 flex max-w-56 shrink-0 items-center gap-1 rounded-full border py-0.5 pr-1.5 pl-2 text-[11px] shadow-[0_0_0_1px_oklch(1_0_0/0.04)_inset]"
-              style={{
-                background: 'var(--color-acc-soft)',
-                borderColor: 'var(--color-acc-line)',
-              }}
-            >
-              <span
-                className="h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{ background: 'var(--color-acc-ink)' }}
-              />
-              <span className="truncate">{feature.name}</span>
-              <button
-                type="button"
-                className="text-ink-3 hover:text-ink-1 rounded-full p-0.5"
-                onClick={() => onToggle(feature.id)}
-                aria-label={`Remove ${feature.name}`}
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          ))}
-          <span className="text-ink-3 ml-auto shrink-0 font-mono text-[10px]">
-            ~{selectedTokenEstimate.toLocaleString()} tok
-          </span>
-        </div>
-      )}
-      {isOpen && (
-        <div className="border-glass-border border-t">
-          <div className="flex items-center gap-2 px-[18px] py-2">
-            <div className="border-glass-border bg-glass-light focus-within:border-accent-1/40 flex min-w-0 flex-1 items-center gap-2 rounded-lg border px-2.5 py-1.5">
-              <Search className="text-ink-3 h-3.5 w-3.5 shrink-0" />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search features, summaries, files..."
-                className="text-ink-1 placeholder:text-ink-3 min-w-0 flex-1 bg-transparent text-xs outline-none"
-                spellCheck={false}
-              />
-              <span className="text-ink-3 shrink-0 font-mono text-[10px]">
-                {query.trim()
-                  ? `${matchCount} match${matchCount === 1 ? '' : 'es'}`
-                  : `${flatFeatures.length} features`}
-              </span>
-              {query && (
-                <button
-                  type="button"
-                  className="text-ink-3 hover:text-ink-1"
-                  onClick={() => setQuery('')}
-                  aria-label="Clear feature search"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-            <button
-              type="button"
-              className="border-glass-border text-ink-3 hover:text-ink-1 hover:bg-glass-light shrink-0 rounded-md border px-2.5 py-1.5 text-[11px]"
-              onClick={query.trim() ? () => setQuery('') : toggleAll}
-            >
-              {query.trim()
-                ? 'Clear'
-                : expandedIds.size > 0
-                  ? 'Collapse all'
-                  : 'Expand all'}
-            </button>
-          </div>
-          <div className="max-h-80 overflow-y-auto px-2.5 pb-2">
-            {features.map((feature) => (
-              <FeatureContextPickerItem
-                key={feature.id}
-                feature={feature}
-                depth={0}
-                selectedIds={selectedIds}
-                expandedIds={expandedIds}
-                visibleIds={visibleIds}
-                query={query.trim()}
-                onToggle={onToggle}
-                onExpand={toggleExpanded}
-              />
-            ))}
-            {visibleIds?.size === 0 && (
-              <div className="text-ink-3 px-4 py-7 text-center text-xs">
-                No features match "{query.trim()}".
-              </div>
-            )}
-          </div>
-          <div className="border-glass-border border-t bg-black/20">
-            <button
-              type="button"
-              className="text-ink-2 hover:text-ink-1 flex w-full items-center gap-2 px-[18px] py-2 text-left text-[11px]"
-              onClick={() => setIsPreviewOpen((value) => !value)}
-            >
-              <ChevronRight
-                className={`h-3 w-3 transition-transform ${isPreviewOpen ? 'rotate-90' : ''}`}
-              />
-              Preview injected context
-              <span className="bg-accent-1/15 text-accent-1 rounded px-1.5 py-0.5 font-mono text-[9px]">
-                XML
-              </span>
-              <span className="text-ink-3 ml-auto font-mono text-[10px]">
-                {selectedIds.length} feat · {selectedFileCount} files · ~
-                {selectedTokenEstimate.toLocaleString()} tok
-              </span>
-            </button>
-            {isPreviewOpen && (
-              <pre className="border-glass-border text-ink-2 max-h-40 overflow-auto border-t bg-black/25 px-3.5 py-3 font-mono text-[11px] leading-relaxed whitespace-pre">
-                {selectedFeatures.length > 0
-                  ? buildFeatureContextXml(selectedFeatures).trimStart()
-                  : 'Select features to build the <feature_context> block'}
-              </pre>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function FeatureContextPickerItem({
-  feature,
-  depth,
-  selectedIds,
-  expandedIds,
-  visibleIds,
-  query,
-  onToggle,
-  onExpand,
-}: {
-  feature: ProjectFeatureMapItem;
-  depth: number;
-  selectedIds: string[];
-  expandedIds: Set<string>;
-  visibleIds: Set<string> | null;
-  query: string;
-  onToggle: (featureId: string) => void;
-  onExpand: (featureId: string) => void;
-}) {
-  if (visibleIds && !visibleIds.has(feature.id)) return null;
-  const selected = selectedIds.includes(feature.id);
-  const hasChildren = feature.children.length > 0;
-  const isExpanded = visibleIds ? true : expandedIds.has(feature.id);
-  const descSelected = hasSelectedDescendant(feature, selectedIds);
-
-  return (
-    <div>
-      <div
-        className={`group relative flex min-h-[30px] cursor-pointer items-center gap-2 rounded-md py-1.5 pr-2.5 transition-colors ${
-          selected ? 'bg-accent-1/10' : 'hover:bg-white/[0.035]'
-        }`}
-        style={{ paddingLeft: 10 + depth * 17 }}
-        onClick={() => onToggle(feature.id)}
-      >
-        {(selected || descSelected) && (
-          <span
-            className={`absolute top-1 bottom-1 left-0 w-0.5 rounded-full ${
-              selected ? 'bg-accent-1' : 'bg-accent-1/40'
-            }`}
-          />
-        )}
-        {hasChildren ? (
-          <button
-            type="button"
-            className="text-ink-3 hover:text-ink-1 flex h-4 w-4 shrink-0 items-center justify-center"
-            onClick={(event) => {
-              event.stopPropagation();
-              if (!visibleIds) onExpand(feature.id);
-            }}
-            aria-label={isExpanded ? 'Collapse feature' : 'Expand feature'}
-          >
-            <ChevronRight
-              className={`h-3 w-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-            />
-          </button>
-        ) : (
-          <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-            <span className="h-1 w-1 rounded-full bg-white/20" />
-          </span>
-        )}
-        <Checkbox
-          size="sm"
-          checked={selected}
-          onChange={() => onToggle(feature.id)}
-          onClick={(event) => event.stopPropagation()}
-          compact
-        />
-        <span
-          className={`shrink-0 truncate text-xs font-medium ${
-            selected ? 'text-ink-1' : depth === 0 ? 'text-ink-1' : 'text-ink-2'
-          }`}
-        >
-          <FeatureHighlight text={feature.name} query={query} />
-        </span>
-        <span
-          className={`flex h-[15px] shrink-0 items-center gap-1 rounded px-1.5 font-mono text-[9px] font-semibold ${
-            selected
-              ? 'bg-accent-1/15 text-accent-1'
-              : 'text-ink-3 bg-white/[0.05]'
-          }`}
-        >
-          <FileText className="h-2 w-2" />
-          {feature.key_files.length}
-        </span>
-        <div className="text-ink-3 min-w-0 flex-1 truncate text-[11px]">
-          <FeatureHighlight text={feature.summary} query={query} />
-        </div>
-        {!selected && (
-          <span className="text-accent-1 hidden shrink-0 font-mono text-[9px] font-semibold group-hover:inline">
-            + add
-          </span>
-        )}
-      </div>
-      {hasChildren && isExpanded
-        ? feature.children.map((child) => (
-            <FeatureContextPickerItem
-              key={child.id}
-              feature={child}
-              depth={depth + 1}
-              selectedIds={selectedIds}
-              expandedIds={expandedIds}
-              visibleIds={visibleIds}
-              query={query}
-              onToggle={onToggle}
-              onExpand={onExpand}
-            />
-          ))
-        : null}
-    </div>
-  );
-}
-
-function FeatureHighlight({ text, query }: { text: string; query: string }) {
-  if (!query) return text;
-  const index = text.toLowerCase().indexOf(query.toLowerCase());
-  if (index < 0) return text;
-  return (
-    <>
-      {text.slice(0, index)}
-      <mark className="bg-accent-1/25 text-ink-1 rounded px-0.5">
-        {text.slice(index, index + query.length)}
-      </mark>
-      {text.slice(index + query.length)}
-    </>
-  );
 }
 
 export function NewTaskOverlay({
@@ -796,14 +448,6 @@ export function NewTaskOverlay({
     return workItems.filter((wi) => ids.includes(wi.id.toString()));
   }, [workItems, draft?.workItemIds]);
 
-  const selectedFeatures = useMemo(() => {
-    const ids = draft?.selectedFeatureIds ?? [];
-    const features = selectedProjectFeatureMap?.features ?? [];
-    return flattenFeatures(features).filter((feature) =>
-      ids.includes(feature.id),
-    );
-  }, [draft?.selectedFeatureIds, selectedProjectFeatureMap?.features]);
-
   // Fetch comments for selected work items
   const workItemIdNumbers = useMemo(
     () => (draft?.workItemIds ?? []).map(Number).filter((n) => !isNaN(n)),
@@ -910,11 +554,7 @@ export function NewTaskOverlay({
     if (inputMode === 'prompt') {
       const hasPrompt = !!(draft.prompt ?? '').trim();
       const hasFileComments = fileCommentCount > 0;
-      const hasFeatureContext = selectedFeatures.length > 0;
-      return (
-        (hasPrompt || hasFileComments || hasFeatureContext) &&
-        !!selectedProjectId
-      );
+      return (hasPrompt || hasFileComments) && !!selectedProjectId;
     }
 
     return false;
@@ -927,7 +567,6 @@ export function NewTaskOverlay({
     selectedProjectId,
     isWorktreeDataFetching,
     fileCommentCount,
-    selectedFeatures.length,
   ]);
 
   // Navigate project tabs
@@ -1318,23 +957,6 @@ export function NewTaskOverlay({
     updateDraft({ selectedCommentIds: [] });
   }, [updateDraft]);
 
-  const handleFeatureToggle = useCallback(
-    (featureId: string) => {
-      updateDraft((prev) => {
-        const current = prev?.selectedFeatureIds ?? [];
-        const next = current.includes(featureId)
-          ? current.filter((id) => id !== featureId)
-          : [...current, featureId];
-        return { selectedFeatureIds: next };
-      });
-    },
-    [updateDraft],
-  );
-
-  const handleClearFeatures = useCallback(() => {
-    updateDraft({ selectedFeatureIds: [] });
-  }, [updateDraft]);
-
   // Start task handler
   const handleStartTask = useCallback(async () => {
     if (!canStartTask || !draft || !selectedProjectId) return;
@@ -1407,7 +1029,10 @@ export function NewTaskOverlay({
       }
 
       // Append file attachment references to prompt text
-      finalPrompt += buildFeatureContextXml(selectedFeatures);
+      finalPrompt = expandFeatureReferencesInPrompt({
+        text: finalPrompt,
+        featureMap: selectedProjectFeatureMap,
+      });
       finalPrompt += buildAttachedFilesXml(draftFiles);
 
       const backlogTodoIds = draft.backlogTodoIds ?? [];
@@ -1513,12 +1138,12 @@ export function NewTaskOverlay({
     searchStep,
     promptTemplate,
     selectedWorkItems,
-    selectedFeatures,
     workItemComments,
     snippetVariableContext,
     testCasesByWorkItem,
     selectedProject?.name,
     selectedProject?.path,
+    selectedProjectFeatureMap,
     currentBackend,
     currentInteractionMode,
     currentModelPreference,
@@ -1922,6 +1547,7 @@ export function NewTaskOverlay({
                     enableFilePathAutocomplete
                     enableCompletion={completionSetting?.enabled ?? false}
                     projectId={selectedProject?.id}
+                    featureMap={selectedProjectFeatureMap}
                     images={draft?.images}
                     onImageAttach={handleImageAttach}
                     onImageRemove={handleImageRemove}
@@ -1930,14 +1556,17 @@ export function NewTaskOverlay({
                     onFileRemove={handleFileRemove}
                     promptSnippets={promptSnippets}
                     snippetVariableContext={snippetVariableContext}
-                    containerClassName={`px-[18px] pt-3.5 ${fileCommentCount > 0 && selectedProject ? 'pb-2' : 'pb-3.5'}`}
+                    containerClassName={`px-[18px] pt-3.5 ${selectedProject ? 'pb-2' : 'pb-3.5'}`}
                     className="text-ink-1 placeholder-ink-3 border-transparent bg-transparent px-0 py-0 text-sm focus:border-transparent focus:ring-0 focus:outline-none"
                   />
-                  {fileCommentCount > 0 && selectedProject && (
+                  {!isNoteMode && selectedProject && (
                     <div className="px-[18px] pb-3.5">
-                      <ComposerCommentsChip
-                        projectId={selectedProject.id}
+                      <FinalPromptPreviewButton
+                        prompt={inputValue}
                         projectRoot={selectedProject.path}
+                        featureMap={selectedProjectFeatureMap}
+                        fileComments={fileComments}
+                        files={draft?.files ?? []}
                       />
                     </div>
                   )}
@@ -2027,20 +1656,10 @@ export function NewTaskOverlay({
                   snippets={promptSnippets}
                   snippetVariableContext={snippetVariableContext}
                   testCasesByWorkItem={testCasesByWorkItem}
+                  featureMap={selectedProjectFeatureMap}
                 />
               </div>
             )}
-
-            {!isNoteMode && selectedProjectFeatureMap?.features.length ? (
-              <div className="shrink-0">
-                <FeatureContextPicker
-                  features={selectedProjectFeatureMap.features}
-                  selectedIds={draft?.selectedFeatureIds ?? []}
-                  onToggle={handleFeatureToggle}
-                  onClear={handleClearFeatures}
-                />
-              </div>
-            ) : null}
 
             {/* Footer */}
             <div

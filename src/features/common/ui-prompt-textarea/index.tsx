@@ -41,6 +41,12 @@ import {
 } from '@/hooks/use-project-file-paths';
 import { processAttachmentFile, MAX_FILES } from '@/lib/file-attachment-utils';
 import { processImageFile, MAX_IMAGES } from '@/lib/image-utils';
+import {
+  flattenProjectFeatures,
+  getFeatureReferenceText,
+  getReferencedFeatures,
+  type FlatProjectFeature,
+} from '@/lib/prompt-feature-context';
 import { resolveMessageInputText } from '@/lib/resolve-message-input-text';
 import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
 import { resolvePromptSnippet } from '@/lib/resolve-snippet-template';
@@ -50,7 +56,7 @@ import type {
   PromptImagePart,
 } from '@shared/agent-backend-types';
 import type { Skill } from '@shared/skill-types';
-import type { PromptSnippet } from '@shared/types';
+import type { ProjectFeatureMap, PromptSnippet } from '@shared/types';
 
 const COMMANDS = [
   { command: '/init', description: 'Initialize CLAUDE.md in project' },
@@ -100,11 +106,53 @@ function getActiveMentionToken({
   };
 }
 
+function getActiveFeatureToken({
+  text,
+  cursorPosition,
+}: {
+  text: string;
+  cursorPosition: number;
+}): MentionToken | null {
+  if (cursorPosition < 0 || cursorPosition > text.length) return null;
+
+  const beforeCursor = text.slice(0, cursorPosition);
+  const featureStart = beforeCursor.lastIndexOf('#');
+  if (featureStart < 0) return null;
+
+  const characterBeforeFeature =
+    featureStart > 0 ? text[featureStart - 1] : undefined;
+  if (characterBeforeFeature && !/\s|[([{'"`]/.test(characterBeforeFeature)) {
+    return null;
+  }
+
+  let featureEnd = text.length;
+  for (let index = featureStart + 1; index < text.length; index++) {
+    if (/\s/.test(text[index])) {
+      featureEnd = index;
+      break;
+    }
+  }
+
+  if (cursorPosition < featureStart + 1 || cursorPosition > featureEnd) {
+    return null;
+  }
+
+  const query = text.slice(featureStart + 1, cursorPosition);
+  if (/[#\s]/.test(query)) return null;
+
+  return {
+    start: featureStart,
+    end: featureEnd,
+    query,
+  };
+}
+
 type DropdownItem =
   | { type: 'command'; command: string; description: string }
   | { type: 'skill'; skill: Skill }
   | { type: 'file'; filePath: string }
-  | { type: 'snippet'; snippet: PromptSnippet };
+  | { type: 'snippet'; snippet: PromptSnippet }
+  | { type: 'feature'; feature: FlatProjectFeature };
 
 type RankedDropdownItem = DropdownItem & {
   matchScore: number | null;
@@ -144,6 +192,8 @@ export interface PromptTextareaProps extends Omit<
   projectRoot?: string | null;
   /** Enable @file path suggestions */
   enableFilePathAutocomplete?: boolean;
+  /** Project feature map for #feature suggestions */
+  featureMap?: ProjectFeatureMap | null;
   /** Attached images */
   images?: PromptImagePart[];
   /** Called when user attaches an image (paste, drop, or file picker) */
@@ -182,6 +232,7 @@ export const PromptTextarea = forwardRef<
     getCompletionContextBeforePrompt,
     projectRoot = null,
     enableFilePathAutocomplete = false,
+    featureMap = null,
     images,
     onImageAttach,
     onImageRemove,
@@ -231,11 +282,24 @@ export const PromptTextarea = forwardRef<
         : null,
     [enableFilePathAutocomplete, value, cursorPosition],
   );
+  const activeFeatureToken = useMemo(
+    () =>
+      featureMap
+        ? getActiveFeatureToken({ text: value, cursorPosition })
+        : null,
+    [featureMap, value, cursorPosition],
+  );
 
   const showMentionDropdown = !!activeMentionToken && !dropdownDismissed;
+  const showFeatureDropdown =
+    !!activeFeatureToken && !showMentionDropdown && !dropdownDismissed;
   const showSlashDropdown =
-    value.startsWith('/') && !showMentionDropdown && !dropdownDismissed;
-  const showDropdown = showMentionDropdown || showSlashDropdown;
+    value.startsWith('/') &&
+    !showMentionDropdown &&
+    !showFeatureDropdown &&
+    !dropdownDismissed;
+  const showDropdown =
+    showMentionDropdown || showFeatureDropdown || showSlashDropdown;
   const dropdownPosition = useDropdownPosition({
     isOpen: showDropdown,
     triggerRef: containerRef,
@@ -243,6 +307,7 @@ export const PromptTextarea = forwardRef<
     align: 'left',
   });
   const searchText = value.slice(1).toLowerCase();
+  const featureSearchText = activeFeatureToken?.query ?? '';
 
   const { filePaths, isLoading: isLoadingFilePaths } = useProjectFilePaths({
     projectRoot,
@@ -259,6 +324,41 @@ export const PromptTextarea = forwardRef<
       limit: FILE_SUGGESTION_LIMIT,
     });
   }, [showMentionDropdown, activeMentionToken, filePaths]);
+
+  const flatFeatures = useMemo(
+    () => flattenProjectFeatures(featureMap?.features),
+    [featureMap],
+  );
+
+  const referencedFeatures = useMemo(
+    () => getReferencedFeatures({ text: value, featureMap }),
+    [value, featureMap],
+  );
+
+  const featureSuggestions = useMemo(() => {
+    if (!showFeatureDropdown) return [];
+
+    if (!featureSearchText.trim()) {
+      return flatFeatures.map((feature) => ({
+        type: 'feature' as const,
+        feature,
+        matchScore: null,
+      }));
+    }
+
+    const matchedFeatures = new Fuse(flatFeatures, {
+      keys: ['name', 'summary', 'key_files', 'path'],
+      threshold: 0.4,
+      ignoreLocation: true,
+      includeScore: true,
+    }).search(featureSearchText);
+
+    return matchedFeatures.slice(0, 40).map((match) => ({
+      type: 'feature' as const,
+      feature: match.item,
+      matchScore: match.score ?? null,
+    }));
+  }, [flatFeatures, featureSearchText, showFeatureDropdown]);
 
   // Inline completion hook — paused when slash dropdown is open
   const {
@@ -309,6 +409,10 @@ export const PromptTextarea = forwardRef<
         filePath,
         matchScore: null,
       }));
+    }
+
+    if (showFeatureDropdown) {
+      return featureSuggestions;
     }
 
     if (!showSlashDropdown) return [];
@@ -380,8 +484,10 @@ export const PromptTextarea = forwardRef<
     return items;
   }, [
     showMentionDropdown,
+    showFeatureDropdown,
     showSlashDropdown,
     fileSuggestions,
+    featureSuggestions,
     searchText,
     skills,
     showCommands,
@@ -390,7 +496,7 @@ export const PromptTextarea = forwardRef<
 
   const defaultSelectedIndex = useMemo(() => {
     if (filteredItems.length === 0) return 0;
-    if (showMentionDropdown || !searchText) return 0;
+    if (showMentionDropdown || showFeatureDropdown || !searchText) return 0;
 
     let bestIndex = 0;
     let bestScore = Number.POSITIVE_INFINITY;
@@ -404,7 +510,7 @@ export const PromptTextarea = forwardRef<
     });
 
     return bestIndex;
-  }, [filteredItems, searchText, showMentionDropdown]);
+  }, [filteredItems, searchText, showMentionDropdown, showFeatureDropdown]);
 
   // Reset selected index when filtered items change
   useEffect(() => {
@@ -425,7 +531,8 @@ export const PromptTextarea = forwardRef<
   // Track previous value to detect backspace
   const prevValueRef = useRef(value);
   useEffect(() => {
-    const hasDropdownTrigger = !!activeMentionToken || value.startsWith('/');
+    const hasDropdownTrigger =
+      !!activeMentionToken || !!activeFeatureToken || value.startsWith('/');
 
     if (dropdownDismissed && hasDropdownTrigger) {
       // Re-show dropdown when user deletes characters (backspace)
@@ -437,7 +544,7 @@ export const PromptTextarea = forwardRef<
       setDropdownDismissed(false);
     }
     prevValueRef.current = value;
-  }, [value, dropdownDismissed, activeMentionToken]);
+  }, [value, dropdownDismissed, activeMentionToken, activeFeatureToken]);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -476,6 +583,27 @@ export const PromptTextarea = forwardRef<
           textareaRef.current.selectionStart = nextCursorPosition;
           textareaRef.current.selectionEnd = nextCursorPosition;
         });
+      } else if (item.type === 'feature') {
+        if (!activeFeatureToken) return;
+
+        const mentionValue = `#${getFeatureReferenceText(
+          item.feature,
+          flatFeatures,
+        )}`;
+        const before = value.slice(0, activeFeatureToken.start);
+        const after = value.slice(activeFeatureToken.end);
+        const needsSpace = after.length === 0 || !/^\s/.test(after);
+        const insertion = needsSpace ? `${mentionValue} ` : mentionValue;
+        const nextValue = `${before}${insertion}${after}`;
+        onChange(nextValue);
+
+        const nextCursorPosition = before.length + insertion.length;
+        setCursorPosition(nextCursorPosition);
+        requestAnimationFrame(() => {
+          if (!textareaRef.current) return;
+          textareaRef.current.selectionStart = nextCursorPosition;
+          textareaRef.current.selectionEnd = nextCursorPosition;
+        });
       } else if (item.type === 'snippet') {
         const { output } = resolvePromptSnippet(item.snippet, {
           ...(snippetVariableContext ?? {}),
@@ -494,7 +622,14 @@ export const PromptTextarea = forwardRef<
       setDropdownDismissed(true);
       textareaRef.current?.focus();
     },
-    [activeMentionToken, onChange, value, snippetVariableContext],
+    [
+      activeMentionToken,
+      activeFeatureToken,
+      flatFeatures,
+      onChange,
+      value,
+      snippetVariableContext,
+    ],
   );
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -844,6 +979,7 @@ export const PromptTextarea = forwardRef<
 
   // Separate item types for grouped display
   const fileItems = filteredItems.filter((item) => item.type === 'file');
+  const featureItems = filteredItems.filter((item) => item.type === 'feature');
   const commandItems = filteredItems.filter((item) => item.type === 'command');
   const snippetItems = filteredItems.filter((item) => item.type === 'snippet');
   const skillItems = filteredItems.filter((item) => item.type === 'skill');
@@ -859,15 +995,26 @@ export const PromptTextarea = forwardRef<
 
   // Get the flat index for an item (used for selection highlighting)
   const getItemIndex = (
-    type: 'file' | 'command' | 'snippet' | 'skill',
+    type: 'file' | 'feature' | 'command' | 'snippet' | 'skill',
     localIndex: number,
   ) => {
     if (type === 'file') return localIndex;
-    if (type === 'command') return fileItems.length + localIndex;
+    if (type === 'feature') return fileItems.length + localIndex;
+    if (type === 'command')
+      return fileItems.length + featureItems.length + localIndex;
     if (type === 'snippet')
-      return fileItems.length + commandItems.length + localIndex;
+      return (
+        fileItems.length +
+        featureItems.length +
+        commandItems.length +
+        localIndex
+      );
     return (
-      fileItems.length + commandItems.length + snippetItems.length + localIndex
+      fileItems.length +
+      featureItems.length +
+      commandItems.length +
+      snippetItems.length +
+      localIndex
     );
   };
 
@@ -884,6 +1031,7 @@ export const PromptTextarea = forwardRef<
         dropdownPosition &&
         ((showMentionDropdown &&
           (filteredItems.length > 0 || isLoadingFilePaths)) ||
+          (showFeatureDropdown && filteredItems.length > 0) ||
           (!showMentionDropdown && filteredItems.length > 0)) &&
         createPortal(
           <div
@@ -948,6 +1096,75 @@ export const PromptTextarea = forwardRef<
                   Loading files...
                 </div>
               )}
+
+            {/* Features */}
+            {featureItems.length > 0 && (
+              <div className="text-ink-3 flex items-center justify-between px-3 py-1.5 text-xs font-medium">
+                <span>Features</span>
+                <span className="font-mono text-[10px]">
+                  {featureSearchText.trim()
+                    ? `${featureItems.length} match${featureItems.length === 1 ? '' : 'es'}`
+                    : `${flatFeatures.length} total`}
+                </span>
+              </div>
+            )}
+            {featureItems.map((item, localIndex) => {
+              if (item.type !== 'feature') return null;
+              const index = getItemIndex('feature', localIndex);
+              const { feature } = item;
+              const isReferenced = referencedFeatures.some(
+                (referenced) => referenced.id === feature.id,
+              );
+              return (
+                <button
+                  key={feature.id}
+                  type="button"
+                  data-index={index}
+                  onClick={() => selectItem(item)}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                  className={clsx(
+                    'w-full px-3 py-1.5 text-left',
+                    index === selectedIndex
+                      ? 'bg-glass-medium'
+                      : 'hover:bg-glass-medium',
+                  )}
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      className="bg-acc/70 shrink-0 rounded-full"
+                      style={{
+                        width: feature.depth === 0 ? 6 : 4,
+                        height: feature.depth === 0 ? 6 : 4,
+                        marginLeft: featureSearchText.trim()
+                          ? 0
+                          : Math.min(feature.depth, 4) * 12,
+                      }}
+                    />
+                    <span className="text-ink-1 truncate text-xs font-medium">
+                      #{feature.name}
+                    </span>
+                    {isReferenced && (
+                      <span className="bg-acc-soft text-acc shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px]">
+                        in prompt
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-ink-3 mt-0.5 flex min-w-0 items-center gap-2 pl-4 text-[11px]">
+                    <span className="truncate">{feature.path.join(' › ')}</span>
+                    {feature.key_files.length > 0 && (
+                      <span className="shrink-0 font-mono">
+                        {feature.key_files.length} files
+                      </span>
+                    )}
+                  </div>
+                  {feature.summary && (
+                    <div className="text-ink-2 mt-0.5 line-clamp-1 pl-4 text-[11px]">
+                      {feature.summary}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
 
             {/* Commands section */}
             {commandItems.map((item, localIndex) => {

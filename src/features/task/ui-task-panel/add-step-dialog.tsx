@@ -29,13 +29,14 @@ import {
   type PromptTextareaRef,
 } from '@/features/common/ui-prompt-textarea';
 import { useBackendModels } from '@/hooks/use-backend-models';
-import { useProject } from '@/hooks/use-projects';
+import { useProject, useProjectFeatureMap } from '@/hooks/use-projects';
 import {
   useBackendsSetting,
   usePromptSnippetsSetting,
 } from '@/hooks/use-settings';
 import { useSkills } from '@/hooks/use-skills';
 import { useTask } from '@/hooks/use-tasks';
+import { expandFeatureReferencesInPrompt } from '@/lib/prompt-feature-context';
 import {
   resolvePromptSnippet,
   type SnippetVariableContext,
@@ -208,6 +209,7 @@ export function AddStepDialog({
   const { data: promptSnippets = [] } = usePromptSnippetsSetting();
   const { data: stepTask } = useTask(taskId);
   const { data: stepProject } = useProject(projectId ?? '');
+  const { data: featureMap = null } = useProjectFeatureMap(projectId ?? null);
   const { data: dynamicModels } = useBackendModels(backend);
   const thinkingCapabilities = getModelThinkingCapabilities(
     model,
@@ -271,7 +273,10 @@ export function AddStepDialog({
   const handleSubmit = useCallback(() => {
     if (!canSubmit) return;
     onConfirm({
-      promptTemplate: promptTemplate.trim(),
+      promptTemplate: expandFeatureReferencesInPrompt({
+        text: promptTemplate.trim(),
+        featureMap,
+      }),
       presetType,
       interactionMode: normalizeInteractionModeForBackend({
         backend,
@@ -303,6 +308,7 @@ export function AddStepDialog({
     images,
     autoStart,
     reviewers,
+    featureMap,
   ]);
 
   const handleEnterKey = useCallback(
@@ -396,6 +402,7 @@ export function AddStepDialog({
             enableFilePathAutocomplete={!!projectRoot}
             projectRoot={projectRoot}
             projectId={projectId}
+            featureMap={featureMap}
             images={images}
             onImageAttach={handleImageAttach}
             onImageRemove={handleImageRemove}

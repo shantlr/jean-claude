@@ -4,6 +4,12 @@ import * as monaco from 'monaco-editor/esm/vs/editor/edcore.main.js';
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import {
+  flattenProjectFeatures,
+  getFeatureReferenceText,
+} from '@/lib/prompt-feature-context';
+import type { ProjectFeatureMap } from '@shared/types';
+
 const monacoGlobal = globalThis as typeof globalThis & {
   MonacoEnvironment?: {
     getWorker: () => Worker;
@@ -96,6 +102,7 @@ export function HandlebarsEditor({
   className,
   minHeight = '120px',
   maxHeight = '300px',
+  featureMap = null,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -103,11 +110,17 @@ export function HandlebarsEditor({
   className?: string;
   minHeight?: string;
   maxHeight?: string;
+  featureMap?: ProjectFeatureMap | null;
 }) {
   const disposablesRef = useRef<IDisposable[]>([]);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const featureMapRef = useRef<ProjectFeatureMap | null>(featureMap);
   const isInternalChange = useRef(false);
   const [isEmpty, setIsEmpty] = useState(!value);
+
+  useEffect(() => {
+    featureMapRef.current = featureMap;
+  }, [featureMap]);
 
   // Sync external value changes into the editor (controlled behavior)
   useEffect(() => {
@@ -140,6 +153,19 @@ export function HandlebarsEditor({
         const lastOpen = textUntilPosition.lastIndexOf('{{');
         const lastClose = textUntilPosition.lastIndexOf('}}');
         return lastOpen !== -1 && lastOpen > lastClose;
+      };
+
+      const getActiveFeatureReference = (textUntilPosition: string) => {
+        const start = textUntilPosition.lastIndexOf('#');
+        if (start < 0) return null;
+
+        const before = start > 0 ? textUntilPosition[start - 1] : undefined;
+        if (before && !/\s|[([{'"`]/.test(before)) return null;
+
+        const query = textUntilPosition.slice(start + 1);
+        if (/[#\n]/.test(query)) return null;
+
+        return { start, query };
       };
 
       const keyDownDisposable = monacoEditor.onKeyDown((event) => {
@@ -180,6 +206,45 @@ export function HandlebarsEditor({
             // Check if inside {{ }}
             const lastOpen = textUntilPosition.lastIndexOf('{{');
             const lastClose = textUntilPosition.lastIndexOf('}}');
+            const activeFeatureReference =
+              lastOpen <= lastClose
+                ? getActiveFeatureReference(textUntilPosition)
+                : null;
+
+            if (activeFeatureReference) {
+              const features = flattenProjectFeatures(
+                featureMapRef.current?.features,
+              );
+              return {
+                suggestions: features.map((feature) => {
+                  const referenceText = getFeatureReferenceText(
+                    feature,
+                    features,
+                  );
+                  return {
+                    label: `#${feature.name}`,
+                    kind: monaco.languages.CompletionItemKind.Reference,
+                    detail: feature.path.join(' › '),
+                    documentation: feature.summary,
+                    insertText: `#${referenceText}`,
+                    filterText: [
+                      feature.name,
+                      referenceText,
+                      feature.path.join(' '),
+                      feature.summary,
+                      feature.key_files.join(' '),
+                    ].join(' '),
+                    range: {
+                      startLineNumber: position.lineNumber,
+                      endLineNumber: position.lineNumber,
+                      startColumn: activeFeatureReference.start + 1,
+                      endColumn: position.column,
+                    },
+                  };
+                }),
+              };
+            }
+
             if (lastOpen <= lastClose && lastOpen !== -1) {
               return { suggestions: [] };
             }
