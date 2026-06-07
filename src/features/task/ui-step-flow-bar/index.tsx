@@ -240,8 +240,7 @@ function buildStepGraphLayout(steps: TaskStep[]) {
       GRAPH_PADDING * 2 +
       laneCount * NODE_HEIGHT +
       Math.max(0, laneCount - 1) * ROW_GAP,
-    addButtonY:
-      (latestCreatedPosition?.y ?? GRAPH_PADDING) + NODE_HEIGHT / 2 - 8,
+    addButtonY: latestCreatedPosition?.y ?? GRAPH_PADDING,
     hasCycle,
   };
 }
@@ -517,10 +516,11 @@ export function StepFlowBar({
 
           {onAddStepAtEnd && (
             <div
-              className="absolute"
+              className="absolute flex items-center"
               style={{
                 left: layout.width,
                 top: layout.addButtonY,
+                height: NODE_HEIGHT,
               }}
             >
               <Button
