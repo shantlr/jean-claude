@@ -9,5 +9,11 @@ export const Route = createFileRoute('/projects/$projectId/prs/$prId')({
 function PrPage() {
   const { projectId, prId } = Route.useParams();
 
-  return <PrDetail projectId={projectId} prId={Number(prId)} />;
+  return (
+    <PrDetail
+      key={`${projectId}:${prId}`}
+      projectId={projectId}
+      prId={Number(prId)}
+    />
+  );
 }

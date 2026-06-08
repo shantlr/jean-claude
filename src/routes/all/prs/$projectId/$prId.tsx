@@ -18,6 +18,10 @@ function AllPrPage() {
   const debouncedPrId = useDebouncedValue(prId, FEED_NAVIGATION_DEBOUNCE_MS);
 
   return (
-    <PrDetail projectId={debouncedProjectId} prId={Number(debouncedPrId)} />
+    <PrDetail
+      key={`${debouncedProjectId}:${debouncedPrId}`}
+      projectId={debouncedProjectId}
+      prId={Number(debouncedPrId)}
+    />
   );
 }
