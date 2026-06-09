@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { ChevronDown, ChevronRight, MessageSquarePlus } from 'lucide-react';
-import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import type { ThemedToken } from 'shiki';
 
@@ -17,7 +17,12 @@ import {
   renderWithHighlights,
 } from './utils-search-highlight';
 
-import type { CodeFoldingState, InlineComment, LineRange } from './index';
+import type {
+  CodeFoldingState,
+  CommentFormEntry,
+  InlineComment,
+  LineRange,
+} from './index';
 
 export function SideBySideDiffTable({
   oldString,
@@ -27,8 +32,7 @@ export function SideBySideDiffTable({
   onAddCommentClick,
   inlineComments,
   commentedLines,
-  commentFormLineRange,
-  commentForm,
+  commentForms,
   searchMatches,
   currentMatchIndex,
   folding,
@@ -40,8 +44,7 @@ export function SideBySideDiffTable({
   onAddCommentClick?: (lineRange: LineRange) => void;
   inlineComments?: InlineComment[];
   commentedLines?: Set<number>;
-  commentFormLineRange?: LineRange | null;
-  commentForm?: ReactNode;
+  commentForms?: CommentFormEntry[];
   searchMatches: SearchMatch[];
   currentMatchIndex: number;
   folding: CodeFoldingState;
@@ -164,13 +167,13 @@ export function SideBySideDiffTable({
 
   const isLineInCommentRange = useCallback(
     (lineNumber: number) => {
-      if (!commentFormLineRange) return false;
-      return (
-        lineNumber >= commentFormLineRange.start &&
-        lineNumber <= commentFormLineRange.end
+      if (!commentForms || commentForms.length === 0) return false;
+      return commentForms.some(
+        (cf) =>
+          lineNumber >= cf.lineRange.start && lineNumber <= cf.lineRange.end,
       );
     },
-    [commentFormLineRange],
+    [commentForms],
   );
 
   // Track which lines we've already rendered extras for
@@ -222,10 +225,10 @@ export function SideBySideDiffTable({
               ? inlineComments?.filter((c) => c.line === newLineNumber)
               : undefined;
 
-          const showCommentForm =
-            shouldRenderExtras &&
-            commentFormLineRange &&
-            newLineNumber === commentFormLineRange.end;
+          const formsForLine =
+            shouldRenderExtras && newLineNumber && commentForms
+              ? commentForms.filter((cf) => cf.lineRange.end === newLineNumber)
+              : undefined;
 
           const isSelected = newLineNumber
             ? isLineInSelection(newLineNumber)
@@ -277,7 +280,7 @@ export function SideBySideDiffTable({
                 newLineNumber !== undefined && handleLineMouseUp(newLineNumber)
               }
               inlineComments={lineComments}
-              commentForm={showCommentForm ? commentForm : undefined}
+              commentForms={formsForLine}
               newLineNumber={newLineNumber}
               isFoldable={isFoldable}
               isFoldCollapsed={isFoldCollapsed}
@@ -314,7 +317,7 @@ function SideBySideRowComponent({
   onMouseDown,
   onMouseUp,
   inlineComments,
-  commentForm,
+  commentForms,
   newLineNumber,
   isFoldable,
   isFoldCollapsed,
@@ -339,7 +342,7 @@ function SideBySideRowComponent({
   onMouseDown: () => void;
   onMouseUp: () => void;
   inlineComments?: InlineComment[];
-  commentForm?: ReactNode;
+  commentForms?: CommentFormEntry[];
   newLineNumber?: number;
   isFoldable?: boolean;
   isFoldCollapsed?: boolean;
@@ -450,14 +453,16 @@ function SideBySideRowComponent({
         </tr>
       )}
 
-      {/* Comment form for this line */}
-      {commentForm && (
-        <tr>
-          <td colSpan={6} className="p-0">
-            {commentForm}
-          </td>
-        </tr>
-      )}
+      {/* Comment forms for this line */}
+      {commentForms &&
+        commentForms.length > 0 &&
+        commentForms.map((cf) => (
+          <tr key={`form-${cf.lineRange.start}-${cf.lineRange.end}`}>
+            <td colSpan={6} className="p-0">
+              {cf.form}
+            </td>
+          </tr>
+        ))}
     </>
   );
 }

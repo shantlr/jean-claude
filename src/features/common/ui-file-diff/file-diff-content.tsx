@@ -8,6 +8,7 @@ import {
 } from '@/features/agent/ui-diff-annotation';
 import {
   DiffView,
+  type CommentFormEntry,
   type InlineComment,
   type LineRange,
 } from '@/features/agent/ui-diff-view';
@@ -62,6 +63,8 @@ export function FileDiffContent({
   onEditReviewComment,
   showReviewStatus,
   onResolveReviewComment,
+  defaultCommentFormLineRanges,
+  onCommentFormClose,
 }: {
   file: DiffFile;
   oldContent: string;
@@ -90,6 +93,10 @@ export function FileDiffContent({
     isSubmitting?: boolean;
     placeholder?: string;
   }>;
+  /** Initial line ranges for comment forms (for draft restoration). */
+  defaultCommentFormLineRanges?: LineRange[];
+  /** Called when a comment form is closed (for draft cleanup). */
+  onCommentFormClose?: (range: LineRange) => void;
   // Annotation props - optional
   annotations?: FileAnnotation[];
   // Review comment props - optional
@@ -112,47 +119,49 @@ export function FileDiffContent({
   showReviewStatus?: boolean;
   onResolveReviewComment?: (commentId: string) => void;
 }) {
-  const [commentFormLineRange, setCommentFormLineRange] =
-    useState<LineRange | null>(null);
+  const [commentFormLineRanges, setCommentFormLineRanges] = useState<
+    LineRange[]
+  >(defaultCommentFormLineRanges ?? []);
   const [svgPreviewWidth, setSvgPreviewWidth] = useState(SVG_PREVIEW_WIDTH);
 
-  const handleAddComment = useCallback(
-    (content: string) => {
-      if (commentFormLineRange !== null && onAddComment) {
-        onAddComment({
-          filePath: file.path,
-          line: commentFormLineRange.start,
-          lineEnd:
-            commentFormLineRange.end !== commentFormLineRange.start
-              ? commentFormLineRange.end
-              : undefined,
-          content,
-        });
-        setCommentFormLineRange(null);
-      }
+  const removeRange = useCallback(
+    (range: LineRange) => {
+      setCommentFormLineRanges((prev) =>
+        prev.filter((r) => r.start !== range.start || r.end !== range.end),
+      );
+      onCommentFormClose?.(range);
     },
-    [file.path, commentFormLineRange, onAddComment],
+    [onCommentFormClose],
+  );
+
+  const handleAddCommentForRange = useCallback(
+    (range: LineRange, content: string) => {
+      if (!onAddComment) return;
+      onAddComment({
+        filePath: file.path,
+        line: range.start,
+        lineEnd: range.end !== range.start ? range.end : undefined,
+        content,
+      });
+      removeRange(range);
+    },
+    [file.path, onAddComment, removeRange],
   );
 
   const handleAddCommentClick = useCallback(
     (lineRange: LineRange) => {
-      // Toggle: close comment form if clicking the same line range
-      if (
-        commentFormLineRange !== null &&
-        commentFormLineRange.start === lineRange.start &&
-        commentFormLineRange.end === lineRange.end
-      ) {
-        setCommentFormLineRange(null);
+      // Toggle: close if clicking same range
+      const existing = commentFormLineRanges.find(
+        (r) => r.start === lineRange.start && r.end === lineRange.end,
+      );
+      if (existing) {
+        removeRange(lineRange);
       } else {
-        setCommentFormLineRange(lineRange);
+        setCommentFormLineRanges((prev) => [...prev, lineRange]);
       }
     },
-    [commentFormLineRange],
+    [commentFormLineRanges, removeRange],
   );
-
-  const handleCancelComment = useCallback(() => {
-    setCommentFormLineRange(null);
-  }, []);
 
   // Filter threads for this file (only those with line numbers)
   const fileThreads = useMemo(
@@ -257,85 +266,87 @@ export function FileDiffContent({
     return set;
   }, [threadComments, annotationComments, reviewComments]);
 
-  // Handle review comment submission
-  const handleAddReviewComment = useCallback(
-    (body: string, presets: ReviewPresetId[], images: PromptImagePart[]) => {
-      if (commentFormLineRange !== null && onAddReviewComment) {
-        onAddReviewComment({
-          filePath: file.path,
-          lineStart: commentFormLineRange.start,
-          lineEnd:
-            commentFormLineRange.end !== commentFormLineRange.start
-              ? commentFormLineRange.end
-              : undefined,
-          selectedText: getSelectedTextForRange(
-            file.status === 'deleted' ? oldContent : newContent,
-            commentFormLineRange.start,
-            commentFormLineRange.end !== commentFormLineRange.start
-              ? commentFormLineRange.end
-              : undefined,
-          ),
-          body,
-          presets,
-          images: images.length > 0 ? images : undefined,
-        });
-        setCommentFormLineRange(null);
-      }
+  // Handle review comment submission for a specific range
+  const handleAddReviewCommentForRange = useCallback(
+    (
+      range: LineRange,
+      body: string,
+      presets: ReviewPresetId[],
+      images: PromptImagePart[],
+    ) => {
+      if (!onAddReviewComment) return;
+      onAddReviewComment({
+        filePath: file.path,
+        lineStart: range.start,
+        lineEnd: range.end !== range.start ? range.end : undefined,
+        selectedText: getSelectedTextForRange(
+          file.status === 'deleted' ? oldContent : newContent,
+          range.start,
+          range.end !== range.start ? range.end : undefined,
+        ),
+        body,
+        presets,
+        images: images.length > 0 ? images : undefined,
+      });
+      removeRange(range);
     },
     [
       file.path,
       file.status,
-      commentFormLineRange,
       oldContent,
       newContent,
       onAddReviewComment,
+      removeRange,
     ],
   );
 
-  // Render comment form inline
-  const commentFormElement = useMemo(() => {
-    if (commentFormLineRange === null) return undefined;
+  // Build comment form entries for all open ranges
+  const commentFormEntries: CommentFormEntry[] = useMemo(() => {
+    if (commentFormLineRanges.length === 0) return [];
 
-    // Review composer takes priority
-    if (hasReviewSupport) {
-      return (
-        <ReviewCommentComposer
-          lineStart={commentFormLineRange.start}
-          lineEnd={
-            commentFormLineRange.end !== commentFormLineRange.start
-              ? commentFormLineRange.end
-              : undefined
-          }
-          onSubmit={handleAddReviewComment}
-          onCancel={handleCancelComment}
-        />
-      );
+    const entries: CommentFormEntry[] = [];
+    for (const range of commentFormLineRanges) {
+      const lineEnd = range.end !== range.start ? range.end : undefined;
+
+      if (hasReviewSupport) {
+        entries.push({
+          lineRange: range,
+          form: (
+            <ReviewCommentComposer
+              lineStart={range.start}
+              lineEnd={lineEnd}
+              onSubmit={(body, presets, images) =>
+                handleAddReviewCommentForRange(range, body, presets, images)
+              }
+              onCancel={() => removeRange(range)}
+            />
+          ),
+        });
+      } else if (hasCommentSupport && CommentForm) {
+        entries.push({
+          lineRange: range,
+          form: (
+            <CommentForm
+              onSubmit={(content) => handleAddCommentForRange(range, content)}
+              onCancel={() => removeRange(range)}
+              lineStart={range.start}
+              lineEnd={lineEnd}
+              isSubmitting={isAddingComment}
+              placeholder="Write a comment..."
+            />
+          ),
+        });
+      }
     }
-
-    if (!hasCommentSupport || !CommentForm) return undefined;
-
-    return (
-      <CommentForm
-        onSubmit={handleAddComment}
-        onCancel={handleCancelComment}
-        lineStart={commentFormLineRange.start}
-        lineEnd={
-          commentFormLineRange.end !== commentFormLineRange.start
-            ? commentFormLineRange.end
-            : undefined
-        }
-        isSubmitting={isAddingComment}
-        placeholder="Write a comment..."
-      />
-    );
+    return entries;
   }, [
-    commentFormLineRange,
+    commentFormLineRanges,
     hasReviewSupport,
     hasCommentSupport,
     CommentForm,
-    handleAddComment,
-    handleAddReviewComment,
-    handleCancelComment,
+    handleAddCommentForRange,
+    handleAddReviewCommentForRange,
+    removeRange,
     isAddingComment,
   ]);
 
@@ -460,8 +471,7 @@ export function FileDiffContent({
               }
               inlineComments={inlineComments}
               commentedLines={commentedLines}
-              commentFormLineRange={commentFormLineRange}
-              commentForm={commentFormElement}
+              commentForms={commentFormEntries}
               scrollToLine={scrollToLine}
             />
           </div>
@@ -522,8 +532,7 @@ export function FileDiffContent({
           }
           inlineComments={inlineComments}
           commentedLines={commentedLines}
-          commentFormLineRange={commentFormLineRange}
-          commentForm={commentFormElement}
+          commentForms={commentFormEntries}
           scrollToLine={scrollToLine}
         />
       </div>

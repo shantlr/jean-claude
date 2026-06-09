@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import type { MentionOption } from '@/common/ui/mention-textarea';
+import type { LineRange } from '@/features/agent/ui-diff-view';
 import {
   FileDiffContent,
   normalizeAzureChangeType,
@@ -11,6 +12,7 @@ import type {
   AzureDevOpsCommentThread,
 } from '@/lib/api';
 import type { MentionDisplayNames } from '@/lib/azure-devops-mentions';
+import { usePrFileDraftActions } from '@/stores/pr-comment-drafts';
 import type { PromptImagePart } from '@shared/agent-backend-types';
 
 import { PrCommentForm } from '../ui-pr-comment-form';
@@ -55,6 +57,11 @@ export function PrDiffView({
   mentionOptions?: MentionOption[];
   onSearchMentions?: (query: string) => Promise<MentionOption[]>;
 }) {
+  const { setDraft, clearDraft, getBody, getAllDrafts } = usePrFileDraftActions(
+    prId,
+    file.path,
+  );
+
   // Convert to unified DiffFile type
   const diffFile: DiffFile = useMemo(
     () => ({
@@ -71,14 +78,61 @@ export function PrDiffView({
     [threads, file.path],
   );
 
+  // Restore all draft ranges as open forms on mount.
+  // Read imperatively — does NOT subscribe, so no re-render on body edits.
+  // getAllDrafts is stable per file.path (keyed by fKey), so this only recomputes on file switch.
+  const defaultCommentFormLineRanges: LineRange[] = useMemo(() => {
+    const drafts = getAllDrafts();
+    return Object.values(drafts).map((d) => ({
+      start: d.lineStart,
+      end: d.lineEnd ?? d.lineStart,
+    }));
+  }, [getAllDrafts]);
+
+  const handleCommentFormClose = useCallback(
+    (range: LineRange) => {
+      const lineEnd = range.end !== range.start ? range.end : undefined;
+      clearDraft(range.start, lineEnd);
+    },
+    [clearDraft],
+  );
+
+  const handleBodyChange = useCallback(
+    (body: string, lineStart: number, lineEnd?: number) => {
+      if (body.trim()) {
+        setDraft({ body, lineStart, lineEnd });
+      } else {
+        clearDraft(lineStart, lineEnd);
+      }
+    },
+    [setDraft, clearDraft],
+  );
+
+  // Clear draft for submitted range
+  const handleAddFileComment = useCallback(
+    (params: {
+      filePath: string;
+      line: number;
+      lineEnd?: number;
+      content: string;
+    }) => {
+      clearDraft(params.line, params.lineEnd);
+      onAddFileComment(params);
+    },
+    [onAddFileComment, clearDraft],
+  );
+
   return (
     <FileDiffContent
+      key={file.path}
       file={diffFile}
       oldContent={baseContent}
       newContent={headContent}
       isLoading={isLoadingContent}
       headerClassName="h-[40px] shrink-0"
       threads={fileThreads}
+      defaultCommentFormLineRanges={defaultCommentFormLineRanges}
+      onCommentFormClose={handleCommentFormClose}
       renderThread={(thread) => (
         <PrInlineCommentThread
           thread={thread}
@@ -91,16 +145,23 @@ export function PrDiffView({
           onUploadImage={onUploadImage}
         />
       )}
-      onAddComment={onAddFileComment}
+      onAddComment={handleAddFileComment}
       isAddingComment={isAddingComment}
-      CommentForm={(props) => (
-        <PrCommentForm
-          {...props}
-          uploadImage={onUploadImage}
-          mentionOptions={mentionOptions}
-          onSearchMentions={onSearchMentions}
-        />
-      )}
+      CommentForm={(props) => {
+        const lineEnd = props.lineEnd !== undefined ? props.lineEnd : undefined;
+        return (
+          <PrCommentForm
+            {...props}
+            uploadImage={onUploadImage}
+            mentionOptions={mentionOptions}
+            onSearchMentions={onSearchMentions}
+            initialBody={getBody(props.lineStart, lineEnd)}
+            onBodyChange={(body) =>
+              handleBodyChange(body, props.lineStart, lineEnd)
+            }
+          />
+        );
+      }}
     />
   );
 }

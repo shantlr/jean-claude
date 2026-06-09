@@ -87,6 +87,7 @@ export function InlineCommentComposer({
   showCancel = true,
   mentionOptions = EMPTY_MENTION_OPTIONS,
   onSearchMentions,
+  onBodyChange,
 }: {
   lineStart: number;
   lineEnd?: number;
@@ -119,8 +120,21 @@ export function InlineCommentComposer({
   /** People available for @ mention insertion. */
   mentionOptions?: MentionOption[];
   onSearchMentions?: (query: string) => Promise<MentionOption[]>;
+  /** Called when the draft body text changes (for external persistence). */
+  onBodyChange?: (body: string) => void;
 }) {
-  const [body, setBody] = useState(initialBody);
+  const [body, setBodyRaw] = useState(initialBody);
+
+  const setBody = useCallback(
+    (value: string | ((prev: string) => string)) => {
+      setBodyRaw((prev) => {
+        const next = typeof value === 'function' ? value(prev) : value;
+        onBodyChange?.(next);
+        return next;
+      });
+    },
+    [onBodyChange],
+  );
   const [images, setImages] = useState<InlineComposerImage[]>(initialImages);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -135,24 +149,27 @@ export function InlineCommentComposer({
 
   const lineLabel = formatLineRangeLabel(lineStart, lineEnd);
 
-  const insertTextAtCursor = useCallback((text: string) => {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      setBody((current) => `${current}${current ? '\n\n' : ''}${text}`);
-      return;
-    }
+  const insertTextAtCursor = useCallback(
+    (text: string) => {
+      const textarea = textareaRef.current;
+      if (!textarea) {
+        setBody((current) => `${current}${current ? '\n\n' : ''}${text}`);
+        return;
+      }
 
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    setBody(
-      (current) => `${current.slice(0, start)}${text}${current.slice(end)}`,
-    );
-    requestAnimationFrame(() => {
-      textarea.focus();
-      const cursor = start + text.length;
-      textarea.setSelectionRange(cursor, cursor);
-    });
-  }, []);
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      setBody(
+        (current) => `${current.slice(0, start)}${text}${current.slice(end)}`,
+      );
+      requestAnimationFrame(() => {
+        textarea.focus();
+        const cursor = start + text.length;
+        textarea.setSelectionRange(cursor, cursor);
+      });
+    },
+    [setBody],
+  );
 
   const handleImageAttach = useCallback(
     (image: PromptImagePart) => {
@@ -180,18 +197,21 @@ export function InlineCommentComposer({
     [allowImages, insertImagesInBody, insertTextAtCursor],
   );
 
-  const handleImageRemove = useCallback((index: number) => {
-    const image = imagesRef.current[index];
-    if (image?.placeholderMarkdown) {
-      setBody((current) =>
-        current.replace(image.placeholderMarkdown ?? '', ''),
-      );
-    }
+  const handleImageRemove = useCallback(
+    (index: number) => {
+      const image = imagesRef.current[index];
+      if (image?.placeholderMarkdown) {
+        setBody((current) =>
+          current.replace(image.placeholderMarkdown ?? '', ''),
+        );
+      }
 
-    const nextImages = imagesRef.current.filter((_, i) => i !== index);
-    imagesRef.current = nextImages;
-    setImages(nextImages);
-  }, []);
+      const nextImages = imagesRef.current.filter((_, i) => i !== index);
+      imagesRef.current = nextImages;
+      setImages(nextImages);
+    },
+    [setBody],
+  );
 
   const handleSubmit = useCallback(() => {
     if (isSubmitting) return;

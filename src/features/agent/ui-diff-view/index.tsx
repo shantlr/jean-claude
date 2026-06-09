@@ -44,6 +44,11 @@ export interface LineRange {
   end: number;
 }
 
+export interface CommentFormEntry {
+  lineRange: LineRange;
+  form: ReactNode;
+}
+
 export function DiffView({
   filePath,
   oldString,
@@ -52,8 +57,7 @@ export function DiffView({
   onAddCommentClick,
   inlineComments,
   commentedLines,
-  commentFormLineRange,
-  commentForm,
+  commentForms,
   scrollToLine,
 }: {
   filePath: string;
@@ -67,10 +71,8 @@ export function DiffView({
   inlineComments?: InlineComment[];
   /** Set of line numbers that have comments (for line highlighting) */
   commentedLines?: Set<number>;
-  /** Line range where comment form should be shown (shows after end line) */
-  commentFormLineRange?: LineRange | null;
-  /** Comment form to render inline */
-  commentForm?: ReactNode;
+  /** Comment forms to render inline at specific line ranges */
+  commentForms?: CommentFormEntry[];
   /** New-file line to scroll into view after render */
   scrollToLine?: number;
 }) {
@@ -281,8 +283,7 @@ export function DiffView({
             onAddCommentClick={onAddCommentClick}
             inlineComments={inlineComments}
             commentedLines={commentedLines}
-            commentFormLineRange={commentFormLineRange}
-            commentForm={commentForm}
+            commentForms={commentForms}
             searchMatches={matches}
             currentMatchIndex={currentMatchIndex}
             folding={folding}
@@ -296,8 +297,7 @@ export function DiffView({
             onAddCommentClick={onAddCommentClick}
             inlineComments={inlineComments}
             commentedLines={commentedLines}
-            commentFormLineRange={commentFormLineRange}
-            commentForm={commentForm}
+            commentForms={commentForms}
             searchMatches={matches}
             currentMatchIndex={currentMatchIndex}
             folding={folding}
@@ -311,8 +311,7 @@ export function DiffView({
             onAddCommentClick={onAddCommentClick}
             inlineComments={inlineComments}
             commentedLines={commentedLines}
-            commentFormLineRange={commentFormLineRange}
-            commentForm={commentForm}
+            commentForms={commentForms}
             searchMatches={matches}
             currentMatchIndex={currentMatchIndex}
             folding={folding}
@@ -377,8 +376,7 @@ function InlineDiffTable({
   onAddCommentClick,
   inlineComments,
   commentedLines,
-  commentFormLineRange,
-  commentForm,
+  commentForms,
   searchMatches,
   currentMatchIndex,
   folding,
@@ -389,8 +387,7 @@ function InlineDiffTable({
   onAddCommentClick?: (lineRange: LineRange) => void;
   inlineComments?: InlineComment[];
   commentedLines?: Set<number>;
-  commentFormLineRange?: LineRange | null;
-  commentForm?: ReactNode;
+  commentForms?: CommentFormEntry[];
   searchMatches: SearchMatch[];
   currentMatchIndex: number;
   folding: CodeFoldingState;
@@ -434,16 +431,16 @@ function InlineDiffTable({
     [selectionStart, hoveredLine],
   );
 
-  // Check if a line is in the comment form range
+  // Check if a line is in any comment form range
   const isLineInCommentRange = useCallback(
     (lineNumber: number) => {
-      if (!commentFormLineRange) return false;
-      return (
-        lineNumber >= commentFormLineRange.start &&
-        lineNumber <= commentFormLineRange.end
+      if (!commentForms || commentForms.length === 0) return false;
+      return commentForms.some(
+        (cf) =>
+          lineNumber >= cf.lineRange.start && lineNumber <= cf.lineRange.end,
       );
     },
-    [commentFormLineRange],
+    [commentForms],
   );
 
   // Track which lines we've already rendered (to avoid duplicates for same newLineNumber)
@@ -492,10 +489,10 @@ function InlineDiffTable({
               ? inlineComments?.filter((c) => c.line === lineNumber)
               : undefined;
 
-          const showCommentForm =
-            shouldRenderExtras &&
-            commentFormLineRange &&
-            lineNumber === commentFormLineRange.end;
+          const formsForLine =
+            shouldRenderExtras && lineNumber && commentForms
+              ? commentForms.filter((cf) => cf.lineRange.end === lineNumber)
+              : undefined;
 
           const isSelected = lineNumber ? isLineInSelection(lineNumber) : false;
           const isInCommentRange = lineNumber
@@ -537,7 +534,7 @@ function InlineDiffTable({
               onMouseDown={() => lineNumber && handleLineMouseDown(lineNumber)}
               onMouseUp={() => lineNumber && handleLineMouseUp(lineNumber)}
               inlineComments={lineComments}
-              commentForm={showCommentForm ? commentForm : undefined}
+              commentForms={formsForLine}
               searchMatches={lineMatches}
               currentMatch={currentMatchInLine}
               isFoldable={isFoldable}
@@ -568,7 +565,7 @@ function DiffLineRow({
   onMouseDown,
   onMouseUp,
   inlineComments,
-  commentForm,
+  commentForms,
   searchMatches,
   currentMatch,
   isFoldable,
@@ -589,7 +586,7 @@ function DiffLineRow({
   onMouseDown: () => void;
   onMouseUp: () => void;
   inlineComments?: InlineComment[];
-  commentForm?: ReactNode;
+  commentForms?: CommentFormEntry[];
   searchMatches: SearchMatch[];
   currentMatch: SearchMatch | null;
   isFoldable?: boolean;
@@ -758,14 +755,16 @@ function DiffLineRow({
         </tr>
       )}
 
-      {/* Comment form for this line */}
-      {commentForm && (
-        <tr>
-          <td colSpan={5} className="p-0">
-            {commentForm}
-          </td>
-        </tr>
-      )}
+      {/* Comment forms for this line */}
+      {commentForms &&
+        commentForms.length > 0 &&
+        commentForms.map((cf) => (
+          <tr key={`form-${cf.lineRange.start}-${cf.lineRange.end}`}>
+            <td colSpan={5} className="p-0">
+              {cf.form}
+            </td>
+          </tr>
+        ))}
     </>
   );
 }

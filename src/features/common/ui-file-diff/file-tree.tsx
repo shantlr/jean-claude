@@ -4,6 +4,7 @@ import {
   File,
   Folder,
   MessageCircle,
+  PenLine,
 } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 
@@ -25,6 +26,7 @@ export function DiffFileTree({
   onSelectFile,
   filesWithAnnotations,
   commentCountByFile,
+  draftCountByFile,
   collapsedFolders: externalCollapsedFolders,
   onToggleFolder: externalOnToggleFolder,
 }: {
@@ -35,6 +37,8 @@ export function DiffFileTree({
   filesWithAnnotations?: Set<string>;
   /** Number of comments to show per file path */
   commentCountByFile?: Record<string, number>;
+  /** Number of unsent draft comments per file path */
+  draftCountByFile?: Record<string, number>;
   /** Externally-managed set of collapsed folder paths (for persistence). When provided, takes precedence over local state. */
   collapsedFolders?: Set<string>;
   /** Callback when a folder is toggled. Required when collapsedFolders is provided. */
@@ -105,6 +109,11 @@ export function DiffFileTree({
     [commentCountByFile],
   );
 
+  const getDraftCount = useCallback(
+    (path: string) => draftCountByFile?.[path] ?? 0,
+    [draftCountByFile],
+  );
+
   return (
     <div className="flex flex-col overflow-auto py-2">
       {tree.map((node) => (
@@ -118,6 +127,7 @@ export function DiffFileTree({
           onToggleFolder={toggleFolder}
           hasAnnotation={hasAnnotation}
           getCommentCount={getCommentCount}
+          getDraftCount={getDraftCount}
         />
       ))}
     </div>
@@ -133,6 +143,7 @@ function TreeNodeRow({
   onToggleFolder,
   hasAnnotation,
   getCommentCount,
+  getDraftCount,
 }: {
   node: TreeNode;
   depth: number;
@@ -142,6 +153,7 @@ function TreeNodeRow({
   onToggleFolder: (path: string) => void;
   hasAnnotation: (path: string) => boolean;
   getCommentCount: (path: string) => number;
+  getDraftCount: (path: string) => number;
 }) {
   const isExpanded = expandedFolders.has(node.path);
   const isSelected = node.path === selectedPath;
@@ -176,6 +188,7 @@ function TreeNodeRow({
               onToggleFolder={onToggleFolder}
               hasAnnotation={hasAnnotation}
               getCommentCount={getCommentCount}
+              getDraftCount={getDraftCount}
             />
           ))}
       </>
@@ -186,6 +199,7 @@ function TreeNodeRow({
   const statusIndicator = getStatusIndicatorOrEmpty(node.status);
   const fileHasAnnotation = hasAnnotation(node.path);
   const commentCount = getCommentCount(node.path);
+  const draftCount = getDraftCount(node.path);
 
   return (
     <button
@@ -219,6 +233,15 @@ function TreeNodeRow({
         >
           <MessageCircle className="h-2.5 w-2.5" />
           {commentCount}
+        </span>
+      )}
+      {draftCount > 0 && (
+        <span
+          className="ml-1 inline-flex shrink-0 items-center gap-1 rounded-full bg-yellow-900/40 px-1.5 font-mono text-[9.5px] text-yellow-300"
+          aria-label={`${draftCount} draft comment${draftCount !== 1 ? 's' : ''}`}
+        >
+          <PenLine className="h-2.5 w-2.5" />
+          {draftCount}
         </span>
       )}
       <span className={`ml-auto shrink-0 text-xs ${statusIndicator.color}`}>

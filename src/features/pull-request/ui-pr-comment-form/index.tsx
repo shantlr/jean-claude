@@ -89,6 +89,8 @@ export function PrCommentForm({
   uploadImage,
   mentionOptions = EMPTY_MENTION_OPTIONS,
   onSearchMentions,
+  initialBody,
+  onBodyChange,
 }: {
   onSubmit: (content: string) => void;
   onCancel?: () => void;
@@ -99,6 +101,10 @@ export function PrCommentForm({
   uploadImage?: (image: PromptImagePart, fileName: string) => Promise<string>;
   mentionOptions?: MentionOption[];
   onSearchMentions?: (query: string) => Promise<MentionOption[]>;
+  /** Initial body text for draft persistence. */
+  initialBody?: string;
+  /** Called when body text changes for draft persistence. */
+  onBodyChange?: (body: string) => void;
 }) {
   const [content, setContent] = useState('');
   const [isUploadingImages, setIsUploadingImages] = useState(false);
@@ -215,6 +221,7 @@ export function PrCommentForm({
           key={composerKey}
           lineStart={lineStart ?? 0}
           lineEnd={lineEnd}
+          initialBody={initialBody}
           onSubmit={(body, images) => void submitWithImages(body, images)}
           onCancel={handleCancel}
           placeholder={placeholder}
@@ -225,6 +232,7 @@ export function PrCommentForm({
           showCancel={!!onCancel}
           mentionOptions={mentionOptions}
           onSearchMentions={onSearchMentions}
+          onBodyChange={onBodyChange}
         />
         {error && <p className="text-status-fail mt-2 text-xs">{error}</p>}
       </div>

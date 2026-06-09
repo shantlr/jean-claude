@@ -32,6 +32,7 @@ import {
 import { feedQueryKeys } from '@/lib/feed-query-keys';
 import { usePrDetailState } from '@/stores/navigation';
 import type { PrDetailTab } from '@/stores/navigation';
+import { usePrDraftCountByFile } from '@/stores/pr-comment-drafts';
 import type { PromptImagePart } from '@shared/agent-backend-types';
 import type { FeedItem } from '@shared/feed-types';
 
@@ -223,6 +224,9 @@ export function PrDetail({
     return getCommentCountByPrFile({ files, threads });
   }, [files, threads]);
 
+  const filePaths = useMemo(() => files.map((f) => f.path), [files]);
+  const draftCountByFile = usePrDraftCountByFile(prId, filePaths);
+
   const { mentionDisplayNames, mentionOptions } = useMemo(() => {
     const names: MentionDisplayNames = {};
     const optionsById = new Map<string, MentionOption>();
@@ -368,6 +372,7 @@ export function PrDetail({
                   selectedPath={selectedFile}
                   onSelectFile={setSelectedFile}
                   commentCountByFile={commentCountByFile}
+                  draftCountByFile={draftCountByFile}
                 />
               )}
               {/* Resize handle */}
