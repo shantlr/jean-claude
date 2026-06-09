@@ -44,6 +44,7 @@ function mergeTaskPrInfo(taskItems: FeedItem[], prItems: FeedItem[]) {
       pullRequestMergeStatus: pr.pullRequestMergeStatus,
       approvedBy: pr.approvedBy,
       activeThreadCount: pr.activeThreadCount,
+      unresolvedCommentCount: pr.unresolvedCommentCount,
       workItemPrUrl: pr.pullRequestUrl,
     };
   };

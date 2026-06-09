@@ -2901,6 +2901,7 @@ export async function getPullRequestActivityMetadata(params: {
   lastCommitDate: string | null;
   lastThreadActivityDate: string | null;
   activeThreadCount: number;
+  unresolvedCommentCount: number;
 }> {
   const [commits, threads] = await Promise.all([
     getPullRequestCommits(params),
@@ -2918,10 +2919,19 @@ export async function getPullRequestActivityMetadata(params: {
   // Find max lastUpdatedDate across all comments in all threads
   let lastThreadActivityDate: string | null = null;
   let activeThreadCount = 0;
+  let unresolvedCommentCount = 0;
 
   for (const thread of realThreads) {
-    if (thread.status === 'active') {
+    const isActiveThread =
+      thread.status === 'active' ||
+      thread.status === 'pending' ||
+      thread.status === 'unknown';
+
+    if (isActiveThread) {
       activeThreadCount++;
+      unresolvedCommentCount += thread.comments.filter(
+        (comment) => comment.commentType !== 'system',
+      ).length;
     }
     for (const comment of thread.comments) {
       if (
@@ -2933,7 +2943,12 @@ export async function getPullRequestActivityMetadata(params: {
     }
   }
 
-  return { lastCommitDate, lastThreadActivityDate, activeThreadCount };
+  return {
+    lastCommitDate,
+    lastThreadActivityDate,
+    activeThreadCount,
+    unresolvedCommentCount,
+  };
 }
 
 export async function addThreadReply(params: {

@@ -57,6 +57,7 @@ export interface FeedItem {
   // PR activity tracking (only present when source === 'pull-request')
   hasNewActivity?: boolean;
   activeThreadCount?: number;
+  unresolvedCommentCount?: number;
   approvedBy?: Array<{
     displayName: string;
     uniqueName: string;

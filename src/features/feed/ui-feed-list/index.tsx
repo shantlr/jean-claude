@@ -828,14 +828,14 @@ function PrReviewCarouselCard({
           <span className="text-ink-3 min-w-0 flex-1 truncate text-[10.5px]">
             {item.hasNewActivity
               ? 'New activity since last view'
-              : (item.activeThreadCount ?? 0) > 0
+              : (item.unresolvedCommentCount ?? 0) > 0
                 ? 'Threads need a look'
                 : 'Waiting for your review'}
           </span>
-          {(item.activeThreadCount ?? 0) > 0 && (
+          {(item.unresolvedCommentCount ?? 0) > 0 && (
             <span className="text-status-pr flex items-center gap-0.5 font-mono text-[9.5px]">
               <MessageSquare className="h-3 w-3" />
-              {item.activeThreadCount}
+              {item.unresolvedCommentCount}
             </span>
           )}
         </div>

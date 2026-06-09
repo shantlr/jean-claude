@@ -35,6 +35,7 @@ let activityCache: {
       lastCommitDate: string | null;
       lastThreadActivityDate: string | null;
       activeThreadCount: number;
+      unresolvedCommentCount: number;
     }
   >;
   fetchedAt: number;
@@ -351,6 +352,7 @@ async function enrichTaskFeedItemsWithPrStatus({
           mergeStatus: p.pullRequestMergeStatus,
           approvedBy: p.approvedBy,
           activeThreadCount: p.activeThreadCount,
+          unresolvedCommentCount: p.unresolvedCommentCount,
         },
       ]),
   );
@@ -380,6 +382,7 @@ async function enrichTaskFeedItemsWithPrStatus({
         item.pullRequestMergeStatus = activePrInfo.mergeStatus;
         item.approvedBy = activePrInfo.approvedBy;
         item.activeThreadCount = activePrInfo.activeThreadCount;
+        item.unresolvedCommentCount = activePrInfo.unresolvedCommentCount;
       } else {
         // Need to fetch status — parse project/repo from the task's project config
         const project = projectsById.get(item.projectId);
@@ -631,6 +634,7 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
         lastCommitDate: string | null;
         lastThreadActivityDate: string | null;
         activeThreadCount: number;
+        unresolvedCommentCount: number;
       }
     >();
 
@@ -721,6 +725,7 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
     }
 
     const activeThreadCount = metadata?.activeThreadCount ?? 0;
+    const unresolvedCommentCount = metadata?.unresolvedCommentCount ?? 0;
 
     // Determine attention level
     let attention = item.attention;
@@ -737,6 +742,7 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
       attention,
       hasNewActivity,
       activeThreadCount,
+      unresolvedCommentCount,
     };
   });
 
