@@ -2984,6 +2984,31 @@ export async function addThreadReply(params: {
   };
 }
 
+export async function deleteThreadComment(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+  threadId: number;
+  commentId: number;
+}): Promise<void> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}/threads/${params.threadId}/comments/${params.commentId}?api-version=7.0`;
+
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      Authorization: authHeader,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to delete thread comment: ${error}`);
+  }
+}
+
 export async function updateThreadComment(params: {
   providerId: string;
   projectId: string;

@@ -790,6 +790,14 @@ export interface Api {
       commentId: number;
       content: string;
     }) => Promise<AzureDevOpsComment>;
+    deleteThreadComment: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      threadId: number;
+      commentId: number;
+    }) => Promise<void>;
     updateThreadStatus: (params: {
       providerId: string;
       projectId: string;
@@ -1722,6 +1730,9 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         updateThreadComment: async () => {
+          throw new Error('API not available');
+        },
+        deleteThreadComment: async () => {
           throw new Error('API not available');
         },
         updateThreadStatus: async () => {

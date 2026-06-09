@@ -6,6 +6,7 @@ import {
   FileText,
   GitPullRequest,
   Pencil,
+  Trash2,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
@@ -25,6 +26,7 @@ import { InlineCommentComposer } from '@/features/common/ui-inline-comments';
 import {
   useAddThreadReply,
   useCurrentAzureUser,
+  useDeleteThreadComment,
   usePullRequestFileContent,
   useUpdateThreadComment,
   useUpdateThreadStatus,
@@ -730,10 +732,12 @@ function ThreadComment({
   );
   const { data: currentUser } = useCurrentAzureUser(projectId);
   const updateComment = useUpdateThreadComment(projectId, prId);
+  const deleteComment = useDeleteThreadComment(projectId, prId);
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(decodedCommentContent);
   const [editError, setEditError] = useState<string | null>(null);
   const [isUploadingEditImages, setIsUploadingEditImages] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const currentUserEmail = currentUser?.emailAddress.toLowerCase();
   const commentUserEmail = comment.author.uniqueName.toLowerCase();
   const canEdit =
@@ -802,17 +806,54 @@ function ThreadComment({
             </span>
           </div>
           {canEdit && !isEditing && (
-            <IconButton
-              variant="ghost"
-              size="sm"
-              icon={<Pencil className="h-3.5 w-3.5" />}
-              tooltip="Edit comment"
-              onClick={() => {
-                setDraft(decodedCommentContent);
-                setIsEditing(true);
-              }}
-              className="shrink-0"
-            />
+            <div className="flex shrink-0 items-center gap-0.5">
+              <IconButton
+                variant="ghost"
+                size="sm"
+                icon={<Pencil className="h-3.5 w-3.5" />}
+                tooltip="Edit comment"
+                onClick={() => {
+                  setDraft(decodedCommentContent);
+                  setIsEditing(true);
+                }}
+              />
+              {isConfirmingDelete ? (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsConfirmingDelete(false)}
+                    className="text-ink-3 h-6 px-1.5 text-[11px]"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      deleteComment.mutate(
+                        { threadId, commentId: comment.id },
+                        {
+                          onSettled: () => setIsConfirmingDelete(false),
+                        },
+                      );
+                    }}
+                    loading={deleteComment.isPending}
+                    className="h-6 px-1.5 text-[11px] text-red-400 hover:text-red-300"
+                  >
+                    Delete
+                  </Button>
+                </div>
+              ) : (
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  icon={<Trash2 className="h-3.5 w-3.5" />}
+                  tooltip="Delete comment"
+                  onClick={() => setIsConfirmingDelete(true)}
+                />
+              )}
+            </div>
           )}
         </div>
         {isEditing ? (
@@ -880,11 +921,26 @@ export function PrInlineCommentTimeline({
   onUploadImage?: (image: PromptImagePart, fileName: string) => Promise<string>;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const { data: currentUser } = useCurrentAzureUser(projectId ?? '');
   const isResolved =
     threadStatus !== undefined &&
     threadStatus !== 'active' &&
     threadStatus !== 'pending' &&
     threadStatus !== 'unknown';
+
+  const canDeleteComment = useCallback(
+    (comment: PrTimelineComment) => {
+      if (!currentUser) return false;
+      const currentEmail = currentUser.emailAddress.toLowerCase();
+      const commentEmail = comment.author.uniqueName?.toLowerCase();
+      return (
+        currentUser.id === comment.author.id ||
+        currentUser.identityId === comment.author.id ||
+        currentEmail === commentEmail
+      );
+    },
+    [currentUser],
+  );
 
   const firstComment = comments[0];
   const remainingComments = comments.slice(1);
@@ -939,6 +995,17 @@ export function PrInlineCommentTimeline({
                   {remainingComments.length === 1 ? 'y' : 'ies'}
                 </span>
               )}
+              {threadId !== undefined &&
+                projectId &&
+                prId !== undefined &&
+                canDeleteComment(firstComment) && (
+                  <InlineCommentDeleteButton
+                    threadId={threadId}
+                    commentId={firstComment.id}
+                    projectId={projectId}
+                    prId={prId}
+                  />
+                )}
             </div>
             <div
               className={clsx(
@@ -984,6 +1051,17 @@ export function PrInlineCommentTimeline({
                     <span className="text-ink-3 text-xs">
                       {formatRelativeTime(comment.publishedDate)}
                     </span>
+                    {threadId !== undefined &&
+                      projectId &&
+                      prId !== undefined &&
+                      canDeleteComment(comment) && (
+                        <InlineCommentDeleteButton
+                          threadId={threadId}
+                          commentId={comment.id}
+                          projectId={projectId}
+                          prId={prId}
+                        />
+                      )}
                   </div>
                   <div className="text-ink-1 text-xs leading-relaxed">
                     <AzureMarkdownContent
@@ -1014,6 +1092,69 @@ export function PrInlineCommentTimeline({
           )}
       </div>
     </div>
+  );
+}
+
+function InlineCommentDeleteButton({
+  threadId,
+  commentId,
+  projectId,
+  prId,
+}: {
+  threadId: number;
+  commentId: number;
+  projectId: string;
+  prId: number;
+}) {
+  const deleteComment = useDeleteThreadComment(projectId, prId);
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  if (isConfirming) {
+    return (
+      <div
+        className="flex items-center gap-1"
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
+        role="presentation"
+      >
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsConfirming(false)}
+          className="text-ink-3 h-6 px-1.5 text-[11px]"
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            deleteComment.mutate(
+              { threadId, commentId },
+              { onSettled: () => setIsConfirming(false) },
+            );
+          }}
+          loading={deleteComment.isPending}
+          className="h-6 px-1.5 text-[11px] text-red-400 hover:text-red-300"
+        >
+          Delete
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <IconButton
+      variant="ghost"
+      size="sm"
+      icon={<Trash2 className="h-3 w-3" />}
+      tooltip="Delete comment"
+      onClick={(event) => {
+        event.stopPropagation();
+        setIsConfirming(true);
+      }}
+      className="text-ink-3 hover:text-ink-1 h-6 w-6"
+    />
   );
 }
 

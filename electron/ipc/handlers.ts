@@ -147,6 +147,7 @@ import {
   addPullRequestFileComment,
   addThreadReply,
   updateThreadComment,
+  deleteThreadComment,
   updateThreadStatus,
   searchIdentities,
   getCurrentUser,
@@ -2923,6 +2924,21 @@ export function registerIpcHandlers() {
         content: string;
       },
     ) => updateThreadComment(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:deleteThreadComment',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        pullRequestId: number;
+        threadId: number;
+        commentId: number;
+      },
+    ) => deleteThreadComment(params),
   );
 
   ipcMain.handle(
