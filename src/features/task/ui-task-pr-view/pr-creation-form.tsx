@@ -365,21 +365,22 @@ export function PrCreationForm({
             <span className="font-mono">{targetBranch}</span>
           </div>
 
-          {/* Draft checkbox */}
-          <Checkbox
-            checked={isDraft}
-            onChange={setIsDraft}
-            label="Create as draft"
-          />
-
-          {/* Commit unstaged checkbox — shown when uncommitted changes exist */}
-          {hasUncommittedChanges && (
+          {/* Checkboxes */}
+          <div className="flex flex-col gap-3">
             <Checkbox
-              checked={commitUnstaged}
-              onChange={setCommitUnstaged}
-              label="Commit unstaged changes before creating PR"
+              checked={isDraft}
+              onChange={setIsDraft}
+              label="Create as draft"
             />
-          )}
+
+            {hasUncommittedChanges && (
+              <Checkbox
+                checked={commitUnstaged}
+                onChange={setCommitUnstaged}
+                label="Commit unstaged changes before creating PR"
+              />
+            )}
+          </div>
 
           {/* Work item reference */}
           {workItemId && (
