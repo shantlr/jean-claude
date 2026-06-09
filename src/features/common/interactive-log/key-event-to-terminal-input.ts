@@ -1,11 +1,16 @@
-import type { KeyboardEvent } from 'react';
+type TerminalKeyboardEvent = Pick<
+  KeyboardEvent,
+  'altKey' | 'ctrlKey' | 'key' | 'metaKey'
+>;
 
 /**
  * Convert a keyboard event to the terminal escape sequence the PTY expects.
  * Returns null for keys that should not be forwarded (e.g. modifier-only,
  * browser shortcuts like Cmd+C for copy, Cmd+V for paste).
  */
-export function keyEventToTerminalInput(e: KeyboardEvent): string | null {
+export function keyEventToTerminalInput(
+  e: TerminalKeyboardEvent,
+): string | null {
   const { key, ctrlKey, metaKey, altKey } = e;
 
   // Let browser handle Cmd+key shortcuts (copy, paste, etc.)

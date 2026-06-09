@@ -84,6 +84,10 @@ export function InteractiveLog({
     [taskId, runCommandId, isRunning, ignoredKeys, stopKeyPropagation],
   );
 
+  const focusLog = useCallback(() => {
+    scrollRef.current?.focus();
+  }, []);
+
   // Auto-focus the log area when a running command becomes active
   useEffect(() => {
     if (isRunning && scrollRef.current) {
@@ -97,6 +101,7 @@ export function InteractiveLog({
         ref={scrollRef}
         tabIndex={0}
         onScroll={handleScroll}
+        onClick={focusLog}
         onKeyDown={handleKeyDown}
         style={{ fontFamily: TERMINAL_FONT_FAMILY }}
         className={clsx(

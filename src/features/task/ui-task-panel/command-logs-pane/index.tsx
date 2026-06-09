@@ -1,6 +1,13 @@
 import clsx from 'clsx';
 import { RotateCw, Search, Trash2, X } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from 'react';
 
 import { Button } from '@/common/ui/button';
 import { IconButton } from '@/common/ui/icon-button';
@@ -10,9 +17,11 @@ import { Separator } from '@/common/ui/separator';
 import { ConfirmRunModal } from '@/features/agent/ui-run-button/confirm-run-modal';
 import { KillPortsModal } from '@/features/agent/ui-run-button/kill-ports-modal';
 import { InteractiveLog } from '@/features/common/interactive-log';
+import { keyEventToTerminalInput } from '@/features/common/interactive-log/key-event-to-terminal-input';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useProjectCommands } from '@/hooks/use-project-commands';
 import { useRunCommands } from '@/hooks/use-run-commands';
+import { api } from '@/lib/api';
 import { useCommandLogsPaneWidth } from '@/stores/navigation';
 import {
   type RunCommandLogs,
@@ -23,6 +32,12 @@ import { getRunCommandDisplayName } from '@shared/run-command-types';
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from '../constants';
 
 const EMPTY_RUN_COMMAND_LOGS: RunCommandLogs = {};
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+
+  return !!target.closest('input, textarea, select, button, [contenteditable]');
+}
 
 export function CommandLogsPane({
   taskId,
@@ -160,6 +175,8 @@ export function CommandLogsPane({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+
       const pane = paneRef.current;
       const target = event.target;
       if (!(target instanceof Node) || !pane?.contains(target)) return;
@@ -178,11 +195,30 @@ export function CommandLogsPane({
           requestRestartActiveCommand();
         }
       }
+
+      if (!activeCommandId || !isActiveRunning || isInteractiveTarget(target)) {
+        return;
+      }
+
+      const input = keyEventToTerminalInput(event);
+      if (input === null) return;
+
+      event.preventDefault();
+      void api.runCommands.sendInput({
+        taskId,
+        runCommandId: activeCommandId,
+        input,
+      });
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [requestRestartActiveCommand]);
+  }, [activeCommandId, isActiveRunning, requestRestartActiveCommand, taskId]);
+
+  const focusPaneInput = useCallback((event: MouseEvent) => {
+    if (isInteractiveTarget(event.target)) return;
+    paneRef.current?.focus();
+  }, []);
   const filteredActiveLines = useMemo(() => {
     if (!activeLog) return [];
     if (!normalizedSearchQuery) return activeLog.lines;
@@ -208,6 +244,8 @@ export function CommandLogsPane({
   return (
     <div
       ref={paneRef}
+      tabIndex={-1}
+      onMouseDown={focusPaneInput}
       style={{ width }}
       className="panel-edge-shadow bg-bg-0 relative flex h-full flex-col"
     >

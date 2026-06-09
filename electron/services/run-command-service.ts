@@ -1,13 +1,10 @@
-import {
-  exec,
-  spawn,
-  type ChildProcessWithoutNullStreams,
-} from 'child_process';
+import { exec } from 'child_process';
 import { readFile, stat } from 'fs/promises';
 import { join, relative } from 'path';
 import { promisify } from 'util';
 
 import { glob } from 'glob';
+import * as nodePty from 'node-pty';
 
 import type {
   RunStatus,
@@ -29,7 +26,7 @@ type ProcessSignal = 'SIGINT' | 'SIGTERM' | 'SIGKILL';
 
 function getProcessEnvWithoutNodeEnv(): Record<string, string> {
   const { NODE_ENV: _nodeEnv, ...env } = process.env;
-  // Child process env expects string values; filter out undefined values.
+  // node-pty expects string values; filter out undefined values.
   const result: Record<string, string> = {};
   for (const [key, value] of Object.entries(env)) {
     if (value !== undefined) {
@@ -127,7 +124,7 @@ function signalProcessGroupOrProcess(pid: number, signal: ProcessSignal): void {
       process.kill(-pid, signal);
       return;
     } catch {
-      // Fall back to the shell process if the process group is already gone.
+      // Fall back to the PTY shell process if group signaling fails.
     }
   }
 
@@ -188,14 +185,14 @@ interface TrackedProcess {
   commandId: string;
   name: string | null;
   command: string;
-  process: ChildProcessWithoutNullStreams;
+  pty: nodePty.IPty;
   pid: number;
   status: 'running' | 'stopped' | 'errored';
   outputBuffers: Record<RunCommandLogStream, string>;
   /** Set to true once the 'exit' event fires */
   exited: boolean;
   /** Resolves when the process exits */
-  exitPromise: Promise<{ exitCode: number; signal?: string }>;
+  exitPromise: Promise<{ exitCode: number; signal?: number }>;
 }
 
 class RunCommandService {
@@ -385,19 +382,25 @@ class RunCommandService {
     workingDir: string;
     command: ProjectCommand;
   }): void {
-    dbg.runCommand('Spawning command: %s', command.command);
+    dbg.runCommand('Spawning command via PTY: %s', command.command);
 
-    const childProcess = spawn(command.command, {
+    const shell =
+      process.platform === 'win32' ? 'cmd.exe' : process.env.SHELL || '/bin/sh';
+    const shellArgs =
+      process.platform === 'win32'
+        ? ['/c', command.command]
+        : ['-c', command.command];
+
+    const ptyProcess = nodePty.spawn(shell, shellArgs, {
+      name: 'xterm-256color',
+      cols: 120,
+      rows: 30,
       cwd: workingDir,
-      detached: process.platform !== 'win32',
       env: getProcessEnvWithoutNodeEnv(),
-      shell:
-        process.platform === 'win32' ? true : process.env.SHELL || '/bin/sh',
-      stdio: ['pipe', 'pipe', 'pipe'],
     });
 
-    let exitResolve: (value: { exitCode: number; signal?: string }) => void;
-    const exitPromise = new Promise<{ exitCode: number; signal?: string }>(
+    let exitResolve: (value: { exitCode: number; signal?: number }) => void;
+    const exitPromise = new Promise<{ exitCode: number; signal?: number }>(
       (resolve) => {
         exitResolve = resolve;
       },
@@ -407,8 +410,8 @@ class RunCommandService {
       commandId: command.id,
       name: command.name,
       command: command.command,
-      process: childProcess,
-      pid: childProcess.pid ?? -1,
+      pty: ptyProcess,
+      pid: ptyProcess.pid,
       status: 'running',
       outputBuffers: { stdout: '', stderr: '' },
       exited: false,
@@ -419,15 +422,12 @@ class RunCommandService {
     taskProcesses.set(command.id, trackedProcess);
 
     dbg.runCommand(
-      'Process started with PID %d for command: %s',
+      'PTY process started with PID %d for command: %s',
       trackedProcess.pid,
       command.command,
     );
 
-    childProcess.stdout.setEncoding('utf8');
-    childProcess.stderr.setEncoding('utf8');
-
-    childProcess.stdout.on('data', (data: string) => {
+    ptyProcess.onData((data: string) => {
       this.appendLogChunk({
         taskId,
         tracked: trackedProcess,
@@ -436,35 +436,11 @@ class RunCommandService {
       });
     });
 
-    childProcess.stderr.on('data', (data: string) => {
-      this.appendLogChunk({
-        taskId,
-        tracked: trackedProcess,
-        stream: 'stderr',
-        chunk: data,
-      });
-    });
-
-    childProcess.on('error', (error) => {
+    ptyProcess.onExit(({ exitCode, signal }) => {
       if (trackedProcess.exited) return;
 
       dbg.runCommand(
-        'Process %d failed for command %s: %s',
-        trackedProcess.pid,
-        command.command,
-        error.message,
-      );
-      trackedProcess.exited = true;
-      trackedProcess.status = 'errored';
-      exitResolve!({ exitCode: 1 });
-      this.notifyStatusChange(taskId);
-    });
-
-    childProcess.on('close', (exitCode, signal) => {
-      if (trackedProcess.exited) return;
-
-      dbg.runCommand(
-        'Process %d exited with code %d signal %s',
+        'PTY process %d exited with code %d signal %d',
         trackedProcess.pid,
         exitCode,
         signal,
@@ -473,7 +449,7 @@ class RunCommandService {
       this.flushBuffer({ taskId, tracked: trackedProcess, stream: 'stderr' });
       trackedProcess.exited = true;
       trackedProcess.status = exitCode === 0 ? 'stopped' : 'errored';
-      exitResolve!({ exitCode: exitCode ?? 1, signal: signal ?? undefined });
+      exitResolve!({ exitCode, signal });
       this.notifyStatusChange(taskId);
     });
   }
@@ -722,7 +698,7 @@ class RunCommandService {
     const tracked = taskProcesses.get(runCommandId);
     if (!tracked || tracked.status !== 'running') return;
 
-    tracked.process.stdin.write(input);
+    tracked.pty.write(input);
   }
 
   private static VALID_SIGNALS = new Set(['SIGINT', 'SIGTERM']);
@@ -778,7 +754,7 @@ class RunCommandService {
 
       try {
         dbg.runCommand(
-          'Sending SIGTERM to process %d (%s)',
+          'Sending SIGTERM to PTY process %d (%s)',
           pid,
           tracked.command,
         );
@@ -787,14 +763,14 @@ class RunCommandService {
 
         if (!exited) {
           dbg.runCommand(
-            'SIGTERM timeout for process %d, sending SIGKILL',
+            'SIGTERM timeout for PTY process %d, sending SIGKILL',
             pid,
           );
           signalProcessGroupOrProcess(pid, 'SIGKILL');
           exited = await this.waitForExit({ tracked, timeoutMs: 1500 });
         }
       } catch {
-        dbg.runCommand('Process %d may already be dead', pid);
+        dbg.runCommand('PTY process %d may already be dead', pid);
         exited = true;
       }
 

@@ -2554,7 +2554,9 @@ export async function getCommitChanges(params: {
   const data: {
     changeCounts: Record<string, number>;
     changes: Array<
-      ChangeResponse & { item?: ChangeResponse['item'] & { isFolder?: boolean } }
+      ChangeResponse & {
+        item?: ChangeResponse['item'] & { isFolder?: boolean };
+      }
     >;
   } = await response.json();
 
