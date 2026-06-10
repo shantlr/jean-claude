@@ -2,7 +2,7 @@ import clsx from 'clsx';
 import { Loader2 } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 
-import { IconClaude, IconCodex } from '@/common/ui/icons';
+import { IconClaude, IconCodex, IconGithubCopilot } from '@/common/ui/icons';
 import { Tooltip } from '@/common/ui/tooltip';
 import { useBackendUsage } from '@/hooks/use-usage';
 import type {
@@ -92,6 +92,7 @@ const PROVIDER_ICONS: Partial<
 > = {
   'claude-code': IconClaude,
   codex: IconCodex,
+  copilot: IconGithubCopilot,
 };
 
 function getProviderMeta(providerType: UsageProviderType) {
