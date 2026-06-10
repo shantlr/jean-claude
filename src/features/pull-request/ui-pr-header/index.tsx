@@ -30,11 +30,17 @@ import {
   usePublishPullRequest,
   useUpdatePullRequestTitle,
 } from '@/hooks/use-pull-requests';
-import { getEditorLabel, useEditorSetting } from '@/hooks/use-settings';
+import {
+  getEditorLabel,
+  useBackendDefaultModelsSetting,
+  useBackendsSetting,
+  useEditorSetting,
+} from '@/hooks/use-settings';
 import { invalidateFeedItems } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
 import type { AzureDevOpsPullRequestDetails } from '@/lib/api';
 import { encodeProxyUrl } from '@/lib/azure-image-proxy';
+import { getDefaultModelForBackend } from '@/lib/default-models';
 import { formatRelativeTime } from '@/lib/time';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useNewTaskFormStore } from '@/stores/new-task-form';
@@ -109,6 +115,9 @@ export function PrHeader({
   const targetBranch = getBranchName(pr.targetRefName);
   const currentUserEmail = currentUser?.emailAddress.toLowerCase();
   const ownerEmail = pr.createdBy.uniqueName.toLowerCase();
+  const { data: backendsSetting } = useBackendsSetting();
+  const { data: backendDefaultModelsSetting } =
+    useBackendDefaultModelsSetting();
   const canEditTitle =
     !!currentUser &&
     (currentUser.identityId === pr.createdBy.id ||
@@ -117,12 +126,18 @@ export function PrHeader({
   const defaultReviewBackend = useMemo<AgentBackendType>(
     () =>
       (project?.defaultAgentBackend as AgentBackendType | null) ??
+      backendsSetting?.defaultBackend ??
       'claude-code',
-    [project?.defaultAgentBackend],
+    [backendsSetting?.defaultBackend, project?.defaultAgentBackend],
   );
   const defaultReviewModel = useMemo<ModelPreference>(
-    () => project?.defaultAgentModelPreference ?? 'default',
-    [project?.defaultAgentModelPreference],
+    () =>
+      getDefaultModelForBackend({
+        backend: defaultReviewBackend,
+        project,
+        backendDefaultModels: backendDefaultModelsSetting,
+      }),
+    [backendDefaultModelsSetting, defaultReviewBackend, project],
   );
 
   useEffect(() => {

@@ -9,7 +9,11 @@ import {
 import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
 import { getModelsForBackend } from '@/features/agent/ui-backend-selector';
 import { useBackendModels } from '@/hooks/use-backend-models';
-import { useBackendsSetting } from '@/hooks/use-settings';
+import {
+  useBackendDefaultModelsSetting,
+  useBackendsSetting,
+} from '@/hooks/use-settings';
+import { getDefaultModelForBackend } from '@/lib/default-models';
 import type { ReviewComment } from '@/stores/review-comments';
 import { synthesizeReviewPrompt } from '@/stores/review-comments';
 import type { AgentBackendType, PromptPart } from '@shared/agent-backend-types';
@@ -79,7 +83,9 @@ function ReviewSubmitOverlayContent({
         ? targetSelection.stepId
         : null;
   const backendsSettingQuery = useBackendsSetting();
+  const backendDefaultModelsQuery = useBackendDefaultModelsSetting();
   const backendsSetting = backendsSettingQuery.data;
+  const backendDefaultModels = backendDefaultModelsQuery.data;
   const enabledBackends = useMemo(
     () =>
       backendsSetting?.enabledBackends ??
@@ -104,8 +110,15 @@ function ReviewSubmitOverlayContent({
   );
   const defaultNewStepModel =
     effectiveNewStepBackend === defaultNewStepBackend
-      ? (activeStep?.modelPreference ?? 'default')
-      : 'default';
+      ? (activeStep?.modelPreference ??
+        getDefaultModelForBackend({
+          backend: effectiveNewStepBackend,
+          backendDefaultModels,
+        }))
+      : getDefaultModelForBackend({
+          backend: effectiveNewStepBackend,
+          backendDefaultModels,
+        });
   const effectiveNewStepModel = newStepModelOverride ?? defaultNewStepModel;
   useEffect(() => {
     const hasResolvedModels =

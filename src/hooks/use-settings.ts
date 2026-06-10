@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { BUILTIN_SNIPPETS, BUILTIN_SNIPPET_IDS } from '@/lib/builtin-snippets';
 import type {
   AiGenerationSetting,
+  BackendDefaultModelsSetting,
   BackendModelPresetsSetting,
   AiSkillSlotsSetting,
   AppSettings,
@@ -121,6 +122,18 @@ export function useUpdateBackendsSetting() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (value: BackendsSetting) => api.settings.set('backends', value),
+    onMutate: async (value) => {
+      const queryKey = ['settings', 'backends'] as const;
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<BackendsSetting>(queryKey);
+      queryClient.setQueryData(queryKey, value);
+      return { previous };
+    },
+    onError: (_error, _value, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['settings', 'backends'], context.previous);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings', 'backends'] });
     },
@@ -152,6 +165,39 @@ export function useUpdateUsageDisplaySetting() {
 
 export function useSummaryModelsSetting() {
   return useSetting('summaryModels');
+}
+
+export function useBackendDefaultModelsSetting() {
+  return useSetting('backendDefaultModels');
+}
+
+export function useUpdateBackendDefaultModelsSetting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: BackendDefaultModelsSetting) =>
+      api.settings.set('backendDefaultModels', value),
+    onMutate: async (value) => {
+      const queryKey = ['settings', 'backendDefaultModels'] as const;
+      await queryClient.cancelQueries({ queryKey });
+      const previous =
+        queryClient.getQueryData<BackendDefaultModelsSetting>(queryKey);
+      queryClient.setQueryData(queryKey, value);
+      return { previous };
+    },
+    onError: (_error, _value, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(
+          ['settings', 'backendDefaultModels'],
+          context.previous,
+        );
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings', 'backendDefaultModels'],
+      });
+    },
+  });
 }
 
 export function useUpdateSummaryModelsSetting() {
@@ -231,6 +277,22 @@ export function useUpdateBackendModelPresetsSetting() {
   return useMutation({
     mutationFn: (value: BackendModelPresetsSetting) =>
       api.settings.set('backendModelPresets', value),
+    onMutate: async (value) => {
+      const queryKey = ['settings', 'backendModelPresets'] as const;
+      await queryClient.cancelQueries({ queryKey });
+      const previous =
+        queryClient.getQueryData<BackendModelPresetsSetting>(queryKey);
+      queryClient.setQueryData(queryKey, value);
+      return { previous };
+    },
+    onError: (_error, _value, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(
+          ['settings', 'backendModelPresets'],
+          context.previous,
+        );
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['settings', 'backendModelPresets'],

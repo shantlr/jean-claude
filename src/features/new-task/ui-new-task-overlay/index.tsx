@@ -69,6 +69,7 @@ import {
 } from '@/hooks/use-projects';
 import {
   useBackendModelPresetsSetting,
+  useBackendDefaultModelsSetting,
   useBackendsSetting,
   useCompletionSetting,
   usePromptSnippetsSetting,
@@ -82,6 +83,7 @@ import {
   useRelatedTestCasesForWorkItems,
 } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
+import { getDefaultModelForBackend } from '@/lib/default-models';
 import { feedQueryKeys } from '@/lib/feed-query-keys';
 import { buildAttachedFilesXml } from '@/lib/file-attachment-utils';
 import { compressImage } from '@/lib/image-compression';
@@ -626,6 +628,8 @@ export function NewTaskOverlay({
 
   // Enabled backends from settings
   const { data: backendsSetting } = useBackendsSetting();
+  const { data: backendDefaultModelsSetting } =
+    useBackendDefaultModelsSetting();
   const { data: backendModelPresets = [] } = useBackendModelPresetsSetting();
   const { data: thinkingSettings } = useThinkingSettingsSetting();
 
@@ -676,10 +680,24 @@ export function NewTaskOverlay({
       : (draft?.backendModelPresetId ??
         findMatchingBackendModelPresetId({
           presets: backendModelPresets,
-          backend: draft?.agentBackend ?? selectedProject?.defaultAgentBackend,
+          backend:
+            draft?.agentBackend ??
+            selectedProject?.defaultAgentBackend ??
+            currentBackend,
           model:
             draft?.modelPreference ??
-            selectedProject?.defaultAgentModelPreference,
+            ((draft?.agentBackend ??
+            selectedProject?.defaultAgentBackend ??
+            currentBackend)
+              ? getDefaultModelForBackend({
+                  backend:
+                    draft?.agentBackend ??
+                    selectedProject?.defaultAgentBackend ??
+                    currentBackend,
+                  project: selectedProject,
+                  backendDefaultModels: backendDefaultModelsSetting,
+                })
+              : undefined),
         }));
   const currentBackendModelPreset = currentBackendPresetId
     ? backendModelPresets.find((preset) => preset.id === currentBackendPresetId)
@@ -687,8 +705,11 @@ export function NewTaskOverlay({
   const currentModelPreference = useMemo(() => {
     const draftModelPreference =
       draft?.modelPreference ??
-      selectedProject?.defaultAgentModelPreference ??
-      'default';
+      getDefaultModelForBackend({
+        backend: currentBackend,
+        project: selectedProject,
+        backendDefaultModels: backendDefaultModelsSetting,
+      });
 
     if (currentBackendPresetId) {
       return draftModelPreference;
@@ -698,10 +719,12 @@ export function NewTaskOverlay({
       ? draftModelPreference
       : 'default';
   }, [
-    selectedProject?.defaultAgentModelPreference,
+    backendDefaultModelsSetting,
+    currentBackend,
     currentBackendPresetId,
     draft?.modelPreference,
     availableModelPreferences,
+    selectedProject,
   ]);
   const thinkingCapabilities = getModelThinkingCapabilities(
     currentModelPreference,

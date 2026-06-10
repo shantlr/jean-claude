@@ -75,6 +75,8 @@ import { useModel, formatModelName } from '@/hooks/use-model';
 import { useProject, useProjectIsGitRepository } from '@/hooks/use-projects';
 import {
   getEditorLabel,
+  useBackendDefaultModelsSetting,
+  useBackendsSetting,
   useEditorSetting,
   usePromptSnippetsSetting,
 } from '@/hooks/use-settings';
@@ -103,6 +105,7 @@ import {
 } from '@/hooks/use-tasks';
 import { api } from '@/lib/api';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
+import { getDefaultModelForBackend } from '@/lib/default-models';
 import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
 import { getBranchFromWorktreePath } from '@/lib/worktree';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
@@ -302,6 +305,21 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   // Steps data for auto-selection
   const { data: steps } = useSteps(taskId);
   const { data: activeStep } = useStep(activeStepId ?? '');
+  const { data: backendsSetting } = useBackendsSetting();
+  const { data: backendDefaultModelsSetting } =
+    useBackendDefaultModelsSetting();
+  const defaultAddStepBackend =
+    activeStep?.agentBackend ??
+    project?.defaultAgentBackend ??
+    backendsSetting?.defaultBackend ??
+    'claude-code';
+  const defaultAddStepModel =
+    activeStep?.modelPreference ??
+    getDefaultModelForBackend({
+      backend: defaultAddStepBackend,
+      project,
+      backendDefaultModels: backendDefaultModelsSetting,
+    });
   const isSkillCreationTask = task?.type === 'skill-creation';
 
   // Diff view state
@@ -1889,8 +1907,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             setAddStepAtEnd(false);
           }}
           onConfirm={(data) => void handleAddStep(data)}
-          defaultBackend={activeStep?.agentBackend ?? 'claude-code'}
-          defaultModel={activeStep?.modelPreference ?? 'default'}
+          defaultBackend={defaultAddStepBackend}
+          defaultModel={defaultAddStepModel}
           defaultThinkingEffort={activeStep?.thinkingEffort ?? 'default'}
           taskId={taskId}
           activeStepId={activeStepId ?? undefined}

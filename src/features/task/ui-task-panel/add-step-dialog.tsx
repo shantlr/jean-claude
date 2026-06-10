@@ -31,11 +31,13 @@ import {
 import { useBackendModels } from '@/hooks/use-backend-models';
 import { useProject, useProjectFeatureMap } from '@/hooks/use-projects';
 import {
+  useBackendDefaultModelsSetting,
   useBackendsSetting,
   usePromptSnippetsSetting,
 } from '@/hooks/use-settings';
 import { useSkills } from '@/hooks/use-skills';
 import { useTask } from '@/hooks/use-tasks';
+import { getDefaultModelForBackend } from '@/lib/default-models';
 import { expandFeatureReferencesInPrompt } from '@/lib/prompt-feature-context';
 import {
   resolvePromptSnippet,
@@ -192,6 +194,8 @@ export function AddStepDialog({
   const textareaRef = useRef<PromptTextareaRef>(null);
 
   const { data: backendsSetting } = useBackendsSetting();
+  const { data: backendDefaultModelsSetting } =
+    useBackendDefaultModelsSetting();
   const enabledBackends =
     backendsSetting?.enabledBackends ??
     ([defaultBackend] as AgentBackendType[]);
@@ -258,7 +262,7 @@ export function AddStepDialog({
       setReviewers(createDefaultReviewers(defaultBackend));
       setTimeout(() => textareaRef.current?.focus(), 0);
     }
-  }, [isOpen, defaultBackend, defaultModel, defaultThinkingEffort]);
+  }, [defaultBackend, defaultModel, defaultThinkingEffort, isOpen]);
 
   const canSubmit =
     presetType === 'review-changes'
@@ -465,7 +469,12 @@ export function AddStepDialog({
                                 ? {
                                     ...r,
                                     backend: value as AgentBackendType,
-                                    model: 'default',
+                                    model: getDefaultModelForBackend({
+                                      backend: value as AgentBackendType,
+                                      project: stepProject,
+                                      backendDefaultModels:
+                                        backendDefaultModelsSetting,
+                                    }),
                                   }
                                 : r,
                             ),

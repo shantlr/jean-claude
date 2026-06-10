@@ -9,7 +9,11 @@ import {
 } from '@/features/agent/ui-backend-selector';
 import { ModelSelector } from '@/features/agent/ui-model-selector';
 import { useBackendModels } from '@/hooks/use-backend-models';
-import { useBackendModelPresetsSetting } from '@/hooks/use-settings';
+import {
+  useBackendDefaultModelsSetting,
+  useBackendModelPresetsSetting,
+} from '@/hooks/use-settings';
+import { getDefaultModelForBackend } from '@/lib/default-models';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { ModelPreference, ThinkingEffort } from '@shared/types';
 
@@ -46,6 +50,7 @@ export function BackendModelPresetPicker({
   layer?: KeyboardLayer;
 }) {
   const { data: presets = [] } = useBackendModelPresetsSetting();
+  const { data: backendDefaultModels } = useBackendDefaultModelsSetting();
   const { data: dynamicModels, isFetched } = useBackendModels(backend);
   const validSelectedPresetId = useMemo(() => {
     if (!selectedPresetId) {
@@ -98,7 +103,10 @@ export function BackendModelPresetPicker({
 
           onChange({
             backend: selection.backend,
-            model: 'default',
+            model: getDefaultModelForBackend({
+              backend: selection.backend,
+              backendDefaultModels,
+            }),
             thinkingEffort: 'default',
             presetId: null,
           });

@@ -31,6 +31,7 @@ import {
 } from '@/hooks/use-claude-projects-cleanup';
 import {
   getEditorLabel,
+  useBackendDefaultModelsSetting,
   useBackendsSetting,
   useCalendarNotificationsSetting,
   useEditorAutomationSetting,
@@ -39,6 +40,7 @@ import {
   useSummaryModelsSetting,
   useThinkingSettingsSetting,
   useUpdateBackendsSetting,
+  useUpdateBackendDefaultModelsSetting,
   useUpdateCalendarNotificationsSetting,
   useUpdateEditorAutomationSetting,
   useUpdateEditorSetting,
@@ -460,10 +462,16 @@ export function BackendsSettings() {
 }
 
 function BackendThinkingSettings({ backend }: { backend: AgentBackendType }) {
+  const { data: backendDefaultModelsSetting } =
+    useBackendDefaultModelsSetting();
+  const updateBackendDefaultModels = useUpdateBackendDefaultModelsSetting();
   const { data: thinkingSettings } = useThinkingSettingsSetting();
   const updateThinkingSettings = useUpdateThinkingSettingsSetting();
   const { data: dynamicModels } = useBackendModels(backend);
-  const [model, setModel] = useState<ModelPreference>('default');
+  const model =
+    thinkingSettings?.selectedModels?.[backend] ??
+    backendDefaultModelsSetting?.models[backend] ??
+    'default';
 
   const capabilities = getModelThinkingCapabilities(model, dynamicModels);
   const thinkingOptions = getThinkingEffortOptions({
@@ -486,7 +494,37 @@ function BackendThinkingSettings({ backend }: { backend: AgentBackendType }) {
       nextModel,
       dynamicModels,
     );
-    setModel(nextModel);
+    updateThinkingSettings.mutate({
+      efforts: {
+        'claude-code': {
+          ...(thinkingSettings?.efforts['claude-code'] ?? {
+            default: 'default',
+          }),
+        },
+        opencode: {
+          ...(thinkingSettings?.efforts.opencode ?? { default: 'default' }),
+        },
+      },
+      selectedModels: {
+        'claude-code':
+          thinkingSettings?.selectedModels?.['claude-code'] ??
+          backendDefaultModelsSetting?.models['claude-code'] ??
+          'default',
+        opencode:
+          thinkingSettings?.selectedModels?.opencode ??
+          backendDefaultModelsSetting?.models.opencode ??
+          'default',
+        [backend]: nextModel,
+      },
+    });
+    updateBackendDefaultModels.mutate({
+      models: {
+        'claude-code':
+          backendDefaultModelsSetting?.models['claude-code'] ?? 'default',
+        opencode: backendDefaultModelsSetting?.models.opencode ?? 'default',
+        [backend]: nextModel,
+      },
+    });
 
     const normalizedEffort = normalizeThinkingEffortForModel({
       backend,
@@ -527,6 +565,17 @@ function BackendThinkingSettings({ backend }: { backend: AgentBackendType }) {
           ...backendEfforts,
           [targetModel]: normalizedEffort,
         },
+      },
+      selectedModels: {
+        'claude-code':
+          thinkingSettings?.selectedModels?.['claude-code'] ??
+          backendDefaultModelsSetting?.models['claude-code'] ??
+          'default',
+        opencode:
+          thinkingSettings?.selectedModels?.opencode ??
+          backendDefaultModelsSetting?.models.opencode ??
+          'default',
+        [backend]: targetModel,
       },
     });
   };

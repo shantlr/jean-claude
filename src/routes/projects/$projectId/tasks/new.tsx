@@ -24,12 +24,14 @@ import {
 } from '@/hooks/use-projects';
 import {
   useBackendModelPresetsSetting,
+  useBackendDefaultModelsSetting,
   useBackendsSetting,
   useCompletionSetting,
   useThinkingSettingsSetting,
 } from '@/hooks/use-settings';
 import { useProjectSkills } from '@/hooks/use-skills';
 import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
+import { getDefaultModelForBackend } from '@/lib/default-models';
 import { expandFeatureReferencesInPrompt } from '@/lib/prompt-feature-context';
 import { useNewTaskFormStore } from '@/stores/new-task-form';
 import {
@@ -86,12 +88,17 @@ function NewTask() {
 
   // Sync draft backend with project→global default on mount
   const { data: backendsSetting } = useBackendsSetting();
+  const { data: backendDefaultModelsSetting } =
+    useBackendDefaultModelsSetting();
   const { data: backendModelPresets = [] } = useBackendModelPresetsSetting();
   const { data: thinkingSettings } = useThinkingSettingsSetting();
   const resolvedDefaultBackend =
     project?.defaultAgentBackend ?? backendsSetting?.defaultBackend;
-  const resolvedDefaultModelPreference =
-    project?.defaultAgentModelPreference ?? 'default';
+  const resolvedDefaultModelPreference = getDefaultModelForBackend({
+    backend: resolvedDefaultBackend ?? 'claude-code',
+    project,
+    backendDefaultModels: backendDefaultModelsSetting,
+  });
   const effectiveAgentBackend =
     agentBackend ??
     (resolvedDefaultBackend &&
@@ -108,8 +115,16 @@ function NewTask() {
       : (backendModelPresetId ??
         findMatchingBackendModelPresetId({
           presets: backendModelPresets,
-          backend: agentBackend ?? project?.defaultAgentBackend,
-          model: modelPreference ?? project?.defaultAgentModelPreference,
+          backend: agentBackend ?? resolvedDefaultBackend,
+          model:
+            modelPreference ??
+            (resolvedDefaultBackend
+              ? getDefaultModelForBackend({
+                  backend: resolvedDefaultBackend,
+                  project,
+                  backendDefaultModels: backendDefaultModelsSetting,
+                })
+              : undefined),
         }));
   const effectiveBackendModelPreset = effectiveBackendModelPresetId
     ? backendModelPresets.find(
@@ -149,7 +164,13 @@ function NewTask() {
     const presetId = findMatchingBackendModelPresetId({
       presets: backendModelPresets,
       backend: project.defaultAgentBackend,
-      model: project.defaultAgentModelPreference,
+      model: project.defaultAgentBackend
+        ? getDefaultModelForBackend({
+            backend: project.defaultAgentBackend,
+            project,
+            backendDefaultModels: backendDefaultModelsSetting,
+          })
+        : undefined,
     });
     const preset = presetId
       ? backendModelPresets.find((item) => item.id === presetId)
@@ -157,11 +178,19 @@ function NewTask() {
 
     setDraft({
       agentBackend: resolved,
-      modelPreference: project.defaultAgentModelPreference ?? 'default',
+      modelPreference: getDefaultModelForBackend({
+        backend: resolved,
+        project,
+        backendDefaultModels: backendDefaultModelsSetting,
+      }),
       thinkingEffort:
         preset?.thinkingEffort ??
         thinkingSettings?.efforts[resolved]?.[
-          project.defaultAgentModelPreference ?? 'default'
+          getDefaultModelForBackend({
+            backend: resolved,
+            project,
+            backendDefaultModels: backendDefaultModelsSetting,
+          })
         ] ??
         thinkingSettings?.efforts[resolved]?.default ??
         'default',
@@ -174,6 +203,7 @@ function NewTask() {
     });
   }, [
     backendModelPresets,
+    backendDefaultModelsSetting,
     backendsSetting,
     hasDraft,
     interactionMode,
@@ -203,7 +233,7 @@ function NewTask() {
       prompt: expandFeatureReferencesInPrompt({ text: prompt, featureMap }),
       status: 'waiting',
       interactionMode,
-      modelPreference,
+      modelPreference: effectiveModelPreference,
       thinkingEffort: effectiveThinkingEffort,
       agentBackend: effectiveAgentBackend,
       useWorktree: shouldUseWorktree,
