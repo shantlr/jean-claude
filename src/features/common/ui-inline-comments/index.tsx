@@ -1,7 +1,14 @@
 import { ImagePlus, Pencil, X } from 'lucide-react';
 import type React from 'react';
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
 import {
@@ -15,6 +22,7 @@ import {
   isVideoFile,
   VideoGifConverter,
 } from '@/features/pull-request/ui-video-gif-converter';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { MAX_IMAGES, processImageFile } from '@/lib/image-utils';
 import { formatLineRangeLabel } from '@/stores/utils-comment-store';
 import type { PromptImagePart } from '@shared/agent-backend-types';
@@ -299,7 +307,11 @@ export function InlineCommentComposer({
 
   const isDisabled =
     isSubmitting || (!body.trim() && images.length === 0 && !canSubmitEmpty);
-  const previewMarkdown = markdownWithLocalImages(body, images);
+  const debouncedPreviewBody = useDebouncedValue(body, 300);
+  const previewMarkdown = useMemo(
+    () => markdownWithLocalImages(debouncedPreviewBody, images),
+    [debouncedPreviewBody, images],
+  );
 
   return (
     <div className="flex flex-col gap-2">
@@ -552,7 +564,11 @@ export function InlineCommentBubble({
     setIsEditing(false);
   }, [editBody, editImages, body, currentImages, onEdit, cancelEditing]);
 
-  const editPreviewMarkdown = markdownWithLocalImages(editBody, editImages);
+  const debouncedEditPreviewBody = useDebouncedValue(editBody, 300);
+  const editPreviewMarkdown = useMemo(
+    () => markdownWithLocalImages(debouncedEditPreviewBody, editImages),
+    [debouncedEditPreviewBody, editImages],
+  );
 
   // Focus textarea when entering edit mode
   useEffect(() => {
