@@ -109,10 +109,26 @@ Rules:
 - Every node must include name, summary, key_files, and children.
 - Leaf nodes must use an empty children array.
 - Write valid YAML only to requested output file. Do not write markdown around YAML.
-- If existing feature map context is available, improve it rather than starting from scratch.
+- If existing feature map context is available, improve it rather than starting from scratch. Follow the iteration workflow below.
 
-Subagent prompt pattern:
+Iteration workflow (when existing feature map provided):
+- Read the existing feature map YAML first. Understand current tree structure and depth.
+- Determine iteration intent from user prompt:
+  - "go deeper" / "expand" / "improve" with no target → scan entire tree for shallow nodes (leaves or single-child nodes whose key_files suggest more children exist). Expand those.
+  - "expand X" / "go deeper on X" → locate node X in tree, spawn focused subagent to explore only that subtree deeper.
+  - "find missing" / "audit" / "what's missing" → run coverage checklist against existing tree, report gaps, then fill them.
+  - "update" / "refresh" → diff current codebase against existing map. Find new routes/components/features not in map. Add them without disturbing existing accurate nodes.
+- Shallow node detection: A node is "shallow" when it has 0-1 children BUT its key_files reference components/routes/stores that contain multiple user-facing concepts. Flag these for expansion.
+- Preserve existing accurate nodes. Only modify nodes that need deeper children, updated key_files, or corrected summaries.
+- When expanding a node, read its key_files to discover concrete children before guessing. Code is ground truth.
+- After expansion, verify no duplicate nodes were created (same user concept at different tree locations).
+- Output the complete updated YAML, not just the changed subtree.
+
+Subagent prompt pattern (fresh mapping):
 - "Map only <root feature>. Return exhaustive user-facing subtree with name, summary, key_files, children. Search routes/components/stores/hooks/services tied to this feature. Include variants, states, actions, rails, menus, tabs, badges, and workflow branches. Avoid implementation-only nodes."
+
+Subagent prompt pattern (expanding existing node):
+- "Here is the current subtree for <node name>: <paste YAML>. Expand it deeper. Read the key_files to find concrete children this node is missing. Add variants, states, actions, tabs, menus, badges, and workflow branches found in code. Preserve existing accurate children. Return updated subtree YAML."
 
 Coverage checklist:
 - Routes and navigation destinations.
