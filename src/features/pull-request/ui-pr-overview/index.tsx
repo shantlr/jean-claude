@@ -1,6 +1,11 @@
 import clsx from 'clsx';
 import { Edit3, Image, Loader2, Save, X } from 'lucide-react';
-import type { ChangeEvent, ClipboardEvent, DragEvent } from 'react';
+import type {
+  ChangeEvent,
+  ClipboardEvent,
+  DragEvent,
+  KeyboardEvent,
+} from 'react';
 import { useCallback, useState, useMemo, useEffect, useRef } from 'react';
 
 import { Button } from '@/common/ui/button';
@@ -469,6 +474,16 @@ export function PrOverview({
     [],
   );
 
+  const handleDescriptionKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+        event.preventDefault();
+        void handleSaveDescription();
+      }
+    },
+    [handleSaveDescription],
+  );
+
   // Merge optimistic queued state with server data
   const evaluationsWithOptimistic = useMemo(
     () =>
@@ -560,6 +575,7 @@ export function PrOverview({
                     onPaste={handleDescriptionPaste}
                     onDrop={handleDescriptionDrop}
                     onDragOver={handleDescriptionDragOver}
+                    onKeyDown={handleDescriptionKeyDown}
                     rows={10}
                     className="min-h-56 font-mono text-xs"
                     placeholder="Describe the pull request..."
@@ -609,6 +625,9 @@ export function PrOverview({
                         ? 'Uploading...'
                         : 'Add image/GIF'}
                     </Button>
+                    <span className="text-ink-4 text-[11px]">
+                      Cmd+Enter to save
+                    </span>
                     <div className="flex-1" />
                     <Button
                       type="button"
