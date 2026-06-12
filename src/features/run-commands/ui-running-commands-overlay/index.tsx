@@ -44,6 +44,9 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [stoppingKeys, setStoppingKeys] = useState<Set<string>>(new Set());
   const addToast = useToastStore((s) => s.addToast);
+  const clearRunCommandLogs = useTaskMessagesStore(
+    (s) => s.clearRunCommandLogs,
+  );
 
   const runningCommands = useMemo(() => {
     const result: RunningCommand[] = [];
@@ -127,6 +130,14 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
     void handleStop(selectedCommand.taskId, selectedCommand.commandStatus.id);
   }, [selectedCommand, stoppingKeys, handleStop]);
 
+  const handleClearSelectedLogs = useCallback(() => {
+    if (!selectedCommand) return;
+    clearRunCommandLogs(
+      selectedCommand.taskId,
+      selectedCommand.commandStatus.id,
+    );
+  }, [clearRunCommandLogs, selectedCommand]);
+
   const handleArrowNavigation = useCallback(
     (direction: 'up' | 'down') => {
       if (runningCommands.length === 0) return;
@@ -160,6 +171,12 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
         label: 'Stop Selected Command',
         shortcut: 'cmd+backspace',
         handler: handleStopSelected,
+        hideInCommandPalette: true,
+      },
+      {
+        label: 'Clear Selected Command Logs',
+        shortcut: 'cmd+k',
+        handler: handleClearSelectedLogs,
         hideInCommandPalette: true,
       },
       {
@@ -322,6 +339,10 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
             <div className="text-ink-3 flex items-center gap-1.5 text-[11px]">
               <Kbd shortcut="cmd+backspace" />
               <span>Stop</span>
+            </div>
+            <div className="text-ink-3 flex items-center gap-1.5 text-[11px]">
+              <Kbd shortcut="cmd+k" />
+              <span>Clear Logs</span>
             </div>
             <div className="text-ink-3 flex items-center gap-1.5 text-[11px]">
               <Kbd shortcut="escape" />
