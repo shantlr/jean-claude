@@ -1,40 +1,50 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const executeTakeFirst = vi.fn();
-const insertExecute = vi.fn();
-const insertValues = vi.fn(() => ({
-  onConflict: (
-    callback: (builder: { column: (name: string) => unknown }) => unknown,
-  ) => {
-    callback({
-      column: () => ({
-        doUpdateSet: () => ({}),
-      }),
-    });
-    return {
-      execute: insertExecute,
-    };
-  },
-}));
-const insertInto = vi.fn(() => ({
-  values: insertValues,
-}));
-const selectAll = vi.fn(() => ({
-  executeTakeFirst,
-}));
-const where = vi.fn(() => ({
-  selectAll,
-}));
-const selectFrom = vi.fn(() => ({
-  where,
-}));
-const dbMock = {
-  insertInto,
-  selectFrom,
-};
+const mocks = vi.hoisted(() => {
+  const executeTakeFirst = vi.fn();
+  const insertExecute = vi.fn();
+  const insertValues = vi.fn(() => ({
+    onConflict: (
+      callback: (builder: { column: (name: string) => unknown }) => unknown,
+    ) => {
+      callback({
+        column: () => ({
+          doUpdateSet: () => ({}),
+        }),
+      });
+      return {
+        execute: insertExecute,
+      };
+    },
+  }));
+  const insertInto = vi.fn(() => ({
+    values: insertValues,
+  }));
+  const selectAll = vi.fn(() => ({
+    executeTakeFirst,
+  }));
+  const where = vi.fn(() => ({
+    selectAll,
+  }));
+  const selectFrom = vi.fn(() => ({
+    where,
+  }));
+
+  return {
+    dbMock: {
+      insertInto,
+      selectFrom,
+    },
+    executeTakeFirst,
+    insertExecute,
+    insertInto,
+  };
+});
+
+const { executeTakeFirst, insertExecute, insertInto } = mocks;
 
 vi.mock('../index', () => ({
-  db: dbMock,
+  db: mocks.dbMock,
 }));
 
 vi.mock('../../lib/debug', () => ({

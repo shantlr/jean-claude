@@ -8,6 +8,7 @@ import {
   type TaskEventNotificationsSetting,
   type TaskNotificationEvent,
   type TaskNotificationMode,
+  type ThinkingEffort,
   type ThinkingSettingsSetting,
 } from '@shared/types';
 
@@ -16,6 +17,36 @@ import { db } from '../index';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object';
+}
+
+function isThinkingEffort(value: unknown): value is ThinkingEffort {
+  return (
+    value === 'default' ||
+    value === 'minimal' ||
+    value === 'none' ||
+    value === 'low' ||
+    value === 'medium' ||
+    value === 'high' ||
+    value === 'max' ||
+    value === 'xhigh'
+  );
+}
+
+function normalizeThinkingEfforts(
+  value: unknown,
+  defaults: Record<string, ThinkingEffort>,
+): Record<string, ThinkingEffort> {
+  if (!isRecord(value)) {
+    return defaults;
+  }
+
+  const normalized: Record<string, ThinkingEffort> = { ...defaults };
+  for (const [model, effort] of Object.entries(value)) {
+    if (isThinkingEffort(effort)) {
+      normalized[model] = effort;
+    }
+  }
+  return normalized;
 }
 
 function normalizeSummaryModelsSetting(
@@ -77,6 +108,11 @@ function normalizeThinkingSettingsSetting(
   }
 
   const defaults = SETTINGS_DEFINITIONS.thinkingSettings.defaultValue;
+  const defaultSelectedModels = defaults.selectedModels ?? {
+    'claude-code': 'default',
+    opencode: 'default',
+    codex: 'default',
+  };
   const efforts = value.efforts as Record<string, unknown>;
   const selectedModels = isRecord(value.selectedModels)
     ? (value.selectedModels as Record<string, unknown>)
@@ -84,32 +120,29 @@ function normalizeThinkingSettingsSetting(
 
   return {
     efforts: {
-      'claude-code': {
-        ...defaults.efforts['claude-code'],
-        ...(isRecord(efforts['claude-code']) ? efforts['claude-code'] : {}),
-      },
-      opencode: {
-        ...defaults.efforts.opencode,
-        ...(isRecord(efforts.opencode) ? efforts.opencode : {}),
-      },
-      codex: {
-        ...defaults.efforts.codex,
-        ...(isRecord(efforts.codex) ? efforts.codex : {}),
-      },
+      'claude-code': normalizeThinkingEfforts(
+        efforts['claude-code'],
+        defaults.efforts['claude-code'],
+      ),
+      opencode: normalizeThinkingEfforts(
+        efforts.opencode,
+        defaults.efforts.opencode,
+      ),
+      codex: normalizeThinkingEfforts(efforts.codex, defaults.efforts.codex),
     },
     selectedModels: {
       'claude-code':
         typeof selectedModels['claude-code'] === 'string'
           ? selectedModels['claude-code']
-          : defaults.selectedModels['claude-code'],
+          : defaultSelectedModels['claude-code'],
       opencode:
         typeof selectedModels.opencode === 'string'
           ? selectedModels.opencode
-          : defaults.selectedModels.opencode,
+          : defaultSelectedModels.opencode,
       codex:
         typeof selectedModels.codex === 'string'
           ? selectedModels.codex
-          : defaults.selectedModels.codex,
+          : defaultSelectedModels.codex,
     },
   };
 }
