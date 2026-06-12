@@ -74,10 +74,50 @@ describe('closeEditorWindowsForWorktree', () => {
         'task-1',
         '/repo/.worktrees/task-1',
       ],
-      { timeout: 3_000 },
+      { timeout: 10_000 },
       expect.any(Function),
     );
     expect(attemptedClose).toEqual({ attempted: true });
+  });
+
+  it('closes VS Code app names sequentially to avoid Accessibility contention', async () => {
+    vi.mocked(systemPreferences.isTrustedAccessibilityClient).mockReturnValue(
+      true,
+    );
+
+    let firstCallback:
+      | ((error: Error | null, stdout: string, stderr: string) => void)
+      | undefined;
+    vi.mocked(execFile).mockImplementation(((
+      _file,
+      _args,
+      _options,
+      callback,
+    ) => {
+      const invokeCallback = callback as unknown as (
+        error: Error | null,
+        stdout: string,
+        stderr: string,
+      ) => void;
+      if (!firstCallback) {
+        firstCallback = invokeCallback;
+        return {} as ReturnType<typeof execFile>;
+      }
+
+      invokeCallback(null, '', '');
+      return {} as ReturnType<typeof execFile>;
+    }) as typeof execFile);
+
+    const attemptedClose = closeEditorWindowsForWorktree({
+      worktreePath: '/repo/.worktrees/task-1',
+      editorSetting: { type: 'preset', id: 'vscode' },
+    });
+
+    expect(execFile).toHaveBeenCalledTimes(1);
+    firstCallback?.(null, '', '');
+    await attemptedClose;
+
+    expect(execFile).toHaveBeenCalledTimes(2);
   });
 
   it('does not run osascript when accessibility permission is denied', async () => {

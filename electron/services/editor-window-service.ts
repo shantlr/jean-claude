@@ -9,7 +9,7 @@ import { PRESET_EDITORS, type EditorSetting } from '@shared/types';
 import { dbg } from '../lib/debug';
 
 const execFileAsync = promisify(execFile);
-const CLOSE_WINDOW_TIMEOUT_MS = 3_000;
+const CLOSE_WINDOW_TIMEOUT_MS = 10_000;
 
 export interface EditorWindowCloseResult {
   attempted: boolean;
@@ -65,9 +65,10 @@ on run argv
   set appName to item 1 of argv
   set worktreeName to item 2 of argv
   set worktreePath to item 3 of argv
+  set closedWindowCount to 0
 
   tell application "System Events"
-    if not (exists process appName) then return
+    if not (exists process appName) then return "0"
     tell process appName
       repeat with editorWindow in windows
         try
@@ -75,11 +76,13 @@ on run argv
           if editorWindowName contains worktreeName or editorWindowName contains worktreePath then
             set closeButton to first button of editorWindow whose subrole is "AXCloseButton"
             perform action "AXPress" of closeButton
+            set closedWindowCount to closedWindowCount + 1
           end if
         end try
       end repeat
     end tell
   end tell
+  return closedWindowCount as text
 end run
 `;
 
@@ -114,26 +117,25 @@ export async function closeEditorWindowsForWorktree({
 
   const worktreeName = path.basename(worktreePath);
 
-  const results = await Promise.all(
-    appNames.map(async (appName): Promise<boolean> => {
-      try {
-        await execFileAsync(
-          'osascript',
-          ['-e', CLOSE_WINDOWS_SCRIPT, appName, worktreeName, worktreePath],
-          { timeout: CLOSE_WINDOW_TIMEOUT_MS },
-        );
-        return true;
-      } catch (error) {
-        dbg.ipc(
-          'Failed to close editor windows for app %s and worktree %s: %O',
-          appName,
-          worktreePath,
-          error,
-        );
-        return false;
-      }
-    }),
-  );
+  const results: boolean[] = [];
+  for (const appName of appNames) {
+    try {
+      await execFileAsync(
+        'osascript',
+        ['-e', CLOSE_WINDOWS_SCRIPT, appName, worktreeName, worktreePath],
+        { timeout: CLOSE_WINDOW_TIMEOUT_MS },
+      );
+      results.push(true);
+    } catch (error) {
+      dbg.ipc(
+        'Failed to close editor windows for app %s and worktree %s: %O',
+        appName,
+        worktreePath,
+        error,
+      );
+      results.push(false);
+    }
+  }
 
   if (results.every((success) => !success)) {
     return {
