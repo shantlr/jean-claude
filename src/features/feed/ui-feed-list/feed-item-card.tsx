@@ -817,8 +817,8 @@ export function FeedItemCard({
                 'relative flex cursor-pointer transition-colors',
                 'hover:bg-glass-light',
                 isPrFocused
-                  ? 'border-l-2 border-l-[var(--color-acc)]'
-                  : 'border-l-2 border-l-transparent',
+                  ? 'border-l-[3px] border-l-[var(--color-acc)]'
+                  : 'border-l-[3px] border-l-transparent',
               )}
               style={{ minHeight: 30 }}
               onClick={handlePrClick}
@@ -1030,8 +1030,8 @@ function SubtaskRow({
           !childNeedsAttention &&
           'feed-unread-row',
         isSelected
-          ? 'border-l-2 border-l-[var(--color-acc)]'
-          : 'border-l-2 border-l-transparent',
+          ? 'border-l-[3px] border-l-[var(--color-acc)]'
+          : 'border-l-[3px] border-l-transparent',
       )}
       style={{ minHeight: 36 }}
     >
