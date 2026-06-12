@@ -126,6 +126,8 @@ export class CodexBackend implements AgentBackend {
       idleCompletionTimer: null,
       rawDeltaRows: new Map(),
     };
+    session.normalizationCtx.model =
+      config.model === 'default' ? undefined : config.model;
     this.sessions.set(sessionKey, session);
 
     try {
@@ -384,7 +386,7 @@ export class CodexBackend implements AgentBackend {
       session.turnId = null;
       session.eventChannel.push({
         type: 'complete',
-        result: { isError: false },
+        result: { isError: false, model: session.normalizationCtx.model },
       });
       this.cleanupSession(session.sessionId, session);
     }, CODEX_IDLE_COMPLETION_TIMEOUT_MS);

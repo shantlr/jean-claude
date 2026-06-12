@@ -300,6 +300,7 @@ function normalizeResultRaw(raw: AgentMessage): NormalizationEvent[] {
         cacheCreationTokens: raw.usage.cache_creation_input_tokens,
       }
     : undefined;
+  const model = raw.modelUsage ? Object.keys(raw.modelUsage)[0] : undefined;
 
   return [
     // The result entry for the UI
@@ -311,6 +312,7 @@ function normalizeResultRaw(raw: AgentMessage): NormalizationEvent[] {
         type: 'result',
         value: raw.result ?? undefined,
         isError: raw.is_error ?? false,
+        model,
         durationMs: raw.duration_ms,
         cost: raw.total_cost_usd ?? raw.cost_usd,
         usage,
@@ -321,6 +323,7 @@ function normalizeResultRaw(raw: AgentMessage): NormalizationEvent[] {
       type: 'complete',
       result: {
         isError: raw.is_error ?? false,
+        model,
         text: raw.result ?? undefined,
         durationMs: raw.duration_ms,
         cost:

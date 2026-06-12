@@ -1,11 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getOrCreateServerMock } = vi.hoisted(() => ({
+const { getOrCreateServerMock, recordUsageSafeMock } = vi.hoisted(() => ({
   getOrCreateServerMock: vi.fn(),
+  recordUsageSafeMock: vi.fn(),
 }));
 
 vi.mock('./agent-backends/opencode/opencode-backend', () => ({
   getOrCreateServer: getOrCreateServerMock,
+}));
+
+vi.mock('./ai-usage-tracking-service', () => ({
+  aiUsageTrackingService: {
+    recordUsageSafe: recordUsageSafeMock,
+  },
 }));
 
 import { generateText } from './ai-generation-service';
@@ -100,6 +107,44 @@ describe('generateText opencode structured output', () => {
             ),
           }),
         ],
+      }),
+    );
+  });
+
+  it('records one-off OpenCode requests even when token usage is absent', async () => {
+    const client = createMockClient({
+      data: {
+        info: {},
+        parts: [{ type: 'text', text: '{"name":"fix task tracking"}' }],
+      },
+    });
+    getOrCreateServerMock.mockResolvedValue({ client });
+
+    await generateText({
+      backend: 'opencode',
+      model: 'default',
+      prompt: 'Generate task name',
+      outputSchema: { type: 'object' },
+      usageContext: {
+        feature: 'task-name',
+        projectId: 'project-1',
+        taskId: null,
+        stepId: null,
+      },
+    });
+
+    expect(recordUsageSafeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        backend: 'opencode',
+        model: 'default',
+        allowEmptyUsage: true,
+        context: expect.objectContaining({ feature: 'task-name' }),
+        usage: {
+          inputTokens: undefined,
+          outputTokens: undefined,
+          cacheReadTokens: undefined,
+          cacheCreationTokens: undefined,
+        },
       }),
     );
   });

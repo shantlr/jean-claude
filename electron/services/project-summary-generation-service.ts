@@ -22,6 +22,7 @@ export async function generateProjectSummary({
 }: {
   project: {
     name: string;
+    id?: string;
     path: string;
     color: string;
     aiSkillSlots?: AiSkillSlotsSetting | null;
@@ -49,6 +50,12 @@ export async function generateProjectSummary({
       outputSchema: PROJECT_SUMMARY_SCHEMA,
       timeoutMs: PROJECT_SUMMARY_TIMEOUT_MS,
       prompt,
+      usageContext: {
+        feature: 'project-summary',
+        projectId: project.id ?? null,
+        taskId: null,
+        stepId: null,
+      },
     });
 
     const summary = extractProjectSummary(result);

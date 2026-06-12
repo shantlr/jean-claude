@@ -181,6 +181,12 @@ export async function generateWorkItemVerificationNote({
     prompt: buildPrompt({ workItems, testCasesByWorkItem }),
     outputSchema: VERIFICATION_NOTE_SCHEMA,
     timeoutMs: VERIFICATION_NOTE_TIMEOUT_MS,
+    usageContext: {
+      feature: 'verification-note',
+      projectId: null,
+      taskId: null,
+      stepId: null,
+    },
   });
 
   const parsed = parseGeneratedResult(result);

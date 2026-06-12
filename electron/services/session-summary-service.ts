@@ -1,4 +1,5 @@
 import type { AgentBackendType } from '@shared/agent-backend-types';
+import type { AiUsageContext } from '@shared/ai-usage-types';
 import type { NormalizedEntry } from '@shared/normalized-message-v2';
 import type { ModelPreference } from '@shared/types';
 
@@ -89,10 +90,12 @@ export async function summarizeNormalizedMessages({
   backend,
   model,
   messages,
+  usageContext,
 }: {
   backend: AgentBackendType;
   model: ModelPreference;
   messages: NormalizedEntry[];
+  usageContext?: AiUsageContext;
 }): Promise<string> {
   const transcript = formatMessagesForSummary(messages);
   if (!transcript) {
@@ -104,6 +107,7 @@ export async function summarizeNormalizedMessages({
     model,
     outputSchema: SESSION_SUMMARY_SCHEMA,
     prompt: `${SESSION_SUMMARY_PROMPT}\n\nPrior step normalized message history:\n\n${transcript}`,
+    usageContext,
   });
 
   if (

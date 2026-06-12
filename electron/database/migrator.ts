@@ -65,6 +65,7 @@ import * as m063 from './migrations/063_project_auto_pull_source_branch';
 import * as m064 from './migrations/064_project_commit_no_verify';
 import * as m065 from './migrations/065_compress_raw_messages';
 import * as m066 from './migrations/066_task_todo_items';
+import * as m067 from './migrations/067_ai_usage_tracking';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -132,6 +133,7 @@ const migrations: Record<string, Migration> = {
   '064_project_commit_no_verify': m064,
   '065_compress_raw_messages': m065,
   '066_task_todo_items': m066,
+  '067_ai_usage_tracking': m067,
 };
 
 export const migrationProvider: MigrationProvider = {

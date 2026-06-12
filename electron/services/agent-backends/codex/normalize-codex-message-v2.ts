@@ -25,6 +25,7 @@ export type CodexNormalizationContext = {
   emittedSessionIds: Set<string>;
   itemEntries: Map<string, NormalizedEntry>;
   itemText: Map<string, string>;
+  model?: string;
 };
 
 export function createCodexNormalizationContext(): CodexNormalizationContext {
@@ -55,7 +56,7 @@ export function normalizeCodexNotification(
     case 'item/completed':
       return normalizeItemCompleted(params, ctx);
     case 'turn/completed':
-      return normalizeTurnCompleted(params);
+      return normalizeTurnCompleted(params, ctx);
     default:
       return [];
   }
@@ -261,15 +262,18 @@ function normalizeItemCompleted(
 
 function normalizeTurnCompleted(
   params: Record<string, unknown>,
+  ctx: CodexNormalizationContext,
 ): NormalizationEvent[] {
   const result: NormalizedResult = {
     isError: isErrorValue(params.isError) || isErrorValue(params.error),
   };
   const durationMs = num(params.durationMs) ?? num(params.duration_ms);
   const usage = usageFromUnknown(params.usage);
+  const model = modelFromParams(params) ?? ctx.model;
 
   if (durationMs !== undefined) result.durationMs = durationMs;
   if (usage !== undefined) result.usage = usage;
+  if (model !== undefined) result.model = model;
 
   return [{ type: 'complete', result }];
 }
@@ -465,6 +469,15 @@ function usageFromUnknown(value: unknown): TokenUsage | undefined {
     cacheCreationTokens:
       num(usage.cacheCreationTokens) ?? num(usage.cache_creation_tokens),
   };
+}
+
+function modelFromParams(params: Record<string, unknown>): string | undefined {
+  const model =
+    str(params.model) ?? str(params.modelId) ?? str(params.model_id);
+  if (model !== undefined) return model;
+
+  const nestedModel = record(params.model);
+  return str(nestedModel?.id) ?? str(nestedModel?.modelId);
 }
 
 function filesFromFileChangeItem(item: Record<string, unknown>): Array<{

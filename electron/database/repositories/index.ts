@@ -12,3 +12,4 @@ export { CompletionUsageRepository } from './completion-usage';
 export { FeedNoteRepository } from './feed-notes';
 export { PrViewSnapshotRepository } from './pr-view-snapshots';
 export { UsageSnapshotRepository } from './usage-snapshots';
+export { AiUsageRepository } from './ai-usage';

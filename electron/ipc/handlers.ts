@@ -80,6 +80,7 @@ import {
   DebugRepository,
   TaskSummaryRepository,
   ProjectTodoRepository,
+  AiUsageRepository,
 } from '../database/repositories';
 import { McpTemplateRepository } from '../database/repositories/mcp-templates';
 import { NotificationRepository } from '../database/repositories/notifications';
@@ -1134,6 +1135,14 @@ export function registerIpcHandlers() {
           taskName = await generateTaskName(
             taskData.prompt,
             project.aiSkillSlots,
+            {
+              feature: 'task-name',
+              projectId: taskData.projectId,
+              taskId: null,
+              stepId: null,
+              taskName: taskData.name ?? null,
+              projectName: project.name,
+            },
           );
           dbg.ipc('Generated task name: %s', taskName);
           // taskName may still be null if generation fails - that's ok
@@ -3822,6 +3831,17 @@ export function registerIpcHandlers() {
     },
   );
 
+  ipcMain.handle(
+    'agent:usage:getDashboard',
+    (_, params: { since: string; until?: string }) => {
+      return AiUsageRepository.getDashboard(params);
+    },
+  );
+
+  ipcMain.handle('agent:usage:getTaskUsage', (_, taskId: string) => {
+    return AiUsageRepository.getTaskUsage(taskId);
+  });
+
   // Backend models
   ipcMain.handle('agent:getBackendModels', (_, backend: string) =>
     backendModelsService.getBackendModels(backend as AgentBackendType),
@@ -4892,7 +4912,13 @@ export function registerIpcHandlers() {
       const systemProject = await getOrCreateSystemProject();
 
       // Generate a task name
-      const taskName = await generateTaskName(data.prompt);
+      const taskName = await generateTaskName(data.prompt, null, {
+        feature: 'task-name',
+        projectId: systemProject.id,
+        taskId: null,
+        stepId: null,
+        projectName: systemProject.name,
+      });
 
       // Create task in system project
       const task = await TaskRepository.create({

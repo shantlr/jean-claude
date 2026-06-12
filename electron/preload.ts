@@ -747,6 +747,10 @@ contextBridge.exposeInMainWorld('api', {
       since: string;
       until?: string;
     }) => ipcRenderer.invoke('agent:usage:getHistory', params),
+    getDashboard: (params: { since: string; until?: string }) =>
+      ipcRenderer.invoke('agent:usage:getDashboard', params),
+    getTaskUsage: (taskId: string) =>
+      ipcRenderer.invoke('agent:usage:getTaskUsage', taskId),
   },
   usageDisplay: {
     saveSettings: (value: import('@shared/types').UsageDisplaySetting) =>

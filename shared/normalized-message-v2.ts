@@ -243,6 +243,7 @@ export interface TokenUsage {
 export interface NormalizedResult {
   text?: string;
   isError: boolean;
+  model?: string;
   cost?: CostInfo;
   durationMs?: number;
   usage?: TokenUsage;

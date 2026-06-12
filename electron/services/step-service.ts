@@ -48,6 +48,8 @@ async function resolvePromptTemplate({
   template,
   taskPrompt,
   taskName,
+  taskId,
+  projectId,
   steps,
   summaryBackend,
   summaryModels,
@@ -55,6 +57,8 @@ async function resolvePromptTemplate({
   template: string;
   taskPrompt: string;
   taskName: string | null;
+  taskId: string;
+  projectId: string;
   steps: TaskStep[];
   summaryBackend: AgentBackendType;
   summaryModels: Record<
@@ -125,6 +129,12 @@ async function resolvePromptTemplate({
           backend: summaryBackend,
           model,
           messages,
+          usageContext: {
+            feature: 'step-summary',
+            projectId,
+            taskId,
+            stepId: step.id,
+          },
         });
       } catch (error) {
         debug('Summary generation failed for step %s: %O', step.id, error);
@@ -426,6 +436,8 @@ export const StepService = {
       template: step.promptTemplate,
       taskPrompt: task.prompt,
       taskName: task.name,
+      taskId: task.id,
+      projectId: task.projectId,
       steps,
       summaryBackend,
       summaryModels: summaryModelsSetting.models,

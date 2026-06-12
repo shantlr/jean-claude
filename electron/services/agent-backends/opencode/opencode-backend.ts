@@ -184,6 +184,8 @@ interface OpenCodeSessionState {
   totalApiCost: number;
   /** Accumulated token usage */
   totalUsage?: TokenUsage;
+  /** Single model used by accumulated assistant usage, when known. */
+  totalModel?: string;
   /** V2 normalization context */
   normalizationCtx: OpenCodeNormalizationContext;
   /** Current message index for raw persistence ordering */
@@ -942,6 +944,7 @@ export class OpenCodeBackend implements AgentBackend {
         isError: hasError,
         text: hasError ? 'Session ended' : undefined,
         durationMs,
+        model: state.totalModel,
         cost:
           state.totalCost > 0 || state.totalApiCost > 0
             ? {
@@ -1051,6 +1054,7 @@ export class OpenCodeBackend implements AgentBackend {
   private updateUsageTotals(state: OpenCodeSessionState): void {
     let totalCost = 0;
     let totalApiCost = 0;
+    const models = new Set<string>();
     const totalUsage: TokenUsage = {
       inputTokens: 0,
       outputTokens: 0,
@@ -1066,6 +1070,8 @@ export class OpenCodeBackend implements AgentBackend {
         totalCost += assistant.cost ?? 0;
         continue;
       }
+
+      models.add(`${assistant.providerID}/${assistant.modelID}`);
 
       if (assistant.cost && assistant.cost > 0) {
         totalCost += assistant.cost;
@@ -1097,9 +1103,11 @@ export class OpenCodeBackend implements AgentBackend {
     state.totalCost = totalCost;
     state.totalApiCost = totalCost === 0 ? totalApiCost : 0;
     state.totalUsage = hasUsage ? totalUsage : undefined;
+    state.totalModel = models.size === 1 ? [...models][0] : undefined;
     state.normalizationCtx.totalCost = totalCost;
     state.normalizationCtx.totalApiCost = state.totalApiCost;
     state.normalizationCtx.totalUsage = state.totalUsage;
+    state.normalizationCtx.totalModel = state.totalModel;
   }
 
   /**

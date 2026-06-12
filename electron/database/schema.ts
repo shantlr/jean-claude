@@ -2,6 +2,10 @@ import type { Buffer } from 'node:buffer';
 
 import { Generated, Insertable, Selectable, Updateable } from 'kysely';
 
+import type {
+  AiUsageFeature,
+  AiUsagePricingStatus,
+} from '@shared/ai-usage-types';
 import type { ProviderType, ProjectType, TaskStatus } from '@shared/types';
 
 // Re-export shared types for convenience
@@ -49,6 +53,9 @@ export interface Database {
   notifications: NotificationTable;
   tracked_pipelines: TrackedPipelineTable;
   usage_snapshots: UsageSnapshotTable;
+  ai_usage_events: AiUsageEventTable;
+  ai_usage_task_totals: AiUsageTaskTotalTable;
+  ai_usage_daily_totals: AiUsageDailyTotalTable;
 }
 
 export interface TokenTable {
@@ -385,3 +392,70 @@ export interface UsageSnapshotTable {
 
 export type UsageSnapshotRow = Selectable<UsageSnapshotTable>;
 export type NewUsageSnapshotRow = Insertable<UsageSnapshotTable>;
+
+export interface AiUsageEventTable {
+  id: Generated<string>;
+  createdAt: string;
+  sourceId: string | null;
+  feature: AiUsageFeature;
+  projectId: string | null;
+  taskId: string | null;
+  stepId: string | null;
+  taskName: string | null;
+  projectName: string | null;
+  backend: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+  totalTokens: number;
+  estimatedCostUsd: number;
+  providerCostUsd: number | null;
+  providerApiCostUsd: number | null;
+  pricingStatus: AiUsagePricingStatus;
+  pricingVersion: string;
+}
+
+export type AiUsageEventRow = Selectable<AiUsageEventTable>;
+export type NewAiUsageEventRow = Insertable<AiUsageEventTable>;
+
+export interface AiUsageTaskTotalTable {
+  taskId: string;
+  projectId: string;
+  taskName: string | null;
+  projectName: string | null;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+  totalTokens: number;
+  estimatedCostUsd: number;
+  providerCostUsd: number;
+  providerApiCostUsd: number;
+  requests: number;
+  updatedAt: string;
+}
+
+export type AiUsageTaskTotalRow = Selectable<AiUsageTaskTotalTable>;
+export type NewAiUsageTaskTotalRow = Insertable<AiUsageTaskTotalTable>;
+
+export interface AiUsageDailyTotalTable {
+  date: string;
+  feature: AiUsageFeature;
+  backend: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+  totalTokens: number;
+  estimatedCostUsd: number;
+  providerCostUsd: number;
+  providerApiCostUsd: number;
+  requests: number;
+  updatedAt: string;
+}
+
+export type AiUsageDailyTotalRow = Selectable<AiUsageDailyTotalTable>;
+export type NewAiUsageDailyTotalRow = Insertable<AiUsageDailyTotalTable>;

@@ -11,6 +11,11 @@ import type {
 } from '@shared/agent-types';
 import type { AgentUIEvent } from '@shared/agent-ui-events';
 import type {
+  AiUsageDashboard,
+  AiUsageDashboardParams,
+  AiUsageTaskUsage,
+} from '@shared/ai-usage-types';
+import type {
   AzureDevOpsPullRequest,
   AzureDevOpsPullRequestDetails,
   AzureDevOpsCommit,
@@ -1065,6 +1070,8 @@ export interface Api {
       since: string;
       until?: string;
     }) => Promise<UsageSnapshot[]>;
+    getDashboard: (params: AiUsageDashboardParams) => Promise<AiUsageDashboard>;
+    getTaskUsage: (taskId: string) => Promise<AiUsageTaskUsage>;
   };
   usageDisplay: {
     saveSettings: (
@@ -1899,6 +1906,40 @@ export const api: Api = hasWindowApi
       usage: {
         getAll: async () => ({}),
         getHistory: async () => [],
+        getDashboard: async () => ({
+          totals: {
+            inputTokens: 0,
+            outputTokens: 0,
+            cacheReadTokens: 0,
+            cacheCreationTokens: 0,
+            totalTokens: 0,
+            estimatedCostUsd: 0,
+            providerCostUsd: 0,
+            providerApiCostUsd: 0,
+            requests: 0,
+            taskCount: 0,
+          },
+          byDay: [],
+          byFeature: [],
+          byModel: [],
+          topTasks: [],
+          unknownPricing: [],
+        }),
+        getTaskUsage: async () => ({
+          events: [],
+          totals: {
+            inputTokens: 0,
+            outputTokens: 0,
+            cacheReadTokens: 0,
+            cacheCreationTokens: 0,
+            totalTokens: 0,
+            estimatedCostUsd: 0,
+            providerCostUsd: 0,
+            providerApiCostUsd: 0,
+            requests: 0,
+            taskCount: 0,
+          },
+        }),
       },
       usageDisplay: {
         saveSettings: async (value) => value,

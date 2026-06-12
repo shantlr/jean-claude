@@ -70,6 +70,8 @@ export type OpenCodeNormalizationContext = {
   totalApiCost?: number;
   /** Accumulated token usage — backend updates from assistant message token fields */
   totalUsage?: TokenUsage;
+  /** Single model used by accumulated assistant usage, when known. */
+  totalModel?: string;
   /** Permission decisions made before matching tool parts stream in. */
   pendingToolPermissionDecisions?: ToolPermissionDecision[];
   /** Permission attribution by entry id, reused when tool parts update. */
@@ -187,6 +189,7 @@ function normalizeEvent(
           result: {
             isError: false,
             durationMs: Date.now() - ctx.sessionStartTime,
+            model: ctx.totalModel,
             cost:
               ctx.totalCost > 0 || (ctx.totalApiCost ?? 0) > 0
                 ? {

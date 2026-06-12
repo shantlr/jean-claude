@@ -578,6 +578,7 @@ describe('normalizeCodexNotification', () => {
 
   it('emits completion with usage and duration when available', () => {
     const ctx = createCodexNormalizationContext();
+    ctx.model = 'gpt-5.3-codex';
 
     expect(
       normalizeCodexNotification(
@@ -595,7 +596,35 @@ describe('normalizeCodexNotification', () => {
         type: 'complete',
         result: {
           isError: false,
+          model: 'gpt-5.3-codex',
           durationMs: 1234,
+          usage: { inputTokens: 10, outputTokens: 20 },
+        },
+      },
+    ]);
+  });
+
+  it('prefers turn completion model over configured Codex model', () => {
+    const ctx = createCodexNormalizationContext();
+    ctx.model = 'gpt-5-codex';
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'turn/completed',
+          params: {
+            model: 'gpt-5.4-codex',
+            usage: { inputTokens: 10, outputTokens: 20 },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'complete',
+        result: {
+          isError: false,
+          model: 'gpt-5.4-codex',
           usage: { inputTokens: 10, outputTokens: 20 },
         },
       },

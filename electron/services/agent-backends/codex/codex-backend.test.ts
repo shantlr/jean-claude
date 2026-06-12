@@ -355,9 +355,10 @@ describe('CodexBackend', () => {
 
   it('unsubscribes after natural completion', async () => {
     const { backend, emitNotification, unsubscribe } = createBackend();
-    const session = await backend.start(createConfig(), [
-      { type: 'text', text: 'Hello' },
-    ]);
+    const session = await backend.start(
+      createConfig({ model: 'gpt-5.3-codex' }),
+      [{ type: 'text', text: 'Hello' }],
+    );
     const iterator = session.events[Symbol.asyncIterator]();
     await iterator.next();
 
@@ -367,7 +368,10 @@ describe('CodexBackend', () => {
     });
 
     await expect(iterator.next()).resolves.toMatchObject({
-      value: { type: 'complete' },
+      value: {
+        type: 'complete',
+        result: { model: 'gpt-5.3-codex' },
+      },
     });
     await expect(iterator.next()).resolves.toMatchObject({ done: true });
     expect(unsubscribe).toHaveBeenCalledOnce();
