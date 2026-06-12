@@ -2,6 +2,8 @@ import type { RefObject } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { TaskTodoDropdown } from '@/features/task/ui-task-todo-dropdown';
+
 import type { StreamMessage } from '../message-merger';
 import { usePromptNavigation } from '../use-prompt-navigation';
 
@@ -84,10 +86,12 @@ function PromptChip({
 export function PromptSidebar({
   scrollContainerRef,
   streamMessages,
+  taskId,
   bottomPadding = 0,
 }: {
   scrollContainerRef: RefObject<HTMLDivElement | null>;
   streamMessages: StreamMessage[];
+  taskId?: string;
   bottomPadding?: number;
 }) {
   const prompts = useMemo(() => {
@@ -157,49 +161,56 @@ export function PromptSidebar({
 
   return (
     <div
-      className="no-scrollbar flex shrink-0 flex-col items-center gap-0 overflow-y-auto py-4 pr-1.5 pl-1.5"
+      className="flex min-h-0 shrink-0 flex-col items-center py-4 pr-1.5 pl-1.5"
       style={
         bottomPadding > 0 ? { marginBottom: bottomPadding + 8 } : undefined
       }
     >
-      {prompts.map((prompt) => {
-        const isCompleted = prompt.index < currentIndex;
-        const isCurrent = prompt.index === currentIndex;
-        const isFuture = prompt.index > currentIndex;
+      {taskId && (
+        <div className="bg-bg-0/90 z-20 mb-2 shrink-0 rounded-md backdrop-blur-sm">
+          <TaskTodoDropdown taskId={taskId} />
+        </div>
+      )}
+      <div className="no-scrollbar flex min-h-0 flex-1 flex-col items-center gap-0 overflow-y-auto">
+        {prompts.map((prompt) => {
+          const isCompleted = prompt.index < currentIndex;
+          const isCurrent = prompt.index === currentIndex;
+          const isFuture = prompt.index > currentIndex;
 
-        return (
-          <div
-            key={prompt.index}
-            className="flex flex-col items-center"
-            ref={(node) => {
-              if (node) {
-                chipRefs.current.set(prompt.index, node);
-              } else {
-                chipRefs.current.delete(prompt.index);
-              }
-            }}
-          >
-            {/* Connector line above (except first) */}
-            {prompt.index > 0 && (
-              <div
-                className={`h-5 w-px ${
-                  prompt.index <= currentIndex
-                    ? 'bg-acc/40'
-                    : 'border-l border-dashed border-white/15'
-                }`}
+          return (
+            <div
+              key={prompt.index}
+              className="flex flex-col items-center"
+              ref={(node) => {
+                if (node) {
+                  chipRefs.current.set(prompt.index, node);
+                } else {
+                  chipRefs.current.delete(prompt.index);
+                }
+              }}
+            >
+              {/* Connector line above (except first) */}
+              {prompt.index > 0 && (
+                <div
+                  className={`h-5 w-px ${
+                    prompt.index <= currentIndex
+                      ? 'bg-acc/40'
+                      : 'border-l border-dashed border-white/15'
+                  }`}
+                />
+              )}
+
+              <PromptChip
+                prompt={prompt}
+                isCompleted={isCompleted}
+                isCurrent={isCurrent}
+                isFuture={isFuture}
+                onNavigate={handleNavigate}
               />
-            )}
-
-            <PromptChip
-              prompt={prompt}
-              isCompleted={isCompleted}
-              isCurrent={isCurrent}
-              isFuture={isFuture}
-              onNavigate={handleNavigate}
-            />
-          </div>
-        );
-      })}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

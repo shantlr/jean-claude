@@ -337,6 +337,7 @@ export const MessageStream = memo(function MessageStream({
       <PromptSidebar
         scrollContainerRef={scrollContainerRef}
         streamMessages={streamMessages}
+        taskId={taskId}
         bottomPadding={bottomPadding}
       />
       <div
