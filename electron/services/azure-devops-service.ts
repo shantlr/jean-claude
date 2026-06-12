@@ -1414,15 +1414,6 @@ export async function getCurrentUser(
     identityId = connectionData?.authenticatedUser?.id;
   }
 
-  dbg.azure('current-user:connection-identity', {
-    orgName,
-    profileId: profile.id,
-    email: maskEmail(profile.emailAddress),
-    connectionStatus: connectionResponse.status,
-    identityId: identityId ?? null,
-    body: connectionResponse.ok ? undefined : connectionBody,
-  });
-
   if (!identityId) {
     const resolvedIdentityId = await resolveIdentityIdByEmail({
       authHeader,
