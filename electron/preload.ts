@@ -517,6 +517,7 @@ contextBridge.exposeInMainWorld('api', {
         deleteSourceBranch: boolean;
         transitionWorkItems: boolean;
         mergeCommitMessage?: string;
+        autoCompleteIgnoreConfigIds?: number[];
       };
     }) => ipcRenderer.invoke('azureDevOps:setPullRequestAutoComplete', params),
     publishPullRequest: (params: {

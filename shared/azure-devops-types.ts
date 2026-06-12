@@ -77,6 +77,7 @@ export interface AzureDevOpsPullRequestDetails extends AzureDevOpsPullRequest {
     deleteSourceBranch: boolean;
     transitionWorkItems: boolean;
     mergeCommitMessage?: string;
+    autoCompleteIgnoreConfigIds?: number[];
   };
 }
 

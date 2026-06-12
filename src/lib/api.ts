@@ -864,6 +864,7 @@ export interface Api {
         deleteSourceBranch: boolean;
         transitionWorkItems: boolean;
         mergeCommitMessage?: string;
+        autoCompleteIgnoreConfigIds?: number[];
       };
     }) => Promise<AzureDevOpsPullRequestDetails>;
     publishPullRequest: (params: {

@@ -601,6 +601,7 @@ export function useSetAutoComplete(projectId: string, prId: number) {
         deleteSourceBranch: boolean;
         transitionWorkItems: boolean;
         mergeCommitMessage?: string;
+        autoCompleteIgnoreConfigIds?: number[];
       };
     }) =>
       api.azureDevOps.setPullRequestAutoComplete({

@@ -1642,6 +1642,7 @@ interface PullRequestResponse {
     deleteSourceBranch?: boolean;
     transitionWorkItems?: boolean;
     mergeCommitMessage?: string;
+    autoCompleteIgnoreConfigIds?: number[];
   };
   reviewers?: Array<{
     id: string;
@@ -1942,6 +1943,8 @@ function mapPullRequestResponse(
           transitionWorkItems:
             pr.completionOptions.transitionWorkItems ?? false,
           mergeCommitMessage: pr.completionOptions.mergeCommitMessage,
+          autoCompleteIgnoreConfigIds:
+            pr.completionOptions.autoCompleteIgnoreConfigIds,
         }
       : undefined,
     reviewers: (pr.reviewers ?? []).map((r) => ({
@@ -2207,6 +2210,7 @@ export async function setPullRequestAutoComplete(params: {
     deleteSourceBranch: boolean;
     transitionWorkItems: boolean;
     mergeCommitMessage?: string;
+    autoCompleteIgnoreConfigIds?: number[];
   };
 }): Promise<AzureDevOpsPullRequestDetails> {
   const { authHeader, orgName } = await getProviderAuth(params.providerId);

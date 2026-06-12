@@ -3044,6 +3044,7 @@ export function registerIpcHandlers() {
           deleteSourceBranch: boolean;
           transitionWorkItems: boolean;
           mergeCommitMessage?: string;
+          autoCompleteIgnoreConfigIds?: number[];
         };
       },
     ) => setPullRequestAutoComplete(params),

@@ -88,6 +88,13 @@ export function PrAutoComplete({
       ),
     [evaluations],
   );
+  const optionalPolicyConfigIds = useMemo(
+    () =>
+      evaluations
+        .filter((evaluation) => !evaluation.configuration.isBlocking)
+        .map((evaluation) => evaluation.configuration.id),
+    [evaluations],
+  );
 
   const pendingCiCount = pendingCi.length;
 
@@ -109,6 +116,24 @@ export function PrAutoComplete({
   const [showCommitMessage, setShowCommitMessage] = useState(
     !!pr.completionOptions?.mergeCommitMessage,
   );
+  const [ignoreOptionalPolicies, setIgnoreOptionalPolicies] = useState(
+    !!pr.completionOptions?.autoCompleteIgnoreConfigIds?.length,
+  );
+
+  const resetForm = useCallback(() => {
+    setMergeStrategy(
+      pr.completionOptions?.mergeStrategy ??
+        allowedStrategies[0] ??
+        'noFastForward',
+    );
+    setDeleteSourceBranch(pr.completionOptions?.deleteSourceBranch ?? true);
+    setTransitionWorkItems(pr.completionOptions?.transitionWorkItems ?? false);
+    setMergeCommitMessage(pr.completionOptions?.mergeCommitMessage ?? '');
+    setShowCommitMessage(!!pr.completionOptions?.mergeCommitMessage);
+    setIgnoreOptionalPolicies(
+      !!pr.completionOptions?.autoCompleteIgnoreConfigIds?.length,
+    );
+  }, [allowedStrategies, pr.completionOptions]);
 
   useEffect(() => {
     if (!allowedStrategies.includes(mergeStrategy)) {
@@ -130,6 +155,10 @@ export function PrAutoComplete({
             showCommitMessage && mergeCommitMessage
               ? mergeCommitMessage
               : undefined,
+          autoCompleteIgnoreConfigIds:
+            ignoreOptionalPolicies && optionalPolicyConfigIds.length > 0
+              ? optionalPolicyConfigIds
+              : undefined,
         },
       },
       { onSuccess: () => setIsModalOpen(false) },
@@ -142,6 +171,8 @@ export function PrAutoComplete({
     transitionWorkItems,
     mergeCommitMessage,
     showCommitMessage,
+    ignoreOptionalPolicies,
+    optionalPolicyConfigIds,
   ]);
 
   const handleCancel = useCallback(
@@ -233,6 +264,7 @@ export function PrAutoComplete({
         type="button"
         onClick={(e) => {
           e.stopPropagation();
+          resetForm();
           setIsModalOpen(true);
         }}
         className={triggerClassName}
@@ -353,6 +385,15 @@ export function PrAutoComplete({
               label="Transition work items"
               className="mb-3 text-xs"
             />
+
+            {optionalPolicyConfigIds.length > 0 && (
+              <Checkbox
+                checked={ignoreOptionalPolicies}
+                onChange={setIgnoreOptionalPolicies}
+                label="Ignore optional policies"
+                className="mb-3 text-xs"
+              />
+            )}
 
             <button
               type="button"
