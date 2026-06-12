@@ -62,6 +62,7 @@ import { useCurrentSettingsProject } from './use-current-settings-project';
 type GlobalSubItem = {
   id: string;
   label: string;
+  beta?: boolean;
   layout?: SettingsContentLayout;
 };
 
@@ -128,6 +129,7 @@ function getGlobalSections(): GlobalSection[] {
         { id: 'prompt-preface', label: 'Prompt Preface' },
         { id: 'claude-code', label: 'Claude Code', layout: 'fill' },
         { id: 'opencode', label: 'OpenCode', layout: 'fill' },
+        { id: 'codex', label: 'Codex', beta: true, layout: 'fill' },
       ],
     },
     {
@@ -372,6 +374,14 @@ function isFillHeightProject(sel: {
   return resolveProjectContentLayout(sel) === 'fill';
 }
 
+function BetaBadge() {
+  return (
+    <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-1.5 py-px text-[9px] font-semibold tracking-wide text-amber-300 uppercase">
+      Beta
+    </span>
+  );
+}
+
 function GlobalContent({ selection }: { selection: ActiveSelection }) {
   const section = getGlobalSections().find((s) => s.id === selection.sectionId);
   const fillHeight = isFillHeightGlobal(selection);
@@ -477,6 +487,8 @@ function GlobalContentInner({ selection }: { selection: ActiveSelection }) {
         return <BackendConfigSettings backend="claude-code" />;
       case 'coding-agents:opencode':
         return <BackendConfigSettings backend="opencode" />;
+      case 'coding-agents:codex':
+        return <BackendConfigSettings backend="codex" />;
     }
   }
 
@@ -1239,7 +1251,8 @@ function GlobalNavSection({
                 aria-current={isSubActive ? 'true' : undefined}
                 onClick={() => onSubClick(sub.id)}
               >
-                {sub.label}
+                <span className="min-w-0 truncate">{sub.label}</span>
+                {sub.beta && <BetaBadge />}
               </button>
             );
           })}

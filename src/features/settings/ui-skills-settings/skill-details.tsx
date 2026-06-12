@@ -261,8 +261,12 @@ export function SkillDetails({
         </span>
         {Object.entries(skill.enabledBackends).map(([backend, enabled]) => {
           const backendType = backend as AgentBackendType;
-          const isClaude = backendType === 'claude-code';
-          const label = isClaude ? 'Claude Code' : 'OpenCode';
+          const label =
+            backendType === 'claude-code'
+              ? 'Claude Code'
+              : backendType === 'opencode'
+                ? 'OpenCode'
+                : 'Codex';
           return (
             <Switch
               key={backend}

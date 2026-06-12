@@ -1,3 +1,4 @@
+import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { AiSkillSlotsSetting } from '@shared/types';
 
 import { dbg } from '../lib/debug';
@@ -40,7 +41,7 @@ export async function generateTaskName(
   try {
     const slotConfig = await resolveAiSkillSlot('task-name', projectSlots);
 
-    let backend: 'claude-code' | 'opencode';
+    let backend: AgentBackendType;
     let model: string;
     let effectivePrompt: string;
     let skillName: string | undefined;

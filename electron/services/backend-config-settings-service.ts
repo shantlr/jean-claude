@@ -8,8 +8,10 @@ import type {
   BackendUserConfigUpdate,
 } from '@shared/backend-config-settings-types';
 
+type ConfigBackendType = AgentBackendType;
+
 const CONFIGS: Record<
-  AgentBackendType,
+  ConfigBackendType,
   { paths: string[]; schemaUrl: string; defaultContent: string }
 > = {
   'claude-code': {
@@ -26,7 +28,18 @@ const CONFIGS: Record<
     schemaUrl: 'https://opencode.ai/config.json',
     defaultContent: '{\n  "$schema": "https://opencode.ai/config.json"\n}\n',
   },
+  codex: {
+    paths: [path.join(os.homedir(), '.codex', 'config.toml')],
+    schemaUrl: 'https://developers.openai.com/codex/config-reference',
+    defaultContent: '# Codex config\n',
+  },
 };
+
+function getConfig(
+  backend: AgentBackendType,
+): (typeof CONFIGS)[ConfigBackendType] {
+  return CONFIGS[backend];
+}
 
 function stripJsonComments(content: string): string {
   let result = '';
@@ -114,7 +127,7 @@ function parseJsonLike(content: string): unknown {
   return JSON.parse(stripTrailingCommas(stripJsonComments(content)));
 }
 
-async function resolveConfigPath(config: (typeof CONFIGS)[AgentBackendType]) {
+async function resolveConfigPath(config: (typeof CONFIGS)[ConfigBackendType]) {
   for (const configPath of config.paths) {
     try {
       await fs.access(configPath);
@@ -129,7 +142,7 @@ async function resolveConfigPath(config: (typeof CONFIGS)[AgentBackendType]) {
 export async function readBackendUserConfig(
   backend: AgentBackendType,
 ): Promise<BackendUserConfig> {
-  const config = CONFIGS[backend];
+  const config = getConfig(backend);
   const configPath = await resolveConfigPath(config);
   try {
     const content = await fs.readFile(configPath, 'utf8');
@@ -156,8 +169,18 @@ export async function writeBackendUserConfig({
   backend,
   content,
 }: BackendUserConfigUpdate): Promise<BackendUserConfig> {
-  const config = CONFIGS[backend];
+  const config = getConfig(backend);
   const configPath = await resolveConfigPath(config);
+  if (backend === 'codex') {
+    await fs.mkdir(path.dirname(configPath), { recursive: true });
+    await fs.writeFile(
+      configPath,
+      content.endsWith('\n') ? content : `${content}\n`,
+      'utf8',
+    );
+    return readBackendUserConfig(backend);
+  }
+
   let parsed: unknown;
   try {
     parsed = parseJsonLike(content);

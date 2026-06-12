@@ -510,6 +510,9 @@ function BackendThinkingSettings({ backend }: { backend: AgentBackendType }) {
         opencode: {
           ...(thinkingSettings?.efforts.opencode ?? { default: 'default' }),
         },
+        codex: {
+          ...(thinkingSettings?.efforts.codex ?? { default: 'default' }),
+        },
       },
       selectedModels: {
         'claude-code':
@@ -520,6 +523,10 @@ function BackendThinkingSettings({ backend }: { backend: AgentBackendType }) {
           thinkingSettings?.selectedModels?.opencode ??
           backendDefaultModelsSetting?.models.opencode ??
           'default',
+        codex:
+          thinkingSettings?.selectedModels?.codex ??
+          backendDefaultModelsSetting?.models.codex ??
+          'default',
         [backend]: nextModel,
       },
     });
@@ -528,6 +535,7 @@ function BackendThinkingSettings({ backend }: { backend: AgentBackendType }) {
         'claude-code':
           backendDefaultModelsSetting?.models['claude-code'] ?? 'default',
         opencode: backendDefaultModelsSetting?.models.opencode ?? 'default',
+        codex: backendDefaultModelsSetting?.models.codex ?? 'default',
         [backend]: nextModel,
       },
     });
@@ -567,6 +575,9 @@ function BackendThinkingSettings({ backend }: { backend: AgentBackendType }) {
         opencode: {
           ...(thinkingSettings?.efforts.opencode ?? { default: 'default' }),
         },
+        codex: {
+          ...(thinkingSettings?.efforts.codex ?? { default: 'default' }),
+        },
         [backend]: {
           ...backendEfforts,
           [targetModel]: normalizedEffort,
@@ -580,6 +591,10 @@ function BackendThinkingSettings({ backend }: { backend: AgentBackendType }) {
         opencode:
           thinkingSettings?.selectedModels?.opencode ??
           backendDefaultModelsSetting?.models.opencode ??
+          'default',
+        codex:
+          thinkingSettings?.selectedModels?.codex ??
+          backendDefaultModelsSetting?.models.codex ??
           'default',
         [backend]: targetModel,
       },
@@ -1163,6 +1178,11 @@ const SUMMARY_MODEL_BACKENDS: Record<
     description: 'Use a lightweight provider/model when available',
     defaultModel: 'default',
   },
+  codex: {
+    label: 'Codex',
+    description: 'Use default Codex model when available',
+    defaultModel: 'default',
+  },
 };
 
 export function SummaryModelSettings({
@@ -1180,6 +1200,7 @@ export function SummaryModelSettings({
   const models = summaryModelsSetting?.models ?? {
     'claude-code': SUMMARY_MODEL_BACKENDS['claude-code'].defaultModel,
     opencode: SUMMARY_MODEL_BACKENDS.opencode.defaultModel,
+    codex: SUMMARY_MODEL_BACKENDS.codex.defaultModel,
   };
 
   const setModel = (model: string) => {

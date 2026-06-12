@@ -25,19 +25,26 @@ const JC_USER_AGENTS_DIR = path.join(
   'user',
 );
 
-const AGENT_PATH_CONFIGS: Record<AgentBackendType, { userAgentsDir: string }> =
-  {
-    'claude-code': {
-      userAgentsDir: path.join(os.homedir(), '.claude', 'agents'),
-    },
-    opencode: {
-      userAgentsDir: path.join(os.homedir(), '.config', 'opencode', 'agents'),
-    },
-  };
+type AgentManagementBackendType = Exclude<AgentBackendType, 'codex'>;
+
+const AGENT_PATH_CONFIGS: Record<
+  AgentManagementBackendType,
+  { userAgentsDir: string }
+> = {
+  'claude-code': {
+    userAgentsDir: path.join(os.homedir(), '.claude', 'agents'),
+  },
+  opencode: {
+    userAgentsDir: path.join(os.homedir(), '.config', 'opencode', 'agents'),
+  },
+};
 
 export function getAgentPathConfig(backendType: AgentBackendType): {
   userAgentsDir: string;
 } {
+  if (backendType === 'codex') {
+    throw new Error('Codex agents are not implemented yet');
+  }
   return AGENT_PATH_CONFIGS[backendType];
 }
 
@@ -206,7 +213,7 @@ async function discoverJcManagedAgents(): Promise<ManagedAgent[]> {
 
     const enabledBackends: Partial<Record<AgentBackendType, boolean>> = {};
     for (const [backend, config] of Object.entries(AGENT_PATH_CONFIGS)) {
-      const backendType = backend as AgentBackendType;
+      const backendType = backend as AgentManagementBackendType;
       enabledBackends[backendType] = await symlinkPointsTo({
         symlinkPath: path.join(config.userAgentsDir, path.basename(agentPath)),
         targetPath: agentPath,
@@ -229,7 +236,7 @@ async function discoverJcManagedAgents(): Promise<ManagedAgent[]> {
 async function discoverLegacyAgents(
   backendType: AgentBackendType,
 ): Promise<ManagedAgent[]> {
-  const config = AGENT_PATH_CONFIGS[backendType];
+  const config = getAgentPathConfig(backendType);
   const agents: ManagedAgent[] = [];
   for (const agentPath of await listMarkdownFiles(config.userAgentsDir)) {
     if (await isSymlink(agentPath)) continue;
@@ -250,7 +257,7 @@ async function discoverLegacyAgents(
 async function discoverMigrationCandidates(
   backendType: AgentBackendType,
 ): Promise<AgentMigrationPreviewItem[]> {
-  const config = AGENT_PATH_CONFIGS[backendType];
+  const config = getAgentPathConfig(backendType);
   const items: AgentMigrationPreviewItem[] = [];
   for (const legacyPath of await listMarkdownFiles(config.userAgentsDir)) {
     if (await isSymlink(legacyPath)) continue;
@@ -296,7 +303,9 @@ export async function getAllManagedAgents(): Promise<ManagedAgent[]> {
     results.push(agent);
   }
 
-  for (const backend of Object.keys(AGENT_PATH_CONFIGS) as AgentBackendType[]) {
+  for (const backend of Object.keys(
+    AGENT_PATH_CONFIGS,
+  ) as AgentManagementBackendType[]) {
     for (const agent of await discoverLegacyAgents(backend)) {
       if (seenPaths.has(agent.agentPath)) continue;
       seenPaths.add(agent.agentPath);
@@ -354,7 +363,7 @@ export async function createAgent({
   const createdSymlinks: string[] = [];
   try {
     for (const backend of enabledBackends) {
-      const config = AGENT_PATH_CONFIGS[backend];
+      const config = getAgentPathConfig(backend);
       const symlinkPath = path.join(config.userAgentsDir, fileName);
       await fs.mkdir(config.userAgentsDir, { recursive: true });
       await fs.symlink(canonicalPath, symlinkPath);
@@ -394,15 +403,19 @@ export async function updateAgent({
   const enabledBackends: Partial<Record<AgentBackendType, boolean>> = {};
   if (managed) {
     for (const [backend, config] of Object.entries(AGENT_PATH_CONFIGS)) {
-      enabledBackends[backend as AgentBackendType] = await symlinkPointsTo({
-        symlinkPath: path.join(config.userAgentsDir, path.basename(agentPath)),
-        targetPath: agentPath,
-      });
+      enabledBackends[backend as AgentManagementBackendType] =
+        await symlinkPointsTo({
+          symlinkPath: path.join(
+            config.userAgentsDir,
+            path.basename(agentPath),
+          ),
+          targetPath: agentPath,
+        });
     }
   } else {
     for (const [backend, config] of Object.entries(AGENT_PATH_CONFIGS)) {
       if (path.dirname(agentPath) === config.userAgentsDir) {
-        enabledBackends[backend as AgentBackendType] = true;
+        enabledBackends[backend as AgentManagementBackendType] = true;
       }
     }
   }
@@ -435,7 +448,7 @@ export async function enableAgent({
   backendType: AgentBackendType;
 }): Promise<void> {
   await assertAllowedAgentPath(agentPath);
-  const config = AGENT_PATH_CONFIGS[backendType];
+  const config = getAgentPathConfig(backendType);
   const symlinkPath = path.join(config.userAgentsDir, path.basename(agentPath));
   await fs.mkdir(config.userAgentsDir, { recursive: true });
   try {
@@ -458,7 +471,7 @@ export async function disableAgent({
   backendType: AgentBackendType;
 }): Promise<void> {
   await assertAllowedAgentPath(agentPath);
-  const config = AGENT_PATH_CONFIGS[backendType];
+  const config = getAgentPathConfig(backendType);
   const symlinkPath = path.join(config.userAgentsDir, path.basename(agentPath));
   if (await symlinkPointsTo({ symlinkPath, targetPath: agentPath })) {
     await fs.unlink(symlinkPath);
@@ -467,8 +480,8 @@ export async function disableAgent({
 
 export async function previewLegacyAgentMigration(): Promise<AgentMigrationPreviewResult> {
   const items = await Promise.all(
-    (Object.keys(AGENT_PATH_CONFIGS) as AgentBackendType[]).map((backendType) =>
-      discoverMigrationCandidates(backendType),
+    (Object.keys(AGENT_PATH_CONFIGS) as AgentManagementBackendType[]).map(
+      (backendType) => discoverMigrationCandidates(backendType),
     ),
   );
   return { items: items.flat() };

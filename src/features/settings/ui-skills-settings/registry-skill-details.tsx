@@ -37,6 +37,7 @@ export function RegistrySkillDetails({
   >({
     'claude-code': true,
     opencode: true,
+    codex: false,
   });
   const [justInstalled, setJustInstalled] = useState(false);
 

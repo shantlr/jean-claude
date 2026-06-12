@@ -20,7 +20,7 @@ export type {
 
 // --- Backend identification ---
 
-export type AgentBackendType = 'claude-code' | 'opencode';
+export type AgentBackendType = 'claude-code' | 'opencode' | 'codex';
 
 // --- Prompt content parts ---
 

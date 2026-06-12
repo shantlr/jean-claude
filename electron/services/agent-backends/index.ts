@@ -7,6 +7,7 @@ import type {
 } from '@shared/agent-backend-types';
 
 import { ClaudeCodeBackend } from './claude/claude-code-backend';
+import { CodexBackend } from './codex/codex-backend';
 import { OpenCodeBackend } from './opencode/opencode-backend';
 
 type AgentBackendClass = new (context: AgentTaskContext) => AgentBackend;
@@ -17,4 +18,5 @@ export const AGENT_BACKEND_CLASSES: Record<
 > = {
   'claude-code': ClaudeCodeBackend,
   opencode: OpenCodeBackend,
+  codex: CodexBackend,
 };

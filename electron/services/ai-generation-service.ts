@@ -68,6 +68,10 @@ export async function generateText({
           abortController,
         });
 
+      case 'codex':
+        dbg.agent('Codex text generation is not implemented yet');
+        return null;
+
       default: {
         const _exhaustive: never = backend;
         dbg.agent('Unknown backend: %s', _exhaustive);

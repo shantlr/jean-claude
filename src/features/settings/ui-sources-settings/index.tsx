@@ -332,6 +332,7 @@ function SourceItemSection({
                               enabledBackends: {
                                 'claude-code': true,
                                 opencode: true,
+                                codex: false,
                               },
                             }
                           : null,

@@ -190,6 +190,11 @@ export const AVAILABLE_BACKENDS: {
     label: 'OpenCode',
     description: 'OpenCode SDK',
   },
+  {
+    value: 'codex',
+    label: 'Codex',
+    description: 'OpenAI Codex App Server',
+  },
 ];
 
 export const AGENT_BACKENDS = AVAILABLE_BACKENDS.map((b) => b.value);

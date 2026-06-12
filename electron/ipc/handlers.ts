@@ -372,7 +372,7 @@ async function pullSourceBranch({
   return `origin/${remoteBranch}`;
 }
 
-const VALID_BACKENDS = new Set<string>(['claude-code', 'opencode']);
+const VALID_BACKENDS = new Set<string>(['claude-code', 'opencode', 'codex']);
 
 async function cleanupFeatureMapTempDirsForTask(taskId: string): Promise<void> {
   const steps = await TaskStepRepository.findByTaskId(taskId);
@@ -3629,7 +3629,11 @@ export function registerIpcHandlers() {
   ipcMain.handle(
     'backendConfig:getUserConfig',
     (_: unknown, backend: unknown) => {
-      if (backend !== 'claude-code' && backend !== 'opencode') {
+      if (
+        backend !== 'claude-code' &&
+        backend !== 'opencode' &&
+        backend !== 'codex'
+      ) {
         throw new Error('Invalid backend');
       }
       return readBackendUserConfig(backend);
@@ -3638,7 +3642,11 @@ export function registerIpcHandlers() {
   ipcMain.handle(
     'backendConfig:setUserConfig',
     (_: unknown, backend: unknown, content: unknown) => {
-      if (backend !== 'claude-code' && backend !== 'opencode') {
+      if (
+        backend !== 'claude-code' &&
+        backend !== 'opencode' &&
+        backend !== 'codex'
+      ) {
         throw new Error('Invalid backend');
       }
       if (typeof content !== 'string') {

@@ -36,8 +36,10 @@ type ConfigField = {
   options?: FieldOption[];
 };
 
+type ConfigBackendType = AgentBackendType;
+
 const BACKEND_META: Record<
-  AgentBackendType,
+  ConfigBackendType,
   { label: string; summary: string; userPath: string }
 > = {
   'claude-code': {
@@ -49,6 +51,11 @@ const BACKEND_META: Record<
     label: 'OpenCode',
     summary: 'User settings from OpenCode opencode.jsonc or opencode.json.',
     userPath: '~/.config/opencode/opencode.jsonc',
+  },
+  codex: {
+    label: 'Codex',
+    summary: 'User settings from Codex config.toml.',
+    userPath: '~/.codex/config.toml',
   },
 };
 
@@ -527,7 +534,8 @@ const OPENCODE_FIELDS: ConfigField[] = [
   },
 ];
 
-function getFields(backend: AgentBackendType): ConfigField[] {
+function getFields(backend: ConfigBackendType): ConfigField[] {
+  if (backend === 'codex') return [];
   return backend === 'claude-code' ? CLAUDE_FIELDS : OPENCODE_FIELDS;
 }
 
@@ -832,10 +840,97 @@ function FieldCard({
   );
 }
 
-export function BackendConfigSettings({
+function CodexRawConfigSettings() {
+  const meta = BACKEND_META.codex;
+  const [content, setContent] = useState('');
+  const [baselineContent, setBaselineContent] = useState('');
+  const appliedDataRef = useRef<string | null>(null);
+  const addToast = useToastStore((s) => s.addToast);
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ['backendConfig', 'codex'],
+    queryFn: () => api.backendConfig.getUserConfig('codex'),
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false,
+  });
+
+  const saveConfig = useMutation({
+    mutationFn: () => api.backendConfig.setUserConfig('codex', content),
+    onSuccess: (savedConfig) => {
+      queryClient.setQueryData(['backendConfig', 'codex'], savedConfig);
+      addToast({ message: `${meta.label} config saved`, type: 'success' });
+    },
+    onError: (error) => {
+      addToast({ message: formatError(error), type: 'error' });
+    },
+  });
+
+  useEffect(() => {
+    if (!query.data) return;
+    const dataKey = `codex:${query.data.path}:${query.data.content}`;
+    if (appliedDataRef.current === dataKey) return;
+    if (baselineContent && content !== baselineContent) return;
+
+    appliedDataRef.current = dataKey;
+    setContent(query.data.content);
+    setBaselineContent(query.data.content);
+  }, [baselineContent, content, query.data]);
+
+  const hasChanges = !!query.data && content !== baselineContent;
+
+  return (
+    <div className="bg-bg-0/20 flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="border-line-soft flex shrink-0 flex-wrap items-start justify-between gap-3 border-b px-4 py-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 className="text-ink-1 text-base font-semibold">Codex config</h2>
+            <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-1.5 py-px text-[9px] font-semibold tracking-wide text-amber-300 uppercase">
+              Beta
+            </span>
+          </div>
+          <p className="text-ink-3 mt-0.5 text-xs">{meta.summary}</p>
+          <div className="text-ink-3 mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+            <span className="flex min-w-0 items-center gap-1">
+              <FileJson size={13} />
+              <span className="truncate">
+                {query.data?.path ?? meta.userPath}
+              </span>
+            </span>
+            <span>Reference: {query.data?.schemaUrl}</span>
+          </div>
+          {query.data && !query.data.exists && (
+            <div className="mt-0.5 text-[11px] text-amber-300">
+              File does not exist yet. Saving will create it.
+            </div>
+          )}
+        </div>
+        <Button
+          icon={<Save />}
+          disabled={!hasChanges || query.isLoading || saveConfig.isPending}
+          loading={saveConfig.isPending}
+          onClick={() => saveConfig.mutate()}
+        >
+          Save
+        </Button>
+      </div>
+
+      <div className="flex-1 overflow-hidden p-3">
+        <Textarea
+          value={content}
+          placeholder="# Codex config"
+          className="h-full min-h-[420px] font-mono text-[12px] leading-5"
+          onChange={(event) => setContent(event.target.value)}
+        />
+      </div>
+    </div>
+  );
+}
+
+function JsonBackendConfigSettings({
   backend,
 }: {
-  backend: AgentBackendType;
+  backend: Exclude<ConfigBackendType, 'codex'>;
 }) {
   const [config, setConfig] = useState<ConfigObject | null>(null);
   const [baselineConfig, setBaselineConfig] = useState('');
@@ -1062,4 +1157,16 @@ export function BackendConfigSettings({
       }
     />
   );
+}
+
+export function BackendConfigSettings({
+  backend,
+}: {
+  backend: ConfigBackendType;
+}) {
+  if (backend === 'codex') {
+    return <CodexRawConfigSettings />;
+  }
+
+  return <JsonBackendConfigSettings backend={backend} />;
 }

@@ -12,6 +12,10 @@ import { CURRENT_NORMALIZATION_VERSION } from '@shared/normalized-message-v2';
 import type { NormalizationContext } from '../../services/agent-backends/claude/normalize-claude-message-v2';
 import { normalizeClaudeMessageV2 } from '../../services/agent-backends/claude/normalize-claude-message-v2';
 import {
+  createCodexNormalizationContext,
+  normalizeCodexNotification,
+} from '../../services/agent-backends/codex/normalize-codex-message-v2';
+import {
   normalizeOpenCodeV2,
   type OpenCodeNormalizationContext,
   type OpenCodeRawInput,
@@ -523,6 +527,61 @@ export const AgentMessageRepository = {
       }
     }
 
+    if (formats.has('codex')) {
+      const codexCtx = createCodexNormalizationContext();
+
+      for (const raw of rawRows) {
+        const rawData = decodeRawMessageData(raw);
+        if (!rawData || raw.rawFormat !== 'codex') continue;
+        const parsed = JSON.parse(rawData) as {
+          method?: unknown;
+          params?: unknown;
+        };
+        if (typeof parsed.method !== 'string') continue;
+
+        const events = normalizeCodexNotification(
+          {
+            method: parsed.method,
+            params: record(parsed.params),
+          },
+          codexCtx,
+        );
+
+        for (const event of events) {
+          if (event.type === 'entry') {
+            const idx = entries.length;
+            entries.push({
+              originalIndex: raw.messageIndex,
+              rawMessageId: raw.id,
+              stepId: raw.stepId,
+              entry: event.entry,
+            });
+            if (event.entry.type === 'tool-use') {
+              toolIdToEntryIndex.set(event.entry.toolId, idx);
+            }
+          }
+          if (event.type === 'entry-update') {
+            const idx = entries.findIndex((e) => e.entry.id === event.entry.id);
+            if (idx !== -1) {
+              entries[idx].entry = event.entry;
+            }
+          }
+          if (event.type === 'tool-result') {
+            const idx = toolIdToEntryIndex.get(event.toolId);
+            if (idx !== undefined) {
+              const existing = entries[idx].entry;
+              if (existing.type === 'tool-use') {
+                entries[idx].entry = {
+                  ...existing,
+                  result: event.result,
+                } as NormalizedEntry;
+              }
+            }
+          }
+        }
+      }
+    }
+
     // Add synthetic entries back (preserve stepId from original rows)
     for (const syn of syntheticRows) {
       if (!syn.data) continue;
@@ -577,4 +636,11 @@ function tryParseJson(content: string): Record<string, unknown> | null {
     // not JSON
   }
   return null;
+}
+
+function record(value: unknown): Record<string, unknown> | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+  return value as Record<string, unknown>;
 }

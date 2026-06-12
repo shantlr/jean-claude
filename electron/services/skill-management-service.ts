@@ -60,7 +60,12 @@ const CLAUDE_PLUGINS_CACHE_DIR = path.join(
 
 // --- Backend path configurations ---
 
-const SKILL_PATH_CONFIGS: Record<AgentBackendType, AgentSkillPathConfig> = {
+type SkillManagementBackendType = Exclude<AgentBackendType, 'codex'>;
+
+const SKILL_PATH_CONFIGS: Record<
+  SkillManagementBackendType,
+  AgentSkillPathConfig
+> = {
   'claude-code': {
     userSkillsDir: path.join(os.homedir(), '.claude', 'skills'),
     projectSkillsDir: '.claude/skills',
@@ -78,6 +83,9 @@ const SKILL_PATH_CONFIGS: Record<AgentBackendType, AgentSkillPathConfig> = {
 export function getSkillPathConfig(
   backendType: AgentBackendType,
 ): AgentSkillPathConfig {
+  if (backendType === 'codex') {
+    throw new Error('Codex skills are not implemented yet');
+  }
   return SKILL_PATH_CONFIGS[backendType];
 }
 
@@ -333,10 +341,11 @@ async function discoverJcManagedUserSkills(): Promise<ManagedSkill[]> {
       const enabledBackends: Partial<Record<AgentBackendType, boolean>> = {};
       for (const [backend, config] of Object.entries(SKILL_PATH_CONFIGS)) {
         const symlinkPath = path.join(config.userSkillsDir, entry.name);
-        enabledBackends[backend as AgentBackendType] = await symlinkPointsTo({
-          symlinkPath,
-          targetPath: canonicalPath,
-        });
+        enabledBackends[backend as SkillManagementBackendType] =
+          await symlinkPointsTo({
+            symlinkPath,
+            targetPath: canonicalPath,
+          });
       }
 
       skills.push({
@@ -388,10 +397,11 @@ async function discoverBuiltinSkills(): Promise<ManagedSkill[]> {
       const enabledBackends: Partial<Record<AgentBackendType, boolean>> = {};
       for (const [backend, config] of Object.entries(SKILL_PATH_CONFIGS)) {
         const symlinkPath = path.join(config.userSkillsDir, entry.name);
-        enabledBackends[backend as AgentBackendType] = await symlinkPointsTo({
-          symlinkPath,
-          targetPath: skillDir,
-        });
+        enabledBackends[backend as SkillManagementBackendType] =
+          await symlinkPointsTo({
+            symlinkPath,
+            targetPath: skillDir,
+          });
       }
 
       skills.push({
@@ -495,7 +505,7 @@ export async function syncBuiltinSkillSymlinks(): Promise<void> {
 async function discoverJcManagedUserSkillsForBackend(
   backendType: AgentBackendType,
 ): Promise<ManagedSkill[]> {
-  const config = SKILL_PATH_CONFIGS[backendType];
+  const config = getSkillPathConfig(backendType);
   const skills: ManagedSkill[] = [];
 
   try {
@@ -550,7 +560,7 @@ async function discoverJcManagedUserSkillsForBackend(
 async function discoverLegacyUserSkills(
   backendType: AgentBackendType,
 ): Promise<ManagedSkill[]> {
-  const config = SKILL_PATH_CONFIGS[backendType];
+  const config = getSkillPathConfig(backendType);
   const skills: ManagedSkill[] = [];
   const seenSkillPaths = new Set<string>();
 
@@ -771,7 +781,7 @@ async function discoverLegacyMigrationCandidates({
     reason?: string;
   }>
 > {
-  const config = SKILL_PATH_CONFIGS[backendType];
+  const config = getSkillPathConfig(backendType);
   const candidates: Array<{
     backendType: AgentBackendType;
     name: string;
@@ -927,7 +937,7 @@ async function discoverSkillsForBackend({
   backendType: AgentBackendType;
   projectPath?: string;
 }): Promise<ManagedSkill[]> {
-  const config = SKILL_PATH_CONFIGS[backendType];
+  const config = getSkillPathConfig(backendType);
   const results: ManagedSkill[] = [];
 
   // JC-managed user skills: canonical in JC folder, symlinked to backend path
@@ -999,7 +1009,7 @@ export async function getAllManagedSkillsUnified({
 
   // Per-backend: legacy, project, and external skills (deduplicated)
   for (const [backend, config] of Object.entries(SKILL_PATH_CONFIGS)) {
-    const backendType = backend as AgentBackendType;
+    const backendType = backend as SkillManagementBackendType;
 
     const legacy = await discoverLegacyUserSkills(backendType);
     for (const skill of legacy) {
@@ -1236,7 +1246,7 @@ export async function createSkill({
   if (scope === 'project') {
     // Project skills live directly in the project directory — no JC canonical store
     const projectBackend = enabledBackendsList[0];
-    const config = SKILL_PATH_CONFIGS[projectBackend];
+    const config = getSkillPathConfig(projectBackend);
     if (!projectPath || !config.projectSkillsDir) {
       throw new Error('Project path required for project-scoped skills');
     }
@@ -1293,7 +1303,7 @@ export async function createSkill({
   const createdSymlinks: string[] = [];
   try {
     for (const backend of enabledBackendsList) {
-      const cfg = SKILL_PATH_CONFIGS[backend];
+      const cfg = getSkillPathConfig(backend);
       const symlinkPath = path.join(cfg.userSkillsDir, dirName);
       await fs.mkdir(cfg.userSkillsDir, { recursive: true });
       await fs.symlink(canonicalPath, symlinkPath);
@@ -1377,10 +1387,11 @@ export async function updateSkill({
   if (isJcManaged) {
     for (const [backend, cfg] of Object.entries(SKILL_PATH_CONFIGS)) {
       const sl = path.join(cfg.userSkillsDir, path.basename(skillPath));
-      enabledBackends[backend as AgentBackendType] = await symlinkPointsTo({
-        symlinkPath: sl,
-        targetPath: skillPath,
-      });
+      enabledBackends[backend as SkillManagementBackendType] =
+        await symlinkPointsTo({
+          symlinkPath: sl,
+          targetPath: skillPath,
+        });
     }
   } else {
     enabledBackends[backendType] = true;
@@ -1442,7 +1453,7 @@ export async function disableSkill({
   skillPath: string;
   backendType: AgentBackendType;
 }): Promise<void> {
-  const config = SKILL_PATH_CONFIGS[backendType];
+  const config = getSkillPathConfig(backendType);
   const symlinkPath = path.join(config.userSkillsDir, path.basename(skillPath));
 
   try {
@@ -1471,7 +1482,7 @@ export async function enableSkill({
   skillPath: string;
   backendType: AgentBackendType;
 }): Promise<void> {
-  const config = SKILL_PATH_CONFIGS[backendType];
+  const config = getSkillPathConfig(backendType);
   const symlinkPath = path.join(config.userSkillsDir, path.basename(skillPath));
 
   // Ensure the backend's skills directory exists
