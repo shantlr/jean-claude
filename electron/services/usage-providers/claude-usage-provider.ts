@@ -212,10 +212,6 @@ export class ClaudeUsageProvider implements BackendUsageProvider {
     }
 
     const expiresAt = claudeAiOauth?.expiresAt ?? record.expiresAt;
-    if (typeof expiresAt === 'number' && expiresAt <= Date.now()) {
-      return null;
-    }
-
     return {
       accessToken,
       expiresAt: typeof expiresAt === 'number' ? expiresAt : null,

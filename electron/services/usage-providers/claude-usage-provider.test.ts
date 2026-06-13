@@ -101,7 +101,7 @@ describe('ClaudeUsageProvider', () => {
     });
   });
 
-  it('ignores expired credentials before calling usage API', async () => {
+  it('tries expired credentials so unauthorized responses can refresh them', async () => {
     mockKeychainMiss();
     await mkdir(path.dirname(credentialsPath), { recursive: true });
     await writeFile(
@@ -113,12 +113,18 @@ describe('ClaudeUsageProvider', () => {
         },
       }),
     );
+    vi.mocked(fetch).mockResolvedValue(
+      new Response('{}', { status: 401, statusText: 'Unauthorized' }),
+    );
 
     const provider = new ClaudeUsageProvider({ credentialsPath });
     const result = await provider.getUsage();
 
-    expect(result.error).toMatchObject({ type: 'no_token' });
-    expect(vi.mocked(fetch)).not.toHaveBeenCalled();
+    expect(result.error).toMatchObject({ type: 'api_error', statusCode: 401 });
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(fetch).mock.calls[0][1]?.headers).toMatchObject({
+      Authorization: 'Bearer expired-token',
+    });
   });
 
   it('does not reuse cached credentials after they expire', async () => {
