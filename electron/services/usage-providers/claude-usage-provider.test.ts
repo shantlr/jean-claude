@@ -41,6 +41,7 @@ describe('ClaudeUsageProvider', () => {
   });
 
   afterEach(async () => {
+    vi.useRealTimers();
     await rm(homeDirectory, {
       recursive: true,
       force: true,
@@ -49,13 +50,14 @@ describe('ClaudeUsageProvider', () => {
 
   it('uses Claude credentials file when Keychain token is unavailable', async () => {
     await writeClaudeCredentials('file-token');
-    vi.mocked(fetch).mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          five_hour: { utilization: 12, resets_at: '2026-06-09T12:00:00Z' },
-        }),
-        { status: 200 },
-      ),
+    vi.mocked(fetch).mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            five_hour: { utilization: 12, resets_at: '2026-06-09T12:00:00Z' },
+          }),
+          { status: 200 },
+        ),
     );
 
     const provider = new ClaudeUsageProvider({ credentialsPath });
@@ -68,6 +70,101 @@ describe('ClaudeUsageProvider', () => {
       Authorization: 'Bearer file-token',
       'User-Agent': 'claude-code/2.1.0',
       'anthropic-beta': 'oauth-2025-04-20',
+    });
+  });
+
+  it('retries once with fresh credentials after unauthorized response', async () => {
+    mockKeychainMiss();
+    await writeClaudeCredentials('old-token');
+    vi.mocked(fetch).mockImplementation(async () => {
+      const callCount = vi.mocked(fetch).mock.calls.length;
+      if (callCount === 1) {
+        await writeClaudeCredentials('new-token');
+        return new Response('{}', { status: 401, statusText: 'Unauthorized' });
+      }
+      return new Response(
+        JSON.stringify({
+          five_hour: { utilization: 12, resets_at: '2026-06-09T12:00:00Z' },
+        }),
+        { status: 200 },
+      );
+    });
+
+    const provider = new ClaudeUsageProvider({ credentialsPath });
+    const result = await provider.getUsage();
+
+    expect(result.error).toBeNull();
+    expect(result.data?.limits[0]?.key).toBe('five_hour');
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(fetch).mock.calls[1][1]?.headers).toMatchObject({
+      Authorization: 'Bearer new-token',
+    });
+  });
+
+  it('ignores expired credentials before calling usage API', async () => {
+    mockKeychainMiss();
+    await mkdir(path.dirname(credentialsPath), { recursive: true });
+    await writeFile(
+      credentialsPath,
+      JSON.stringify({
+        claudeAiOauth: {
+          accessToken: 'expired-token',
+          expiresAt: Date.now() - 60_000,
+        },
+      }),
+    );
+
+    const provider = new ClaudeUsageProvider({ credentialsPath });
+    const result = await provider.getUsage();
+
+    expect(result.error).toMatchObject({ type: 'no_token' });
+    expect(vi.mocked(fetch)).not.toHaveBeenCalled();
+  });
+
+  it('does not reuse cached credentials after they expire', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-09T10:00:00Z'));
+    mockKeychainMiss();
+    await mkdir(path.dirname(credentialsPath), { recursive: true });
+    await writeFile(
+      credentialsPath,
+      JSON.stringify({
+        claudeAiOauth: {
+          accessToken: 'old-token',
+          expiresAt: Date.now() + 1_000,
+        },
+      }),
+    );
+    vi.mocked(fetch).mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            five_hour: { utilization: 12, resets_at: '2026-06-09T12:00:00Z' },
+          }),
+          { status: 200 },
+        ),
+    );
+
+    const provider = new ClaudeUsageProvider({ credentialsPath });
+    await provider.getUsage();
+
+    vi.setSystemTime(new Date('2026-06-09T10:00:02Z'));
+    await writeFile(
+      credentialsPath,
+      JSON.stringify({
+        claudeAiOauth: {
+          accessToken: 'new-token',
+          expiresAt: Date.now() + 60_000,
+        },
+      }),
+    );
+
+    const result = await provider.getUsage();
+
+    expect(result.error).toBeNull();
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(fetch).mock.calls[1][1]?.headers).toMatchObject({
+      Authorization: 'Bearer new-token',
     });
   });
 
