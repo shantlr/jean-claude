@@ -89,6 +89,15 @@ export interface AiUsageDashboard {
     providerCostUsd: number;
     providerApiCostUsd: number;
     requests: number;
+    models: Array<{
+      backend: string;
+      model: string;
+      totalTokens: number;
+      estimatedCostUsd: number;
+      providerCostUsd: number;
+      providerApiCostUsd: number;
+      requests: number;
+    }>;
   }>;
   byModel: Array<{
     backend: string;

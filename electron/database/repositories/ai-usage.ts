@@ -311,6 +311,10 @@ export const AiUsageRepository = {
 
     const byDayMap = new Map<string, typeof emptyTotals>();
     const byFeatureMap = new Map<string, typeof emptyTotals>();
+    const byFeatureModelMap = new Map<
+      string,
+      Map<string, typeof emptyTotals>
+    >();
     const byModelMap = new Map<string, typeof emptyTotals>();
     const byTaskMap = new Map<
       string,
@@ -339,6 +343,14 @@ export const AiUsageRepository = {
         event,
       );
       const modelKey = `${event.backend}\n${event.model}`;
+      const featureModels =
+        byFeatureModelMap.get(event.feature) ??
+        byFeatureModelMap.set(event.feature, new Map()).get(event.feature)!;
+      addTotals(
+        featureModels.get(modelKey) ??
+          featureModels.set(modelKey, { ...emptyTotals }).get(modelKey)!,
+        event,
+      );
       addTotals(
         byModelMap.get(modelKey) ??
           byModelMap.set(modelKey, { ...emptyTotals }).get(modelKey)!,
@@ -394,6 +406,12 @@ export const AiUsageRepository = {
         .map(([feature, value]) => ({
           feature: feature as AiUsageEvent['feature'],
           ...value,
+          models: [...(byFeatureModelMap.get(feature)?.entries() ?? [])]
+            .map(([key, modelValue]) => {
+              const [backend, model] = key.split('\n');
+              return { backend, model, ...modelValue };
+            })
+            .sort((a, b) => b.totalTokens - a.totalTokens),
         }))
         .sort((a, b) => b.estimatedCostUsd - a.estimatedCostUsd),
       byModel: [...byModelMap.entries()]

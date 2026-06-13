@@ -150,6 +150,20 @@ export function Tooltip({
         }
         handleMouseLeave();
       },
+      onFocus: (e: React.FocusEvent) => {
+        const originalProps = children.props as Record<string, unknown>;
+        if (typeof originalProps.onFocus === 'function') {
+          (originalProps.onFocus as (e: React.FocusEvent) => void)(e);
+        }
+        handleMouseEnter();
+      },
+      onBlur: (e: React.FocusEvent) => {
+        const originalProps = children.props as Record<string, unknown>;
+        if (typeof originalProps.onBlur === 'function') {
+          (originalProps.onBlur as (e: React.FocusEvent) => void)(e);
+        }
+        handleMouseLeave();
+      },
     },
   );
 
@@ -163,7 +177,7 @@ export function Tooltip({
             ref={handleContentRef}
             role="tooltip"
             className={clsx(
-              'border-glass-border bg-bg-1 text-ink-1 pointer-events-none fixed z-50 rounded-md border px-3 py-2 text-xs shadow-lg',
+              'border-glass-border bg-bg-1 text-ink-1 pointer-events-none fixed z-[10020] rounded-md border px-3 py-2 text-xs shadow-lg',
               className,
             )}
             style={{
