@@ -110,8 +110,30 @@ function isSDKSyntheticUserPrompt(entry: NormalizedEntry): boolean {
   return entry.type === 'user-prompt' && entry.isSDKSynthetic === true;
 }
 
-function isErrorResult(entry: NormalizedEntry | undefined): boolean {
-  return entry?.type === 'result' && entry.isError === true;
+function hasDuplicateUserPrompt(
+  entries: NormalizedEntry[],
+  startIndex: number,
+): boolean {
+  const current = entries[startIndex];
+  if (current.type !== 'user-prompt') return false;
+
+  const currentValue = current.value.trim();
+  if (!currentValue) return false;
+
+  for (let i = 0; i < entries.length; i++) {
+    if (i === startIndex) continue;
+
+    const entry = entries[i];
+    if (
+      entry.type === 'user-prompt' &&
+      !isSDKSyntheticUserPrompt(entry) &&
+      entry.value.trim() === currentValue
+    ) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function pathsMatch(a: string, b: string): boolean {
@@ -228,7 +250,10 @@ export function mergeSkillMessages(
       continue;
     }
 
-    if (isSDKSyntheticUserPrompt(current) && !isErrorResult(entries[i + 1])) {
+    if (
+      isSDKSyntheticUserPrompt(current) &&
+      hasDuplicateUserPrompt(entries, i)
+    ) {
       processedIndices.add(i);
       continue;
     }

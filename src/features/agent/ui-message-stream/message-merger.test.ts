@@ -210,7 +210,7 @@ describe('message-merger', () => {
     });
   });
 
-  it('does not create prompt groups for SDK synthetic prompts', () => {
+  it('keeps a lone SDK synthetic prompt as running work', () => {
     const entries: NormalizedEntry[] = [
       {
         id: 'synthetic-summary-prompt',
@@ -225,8 +225,78 @@ describe('message-merger', () => {
     const merged = mergeSkillMessages(entries);
     const groups = groupByPrompts(merged, true);
 
-    expect(merged).toHaveLength(0);
-    expect(groups).toHaveLength(0);
+    expect(merged).toHaveLength(1);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({
+      kind: 'prompt-group',
+      status: 'running',
+      promptEntry: { id: 'synthetic-summary-prompt' },
+    });
+  });
+
+  it('keeps SDK synthetic prompts when later content is not a duplicate prompt', () => {
+    const entries: NormalizedEntry[] = [
+      {
+        id: 'synthetic-summary-prompt',
+        date: '2026-06-13T09:56:30.555Z',
+        isSynthetic: true,
+        type: 'user-prompt',
+        value: 'Summarize the prior step context for continuation.',
+        isSDKSynthetic: true,
+      },
+      {
+        id: 'summary-content',
+        date: '2026-06-13T09:56:31.555Z',
+        isSynthetic: true,
+        type: 'assistant-message',
+        value: 'Summary for "Step 1":\n\nDid work.',
+      },
+    ];
+
+    const merged = mergeSkillMessages(entries);
+    const groups = groupByPrompts(merged, false);
+
+    expect(merged).toHaveLength(2);
+    expect(merged[0]).toMatchObject({
+      kind: 'entry',
+      entry: { id: 'synthetic-summary-prompt' },
+    });
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({
+      kind: 'prompt-group',
+      promptEntry: { id: 'synthetic-summary-prompt' },
+      childMessages: [{ kind: 'entry', entry: { id: 'summary-content' } }],
+    });
+  });
+
+  it('deduplicates SDK synthetic prompts when a real prompt has the same text', () => {
+    const entries: NormalizedEntry[] = [
+      {
+        id: 'sdk-prompt-echo',
+        date: '2026-06-13T09:56:30.555Z',
+        isSynthetic: true,
+        type: 'user-prompt',
+        value: 'Implement the design.',
+        isSDKSynthetic: true,
+      },
+      {
+        id: 'initial-prompt',
+        date: '2026-06-13T09:56:31.555Z',
+        isSynthetic: true,
+        type: 'user-prompt',
+        value: 'Implement the design.',
+      },
+    ];
+
+    const merged = mergeSkillMessages(entries);
+    const groups = groupByPrompts(merged, true);
+
+    expect(merged).toHaveLength(1);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({
+      kind: 'prompt-group',
+      promptEntry: { id: 'initial-prompt' },
+    });
   });
 
   it('keeps SDK synthetic prompts when their run fails', () => {
