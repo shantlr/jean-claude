@@ -209,4 +209,23 @@ describe('message-merger', () => {
       ],
     });
   });
+
+  it('does not create prompt groups for SDK synthetic prompts', () => {
+    const entries: NormalizedEntry[] = [
+      {
+        id: 'synthetic-summary-prompt',
+        date: '2026-06-13T09:56:30.555Z',
+        isSynthetic: true,
+        type: 'user-prompt',
+        value: 'Summarize the prior step context for continuation.',
+        isSDKSynthetic: true,
+      },
+    ];
+
+    const merged = mergeSkillMessages(entries);
+    const groups = groupByPrompts(merged, true);
+
+    expect(merged).toHaveLength(0);
+    expect(groups).toHaveLength(0);
+  });
 });

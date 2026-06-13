@@ -106,6 +106,10 @@ function isSyntheticUserPrompt(entry: NormalizedEntry): boolean {
   return entry.isSynthetic === true && entry.type === 'user-prompt';
 }
 
+function isSDKSyntheticUserPrompt(entry: NormalizedEntry): boolean {
+  return entry.type === 'user-prompt' && entry.isSDKSynthetic === true;
+}
+
 function pathsMatch(a: string, b: string): boolean {
   if (!a || !b) return false;
   if (a === b) return true;
@@ -216,6 +220,11 @@ export function mergeSkillMessages(
 
     const current = entries[i];
     if (hasToolEditForFile(current, editedFilePaths)) {
+      processedIndices.add(i);
+      continue;
+    }
+
+    if (isSDKSyntheticUserPrompt(current)) {
       processedIndices.add(i);
       continue;
     }
