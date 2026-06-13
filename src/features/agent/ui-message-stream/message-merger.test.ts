@@ -228,4 +228,36 @@ describe('message-merger', () => {
     expect(merged).toHaveLength(0);
     expect(groups).toHaveLength(0);
   });
+
+  it('keeps SDK synthetic prompts when their run fails', () => {
+    const entries: NormalizedEntry[] = [
+      {
+        id: 'synthetic-summary-prompt',
+        date: '2026-06-13T09:56:30.555Z',
+        isSynthetic: true,
+        type: 'user-prompt',
+        value: 'Summarize the prior step context for continuation.',
+        isSDKSynthetic: true,
+      },
+      {
+        id: 'summary-error',
+        date: '2026-06-13T09:57:30.581Z',
+        isSynthetic: true,
+        type: 'result',
+        value: 'Failed to summarize step "Step 1" using backend opencode',
+        isError: true,
+      },
+    ];
+
+    const merged = mergeSkillMessages(entries);
+    const groups = groupByPrompts(merged, false);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({
+      kind: 'prompt-group',
+      status: 'error',
+      promptEntry: { id: 'synthetic-summary-prompt' },
+      resultEntry: { id: 'summary-error', isError: true },
+    });
+  });
 });

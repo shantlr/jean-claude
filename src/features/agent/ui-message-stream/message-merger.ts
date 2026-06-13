@@ -110,6 +110,10 @@ function isSDKSyntheticUserPrompt(entry: NormalizedEntry): boolean {
   return entry.type === 'user-prompt' && entry.isSDKSynthetic === true;
 }
 
+function isErrorResult(entry: NormalizedEntry | undefined): boolean {
+  return entry?.type === 'result' && entry.isError === true;
+}
+
 function pathsMatch(a: string, b: string): boolean {
   if (!a || !b) return false;
   if (a === b) return true;
@@ -224,7 +228,7 @@ export function mergeSkillMessages(
       continue;
     }
 
-    if (isSDKSyntheticUserPrompt(current)) {
+    if (isSDKSyntheticUserPrompt(current) && !isErrorResult(entries[i + 1])) {
       processedIndices.add(i);
       continue;
     }
