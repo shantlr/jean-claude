@@ -1,6 +1,6 @@
 import {
+  BarChart3,
   ClipboardList,
-  DatabaseZap,
   History,
   X,
   Menu,
@@ -636,7 +636,7 @@ export function Header() {
         <Button
           variant="ghost"
           size="sm"
-          icon={<DatabaseZap />}
+          icon={<BarChart3 />}
           title="AI usage"
           aria-label="Open AI usage"
           onClick={() => openOverlay('usage')}
