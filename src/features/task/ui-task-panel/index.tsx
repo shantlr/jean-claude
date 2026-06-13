@@ -210,6 +210,45 @@ function getReferenceStepForPreset({
   );
 }
 
+function getContinueReferenceStep({
+  steps,
+  activeStepId,
+  preferredStepId,
+}: {
+  steps: TaskStep[];
+  activeStepId: string | null;
+  preferredStepId?: string | null;
+}): TaskStep | null {
+  function isUsableContinueSource(step: TaskStep | null | undefined): boolean {
+    return Boolean(
+      step &&
+      (step.status === 'completed' ||
+        step.status === 'interrupted' ||
+        step.status === 'errored') &&
+      (step.output !== null || step.sessionId !== null),
+    );
+  }
+
+  const preferred = getReferenceStepForPreset({
+    steps,
+    activeStepId,
+    preferredStepId,
+  });
+
+  if (isUsableContinueSource(preferred)) {
+    return preferred;
+  }
+
+  for (let index = steps.length - 1; index >= 0; index--) {
+    const step = steps[index];
+    if (isUsableContinueSource(step)) {
+      return step;
+    }
+  }
+
+  return null;
+}
+
 function getLastAssistantMessage(messages: NormalizedEntry[]): string {
   for (let index = messages.length - 1; index >= 0; index--) {
     const message = messages[index];
@@ -815,11 +854,28 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       const preferredStepId = addStepAtEnd
         ? (stepList[stepList.length - 1]?.id ?? null)
         : addStepAfterStepId;
-      const referenceStep = getReferenceStepForPreset({
-        steps: stepList,
-        activeStepId,
-        preferredStepId,
-      });
+      const referenceStep =
+        data.presetType === 'continue'
+          ? getContinueReferenceStep({
+              steps: stepList,
+              activeStepId,
+              preferredStepId,
+            })
+          : getReferenceStepForPreset({
+              steps: stepList,
+              activeStepId,
+              preferredStepId,
+            });
+
+      if (data.presetType === 'continue' && !referenceStep) {
+        addToast({
+          type: 'error',
+          message:
+            'No usable previous step to continue from. Pick step with actual messages or finish current step first.',
+        });
+        return;
+      }
+
       const insertionSortOrder = (() => {
         if (addStepAtEnd) return stepList.length;
         if (stepList.length === 0) return 0;
@@ -849,10 +905,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             ? data.promptTemplate || buildReviewChangesPrompt()
             : data.promptTemplate;
 
-      const dependsOn =
-        data.presetType === 'continue' && referenceStep
-          ? [referenceStep.id]
-          : [];
+      const dependsOn = referenceStep ? [referenceStep.id] : [];
 
       const isReview = data.presetType === 'review-changes';
       const reviewers = isReview ? data.reviewers : undefined;

@@ -19,8 +19,15 @@ import { TaskRepository } from '../database/repositories/tasks';
 import { createDebug } from '../lib/debug';
 
 import { summarizeNormalizedMessages } from './session-summary-service';
+import { buildSummaryGenerationPrompt } from './session-summary-service';
 
 const debug = createDebug('jc:step-service');
+
+function canUseStepAsContinueSource(status: TaskStep['status']): boolean {
+  return (
+    status === 'completed' || status === 'interrupted' || status === 'errored'
+  );
+}
 
 /**
  * Simple text condensation fallback for `{{summary(...)}}` when the argument
@@ -53,6 +60,7 @@ async function resolvePromptTemplate({
   steps,
   summaryBackend,
   summaryModels,
+  onSummaryLifecycle,
 }: {
   template: string;
   taskPrompt: string;
@@ -65,6 +73,10 @@ async function resolvePromptTemplate({
     import('@shared/agent-backend-types').AgentBackendType,
     import('@shared/types').ModelPreference
   >;
+  onSummaryLifecycle?: {
+    onStart?: (step: TaskStep, prompt: string) => Promise<void> | void;
+    onResolved?: (step: TaskStep, summary: string) => Promise<void> | void;
+  };
 }): Promise<{ resolvedPrompt: string; warnings: string[] }> {
   const warnings: string[] = [];
 
@@ -81,7 +93,7 @@ async function resolvePromptTemplate({
         warnings.push(`Unknown step ID: ${stepId}`);
         return `{{${expression}}}`;
       }
-      if (step.status !== 'completed') {
+      if (!canUseStepAsContinueSource(step.status)) {
         warnings.push(`Step "${step.name}" (${stepId}) is not completed`);
         return `{{${expression}}}`;
       }
@@ -109,9 +121,9 @@ async function resolvePromptTemplate({
         throw new Error(`Failed to summarize: unknown step ID ${stepId}`);
       }
 
-      if (step.status !== 'completed') {
+      if (!canUseStepAsContinueSource(step.status)) {
         throw new Error(
-          `Failed to summarize: step "${step.name}" (${stepId}) is not completed (status: ${step.status})`,
+          `Failed to summarize: step "${step.name}" (${stepId}) is not in a summarizable terminal state (status: ${step.status})`,
         );
       }
 
@@ -123,9 +135,21 @@ async function resolvePromptTemplate({
       }
 
       const model = summaryModels[summaryBackend] ?? 'default';
+      const summaryStartedAt = Date.now();
+      const summaryPrompt = buildSummaryGenerationPrompt(messages);
 
       try {
-        return await summarizeNormalizedMessages({
+        debug(
+          'Starting prompt summary for step %s (%s): sourceStep=%s backend=%s model=%s messages=%d',
+          stepId,
+          step.name,
+          step.id,
+          summaryBackend,
+          model,
+          messages.length,
+        );
+        await onSummaryLifecycle?.onStart?.(step, summaryPrompt);
+        const summary = await summarizeNormalizedMessages({
           backend: summaryBackend,
           model,
           messages,
@@ -136,8 +160,25 @@ async function resolvePromptTemplate({
             stepId: step.id,
           },
         });
+        debug(
+          'Finished prompt summary for step %s (%s): sourceStep=%s durationMs=%d summaryLength=%d',
+          stepId,
+          step.name,
+          step.id,
+          Date.now() - summaryStartedAt,
+          summary.length,
+        );
+        await onSummaryLifecycle?.onResolved?.(step, summary);
+        return summary;
       } catch (error) {
-        debug('Summary generation failed for step %s: %O', step.id, error);
+        debug(
+          'Prompt summary failed for step %s (%s): sourceStep=%s durationMs=%d error=%O',
+          stepId,
+          step.name,
+          step.id,
+          Date.now() - summaryStartedAt,
+          error,
+        );
         throw new Error(
           `Failed to summarize step "${step.name}" (${stepId}) using backend ${summaryBackend}`,
         );
@@ -283,8 +324,8 @@ function extractReviewComments(output: string): {
  */
 async function updateDependentStepStatuses(taskId: string): Promise<string[]> {
   const steps = await TaskStepRepository.findByTaskId(taskId);
-  const completedIds = new Set(
-    steps.filter((s) => s.status === 'completed').map((s) => s.id),
+  const terminalIds = new Set(
+    steps.filter((s) => canUseStepAsContinueSource(s.status)).map((s) => s.id),
   );
 
   const autoStartStepIds: string[] = [];
@@ -292,7 +333,7 @@ async function updateDependentStepStatuses(taskId: string): Promise<string[]> {
   for (const step of steps) {
     if (step.status !== 'pending') continue;
     const allDepsCompleted = step.dependsOn.every((depId) =>
-      completedIds.has(depId),
+      terminalIds.has(depId),
     );
     if (allDepsCompleted) {
       if (step.type === 'pr-review') {
@@ -348,11 +389,30 @@ export const StepService = {
     const createdStep = await TaskStepRepository.create(
       data as Parameters<typeof TaskStepRepository.create>[0],
     );
+    debug(
+      'created step id=%s status=%s dependsOn=%d autoStart=%s',
+      createdStep.id,
+      createdStep.status,
+      createdStep.dependsOn.length,
+      createdStep.autoStart ? 'yes' : 'no',
+    );
 
     if ((data.dependsOn?.length ?? 0) > 0) {
+      debug(
+        're-evaluating dependent statuses after create step=%s taskId=%s',
+        createdStep.id,
+        data.taskId,
+      );
       await updateDependentStepStatuses(data.taskId);
       const refreshedStep = await TaskStepRepository.findById(createdStep.id);
       if (refreshedStep) {
+        debug(
+          'refreshed created step id=%s status=%s dependsOn=%d autoStart=%s',
+          refreshedStep.id,
+          refreshedStep.status,
+          refreshedStep.dependsOn.length,
+          refreshedStep.autoStart ? 'yes' : 'no',
+        );
         return refreshedStep;
       }
     }
@@ -397,6 +457,12 @@ export const StepService = {
    */
   resolveAndValidate: async (
     stepId: string,
+    options?: {
+      onSummaryLifecycle?: {
+        onStart?: (step: TaskStep, prompt: string) => Promise<void> | void;
+        onResolved?: (step: TaskStep, summary: string) => Promise<void> | void;
+      };
+    },
   ): Promise<{
     resolvedPrompt: string;
     step: TaskStep;
@@ -420,9 +486,9 @@ export const StepService = {
     for (const depId of step.dependsOn) {
       const dep = steps.find((s) => s.id === depId);
       if (!dep) throw new Error(`Dependency step not found: ${depId}`);
-      if (dep.status !== 'completed') {
+      if (!canUseStepAsContinueSource(dep.status)) {
         throw new Error(
-          `Dependency "${dep.name}" (${depId}) is not completed (status: ${dep.status})`,
+          `Dependency "${dep.name}" (${depId}) is not in a terminal summarizable state (status: ${dep.status})`,
         );
       }
     }
@@ -430,6 +496,14 @@ export const StepService = {
     const summaryBackend = (step.agentBackend ??
       project.defaultAgentBackend ??
       'claude-code') as AgentBackendType;
+
+    debug(
+      'Resolving prompt template for step %s (%s): backend=%s dependsOn=%d',
+      step.id,
+      step.name,
+      summaryBackend,
+      step.dependsOn.length,
+    );
 
     // Resolve template
     const { resolvedPrompt, warnings } = await resolvePromptTemplate({
@@ -441,7 +515,16 @@ export const StepService = {
       steps,
       summaryBackend,
       summaryModels: summaryModelsSetting.models,
+      onSummaryLifecycle: options?.onSummaryLifecycle,
     });
+
+    debug(
+      'Resolved prompt template for step %s (%s): warnings=%d promptLength=%d',
+      step.id,
+      step.name,
+      warnings.length,
+      resolvedPrompt.length,
+    );
 
     // Save resolved prompt
     await TaskStepRepository.update(stepId, { resolvedPrompt });

@@ -2492,10 +2492,13 @@ export function registerIpcHandlers() {
         stepData.autoStart = true;
       }
 
-      const step = await StepService.create(stepData);
+      let step = await StepService.create(stepData);
 
       const shouldStartNow = start && (!hasDeps || step.status === 'ready');
       if (shouldStartNow) {
+        // Return the step as running immediately so renderer caches do not keep
+        // a stale "ready" state while the async start pipeline boots.
+        step = await StepService.update(step.id, { status: 'running' });
         dbg.ipc('Auto-starting step %s (task %s)', step.id, step.taskId);
         const window = BrowserWindow.fromWebContents(event.sender);
         if (window) {
@@ -3467,7 +3470,10 @@ export function registerIpcHandlers() {
     if (window) {
       agentService.setMainWindow(window);
     }
-    return agentService.start(stepId);
+    agentService.start(stepId).catch((err) => {
+      dbg.ipc('Error starting step %s: %O', stepId, err);
+    });
+    return;
   });
 
   ipcMain.handle(AGENT_CHANNELS.STOP, (_, stepId: string) => {

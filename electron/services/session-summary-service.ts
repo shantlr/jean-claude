@@ -31,6 +31,33 @@ function stringifyUnknown(value: unknown): string {
 function formatToolEntry(
   entry: Extract<NormalizedEntry, { type: 'tool-use' }>,
 ) {
+  if (entry.name === 'read') {
+    return `Tool: read\nFile: ${(entry as Extract<typeof entry, { name: 'read' }>).input.filePath}`;
+  }
+
+  if (entry.name === 'edit') {
+    return `Tool: edit\nFile: ${(entry as Extract<typeof entry, { name: 'edit' }>).input.filePath}`;
+  }
+
+  if (entry.name === 'grep') {
+    return `Tool: grep\nPattern: ${(entry as Extract<typeof entry, { name: 'grep' }>).input.pattern}`;
+  }
+
+  if (entry.name === 'glob') {
+    return `Tool: glob\nPattern: ${(entry as Extract<typeof entry, { name: 'glob' }>).input.pattern}`;
+  }
+
+  if (entry.name === 'write') {
+    return `Tool: write\nFile: ${(entry as Extract<typeof entry, { name: 'write' }>).input.filePath}`;
+  }
+
+  if (entry.name === 'todo-write') {
+    const typedEntry = entry as Extract<typeof entry, { name: 'todo-write' }>;
+    const previousCount = typedEntry.result?.oldTodos.length ?? 0;
+    const nextCount = typedEntry.result?.newTodos.length ?? 0;
+    return `Tool: todo-write\nTodos: ${previousCount} -> ${nextCount}`;
+  }
+
   const lines = [`Tool: ${entry.name}`];
 
   if ('input' in entry && entry.input !== undefined) {
@@ -86,6 +113,17 @@ function formatMessagesForSummary(messages: NormalizedEntry[]): string {
   return truncateMiddle(transcript, MAX_TRANSCRIPT_CHARS);
 }
 
+export function buildSummaryGenerationPrompt(
+  messages: NormalizedEntry[],
+): string {
+  const transcript = formatMessagesForSummary(messages);
+  if (!transcript) {
+    throw new Error('Cannot summarize empty message history');
+  }
+
+  return `${SESSION_SUMMARY_PROMPT}\n\nPrior step normalized message history:\n\n${transcript}`;
+}
+
 export async function summarizeNormalizedMessages({
   backend,
   model,
@@ -97,16 +135,13 @@ export async function summarizeNormalizedMessages({
   messages: NormalizedEntry[];
   usageContext?: AiUsageContext;
 }): Promise<string> {
-  const transcript = formatMessagesForSummary(messages);
-  if (!transcript) {
-    throw new Error('Cannot summarize empty message history');
-  }
+  const prompt = buildSummaryGenerationPrompt(messages);
 
   const result = await generateText({
     backend,
     model,
     outputSchema: SESSION_SUMMARY_SCHEMA,
-    prompt: `${SESSION_SUMMARY_PROMPT}\n\nPrior step normalized message history:\n\n${transcript}`,
+    prompt,
     usageContext,
   });
 

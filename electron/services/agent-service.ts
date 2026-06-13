@@ -1098,21 +1098,64 @@ class AgentService {
 
     this.startingSteps.add(stepId);
 
+    let session: ActiveSession | null = null;
+    let runningStep: Awaited<ReturnType<typeof TaskStepRepository.findById>>;
+
     try {
-      // Resolve prompt and validate dependencies
-      const { resolvedPrompt, step } =
-        await StepService.resolveAndValidate(stepId);
+      runningStep = await TaskStepRepository.findById(stepId);
+      if (!runningStep) {
+        throw new Error(`Step ${stepId} not found`);
+      }
 
-      // Update step status to running
+      // Surface work immediately while continue-summary synthesis runs.
       await StepService.update(stepId, { status: 'running' });
-      await StepService.syncTaskStatus(step.taskId);
+      await StepService.syncTaskStatus(runningStep.taskId);
 
-      // Create session
-      const session = await this.createSession(stepId);
+      // Create session before prompt resolution so synthetic summary entries can
+      // appear in timeline while {{summary(step.*)}} resolves.
+      session = await this.createSession(stepId);
       this.emitEvent(session.taskId, stepId, {
         type: 'status',
         status: 'running',
       });
+
+      // Resolve prompt and validate dependencies
+      const promptResolutionStartedAt = Date.now();
+      dbg.agentSession('Resolving startup prompt for step %s', stepId);
+      const { resolvedPrompt, step } = await StepService.resolveAndValidate(
+        stepId,
+        {
+          onSummaryLifecycle: {
+            onStart: async (summaryStep, prompt) => {
+              if (!session) return;
+              await this.persistAndEmitSyntheticEntry(session.taskId, session, {
+                id: nanoid(),
+                date: new Date().toISOString(),
+                isSynthetic: true,
+                type: 'user-prompt',
+                value: prompt,
+                isSDKSynthetic: true,
+              });
+            },
+            onResolved: async (summaryStep, summary) => {
+              if (!session) return;
+              await this.persistAndEmitSyntheticEntry(session.taskId, session, {
+                id: nanoid(),
+                date: new Date().toISOString(),
+                isSynthetic: true,
+                type: 'assistant-message',
+                value: `Summary for "${summaryStep.name}":\n\n${summary}`,
+              });
+            },
+          },
+        },
+      );
+      dbg.agentSession(
+        'Resolved startup prompt for step %s in %dms (length=%d)',
+        stepId,
+        Date.now() - promptResolutionStartedAt,
+        resolvedPrompt.length,
+      );
 
       // Build prompt parts from resolved prompt + any pending image attachments
       const pendingImages = this.pendingImageAttachments.get(session.taskId);
@@ -1184,6 +1227,32 @@ class AgentService {
       } finally {
         this.sessions.delete(stepId);
       }
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
+      if (session) {
+        await this.persistAndEmitSyntheticEntry(session.taskId, session, {
+          id: nanoid(),
+          date: new Date().toISOString(),
+          isSynthetic: true,
+          type: 'result',
+          value: errorMessage,
+          isError: true,
+        });
+        this.sessions.delete(stepId);
+      }
+
+      if (runningStep) {
+        await StepService.errorStep(stepId);
+        this.emitEvent(runningStep.taskId, stepId, {
+          type: 'status',
+          status: 'errored',
+          error: errorMessage,
+        });
+      }
+
+      throw error;
     } finally {
       this.startingSteps.delete(stepId);
     }

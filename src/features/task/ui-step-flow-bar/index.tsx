@@ -44,7 +44,7 @@ function compareStepOrder(a: TaskStep, b: TaskStep) {
   return a.createdAt.localeCompare(b.createdAt);
 }
 
-function buildStepGraphLayout(steps: TaskStep[]) {
+export function buildStepGraphLayout(steps: TaskStep[]) {
   const sortedSteps = [...steps].sort(compareStepOrder);
   const byId = new Map(sortedSteps.map((step) => [step.id, step]));
   const nodeWidthById = new Map<string, number>();
@@ -93,14 +93,6 @@ function buildStepGraphLayout(steps: TaskStep[]) {
   }
 
   const hasCycle = topoOrder.length !== sortedSteps.length;
-  const fullOrder = hasCycle
-    ? [
-        ...topoOrder,
-        ...sortedSteps
-          .map((step) => step.id)
-          .filter((id) => !topoOrder.includes(id)),
-      ]
-    : topoOrder;
 
   const laneById = new Map<string, number>();
 
@@ -136,25 +128,71 @@ function buildStepGraphLayout(steps: TaskStep[]) {
   for (let i = 1; i < createdSteps.length; i += 1) {
     previousCreatedIdById.set(createdSteps[i].id, createdSteps[i - 1].id);
   }
+  const createdIndexById = new Map(
+    createdSteps.map((step, index) => [step.id, index]),
+  );
 
-  for (const stepId of fullOrder) {
-    const depIds = depsById.get(stepId) ?? [];
-    const depLanes = depIds
-      .map((depId) => laneById.get(depId))
-      .filter((lane): lane is number => typeof lane === 'number');
+  const stepsBySortOrder = new Map(
+    sortedSteps.map((step) => [step.sortOrder, step]),
+  );
+  let maxPreviousSortOrder = Number.NEGATIVE_INFINITY;
+  for (const step of createdSteps) {
+    if (
+      (depsById.get(step.id)?.length ?? 0) === 0 &&
+      step.sortOrder < maxPreviousSortOrder
+    ) {
+      const previousSortStep = stepsBySortOrder.get(step.sortOrder - 1);
+      if (previousSortStep) {
+        depsById.set(step.id, [previousSortStep.id]);
+      }
+    }
+    maxPreviousSortOrder = Math.max(maxPreviousSortOrder, step.sortOrder);
+  }
 
-    if (depLanes.length > 0) {
-      const avgLane =
-        depLanes.reduce((sum, lane) => sum + lane, 0) / depLanes.length;
-      laneById.set(stepId, Math.max(0, Math.round(avgLane)));
+  let nextBranchLane = 1;
+  const laneReasonById = new Map<string, string>();
+
+  for (const step of createdSteps) {
+    const depIds = depsById.get(step.id) ?? [];
+    const previousCreatedId = previousCreatedIdById.get(step.id);
+
+    if (previousCreatedId && depIds.includes(previousCreatedId)) {
+      laneById.set(step.id, laneById.get(previousCreatedId) ?? 0);
+      laneReasonById.set(step.id, `continues previous ${previousCreatedId}`);
       continue;
     }
 
-    const previousCreatedId = previousCreatedIdById.get(stepId);
-    const previousLane = previousCreatedId
-      ? (laneById.get(previousCreatedId) ?? 0)
-      : 0;
-    laneById.set(stepId, previousLane);
+    if (depIds.length > 0) {
+      const latestDepId = [...depIds].sort(
+        (a, b) =>
+          (createdIndexById.get(b) ?? 0) - (createdIndexById.get(a) ?? 0),
+      )[0];
+      const latestDepLane = latestDepId ? (laneById.get(latestDepId) ?? 0) : 0;
+      const latestDepIndex = latestDepId
+        ? (createdIndexById.get(latestDepId) ?? -1)
+        : -1;
+      const stepIndex = createdIndexById.get(step.id) ?? createdSteps.length;
+      const laneIsClear = createdSteps
+        .slice(latestDepIndex + 1, stepIndex)
+        .every((step) => laneById.get(step.id) !== latestDepLane);
+
+      if (laneIsClear) {
+        laneById.set(step.id, latestDepLane);
+        laneReasonById.set(step.id, `reuses clear dep lane ${latestDepId}`);
+        continue;
+      }
+
+      laneById.set(step.id, nextBranchLane);
+      laneReasonById.set(
+        step.id,
+        `branches from ${latestDepId}; lane ${latestDepLane} occupied`,
+      );
+      nextBranchLane += 1;
+      continue;
+    }
+
+    laneById.set(step.id, 0);
+    laneReasonById.set(step.id, 'root');
   }
 
   const maxLane = Math.max(0, ...Array.from(laneById.values()));
@@ -174,6 +212,25 @@ function buildStepGraphLayout(steps: TaskStep[]) {
   const latestCreatedPosition = latestCreatedStep
     ? positions.get(latestCreatedStep.id)
     : undefined;
+
+  if (
+    typeof localStorage !== 'undefined' &&
+    localStorage.getItem('jc:debug-step-layout') === '1'
+  ) {
+    console.table(
+      createdSteps.map((step) => ({
+        id: step.id,
+        label: step.name,
+        dependsOn: step.dependsOn.join(','),
+        sortOrder: step.sortOrder,
+        createdAt: step.createdAt,
+        lane: laneById.get(step.id) ?? 0,
+        x: positions.get(step.id)?.x,
+        y: positions.get(step.id)?.y,
+        reason: laneReasonById.get(step.id),
+      })),
+    );
+  }
 
   const edges: Array<{
     id: string;

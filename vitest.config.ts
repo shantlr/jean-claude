@@ -19,6 +19,7 @@ export default defineConfig({
       'src/features/agent/ui-message-stream/**/*.test.ts',
       'src/features/agent/ui-worktree-actions/**/*.test.ts',
       'src/features/pull-request/**/*.test.ts',
+      'src/features/task/**/*.test.ts',
       'src/stores/**/*.test.ts',
     ],
     setupFiles: ['./vitest.setup.ts'],
