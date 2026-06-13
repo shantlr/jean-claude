@@ -34,7 +34,9 @@ export function getOpenCodeFallbackCost(
   providerID?: string,
   modelID?: string,
 ): OpenCodeModelCost | undefined {
-  if (providerID !== 'openai' || !modelID) return undefined;
+  if (!['openai', 'github-copilot'].includes(providerID ?? '') || !modelID) {
+    return undefined;
+  }
 
   return OPENAI_THEORETICAL_COSTS_PER_M[normalizeOpenAIModelID(modelID)];
 }

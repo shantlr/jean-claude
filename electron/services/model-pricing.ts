@@ -167,6 +167,7 @@ const PRICING_BY_MODEL: Record<string, ModelPricing> = {
   'gpt-5.5': { input: 5, output: 30, cacheRead: 0.5 },
   'gpt-5.5-codex': { input: 5, output: 30, cacheRead: 0.5 },
   'gpt-5.4': { input: 2.5, output: 15, cacheRead: 0.25 },
+  'gpt-5.4-mini': { input: 0.75, output: 4.5, cacheRead: 0.075 },
   'gpt-5.4-codex': { input: 2.5, output: 15, cacheRead: 0.25 },
   'gpt-5.3-codex': { input: 2.5, output: 15, cacheRead: 0.25 },
   'gpt-5-codex': { input: 2.5, output: 15, cacheRead: 0.25 },

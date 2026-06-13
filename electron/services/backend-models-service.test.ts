@@ -94,6 +94,21 @@ github-copilot/gpt-4.1
     ).toBe(17.75);
   });
 
+  it('calculates GPT-5.4 mini fallback cost for OpenAI and Copilot', () => {
+    for (const providerID of ['openai', 'github-copilot']) {
+      expect(
+        calculateTheoreticalOpenCodeCost({
+          providerID,
+          modelID: 'gpt-5.4-mini',
+          inputTokens: 1_000_000,
+          outputTokens: 1_000_000,
+          cacheReadTokens: 1_000_000,
+          cacheCreationTokens: 1_000_000,
+        }),
+      ).toBe(5.325);
+    }
+  });
+
   it('uses current official GPT-5.5 Pro fallback pricing', () => {
     expect(
       calculateTheoreticalOpenCodeCost({
