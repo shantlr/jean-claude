@@ -203,7 +203,7 @@ function ProviderUsageChip({
   const Icon = PROVIDER_ICONS[providerType];
 
   const { data } = result;
-  const primary = data?.limits.find((l) => l.isPrimary);
+  const primary = data?.limits.find((l) => l.isPrimary) ?? data?.limits[0];
   if (!data || !primary) {
     if (result.error?.type === 'no_token') return null;
 
