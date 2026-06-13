@@ -50,6 +50,7 @@ import { GlobalPermissionsSettings } from '@/features/settings/ui-global-permiss
 import { McpServersSettings } from '@/features/settings/ui-mcp-servers-settings';
 import { ModelPresetsSettings } from '@/features/settings/ui-model-presets-settings';
 import { PromptSnippetsSettings } from '@/features/settings/ui-prompt-snippets-settings';
+import { RateLimitSwapSettings } from '@/features/settings/ui-rate-limit-swap-settings';
 import { SkillsSettings } from '@/features/settings/ui-skills-settings';
 import { SourcesSettings } from '@/features/settings/ui-sources-settings';
 import { TokensTab } from '@/features/settings/ui-tokens-tab';
@@ -127,6 +128,7 @@ function getGlobalSections(): GlobalSection[] {
       subs: [
         { id: 'presets', label: 'Model Presets' },
         { id: 'prompt-preface', label: 'Prompt Preface' },
+        { id: 'rate-limit-swap', label: 'Rate Limit Swap' },
         { id: 'claude-code', label: 'Claude Code', layout: 'fill' },
         { id: 'opencode', label: 'OpenCode', layout: 'fill' },
         { id: 'codex', label: 'Codex', beta: true, layout: 'fill' },
@@ -483,6 +485,8 @@ function GlobalContentInner({ selection }: { selection: ActiveSelection }) {
         return <ModelPresetsSettings />;
       case 'coding-agents:prompt-preface':
         return <PromptPrefaceSettings />;
+      case 'coding-agents:rate-limit-swap':
+        return <RateLimitSwapSettings />;
       case 'coding-agents:claude-code':
         return <BackendConfigSettings backend="claude-code" />;
       case 'coding-agents:opencode':

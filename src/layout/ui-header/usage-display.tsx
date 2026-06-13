@@ -1,10 +1,12 @@
+import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { Loader2 } from 'lucide-react';
+import { ArrowLeftRight, Loader2 } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 
 import { IconClaude, IconCodex, IconGithubCopilot } from '@/common/ui/icons';
 import { Tooltip } from '@/common/ui/tooltip';
 import { useBackendUsage } from '@/hooks/use-usage';
+import { api } from '@/lib/api';
 import type {
   UsageDisplayData,
   UsageLevel,
@@ -293,6 +295,35 @@ function ProviderUsageChip({
   );
 }
 
+const SWAP_POLL_INTERVAL_MS = 120_000;
+
+function SwapStatusBadge() {
+  const { data } = useQuery({
+    queryKey: ['rate-limit-swap-status'],
+    queryFn: () => api.rateLimitSwap.getStatus(),
+    refetchInterval: SWAP_POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+    staleTime: 60_000,
+  });
+
+  if (!data?.active || data.swaps.length === 0) return null;
+
+  const tooltipText = data.swaps
+    .map((s) => `${s.from} \u2192 ${s.to}`)
+    .join(', ');
+
+  return (
+    <Tooltip
+      content={<span className="text-ink-2">Auto-swapped: {tooltipText}</span>}
+      side="bottom"
+    >
+      <div className="text-status-run flex items-center rounded px-1 py-0.5">
+        <ArrowLeftRight className="h-3 w-3" />
+      </div>
+    </Tooltip>
+  );
+}
+
 export function UsageDisplay() {
   const { data: usageMap, isLoading, dataUpdatedAt } = useBackendUsage();
   const fetchedAtMs = dataUpdatedAt || Date.now();
@@ -324,6 +355,7 @@ export function UsageDisplay() {
           fetchedAtMs={fetchedAtMs}
         />
       ))}
+      <SwapStatusBadge />
     </div>
   );
 }

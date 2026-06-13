@@ -23,6 +23,10 @@ import {
   getModelsForBackend,
 } from '@/features/agent/ui-backend-selector';
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
+import {
+  RateLimitSwapPreview,
+  resolveRateLimitSwapSelection,
+} from '@/features/agent/ui-rate-limit-swap-preview';
 import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
 import {
   PromptTextarea,
@@ -274,8 +278,14 @@ export function AddStepDialog({
         )
       : promptTemplate.trim().length > 0;
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (!canSubmit) return;
+    const submitSelection = await resolveRateLimitSwapSelection({
+      backend,
+      model,
+      thinkingEffort: normalizedThinkingEffort,
+      enabled: presetType !== 'review-changes',
+    });
     onConfirm({
       promptTemplate: expandFeatureReferencesInPrompt({
         text: promptTemplate.trim(),
@@ -283,12 +293,12 @@ export function AddStepDialog({
       }),
       presetType,
       interactionMode: normalizeInteractionModeForBackend({
-        backend,
+        backend: submitSelection.backend,
         mode: interactionMode,
       }),
-      agentBackend: backend,
-      modelPreference: model,
-      thinkingEffort: normalizedThinkingEffort,
+      agentBackend: submitSelection.backend,
+      modelPreference: submitSelection.model,
+      thinkingEffort: submitSelection.thinkingEffort as ThinkingEffort,
       images,
       start: autoStart,
       reviewers:
@@ -573,6 +583,13 @@ export function AddStepDialog({
               side="top"
               layer={layer}
             />
+            {presetType !== 'review-changes' && (
+              <RateLimitSwapPreview
+                requestedBackend={backend}
+                model={model}
+                thinkingEffort={normalizedThinkingEffort}
+              />
+            )}
           </div>
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-2">

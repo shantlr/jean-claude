@@ -12,6 +12,10 @@ import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-pres
 import { findMatchingBackendModelPresetId } from '@/features/agent/ui-backend-preset-selector';
 import { getModelThinkingCapabilities } from '@/features/agent/ui-backend-selector';
 import { ModeSelector } from '@/features/agent/ui-mode-selector';
+import {
+  RateLimitSwapPreview,
+  resolveRateLimitSwapSelection,
+} from '@/features/agent/ui-rate-limit-swap-preview';
 import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
 import { WorkItemsBrowser } from '@/features/agent/ui-work-items-browser';
 import { PromptTextarea } from '@/features/common/ui-prompt-textarea';
@@ -225,6 +229,11 @@ function NewTask() {
     // Pass null if name is empty - will trigger auto-generation when agent starts
     const taskName = name.trim() || null;
     const shouldUseWorktree = canUseWorktree && useWorktree;
+    const submitSelection = await resolveRateLimitSwapSelection({
+      backend: effectiveAgentBackend,
+      model: effectiveModelPreference,
+      thinkingEffort: effectiveThinkingEffort,
+    });
 
     const task = await createTask.mutateAsync({
       id: nanoid(),
@@ -232,10 +241,13 @@ function NewTask() {
       name: taskName,
       prompt: expandFeatureReferencesInPrompt({ text: prompt, featureMap }),
       status: 'waiting',
-      interactionMode,
-      modelPreference: effectiveModelPreference,
-      thinkingEffort: effectiveThinkingEffort,
-      agentBackend: effectiveAgentBackend,
+      interactionMode: normalizeInteractionModeForBackend({
+        backend: submitSelection.backend,
+        mode: interactionMode,
+      }),
+      modelPreference: submitSelection.model,
+      thinkingEffort: submitSelection.thinkingEffort as ThinkingEffort,
+      agentBackend: submitSelection.backend,
       useWorktree: shouldUseWorktree,
       workItemIds,
       workItemUrls,
@@ -454,6 +466,11 @@ function NewTask() {
                 setDraft({ thinkingEffort: nextThinkingEffort })
               }
               disabled={thinkingOptions.length <= 1}
+            />
+            <RateLimitSwapPreview
+              requestedBackend={effectiveAgentBackend}
+              model={effectiveModelPreference}
+              thinkingEffort={effectiveThinkingEffort}
             />
             <Button
               variant="secondary"

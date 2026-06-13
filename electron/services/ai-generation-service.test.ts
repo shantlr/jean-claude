@@ -9,6 +9,14 @@ vi.mock('./agent-backends/opencode/opencode-backend', () => ({
   getOrCreateServer: getOrCreateServerMock,
 }));
 
+vi.mock('./rate-limit-swap-service', () => ({
+  rateLimitSwapService: {
+    resolveBackend: vi
+      .fn()
+      .mockResolvedValue({ backend: 'opencode', swapped: false }),
+  },
+}));
+
 vi.mock('./ai-usage-tracking-service', () => ({
   aiUsageTrackingService: {
     recordUsageSafe: recordUsageSafeMock,

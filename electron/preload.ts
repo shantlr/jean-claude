@@ -752,6 +752,22 @@ contextBridge.exposeInMainWorld('api', {
     getTaskUsage: (taskId: string) =>
       ipcRenderer.invoke('agent:usage:getTaskUsage', taskId),
   },
+  rateLimitSwap: {
+    getStatus: () =>
+      ipcRenderer.invoke('rate-limit-swap:status') as Promise<{
+        active: boolean;
+        swaps: Array<{ from: string; to: string }>;
+      }>,
+    resolve: (
+      backend: import('@shared/agent-backend-types').AgentBackendType,
+    ) =>
+      ipcRenderer.invoke('rate-limit-swap:resolve', backend) as Promise<{
+        backend: import('@shared/agent-backend-types').AgentBackendType;
+        model?: string;
+        thinkingEffort?: import('@shared/types').ThinkingEffort;
+        swapped: boolean;
+      }>,
+  },
   usageDisplay: {
     saveSettings: (value: import('@shared/types').UsageDisplaySetting) =>
       ipcRenderer.invoke('usageDisplay:saveSettings', value),
@@ -1241,6 +1257,13 @@ contextBridge.exposeInMainWorld('api', {
   codeFolding: {
     getFoldRanges: (content: string, language: string) =>
       ipcRenderer.invoke('codeFolding:getFoldRanges', content, language),
+  },
+  onRateLimitSwap: (callback: (data: { from: string; to: string }) => void) => {
+    const handler = (_: unknown, data: { from: string; to: string }) =>
+      callback(data);
+    ipcRenderer.on('rate-limit-swap:triggered', handler);
+    return () =>
+      ipcRenderer.removeListener('rate-limit-swap:triggered', handler);
   },
 });
 console.log('Preload script loaded');

@@ -664,6 +664,19 @@ export interface BackendDefaultModelsSetting {
   models: Record<AgentBackendType, ModelPreference>;
 }
 
+export interface RateLimitSwapEntry {
+  backend: AgentBackendType;
+  model?: ModelPreference;
+  thinkingEffort?: ThinkingEffort;
+  presetId?: string | null;
+  threshold?: number; // 0-1, omit on last entry (absolute fallback)
+}
+
+export interface RateLimitSwapSetting {
+  enabled: boolean;
+  chain: RateLimitSwapEntry[];
+}
+
 export interface EditorAutomationSetting {
   closeWindowsOnTaskCompletion: boolean;
 }
@@ -870,6 +883,33 @@ function isBackendDefaultModelsSetting(
   if (!obj.models || typeof obj.models !== 'object') return false;
   const models = obj.models as Record<string, unknown>;
   return VALID_BACKENDS.every((backend) => typeof models[backend] === 'string');
+}
+
+function isRateLimitSwapSetting(value: unknown): value is RateLimitSwapSetting {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  if (typeof v.enabled !== 'boolean' || !Array.isArray(v.chain)) return false;
+
+  return v.chain.every((entry) => {
+    if (!entry || typeof entry !== 'object') return false;
+    const obj = entry as Record<string, unknown>;
+    return (
+      typeof obj.backend === 'string' &&
+      VALID_BACKENDS.includes(obj.backend as AgentBackendType) &&
+      (obj.model === undefined || typeof obj.model === 'string') &&
+      (obj.thinkingEffort === undefined ||
+        VALID_THINKING_EFFORTS.includes(
+          obj.thinkingEffort as ThinkingEffort,
+        )) &&
+      (obj.presetId === undefined ||
+        obj.presetId === null ||
+        typeof obj.presetId === 'string') &&
+      (obj.threshold === undefined ||
+        (typeof obj.threshold === 'number' &&
+          obj.threshold >= 0 &&
+          obj.threshold <= 1))
+    );
+  });
 }
 
 function isEditorAutomationSetting(v: unknown): v is EditorAutomationSetting {
@@ -1141,6 +1181,13 @@ export const SETTINGS_DEFINITIONS = {
       },
     } as BackendDefaultModelsSetting,
     validate: isBackendDefaultModelsSetting,
+  },
+  rateLimitSwap: {
+    defaultValue: {
+      enabled: false,
+      chain: [],
+    } as RateLimitSwapSetting,
+    validate: isRateLimitSwapSetting,
   },
   editorAutomation: {
     defaultValue: {

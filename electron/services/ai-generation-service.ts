@@ -12,6 +12,7 @@ import { dbg } from '../lib/debug';
 import { getOrCreateServer } from './agent-backends/opencode/opencode-backend';
 import { aiUsageTrackingService } from './ai-usage-tracking-service';
 import { calculateTheoreticalOpenCodeCost } from './backend-models-service';
+import { rateLimitSwapService } from './rate-limit-swap-service';
 
 const DEFAULT_TIMEOUT_MS = 60_000;
 
@@ -44,19 +45,32 @@ export async function generateText({
   throwOnError?: boolean;
   usageContext?: AiUsageContext;
 }): Promise<unknown | null> {
+  const swapResult = await rateLimitSwapService.resolveBackend(backend);
+  const resolvedBackend = swapResult.backend;
+  const backendChanged = resolvedBackend !== backend;
+  const resolvedModel =
+    swapResult.model ?? (backendChanged ? 'default' : model);
+  const resolvedThinkingEffort =
+    swapResult.thinkingEffort ?? (backendChanged ? undefined : thinkingEffort);
+  if (swapResult.swapped) {
+    console.log(
+      `[rate-limit-swap] AI gen${skillName ? ` (${skillName})` : ''}: swapped ${backend} → ${resolvedBackend} (model: ${resolvedModel})`,
+    );
+  }
+
   const abortController = new AbortController();
   const timeout = setTimeout(() => {
     abortController.abort();
   }, timeoutMs);
 
   try {
-    switch (backend) {
+    switch (resolvedBackend) {
       case 'claude-code':
         return await generateWithClaudeCode({
-          model,
+          model: resolvedModel,
           prompt,
           skillName,
-          thinkingEffort,
+          thinkingEffort: resolvedThinkingEffort,
           outputSchema,
           cwd,
           allowedTools,
@@ -66,10 +80,10 @@ export async function generateText({
 
       case 'opencode':
         return await generateWithOpenCode({
-          model,
+          model: resolvedModel,
           prompt,
           skillName,
-          thinkingEffort,
+          thinkingEffort: resolvedThinkingEffort,
           outputSchema,
           cwd,
           abortController,
@@ -81,7 +95,7 @@ export async function generateText({
         return null;
 
       default: {
-        const _exhaustive: never = backend;
+        const _exhaustive: never = resolvedBackend;
         dbg.agent('Unknown backend: %s', _exhaustive);
         return null;
       }

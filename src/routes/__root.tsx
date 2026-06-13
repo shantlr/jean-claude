@@ -39,6 +39,7 @@ import { useOverlaysStore } from '@/stores/overlays';
 import { pruneOrphanedReviewComments } from '@/stores/review-comments';
 import { pruneOrphanedTaskPrompts } from '@/stores/task-prompts';
 import { pruneOrphanedTaskReviewDrafts } from '@/stores/task-review-comment-drafts';
+import { useToastStore } from '@/stores/toasts';
 import { useUISetting } from '@/stores/ui';
 
 export const Route = createRootRoute({
@@ -395,6 +396,7 @@ function RootLayout() {
     >
       <ReactScanBridge />
       <NotificationTaskOpenBridge />
+      <RateLimitSwapBridge />
       <TaskMessageManager />
       <GlobalPromptFromBackModal />
       <GlobalCommands />
@@ -484,6 +486,21 @@ function NotificationTaskOpenBridge() {
       });
     });
   }, [navigate, pathname]);
+
+  return null;
+}
+
+function RateLimitSwapBridge() {
+  const addToast = useToastStore((s) => s.addToast);
+
+  useEffect(() => {
+    return api.onRateLimitSwap((data) => {
+      addToast({
+        message: `Rate limit approaching for ${data.from} — routing new tasks to ${data.to}`,
+        type: 'success',
+      });
+    });
+  }, [addToast]);
 
   return null;
 }

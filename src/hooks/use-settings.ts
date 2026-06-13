@@ -17,6 +17,7 @@ import type {
   ProjectPromptPrefaceSetting,
   PromptPrefaceSetting,
   RawMessageCleanupSetting,
+  RateLimitSwapSetting,
   SummaryModelsSetting,
   TaskEventNotificationsSetting,
   ThinkingSettingsSetting,
@@ -209,6 +210,39 @@ export function useSummaryModelsSetting() {
 
 export function useBackendDefaultModelsSetting() {
   return useSetting('backendDefaultModels');
+}
+
+// Convenience hooks for rate limit swap setting
+export function useRateLimitSwapSetting() {
+  return useSetting('rateLimitSwap');
+}
+
+export function useUpdateRateLimitSwapSetting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: RateLimitSwapSetting) =>
+      api.settings.set('rateLimitSwap', value),
+    onMutate: async (value) => {
+      const queryKey = ['settings', 'rateLimitSwap'] as const;
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<RateLimitSwapSetting>(queryKey);
+      queryClient.setQueryData(queryKey, value);
+      return { previous };
+    },
+    onError: (_error, _value, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(
+          ['settings', 'rateLimitSwap'],
+          context.previous,
+        );
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings', 'rateLimitSwap'],
+      });
+    },
+  });
 }
 
 export function useUpdateBackendDefaultModelsSetting() {

@@ -1,9 +1,11 @@
+import type { AgentBackendType } from '@shared/agent-backend-types';
 import {
   DEFAULT_TASK_NOTIFICATION_MODES,
   SETTINGS_DEFINITIONS,
   AppSettings,
   type BackendDefaultModelsSetting,
   type CalendarNotificationsSetting,
+  type RateLimitSwapSetting,
   type SummaryModelsSetting,
   type TaskEventNotificationsSetting,
   type TaskNotificationEvent,
@@ -14,6 +16,12 @@ import {
 
 import { dbg } from '../../lib/debug';
 import { db } from '../index';
+
+const VALID_AGENT_BACKENDS: AgentBackendType[] = [
+  'claude-code',
+  'opencode',
+  'codex',
+];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object';
@@ -151,6 +159,9 @@ function normalizeSettingValue<K extends keyof AppSettings>(
   key: K,
   value: unknown,
 ): AppSettings[K] | null {
+  if (key === 'rateLimitSwap') {
+    return migrateRateLimitSwapSetting(value) as AppSettings[K];
+  }
   if (key === 'summaryModels') {
     return normalizeSummaryModelsSetting(value) as AppSettings[K];
   }
@@ -236,6 +247,55 @@ function normalizeCalendarNotificationsSetting(
         ? obj.meetingJoinTarget
         : 'web',
   } as CalendarNotificationsSetting;
+}
+
+function migrateRateLimitSwapSetting(
+  value: unknown,
+): RateLimitSwapSetting | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const obj = value as Record<string, unknown>;
+  if (!Array.isArray(obj.rules) || typeof obj.enabled !== 'boolean') {
+    return null;
+  }
+
+  const rules = obj.rules.filter(
+    (rule): rule is Record<string, unknown> =>
+      !!rule &&
+      typeof rule === 'object' &&
+      typeof rule.backend === 'string' &&
+      VALID_AGENT_BACKENDS.includes(rule.backend as AgentBackendType),
+  );
+  const lastRule = rules.at(-1);
+  const fallback = lastRule?.swapTo;
+  const fallbackBackend =
+    fallback && typeof fallback === 'object'
+      ? (fallback as Record<string, unknown>).backend
+      : undefined;
+
+  return {
+    enabled: obj.enabled,
+    chain: [
+      ...rules.map((rule) => ({
+        backend: rule.backend as AgentBackendType,
+        threshold: typeof rule.threshold === 'number' ? rule.threshold : 0.8,
+      })),
+      ...(typeof fallbackBackend === 'string' &&
+      VALID_AGENT_BACKENDS.includes(fallbackBackend as AgentBackendType)
+        ? [
+            {
+              backend: fallbackBackend as AgentBackendType,
+              model:
+                typeof (fallback as Record<string, unknown>).model === 'string'
+                  ? ((fallback as Record<string, unknown>).model as string)
+                  : undefined,
+            },
+          ]
+        : []),
+    ],
+  };
 }
 
 export const SettingsRepository = {

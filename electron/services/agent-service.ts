@@ -30,6 +30,7 @@ import {
   type InteractionMode,
   type TaskNotificationEvent,
   type ReviewStepMeta,
+  type ThinkingEffort,
   isSkillCreationStepMeta,
 } from '@shared/types';
 import {
@@ -53,6 +54,7 @@ import { pathExists } from '../lib/fs';
 import { AGENT_BACKEND_CLASSES } from './agent-backends';
 import { ClaudeCodeBackend } from './agent-backends/claude/claude-code-backend';
 import { OpenCodeBackend } from './agent-backends/opencode/opencode-backend';
+import { buildSessionIdStepUpdate } from './agent-session-update';
 import { aiUsageTrackingService } from './ai-usage-tracking-service';
 import { resolveGlobalRules } from './global-permissions-service';
 import { getJcMcpServerPath } from './mcp-template-service';
@@ -66,6 +68,7 @@ import {
 } from './permission-settings-service';
 import { applyConfiguredPromptPreface } from './prompt-preface-service';
 import { textPrompt, getPromptText } from './prompt-utils';
+import { rateLimitSwapService } from './rate-limit-swap-service';
 import { StepService } from './step-service';
 import { assertValidWorkspacePath } from './system-project-service';
 
@@ -226,6 +229,9 @@ interface ActiveSession {
   sdkSessionId: string | null; // The persistent session ID for resumption
   backendType: AgentBackendType;
   currentModel: string | null;
+  requestedBackendType: AgentBackendType;
+  swapModel?: string;
+  swapThinkingEffort?: ThinkingEffort;
   backend: AgentBackend;
   messageIndex: number;
   queuedPrompts: QueuedPrompt[];
@@ -510,8 +516,27 @@ class AgentService {
     const existingMessageCount =
       await AgentMessageRepository.getMessageCountByStepId(stepId);
 
-    const backendType: AgentBackendType = (step.agentBackend ??
+    // Resolve backend before first session start so UI-created tasks can still
+    // adapt if usage changes between creation and execution. Once a backend
+    // session exists, preserve continuity for follow-up prompts.
+    const requestedBackend: AgentBackendType = (step.agentBackend ??
       'claude-code') as AgentBackendType;
+
+    let backendType = requestedBackend;
+    let swapModel: string | undefined;
+    let swapThinkingEffort: ThinkingEffort | undefined;
+    if (!step.sessionId) {
+      const swapResult =
+        await rateLimitSwapService.resolveBackend(requestedBackend);
+      backendType = swapResult.backend;
+      swapModel = swapResult.model;
+      swapThinkingEffort = swapResult.thinkingEffort;
+      if (swapResult.swapped) {
+        console.log(
+          `[rate-limit-swap] Task ${step.taskId}: swapped ${requestedBackend} → ${backendType}`,
+        );
+      }
+    }
     const BackendClass = AGENT_BACKEND_CLASSES[backendType];
     if (!BackendClass) {
       throw new Error(`Unknown agent backend: "${backendType}"`);
@@ -543,7 +568,10 @@ class AgentService {
       backendSessionId: null,
       sdkSessionId: step.sessionId ?? null,
       backendType,
-      currentModel: step.modelPreference,
+      currentModel: swapModel ?? step.modelPreference,
+      requestedBackendType: requestedBackend,
+      swapModel,
+      swapThinkingEffort,
       backend,
       messageIndex: existingMessageCount,
       queuedPrompts: [],
@@ -652,12 +680,18 @@ class AgentService {
         ? buildJcMcpServersConfigForCwd(workingDir)
         : undefined;
 
+    const backendChanged = session.backendType !== session.requestedBackendType;
+    const modelPreference =
+      session.swapModel ?? (backendChanged ? undefined : step?.modelPreference);
+    const thinkingEffort =
+      session.swapThinkingEffort ??
+      (backendChanged ? undefined : step?.thinkingEffort);
     const normalizedThinkingEffort = normalizeThinkingEffortForModel({
       backend: session.backendType,
-      model: step?.modelPreference ?? 'default',
-      effort: step?.thinkingEffort,
+      model: modelPreference ?? 'default',
+      effort: thinkingEffort,
     });
-    session.currentModel = step?.modelPreference ?? null;
+    session.currentModel = modelPreference ?? null;
 
     // Start the backend
     dbg.agentSession('Starting backend for step %s', stepId);
@@ -682,8 +716,8 @@ class AgentService {
             })) as InteractionMode,
         }),
         model:
-          step?.modelPreference && step.modelPreference !== 'default'
-            ? step.modelPreference
+          modelPreference && modelPreference !== 'default'
+            ? modelPreference
             : undefined,
         thinkingEffort:
           normalizedThinkingEffort !== 'default'
@@ -726,9 +760,16 @@ class AgentService {
         // Only persist the first session ID — once set it is immutable.
         const existing = await TaskStepRepository.findById(stepId);
         if (!existing?.sessionId) {
-          await TaskStepRepository.update(stepId, {
-            sessionId: event.sessionId,
-          });
+          await TaskStepRepository.update(
+            stepId,
+            buildSessionIdStepUpdate({
+              sessionId: event.sessionId,
+              backendType: session.backendType,
+              requestedBackendType: session.requestedBackendType,
+              swapModel: session.swapModel,
+              swapThinkingEffort: session.swapThinkingEffort,
+            }),
+          );
           dbg.agentSession(
             'Captured session ID for step %s: %s',
             stepId,

@@ -3837,6 +3837,34 @@ export function registerIpcHandlers() {
     },
   );
 
+  // Rate limit swap status
+  ipcMain.handle('rate-limit-swap:status', async () => {
+    const { rateLimitSwapService } =
+      await import('../services/rate-limit-swap-service');
+    const { SettingsRepository } =
+      await import('../database/repositories/settings');
+    const settings = await SettingsRepository.get('rateLimitSwap');
+    if (!settings?.enabled || !settings.chain?.length)
+      return { active: false, swaps: [] };
+
+    const backends = await SettingsRepository.get('backends');
+    const enabledBackends = backends?.enabledBackends ?? ['claude-code'];
+
+    const swaps: Array<{ from: string; to: string }> = [];
+    for (const backend of enabledBackends) {
+      const result = await rateLimitSwapService.resolveBackend(backend, {
+        notify: false,
+      });
+      if (result.swapped && result.skippedDueToRateLimit) {
+        swaps.push({
+          from: backend,
+          to: `${result.backend}${result.model ? ` (${result.model})` : ''}`,
+        });
+      }
+    }
+    return { active: swaps.length > 0, swaps };
+  });
+
   ipcMain.handle(
     'agent:usage:getDashboard',
     (_, params: { since: string; until?: string }) => {
@@ -3848,6 +3876,14 @@ export function registerIpcHandlers() {
     return AiUsageRepository.getTaskUsage(taskId);
   });
 
+  ipcMain.handle(
+    'rate-limit-swap:resolve',
+    async (_, backend: AgentBackendType) => {
+      const { rateLimitSwapService } =
+        await import('../services/rate-limit-swap-service');
+      return rateLimitSwapService.resolveBackend(backend, { notify: false });
+    },
+  );
   // Backend models
   ipcMain.handle('agent:getBackendModels', (_, backend: string) =>
     backendModelsService.getBackendModels(backend as AgentBackendType),
