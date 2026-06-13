@@ -16,6 +16,7 @@ import type {
   PromptSnippetsSetting,
   ProjectPromptPrefaceSetting,
   PromptPrefaceSetting,
+  RawMessageCleanupSetting,
   SummaryModelsSetting,
   TaskEventNotificationsSetting,
   ThinkingSettingsSetting,
@@ -69,6 +70,44 @@ export function useUpdateEditorSetting() {
 
 export function useEditorAutomationSetting() {
   return useSetting('editorAutomation');
+}
+
+export function useRawMessageCleanupSetting() {
+  return useSetting('rawMessageCleanup');
+}
+
+export function useUpdateRawMessageCleanupSetting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: RawMessageCleanupSetting) =>
+      api.settings.set('rawMessageCleanup', value),
+    onMutate: async (value) => {
+      const queryKey = ['settings', 'rawMessageCleanup'] as const;
+      await queryClient.cancelQueries({ queryKey });
+      const hadPrevious = queryClient.getQueryData(queryKey) !== undefined;
+      const previous =
+        queryClient.getQueryData<RawMessageCleanupSetting>(queryKey);
+      queryClient.setQueryData(queryKey, value);
+      return { hadPrevious, previous };
+    },
+    onError: (_error, _value, context) => {
+      if (context?.hadPrevious) {
+        queryClient.setQueryData(
+          ['settings', 'rawMessageCleanup'],
+          context.previous,
+        );
+      } else {
+        queryClient.removeQueries({
+          queryKey: ['settings', 'rawMessageCleanup'],
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings', 'rawMessageCleanup'],
+      });
+    },
+  });
 }
 
 export function useUpdateEditorAutomationSetting() {

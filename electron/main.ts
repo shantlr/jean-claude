@@ -13,6 +13,7 @@ import {
 } from './services/azure-image-proxy-service';
 import { upsertBuiltinSkills } from './services/builtin-skills-service';
 import { pipelineTrackingService } from './services/pipeline-tracking-service';
+import { rawMessageCleanupService } from './services/raw-message-cleanup-service';
 import { runCommandService } from './services/run-command-service';
 import { syncBuiltinSkillSymlinks } from './services/skill-management-service';
 import { systemCalendarService } from './services/system-calendar-service';
@@ -156,6 +157,7 @@ app.whenReady().then(async () => {
 
   systemCalendarService.start();
   pipelineTrackingService.start();
+  rawMessageCleanupService.start();
 
   dbg.main('Registering IPC handlers...');
   registerIpcHandlers();
@@ -186,6 +188,7 @@ app.on('before-quit', async () => {
   dbg.main('App quitting, stopping all commands...');
   systemCalendarService.stop();
   pipelineTrackingService.stop();
+  rawMessageCleanupService.stop();
   await runCommandService.stopAllCommands();
   dbg.main('All commands stopped');
 });

@@ -668,6 +668,11 @@ export interface EditorAutomationSetting {
   closeWindowsOnTaskCompletion: boolean;
 }
 
+export interface RawMessageCleanupSetting {
+  enabled: boolean;
+  retentionHours: number;
+}
+
 export interface ThinkingSettingsSetting {
   efforts: Record<AgentBackendType, Record<string, ThinkingEffort>>;
   selectedModels?: Record<AgentBackendType, ModelPreference>;
@@ -871,6 +876,17 @@ function isEditorAutomationSetting(v: unknown): v is EditorAutomationSetting {
   if (!v || typeof v !== 'object') return false;
   const obj = v as Record<string, unknown>;
   return typeof obj.closeWindowsOnTaskCompletion === 'boolean';
+}
+
+function isRawMessageCleanupSetting(v: unknown): v is RawMessageCleanupSetting {
+  if (!v || typeof v !== 'object') return false;
+  const obj = v as Record<string, unknown>;
+  return (
+    typeof obj.enabled === 'boolean' &&
+    typeof obj.retentionHours === 'number' &&
+    Number.isFinite(obj.retentionHours) &&
+    obj.retentionHours >= 1
+  );
 }
 
 const VALID_THINKING_EFFORTS: ThinkingEffort[] = [
@@ -1131,6 +1147,13 @@ export const SETTINGS_DEFINITIONS = {
       closeWindowsOnTaskCompletion: false,
     } as EditorAutomationSetting,
     validate: isEditorAutomationSetting,
+  },
+  rawMessageCleanup: {
+    defaultValue: {
+      enabled: true,
+      retentionHours: 24,
+    } as RawMessageCleanupSetting,
+    validate: isRawMessageCleanupSetting,
   },
   thinkingSettings: {
     defaultValue: {

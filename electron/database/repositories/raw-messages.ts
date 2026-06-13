@@ -1,3 +1,4 @@
+import { sql } from 'kysely';
 import { nanoid } from 'nanoid';
 
 import type { AgentBackendType } from '@shared/agent-backend-types';
@@ -153,6 +154,52 @@ export const RawMessageRepository = {
    */
   deleteByTaskId: async (taskId: string) => {
     return db.deleteFrom('raw_messages').where('taskId', '=', taskId).execute();
+  },
+
+  /**
+   * Delete raw messages for user-completed tasks updated before the cutoff.
+   * Normalized messages remain; rawMessageId references are nulled explicitly.
+   */
+  deleteForCompletedTasksUpdatedBefore: async (
+    cutoffIso: string,
+  ): Promise<number> => {
+    const results = await db.transaction().execute(async (trx) => {
+      await trx
+        .updateTable('agent_messages')
+        .set({ rawMessageId: null })
+        .where('rawMessageId', 'in', (eb) =>
+          eb
+            .selectFrom('raw_messages')
+            .innerJoin('tasks', 'tasks.id', 'raw_messages.taskId')
+            .select('raw_messages.id')
+            .where('tasks.userCompleted', '=', 1)
+            .where('tasks.updatedAt', '<', cutoffIso),
+        )
+        .execute();
+
+      return trx
+        .deleteFrom('raw_messages')
+        .where('id', 'in', (eb) =>
+          eb
+            .selectFrom('raw_messages')
+            .innerJoin('tasks', 'tasks.id', 'raw_messages.taskId')
+            .select('raw_messages.id')
+            .where('tasks.userCompleted', '=', 1)
+            .where('tasks.updatedAt', '<', cutoffIso),
+        )
+        .execute();
+    });
+
+    return results.reduce(
+      (count, result) => count + Number(result.numDeletedRows),
+      0,
+    );
+  },
+
+  reclaimDeletedStorage: async (): Promise<void> => {
+    await sql`PRAGMA wal_checkpoint(TRUNCATE)`.execute(db);
+    await sql`VACUUM`.execute(db);
+    await sql`PRAGMA wal_checkpoint(TRUNCATE)`.execute(db);
   },
 
   /**

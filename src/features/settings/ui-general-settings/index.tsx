@@ -45,6 +45,8 @@ import {
   useUpdateEditorAutomationSetting,
   useUpdateEditorSetting,
   useUpdateTaskEventNotificationsSetting,
+  useRawMessageCleanupSetting,
+  useUpdateRawMessageCleanupSetting,
   useUpdateSummaryModelsSetting,
   useUpdateThinkingSettingsSetting,
   useAvailableEditors,
@@ -68,6 +70,7 @@ import {
   DEFAULT_TASK_NOTIFICATION_MODES,
   PRESET_EDITORS,
   type ModelPreference,
+  type RawMessageCleanupSetting,
   type ThinkingEffort,
   type CalendarNotificationsSetting,
   type TaskNotificationEvent,
@@ -350,8 +353,99 @@ export { CalendarNotificationSettings as CalendarSettings };
 export function MaintenanceSettings() {
   return (
     <div className="space-y-8">
+      <RawMessageCleanupSettings />
+      <div className="border-line-soft border-t" />
       <ClaudeProjectsCleanup />
       <GlobalGitignoreSetup />
+    </div>
+  );
+}
+
+function RawMessageCleanupSettings() {
+  const { data: rawMessageCleanupSetting } = useRawMessageCleanupSetting();
+  const updateRawMessageCleanup = useUpdateRawMessageCleanupSetting();
+
+  const settings: RawMessageCleanupSetting = rawMessageCleanupSetting ?? {
+    enabled: true,
+    retentionHours: 24,
+  };
+  const [retentionInput, setRetentionInput] = useState(
+    String(settings.retentionHours),
+  );
+
+  useEffect(() => {
+    setRetentionInput(String(settings.retentionHours));
+  }, [settings.retentionHours]);
+
+  const updateSetting = (next: RawMessageCleanupSetting) => {
+    updateRawMessageCleanup.mutate(next);
+  };
+
+  const commitRetention = () => {
+    const parsed = Number.parseInt(retentionInput, 10);
+    const retentionHours = Number.isFinite(parsed)
+      ? Math.max(parsed, 1)
+      : settings.retentionHours;
+    setRetentionInput(String(retentionHours));
+    if (retentionHours !== settings.retentionHours) {
+      updateSetting({ ...settings, retentionHours });
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex items-start gap-3">
+        <div className="bg-acc/15 text-acc-ink mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
+          <Trash2 className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-ink-1 text-lg font-semibold">
+            Raw Message Cleanup
+          </h2>
+          <p className="text-ink-3 mt-1 text-sm">
+            Save disk space by deleting raw agent messages after normalized
+            messages are safely retained.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        <div className="border-glass-border bg-bg-1 rounded-lg border px-4 py-3">
+          <Checkbox
+            checked={settings.enabled}
+            onChange={(enabled) => updateSetting({ ...settings, enabled })}
+            label="Clean up completed task raw messages"
+            description="Normalized messages stay available in task timelines. Raw debug payloads are removed after retention period."
+          />
+        </div>
+
+        <div className="border-glass-border bg-bg-1 rounded-lg border px-4 py-3">
+          <label className="text-ink-2 block text-sm font-medium">
+            Keep raw messages after completion
+          </label>
+          <p className="text-ink-3 mt-1 text-xs">
+            Cleanup only touches completed tasks older than this duration.
+          </p>
+          <div className="mt-3 flex items-center gap-3">
+            <Input
+              type="number"
+              min={1}
+              step={1}
+              value={retentionInput}
+              onChange={(e) => setRetentionInput(e.target.value)}
+              onBlur={commitRetention}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  commitRetention();
+                }
+              }}
+              disabled={!settings.enabled}
+              className="w-28"
+            />
+            <span className="text-ink-3 text-sm">hours</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
