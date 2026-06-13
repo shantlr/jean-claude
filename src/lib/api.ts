@@ -1022,10 +1022,11 @@ export interface Api {
       content: string,
     ) => Promise<void>;
     cancelQueuedPrompt: (stepId: string, promptId: string) => Promise<void>;
-    getBackendModels: (backend: string) => Promise<
+    getBackendModels: (backend: AgentBackendType) => Promise<
       {
         id: string;
         label: string;
+        contextWindow?: number;
         supportsThinking?: boolean;
         thinkingEfforts?: ThinkingEffort[];
       }[]

@@ -79,10 +79,15 @@ export function ContextUsageDisplay({
   }
 
   const level = getContextLevel(contextUsage.percentage);
-  const tooltipText = `Context: ${formatNumber(contextUsage.contextTokens)} / ${formatNumber(contextUsage.contextWindow)} tokens`;
+  const label = contextUsage.isEstimate ? 'Estimated context' : 'Context';
+  const tooltipText = `${label}: ${formatNumber(contextUsage.contextTokens)} / ${formatNumber(contextUsage.contextWindow)} tokens`;
 
   return (
-    <div className="flex place-items-center gap-1.5" title={tooltipText}>
+    <div
+      className="flex place-items-center gap-1.5"
+      title={tooltipText}
+      aria-label={tooltipText}
+    >
       {/* Pie loader */}
       <PieLoader percentage={contextUsage.percentage} level={level} />
     </div>

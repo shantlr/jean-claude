@@ -1016,6 +1016,7 @@ class AgentService {
           cost: result.cost?.costUsd,
           apiCost: result.cost?.apiCostUsd,
           usage: result.usage,
+          contextUsage: result.contextUsage,
         });
 
         const status = result.isError ? 'errored' : 'completed';

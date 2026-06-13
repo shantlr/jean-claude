@@ -141,7 +141,9 @@ describe('OpenCodeBackend event stream', () => {
       cacheReadTokens: 3,
       cacheCreationTokens: 2,
     });
+    expect(state.contextUsage).toEqual(state.totalUsage);
     expect(state.normalizationCtx.totalUsage).toEqual(state.totalUsage);
+    expect(state.normalizationCtx.contextUsage).toEqual(state.contextUsage);
   });
 
   it('uses API cost when OpenCode reports subscription cost as zero', () => {
@@ -284,7 +286,255 @@ describe('OpenCodeBackend event stream', () => {
     expect(state.totalCost).toBe(0);
     expect(state.totalApiCost).toBe(0);
     expect(state.totalUsage).toBeUndefined();
+    expect(state.contextUsage).toBeUndefined();
     expect(state.normalizationCtx.totalUsage).toBeUndefined();
+    expect(state.normalizationCtx.contextUsage).toBeUndefined();
+  });
+
+  it('emits latest assistant usage instead of cumulative usage', async () => {
+    const olderInfo = {
+      id: 'msg-1',
+      sessionID: 'session-1',
+      role: 'assistant',
+      providerID: 'openai',
+      modelID: 'gpt-5.4',
+      time: { created: 1, completed: 1 },
+      cost: 0.1,
+      tokens: {
+        input: 10,
+        output: 5,
+        reasoning: 2,
+        cache: { read: 3, write: 2 },
+        total: 22,
+      },
+    } as AssistantMessage;
+    const latestInfo = {
+      id: 'msg-2',
+      sessionID: 'session-1',
+      role: 'assistant',
+      providerID: 'openai',
+      modelID: 'gpt-5.4',
+      time: { created: 2, completed: 2 },
+      cost: 0.25,
+      tokens: {
+        input: 20,
+        output: 7,
+        reasoning: 4,
+        cache: { read: 6, write: 1 },
+        total: 38,
+      },
+    } as AssistantMessage;
+
+    async function* olderMessageStream() {
+      yield {
+        type: 'message.updated',
+        properties: { info: olderInfo },
+      };
+    }
+
+    const client = {
+      event: {
+        subscribe: vi.fn(async () => ({ stream: olderMessageStream() })),
+      },
+      session: {
+        prompt: vi.fn(async () => ({ data: { info: latestInfo, parts: [] } })),
+      },
+    };
+    const backend = new OpenCodeBackend({
+      taskId: 'task-1',
+      sessionStartIndex: 0,
+      persistRaw: vi.fn(async () => 'raw-1'),
+    });
+    const state = createOpenCodeState(client);
+
+    const events = await collectEvents(
+      createEventStreamForTest(backend, client, state),
+    );
+
+    expect(state.totalUsage).toEqual({
+      inputTokens: 30,
+      outputTokens: 12,
+      cacheReadTokens: 9,
+      cacheCreationTokens: 3,
+      reasoningTokens: 6,
+      totalTokens: 60,
+    });
+    expect(events.at(-1)).toMatchObject({
+      type: 'complete',
+      result: {
+        cost: { costUsd: 0.35 },
+        usage: {
+          inputTokens: 30,
+          outputTokens: 12,
+          cacheReadTokens: 9,
+          cacheCreationTokens: 3,
+          reasoningTokens: 6,
+          totalTokens: 60,
+        },
+        contextUsage: {
+          inputTokens: 20,
+          outputTokens: 7,
+          cacheReadTokens: 6,
+          cacheCreationTokens: 1,
+          reasoningTokens: 4,
+          totalTokens: 38,
+        },
+      },
+    });
+  });
+
+  it('uses latest assistant usage for session idle results', () => {
+    const backend = new OpenCodeBackend({
+      taskId: 'task-1',
+      sessionStartIndex: 0,
+      persistRaw: vi.fn(async () => 'raw-1'),
+    });
+    const state = createOpenCodeState({});
+
+    mapEventForTest(backend, state, {
+      type: 'message.updated',
+      properties: {
+        info: {
+          id: 'msg-1',
+          sessionID: 'session-1',
+          role: 'assistant',
+          providerID: 'openai',
+          modelID: 'gpt-5.4',
+          time: { created: 1, completed: 1 },
+          cost: 0.1,
+          tokens: {
+            input: 10,
+            output: 5,
+            reasoning: 0,
+            cache: { read: 3, write: 2 },
+          },
+        } as AssistantMessage,
+      },
+    });
+    mapEventForTest(backend, state, {
+      type: 'message.updated',
+      properties: {
+        info: {
+          id: 'msg-2',
+          sessionID: 'session-1',
+          role: 'assistant',
+          providerID: 'openai',
+          modelID: 'gpt-5.4',
+          time: { created: 2, completed: 2 },
+          cost: 0.2,
+          tokens: {
+            input: 20,
+            output: 7,
+            reasoning: 0,
+            cache: { read: 6, write: 1 },
+          },
+        } as AssistantMessage,
+      },
+    });
+
+    const events = mapEventForTest(backend, state, {
+      type: 'session.idle',
+      properties: { sessionID: 'session-1' },
+    });
+
+    expect(events).toMatchObject([
+      {
+        type: 'complete',
+        result: {
+          usage: {
+            inputTokens: 30,
+            outputTokens: 12,
+            cacheReadTokens: 9,
+            cacheCreationTokens: 3,
+          },
+          contextUsage: {
+            inputTokens: 20,
+            outputTokens: 7,
+            cacheReadTokens: 6,
+            cacheCreationTokens: 1,
+          },
+        },
+      },
+    ]);
+  });
+
+  it('does not use child assistant usage for parent context usage', async () => {
+    const parentInfo = {
+      id: 'msg-1',
+      sessionID: 'session-1',
+      role: 'assistant',
+      providerID: 'openai',
+      modelID: 'gpt-5.4',
+      time: { created: 1, completed: 1 },
+      cost: 0.1,
+      tokens: {
+        input: 10,
+        output: 5,
+        reasoning: 0,
+        cache: { read: 3, write: 2 },
+      },
+    } as AssistantMessage;
+    const childInfo = {
+      id: 'child-msg-1',
+      sessionID: 'child-session',
+      role: 'assistant',
+      providerID: 'openai',
+      modelID: 'gpt-5.4',
+      time: { created: 2, completed: 2 },
+      cost: 0.2,
+      tokens: {
+        input: 100,
+        output: 50,
+        reasoning: 0,
+        cache: { read: 30, write: 20 },
+      },
+    } as AssistantMessage;
+    async function* childMessageStream() {
+      yield {
+        type: 'message.updated',
+        properties: { info: childInfo },
+      };
+    }
+    const client = {
+      event: {
+        subscribe: vi.fn(async () => ({ stream: childMessageStream() })),
+      },
+      session: {
+        prompt: vi.fn(async () => ({ data: { info: parentInfo, parts: [] } })),
+      },
+    };
+    const backend = new OpenCodeBackend({
+      taskId: 'task-1',
+      sessionStartIndex: 0,
+      persistRaw: vi.fn(async () => 'raw-1'),
+    });
+    const state = createOpenCodeState(client);
+
+    state.normalizationCtx.subtaskParentToolIdsBySessionId = new Map([
+      ['child-session', 'subtask-1'],
+    ]);
+
+    const events = await collectEvents(
+      createEventStreamForTest(backend, client, state),
+    );
+
+    expect(events.at(-1)).toMatchObject({
+      type: 'complete',
+      result: {
+        usage: {
+          inputTokens: 110,
+          outputTokens: 55,
+          cacheReadTokens: 33,
+          cacheCreationTokens: 22,
+        },
+        contextUsage: {
+          inputTokens: 10,
+          outputTokens: 5,
+          cacheReadTokens: 3,
+          cacheCreationTokens: 2,
+        },
+      },
+    });
   });
 
   it('emits token usage on completed OpenCode sessions', async () => {
@@ -330,6 +580,12 @@ describe('OpenCodeBackend event stream', () => {
         isError: false,
         cost: { costUsd: 0.25 },
         usage: {
+          inputTokens: 10,
+          outputTokens: 5,
+          cacheReadTokens: 3,
+          cacheCreationTokens: 2,
+        },
+        contextUsage: {
           inputTokens: 10,
           outputTokens: 5,
           cacheReadTokens: 3,
@@ -628,13 +884,7 @@ describe('OpenCodeBackend event stream', () => {
       createEventStreamForTest(backend, client, state),
     );
 
-    expect(
-      (
-        state.normalizationCtx as {
-          subtaskParentToolIdsBySessionId?: Map<string, string>;
-        }
-      ).subtaskParentToolIdsBySessionId,
-    ).toBeUndefined();
+    expect(state.normalizationCtx.subtaskParentToolIdsBySessionId.size).toBe(0);
     expect(events).toMatchObject([
       { type: 'session-id', sessionId: 'session-1' },
       { type: 'complete', result: { isError: false } },
@@ -1332,6 +1582,7 @@ function createOpenCodeState(client: unknown) {
     totalCost: 0,
     totalApiCost: 0,
     totalUsage: undefined,
+    contextUsage: undefined,
     normalizationCtx: {
       emittedEntryIds: new Set(),
       rawMessages: new Map(),
@@ -1340,6 +1591,8 @@ function createOpenCodeState(client: unknown) {
       totalCost: 0,
       totalApiCost: 0,
       totalUsage: undefined,
+      contextUsage: undefined,
+      subtaskParentToolIdsBySessionId: new Map<string, string>(),
     },
     messageIndex: 0,
     pendingSubtaskPartsByMessageId: new Map(),

@@ -7,6 +7,7 @@ import type { ThinkingEffort } from '@shared/types';
 export interface BackendModel {
   id: string;
   label: string;
+  contextWindow?: number;
   supportsThinking?: boolean;
   thinkingEfforts?: ThinkingEffort[];
 }

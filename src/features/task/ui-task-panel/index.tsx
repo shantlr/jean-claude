@@ -70,7 +70,7 @@ import { TaskPrView } from '@/features/task/ui-task-pr-view';
 import { WorkItemPicker } from '@/features/work-item/ui-work-item-picker';
 import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
 import { useBackendModels } from '@/hooks/use-backend-models';
-import { useContextUsage, type ContextUsage } from '@/hooks/use-context-usage';
+import { useContextUsage } from '@/hooks/use-context-usage';
 import { useModel, formatModelName } from '@/hooks/use-model';
 import { useProject, useProjectIsGitRepository } from '@/hooks/use-projects';
 import {
@@ -106,6 +106,7 @@ import {
 import { api } from '@/lib/api';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
 import { getDefaultModelForBackend } from '@/lib/default-models';
+import { getContextWindowForModel } from '@/lib/model-context-window';
 import { formatNumber } from '@/lib/number';
 import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
 import { getBranchFromWorktreePath } from '@/lib/worktree';
@@ -450,7 +451,6 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   } = useTaskFileExplorerState(taskId);
 
   const agentState = useAgentStream({ taskId, stepId: activeStepId });
-  const contextUsage = useContextUsage(agentState.messages);
   const stepTokenSummary = useMemo(
     () => getStepTokenSummary(agentState.messages),
     [agentState.messages],
@@ -1925,7 +1925,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                   onQueue={queuePrompt}
                   queuedPrompts={agentState.queuedPrompts}
                   onStop={handleStop}
-                  contextUsage={contextUsage}
+                  entries={agentState.messages}
                   stepTokenSummary={stepTokenSummary}
                   projectRoot={taskRootPath}
                   getCompletionContextBeforePrompt={
@@ -2083,7 +2083,7 @@ const TaskInputFooter = memo(function TaskInputFooter({
   onQueue,
   queuedPrompts,
   onStop,
-  contextUsage,
+  entries,
   stepTokenSummary,
   projectRoot,
   getCompletionContextBeforePrompt,
@@ -2097,7 +2097,7 @@ const TaskInputFooter = memo(function TaskInputFooter({
   onQueue: (parts: PromptPart[]) => void;
   queuedPrompts: { content: string }[];
   onStop: () => Promise<void>;
-  contextUsage: ContextUsage;
+  entries: NormalizedEntry[];
   stepTokenSummary: StepTokenSummary;
   projectRoot: string | null;
   getCompletionContextBeforePrompt: () => string;
@@ -2110,6 +2110,8 @@ const TaskInputFooter = memo(function TaskInputFooter({
     stepId: activeStepId ?? undefined,
   });
   const { data: footerSnippets = [] } = usePromptSnippetsSetting();
+  const { data: footerBackendDefaultModelsSetting } =
+    useBackendDefaultModelsSetting();
 
   const snippetVariableContext: SnippetVariableContext = useMemo(
     () => ({
@@ -2137,6 +2139,27 @@ const TaskInputFooter = memo(function TaskInputFooter({
   const effectiveModel = activeStep?.modelPreference ?? 'default';
 
   const { data: dynamicModels } = useBackendModels(effectiveBackend);
+  const resolvedModelForContext =
+    effectiveModel === 'default'
+      ? getDefaultModelForBackend({
+          backend: effectiveBackend,
+          project: footerProject,
+          backendDefaultModels: footerBackendDefaultModelsSetting,
+        })
+      : effectiveModel;
+  const activeModelMeta = dynamicModels?.find(
+    (dynamicModel) => dynamicModel.id === resolvedModelForContext,
+  );
+  const contextWindow = getContextWindowForModel({
+    backend: effectiveBackend,
+    model: resolvedModelForContext,
+    dynamicContextWindow: activeModelMeta?.contextWindow,
+  });
+  const contextUsage = useContextUsage({
+    entries,
+    backend: effectiveBackend,
+    contextWindow,
+  });
   const thinkingCapabilities = getModelThinkingCapabilities(
     effectiveModel,
     dynamicModels,

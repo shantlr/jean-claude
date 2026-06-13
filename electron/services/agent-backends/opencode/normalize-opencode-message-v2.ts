@@ -70,6 +70,8 @@ export type OpenCodeNormalizationContext = {
   totalApiCost?: number;
   /** Accumulated token usage — backend updates from assistant message token fields */
   totalUsage?: TokenUsage;
+  /** Latest parent-session assistant usage for context display */
+  contextUsage?: TokenUsage;
   /** Single model used by accumulated assistant usage, when known. */
   totalModel?: string;
   /** Permission decisions made before matching tool parts stream in. */
@@ -200,6 +202,7 @@ function normalizeEvent(
                   }
                 : undefined,
             usage: ctx.totalUsage,
+            contextUsage: ctx.contextUsage,
           },
         },
       ];

@@ -28,6 +28,7 @@ export type NormalizedEntryBody =
       cost?: number;
       apiCost?: number;
       usage?: TokenUsage;
+      contextUsage?: TokenUsage;
     }
   | NormalizedToolUse;
 
@@ -238,6 +239,8 @@ export interface TokenUsage {
   outputTokens: number;
   cacheReadTokens?: number;
   cacheCreationTokens?: number;
+  reasoningTokens?: number;
+  totalTokens?: number;
 }
 
 export interface NormalizedResult {
@@ -247,6 +250,7 @@ export interface NormalizedResult {
   cost?: CostInfo;
   durationMs?: number;
   usage?: TokenUsage;
+  contextUsage?: TokenUsage;
 }
 
 export interface NormalizedPermissionRequest {

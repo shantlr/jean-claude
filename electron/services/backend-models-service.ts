@@ -35,6 +35,7 @@ const CODEX_THINKING_VARIANTS = new Set<ThinkingEffort>([
 export interface BackendModel {
   id: string;
   label: string;
+  contextWindow?: number;
   supportsThinking?: boolean;
   thinkingEfforts?: ThinkingEffort[];
   cost?: OpenCodeModelCost;
@@ -150,6 +151,7 @@ export function parseOpenCodeModelsVerbose(stdout: string): BackendModel[] {
         name?: string;
         cost?: OpenCodeModelCost;
         capabilities?: { reasoning?: boolean };
+        limit?: { context?: unknown };
         variants?: Record<string, unknown>;
       };
       const thinkingEfforts = Object.keys(metadata.variants ?? {}).filter(
@@ -162,6 +164,9 @@ export function parseOpenCodeModelsVerbose(stdout: string): BackendModel[] {
         supportsThinking:
           metadata.capabilities?.reasoning === true ||
           thinkingEfforts.length > 0,
+        ...(isValidContextWindow(metadata.limit?.context)
+          ? { contextWindow: metadata.limit.context }
+          : {}),
         ...(thinkingEfforts.length > 0 ? { thinkingEfforts } : {}),
         ...(metadata.cost ? { cost: metadata.cost } : {}),
       });
@@ -176,6 +181,10 @@ export function parseOpenCodeModelsVerbose(stdout: string): BackendModel[] {
   }
 
   return models;
+}
+
+function isValidContextWindow(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 }
 
 async function fetchCodexModels(): Promise<BackendModel[]> {

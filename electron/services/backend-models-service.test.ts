@@ -25,6 +25,9 @@ describe('parseOpenCodeModelsVerbose', () => {
   "capabilities": {
     "reasoning": true
   },
+  "limit": {
+    "context": 272000
+  },
   "variants": {
     "none": { "reasoningEffort": "none" },
     "low": { "reasoningEffort": "low" },
@@ -48,6 +51,7 @@ github-copilot/gpt-4.1
       {
         id: 'openai/gpt-5.3-codex',
         label: 'GPT-5.3 Codex',
+        contextWindow: 272_000,
         supportsThinking: true,
         thinkingEfforts: ['none', 'low', 'medium', 'high', 'xhigh'],
       },
@@ -57,6 +61,42 @@ github-copilot/gpt-4.1
         supportsThinking: false,
       },
     ]);
+  });
+
+  it('ignores missing OpenCode context window metadata', () => {
+    const models = parseOpenCodeModelsVerbose(`github-copilot/gpt-4.1
+{
+  "id": "gpt-4.1",
+  "name": "GPT-4.1",
+  "capabilities": { "reasoning": false },
+  "variants": {}
+}
+`);
+
+    expect(models[0]).toEqual({
+      id: 'github-copilot/gpt-4.1',
+      label: 'GPT-4.1',
+      supportsThinking: false,
+    });
+  });
+
+  it.each([
+    ['zero', 0],
+    ['negative', -1],
+    ['fractional', 128_000.5],
+    ['non-number', '128000'],
+  ])('ignores %s OpenCode context window metadata', (_, context) => {
+    const models = parseOpenCodeModelsVerbose(`github-copilot/gpt-4.1
+{
+  "id": "gpt-4.1",
+  "name": "GPT-4.1",
+  "limit": { "context": ${JSON.stringify(context)} },
+  "capabilities": { "reasoning": false },
+  "variants": {}
+}
+`);
+
+    expect(models[0]).not.toHaveProperty('contextWindow');
   });
 
   it('extracts model cost metadata', () => {
