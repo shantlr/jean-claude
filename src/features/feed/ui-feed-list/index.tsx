@@ -14,7 +14,9 @@ import {
   Loader2,
   MessageSquare,
   Plus,
+  Save,
   Settings2,
+  Trash2,
 } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -347,6 +349,60 @@ function PrProjectOrderModal({
           </div>
         ))}
       </div>
+    </Modal>
+  );
+}
+
+function SaveFilterPresetModal({
+  onClose,
+  onSave,
+}: {
+  onClose: () => void;
+  onSave: (name: string) => void;
+}) {
+  const [name, setName] = useState('');
+
+  const handleSubmit = useCallback(
+    (event: React.FormEvent) => {
+      event.preventDefault();
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      onSave(trimmed);
+      onClose();
+    },
+    [name, onClose, onSave],
+  );
+
+  return (
+    <Modal isOpen onClose={onClose} title="Save filter preset" size="sm">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <label className="block space-y-1.5">
+          <span className="text-ink-2 text-xs font-medium">Preset name</span>
+          <input
+            autoFocus
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="e.g. Review projects"
+            className="border-line-soft bg-bg-0 text-ink-1 placeholder:text-ink-4 focus:border-acc/60 w-full rounded-md border px-3 py-2 text-sm outline-none"
+          />
+        </label>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-ink-2 hover:bg-glass-medium rounded-md px-3 py-1.5 text-sm transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={!name.trim()}
+            className="bg-acc text-acc-ink hover:bg-acc/90 disabled:bg-glass-medium disabled:text-ink-3 rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed"
+          >
+            Save preset
+          </button>
+        </div>
+      </form>
     </Modal>
   );
 }
@@ -888,6 +944,10 @@ export function FeedList() {
   const toggleLowPriority = useFeedStore((s) => s.toggleLowPriority);
   const toggleProjectHidden = useFeedStore((s) => s.toggleProjectHidden);
   const clearHiddenProjects = useFeedStore((s) => s.clearHiddenProjects);
+  const filterPresets = useFeedStore((s) => s.filterPresets);
+  const saveFilterPreset = useFeedStore((s) => s.saveFilterPreset);
+  const applyFilterPreset = useFeedStore((s) => s.applyFilterPreset);
+  const deleteFilterPreset = useFeedStore((s) => s.deleteFilterPreset);
   const setLastLocation = useNavigationStore((s) => s.setLastLocation);
   const hiddenProjectIdSet = useMemo(
     () => new Set(hiddenProjectIds),
@@ -909,6 +969,7 @@ export function FeedList() {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [_dragOverId, setDragOverId] = useState<string | null>(null);
   const [dragOverPinZone, setDragOverPinZone] = useState(false);
+  const [savePresetModalOpen, setSavePresetModalOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1339,6 +1400,49 @@ export function FeedList() {
                   </div>
                 </div>
                 <DropdownDivider />
+                <DropdownItem
+                  onClick={() => setSavePresetModalOpen(true)}
+                  icon={<Save />}
+                >
+                  Save current filters
+                </DropdownItem>
+                {filterPresets.length > 0 && (
+                  <>
+                    <DropdownDivider />
+                    <div className="text-ink-3 px-3 py-1 text-[10px] font-semibold tracking-wider uppercase">
+                      Presets
+                    </div>
+                    {filterPresets.map((preset) => (
+                      <div key={preset.id} className="flex items-center">
+                        <button
+                          role="menuitem"
+                          tabIndex={-1}
+                          onClick={() => applyFilterPreset(preset.id)}
+                          className="text-ink-1 hover:bg-glass-medium focus:bg-glass-medium flex min-w-0 flex-1 items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors focus:outline-none"
+                        >
+                          <span className="min-w-0 flex-1 truncate">
+                            {preset.name}
+                          </span>
+                          <span className="text-ink-3 font-mono text-[10px]">
+                            {preset.hiddenProjectIds.length} hidden
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          tabIndex={-1}
+                          onClick={() => deleteFilterPreset(preset.id)}
+                          className="text-ink-3 hover:bg-glass-medium focus:bg-glass-medium mr-1 flex h-7 w-7 items-center justify-center rounded transition-colors hover:text-red-400 focus:text-red-400 focus:outline-none"
+                          title={`Delete ${preset.name}`}
+                          aria-label={`Delete ${preset.name}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </>
+                )}
+                <DropdownDivider />
                 {projectOptions.map((project) => (
                   <DropdownItem
                     key={project.id}
@@ -1379,6 +1483,13 @@ export function FeedList() {
             </button>
           </div>
         </div>
+      )}
+
+      {savePresetModalOpen && (
+        <SaveFilterPresetModal
+          onClose={() => setSavePresetModalOpen(false)}
+          onSave={saveFilterPreset}
+        />
       )}
 
       {/* Initial loading state */}

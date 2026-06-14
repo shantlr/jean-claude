@@ -33,4 +33,38 @@ describe('feed store', () => {
 
     expect(useFeedStore.getState().lowPriority).toEqual(['pr:project-1:1']);
   });
+
+  it('saves and applies project filter presets', async () => {
+    const { useFeedStore } = await import('./feed');
+
+    useFeedStore.getState().toggleProjectHidden('project-1');
+    useFeedStore.getState().toggleProjectHidden('project-2');
+    useFeedStore.getState().saveFilterPreset('Review');
+
+    useFeedStore.getState().clearHiddenProjects();
+    const [preset] = useFeedStore.getState().filterPresets;
+    useFeedStore.getState().applyFilterPreset(preset.id);
+
+    expect(useFeedStore.getState().hiddenProjectIds).toEqual([
+      'project-1',
+      'project-2',
+    ]);
+  });
+
+  it('persists and deletes project filter presets', async () => {
+    const { useFeedStore } = await import('./feed');
+
+    useFeedStore.getState().toggleProjectHidden('project-1');
+    useFeedStore.getState().saveFilterPreset('Review');
+    const [preset] = useFeedStore.getState().filterPresets;
+
+    const persisted = JSON.parse(
+      localStorage.getItem('jean-claude-feed-overrides') ?? '{}',
+    ) as { state?: { filterPresets?: unknown[] } };
+    expect(persisted.state?.filterPresets).toHaveLength(1);
+
+    useFeedStore.getState().deleteFilterPreset(preset.id);
+
+    expect(useFeedStore.getState().filterPresets).toEqual([]);
+  });
 });

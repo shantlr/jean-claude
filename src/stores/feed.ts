@@ -8,11 +8,18 @@ interface PinnedItem {
   order: number;
 }
 
+interface FeedFilterPreset {
+  id: string;
+  name: string;
+  hiddenProjectIds: string[];
+}
+
 interface FeedOverridesState {
   pinned: PinnedItem[];
   dismissed: string[];
   lowPriority: string[];
   hiddenProjectIds: string[];
+  filterPresets: FeedFilterPreset[];
   lastAttention: Record<string, FeedItemAttention>;
 
   pin: (id: string) => void;
@@ -24,6 +31,9 @@ interface FeedOverridesState {
   toggleLowPriority: (id: string) => void;
   toggleProjectHidden: (projectId: string) => void;
   clearHiddenProjects: () => void;
+  saveFilterPreset: (name: string) => void;
+  applyFilterPreset: (id: string) => void;
+  deleteFilterPreset: (id: string) => void;
   reconcile: (items: { id: string; attention: FeedItemAttention }[]) => void;
 }
 
@@ -34,6 +44,7 @@ export const useFeedStore = create<FeedOverridesState>()(
       dismissed: [],
       lowPriority: [],
       hiddenProjectIds: [],
+      filterPresets: [],
       lastAttention: {},
 
       pin: (id) =>
@@ -98,6 +109,37 @@ export const useFeedStore = create<FeedOverridesState>()(
 
       clearHiddenProjects: () => set({ hiddenProjectIds: [] }),
 
+      saveFilterPreset: (name) =>
+        set((state) => {
+          const trimmed = name.trim();
+          if (!trimmed) return state;
+
+          const preset = {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            name: trimmed,
+            hiddenProjectIds: [...state.hiddenProjectIds],
+          };
+
+          return {
+            filterPresets: [
+              preset,
+              ...state.filterPresets.filter((p) => p.name !== trimmed),
+            ],
+          };
+        }),
+
+      applyFilterPreset: (id) =>
+        set((state) => {
+          const preset = state.filterPresets.find((p) => p.id === id);
+          if (!preset) return state;
+          return { hiddenProjectIds: [...preset.hiddenProjectIds] };
+        }),
+
+      deleteFilterPreset: (id) =>
+        set((state) => ({
+          filterPresets: state.filterPresets.filter((p) => p.id !== id),
+        })),
+
       reconcile: (items) =>
         set((state) => {
           const prev = state.lastAttention;
@@ -148,6 +190,7 @@ export const useFeedStore = create<FeedOverridesState>()(
         dismissed: state.dismissed,
         lowPriority: state.lowPriority,
         hiddenProjectIds: state.hiddenProjectIds,
+        filterPresets: state.filterPresets,
         lastAttention: state.lastAttention,
       }),
     },
