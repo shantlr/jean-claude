@@ -539,6 +539,19 @@ class SystemCalendarService {
     this.closeIgnoredMeetingStartPopups();
   }
 
+  suppressMeetingStartPopup(meeting: UpcomingMeeting) {
+    const endAtMs = new Date(meeting.endAt).getTime();
+    this.startPopupEvents.set(
+      meeting.id,
+      Number.isFinite(endAtMs) ? endAtMs : Date.now(),
+    );
+    const popup = this.startPopupWindows.get(meeting.id);
+    if (popup && !popup.isDestroyed()) {
+      popup.close();
+    }
+    this.startPopupWindows.delete(meeting.id);
+  }
+
   async listUpcomingMeetings(): Promise<UpcomingMeeting[]> {
     if (process.platform !== 'darwin') {
       return [];

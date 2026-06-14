@@ -3722,6 +3722,10 @@ export function registerIpcHandlers() {
     await systemCalendarService.revealMeeting(meeting);
   });
 
+  ipcMain.handle('calendar:suppressMeetingStartPopup', async (_, meeting) => {
+    systemCalendarService.suppressMeetingStartPopup(meeting);
+  });
+
   ipcMain.handle('calendar:setIgnoredMeetingIds', async (_, ids: string[]) => {
     systemCalendarService.setIgnoredMeetingIds(ids);
   });

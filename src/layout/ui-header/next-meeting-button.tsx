@@ -124,6 +124,7 @@ export function NextMeetingButton() {
   const handleJoin = (e: MouseEvent) => {
     e.stopPropagation();
     if (teamsUrl) {
+      void api.calendar.suppressMeetingStartPopup(next).catch(() => {});
       void api.shell
         .openTeamsJoinUrl(getTeamsJoinUrl(teamsUrl, meetingJoinTarget))
         .catch((error) => {

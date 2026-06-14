@@ -679,6 +679,13 @@ contextBridge.exposeInMainWorld('api', {
     revealMeeting: (
       meeting: import('@shared/calendar-types').UpcomingMeeting,
     ) => ipcRenderer.invoke('calendar:revealMeeting', meeting) as Promise<void>,
+    suppressMeetingStartPopup: (
+      meeting: import('@shared/calendar-types').UpcomingMeeting,
+    ) =>
+      ipcRenderer.invoke(
+        'calendar:suppressMeetingStartPopup',
+        meeting,
+      ) as Promise<void>,
     setIgnoredMeetingIds: (ids: string[]) =>
       ipcRenderer.invoke('calendar:setIgnoredMeetingIds', ids) as Promise<void>,
   },
