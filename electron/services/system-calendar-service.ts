@@ -370,7 +370,7 @@ let filteredEvents = events.compactMap { event -> Meeting? in
     return nil
   }
 
-  let organizerName = event.organizer?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+  let organizerName = event.organizer?.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
   let organizerUrl = event.organizer?.url.absoluteString ?? ""
   let organizerEmail = organizerUrl.hasPrefix("mailto:")
     ? String(organizerUrl.dropFirst("mailto:".count))
