@@ -39,3 +39,18 @@ export function buildPromptMarkdown(parts: PromptPart[]): string {
 
   return sections.join('\n\n');
 }
+
+/** Build markdown from the exact prompt data sent to agent backends. */
+export function buildAgentPromptMarkdown(parts: PromptPart[]): string {
+  const sections: string[] = [];
+
+  const text = getPromptText(parts);
+  if (text) sections.push(text);
+
+  for (const img of getPromptImages(parts)) {
+    const filename = (img.filename || 'image').replace(/[[\]()\\]/g, '_');
+    sections.push(`![${filename}](data:${img.mimeType};base64,${img.data})`);
+  }
+
+  return sections.join('\n\n');
+}

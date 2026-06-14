@@ -120,10 +120,12 @@ function hasDuplicateUserPrompt(
   const currentValue = current.value.trim();
   if (!currentValue) return false;
 
-  for (let i = 0; i < entries.length; i++) {
-    if (i === startIndex) continue;
-
+  for (let i = startIndex + 1; i < entries.length; i++) {
     const entry = entries[i];
+    if (isSDKSyntheticUserPrompt(entry) || entry.type === 'result') {
+      return false;
+    }
+
     if (
       entry.type === 'user-prompt' &&
       !isSDKSyntheticUserPrompt(entry) &&

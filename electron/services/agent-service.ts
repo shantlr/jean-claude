@@ -69,7 +69,11 @@ import {
   normalizeToolRequest,
 } from './permission-settings-service';
 import { applyConfiguredPromptPreface } from './prompt-preface-service';
-import { textPrompt, getPromptText } from './prompt-utils';
+import {
+  buildAgentPromptMarkdown,
+  textPrompt,
+  getPromptText,
+} from './prompt-utils';
 import { rateLimitSwapService } from './rate-limit-swap-service';
 import { StepService } from './step-service';
 import { assertValidWorkspacePath } from './system-project-service';
@@ -728,6 +732,20 @@ class AgentService {
             projectPath: project.path,
             isInitialPrompt: options?.isInitialPrompt ?? false,
           });
+
+    if (session.backendType === 'opencode') {
+      const promptText = buildAgentPromptMarkdown(effectiveParts).trim();
+      if (promptText) {
+        await this.persistAndEmitSyntheticEntry(taskId, session, {
+          id: nanoid(),
+          date: new Date().toISOString(),
+          isSynthetic: true,
+          type: 'user-prompt',
+          value: promptText,
+          isSDKSynthetic: true,
+        });
+      }
+    }
 
     const agentSession = await session.backend.start(
       {

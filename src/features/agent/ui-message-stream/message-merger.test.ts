@@ -299,6 +299,53 @@ describe('message-merger', () => {
     });
   });
 
+  it('does not deduplicate against same-text prompts from later turns', () => {
+    const entries: NormalizedEntry[] = [
+      {
+        id: 'sdk-prompt-1',
+        date: '2026-06-13T09:56:30.555Z',
+        isSynthetic: true,
+        type: 'user-prompt',
+        value: 'continue',
+        isSDKSynthetic: true,
+      },
+      {
+        id: 'assistant-1',
+        date: '2026-06-13T09:56:31.555Z',
+        type: 'assistant-message',
+        value: 'First response',
+      },
+      {
+        id: 'sdk-prompt-2',
+        date: '2026-06-13T09:56:32.555Z',
+        isSynthetic: true,
+        type: 'user-prompt',
+        value: 'continue',
+        isSDKSynthetic: true,
+      },
+      {
+        id: 'real-prompt-2',
+        date: '2026-06-13T09:56:33.555Z',
+        type: 'user-prompt',
+        value: 'continue',
+      },
+    ];
+
+    const merged = mergeSkillMessages(entries);
+    const groups = groupByPrompts(merged, true);
+
+    expect(merged).toHaveLength(3);
+    expect(groups).toHaveLength(2);
+    expect(groups[0]).toMatchObject({
+      kind: 'prompt-group',
+      promptEntry: { id: 'sdk-prompt-1' },
+    });
+    expect(groups[1]).toMatchObject({
+      kind: 'prompt-group',
+      promptEntry: { id: 'real-prompt-2' },
+    });
+  });
+
   it('keeps SDK synthetic prompts when their run fails', () => {
     const entries: NormalizedEntry[] = [
       {
