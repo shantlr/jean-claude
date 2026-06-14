@@ -1,7 +1,7 @@
 import {
   AlertTriangle,
   Box,
-  ChevronDown,
+  Check,
   ChevronRight,
   Cpu,
   Diamond,
@@ -11,13 +11,20 @@ import {
   MoreHorizontal,
   Play,
   Plug,
+  Search,
   Settings,
   Sparkles,
   Terminal,
   X,
   Zap,
 } from 'lucide-react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
 import { RemoveScroll } from 'react-remove-scroll';
@@ -259,12 +266,6 @@ const SEGMENTED_TAB_INACTIVE: React.CSSProperties = {
   color: 'oklch(0.7 0.01 280)',
 };
 
-const NAV_SECTION_ACTIVE: React.CSSProperties = {
-  background: 'oklch(1 0 0 / 0.06)',
-  color: 'oklch(0.99 0 0)',
-  fontWeight: 500,
-};
-
 const NAV_SECTION_INACTIVE: React.CSSProperties = {
   background: 'transparent',
   color: 'oklch(0.72 0.01 280)',
@@ -277,24 +278,6 @@ const NAV_SECTION_ACTIVE_LEAF: React.CSSProperties = {
   borderLeft: '2px solid oklch(0.78 0.18 295)',
   color: 'oklch(0.99 0 0)',
   fontWeight: 500,
-};
-
-const NAV_SUB_ACTIVE: React.CSSProperties = {
-  background: 'color-mix(in oklch, oklch(0.78 0.18 295) 14%, transparent)',
-  border:
-    '1px solid color-mix(in oklch, oklch(0.78 0.18 295) 30%, transparent)',
-  borderLeft: '2px solid oklch(0.78 0.18 295)',
-  paddingLeft: 9,
-  color: 'oklch(0.99 0 0)',
-  fontWeight: 500,
-};
-
-const NAV_SUB_INACTIVE: React.CSSProperties = {
-  background: 'transparent',
-  border: '1px solid transparent',
-  borderLeft: '2px solid transparent',
-  paddingLeft: 9,
-  color: 'oklch(0.62 0.01 280)',
 };
 
 const NAV_ICON_ACTIVE: React.CSSProperties = {
@@ -313,6 +296,20 @@ type ActiveSelection = {
 };
 
 type SettingsTab = 'global' | 'project';
+
+type SettingsNavLeaf = {
+  key: string;
+  label: string;
+  icon: React.ElementType;
+  beta?: boolean;
+  selection: ActiveSelection;
+};
+
+type SettingsNavGroup = {
+  label: string;
+  danger?: boolean;
+  items: SettingsNavLeaf[];
+};
 
 type SettingsNavState = {
   focusKey: string;
@@ -341,6 +338,139 @@ function getDefaultProjectSelection(): {
   return first.subs
     ? { sectionId: first.id, subId: first.subs[0].id }
     : { sectionId: first.id };
+}
+
+function globalLeaf(
+  sectionId: string,
+  subId?: string,
+  label?: string,
+): SettingsNavLeaf {
+  const section = getGlobalSections().find((s) => s.id === sectionId);
+  if (!section)
+    throw new Error(`Unknown global settings section: ${sectionId}`);
+  const sub = subId ? section.subs?.find((s) => s.id === subId) : undefined;
+  return {
+    key: subId ? `${sectionId}:${subId}` : sectionId,
+    label: label ?? sub?.label ?? section.label,
+    icon: section.icon,
+    beta: sub?.beta,
+    selection: subId ? { sectionId, subId } : { sectionId },
+  };
+}
+
+function projectLeaf(
+  sectionId: string,
+  subId?: string,
+  label?: string,
+): SettingsNavLeaf {
+  const section = PROJECT_SECTIONS.find((s) => s.id === sectionId);
+  if (!section)
+    throw new Error(`Unknown project settings section: ${sectionId}`);
+  const sub = subId ? section.subs?.find((s) => s.id === subId) : undefined;
+  return {
+    key: subId ? `${sectionId}:${subId}` : sectionId,
+    label: label ?? sub?.label ?? section.label,
+    icon: section.icon,
+    selection: subId ? { sectionId, subId } : { sectionId },
+  };
+}
+
+function getGlobalNavGroups(): SettingsNavGroup[] {
+  return [
+    {
+      label: 'Workspace',
+      items: [
+        globalLeaf('general', 'editor', 'General'),
+        globalLeaf('general', 'notifications'),
+        ...(api.platform === 'darwin'
+          ? [globalLeaf('general', 'calendar')]
+          : []),
+        globalLeaf('ai-generation'),
+      ],
+    },
+    {
+      label: 'Agents',
+      items: [
+        globalLeaf('coding-agents', 'presets', 'Defaults'),
+        globalLeaf('coding-agents', 'claude-code', 'Claude Code'),
+        globalLeaf('coding-agents', 'opencode', 'OpenCode'),
+        globalLeaf('coding-agents', 'codex', 'Codex'),
+        globalLeaf('coding-agents', 'prompt-preface'),
+        globalLeaf('permissions'),
+        globalLeaf('coding-agents', 'rate-limit-swap'),
+      ],
+    },
+    {
+      label: 'Capabilities',
+      items: [
+        globalLeaf('skills-agents', 'skills'),
+        globalLeaf('skills-agents', 'agents', 'Subagents'),
+        globalLeaf('prompt-snippets', undefined, 'Snippets'),
+        globalLeaf('mcp-servers'),
+        globalLeaf('skills-agents', 'sources'),
+        globalLeaf('autocomplete'),
+      ],
+    },
+    {
+      label: 'Connections',
+      items: [
+        globalLeaf('tokens', undefined, 'Providers'),
+        globalLeaf('general', 'usage', 'Usage Display'),
+        globalLeaf('azure-devops'),
+      ],
+    },
+    {
+      label: 'System',
+      items: [globalLeaf('general', 'maintenance'), globalLeaf('debug')],
+    },
+  ];
+}
+
+function getProjectNavGroups(): SettingsNavGroup[] {
+  return [
+    {
+      label: 'Project',
+      items: [
+        projectLeaf('project-general', 'details'),
+        projectLeaf('project-general', 'commit-ignore'),
+        projectLeaf('project-general', 'worktree'),
+        projectLeaf('project-general', 'feature-map'),
+        projectLeaf('project-general', 'autocomplete'),
+      ],
+    },
+    {
+      label: 'Agents',
+      items: [
+        projectLeaf('project-general', 'prompt-preface'),
+        projectLeaf('permissions'),
+        projectLeaf('run-commands'),
+      ],
+    },
+    {
+      label: 'Capabilities',
+      items: [
+        projectLeaf('skills'),
+        projectLeaf('mcp-overrides'),
+        projectLeaf('ai-generation'),
+      ],
+    },
+    {
+      label: 'Integrations',
+      items: [
+        projectLeaf('project-integrations', 'integrations', 'Repository'),
+        projectLeaf('project-integrations', 'pipelines'),
+      ],
+    },
+    {
+      label: 'Danger',
+      danger: true,
+      items: [projectLeaf('danger-zone')],
+    },
+  ];
+}
+
+function sameSelection(a: ActiveSelection, b: ActiveSelection): boolean {
+  return a.sectionId === b.sectionId && a.subId === b.subId;
 }
 
 /* ── Content rendering ── */
@@ -580,9 +710,7 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
       initialNavState?.globalSelection ??
       getDefaultSelection(getGlobalSections()),
   );
-  const [expandedGlobalSection, setExpandedGlobalSection] = useState<
-    string | null
-  >(() => {
+  const [expandedGlobalSection] = useState<string | null>(() => {
     if (initialNavState) return initialNavState.expandedGlobalSection;
     const sections = getGlobalSections();
     return sections[0].subs ? sections[0].id : null;
@@ -593,9 +721,7 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
     sectionId: string;
     subId?: string;
   }>(() => initialNavState?.projectSelection ?? getDefaultProjectSelection());
-  const [expandedProjectSection, setExpandedProjectSection] = useState<
-    string | null
-  >(
+  const [expandedProjectSection] = useState<string | null>(
     () =>
       initialNavState?.expandedProjectSection ??
       (PROJECT_SECTIONS[0].subs ? PROJECT_SECTIONS[0].id : null),
@@ -645,6 +771,41 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
       })),
     [projects],
   );
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState('');
+  const globalNavGroups = useMemo(() => getGlobalNavGroups(), []);
+  const projectNavGroups = useMemo(() => getProjectNavGroups(), []);
+  const searchResults = useMemo(() => {
+    const query = paletteQuery.trim().toLowerCase();
+    const items = [
+      ...globalNavGroups.flatMap((group) =>
+        group.items.map((item) => ({
+          ...item,
+          group: group.label,
+          scope: 'global' as const,
+        })),
+      ),
+      ...(hasProjectTab
+        ? projectNavGroups.flatMap((group) =>
+            group.items.map((item) => ({
+              ...item,
+              group: group.label,
+              scope: 'project' as const,
+            })),
+          )
+        : []),
+    ];
+
+    if (!query) return items;
+    const terms = query.split(/\s+/);
+    return items.filter((item) =>
+      terms.every((term) =>
+        `${item.label} ${item.group} ${item.scope}`
+          .toLowerCase()
+          .includes(term),
+      ),
+    );
+  }, [globalNavGroups, hasProjectTab, paletteQuery, projectNavGroups]);
 
   const handleProjectChange = useCallback((projectId: string) => {
     setSelectedProjectId(projectId);
@@ -658,98 +819,18 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
     setActiveTab('project');
   }, [resolvedProjectId, projects]);
 
-  // Click a global section
-  const handleGlobalSectionClick = useCallback(
-    (section: GlobalSection) => {
-      if (section.subs) {
-        // Toggle expand. If expanding and not already selected in this section, select first sub
-        if (expandedGlobalSection === section.id) {
-          setExpandedGlobalSection(null);
-        } else {
-          setExpandedGlobalSection(section.id);
-          if (globalSelection.sectionId !== section.id) {
-            setGlobalSelection({
-              sectionId: section.id,
-              subId: section.subs[0].id,
-            });
-          }
-        }
-      } else {
-        // Leaf section — select it directly
-        setExpandedGlobalSection(null);
-        setGlobalSelection({ sectionId: section.id });
-      }
-    },
-    [expandedGlobalSection, globalSelection.sectionId],
-  );
-
-  // Click a global sub-item
-  const handleGlobalSubClick = useCallback(
-    (sectionId: string, subId: string) => {
-      setGlobalSelection({ sectionId, subId });
-    },
-    [],
-  );
-
-  // Click a project section
-  const handleProjectSectionClick = useCallback(
-    (section: ProjectSection) => {
-      if (section.subs) {
-        if (expandedProjectSection === section.id) {
-          setExpandedProjectSection(null);
-        } else {
-          setExpandedProjectSection(section.id);
-          if (projectSelection.sectionId !== section.id) {
-            setProjectSelection({
-              sectionId: section.id,
-              subId: section.subs[0].id,
-            });
-          }
-        }
-      } else {
-        setExpandedProjectSection(null);
-        setProjectSelection({ sectionId: section.id });
-      }
-    },
-    [expandedProjectSection, projectSelection.sectionId],
-  );
-
-  // Click a project sub-item
-  const handleProjectSubClick = useCallback(
-    (sectionId: string, subId: string) => {
-      setProjectSelection({ sectionId, subId });
-    },
-    [],
-  );
-
   // Flatten sections + subs for keyboard navigation
   const flatGlobalItems = useMemo(() => {
-    const items: ActiveSelection[] = [];
-    for (const section of getGlobalSections()) {
-      if (section.subs && expandedGlobalSection === section.id) {
-        for (const sub of section.subs) {
-          items.push({ sectionId: section.id, subId: sub.id });
-        }
-      } else {
-        items.push({ sectionId: section.id });
-      }
-    }
-    return items;
-  }, [expandedGlobalSection]);
+    return globalNavGroups.flatMap((group) =>
+      group.items.map((item) => item.selection),
+    );
+  }, [globalNavGroups]);
 
   const flatProjectItems = useMemo(() => {
-    const items: { sectionId: string; subId?: string }[] = [];
-    for (const section of PROJECT_SECTIONS) {
-      if (section.subs && expandedProjectSection === section.id) {
-        for (const sub of section.subs) {
-          items.push({ sectionId: section.id, subId: sub.id });
-        }
-      } else {
-        items.push({ sectionId: section.id });
-      }
-    }
-    return items;
-  }, [expandedProjectSection]);
+    return projectNavGroups.flatMap((group) =>
+      group.items.map((item) => item.selection),
+    );
+  }, [projectNavGroups]);
 
   const navigateMenu = useCallback(
     (direction: 'up' | 'down') => {
@@ -767,26 +848,7 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
             : (currentIndex - 1 + flatGlobalItems.length) %
               flatGlobalItems.length;
         const next = flatGlobalItems[nextIndex];
-        if (next.subId) {
-          // Navigating to a sub-item: ensure its section is expanded
-          setExpandedGlobalSection(next.sectionId);
-          setGlobalSelection(next);
-        } else {
-          // Navigating to a leaf section
-          const section = getGlobalSections().find(
-            (s) => s.id === next.sectionId,
-          );
-          if (section?.subs) {
-            // Expanding into a section with subs — select first sub
-            setExpandedGlobalSection(section.id);
-            setGlobalSelection({
-              sectionId: section.id,
-              subId: section.subs[0].id,
-            });
-          } else {
-            setGlobalSelection(next);
-          }
-        }
+        setGlobalSelection(next);
       } else if (displayedActiveTab === 'project') {
         let currentIndex = flatProjectItems.findIndex(
           (item) =>
@@ -800,21 +862,7 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
             : (currentIndex - 1 + flatProjectItems.length) %
               flatProjectItems.length;
         const next = flatProjectItems[nextIndex];
-        if (next.subId) {
-          setExpandedProjectSection(next.sectionId);
-          setProjectSelection(next);
-        } else {
-          const section = PROJECT_SECTIONS.find((s) => s.id === next.sectionId);
-          if (section?.subs) {
-            setExpandedProjectSection(section.id);
-            setProjectSelection({
-              sectionId: section.id,
-              subId: section.subs[0].id,
-            });
-          } else {
-            setProjectSelection(next);
-          }
-        }
+        setProjectSelection(next);
       }
     },
     [
@@ -856,6 +904,13 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
         },
         ignoreIfInput: true,
       },
+      'cmd+k': {
+        handler: () => {
+          setPaletteOpen((open) => !open);
+          return true;
+        },
+        ignoreIfInput: true,
+      },
       up: {
         handler: () => {
           navigateMenu('up');
@@ -872,6 +927,21 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
       },
     },
     { layer },
+  );
+
+  const jumpToLeaf = useCallback(
+    (leaf: SettingsNavLeaf, scope: SettingsTab) => {
+      if (scope === 'global') {
+        setActiveTab('global');
+        setGlobalSelection(leaf.selection);
+        return;
+      }
+      if (hasProjectTab) {
+        handleProjectTab();
+        setProjectSelection(leaf.selection);
+      }
+    },
+    [handleProjectTab, hasProjectTab],
   );
 
   const handlePanelClick = useCallback((e: React.MouseEvent) => {
@@ -910,100 +980,56 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
             }}
             onClick={handlePanelClick}
           >
-            {/* Header: segmented toggle + project chip + close */}
-            <div className="flex shrink-0 items-center gap-3 px-4 py-3">
-              {/* Segmented pill */}
+            <div
+              className="relative flex h-[52px] shrink-0 items-center gap-3 overflow-hidden border-b px-4"
+              style={{
+                backgroundColor: 'oklch(1 0 0 / 0.035)',
+                borderColor: 'oklch(1 0 0 / 0.08)',
+              }}
+            >
               <div
-                className="flex items-center gap-0.5 rounded-lg p-[3px]"
+                className="pointer-events-none absolute inset-0"
                 style={{
-                  backgroundColor: 'oklch(0 0 0 / 0.3)',
-                  border: '1px solid oklch(1 0 0 / 0.06)',
+                  background:
+                    'radial-gradient(ellipse 380px 120px at 14% -40%, oklch(0.78 0.18 295 / 0.18), transparent 70%)',
                 }}
-              >
-                <button
-                  className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all"
-                  style={
-                    displayedActiveTab === 'global'
-                      ? SEGMENTED_TAB_ACTIVE
-                      : SEGMENTED_TAB_INACTIVE
-                  }
-                  onClick={() => setActiveTab('global')}
+              />
+              <div className="relative z-[1] flex items-center gap-2.5">
+                <Settings size={17} style={{ color: 'oklch(0.78 0.18 295)' }} />
+                <span
+                  className="text-[14.5px] font-semibold tracking-[-0.01em]"
+                  style={{ color: 'oklch(0.96 0.01 280)' }}
                 >
-                  <Grid3X3 size={13} />
-                  Global
-                  <Kbd shortcut="cmd+1" />
-                </button>
-
-                {hasProjectTab && (
-                  <button
-                    className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all"
-                    style={
-                      displayedActiveTab === 'project'
-                        ? SEGMENTED_TAB_ACTIVE
-                        : SEGMENTED_TAB_INACTIVE
-                    }
-                    onClick={handleProjectTab}
-                  >
-                    <Folder size={13} />
-                    Project
-                    <Kbd shortcut="cmd+2" />
-                  </button>
-                )}
+                  Settings
+                </span>
               </div>
-
-              {/* Project chip with dropdown */}
-              {hasProjectTab &&
-                resolvedProject &&
-                displayedActiveTab === 'project' && (
-                  <div
-                    className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs transition-opacity"
-                    style={{
-                      color: 'oklch(0.8 0.01 280)',
-                    }}
-                  >
-                    <span
-                      className="pointer-events-none flex h-4 w-4 shrink-0 items-center justify-center rounded text-[9px] font-bold"
-                      style={{
-                        backgroundColor: resolvedProject.color,
-                        color: 'oklch(1 0 0)',
-                      }}
-                    >
-                      {resolvedProject.name.charAt(0).toUpperCase()}
-                    </span>
-                    <Select
-                      value={resolvedProjectId ?? resolvedProject.id}
-                      options={projectOptions}
-                      onChange={handleProjectChange}
-                      label="Select project"
-                      size="xs"
-                      className="max-w-[160px] bg-transparent px-0 py-0 text-xs hover:bg-transparent"
-                    />
-                  </div>
-                )}
-
               <div className="flex-1" />
-
-              {/* Settings label */}
-              <span
-                className="font-mono text-[10.5px] tracking-wider uppercase"
-                style={{ color: 'oklch(0.5 0.01 280)' }}
-              >
-                Settings
-              </span>
-
-              {/* Close button */}
               <button
-                className="flex items-center justify-center rounded transition-colors"
+                className="relative z-[1] flex w-[min(260px,34vw)] items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors hover:bg-white/[0.06]"
                 style={{
-                  width: 22,
-                  height: 22,
-                  backgroundColor: 'oklch(1 0 0 / 0.06)',
-                  color: 'oklch(0.65 0.01 280)',
+                  backgroundColor: 'oklch(1 0 0 / 0.045)',
+                  border: '1px solid oklch(1 0 0 / 0.09)',
+                  color: 'oklch(0.58 0.01 280)',
+                }}
+                onClick={() => setPaletteOpen(true)}
+              >
+                <Search size={14} />
+                <span className="min-w-0 flex-1 truncate text-[12.5px]">
+                  Search settings...
+                </span>
+                <Kbd shortcut="cmd+k" />
+              </button>
+              <button
+                className="relative z-[1] flex size-8 items-center justify-center rounded-lg transition-colors hover:bg-white/[0.08]"
+                style={{
+                  backgroundColor: 'oklch(1 0 0 / 0.045)',
+                  border: '1px solid oklch(1 0 0 / 0.09)',
+                  color: 'oklch(0.7 0.01 280)',
                 }}
                 onClick={onClose}
                 aria-label="Close settings"
               >
-                <X size={13} />
+                <X size={14} />
               </button>
             </div>
 
@@ -1011,25 +1037,24 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
             <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
               {/* Left sidebar menu */}
               <div
-                className="flex w-[220px] shrink-0 flex-col"
+                className="flex w-[234px] shrink-0 flex-col"
                 style={{
                   backgroundColor: 'oklch(0 0 0 / 0.2)',
                   borderRight: '1px solid oklch(1 0 0 / 0.05)',
-                  padding: '12px 8px',
                 }}
               >
-                <div
-                  className="mb-2 px-2 font-mono text-[9.5px] font-semibold uppercase"
-                  style={{
-                    letterSpacing: '0.1em',
-                    color: 'oklch(0.5 0.01 280)',
-                  }}
-                >
-                  Sections
-                </div>
-
+                <SettingsScopeHeader
+                  activeTab={displayedActiveTab}
+                  hasProjectTab={hasProjectTab}
+                  resolvedProject={resolvedProject}
+                  resolvedProjectId={resolvedProjectId}
+                  projectOptions={projectOptions}
+                  onGlobal={() => setActiveTab('global')}
+                  onProject={handleProjectTab}
+                  onProjectChange={handleProjectChange}
+                />
                 <nav
-                  className="flex flex-1 flex-col gap-0.5 overflow-auto"
+                  className="flex flex-1 flex-col gap-0.5 overflow-auto px-2 pb-3"
                   aria-label={
                     displayedActiveTab === 'project'
                       ? 'Project settings sections'
@@ -1037,43 +1062,23 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                   }
                 >
                   {displayedActiveTab === 'global' &&
-                    getGlobalSections().map((section) => (
-                      <GlobalNavSection
-                        key={section.id}
-                        section={section}
-                        isExpanded={expandedGlobalSection === section.id}
-                        isActive={globalSelection.sectionId === section.id}
-                        activeSubId={
-                          globalSelection.sectionId === section.id
-                            ? globalSelection.subId
-                            : undefined
-                        }
-                        onSectionClick={() => handleGlobalSectionClick(section)}
-                        onSubClick={(subId) =>
-                          handleGlobalSubClick(section.id, subId)
-                        }
+                    globalNavGroups.map((group) => (
+                      <SettingsNavGroupView
+                        key={group.label}
+                        group={group}
+                        activeSelection={globalSelection}
+                        onPick={(leaf) => setGlobalSelection(leaf.selection)}
                       />
                     ))}
 
                   {displayedActiveTab === 'project' &&
                     hasProjectTab &&
-                    PROJECT_SECTIONS.map((section) => (
-                      <ProjectNavSection
-                        key={section.id}
-                        section={section}
-                        isExpanded={expandedProjectSection === section.id}
-                        isActive={projectSelection.sectionId === section.id}
-                        activeSubId={
-                          projectSelection.sectionId === section.id
-                            ? projectSelection.subId
-                            : undefined
-                        }
-                        onSectionClick={() =>
-                          handleProjectSectionClick(section)
-                        }
-                        onSubClick={(subId) =>
-                          handleProjectSubClick(section.id, subId)
-                        }
+                    projectNavGroups.map((group) => (
+                      <SettingsNavGroupView
+                        key={group.label}
+                        group={group}
+                        activeSelection={projectSelection}
+                        onPick={(leaf) => setProjectSelection(leaf.selection)}
                       />
                     ))}
                 </nav>
@@ -1083,11 +1088,11 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
               <div
                 className={
                   fillHeight
-                    ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden'
-                    : 'min-w-0 flex-1 overflow-y-auto'
+                    ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden [&_.bg-bg-0]:bg-black/20 [&_.bg-bg-1]:bg-white/[0.035] [&_.border-glass-border]:border-white/10 [&_.border-line-soft]:border-white/10'
+                    : 'min-w-0 flex-1 overflow-y-auto [&_.bg-bg-0]:bg-black/20 [&_.bg-bg-1]:bg-white/[0.035] [&_.border-glass-border]:border-white/10 [&_.border-line-soft]:border-white/10 [&_h2]:tracking-[-0.02em] [&_h3]:font-mono [&_h3]:text-[11px] [&_h3]:font-semibold [&_h3]:tracking-[0.08em] [&_h3]:uppercase'
                 }
                 style={
-                  fillHeight ? { padding: 0 } : { padding: '20px 28px 28px' }
+                  fillHeight ? { padding: 0 } : { padding: '28px 40px 44px' }
                 }
               >
                 {displayedActiveTab === 'global' && (
@@ -1114,22 +1119,43 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
                 color: 'oklch(0.55 0.01 280)',
               }}
             >
+              <span className="text-status-done flex items-center gap-1.5">
+                <Check size={12} strokeWidth={2.6} /> All changes saved
+              </span>
+              <span
+                style={{
+                  width: 1,
+                  height: 12,
+                  background: 'oklch(1 0 0 / 0.08)',
+                }}
+              />
+              <span className="flex items-center gap-1">
+                <Kbd shortcut="cmd+k" /> search
+              </span>
               <span className="flex items-center gap-1">
                 <Kbd shortcut="up" /> <Kbd shortcut="down" /> navigate
               </span>
               <span className="flex items-center gap-1">
-                <Kbd shortcut="enter" /> edit
+                <Kbd shortcut="cmd+1" />/<Kbd shortcut="cmd+2" /> scope
               </span>
-              <span className="flex items-center gap-1">
-                <Kbd shortcut="cmd+1" /> global
-              </span>
-              <span className="flex items-center gap-1">
-                <Kbd shortcut="cmd+2" /> project
-              </span>
+              <div className="flex-1" />
               <span className="flex items-center gap-1">
                 <Kbd shortcut="escape" /> close
               </span>
             </div>
+            {paletteOpen && (
+              <SettingsPalette
+                query={paletteQuery}
+                results={searchResults}
+                onQueryChange={setPaletteQuery}
+                onClose={() => setPaletteOpen(false)}
+                onPick={(result) => {
+                  jumpToLeaf(result, result.scope);
+                  setPaletteOpen(false);
+                  setPaletteQuery('');
+                }}
+              />
+            )}
           </div>
         </div>
       </RemoveScroll>
@@ -1182,165 +1208,307 @@ function ProjectContent({
   );
 }
 
-/* ── Nav section components ── */
-
-function GlobalNavSection({
-  section,
-  isExpanded,
-  isActive,
-  activeSubId,
-  onSectionClick,
-  onSubClick,
+function SettingsScopeHeader({
+  activeTab,
+  hasProjectTab,
+  resolvedProject,
+  resolvedProjectId,
+  projectOptions,
+  onGlobal,
+  onProject,
+  onProjectChange,
 }: {
-  section: GlobalSection;
-  isExpanded: boolean;
-  isActive: boolean;
-  activeSubId?: string;
-  onSectionClick: () => void;
-  onSubClick: (subId: string) => void;
+  activeTab: SettingsTab;
+  hasProjectTab: boolean;
+  resolvedProject: { id: string; name: string; color: string } | null;
+  resolvedProjectId: string | null;
+  projectOptions: SelectOption<string>[];
+  onGlobal: () => void;
+  onProject: () => void;
+  onProjectChange: (projectId: string) => void;
 }) {
-  const Icon = section.icon;
-  const hasSubs = !!section.subs;
-  const isLeafActive = isActive && !hasSubs;
-
   return (
-    <>
-      <button
-        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors"
-        style={
-          isLeafActive
-            ? NAV_SECTION_ACTIVE_LEAF
-            : isActive && hasSubs
-              ? NAV_SECTION_ACTIVE
-              : NAV_SECTION_INACTIVE
-        }
-        aria-current={isActive ? 'true' : undefined}
-        aria-expanded={hasSubs ? isExpanded : undefined}
-        onClick={onSectionClick}
+    <div
+      className="border-b p-3"
+      style={{ borderColor: 'oklch(1 0 0 / 0.06)' }}
+    >
+      <div
+        className="grid grid-cols-2 gap-0.5 rounded-lg p-0.5"
+        style={{
+          backgroundColor: 'oklch(0 0 0 / 0.28)',
+          border: '1px solid oklch(1 0 0 / 0.07)',
+        }}
       >
-        <Icon
-          size={14}
-          style={isActive ? NAV_ICON_ACTIVE : NAV_ICON_INACTIVE}
-        />
-        <span className="flex-1">{section.label}</span>
-        {hasSubs &&
-          (isExpanded ? (
-            <ChevronDown size={12} style={{ color: 'oklch(0.5 0.01 280)' }} />
-          ) : (
-            <ChevronRight size={12} style={{ color: 'oklch(0.5 0.01 280)' }} />
-          ))}
-      </button>
+        <button
+          className="flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12.5px] font-medium transition-all"
+          style={
+            activeTab === 'global'
+              ? SEGMENTED_TAB_ACTIVE
+              : SEGMENTED_TAB_INACTIVE
+          }
+          onClick={onGlobal}
+        >
+          <Grid3X3 size={12} />
+          Global
+        </button>
+        <button
+          className="flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12.5px] font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40"
+          style={
+            activeTab === 'project'
+              ? SEGMENTED_TAB_ACTIVE
+              : SEGMENTED_TAB_INACTIVE
+          }
+          disabled={!hasProjectTab}
+          onClick={onProject}
+        >
+          <Folder size={12} />
+          Project
+        </button>
+      </div>
 
-      {/* Sub-items */}
-      {isExpanded && section.subs && (
-        <div className="relative my-0.5 mb-1.5" style={{ paddingLeft: 24 }}>
-          {/* Vertical rail line */}
+      <div className="mt-2 min-h-[38px]">
+        {activeTab === 'project' && hasProjectTab && resolvedProject ? (
           <div
-            className="absolute"
+            className="flex items-center gap-2 rounded-lg px-2 py-1.5"
             style={{
-              left: 16,
-              top: 4,
-              bottom: 4,
-              width: 1,
-              background: 'oklch(1 0 0 / 0.08)',
+              backgroundColor: 'oklch(1 0 0 / 0.035)',
+              border: '1px solid oklch(1 0 0 / 0.07)',
             }}
-          />
-          {section.subs.map((sub) => {
-            const isSubActive = activeSubId === sub.id;
-            return (
-              <button
-                key={sub.id}
-                className="flex w-full items-center gap-1.5 rounded-[5px] px-2.5 py-[6px] text-left text-[12.5px] transition-colors"
-                style={isSubActive ? NAV_SUB_ACTIVE : NAV_SUB_INACTIVE}
-                aria-current={isSubActive ? 'true' : undefined}
-                onClick={() => onSubClick(sub.id)}
-              >
-                <span className="min-w-0 truncate">{sub.label}</span>
-                {sub.beta && <BetaBadge />}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </>
+          >
+            <span
+              className="pointer-events-none flex size-5 shrink-0 items-center justify-center rounded text-[10px] font-bold"
+              style={{
+                backgroundColor: resolvedProject.color,
+                color: 'oklch(1 0 0)',
+              }}
+            >
+              {resolvedProject.name.charAt(0).toUpperCase()}
+            </span>
+            <Select
+              value={resolvedProjectId ?? resolvedProject.id}
+              options={projectOptions}
+              onChange={onProjectChange}
+              label="Select project"
+              size="xs"
+              className="min-w-0 flex-1 justify-between bg-transparent px-0 py-0 text-xs hover:bg-transparent"
+            />
+          </div>
+        ) : (
+          <div
+            className="flex items-center gap-2 rounded-lg px-2.5 py-2"
+            style={{
+              backgroundColor: 'oklch(1 0 0 / 0.025)',
+              border: '1px solid oklch(1 0 0 / 0.05)',
+              color: 'oklch(0.68 0.01 280)',
+            }}
+          >
+            <Grid3X3 size={14} style={{ color: 'oklch(0.78 0.18 295)' }} />
+            <span className="text-[12px]">
+              Applies to <b className="text-ink-1">all projects</b>
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
-function ProjectNavSection({
-  section,
-  isExpanded,
-  isActive,
-  activeSubId,
-  onSectionClick,
-  onSubClick,
+/* ── Nav + palette components ── */
+
+function SettingsNavGroupView({
+  group,
+  activeSelection,
+  onPick,
 }: {
-  section: ProjectSection;
-  isExpanded: boolean;
-  isActive: boolean;
-  activeSubId?: string;
-  onSectionClick: () => void;
-  onSubClick: (subId: string) => void;
+  group: SettingsNavGroup;
+  activeSelection: ActiveSelection;
+  onPick: (leaf: SettingsNavLeaf) => void;
 }) {
-  const Icon = section.icon;
-  const hasSubs = !!section.subs;
-  const isLeafActive = isActive && !hasSubs;
+  return (
+    <div className="mb-2">
+      <div
+        className="sticky top-0 z-[1] -mx-2 px-4 py-1.5 font-mono text-[9.5px] font-semibold tracking-[0.1em] uppercase backdrop-blur"
+        style={{
+          backgroundColor: 'oklch(0.11 0.012 280 / 0.92)',
+          borderBottom: '1px solid oklch(1 0 0 / 0.045)',
+          color: group.danger
+            ? 'color-mix(in oklch, oklch(0.67 0.2 25) 70%, oklch(0.5 0.01 280))'
+            : 'oklch(0.5 0.01 280)',
+        }}
+      >
+        {group.label}
+      </div>
+      {group.items.map((leaf) => {
+        const Icon = leaf.icon;
+        const active = sameSelection(activeSelection, leaf.selection);
+        return (
+          <button
+            key={leaf.key}
+            className="mb-px flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] transition-colors"
+            style={active ? NAV_SECTION_ACTIVE_LEAF : NAV_SECTION_INACTIVE}
+            aria-current={active ? 'true' : undefined}
+            onClick={() => onPick(leaf)}
+          >
+            <Icon
+              size={14}
+              style={active ? NAV_ICON_ACTIVE : NAV_ICON_INACTIVE}
+            />
+            <span className="min-w-0 flex-1 truncate">{leaf.label}</span>
+            {leaf.beta && <BetaBadge />}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function SettingsPalette({
+  query,
+  results,
+  onQueryChange,
+  onClose,
+  onPick,
+}: {
+  query: string;
+  results: Array<SettingsNavLeaf & { group: string; scope: SettingsTab }>;
+  onQueryChange: (value: string) => void;
+  onClose: () => void;
+  onPick: (
+    result: SettingsNavLeaf & { group: string; scope: SettingsTab },
+  ) => void;
+}) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [query]);
+
+  const trapTab = useCallback((event: React.KeyboardEvent) => {
+    if (event.key !== 'Tab') return;
+    const root = rootRef.current;
+    if (!root) return;
+    const focusable = Array.from(
+      root.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), input:not(:disabled)',
+      ),
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+      return;
+    }
+    if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }, []);
 
   return (
-    <>
-      <button
-        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors"
-        style={
-          isLeafActive
-            ? NAV_SECTION_ACTIVE_LEAF
-            : isActive && hasSubs
-              ? NAV_SECTION_ACTIVE
-              : NAV_SECTION_INACTIVE
-        }
-        aria-current={isActive ? 'true' : undefined}
-        aria-expanded={hasSubs ? isExpanded : undefined}
-        onClick={onSectionClick}
+    <div
+      className="absolute inset-0 z-10 flex justify-center bg-black/40 pt-24 backdrop-blur-sm"
+      onMouseDown={onClose}
+    >
+      <div
+        ref={rootRef}
+        className="h-fit max-h-[460px] w-[560px] max-w-[90%] overflow-hidden rounded-xl border shadow-2xl"
+        style={{
+          backgroundColor: 'oklch(0.14 0.015 280)',
+          borderColor: 'oklch(1 0 0 / 0.1)',
+        }}
+        onMouseDown={(event) => event.stopPropagation()}
+        onKeyDown={trapTab}
       >
-        <Icon
-          size={14}
-          style={isActive ? NAV_ICON_ACTIVE : NAV_ICON_INACTIVE}
-        />
-        <span className="flex-1">{section.label}</span>
-        {hasSubs &&
-          (isExpanded ? (
-            <ChevronDown size={12} style={{ color: 'oklch(0.5 0.01 280)' }} />
-          ) : (
-            <ChevronRight size={12} style={{ color: 'oklch(0.5 0.01 280)' }} />
-          ))}
-      </button>
-
-      {isExpanded && section.subs && (
-        <div className="relative my-0.5 mb-1.5" style={{ paddingLeft: 24 }}>
-          <div
-            className="absolute"
-            style={{
-              left: 16,
-              top: 4,
-              bottom: 4,
-              width: 1,
-              background: 'oklch(1 0 0 / 0.08)',
+        <div
+          className="flex items-center gap-3 border-b px-4 py-3"
+          style={{ borderColor: 'oklch(1 0 0 / 0.06)' }}
+        >
+          <Search size={17} style={{ color: 'oklch(0.6 0.01 280)' }} />
+          <input
+            autoFocus
+            value={query}
+            onChange={(event) => onQueryChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') onClose();
+              if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                setActiveIndex((index) =>
+                  Math.min(index + 1, results.length - 1),
+                );
+              }
+              if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                setActiveIndex((index) => Math.max(index - 1, 0));
+              }
+              if (event.key === 'Enter' && results[activeIndex]) {
+                event.preventDefault();
+                onPick(results[activeIndex]);
+              }
             }}
+            placeholder="Search every setting across Global and Project..."
+            className="min-w-0 flex-1 bg-transparent text-[15px] outline-none"
+            style={{ color: 'oklch(0.95 0.01 280)' }}
           />
-          {section.subs.map((sub) => {
-            const isSubActive = activeSubId === sub.id;
+          <Kbd shortcut="escape" />
+        </div>
+        <div className="max-h-[390px] overflow-auto p-1.5">
+          {results.length === 0 && (
+            <div className="text-ink-3 px-4 py-8 text-center text-sm">
+              No settings match "{query}".
+            </div>
+          )}
+          {results.map((result, index) => {
+            const Icon = result.icon;
+            const active = index === activeIndex;
             return (
               <button
-                key={sub.id}
-                className="flex w-full items-center gap-1.5 rounded-[5px] px-2.5 py-[6px] text-left text-[12.5px] transition-colors"
-                style={isSubActive ? NAV_SUB_ACTIVE : NAV_SUB_INACTIVE}
-                aria-current={isSubActive ? 'true' : undefined}
-                onClick={() => onSubClick(sub.id)}
+                key={`${result.scope}:${result.key}`}
+                className="mb-px flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors"
+                style={{
+                  backgroundColor: active
+                    ? 'oklch(1 0 0 / 0.06)'
+                    : 'transparent',
+                }}
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => onPick(result)}
               >
-                {sub.label}
+                <Icon
+                  size={15}
+                  style={{
+                    color: active
+                      ? 'oklch(0.78 0.18 295)'
+                      : 'oklch(0.55 0.01 280)',
+                  }}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="text-ink-1 block truncate text-[13px] font-medium">
+                    {result.label}
+                  </span>
+                  <span className="text-ink-3 block truncate text-[11.5px]">
+                    {result.group}
+                  </span>
+                </span>
+                <span
+                  className="font-mono text-[10px] tracking-wide uppercase"
+                  style={{
+                    color:
+                      result.scope === 'global'
+                        ? 'oklch(0.78 0.18 295)'
+                        : 'oklch(0.76 0.14 205)',
+                  }}
+                >
+                  {result.scope}
+                </span>
+                {active && <Kbd shortcut="enter" />}
               </button>
             );
           })}
         </div>
-      )}
-    </>
+      </div>
+    </div>
   );
 }
