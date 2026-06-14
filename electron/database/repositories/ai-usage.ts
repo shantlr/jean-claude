@@ -430,6 +430,10 @@ export const AiUsageRepository = {
             formatTaskPromptFallback(taskNames.get(taskId)?.taskPrompt),
           projectName:
             value.projectName ?? taskNames.get(taskId)?.projectName ?? null,
+          inputTokens: value.inputTokens,
+          outputTokens: value.outputTokens,
+          cacheReadTokens: value.cacheReadTokens,
+          cacheCreationTokens: value.cacheCreationTokens,
           totalTokens: value.totalTokens,
           estimatedCostUsd: value.estimatedCostUsd,
           providerCostUsd: value.providerCostUsd,

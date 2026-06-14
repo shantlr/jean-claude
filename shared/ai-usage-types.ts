@@ -76,6 +76,10 @@ export interface AiUsageDashboard {
   };
   byDay: Array<{
     date: string;
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheCreationTokens: number;
     totalTokens: number;
     estimatedCostUsd: number;
     providerCostUsd: number;
@@ -84,6 +88,10 @@ export interface AiUsageDashboard {
   }>;
   byFeature: Array<{
     feature: AiUsageFeature;
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheCreationTokens: number;
     totalTokens: number;
     estimatedCostUsd: number;
     providerCostUsd: number;
@@ -92,6 +100,10 @@ export interface AiUsageDashboard {
     models: Array<{
       backend: string;
       model: string;
+      inputTokens: number;
+      outputTokens: number;
+      cacheReadTokens: number;
+      cacheCreationTokens: number;
       totalTokens: number;
       estimatedCostUsd: number;
       providerCostUsd: number;
@@ -102,6 +114,10 @@ export interface AiUsageDashboard {
   byModel: Array<{
     backend: string;
     model: string;
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheCreationTokens: number;
     totalTokens: number;
     estimatedCostUsd: number;
     providerCostUsd: number;
@@ -113,6 +129,10 @@ export interface AiUsageDashboard {
     projectId: string;
     taskName: string | null;
     projectName: string | null;
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheCreationTokens: number;
     totalTokens: number;
     estimatedCostUsd: number;
     providerCostUsd: number;
