@@ -68,9 +68,22 @@ export function RootOverlay({ children }: { children: ReactNode }) {
       }
     };
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+
+      const handler = handlersRef.current[handlersRef.current.length - 1];
+      if (!handler) return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      handler.onClose();
+    };
+
     document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('keydown', handleKeyDown, true);
     return () => {
       document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('keydown', handleKeyDown, true);
     };
   }, []);
 

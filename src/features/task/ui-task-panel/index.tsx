@@ -470,6 +470,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   } = useAgentControls({ taskId, stepId: activeStepId });
 
   const addToast = useToastStore((s) => s.addToast);
+  const removeReviewComment = useReviewCommentsStore((s) => s.removeComment);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false);
   const [isChangeWorktreePathDialogOpen, setIsChangeWorktreePathDialogOpen] =
@@ -882,6 +883,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const handleAddStep = useCallback(
     async (data: {
       promptTemplate: string;
+      hasUserPrompt: boolean;
       presetType: AddStepPresetType;
       interactionMode: InteractionMode;
       agentBackend: AgentBackendType;
@@ -889,6 +891,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       thinkingEffort: ThinkingEffort;
       images: PromptImagePart[];
       start: boolean;
+      includedReviewCommentIds: string[];
       reviewers?: import('@shared/types').ReviewerConfig[];
     }) => {
       const stepList = steps ?? [];
@@ -933,8 +936,9 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           : data.presetType === 'review-changes'
             ? 'Review Changes'
             : 'Step';
-      const name =
-        data.promptTemplate.split('\n')[0]?.slice(0, 40).trim() || defaultName;
+      const name = data.hasUserPrompt
+        ? data.promptTemplate.split('\n')[0]?.slice(0, 40).trim() || defaultName
+        : defaultName;
 
       const promptTemplate =
         data.presetType === 'continue' && referenceStep
@@ -943,7 +947,12 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               userPrompt: data.promptTemplate,
             })
           : data.presetType === 'review-changes'
-            ? data.promptTemplate || buildReviewChangesPrompt()
+            ? [
+                data.hasUserPrompt ? null : buildReviewChangesPrompt(),
+                data.promptTemplate,
+              ]
+                .filter((part): part is string => !!part?.trim())
+                .join('\n\n')
             : data.promptTemplate;
 
       const dependsOn = referenceStep ? [referenceStep.id] : [];
@@ -975,6 +984,9 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         setAddStepAfterStepId(null);
         setAddStepAtEnd(false);
         setActiveStepId(step.id);
+        for (const commentId of data.includedReviewCommentIds) {
+          removeReviewComment(taskId, commentId);
+        }
         if (data.start) {
           setStartingStepIds((prev) => new Set(prev).add(step.id));
           if (!stepStartJobIdsRef.current.has(step.id)) {
@@ -1008,6 +1020,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       addRunningJob,
       projectId,
       task?.projectId,
+      removeReviewComment,
     ],
   );
 

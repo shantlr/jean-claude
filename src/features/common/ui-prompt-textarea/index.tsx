@@ -338,6 +338,21 @@ export const PromptTextarea = forwardRef<
     onAutocompleteOpenChange?.(showDropdown);
   }, [onAutocompleteOpenChange, showDropdown]);
 
+  useEffect(() => {
+    if (!showDropdown) return;
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setDropdownDismissed(true);
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [showDropdown]);
+
   const dropdownPosition = useDropdownPosition({
     isOpen: showDropdown,
     triggerRef: containerRef,

@@ -13,6 +13,12 @@ const modalSizeClasses = {
   xl: 'max-w-7xl',
 } as const;
 
+const openModalIds: string[] = [];
+
+function isTopModal(id: string) {
+  return openModalIds[openModalIds.length - 1] === id;
+}
+
 export function Modal({
   isOpen,
   onClose,
@@ -42,11 +48,23 @@ export function Modal({
 }) {
   const id = useId();
 
+  useEffect(() => {
+    if (!isOpen) return;
+    openModalIds.push(id);
+    return () => {
+      const index = openModalIds.lastIndexOf(id);
+      if (index !== -1) {
+        openModalIds.splice(index, 1);
+      }
+    };
+  }, [id, isOpen]);
+
   useRegisterKeyboardBindings(
     `modal-${id}`,
     isOpen && closeOnEscape
       ? {
           escape: () => {
+            if (!isTopModal(id)) return false;
             onClose();
             return true;
           },
@@ -59,6 +77,8 @@ export function Modal({
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
+      if (event.defaultPrevented) return;
+      if (!isTopModal(id)) return;
 
       event.preventDefault();
       event.stopPropagation();
@@ -67,7 +87,7 @@ export function Modal({
 
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [isOpen, closeOnEscape, onClose]);
+  }, [id, isOpen, closeOnEscape, onClose]);
 
   if (!isOpen) return null;
 
