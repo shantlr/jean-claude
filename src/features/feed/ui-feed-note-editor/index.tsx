@@ -17,6 +17,53 @@ import {
 } from '@/hooks/use-feed-notes';
 
 const CHECKBOX_MARKER_PATTERN = /^\s*-\s+\[([ xX])\]\s*/;
+const MAX_STORED_SCROLL_POSITIONS = 100;
+
+class LruCache<Key, Value> {
+  private items = new Map<Key, Value>();
+
+  constructor(private readonly maxSize: number) {}
+
+  get(key: Key) {
+    const value = this.items.get(key);
+    if (value === undefined) return undefined;
+
+    this.items.delete(key);
+    this.items.set(key, value);
+    return value;
+  }
+
+  set(key: Key, value: Value) {
+    this.items.delete(key);
+    this.items.set(key, value);
+
+    if (this.items.size > this.maxSize) {
+      const oldestKey = this.items.keys().next().value;
+      if (oldestKey !== undefined) this.items.delete(oldestKey);
+    }
+  }
+
+  delete(key: Key) {
+    this.items.delete(key);
+  }
+}
+
+const scrollPositionsByNoteId = new LruCache<string, number>(
+  MAX_STORED_SCROLL_POSITIONS,
+);
+
+function saveFeedNoteScroll(noteId: string, container: HTMLDivElement) {
+  const maxScrollTop = Math.max(
+    0,
+    container.scrollHeight - container.clientHeight,
+  );
+
+  if (container.scrollTop === 0 && maxScrollTop === 0) {
+    return;
+  }
+
+  scrollPositionsByNoteId.set(noteId, container.scrollTop);
+}
 
 function getCheckboxMarkdownState(content: unknown): boolean | null {
   const text = getFirstTextSegment(content);
@@ -78,6 +125,8 @@ export function FeedNoteEditor({ noteId }: { noteId: string }) {
   const lastSavedRef = useRef('');
   const isDeletedRef = useRef(false);
   const isLoadingEditorRef = useRef(false);
+  const isRestoringScrollRef = useRef(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Stable ref for mutate so cleanup effect doesn't re-fire every render
   const mutateRef = useRef(updateNote.mutate);
@@ -98,7 +147,45 @@ export function FeedNoteEditor({ noteId }: { noteId: string }) {
       lastSavedRef.current = content;
       setHasInitialized(true);
     }
-  }, [editor, note, hasInitialized]);
+  }, [editor, note, hasInitialized, noteId]);
+
+  useEffect(() => {
+    if (!hasInitialized) return;
+
+    const scrollTop = scrollPositionsByNoteId.get(noteId);
+    if (scrollTop === undefined) return;
+
+    let frameId = 0;
+    let attempts = 0;
+    isRestoringScrollRef.current = true;
+
+    const restoreScroll = () => {
+      const container = scrollContainerRef.current;
+      if (!container) {
+        isRestoringScrollRef.current = false;
+        return;
+      }
+
+      const maxScrollTop = Math.max(
+        0,
+        container.scrollHeight - container.clientHeight,
+      );
+      container.scrollTop = Math.min(scrollTop, maxScrollTop);
+
+      attempts += 1;
+      if (container.scrollTop !== scrollTop && attempts < 20) {
+        frameId = requestAnimationFrame(restoreScroll);
+      } else {
+        isRestoringScrollRef.current = false;
+      }
+    };
+
+    frameId = requestAnimationFrame(restoreScroll);
+    return () => {
+      cancelAnimationFrame(frameId);
+      isRestoringScrollRef.current = false;
+    };
+  }, [hasInitialized, noteId]);
 
   // Keep refs for unmount flush and auto-save
   const valueRef = useRef(value);
@@ -123,8 +210,15 @@ export function FeedNoteEditor({ noteId }: { noteId: string }) {
 
   // Flush pending save on unmount only
   useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+
     return () => {
       if (isDeletedRef.current) return;
+
+      if (scrollContainer) {
+        saveFeedNoteScroll(noteIdRef.current, scrollContainer);
+      }
+
       if (valueRef.current && valueRef.current !== lastSavedRef.current) {
         lastSavedRef.current = valueRef.current;
         mutateRef.current({
@@ -134,6 +228,12 @@ export function FeedNoteEditor({ noteId }: { noteId: string }) {
       }
     };
   }, []);
+
+  const handleScroll = useCallback(() => {
+    if (isRestoringScrollRef.current) return;
+    if (!scrollContainerRef.current) return;
+    saveFeedNoteScroll(noteId, scrollContainerRef.current);
+  }, [noteId]);
 
   const handleEditorChange = useCallback(() => {
     if (isLoadingEditorRef.current) return;
@@ -170,6 +270,7 @@ export function FeedNoteEditor({ noteId }: { noteId: string }) {
       { id: noteId },
       {
         onSuccess: () => {
+          scrollPositionsByNoteId.delete(noteId);
           navigate({ to: '/all' });
         },
       },
@@ -216,8 +317,10 @@ export function FeedNoteEditor({ noteId }: { noteId: string }) {
       </div>
 
       <div
+        ref={scrollContainerRef}
         className="feed-note-blocknote flex-1 overflow-y-auto px-2 py-3"
         onKeyDown={handleEditorKeyDown}
+        onScroll={handleScroll}
       >
         <BlockNoteView
           editor={editor}
