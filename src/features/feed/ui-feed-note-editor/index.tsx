@@ -1,9 +1,16 @@
 import '@blocknote/core/fonts/inter.css';
 import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/mantine/style.css';
-import { useCreateBlockNote } from '@blocknote/react';
+import {
+  FormattingToolbar,
+  FormattingToolbarController,
+  getFormattingToolbarItems,
+  useComponentsContext,
+  useCreateBlockNote,
+  type FormattingToolbarProps,
+} from '@blocknote/react';
 import { useNavigate } from '@tanstack/react-router';
-import { X } from 'lucide-react';
+import { Highlighter, ListChecks, X } from 'lucide-react';
 import type { KeyboardEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -17,6 +24,7 @@ import {
 } from '@/hooks/use-feed-notes';
 
 const CHECKBOX_MARKER_PATTERN = /^\s*-\s+\[([ xX])\]\s*/;
+const HIGHLIGHT_COLOR = 'oklch(0.72 0.2 295 / 0.16)';
 const MAX_STORED_SCROLL_POSITIONS = 100;
 
 class LruCache<Key, Value> {
@@ -87,6 +95,10 @@ function getFirstTextSegment(content: unknown): string | null {
   return null;
 }
 
+function hasInlineContent(content: unknown): boolean {
+  return Array.isArray(content);
+}
+
 function stripCheckboxMarkdownMarker(content: unknown): unknown {
   if (typeof content === 'string') {
     return content.replace(CHECKBOX_MARKER_PATTERN, '');
@@ -111,6 +123,40 @@ function stripCheckboxMarkdownMarker(content: unknown): unknown {
       text: record.text.replace(CHECKBOX_MARKER_PATTERN, ''),
     };
   });
+}
+
+function FeedNoteFormattingToolbar({
+  blockTypeSelectItems,
+  onTurnSelectionIntoCheckboxes,
+  onToggleHighlight,
+}: FormattingToolbarProps & {
+  onTurnSelectionIntoCheckboxes: () => void;
+  onToggleHighlight: () => void;
+}) {
+  const Components = useComponentsContext();
+  const ToolbarButton = Components?.FormattingToolbar.Button;
+
+  return (
+    <FormattingToolbar blockTypeSelectItems={blockTypeSelectItems}>
+      {getFormattingToolbarItems(blockTypeSelectItems)}
+      {ToolbarButton ? (
+        <>
+          <ToolbarButton
+            label="Checklist"
+            mainTooltip="Turn selected blocks into checkbox items"
+            icon={<ListChecks />}
+            onClick={onTurnSelectionIntoCheckboxes}
+          />
+          <ToolbarButton
+            label="Highlight"
+            mainTooltip="Toggle highlight"
+            icon={<Highlighter />}
+            onClick={onToggleHighlight}
+          />
+        </>
+      ) : null}
+    </FormattingToolbar>
+  );
 }
 
 export function FeedNoteEditor({ noteId }: { noteId: string }) {
@@ -257,6 +303,42 @@ export function FeedNoteEditor({ noteId }: { noteId: string }) {
     setValue(JSON.stringify(editor.document));
   }, [editor]);
 
+  const syncEditorValue = useCallback(() => {
+    setValue(JSON.stringify(editor.document));
+  }, [editor]);
+
+  const handleTurnSelectionIntoCheckboxes = useCallback(() => {
+    editor.focus();
+
+    const selectedBlocks = editor.getSelection()?.blocks ?? [
+      editor.getTextCursorPosition().block,
+    ];
+    const inlineBlocks = selectedBlocks.filter((block) =>
+      hasInlineContent(block.content),
+    );
+
+    if (inlineBlocks.length === 0) return;
+
+    editor.transact(() => {
+      for (const block of inlineBlocks) {
+        if (block.type === 'checkListItem') continue;
+
+        editor.updateBlock(block, {
+          type: 'checkListItem',
+          props: { checked: false },
+        } as Parameters<typeof editor.updateBlock>[1]);
+      }
+    });
+
+    syncEditorValue();
+  }, [editor, syncEditorValue]);
+
+  const handleToggleHighlight = useCallback(() => {
+    editor.focus();
+    editor.toggleStyles({ backgroundColor: HIGHLIGHT_COLOR });
+    syncEditorValue();
+  }, [editor, syncEditorValue]);
+
   const handleEditorKeyDown = useCallback((event: KeyboardEvent) => {
     if (event.key === 'Tab') {
       event.preventDefault();
@@ -326,8 +408,21 @@ export function FeedNoteEditor({ noteId }: { noteId: string }) {
           editor={editor}
           theme="dark"
           onChange={handleEditorChange}
+          formattingToolbar={false}
           className="h-full"
-        />
+        >
+          <FormattingToolbarController
+            formattingToolbar={(props) => (
+              <FeedNoteFormattingToolbar
+                {...props}
+                onTurnSelectionIntoCheckboxes={
+                  handleTurnSelectionIntoCheckboxes
+                }
+                onToggleHighlight={handleToggleHighlight}
+              />
+            )}
+          />
+        </BlockNoteView>
       </div>
     </div>
   );
