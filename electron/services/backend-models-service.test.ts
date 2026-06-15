@@ -11,6 +11,7 @@ vi.mock('./agent-backends/codex/codex-app-server', () => ({
 import {
   calculateTheoreticalOpenCodeCost,
   getBackendModels,
+  mergeOpenCodeModelLists,
   parseCodexModel,
   parseOpenCodeModelsVerbose,
 } from './backend-models-service';
@@ -119,6 +120,40 @@ github-copilot/gpt-4.1
       id: 'github-copilot/gpt-5.4',
       cost: { input: 2.5, output: 15, cache: { read: 0.25, write: 0 } },
     });
+  });
+
+  it('merges provider-specific OpenAI fallback models without duplicates', () => {
+    const baseModels = parseOpenCodeModelsVerbose(`github-copilot/gpt-5.4
+{
+  "id": "gpt-5.4",
+  "providerID": "github-copilot",
+  "name": "GPT-5.4",
+  "capabilities": { "reasoning": true },
+  "variants": {}
+}
+`);
+    const openAIModels = parseOpenCodeModelsVerbose(`openai/gpt-5.4
+{
+  "id": "gpt-5.4",
+  "providerID": "openai",
+  "name": "GPT-5.4",
+  "capabilities": { "reasoning": true },
+  "variants": {}
+}
+github-copilot/gpt-5.4
+{
+  "id": "gpt-5.4",
+  "providerID": "github-copilot",
+  "name": "GPT-5.4",
+  "capabilities": { "reasoning": true },
+  "variants": {}
+}
+`);
+
+    expect(mergeOpenCodeModelLists(baseModels, openAIModels)).toEqual([
+      expect.objectContaining({ id: 'github-copilot/gpt-5.4' }),
+      expect.objectContaining({ id: 'openai/gpt-5.4' }),
+    ]);
   });
 
   it('calculates theoretical cost for zero-cost subscription models', () => {

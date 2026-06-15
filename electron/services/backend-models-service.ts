@@ -69,6 +69,11 @@ const modelCache = new Map<
   { models: BackendModel[]; fetchedAt: number }
 >();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const OPENCODE_MODELS_EXEC_OPTIONS: ExecOptions = {
+  encoding: 'utf-8',
+  maxBuffer: 2 * 1024 * 1024,
+  timeout: 30_000,
+};
 
 /**
  * Fetch available models for a given backend.
@@ -101,12 +106,26 @@ async function fetchOpenCodeModels(): Promise<BackendModel[]> {
   }
 
   try {
-    const { stdout } = await execAsync('opencode models --verbose', {
-      encoding: 'utf-8',
-      timeout: 10_000,
-    });
+    const { stdout } = await execAsync(
+      'opencode models --verbose',
+      OPENCODE_MODELS_EXEC_OPTIONS,
+    );
 
-    const models = parseOpenCodeModelsVerbose(stdout);
+    let models = parseOpenCodeModelsVerbose(stdout);
+    if (!models.some((model) => model.id.startsWith('openai/'))) {
+      try {
+        const { stdout: openAIStdout } = await execAsync(
+          'opencode models openai --verbose',
+          OPENCODE_MODELS_EXEC_OPTIONS,
+        );
+        models = mergeOpenCodeModelLists(
+          models,
+          parseOpenCodeModelsVerbose(openAIStdout),
+        );
+      } catch (error) {
+        dbg.agent('Failed to fetch OpenCode OpenAI models: %O', error);
+      }
+    }
 
     dbg.agent('Discovered %d OpenCode models', models.length);
     modelCache.set('opencode', { models, fetchedAt: Date.now() });
@@ -116,6 +135,22 @@ async function fetchOpenCodeModels(): Promise<BackendModel[]> {
     // Return cached value (even if stale) on error, or empty array
     return cached?.models ?? [];
   }
+}
+
+export function mergeOpenCodeModelLists(
+  baseModels: BackendModel[],
+  additionalModels: BackendModel[],
+): BackendModel[] {
+  const seen = new Set(baseModels.map((model) => model.id));
+  const merged = [...baseModels];
+
+  for (const model of additionalModels) {
+    if (seen.has(model.id)) continue;
+    seen.add(model.id);
+    merged.push(model);
+  }
+
+  return merged;
 }
 
 export function parseOpenCodeModelsVerbose(stdout: string): BackendModel[] {
