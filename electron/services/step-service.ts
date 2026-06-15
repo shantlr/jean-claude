@@ -18,6 +18,11 @@ import { TaskStepRepository } from '../database/repositories/task-steps';
 import { TaskRepository } from '../database/repositories/tasks';
 import { createDebug } from '../lib/debug';
 
+import {
+  emitStepDelete,
+  emitStepUpsert,
+  emitTaskUpsert,
+} from './cache-event-service';
 import { summarizeNormalizedMessages } from './session-summary-service';
 import { buildSummaryGenerationPrompt } from './session-summary-service';
 
@@ -467,12 +472,16 @@ async function updateDependentStepStatuses(taskId: string): Promise<string[]> {
           parseError: error ?? undefined,
         };
 
-        await TaskStepRepository.update(step.id, {
+        const updatedStep = await TaskStepRepository.update(step.id, {
           status: 'ready',
           meta: updatedMeta as import('@shared/types').TaskStepMeta,
         });
+        emitStepUpsert(updatedStep);
       } else {
-        await TaskStepRepository.update(step.id, { status: 'ready' });
+        const updatedStep = await TaskStepRepository.update(step.id, {
+          status: 'ready',
+        });
+        emitStepUpsert(updatedStep);
       }
 
       if (step.autoStart) {
@@ -532,10 +541,12 @@ export const StepService = {
           refreshedStep.dependsOn.length,
           refreshedStep.autoStart ? 'yes' : 'no',
         );
+        emitStepUpsert(refreshedStep);
         return refreshedStep;
       }
     }
 
+    emitStepUpsert(createdStep);
     return createdStep;
   },
 
@@ -544,7 +555,9 @@ export const StepService = {
     data: Parameters<typeof TaskStepRepository.update>[1],
   ): Promise<TaskStep> => {
     debug('update step=%s %o', stepId, Object.keys(data));
-    return TaskStepRepository.update(stepId, data);
+    const step = await TaskStepRepository.update(stepId, data);
+    emitStepUpsert(step);
+    return step;
   },
 
   delete: async (stepId: string): Promise<void> => {
@@ -556,19 +569,28 @@ export const StepService = {
     for (const sibling of siblings) {
       if (sibling.dependsOn.includes(stepId)) {
         const newDeps = sibling.dependsOn.filter((id) => id !== stepId);
-        await TaskStepRepository.update(sibling.id, { dependsOn: newDeps });
+        const updatedSibling = await TaskStepRepository.update(sibling.id, {
+          dependsOn: newDeps,
+        });
+        emitStepUpsert(updatedSibling);
       }
     }
 
     await TaskStepRepository.delete(stepId);
+    emitStepDelete({ stepId, taskId: step.taskId });
 
     // Re-evaluate dependent statuses
     await updateDependentStepStatuses(step.taskId);
     await StepService.syncTaskStatus(step.taskId);
   },
 
-  reorder: (taskId: string, stepIds: string[]) =>
-    TaskStepRepository.reorder(taskId, stepIds),
+  reorder: async (taskId: string, stepIds: string[]) => {
+    const steps = await TaskStepRepository.reorder(taskId, stepIds);
+    for (const step of steps) {
+      emitStepUpsert(step);
+    }
+    return steps;
+  },
 
   /**
    * Resolve the prompt template and validate dependencies before starting a step.
@@ -646,7 +668,10 @@ export const StepService = {
     );
 
     // Save resolved prompt
-    await TaskStepRepository.update(stepId, { resolvedPrompt });
+    const updatedStep = await TaskStepRepository.update(stepId, {
+      resolvedPrompt,
+    });
+    emitStepUpsert(updatedStep);
 
     return { resolvedPrompt, step, warnings };
   },
@@ -683,7 +708,11 @@ export const StepService = {
    */
   completeStep: async (stepId: string): Promise<string[]> => {
     const output = await StepService.captureOutput(stepId);
-    await TaskStepRepository.update(stepId, { status: 'completed', output });
+    const completedStep = await TaskStepRepository.update(stepId, {
+      status: 'completed',
+      output,
+    });
+    emitStepUpsert(completedStep);
 
     const step = await TaskStepRepository.findById(stepId);
     if (step) {
@@ -699,7 +728,10 @@ export const StepService = {
    */
   errorStep: async (stepId: string): Promise<void> => {
     const step = await TaskStepRepository.findById(stepId);
-    await TaskStepRepository.update(stepId, { status: 'errored' });
+    const erroredStep = await TaskStepRepository.update(stepId, {
+      status: 'errored',
+    });
+    emitStepUpsert(erroredStep);
     if (step) await StepService.syncTaskStatus(step.taskId);
   },
 
@@ -708,7 +740,10 @@ export const StepService = {
    */
   interruptStep: async (stepId: string): Promise<void> => {
     const step = await TaskStepRepository.findById(stepId);
-    await TaskStepRepository.update(stepId, { status: 'interrupted' });
+    const interruptedStep = await TaskStepRepository.update(stepId, {
+      status: 'interrupted',
+    });
+    emitStepUpsert(interruptedStep);
     if (step) await StepService.syncTaskStatus(step.taskId);
   },
 
@@ -719,6 +754,7 @@ export const StepService = {
     const steps = await TaskStepRepository.findByTaskId(taskId);
     const newStatus = computeTaskStatus(steps);
     debug('syncTaskStatus taskId=%s newStatus=%s', taskId, newStatus);
-    await TaskRepository.update(taskId, { status: newStatus });
+    const task = await TaskRepository.update(taskId, { status: newStatus });
+    emitTaskUpsert(task);
   },
 };

@@ -3,6 +3,8 @@ import { query } from '@anthropic-ai/claude-agent-sdk';
 import { TaskRepository } from '../database/repositories';
 import { dbg } from '../lib/debug';
 
+import { emitTaskUpsert } from './cache-event-service';
+
 type TaskId = string;
 type ActiveTask = {
   taskId: string;
@@ -34,7 +36,10 @@ export const TASK_SERVICE = {
     });
 
     try {
-      await TaskRepository.update(taskId, { status: 'running' });
+      const runningTask = await TaskRepository.update(taskId, {
+        status: 'running',
+      });
+      emitTaskUpsert(runningTask);
       for await (const message of generator) {
         if (activeTask.abortController.signal.aborted) {
           break;
@@ -45,9 +50,15 @@ export const TASK_SERVICE = {
       // this.emit(AGENT_CHANNELS.MESSAGE, { taskId, message });
     } catch (error) {
       dbg.agent('Task %s error: %O', taskId, error);
-      await TaskRepository.update(taskId, { status: 'errored' });
+      const erroredTask = await TaskRepository.update(taskId, {
+        status: 'errored',
+      });
+      emitTaskUpsert(erroredTask);
     }
-    await TaskRepository.update(taskId, { status: 'completed' });
+    const completedTask = await TaskRepository.update(taskId, {
+      status: 'completed',
+    });
+    emitTaskUpsert(completedTask);
   },
   stop: (taskId: TaskId) => {
     const activeTask = ACTIVE_TASKS.get(taskId);

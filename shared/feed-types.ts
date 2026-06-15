@@ -38,6 +38,8 @@ export interface FeedItem {
   children?: FeedItem[];
   pendingMessage?: string;
   pullRequestId?: number;
+  pullRequestProviderId?: string;
+  pullRequestRepoId?: string;
   pullRequestUrl?: string;
   pullRequestMergeStatus?: 'succeeded' | 'conflicts' | 'failure' | 'notSet';
   noteId?: string;

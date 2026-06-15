@@ -58,6 +58,7 @@ import { ClaudeCodeBackend } from './agent-backends/claude/claude-code-backend';
 import { OpenCodeBackend } from './agent-backends/opencode/opencode-backend';
 import { buildSessionIdStepUpdate } from './agent-session-update';
 import { aiUsageTrackingService } from './ai-usage-tracking-service';
+import { emitStepUpsert, emitTaskUpsert } from './cache-event-service';
 import { resolveGlobalRules } from './global-permissions-service';
 import { getJcMcpServerPath } from './mcp-template-service';
 import { generateTaskName } from './name-generation-service';
@@ -333,6 +334,10 @@ class AgentService {
 
     if (!isFocused) {
       await TaskRepository.setHasUnread(taskId, true);
+      const task = await TaskRepository.findById(taskId);
+      if (task) {
+        emitTaskUpsert(task);
+      }
     }
   }
 
@@ -411,7 +416,8 @@ class AgentService {
           : undefined,
       );
       if (name) {
-        await TaskRepository.update(taskId, { name });
+        const updatedTask = await TaskRepository.update(taskId, { name });
+        emitTaskUpsert(updatedTask);
         this.emitEvent(taskId, stepId, { type: 'name-updated', name });
         dbg.agent('Generated task name for %s: %s', taskId, name);
       }
@@ -803,7 +809,7 @@ class AgentService {
         // Only persist the first session ID — once set it is immutable.
         const existing = await TaskStepRepository.findById(stepId);
         if (!existing?.sessionId) {
-          await TaskStepRepository.update(
+          const updatedStep = await TaskStepRepository.update(
             stepId,
             buildSessionIdStepUpdate({
               sessionId: event.sessionId,
@@ -813,6 +819,7 @@ class AgentService {
               swapThinkingEffort: session.swapThinkingEffort,
             }),
           );
+          emitStepUpsert(updatedStep);
           dbg.agentSession(
             'Captured session ID for step %s: %s',
             stepId,
@@ -894,7 +901,8 @@ class AgentService {
 
         // Step stays 'running' (agent session is active, just paused);
         // task-level status becomes 'waiting' for UI purposes.
-        await TaskRepository.update(taskId, { status: 'waiting' });
+        const task = await TaskRepository.update(taskId, { status: 'waiting' });
+        emitTaskUpsert(task);
         this.emitEvent(taskId, stepId, { type: 'status', status: 'waiting' });
         this.emitEvent(taskId, stepId, {
           type: 'permission',
@@ -923,7 +931,8 @@ class AgentService {
 
         // Step stays 'running' (agent session is active, just paused);
         // task-level status becomes 'waiting' for UI purposes.
-        await TaskRepository.update(taskId, { status: 'waiting' });
+        const task = await TaskRepository.update(taskId, { status: 'waiting' });
+        emitTaskUpsert(task);
         this.emitEvent(taskId, stepId, { type: 'status', status: 'waiting' });
 
         const questions: AgentQuestion[] = request.questions.map(
@@ -1019,7 +1028,10 @@ class AgentService {
                 existing[entry] = 'allow';
               }
             }
-            await TaskRepository.update(taskId, { sessionRules: existing });
+            const updatedTask = await TaskRepository.update(taskId, {
+              sessionRules: existing,
+            });
+            emitTaskUpsert(updatedTask);
           }
         }
 
@@ -1151,9 +1163,10 @@ class AgentService {
       }
 
       case 'mode-change': {
-        await TaskStepRepository.update(stepId, {
+        const updatedStep = await TaskStepRepository.update(stepId, {
           interactionMode: event.mode,
         });
+        emitStepUpsert(updatedStep);
         break;
       }
 
@@ -1484,7 +1497,8 @@ class AgentService {
     }
 
     // Resume running status (step was already 'running', update task-level)
-    await TaskRepository.update(taskId, { status: 'running' });
+    const task = await TaskRepository.update(taskId, { status: 'running' });
+    emitTaskUpsert(task);
     this.emitEvent(taskId, stepId, { type: 'status', status: 'running' });
 
     notificationService.close(`${stepId}:${request.type}`);
@@ -1762,9 +1776,10 @@ class AgentService {
       await session.backend.setMode(session.backendSessionId, normalizedMode);
       dbg.agentSession('Updated backend permission mode for active session');
     }
-    await TaskStepRepository.update(stepId, {
+    const updatedStep = await TaskStepRepository.update(stepId, {
       interactionMode: normalizedMode,
     });
+    emitStepUpsert(updatedStep);
   }
 
   isRunning(stepId: string): boolean {
@@ -1844,7 +1859,10 @@ class AgentService {
 
     for (const task of staleTasks) {
       try {
-        await TaskRepository.update(task.id, { status: 'interrupted' });
+        const updatedTask = await TaskRepository.update(task.id, {
+          status: 'interrupted',
+        });
+        emitTaskUpsert(updatedTask);
       } catch (error) {
         dbg.agent('Failed to recover stale task %s: %O', task.id, error);
       }
@@ -1879,14 +1897,20 @@ class AgentService {
           rawMessageId: null,
         });
 
-        await TaskStepRepository.update(step.id, { status: 'interrupted' });
+        const updatedStep = await TaskStepRepository.update(step.id, {
+          status: 'interrupted',
+        });
+        emitStepUpsert(updatedStep);
         await StepService.syncTaskStatus(step.taskId);
         staleStepCount++;
       } catch (error) {
         dbg.agent('Failed to recover stale step %s: %O', step.id, error);
         // Best-effort: still mark the step as interrupted
         try {
-          await TaskStepRepository.update(step.id, { status: 'interrupted' });
+          const updatedStep = await TaskStepRepository.update(step.id, {
+            status: 'interrupted',
+          });
+          emitStepUpsert(updatedStep);
           await StepService.syncTaskStatus(step.taskId);
         } catch {
           dbg.agent('Failed to update status for stale step %s', step.id);

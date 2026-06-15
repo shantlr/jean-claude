@@ -1,22 +1,122 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import {
+  PROJECTS_INDEX_KEY,
+  getProjectIndexIds,
+  ingestProject,
+  ingestProjects,
+  projectResourceKey,
+  selectProjectColor,
+  selectProjectLogoPath,
+  selectProjectName,
+  selectProjectPrPriority,
+  selectProjectWorkItemPriority,
+  selectProject,
+  selectProjects,
+  setProjectIndexIds,
+} from '@/cache/domains/projects';
+import { useCacheResource } from '@/cache/use-cache-resource';
 import { api } from '@/lib/api';
 import { feedQueryKeys } from '@/lib/feed-query-keys';
+import type { FeedItem, ProjectPriority } from '@shared/feed-types';
 import { NewProject, Project, UpdateProject } from '@shared/types';
 
+const EMPTY_PROJECT_LOGO_FIELDS: {
+  name: string | undefined;
+  color: string | undefined;
+  logoPath: string | null | undefined;
+} = {
+  name: undefined,
+  color: undefined,
+  logoPath: undefined,
+};
+
 export function useProjects() {
-  return useQuery({
-    queryKey: ['projects'],
-    queryFn: api.projects.findAll,
+  return useCacheResource({
+    key: PROJECTS_INDEX_KEY,
+    load: api.projects.findAll,
+    ingest: ingestProjects,
+    select: selectProjects,
   });
 }
 
 export function useProject(id: string) {
-  return useQuery({
-    queryKey: ['projects', id],
-    queryFn: () => api.projects.findById(id),
+  return useCacheResource({
+    key: projectResourceKey(id),
+    load: () => api.projects.findById(id),
+    ingest: (project) => {
+      if (project) {
+        ingestProject(project);
+      }
+    },
     enabled: !!id,
+    select: () => selectProject(id),
   });
+}
+
+export function useProjectLogoFields(projectId: string) {
+  const { data } = useCacheResource<
+    Project | undefined,
+    typeof EMPTY_PROJECT_LOGO_FIELDS
+  >({
+    key: projectResourceKey(projectId),
+    load: () => api.projects.findById(projectId),
+    ingest: (project) => {
+      if (project) {
+        ingestProject(project);
+      }
+    },
+    enabled: !!projectId,
+    select: () => {
+      if (!projectId || !selectProject(projectId)) {
+        return EMPTY_PROJECT_LOGO_FIELDS;
+      }
+
+      return {
+        name: selectProjectName(projectId),
+        color: selectProjectColor(projectId),
+        logoPath: selectProjectLogoPath(projectId),
+      };
+    },
+  });
+
+  return data ?? EMPTY_PROJECT_LOGO_FIELDS;
+}
+
+export function useProjectFeedPriority(
+  projectId: string,
+  source: FeedItem['source'],
+) {
+  const { data } = useCacheResource<
+    Project | undefined,
+    ProjectPriority | undefined
+  >({
+    key: projectResourceKey(projectId),
+    load: () => api.projects.findById(projectId),
+    ingest: (project) => {
+      if (project) {
+        ingestProject(project);
+      }
+    },
+    enabled: !!projectId,
+    select: () => {
+      if (!projectId || !selectProject(projectId)) {
+        return undefined;
+      }
+
+      if (source === 'pull-request') {
+        return selectProjectPrPriority(projectId);
+      }
+
+      if (source === 'work-item') {
+        return selectProjectWorkItemPriority(projectId);
+      }
+
+      return undefined;
+    },
+  });
+
+  return data;
 }
 
 export function useCreateProject() {
@@ -32,7 +132,7 @@ export function useUpdateProject() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateProject }) =>
       api.projects.update(id, data),
-    onSuccess: (_, { id }) => {
+    onSuccess: (_, { id, data }) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['projects', id] });
       queryClient.invalidateQueries({
@@ -42,7 +142,22 @@ export function useUpdateProject() {
       queryClient.invalidateQueries({
         queryKey: ['project-current-branch', id],
       });
-      queryClient.invalidateQueries({ queryKey: feedQueryKeys.all });
+      if (
+        data.showPrsInFeed !== undefined ||
+        data.repoProviderId !== undefined ||
+        data.repoProjectId !== undefined ||
+        data.repoId !== undefined
+      ) {
+        queryClient.invalidateQueries({ queryKey: feedQueryKeys.pullRequests });
+      }
+      if (
+        data.showWorkItemsInFeed !== undefined ||
+        data.workItemProviderId !== undefined ||
+        data.workItemProjectId !== undefined ||
+        data.workItemProjectName !== undefined
+      ) {
+        queryClient.invalidateQueries({ queryKey: feedQueryKeys.workItems });
+      }
     },
   });
 }
@@ -64,7 +179,6 @@ export function useUploadProjectLogo() {
       queryClient.invalidateQueries({
         queryKey: ['project-logo-history', projectId],
       });
-      queryClient.invalidateQueries({ queryKey: feedQueryKeys.all });
     },
   });
 }
@@ -86,7 +200,6 @@ export function useGenerateProjectLogo() {
       queryClient.invalidateQueries({
         queryKey: ['project-logo-history', projectId],
       });
-      queryClient.invalidateQueries({ queryKey: feedQueryKeys.all });
     },
   });
 }
@@ -116,7 +229,6 @@ export function useSelectGeneratedProjectLogo() {
       queryClient.invalidateQueries({
         queryKey: ['project-logo-history', projectId],
       });
-      queryClient.invalidateQueries({ queryKey: feedQueryKeys.all });
     },
   });
 }
@@ -138,7 +250,6 @@ export function useDeleteGeneratedProjectLogo() {
       queryClient.invalidateQueries({
         queryKey: ['project-logo-history', projectId],
       });
-      queryClient.invalidateQueries({ queryKey: feedQueryKeys.all });
     },
   });
 }
@@ -151,7 +262,6 @@ export function useRegenerateProjectSummary() {
     onSuccess: (_, projectId) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['feed', 'items'] });
     },
   });
 }
@@ -187,7 +297,6 @@ export function useRemoveProjectLogo() {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-logo'] });
-      queryClient.invalidateQueries({ queryKey: feedQueryKeys.all });
     },
   });
 }
@@ -243,11 +352,26 @@ export function useReorderProjects() {
         }
       }
 
-      return { previousProjects };
+      const previousProjectIds = getProjectIndexIds();
+
+      if (previousProjectIds) {
+        const orderedIdSet = new Set(orderedIds);
+        if (
+          orderedIds.length === previousProjectIds.length &&
+          previousProjectIds.every((id) => orderedIdSet.has(id))
+        ) {
+          setProjectIndexIds(orderedIds);
+        }
+      }
+
+      return { previousProjects, previousProjectIds };
     },
     onError: (_error, _orderedIds, context) => {
       if (context?.previousProjects) {
         queryClient.setQueryData(['projects'], context.previousProjects);
+      }
+      if (context?.previousProjectIds) {
+        setProjectIndexIds(context.previousProjectIds);
       }
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['projects'] }),

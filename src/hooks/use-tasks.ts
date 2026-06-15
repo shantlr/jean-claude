@@ -1,10 +1,29 @@
 import {
   useInfiniteQuery,
   useMutation,
-  useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
 
+import { ingestStep, markStepListsStale } from '@/cache/domains/steps';
+import {
+  ACTIVE_TASKS_INDEX_KEY,
+  TASKS_INDEX_KEY,
+  appendTaskToKnownIndexes,
+  ingestActiveTasks,
+  ingestProjectTasks,
+  ingestTask,
+  ingestTasks,
+  markTaskListsStale,
+  projectTasksResourceKey,
+  removeTask,
+  selectActiveTasks,
+  selectProjectTasks,
+  selectTask,
+  selectTasks,
+  setProjectTaskIndexIds,
+  taskResourceKey,
+} from '@/cache/domains/tasks';
+import { useCacheResource } from '@/cache/use-cache-resource';
 import { api } from '@/lib/api';
 import { feedQueryKeys } from '@/lib/feed-query-keys';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
@@ -36,24 +55,30 @@ export function invalidateFeedItems(
 }
 
 export function useTasks() {
-  return useQuery({
-    queryKey: ['tasks'],
-    queryFn: api.tasks.findAll,
+  return useCacheResource({
+    key: TASKS_INDEX_KEY,
+    load: api.tasks.findAll,
+    ingest: ingestTasks,
+    select: selectTasks,
   });
 }
 
 export function useProjectTasks(projectId: string) {
-  return useQuery({
-    queryKey: ['tasks', { projectId }],
-    queryFn: () => api.tasks.findByProjectId(projectId),
+  return useCacheResource({
+    key: projectTasksResourceKey(projectId),
+    load: () => api.tasks.findByProjectId(projectId),
+    ingest: (tasks) => ingestProjectTasks(projectId, tasks),
     enabled: !!projectId,
+    select: () => selectProjectTasks(projectId),
   });
 }
 
 export function useAllActiveTasks() {
-  return useQuery({
-    queryKey: ['tasks', 'allActive'],
-    queryFn: () => api.tasks.findAllActive(),
+  return useCacheResource({
+    key: ACTIVE_TASKS_INDEX_KEY,
+    load: () => api.tasks.findAllActive(),
+    ingest: ingestActiveTasks,
+    select: selectActiveTasks,
   });
 }
 
@@ -74,10 +99,16 @@ export function useAllCompletedTasks({ limit }: { limit: number }) {
 }
 
 export function useTask(id: string) {
-  return useQuery({
-    queryKey: ['tasks', id],
-    queryFn: () => api.tasks.findById(id),
+  return useCacheResource({
+    key: taskResourceKey(id),
+    load: () => api.tasks.findById(id),
+    ingest: (task) => {
+      if (task) {
+        ingestTask(task);
+      }
+    },
     enabled: !!id,
+    select: () => selectTask(id),
   });
 }
 
@@ -86,6 +117,8 @@ export function useCreateTask() {
   return useMutation({
     mutationFn: (data: CreateTaskPayload) => api.tasks.create(data),
     onSuccess: (task) => {
+      ingestTask(task);
+      appendTaskToKnownIndexes(task);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({
         queryKey: ['tasks', { projectId: task.projectId }],
@@ -106,6 +139,8 @@ export function useCreateTaskWithWorktree() {
       },
     ) => api.tasks.createWithWorktree(data),
     onSuccess: (task) => {
+      ingestTask(task);
+      appendTaskToKnownIndexes(task);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({
         queryKey: ['tasks', { projectId: task.projectId }],
@@ -121,6 +156,8 @@ export function useUpdateTask() {
     mutationFn: ({ id, data }: { id: string; data: UpdateTask }) =>
       api.tasks.update(id, data),
     onSuccess: (task, { id }) => {
+      ingestTask(task);
+      markTaskListsStale(task.projectId);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
       queryClient.invalidateQueries({
@@ -142,6 +179,8 @@ export function useUpdateTaskPendingMessage() {
       pendingMessage: string | null;
     }) => api.tasks.updatePendingMessage(id, pendingMessage),
     onSuccess: (task, { id }) => {
+      ingestTask(task);
+      markTaskListsStale(task.projectId);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
       queryClient.invalidateQueries({
@@ -171,6 +210,7 @@ export function useDeleteTask() {
     onSuccess: (_, { id }) => {
       clearAllRunCommandLogs(id);
       setRunCommandRunning(id, false);
+      removeTask(id, { deleteResource: false });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       invalidateFeedItems(queryClient);
     },
@@ -209,6 +249,9 @@ export function useSetStepMode() {
     mutationFn: ({ stepId, mode }: { stepId: string; mode: InteractionMode }) =>
       api.steps.setMode(stepId, mode),
     onSuccess: (step) => {
+      if (!step) return;
+      ingestStep(step);
+      markStepListsStale(step.taskId);
       queryClient.invalidateQueries({ queryKey: ['steps', step.id] });
       queryClient.invalidateQueries({
         queryKey: ['steps', { taskId: step.taskId }],
@@ -240,6 +283,8 @@ export function useToggleTaskUserCompleted() {
     onSuccess: (task, id) => {
       clearAllRunCommandLogs(id);
       setRunCommandRunning(id, false);
+      ingestTask(task);
+      markTaskListsStale(task.projectId);
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
       queryClient.invalidateQueries({
         queryKey: ['tasks', { projectId: task.projectId }],
@@ -284,6 +329,9 @@ export function useCompleteTask() {
     onSuccess: (result, { id }, jobId) => {
       const { task, worktreeCleanup } = result;
 
+      ingestTask(task);
+      markTaskListsStale(task.projectId);
+
       if (jobId) {
         markJobSucceeded(jobId, { projectId: task.projectId });
       }
@@ -322,6 +370,7 @@ export function useCompleteTask() {
             markJobSucceeded(jobId, {
               warningMessage: cleanupResult.editorCloseWarning ?? null,
             });
+            markTaskListsStale(task.projectId);
             queryClient.invalidateQueries({ queryKey: ['tasks', id] });
             invalidateFeedItems(queryClient);
           })
@@ -349,6 +398,8 @@ export function useClearTaskUserCompleted() {
   return useMutation({
     mutationFn: (id: string) => api.tasks.clearUserCompleted(id),
     onSuccess: (task, id) => {
+      ingestTask(task);
+      markTaskListsStale(task.projectId);
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
       queryClient.invalidateQueries({
         queryKey: ['tasks', { projectId: task.projectId }],
@@ -373,6 +424,7 @@ export function useAddSessionAllowedTool() {
       input: Record<string, unknown>;
     }) => api.tasks.addSessionAllowedTool(id, toolName, input),
     onSuccess: (task, { id }) => {
+      ingestTask(task);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
       queryClient.invalidateQueries({
@@ -395,6 +447,7 @@ export function useRemoveSessionAllowedTool() {
       pattern?: string;
     }) => api.tasks.removeSessionAllowedTool(id, toolName, pattern),
     onSuccess: (task, { id }) => {
+      ingestTask(task);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
       queryClient.invalidateQueries({
@@ -417,6 +470,7 @@ export function useAllowForProject() {
       input: Record<string, unknown>;
     }) => api.tasks.allowForProject(id, toolName, input),
     onSuccess: (task, { id }) => {
+      ingestTask(task);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
       queryClient.invalidateQueries({
@@ -439,6 +493,7 @@ export function useAllowForProjectWorktrees() {
       input: Record<string, unknown>;
     }) => api.tasks.allowForProjectWorktrees(id, toolName, input),
     onSuccess: (task, { id }) => {
+      ingestTask(task);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
       queryClient.invalidateQueries({
@@ -463,6 +518,7 @@ export function useAllowGlobally({
       input: Record<string, unknown>;
     }) => api.tasks.allowGlobally(id, toolName, input),
     onSuccess: (task, { id }) => {
+      ingestTask(task);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['tasks', id] });
       queryClient.invalidateQueries({
@@ -486,7 +542,9 @@ export function useReorderTasks() {
       activeIds: string[];
       completedIds: string[];
     }) => api.tasks.reorder(projectId, activeIds, completedIds),
-    onSuccess: (_, { projectId }) => {
+    onSuccess: (_, { projectId, activeIds, completedIds }) => {
+      setProjectTaskIndexIds(projectId, [...activeIds, ...completedIds]);
+      markTaskListsStale(projectId);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({
         queryKey: ['tasks', { projectId }],

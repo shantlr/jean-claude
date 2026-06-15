@@ -212,6 +212,8 @@ export const TaskRepository = {
         'projects.name as projectName',
         'projects.color as projectColor',
         'projects.logoPath as projectLogoPath',
+        'projects.repoProviderId as repoProviderId',
+        'projects.repoId as repoId',
       ])
       .where('tasks.userCompleted', '=', 0)
       .where('tasks.parentTaskId', 'is', null)
@@ -230,6 +232,8 @@ export const TaskRepository = {
         'projects.name as projectName',
         'projects.color as projectColor',
         'projects.logoPath as projectLogoPath',
+        'projects.repoProviderId as repoProviderId',
+        'projects.repoId as repoId',
       ])
       .where('tasks.parentTaskId', 'in', parentTaskIds)
       .orderBy('tasks.sortOrder', 'asc')

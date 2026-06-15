@@ -5,6 +5,7 @@ import {
   createRouter,
 } from '@tanstack/react-router';
 
+import { CacheListener } from './cache/cache-listener';
 import { RootKeyboardBindings } from './common/context/keyboard-bindings';
 import { DetectKeyboardLayout } from './common/context/keyboard-layout';
 import { ModalProvider } from './common/context/modal';
@@ -34,6 +35,7 @@ export default function App() {
       <RootKeyboardBindings>
         <RootOverlay>
           <QueryClientProvider client={queryClient}>
+            <CacheListener />
             <ModalProvider>
               <RouterProvider router={router} />
             </ModalProvider>

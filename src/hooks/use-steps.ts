@@ -1,21 +1,40 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import {
+  ensureStepInTaskIndex,
+  ingestStep,
+  ingestTaskSteps,
+  markStepListsStale,
+  selectStep,
+  selectTaskSteps,
+  stepResourceKey,
+  taskStepsResourceKey,
+} from '@/cache/domains/steps';
+import { useCacheResource } from '@/cache/use-cache-resource';
 import { api } from '@/lib/api';
 import type { NewTaskStep, TaskStep, UpdateTaskStep } from '@shared/types';
 
 export function useSteps(taskId: string) {
-  return useQuery({
-    queryKey: ['steps', { taskId }],
-    queryFn: () => api.steps.findByTaskId(taskId),
+  return useCacheResource({
+    key: taskStepsResourceKey(taskId),
+    load: () => api.steps.findByTaskId(taskId),
+    ingest: (steps) => ingestTaskSteps(taskId, steps),
     enabled: !!taskId,
+    select: () => selectTaskSteps(taskId),
   });
 }
 
 export function useStep(stepId: string) {
-  return useQuery({
-    queryKey: ['steps', stepId],
-    queryFn: () => api.steps.findById(stepId),
+  return useCacheResource({
+    key: stepResourceKey(stepId),
+    load: () => api.steps.findById(stepId),
+    ingest: (step) => {
+      if (step) {
+        ingestStep(step);
+      }
+    },
     enabled: !!stepId,
+    select: () => selectStep(stepId),
   });
 }
 
@@ -25,6 +44,8 @@ export function useCreateStep() {
     mutationFn: (data: NewTaskStep & { start?: boolean }) =>
       api.steps.create(data),
     onSuccess: (step: TaskStep) => {
+      ingestStep(step);
+      ensureStepInTaskIndex(step);
       // Optimistically add the new step to the cache so the auto-select
       // effect in TaskPanel sees it immediately (prevents a race where the
       // stale steps array causes activeStepId to be reset before the
@@ -56,6 +77,8 @@ export function useUpdateStep() {
     mutationFn: ({ stepId, data }: { stepId: string; data: UpdateTaskStep }) =>
       api.steps.update(stepId, data),
     onSuccess: (step: TaskStep) => {
+      ingestStep(step);
+      markStepListsStale(step.taskId);
       queryClient.invalidateQueries({
         queryKey: ['steps', { taskId: step.taskId }],
       });
@@ -75,6 +98,8 @@ export function useSubmitPrReview() {
   return useMutation({
     mutationFn: (stepId: string) => api.steps.submitPrReview(stepId),
     onSuccess: (step: TaskStep) => {
+      ingestStep(step);
+      markStepListsStale(step.taskId);
       queryClient.invalidateQueries({
         queryKey: ['steps', { taskId: step.taskId }],
       });

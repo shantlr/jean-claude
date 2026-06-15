@@ -25,6 +25,7 @@ import type {
   AzureDevOpsComment,
   AzureDevOpsPolicyEvaluation,
 } from '@shared/azure-devops-types';
+import type { CacheEvent, CacheSubscriptionUpdate } from '@shared/cache-events';
 import type { UpcomingMeeting } from '@shared/calendar-types';
 import type { DebugLogEntry } from '@shared/debug-log-types';
 import type { FeedItem, FeedNote, ProjectPriority } from '@shared/feed-types';
@@ -336,29 +337,14 @@ export interface DeleteOldCompletedTasksResult {
   deletedCount: number;
 }
 
-export interface TaskWithProject {
-  id: string;
-  projectId: string;
-  projectName: string;
-  projectColor: string;
-  projectPriority: ProjectPriority;
-  name: string | null;
-  prompt: string;
-  status: string;
-  worktreePath: string | null;
-  startCommitHash: string | null;
-  branchName: string | null;
-  hasUnread: boolean;
-  userCompleted: boolean;
-  sessionRules: import('@shared/permission-types').PermissionScope;
-  workItemId: string | null;
-  workItemUrl: string | null;
-  pullRequestId: string | null;
-  pullRequestUrl: string | null;
-  pendingMessage: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+export type TaskWithProject = Task & {
+  projectName?: string;
+  projectColor?: string;
+  projectPriority?: ProjectPriority;
+  projectLogoPath?: string | null;
+  workItemId?: string | null;
+  workItemUrl?: string | null;
+};
 
 export interface CompletedTasksResult {
   tasks: TaskWithProject[];
@@ -399,6 +385,10 @@ export interface Api {
     onFullscreenChange: (
       callback: AgentEventCallback<boolean>,
     ) => UnsubscribeFn;
+  };
+  cache: {
+    setSubscriptions: (update: CacheSubscriptionUpdate) => Promise<void>;
+    onEvent: (callback: (event: CacheEvent) => void) => UnsubscribeFn;
   };
   projects: {
     findAll: () => Promise<Project[]>;
@@ -1534,7 +1524,6 @@ declare global {
 }
 
 const hasWindowApi = typeof window !== 'undefined' && window.api;
-console.log('window.api available:', hasWindowApi, window?.api);
 
 export const api: Api = hasWindowApi
   ? window.api
@@ -1543,6 +1532,10 @@ export const api: Api = hasWindowApi
       windowState: {
         getIsFullscreen: async () => false,
         onFullscreenChange: () => () => {},
+      },
+      cache: {
+        setSubscriptions: async () => {},
+        onEvent: () => () => {},
       },
       projects: {
         findAll: async () => [],

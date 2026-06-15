@@ -20,6 +20,10 @@ import {
   PermissionResponse,
   QuestionResponse,
 } from '@shared/agent-types';
+import type {
+  CacheSubscription,
+  CacheSubscriptionUpdate,
+} from '@shared/cache-events';
 import type { GlobalPromptResponse } from '@shared/global-prompt-types';
 import { getImageMimeType } from '@shared/image-types';
 import type {
@@ -56,6 +60,7 @@ import {
   type NewToken,
   type UpdateToken,
   type NewTaskStep,
+  type Project,
   type Task,
   type UpdateTaskStep,
   type SkillCreationStepMeta,
@@ -178,6 +183,13 @@ import {
   writeBackendUserConfig,
 } from '../services/backend-config-settings-service';
 import * as backendModelsService from '../services/backend-models-service';
+import {
+  emitCacheEvent,
+  emitStepUpsert,
+  emitTaskDelete,
+  emitTaskUpsert,
+  setCacheSubscriptions,
+} from '../services/cache-event-service';
 import {
   generateCommitMessageForTask,
   generateMergeMessageForTask,
@@ -424,6 +436,40 @@ async function ensureFeatureMapFileInDiff(
       },
     ],
   };
+}
+
+async function createTaskAndEmit(
+  data: Parameters<typeof TaskRepository.create>[0],
+) {
+  const task = await TaskRepository.create(data);
+  emitTaskUpsert(task);
+  return task;
+}
+
+async function updateTaskAndEmit(
+  taskId: string,
+  data: Parameters<typeof TaskRepository.update>[1],
+) {
+  const previousTask = data.projectId
+    ? await TaskRepository.findById(taskId)
+    : null;
+  const task = await TaskRepository.update(taskId, data);
+  emitTaskUpsert(task, previousTask?.projectId);
+  return task;
+}
+
+async function deleteTaskAndEmit(task: Task, stepIds?: string[]) {
+  await TaskRepository.delete(task.id);
+  emitTaskDelete({ taskId: task.id, projectId: task.projectId, stepIds });
+}
+
+async function updateStepAndEmit(
+  stepId: string,
+  data: Parameters<typeof TaskStepRepository.update>[1],
+) {
+  const step = await TaskStepRepository.update(stepId, data);
+  emitStepUpsert(step);
+  return step;
 }
 
 async function runGit(
@@ -689,10 +735,101 @@ const MAX_FILE_ATTACHMENT_SIZE = 50 * 1024 * 1024;
 const PREVIEW_RELOAD_GIT_PULL_TIMEOUT_MS = 2 * 60 * 1000;
 const PREVIEW_RELOAD_INSTALL_TIMEOUT_MS = 10 * 60 * 1000;
 const PREVIEW_RELOAD_BUILD_TIMEOUT_MS = 10 * 60 * 1000;
+const MAX_CACHE_SUBSCRIPTIONS = 500;
+const MAX_CACHE_SUBSCRIPTION_KEY_LENGTH = 300;
+
+type CacheSubscriptionUpdateInput =
+  | {
+      revision?: number;
+      subscriptions?: Array<Partial<CacheSubscription> | null | undefined>;
+    }
+  | null
+  | undefined;
+
+// Renderer owns cache subscriptions, but main still validates the IPC payload
+// before storing it because this list is scanned for every cache event.
+function toCacheSubscriptionUpdate(
+  value: CacheSubscriptionUpdateInput,
+): CacheSubscriptionUpdate {
+  if (!value || typeof value !== 'object') {
+    return { revision: 0, subscriptions: [] };
+  }
+
+  const revision =
+    typeof value.revision === 'number' &&
+    Number.isSafeInteger(value.revision) &&
+    value.revision >= 0
+      ? value.revision
+      : 0;
+
+  const subscriptions = Array.isArray(value.subscriptions)
+    ? value.subscriptions
+        .slice(0, MAX_CACHE_SUBSCRIPTIONS)
+        .flatMap((subscription): CacheSubscription[] => {
+          if (!subscription || typeof subscription !== 'object') {
+            return [];
+          }
+
+          if (
+            typeof subscription.resourceKey !== 'string' ||
+            subscription.resourceKey.length === 0 ||
+            subscription.resourceKey.length > MAX_CACHE_SUBSCRIPTION_KEY_LENGTH
+          ) {
+            return [];
+          }
+
+          return [
+            {
+              resourceKey: subscription.resourceKey,
+              includeChildren: subscription.includeChildren === true,
+            },
+          ];
+        })
+    : [];
+
+  return {
+    revision,
+    subscriptions,
+  };
+}
+
+function emitProjectUpsert(project: unknown) {
+  emitCacheEvent({ type: 'project.upsert', project: project as Project });
+}
+
+function emitProjectPatch(projectId: string, patch: Partial<Project>) {
+  emitCacheEvent({ type: 'project.patch', projectId, patch });
+}
+
+function toProjectLogoSource(logoSource: string | null): Project['logoSource'] {
+  return logoSource === 'uploaded' || logoSource === 'generated'
+    ? logoSource
+    : null;
+}
+
+function emitProjectLogoPatch(project: {
+  id: string;
+  logoPath: string | null;
+  logoSource: string | null;
+  updatedAt: string;
+}) {
+  emitProjectPatch(project.id, {
+    logoPath: project.logoPath,
+    logoSource: toProjectLogoSource(project.logoSource),
+    updatedAt: project.updatedAt,
+  });
+}
 
 export function registerIpcHandlers() {
   dbg.ipc('Registering IPC handlers');
   let previewReloadInProgress = false;
+
+  ipcMain.handle(
+    'cache:setSubscriptions',
+    (event, update: CacheSubscriptionUpdateInput) => {
+      setCacheSubscriptions(event.sender, toCacheSubscriptionUpdate(update));
+    },
+  );
 
   ipcMain.handle('windowState:getIsFullscreen', (event) => {
     const currentWindow = BrowserWindow.fromWebContents(event.sender);
@@ -703,9 +840,16 @@ export function registerIpcHandlers() {
   ipcMain.on('tasks:focused', (_, taskId: string) => {
     notificationService.closeForTask(taskId);
     agentService.setFocusedTask(taskId);
-    TaskRepository.setHasUnread(taskId, false).catch((err) => {
-      dbg.ipc('Failed to clear hasUnread for task %s: %O', taskId, err);
-    });
+    void TaskRepository.setHasUnread(taskId, false)
+      .then(() => TaskRepository.findById(taskId))
+      .then((task) => {
+        if (task) {
+          emitTaskUpsert(task);
+        }
+      })
+      .catch((err) => {
+        dbg.ipc('Failed to clear hasUnread for task %s: %O', taskId, err);
+      });
   });
 
   // Projects
@@ -713,9 +857,11 @@ export function registerIpcHandlers() {
   ipcMain.handle('projects:findById', (_, id: string) =>
     ProjectRepository.findById(id),
   );
-  ipcMain.handle('projects:create', (_, data: NewProject) => {
+  ipcMain.handle('projects:create', async (_, data: NewProject) => {
     dbg.ipc('projects:create %o', { name: data.name, path: data.path });
-    return ProjectRepository.create(data);
+    const project = await ProjectRepository.create(data);
+    emitProjectUpsert(project);
+    return project;
   });
   ipcMain.handle(
     'projects:update',
@@ -724,13 +870,21 @@ export function registerIpcHandlers() {
       const result = await ProjectRepository.update(id, data);
       if (
         data.showWorkItemsInFeed !== undefined ||
-        data.workItemPriority !== undefined
+        data.workItemProviderId !== undefined ||
+        data.workItemProjectId !== undefined ||
+        data.workItemProjectName !== undefined
       ) {
         invalidateWorkItemCache();
       }
-      if (data.showPrsInFeed !== undefined || data.prPriority !== undefined) {
+      if (
+        data.showPrsInFeed !== undefined ||
+        data.repoProviderId !== undefined ||
+        data.repoProjectId !== undefined ||
+        data.repoId !== undefined
+      ) {
         invalidatePrCache();
       }
+      emitProjectUpsert(result);
       return result;
     },
   );
@@ -739,8 +893,7 @@ export function registerIpcHandlers() {
     async (_, projectId: string, sourcePath: string) => {
       dbg.ipc('projects:uploadLogo %s', projectId);
       const result = await uploadProjectLogo({ projectId, sourcePath });
-      invalidatePrCache();
-      invalidateWorkItemCache();
+      emitProjectLogoPatch(result);
       return result;
     },
   );
@@ -751,6 +904,12 @@ export function registerIpcHandlers() {
       const result = await generateProjectLogo({ projectId, customPrompt });
       invalidatePrCache();
       invalidateWorkItemCache();
+      emitProjectPatch(result.id, {
+        logoPath: result.logoPath,
+        logoSource: toProjectLogoSource(result.logoSource),
+        summary: result.summary,
+        updatedAt: result.updatedAt,
+      });
       return result;
     },
   );
@@ -763,8 +922,7 @@ export function registerIpcHandlers() {
     async (_, projectId: string, logoId: string) => {
       dbg.ipc('projects:selectGeneratedLogo %s %s', projectId, logoId);
       const result = await selectGeneratedProjectLogo({ projectId, logoId });
-      invalidatePrCache();
-      invalidateWorkItemCache();
+      emitProjectLogoPatch(result);
       return result;
     },
   );
@@ -772,14 +930,20 @@ export function registerIpcHandlers() {
     'projects:deleteGeneratedLogo',
     async (_, projectId: string, logoId: string) => {
       dbg.ipc('projects:deleteGeneratedLogo %s %s', projectId, logoId);
-      await deleteGeneratedProjectLogo({ projectId, logoId });
-      invalidatePrCache();
-      invalidateWorkItemCache();
+      const result = await deleteGeneratedProjectLogo({ projectId, logoId });
+      if (result) {
+        emitProjectLogoPatch(result);
+      }
     },
   );
   ipcMain.handle('projects:regenerateSummary', async (_, projectId: string) => {
     dbg.ipc('projects:regenerateSummary %s', projectId);
-    return regenerateProjectSummary(projectId);
+    const project = await regenerateProjectSummary(projectId);
+    emitProjectPatch(project.id, {
+      summary: project.summary,
+      updatedAt: project.updatedAt,
+    });
+    return project;
   });
   ipcMain.handle('projects:getFeatureMap', async (_, projectId: string) => {
     dbg.ipc('projects:getFeatureMap %s', projectId);
@@ -794,7 +958,7 @@ export function registerIpcHandlers() {
       const project = await ProjectRepository.findById(projectId);
       if (!project) throw new Error('Project not found');
 
-      const task = await TaskRepository.create({
+      const task = await createTaskAndEmit({
         projectId,
         type: 'feature-map',
         name: 'Map project features',
@@ -861,7 +1025,7 @@ export function registerIpcHandlers() {
         if (createdTempDir) {
           await cleanupFeatureMapTempDir(createdTempDir).catch(() => {});
         }
-        await TaskRepository.delete(task.id).catch(() => {});
+        await deleteTaskAndEmit(task).catch(() => {});
         throw err;
       }
     },
@@ -890,7 +1054,7 @@ export function registerIpcHandlers() {
         tempFilePath: meta.tempFilePath,
         savedFilePath: meta.savedFilePath,
       });
-      await TaskStepRepository.update(stepId, {
+      await updateStepAndEmit(stepId, {
         meta: { ...meta, saved: true },
       });
       await cleanupFeatureMapTempDir(meta.tempDir).catch((err) => {
@@ -900,7 +1064,8 @@ export function registerIpcHandlers() {
           err,
         );
       });
-      await TaskRepository.markUserCompleted(step.taskId);
+      const updatedTask = await TaskRepository.markUserCompleted(step.taskId);
+      emitTaskUpsert(updatedTask);
       return featureMap;
     },
   );
@@ -911,8 +1076,7 @@ export function registerIpcHandlers() {
   ipcMain.handle('projects:removeLogo', async (_, projectId: string) => {
     dbg.ipc('projects:removeLogo %s', projectId);
     const result = await removeProjectLogo(projectId);
-    invalidatePrCache();
-    invalidateWorkItemCache();
+    emitProjectLogoPatch(result);
     return result;
   });
   ipcMain.handle('projects:delete', async (_, id: string) => {
@@ -923,15 +1087,32 @@ export function registerIpcHandlers() {
       await cleanupProjectLogos(id);
       await cleanupProjectLogoPath(project.logoPath);
     }
+    emitCacheEvent({ type: 'project.delete', projectId: id });
     return result;
   });
-  ipcMain.handle('projects:deleteWorktreesFolder', (_, projectId: string) => {
-    dbg.ipc('projects:deleteWorktreesFolder %s', projectId);
-    return deleteProjectWorktreesFolder(projectId);
-  });
-  ipcMain.handle('projects:reorder', (_, orderedIds: string[]) =>
-    ProjectRepository.reorder(orderedIds),
+  ipcMain.handle(
+    'projects:deleteWorktreesFolder',
+    async (_, projectId: string) => {
+      dbg.ipc('projects:deleteWorktreesFolder %s', projectId);
+      await deleteProjectWorktreesFolder(projectId);
+      const project = await ProjectRepository.findById(projectId);
+      if (project) {
+        emitProjectUpsert(project);
+      }
+    },
   );
+  ipcMain.handle('projects:reorder', async (_, orderedIds: string[]) => {
+    const projects = await ProjectRepository.reorder(orderedIds);
+    for (const project of projects) {
+      emitProjectUpsert(project);
+    }
+    emitCacheEvent({
+      type: 'resource.invalidate',
+      resourceKey: 'projects',
+      reason: 'projects reordered',
+    });
+    return projects;
+  });
   ipcMain.handle('projects:getBranches', async (_, projectId: string) => {
     const project = await ProjectRepository.findById(projectId);
     if (!project) {
@@ -1041,7 +1222,7 @@ export function registerIpcHandlers() {
         startCommitHash = await getCurrentCommitHash(project.path);
       }
 
-      const task = await TaskRepository.create({
+      const task = await createTaskAndEmit({
         ...taskData,
         startCommitHash: taskData.startCommitHash ?? startCommitHash,
       });
@@ -1116,7 +1297,7 @@ export function registerIpcHandlers() {
           startCommitHash = await getCurrentCommitHash(project.path);
         }
 
-        task = await TaskRepository.create({
+        task = await createTaskAndEmit({
           ...taskData,
           startCommitHash: taskData.startCommitHash ?? startCommitHash,
         });
@@ -1235,7 +1416,7 @@ export function registerIpcHandlers() {
         }
 
         // Create the task with worktree info and generated name
-        task = await TaskRepository.create({
+        task = await createTaskAndEmit({
           ...taskData,
           name: taskName,
           worktreePath,
@@ -1383,7 +1564,7 @@ export function registerIpcHandlers() {
       const { worktreePath, startCommitHash, branchName } = worktreeResult;
 
       // 5. Create task linked to PR
-      const task = await TaskRepository.create({
+      let task = await createTaskAndEmit({
         projectId,
         prompt: `Review PR #${pullRequestId}: ${pr.title}`,
         name: taskName,
@@ -1420,7 +1601,7 @@ export function registerIpcHandlers() {
             .join('\n');
 
           // Store work item IDs on the task
-          await TaskRepository.update(task.id, {
+          task = await updateTaskAndEmit(task.id, {
             workItemIds: workItems.map((wi) => String(wi.id)),
             workItemUrls: workItems.map((wi) => wi.url),
           });
@@ -1507,7 +1688,7 @@ export function registerIpcHandlers() {
       });
 
       // 9. Create Step 2: Submit Review (pr-review)
-      await TaskStepRepository.create({
+      await StepService.create({
         taskId: task.id,
         name: 'Submit Review',
         type: 'pr-review',
@@ -1538,12 +1719,15 @@ export function registerIpcHandlers() {
     },
   );
   ipcMain.handle('tasks:update', (_, id: string, data: UpdateTask) =>
-    TaskRepository.update(id, data),
+    updateTaskAndEmit(id, data),
   );
   ipcMain.handle(
     'tasks:updatePendingMessage',
     (_, id: string, pendingMessage: string | null) =>
-      TaskRepository.updatePendingMessage(id, pendingMessage),
+      TaskRepository.updatePendingMessage(id, pendingMessage).then((task) => {
+        emitTaskUpsert(task);
+        return task;
+      }),
   );
   ipcMain.handle(
     'tasks:delete',
@@ -1601,7 +1785,14 @@ export function registerIpcHandlers() {
           }),
       );
 
-      await TaskRepository.delete(id);
+      if (task) {
+        await deleteTaskAndEmit(
+          task,
+          steps.map((step) => step.id),
+        );
+      } else {
+        await TaskRepository.delete(id);
+      }
       dbg.ipc('Deleted task %s', id);
     },
   );
@@ -1673,13 +1864,13 @@ export function registerIpcHandlers() {
           submissionError: `${failed} of ${enabledComments.length} comments failed to post. You can retry the remaining comments.`,
         };
 
-        await TaskStepRepository.update(stepId, {
+        const updatedStep = await updateStepAndEmit(stepId, {
           status: 'ready',
           meta: updatedMeta,
         });
 
         await StepService.syncTaskStatus(step.taskId);
-        return TaskStepRepository.findById(stepId);
+        return updatedStep;
       }
 
       const updatedMeta: import('@shared/types').PrReviewStepMeta = {
@@ -1688,7 +1879,7 @@ export function registerIpcHandlers() {
         submittedCount: enabledComments.length - failed,
         submissionError: undefined,
       };
-      await TaskStepRepository.update(stepId, {
+      await updateStepAndEmit(stepId, {
         status: 'completed',
         meta: updatedMeta,
       });
@@ -1699,7 +1890,7 @@ export function registerIpcHandlers() {
         submittedCount: 0,
         submissionError: undefined,
       };
-      await TaskStepRepository.update(stepId, {
+      await updateStepAndEmit(stepId, {
         status: 'completed',
         meta: updatedMeta,
       });
@@ -1720,6 +1911,7 @@ export function registerIpcHandlers() {
 
     // Perform the toggle
     const updatedTask = await TaskRepository.toggleUserCompleted(id);
+    emitTaskUpsert(updatedTask);
 
     if (isCompleting) {
       await cleanupFeatureMapTempDirsForTask(id);
@@ -1742,6 +1934,7 @@ export function registerIpcHandlers() {
         await closeEditorWindowsForTaskWorktree(task);
 
         updatedTask = await TaskRepository.markUserCompleted(id);
+        emitTaskUpsert(updatedTask);
         await cleanupFeatureMapTempDirsForTask(id);
         await agentService.compactRawMessages(id);
       }
@@ -1750,7 +1943,7 @@ export function registerIpcHandlers() {
       // task appears "deworktree'd" immediately. The actual git cleanup runs
       // as a renderer-side background job via tasks:worktree:cleanupAfterCompletion.
       if (options.cleanupWorktree && task.worktreePath && task.branchName) {
-        const clearedTask = await TaskRepository.update(id, {
+        const clearedTask = await updateTaskAndEmit(id, {
           worktreePath: null,
           branchName: null,
           startCommitHash: null,
@@ -1806,12 +1999,29 @@ export function registerIpcHandlers() {
     },
   );
   ipcMain.handle('tasks:clearUserCompleted', (_, id: string) =>
-    TaskRepository.clearUserCompleted(id),
+    TaskRepository.clearUserCompleted(id).then((task) => {
+      emitTaskUpsert(task);
+      return task;
+    }),
   );
   ipcMain.handle(
     'tasks:reorder',
-    (_, projectId: string, activeIds: string[], completedIds: string[]) =>
-      TaskRepository.reorder(projectId, activeIds, completedIds),
+    async (
+      _,
+      projectId: string,
+      activeIds: string[],
+      completedIds: string[],
+    ) => {
+      const tasks = await TaskRepository.reorder(
+        projectId,
+        activeIds,
+        completedIds,
+      );
+      for (const task of tasks) {
+        emitTaskUpsert(task);
+      }
+      return tasks;
+    },
   );
   ipcMain.handle(
     'tasks:addSessionAllowedTool',
@@ -1831,8 +2041,7 @@ export function registerIpcHandlers() {
         matchValue,
       });
 
-      await TaskRepository.update(taskId, { sessionRules: updated });
-      return TaskRepository.findById(taskId);
+      return updateTaskAndEmit(taskId, { sessionRules: updated });
     },
   );
   ipcMain.handle(
@@ -1858,8 +2067,7 @@ export function registerIpcHandlers() {
         delete current[toolName];
       }
 
-      await TaskRepository.update(taskId, { sessionRules: current });
-      return TaskRepository.findById(taskId);
+      return updateTaskAndEmit(taskId, { sessionRules: current });
     },
   );
 
@@ -1886,9 +2094,7 @@ export function registerIpcHandlers() {
         existing: current[tool],
         matchValue,
       });
-      await TaskRepository.update(taskId, { sessionRules: current });
-
-      return TaskRepository.findById(taskId);
+      return updateTaskAndEmit(taskId, { sessionRules: current });
     },
   );
 
@@ -1915,9 +2121,7 @@ export function registerIpcHandlers() {
         existing: current[tool],
         matchValue,
       });
-      await TaskRepository.update(taskId, { sessionRules: current });
-
-      return TaskRepository.findById(taskId);
+      return updateTaskAndEmit(taskId, { sessionRules: current });
     },
   );
 
@@ -2171,9 +2375,7 @@ export function registerIpcHandlers() {
         existing: current[tool],
         matchValue,
       });
-      await TaskRepository.update(taskId, { sessionRules: current });
-
-      return TaskRepository.findById(taskId);
+      return updateTaskAndEmit(taskId, { sessionRules: current });
     },
   );
 
@@ -2449,13 +2651,14 @@ export function registerIpcHandlers() {
       // incorrectly prompts the user for orphan cleanup.
       if (result.success) {
         await closeEditorWindowsForTaskWorktree(task);
-        await TaskRepository.update(taskId, {
+        await updateTaskAndEmit(taskId, {
           worktreePath: null,
           branchName: null,
           startCommitHash: null,
           sourceBranch: null,
         });
-        await TaskRepository.toggleUserCompleted(taskId);
+        const updatedTask = await TaskRepository.toggleUserCompleted(taskId);
+        emitTaskUpsert(updatedTask);
       }
 
       return result;
@@ -3164,7 +3367,7 @@ export function registerIpcHandlers() {
         });
       }
 
-      await TaskRepository.update(taskId, {
+      await updateTaskAndEmit(taskId, {
         worktreePath: null,
         branchName: null,
         startCommitHash: null,
@@ -3269,7 +3472,7 @@ export function registerIpcHandlers() {
       });
 
       // Step 5: Save PR info to task
-      await TaskRepository.update(params.taskId, {
+      await updateTaskAndEmit(params.taskId, {
         pullRequestId: String(pr.id),
         pullRequestUrl: pr.url,
       });
@@ -3284,7 +3487,7 @@ export function registerIpcHandlers() {
           branchCleanup: 'keep',
           force: true,
         });
-        await TaskRepository.update(params.taskId, { worktreePath: null });
+        await updateTaskAndEmit(params.taskId, { worktreePath: null });
       }
 
       return { id: pr.id, url: pr.url, editorCloseWarning };
@@ -4967,7 +5170,7 @@ export function registerIpcHandlers() {
       });
 
       // Create task in system project
-      const task = await TaskRepository.create({
+      const task = await createTaskAndEmit({
         projectId: systemProject.id,
         type: 'skill-creation',
         name: taskName,
@@ -5027,7 +5230,7 @@ export function registerIpcHandlers() {
         if (workspacePath) {
           await cleanupSkillWorkspace(workspacePath).catch(() => {});
         }
-        await TaskRepository.delete(task.id).catch(() => {});
+        await deleteTaskAndEmit(task).catch(() => {});
         throw err;
       }
     },
@@ -5155,7 +5358,7 @@ export function registerIpcHandlers() {
         }
 
         // Mark step as published and completed
-        await TaskStepRepository.update(data.stepId, {
+        await updateStepAndEmit(data.stepId, {
           status: 'completed',
           meta: {
             ...step.meta,
@@ -5164,7 +5367,7 @@ export function registerIpcHandlers() {
         });
 
         // Mark the task as completed
-        await TaskRepository.update(step.taskId, {
+        await updateTaskAndEmit(step.taskId, {
           status: 'completed',
           updatedAt: new Date().toISOString(),
         });

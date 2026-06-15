@@ -15,6 +15,8 @@ export default defineConfig({
       'shared/**/*.test.ts',
       'electron/**/*.test.ts',
       'src/lib/**/*.test.ts',
+      'src/hooks/**/*.test.ts',
+      'src/cache/**/*.test.ts',
       'src/features/agent/ui-diff-view/**/*.test.ts',
       'src/features/agent/ui-message-stream/**/*.test.ts',
       'src/features/agent/ui-worktree-actions/**/*.test.ts',

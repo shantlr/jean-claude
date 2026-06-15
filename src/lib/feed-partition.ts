@@ -19,12 +19,26 @@ const PRIORITY_ORDER: Record<FeedItem['projectPriority'], number> = {
   low: 2,
 };
 
+export function getFeedPullRequestIdentityKey(item: FeedItem) {
+  if (item.pullRequestId == null) {
+    return null;
+  }
+
+  if (item.pullRequestProviderId && item.pullRequestRepoId) {
+    return `${item.pullRequestProviderId}:${item.pullRequestRepoId}:${item.pullRequestId}`;
+  }
+
+  return `${item.projectId}:${item.pullRequestId}`;
+}
+
 const byManualLowPriorityThenProjectPriority = ({
   lowPriorityIds,
   prProjectOrder,
+  getProjectPriority,
 }: {
   lowPriorityIds: Set<string>;
   prProjectOrder: Map<string, number>;
+  getProjectPriority: (item: FeedItem) => FeedItem['projectPriority'];
 }) => {
   return (a: FeedItem, b: FeedItem) => {
     const manualLow =
@@ -43,8 +57,9 @@ const byManualLowPriorityThenProjectPriority = ({
       if (projectOrder !== 0) return projectOrder;
     }
 
-    const priority =
-      PRIORITY_ORDER[a.projectPriority] - PRIORITY_ORDER[b.projectPriority];
+    const aPriority = getProjectPriority(a);
+    const bPriority = getProjectPriority(b);
+    const priority = PRIORITY_ORDER[aPriority] - PRIORITY_ORDER[bPriority];
     if (priority !== 0) return priority;
 
     return b.timestamp < a.timestamp ? -1 : b.timestamp > a.timestamp ? 1 : 0;
@@ -71,8 +86,10 @@ export function partitionFeedItems({
   pinnedIds,
   dismissedIds,
   lowPriorityIds,
-  taskOwnedPrIds,
+  taskOwnedPrIds = new Set(),
+  taskOwnedPrKeys = new Set(),
   prProjectOrder = [],
+  getProjectPriority = (item) => item.projectPriority,
 }: {
   visibleFeedItems: FeedItem[];
   hiddenProjectIdSet: Set<string>;
@@ -80,8 +97,10 @@ export function partitionFeedItems({
   pinnedIds: Set<string>;
   dismissedIds: Set<string>;
   lowPriorityIds: Set<string>;
-  taskOwnedPrIds: Set<number>;
+  taskOwnedPrIds?: Set<number>;
+  taskOwnedPrKeys?: Set<string>;
   prProjectOrder?: string[];
+  getProjectPriority?: (item: FeedItem) => FeedItem['projectPriority'];
 }) {
   const items = visibleFeedItems.filter(
     (item) => !hiddenProjectIdSet.has(item.projectId),
@@ -99,7 +118,8 @@ export function partitionFeedItems({
     if (
       item.source === 'pull-request' &&
       item.pullRequestId != null &&
-      taskOwnedPrIds.has(item.pullRequestId)
+      (taskOwnedPrIds.has(item.pullRequestId) ||
+        taskOwnedPrKeys.has(getFeedPullRequestIdentityKey(item) ?? ''))
     ) {
       continue;
     }
@@ -118,7 +138,8 @@ export function partitionFeedItems({
     if (
       item.source === 'pull-request' &&
       item.pullRequestId != null &&
-      taskOwnedPrIds.has(item.pullRequestId)
+      (taskOwnedPrIds.has(item.pullRequestId) ||
+        taskOwnedPrKeys.has(getFeedPullRequestIdentityKey(item) ?? ''))
     ) {
       continue;
     }
@@ -145,9 +166,9 @@ export function partitionFeedItems({
       prReviews.push(item);
     } else if (lowPriorityIds.has(item.id)) {
       low.push(item);
-    } else if (item.projectPriority === 'low') {
+    } else if (getProjectPriority(item) === 'low') {
       low.push(item);
-    } else if (item.projectPriority === 'high') {
+    } else if (getProjectPriority(item) === 'high') {
       high.push(item);
     } else {
       rest.push(item);
@@ -161,6 +182,7 @@ export function partitionFeedItems({
       prProjectOrder: new Map(
         prProjectOrder.map((projectId, index) => [projectId, index]),
       ),
+      getProjectPriority,
     }),
   );
   activeTasks.sort(bySourceThenTimestamp);

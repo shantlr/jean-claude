@@ -36,6 +36,10 @@ export function TaskList() {
     () => completedTasksData?.pages.flatMap((page) => page.tasks) ?? [],
     [completedTasksData],
   );
+  const projectNameById = useMemo(
+    () => new Map(projects.map((project) => [project.id, project.name])),
+    [projects],
+  );
 
   // Filter tasks by selected project
   const filteredActiveTasks = useMemo(
@@ -267,7 +271,11 @@ export function TaskList() {
                   key={task.id}
                   task={task}
                   index={index}
-                  projectName={task.projectName}
+                  projectName={
+                    task.projectName ??
+                    projectNameById.get(task.projectId) ??
+                    'Unknown Project'
+                  }
                   isSelected={task.id === currentTaskId}
                 />
               ))
@@ -286,7 +294,11 @@ export function TaskList() {
                   <TaskSummaryCard
                     key={task.id}
                     task={task}
-                    projectName={task.projectName}
+                    projectName={
+                      task.projectName ??
+                      projectNameById.get(task.projectId) ??
+                      'Unknown Project'
+                    }
                     isSelected={task.id === currentTaskId}
                   />
                 ))}

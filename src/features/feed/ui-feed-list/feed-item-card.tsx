@@ -47,6 +47,8 @@ import { useOpenReviewCommentCount } from '@/stores/review-comments';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { FeedItem, FeedItemAttention } from '@shared/feed-types';
 
+import { useFeedItemProject } from './use-feed-item-project';
+
 // ─── Status color mapping ────────────────────────────────────────
 function statusColor(attention: FeedItemAttention): string {
   switch (attention) {
@@ -75,20 +77,24 @@ function statusColor(attention: FeedItemAttention): string {
 }
 
 function FeedProjectLabel({ item }: { item: FeedItem }) {
+  const project = useFeedItemProject(item);
+
   return (
     <span className="min-w-0">
-      <span className="text-ink-3 text-[11px]">{item.projectName}</span>
+      <span className="text-ink-3 text-[11px]">{project.name}</span>
     </span>
   );
 }
 
 function FeedProjectBackgroundLogo({ item }: { item: FeedItem }) {
+  const project = useFeedItemProject(item);
+
   return (
     <ProjectLogoBackground
       project={{
-        name: item.projectName,
-        color: item.projectColor,
-        logoPath: item.projectLogoPath ?? null,
+        name: project.name,
+        color: project.color,
+        logoPath: project.logoPath,
       }}
       showColorFallback
       fixedHeight

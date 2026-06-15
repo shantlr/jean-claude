@@ -37,6 +37,7 @@ import type { FeedItem } from '@shared/feed-types';
 
 import { FeedItemCard } from './feed-item-card';
 import { FeedNoteCard } from './feed-note-card';
+import { useFeedItemProject } from './use-feed-item-project';
 
 type PrReviewContextMenuState = {
   item: FeedItem;
@@ -53,28 +54,28 @@ type PrProjectOrderOption = {
 };
 
 function MiniProjectLabel({ item }: { item: FeedItem }) {
-  if (item.projectLogoPath) {
+  const project = useFeedItemProject(item);
+
+  if (project.logoPath) {
     return (
       <span className="inline-flex min-w-0 items-center gap-1.5">
         <ProjectLogo
           project={{
-            name: item.projectName,
-            color: item.projectColor,
-            logoPath: item.projectLogoPath,
+            name: project.name,
+            color: project.color,
+            logoPath: project.logoPath,
           }}
           size="xs"
         />
         <span className="text-ink-2 truncate text-[10.5px]">
-          {item.projectName}
+          {project.name}
         </span>
       </span>
     );
   }
 
   return (
-    <span className="text-ink-2 truncate text-[10.5px]">
-      {item.projectName}
-    </span>
+    <span className="text-ink-2 truncate text-[10.5px]">{project.name}</span>
   );
 }
 
@@ -821,7 +822,8 @@ function PrReviewCarouselCard({
               : { translateX: '0%', scale: 0.7, opacity: 0, zIndex: 1 };
 
   const stateLabel = item.hasNewActivity ? 'UPDATED' : 'REVIEW';
-  const isHighPriority = item.projectPriority === 'high';
+  const project = useFeedItemProject(item);
+  const isHighPriority = project.priority === 'high';
   const accent = isHighPriority
     ? 'var(--color-status-fail)'
     : 'var(--color-status-pr)';

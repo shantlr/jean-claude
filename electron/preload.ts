@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
 import { AGENT_CHANNELS } from '@shared/agent-types';
+import type { CacheEvent, CacheSubscriptionUpdate } from '@shared/cache-events';
 import type { DebugLogEntry } from '@shared/debug-log-types';
 import type {
   GlobalPrompt,
@@ -31,6 +32,15 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.on('windowState:fullscreen-changed', handler);
       return () =>
         ipcRenderer.removeListener('windowState:fullscreen-changed', handler);
+    },
+  },
+  cache: {
+    setSubscriptions: (update: CacheSubscriptionUpdate) =>
+      ipcRenderer.invoke('cache:setSubscriptions', update),
+    onEvent: (callback: (event: CacheEvent) => void) => {
+      const handler = (_: unknown, event: CacheEvent) => callback(event);
+      ipcRenderer.on('cache:event', handler);
+      return () => ipcRenderer.removeListener('cache:event', handler);
     },
   },
   projects: {

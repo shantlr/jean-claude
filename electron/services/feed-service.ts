@@ -84,6 +84,20 @@ function linkedPrKey(linkedPr: LinkedPr): string {
   return `${linkedPr.projectId}:${linkedPr.repoId}:${linkedPr.prId}`;
 }
 
+function linkedPrIdentityKey(providerId: string, linkedPr: LinkedPr): string {
+  return `${providerId}:${linkedPr.repoId}:${linkedPr.prId}`;
+}
+
+function feedItemPrIdentityKey(item: FeedItem): string | null {
+  if (item.pullRequestId == null) return null;
+
+  if (item.pullRequestProviderId && item.pullRequestRepoId) {
+    return `${item.pullRequestProviderId}:${item.pullRequestRepoId}:${item.pullRequestId}`;
+  }
+
+  return `${item.projectId}:${item.pullRequestId}`;
+}
+
 /**
  * Derives the attention level for a task based on its own status and its steps' statuses.
  * Priority order: errored > needs-permission > completed > running > waiting
@@ -198,6 +212,8 @@ export async function getTaskFeedItems({
       projectName: string;
       projectColor: string;
       projectLogoPath: string | null;
+      repoProviderId: string | null;
+      repoId: string | null;
     };
 
     const taskFeedItem: FeedItem = {
@@ -219,6 +235,8 @@ export async function getTaskFeedItems({
       pullRequestId: task.pullRequestId
         ? parseInt(task.pullRequestId, 10)
         : undefined,
+      pullRequestProviderId: taskWithProject.repoProviderId ?? undefined,
+      pullRequestRepoId: taskWithProject.repoId ?? undefined,
       pullRequestUrl: task.pullRequestUrl ?? undefined,
       workItemIds: task.workItemIds ?? undefined,
       workItemUrls: task.workItemUrls ?? undefined,
@@ -248,6 +266,8 @@ export async function getTaskFeedItems({
         projectName: string;
         projectColor: string;
         projectLogoPath: string | null;
+        repoProviderId: string | null;
+        repoId: string | null;
       };
       const steps = childStepsByTaskId[child.id] ?? [];
       const childAttention = deriveTaskAttention({
@@ -279,6 +299,8 @@ export async function getTaskFeedItems({
         pullRequestId: child.pullRequestId
           ? parseInt(child.pullRequestId, 10)
           : undefined,
+        pullRequestProviderId: child.repoProviderId ?? undefined,
+        pullRequestRepoId: child.repoId ?? undefined,
         pullRequestUrl: child.pullRequestUrl ?? undefined,
         workItemUrls: child.workItemUrls
           ? JSON.parse(child.workItemUrls as string)
@@ -400,21 +422,29 @@ async function enrichTaskFeedItemsWithPrStatus({
   prItems: FeedItem[];
 }): Promise<void> {
   // --- Enrich task feed items with PR status ---
-  // Build a set of known active PR IDs from the PR feed
-  const activePrMap = new Map(
-    prItems
-      .filter((p) => p.pullRequestId)
-      .map((p) => [
-        `${p.projectId}:${p.pullRequestId as number}`,
-        {
-          isDraft: !!p.isDraft,
-          mergeStatus: p.pullRequestMergeStatus,
-          approvedBy: p.approvedBy,
-          activeThreadCount: p.activeThreadCount,
-          unresolvedCommentCount: p.unresolvedCommentCount,
-        },
-      ]),
-  );
+  // Build a set of known active PRs from the PR feed.
+  const activePrMap = new Map<
+    string,
+    {
+      isDraft: boolean;
+      mergeStatus: FeedItem['pullRequestMergeStatus'];
+      approvedBy: FeedItem['approvedBy'];
+      activeThreadCount: FeedItem['activeThreadCount'];
+      unresolvedCommentCount: FeedItem['unresolvedCommentCount'];
+    }
+  >();
+  for (const prItem of prItems) {
+    const key = feedItemPrIdentityKey(prItem);
+    if (!key) continue;
+
+    activePrMap.set(key, {
+      isDraft: !!prItem.isDraft,
+      mergeStatus: prItem.pullRequestMergeStatus,
+      approvedBy: prItem.approvedBy,
+      activeThreadCount: prItem.activeThreadCount,
+      unresolvedCommentCount: prItem.unresolvedCommentCount,
+    });
+  }
 
   // Collect task PRs that need status fetching (not already active in feed)
   const projects = await ProjectRepository.findAll();
@@ -431,9 +461,8 @@ async function enrichTaskFeedItemsWithPrStatus({
 
     // Case 1: task has pullRequestId directly — check if we know the status
     if (item.pullRequestId) {
-      const activePrInfo = activePrMap.get(
-        `${item.projectId}:${item.pullRequestId}`,
-      );
+      const itemPrKey = feedItemPrIdentityKey(item);
+      const activePrInfo = itemPrKey ? activePrMap.get(itemPrKey) : undefined;
       if (activePrInfo) {
         // PR is active in the feed — mark it
         item.workItemPrStatus = 'active';
@@ -639,6 +668,8 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
                 providerUserEmailMap.get(project.repoProviderId),
             isDraft: pr.isDraft,
             pullRequestId: pr.id,
+            pullRequestProviderId: project.repoProviderId ?? undefined,
+            pullRequestRepoId: project.repoId ?? undefined,
             pullRequestUrl: pr.url,
             pullRequestMergeStatus: pr.mergeStatus,
             approvedBy: pr.reviewers
@@ -846,12 +877,13 @@ async function fetchWorkItemFeedItems(
     { status: 'active' | 'completed' | 'abandoned'; url: string }
   >();
   for (const prItem of prFeedItems) {
-    if (prItem.pullRequestId) {
-      knownActivePrs.set(String(prItem.pullRequestId), {
-        status: 'active',
-        url: prItem.pullRequestUrl ?? '',
-      });
-    }
+    const key = feedItemPrIdentityKey(prItem);
+    if (!key) continue;
+
+    knownActivePrs.set(key, {
+      status: 'active',
+      url: prItem.pullRequestUrl ?? '',
+    });
   }
 
   const feedItems: FeedItem[] = [];
@@ -859,7 +891,10 @@ async function fetchWorkItemFeedItems(
 
   // Collect linked PRs that we DON'T already know about (not in the active PR feed)
   const unknownPrsByProvider = new Map<string, LinkedPr[]>();
-  const workItemPrMap = new Map<number, LinkedPr[]>(); // workItemId → linked PRs
+  const workItemPrMap = new Map<
+    string,
+    { providerId: string; linkedPrs: LinkedPr[] }
+  >();
 
   for (const project of wiProjects) {
     const key = `${project.workItemProviderId}:${project.workItemProjectName}`;
@@ -875,10 +910,13 @@ async function fetchWorkItemFeedItems(
       for (const wi of workItems) {
         // Track linked PRs — only queue unknown ones for fetching
         if (wi.linkedPrs && wi.linkedPrs.length > 0) {
-          workItemPrMap.set(wi.id, wi.linkedPrs);
           const providerId = project.workItemProviderId!;
+          workItemPrMap.set(`${project.id}:${wi.id}`, {
+            providerId,
+            linkedPrs: wi.linkedPrs,
+          });
           for (const lpr of wi.linkedPrs) {
-            if (!knownActivePrs.has(String(lpr.prId))) {
+            if (!knownActivePrs.has(linkedPrIdentityKey(providerId, lpr))) {
               if (!unknownPrsByProvider.has(providerId)) {
                 unknownPrsByProvider.set(providerId, []);
               }
@@ -924,8 +962,11 @@ async function fetchWorkItemFeedItems(
         providerId,
         linkedPrs,
       });
-      for (const [key, status] of statuses) {
-        allPrStatuses.set(key, status);
+      for (const linkedPr of linkedPrs) {
+        const status = statuses.get(linkedPrKey(linkedPr));
+        if (status) {
+          allPrStatuses.set(linkedPrIdentityKey(providerId, linkedPr), status);
+        }
       }
     } catch (err) {
       dbg.feed(
@@ -939,16 +980,18 @@ async function fetchWorkItemFeedItems(
   // Enrich feed items with PR status (use the "best" status: completed > active > abandoned)
   for (const item of feedItems) {
     if (!item.workItemId) continue;
-    const linkedPrs = workItemPrMap.get(item.workItemId);
-    if (!linkedPrs || linkedPrs.length === 0) continue;
+    const workItemPrInfo = workItemPrMap.get(
+      `${item.projectId}:${item.workItemId}`,
+    );
+    if (!workItemPrInfo || workItemPrInfo.linkedPrs.length === 0) continue;
 
     // Pick the most relevant PR status
     let bestStatus: 'active' | 'completed' | 'abandoned' | undefined;
     let bestUrl: string | undefined;
-    for (const lpr of linkedPrs) {
-      const prInfo =
-        allPrStatuses.get(linkedPrKey(lpr)) ??
-        allPrStatuses.get(String(lpr.prId));
+    for (const lpr of workItemPrInfo.linkedPrs) {
+      const prInfo = allPrStatuses.get(
+        linkedPrIdentityKey(workItemPrInfo.providerId, lpr),
+      );
       if (!prInfo) continue;
       // Prefer completed (merged), then active, then abandoned
       if (

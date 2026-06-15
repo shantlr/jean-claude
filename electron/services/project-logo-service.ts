@@ -564,13 +564,16 @@ export async function deleteGeneratedProjectLogo({
   }
 
   if (project.logoPath === logoPath) {
-    await ProjectRepository.update(projectId, {
+    const updatedProject = await ProjectRepository.update(projectId, {
       logoPath: null,
       logoSource: null,
     });
+    await removeLogoFile(logoPath);
+    return updatedProject;
   }
 
   await removeLogoFile(logoPath);
+  return undefined;
 }
 
 export async function removeProjectLogo(projectId: string) {
