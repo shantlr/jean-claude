@@ -41,6 +41,7 @@ export function PrInlineCommentThread({
           uniqueName: comment.uniqueName ?? comment.author,
           imageUrl: comment.imageUrl,
         },
+        usersLiked: [],
         publishedDate: comment.publishedDate ?? new Date().toISOString(),
         lastUpdatedDate: comment.publishedDate ?? new Date().toISOString(),
       }))}

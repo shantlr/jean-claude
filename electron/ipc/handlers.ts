@@ -156,6 +156,7 @@ import {
   addThreadReply,
   updateThreadComment,
   deleteThreadComment,
+  setThreadCommentLike,
   updateThreadStatus,
   searchIdentities,
   getCurrentUser,
@@ -3181,6 +3182,22 @@ export function registerIpcHandlers() {
         commentId: number;
       },
     ) => deleteThreadComment(params),
+  );
+
+  ipcMain.handle(
+    'azureDevOps:setThreadCommentLike',
+    (
+      _,
+      params: {
+        providerId: string;
+        projectId: string;
+        repoId: string;
+        pullRequestId: number;
+        threadId: number;
+        commentId: number;
+        liked: boolean;
+      },
+    ) => setThreadCommentLike(params),
   );
 
   ipcMain.handle(

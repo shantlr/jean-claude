@@ -813,6 +813,15 @@ export interface Api {
       threadId: number;
       commentId: number;
     }) => Promise<void>;
+    setThreadCommentLike: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      threadId: number;
+      commentId: number;
+      liked: boolean;
+    }) => Promise<void>;
     updateThreadStatus: (params: {
       providerId: string;
       projectId: string;
@@ -1784,6 +1793,9 @@ export const api: Api = hasWindowApi
           throw new Error('API not available');
         },
         deleteThreadComment: async () => {
+          throw new Error('API not available');
+        },
+        setThreadCommentLike: async () => {
           throw new Error('API not available');
         },
         updateThreadStatus: async () => {

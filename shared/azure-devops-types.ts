@@ -115,6 +115,12 @@ export interface AzureDevOpsComment {
     uniqueName: string;
     imageUrl?: string;
   };
+  usersLiked: Array<{
+    id?: string;
+    displayName: string;
+    uniqueName?: string;
+    imageUrl?: string;
+  }>;
   publishedDate: string;
   lastUpdatedDate: string;
 }

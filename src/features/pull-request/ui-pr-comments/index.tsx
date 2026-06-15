@@ -6,6 +6,7 @@ import {
   FileText,
   GitPullRequest,
   Pencil,
+  ThumbsUp,
   Trash2,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -28,6 +29,7 @@ import {
   useCurrentAzureUser,
   useDeleteThreadComment,
   usePullRequestFileContent,
+  useSetThreadCommentLike,
   useUpdateThreadComment,
   useUpdateThreadStatus,
 } from '@/hooks/use-pull-requests';
@@ -733,6 +735,7 @@ function ThreadComment({
   const { data: currentUser } = useCurrentAzureUser(projectId);
   const updateComment = useUpdateThreadComment(projectId, prId);
   const deleteComment = useDeleteThreadComment(projectId, prId);
+  const setCommentLike = useSetThreadCommentLike(projectId, prId);
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(decodedCommentContent);
   const [editError, setEditError] = useState<string | null>(null);
@@ -745,6 +748,15 @@ function ThreadComment({
     (currentUser.id === comment.author.id ||
       currentUser.identityId === comment.author.id ||
       currentUserEmail === commentUserEmail);
+  const likedByCurrentUser = comment.usersLiked.some((user) => {
+    const userEmail = user.uniqueName?.toLowerCase();
+    return (
+      user.id === currentUser?.id ||
+      user.id === currentUser?.identityId ||
+      (!!userEmail && userEmail === currentUserEmail)
+    );
+  });
+  const likeCount = comment.usersLiked.length;
 
   const saveEdit = async (body: string, images: PromptImagePart[] = []) => {
     if (updateComment.isPending || isUploadingEditImages) return;
@@ -805,6 +817,29 @@ function ThreadComment({
               {formatRelativeTime(comment.publishedDate)}
             </span>
           </div>
+          {!isEditing && currentUser && (
+            <button
+              type="button"
+              onClick={() => {
+                setCommentLike.mutate({
+                  threadId,
+                  commentId: comment.id,
+                  liked: !likedByCurrentUser,
+                });
+              }}
+              disabled={setCommentLike.isPending}
+              className={clsx(
+                'flex shrink-0 items-center gap-1 rounded px-1.5 py-1 text-[11px] transition-colors disabled:opacity-50',
+                likedByCurrentUser
+                  ? 'bg-acc/20 text-acc-ink hover:bg-acc/30'
+                  : 'text-ink-3 hover:bg-glass-light hover:text-ink-1',
+              )}
+              title={likedByCurrentUser ? 'Remove thumbs up' : 'Thumbs up'}
+            >
+              <ThumbsUp className="h-3.5 w-3.5" />
+              {likeCount > 0 && <span>{likeCount}</span>}
+            </button>
+          )}
           {canEdit && !isEditing && (
             <div className="flex shrink-0 items-center gap-0.5">
               <IconButton

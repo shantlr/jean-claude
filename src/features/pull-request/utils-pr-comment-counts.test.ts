@@ -21,6 +21,7 @@ function thread(
       content: `Comment ${index + 1}`,
       commentType: 'text',
       author: { displayName: 'Reviewer', uniqueName: 'reviewer@example.com' },
+      usersLiked: [],
       publishedDate: '2026-05-30T00:00:00.000Z',
       lastUpdatedDate: '2026-05-30T00:00:00.000Z',
     })),

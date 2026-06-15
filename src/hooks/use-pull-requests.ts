@@ -495,6 +495,31 @@ export function useDeleteThreadComment(projectId: string, prId: number) {
   });
 }
 
+export function useSetThreadCommentLike(projectId: string, prId: number) {
+  const queryClient = useQueryClient();
+  const repoInfo = useProjectRepoInfo(projectId);
+
+  return useMutation<
+    void,
+    Error,
+    { threadId: number; commentId: number; liked: boolean }
+  >({
+    mutationFn: (params) =>
+      api.azureDevOps.setThreadCommentLike({
+        providerId: repoInfo!.providerId,
+        projectId: repoInfo!.projectId,
+        repoId: repoInfo!.repoId,
+        pullRequestId: prId,
+        ...params,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['pull-request-threads', projectId, prId],
+      });
+    },
+  });
+}
+
 export function useUpdateThreadStatus(projectId: string, prId: number) {
   const queryClient = useQueryClient();
   const repoInfo = useProjectRepoInfo(projectId);

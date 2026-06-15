@@ -484,6 +484,15 @@ contextBridge.exposeInMainWorld('api', {
       threadId: number;
       commentId: number;
     }) => ipcRenderer.invoke('azureDevOps:deleteThreadComment', params),
+    setThreadCommentLike: (params: {
+      providerId: string;
+      projectId: string;
+      repoId: string;
+      pullRequestId: number;
+      threadId: number;
+      commentId: number;
+      liked: boolean;
+    }) => ipcRenderer.invoke('azureDevOps:setThreadCommentLike', params),
     updateThreadStatus: (params: {
       providerId: string;
       projectId: string;

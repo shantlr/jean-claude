@@ -1723,9 +1723,38 @@ interface CommentResponse {
     uniqueName: string;
     imageUrl?: string;
   };
+  usersLiked?: Array<{
+    id?: string;
+    displayName: string;
+    uniqueName?: string;
+    imageUrl?: string;
+  }>;
   publishedDate: string;
   lastUpdatedDate: string;
   lastContentUpdatedDate?: string;
+}
+
+function mapCommentResponse(comment: CommentResponse): AzureDevOpsComment {
+  return {
+    id: comment.id,
+    parentCommentId: comment.parentCommentId,
+    content: comment.content,
+    commentType: mapCommentType(comment.commentType),
+    author: {
+      id: comment.author.id,
+      displayName: comment.author.displayName,
+      uniqueName: comment.author.uniqueName,
+      imageUrl: comment.author.imageUrl,
+    },
+    usersLiked: (comment.usersLiked ?? []).map((user) => ({
+      id: user.id,
+      displayName: user.displayName,
+      uniqueName: user.uniqueName,
+      imageUrl: user.imageUrl,
+    })),
+    publishedDate: comment.publishedDate,
+    lastUpdatedDate: comment.lastUpdatedDate,
+  };
 }
 
 interface ThreadResponse {
@@ -2790,20 +2819,7 @@ export async function getPullRequestThreads(params: {
         comments: thread.comments
           // Filter out system comments within threads
           .filter((c) => c.commentType !== 'system')
-          .map((comment) => ({
-            id: comment.id,
-            parentCommentId: comment.parentCommentId,
-            content: comment.content,
-            commentType: mapCommentType(comment.commentType),
-            author: {
-              id: comment.author.id,
-              displayName: comment.author.displayName,
-              uniqueName: comment.author.uniqueName,
-              imageUrl: comment.author.imageUrl,
-            },
-            publishedDate: comment.publishedDate,
-            lastUpdatedDate: comment.lastUpdatedDate,
-          })),
+          .map(mapCommentResponse),
         isDeleted: thread.isDeleted,
       }))
   );
@@ -2849,20 +2865,7 @@ export async function addPullRequestComment(params: {
           rightFileEnd: thread.threadContext.rightFileEnd,
         }
       : undefined,
-    comments: thread.comments.map((comment) => ({
-      id: comment.id,
-      parentCommentId: comment.parentCommentId,
-      content: comment.content,
-      commentType: mapCommentType(comment.commentType),
-      author: {
-        id: comment.author.id,
-        displayName: comment.author.displayName,
-        uniqueName: comment.author.uniqueName,
-        imageUrl: comment.author.imageUrl,
-      },
-      publishedDate: comment.publishedDate,
-      lastUpdatedDate: comment.lastUpdatedDate,
-    })),
+    comments: thread.comments.map(mapCommentResponse),
     isDeleted: thread.isDeleted,
   };
 }
@@ -3067,20 +3070,31 @@ export async function addThreadReply(params: {
 
   const comment: CommentResponse = await response.json();
 
-  return {
-    id: comment.id,
-    parentCommentId: comment.parentCommentId,
-    content: comment.content,
-    commentType: mapCommentType(comment.commentType),
-    author: {
-      id: comment.author.id,
-      displayName: comment.author.displayName,
-      uniqueName: comment.author.uniqueName,
-      imageUrl: comment.author.imageUrl,
-    },
-    publishedDate: comment.publishedDate,
-    lastUpdatedDate: comment.lastUpdatedDate,
-  };
+  return mapCommentResponse(comment);
+}
+
+export async function setThreadCommentLike(params: {
+  providerId: string;
+  projectId: string;
+  repoId: string;
+  pullRequestId: number;
+  threadId: number;
+  commentId: number;
+  liked: boolean;
+}): Promise<void> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+
+  const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}/threads/${params.threadId}/comments/${params.commentId}/likes?api-version=7.1`;
+
+  const response = await fetch(url, {
+    method: params.liked ? 'POST' : 'DELETE',
+    headers: { Authorization: authHeader },
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to update comment like: ${error}`);
+  }
 }
 
 export async function deleteThreadComment(params: {
@@ -3137,20 +3151,7 @@ export async function updateThreadComment(params: {
 
   const comment: CommentResponse = await response.json();
 
-  return {
-    id: comment.id,
-    parentCommentId: comment.parentCommentId,
-    content: comment.content,
-    commentType: mapCommentType(comment.commentType),
-    author: {
-      id: comment.author.id,
-      displayName: comment.author.displayName,
-      uniqueName: comment.author.uniqueName,
-      imageUrl: comment.author.imageUrl,
-    },
-    publishedDate: comment.publishedDate,
-    lastUpdatedDate: comment.lastUpdatedDate,
-  };
+  return mapCommentResponse(comment);
 }
 
 const THREAD_STATUS_MAP: Record<string, number> = {
@@ -3245,20 +3246,7 @@ export async function addPullRequestFileComment(params: {
           rightFileEnd: thread.threadContext.rightFileEnd,
         }
       : undefined,
-    comments: thread.comments.map((comment) => ({
-      id: comment.id,
-      parentCommentId: comment.parentCommentId,
-      content: comment.content,
-      commentType: mapCommentType(comment.commentType),
-      author: {
-        id: comment.author.id,
-        displayName: comment.author.displayName,
-        uniqueName: comment.author.uniqueName,
-        imageUrl: comment.author.imageUrl,
-      },
-      publishedDate: comment.publishedDate,
-      lastUpdatedDate: comment.lastUpdatedDate,
-    })),
+    comments: thread.comments.map(mapCommentResponse),
     isDeleted: thread.isDeleted,
   };
 }
