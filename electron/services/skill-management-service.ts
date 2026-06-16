@@ -31,6 +31,7 @@ import { getSourceProvenanceByInstalledPathMap } from './source-manifest-store';
 // Backend-expected paths contain symlinks pointing to this canonical location:
 //   ~/.claude/skills/<skillName>  →  ~/.config/jean-claude/skills/user/<skillName>/
 //   ~/.config/opencode/skills/<skillName>  →  ~/.config/jean-claude/skills/user/<skillName>/
+//   ~/.codex/skills/<skillName>  →  ~/.config/jean-claude/skills/user/<skillName>/
 //
 // Enable  = create symlink in the backend's skills dir
 // Disable = remove the symlink (canonical stays in JC folder, skill is never lost)
@@ -60,12 +61,7 @@ const CLAUDE_PLUGINS_CACHE_DIR = path.join(
 
 // --- Backend path configurations ---
 
-type SkillManagementBackendType = Exclude<AgentBackendType, 'codex'>;
-
-const SKILL_PATH_CONFIGS: Record<
-  SkillManagementBackendType,
-  AgentSkillPathConfig
-> = {
+const SKILL_PATH_CONFIGS: Record<AgentBackendType, AgentSkillPathConfig> = {
   'claude-code': {
     userSkillsDir: path.join(os.homedir(), '.claude', 'skills'),
     projectSkillsDir: '.claude/skills',
@@ -78,14 +74,16 @@ const SKILL_PATH_CONFIGS: Record<
     projectSkillsDir: '.opencode/skills',
     projectSkillsDirs: ['.opencode/skills', '.claude/skills', '.agents/skills'],
   },
+  codex: {
+    userSkillsDir: path.join(os.homedir(), '.codex', 'skills'),
+    projectSkillsDir: '.codex/skills',
+    projectSkillsDirs: ['.codex/skills', '.agents/skills'],
+  },
 };
 
 export function getSkillPathConfig(
   backendType: AgentBackendType,
 ): AgentSkillPathConfig {
-  if (backendType === 'codex') {
-    throw new Error('Codex skills are not implemented yet');
-  }
   return SKILL_PATH_CONFIGS[backendType];
 }
 
@@ -341,11 +339,10 @@ async function discoverJcManagedUserSkills(): Promise<ManagedSkill[]> {
       const enabledBackends: Partial<Record<AgentBackendType, boolean>> = {};
       for (const [backend, config] of Object.entries(SKILL_PATH_CONFIGS)) {
         const symlinkPath = path.join(config.userSkillsDir, entry.name);
-        enabledBackends[backend as SkillManagementBackendType] =
-          await symlinkPointsTo({
-            symlinkPath,
-            targetPath: canonicalPath,
-          });
+        enabledBackends[backend as AgentBackendType] = await symlinkPointsTo({
+          symlinkPath,
+          targetPath: canonicalPath,
+        });
       }
 
       skills.push({
@@ -397,11 +394,10 @@ async function discoverBuiltinSkills(): Promise<ManagedSkill[]> {
       const enabledBackends: Partial<Record<AgentBackendType, boolean>> = {};
       for (const [backend, config] of Object.entries(SKILL_PATH_CONFIGS)) {
         const symlinkPath = path.join(config.userSkillsDir, entry.name);
-        enabledBackends[backend as SkillManagementBackendType] =
-          await symlinkPointsTo({
-            symlinkPath,
-            targetPath: skillDir,
-          });
+        enabledBackends[backend as AgentBackendType] = await symlinkPointsTo({
+          symlinkPath,
+          targetPath: skillDir,
+        });
       }
 
       skills.push({
@@ -1009,7 +1005,7 @@ export async function getAllManagedSkillsUnified({
 
   // Per-backend: legacy, project, and external skills (deduplicated)
   for (const [backend, config] of Object.entries(SKILL_PATH_CONFIGS)) {
-    const backendType = backend as SkillManagementBackendType;
+    const backendType = backend as AgentBackendType;
 
     const legacy = await discoverLegacyUserSkills(backendType);
     for (const skill of legacy) {
@@ -1060,21 +1056,20 @@ export async function getAllManagedSkillsUnified({
 }
 
 /**
- * Returns a preview of all legacy skills across both backends, classifying each
+ * Returns a preview of all legacy skills across all backends, classifying each
  * as migratable, conflicting, or invalid. No filesystem changes are made.
  */
 export async function previewLegacySkillMigration(): Promise<LegacySkillMigrationPreviewResult> {
-  const claudeCandidates = await discoverLegacyMigrationCandidates({
-    backendType: 'claude-code',
-  });
-  const opencodeCandidates = await discoverLegacyMigrationCandidates({
-    backendType: 'opencode',
-  });
+  const candidates = await Promise.all(
+    Object.keys(SKILL_PATH_CONFIGS).map((backendType) =>
+      discoverLegacyMigrationCandidates({
+        backendType: backendType as AgentBackendType,
+      }),
+    ),
+  );
 
   const items = await Promise.all(
-    [...claudeCandidates, ...opencodeCandidates].map((candidate) =>
-      createMigrationPreviewItem(candidate),
-    ),
+    candidates.flat().map((candidate) => createMigrationPreviewItem(candidate)),
   );
 
   return { items };
@@ -1387,11 +1382,10 @@ export async function updateSkill({
   if (isJcManaged) {
     for (const [backend, cfg] of Object.entries(SKILL_PATH_CONFIGS)) {
       const sl = path.join(cfg.userSkillsDir, path.basename(skillPath));
-      enabledBackends[backend as SkillManagementBackendType] =
-        await symlinkPointsTo({
-          symlinkPath: sl,
-          targetPath: skillPath,
-        });
+      enabledBackends[backend as AgentBackendType] = await symlinkPointsTo({
+        symlinkPath: sl,
+        targetPath: skillPath,
+      });
     }
   } else {
     enabledBackends[backendType] = true;

@@ -80,6 +80,88 @@ describe('skill management project skill discovery', () => {
     );
   });
 
+  it('discovers Codex project skills in .codex skills', async () => {
+    const projectPath = '/project';
+    const skillDir = await writeSkill({
+      projectPath,
+      relativeDir: '.codex/skills',
+      dirName: 'repo-codex-skill',
+      name: 'repo-codex-skill',
+    });
+
+    const skills = await getAllManagedSkills({
+      backendType: 'codex',
+      projectPath,
+    });
+
+    expect(skills).toContainEqual(
+      expect.objectContaining({
+        name: 'repo-codex-skill',
+        source: 'project',
+        skillPath: skillDir,
+        enabledBackends: { codex: true },
+      }),
+    );
+  });
+
+  it('creates Codex project skills in .codex skills', async () => {
+    const projectPath = '/project';
+
+    const skill = await createSkill({
+      enabledBackends: ['codex'],
+      scope: 'project',
+      projectPath,
+      name: 'native codex skill',
+      description: 'Native Codex skill',
+      content: 'Use native Codex project skill path.',
+    });
+
+    expect(skill.skillPath).toBe(
+      path.join(projectPath, '.codex/skills/native-codex-skill'),
+    );
+  });
+
+  it('creates, disables, and enables Codex user skills via ~/.codex skills', async () => {
+    const skill = await createSkill({
+      enabledBackends: ['codex'],
+      scope: 'user',
+      name: 'native codex user skill',
+      description: 'Native Codex user skill',
+      content: 'Use native Codex user skill path.',
+    });
+    const codexSymlinkPath = path.join(
+      os.homedir(),
+      '.codex/skills/native-codex-user-skill',
+    );
+
+    expect(skill.skillPath).toBe(
+      path.join(
+        os.homedir(),
+        '.config/jean-claude/skills/user/native-codex-user-skill',
+      ),
+    );
+    await expect(fs.realpath(codexSymlinkPath)).resolves.toBe(skill.skillPath);
+
+    let skills = await getAllManagedSkills({ backendType: 'codex' });
+    expect(
+      skills.find((entry) => entry.skillPath === skill.skillPath)
+        ?.enabledBackends,
+    ).toEqual({ codex: true });
+
+    await disableSkill({ skillPath: skill.skillPath, backendType: 'codex' });
+    await expect(fs.lstat(codexSymlinkPath)).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+    skills = await getAllManagedSkills({ backendType: 'codex' });
+    expect(
+      skills.find((entry) => entry.skillPath === skill.skillPath)
+        ?.enabledBackends,
+    ).toEqual({ codex: false });
+
+    await enableSkill({ skillPath: skill.skillPath, backendType: 'codex' });
+    await expect(fs.realpath(codexSymlinkPath)).resolves.toBe(skill.skillPath);
+  });
+
   it('marks .claude project skills enabled for both claude-code and opencode', async () => {
     const projectPath = '/project';
     const skillDir = await writeSkill({
@@ -168,6 +250,7 @@ describe('skill management safety', () => {
 
     expect(skill?.enabledBackends).toEqual({
       'claude-code': true,
+      codex: false,
       opencode: false,
     });
 
@@ -204,6 +287,11 @@ describe('skill management safety', () => {
       '.claude/skills',
       builtinName,
     );
+    const codexBackendPath = path.join(
+      os.homedir(),
+      '.codex/skills',
+      builtinName,
+    );
     await fs.mkdir(path.dirname(backendPath), { recursive: true });
     await fs.rm(backendPath, { force: true, recursive: true });
     await fs.rm(claudeBackendPath, { force: true, recursive: true });
@@ -218,6 +306,7 @@ describe('skill management safety', () => {
       await fs.rm(foreignTarget, { force: true, recursive: true });
       await fs.rm(backendPath, { force: true });
       await fs.rm(claudeBackendPath, { force: true });
+      await fs.rm(codexBackendPath, { force: true });
     }
   });
 
@@ -245,6 +334,11 @@ describe('skill management safety', () => {
       '.claude/skills',
       skillName,
     );
+    const codexBackendPath = path.join(
+      os.homedir(),
+      '.codex/skills',
+      skillName,
+    );
     await fs.mkdir(path.dirname(backendPath), { recursive: true });
     await fs.rm(backendPath, { force: true, recursive: true });
     await fs.rm(claudeBackendPath, { force: true, recursive: true });
@@ -259,6 +353,7 @@ describe('skill management safety', () => {
       await fs.rm(userSkillPath, { force: true, recursive: true });
       await fs.rm(backendPath, { force: true });
       await fs.rm(claudeBackendPath, { force: true });
+      await fs.rm(codexBackendPath, { force: true });
     }
   });
 });
