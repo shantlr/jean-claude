@@ -5,7 +5,8 @@
   "type": "module",
   "main": "./out/main/index.js",
   "volta": {
-    "node": "20.18.0"
+    "node": "20.18.0",
+    "pnpm": "10.32.1"
   },
   "engines": {
     "node": ">=20.18.0 <21"
@@ -135,6 +136,7 @@
     }
   },
   "devDependencies": {
+    "@electron/rebuild": "3.7.2",
     "@eslint/js": "^9.39.2",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/router-plugin": "^1.151.4",
@@ -152,7 +154,6 @@
     "babel-plugin-react-compiler": "^1.0.0",
     "electron": "^33.2.1",
     "electron-builder": "^26.4.0",
-    "electron-rebuild": "^3.2.9",
     "electron-vite": "^2.3.0",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",

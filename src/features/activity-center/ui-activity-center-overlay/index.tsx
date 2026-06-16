@@ -86,6 +86,24 @@ function matchesSearch(text: string | null | undefined, query: string) {
   return text.toLowerCase().includes(query);
 }
 
+const DEBUG_LEVEL_STYLES: Record<
+  DebugLogEntry['level'],
+  { badge: string; text: string }
+> = {
+  info: {
+    badge: 'border-acc/25 bg-acc/10 text-acc-ink',
+    text: 'text-ink-1',
+  },
+  warn: {
+    badge: 'border-status-run/30 bg-status-run/10 text-status-run',
+    text: 'text-status-run',
+  },
+  error: {
+    badge: 'border-status-fail/30 bg-status-fail-soft text-status-fail',
+    text: 'text-status-fail',
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
@@ -336,26 +354,29 @@ function DebugRow({
   entry: DebugLogEntry;
   isSelected?: boolean;
 }) {
-  const levelColor =
-    entry.level === 'error'
-      ? 'text-status-fail'
-      : entry.level === 'warn'
-        ? 'text-status-run'
-        : 'text-ink-1';
+  const levelStyles = DEBUG_LEVEL_STYLES[entry.level];
 
   return (
     <div
       data-activity-row
       className={clsx(
-        'grid grid-cols-[60px_110px_1fr] gap-2 px-4 py-1 font-mono text-[11px] leading-relaxed',
+        'grid grid-cols-[60px_44px_110px_1fr] items-start gap-2 px-4 py-1 font-mono text-[11px] leading-relaxed',
         isSelected ? 'bg-glass-medium' : 'hover:bg-white/[0.03]',
       )}
     >
       <span className="text-ink-4 shrink-0">
         {formatTimestamp(entry.timestamp)}
       </span>
+      <span
+        className={clsx(
+          'inline-flex h-4 shrink-0 items-center justify-center rounded border px-1 text-[9px] font-semibold uppercase',
+          levelStyles.badge,
+        )}
+      >
+        {entry.level}
+      </span>
       <span className="text-acc-ink shrink-0 truncate">{entry.namespace}</span>
-      <span className={clsx('min-w-0 break-all', levelColor)}>
+      <span className={clsx('min-w-0 break-all', levelStyles.text)}>
         {entry.message}
       </span>
     </div>
