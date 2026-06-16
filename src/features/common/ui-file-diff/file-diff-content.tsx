@@ -54,6 +54,7 @@ export function FileDiffContent({
   onAddComment,
   isAddingComment,
   CommentForm,
+  renderCommentForm,
   // Optional annotation support
   annotations,
   // Optional review comment support
@@ -96,6 +97,14 @@ export function FileDiffContent({
     isSubmitting?: boolean;
     placeholder?: string;
   }>;
+  renderCommentForm?: (props: {
+    onSubmit: (content: string) => void;
+    onCancel: () => void;
+    lineStart: number;
+    lineEnd?: number;
+    isSubmitting?: boolean;
+    placeholder?: string;
+  }) => ReactNode;
   /** Initial line ranges for comment forms (for draft restoration). */
   defaultCommentFormLineRanges?: LineRange[];
   /** Called when a comment form is closed (for draft cleanup). */
@@ -199,7 +208,8 @@ export function FileDiffContent({
     [threads],
   );
 
-  const hasCommentSupport = !!onAddComment && !!CommentForm;
+  const hasCommentSupport =
+    !!onAddComment && (!!CommentForm || !!renderCommentForm);
   const hasReviewSupport = !!onAddReviewComment;
   const isSvg = isSvgPath(file.path);
   const {
@@ -356,20 +366,27 @@ export function FileDiffContent({
             />
           ),
         });
-      } else if (hasCommentSupport && CommentForm) {
-        entries.push({
-          lineRange: range,
-          form: (
-            <CommentForm
-              onSubmit={(content) => handleAddCommentForRange(range, content)}
-              onCancel={() => removeRange(range)}
-              lineStart={range.start}
-              lineEnd={lineEnd}
-              isSubmitting={isAddingComment}
-              placeholder="Write a comment..."
-            />
-          ),
-        });
+      } else if (hasCommentSupport && (CommentForm || renderCommentForm)) {
+        const props = {
+          onSubmit: (content: string) =>
+            handleAddCommentForRange(range, content),
+          onCancel: () => removeRange(range),
+          lineStart: range.start,
+          lineEnd,
+          isSubmitting: isAddingComment,
+          placeholder: 'Write a comment...',
+        };
+        if (renderCommentForm) {
+          entries.push({
+            lineRange: range,
+            form: renderCommentForm(props),
+          });
+        } else if (CommentForm) {
+          entries.push({
+            lineRange: range,
+            form: <CommentForm {...props} />,
+          });
+        }
       }
     }
     return entries;
@@ -378,6 +395,7 @@ export function FileDiffContent({
     hasReviewSupport,
     hasCommentSupport,
     CommentForm,
+    renderCommentForm,
     handleAddCommentForRange,
     handleAddReviewCommentForRange,
     getReviewCommentDraftBody,

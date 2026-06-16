@@ -122,6 +122,38 @@ export function PrDiffView({
     [onAddFileComment, clearDraft],
   );
 
+  const renderCommentForm = useCallback(
+    (props: {
+      onSubmit: (content: string) => void;
+      onCancel: () => void;
+      lineStart: number;
+      lineEnd?: number;
+      isSubmitting?: boolean;
+      placeholder?: string;
+    }) => {
+      const lineEnd = props.lineEnd !== undefined ? props.lineEnd : undefined;
+      return (
+        <PrCommentForm
+          {...props}
+          uploadImage={onUploadImage}
+          mentionOptions={mentionOptions}
+          onSearchMentions={onSearchMentions}
+          initialBody={getBody(props.lineStart, lineEnd)}
+          onBodyChange={(body) =>
+            handleBodyChange(body, props.lineStart, lineEnd)
+          }
+        />
+      );
+    },
+    [
+      getBody,
+      handleBodyChange,
+      mentionOptions,
+      onSearchMentions,
+      onUploadImage,
+    ],
+  );
+
   const shouldKeepCommentFormRangeOnOpen = useCallback(
     (range: LineRange) => {
       const lineEnd = range.end !== range.start ? range.end : undefined;
@@ -156,21 +188,7 @@ export function PrDiffView({
       )}
       onAddComment={handleAddFileComment}
       isAddingComment={isAddingComment}
-      CommentForm={(props) => {
-        const lineEnd = props.lineEnd !== undefined ? props.lineEnd : undefined;
-        return (
-          <PrCommentForm
-            {...props}
-            uploadImage={onUploadImage}
-            mentionOptions={mentionOptions}
-            onSearchMentions={onSearchMentions}
-            initialBody={getBody(props.lineStart, lineEnd)}
-            onBodyChange={(body) =>
-              handleBodyChange(body, props.lineStart, lineEnd)
-            }
-          />
-        );
-      }}
+      renderCommentForm={renderCommentForm}
     />
   );
 }
