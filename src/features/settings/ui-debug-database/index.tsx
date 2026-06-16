@@ -94,7 +94,7 @@ export function DebugDatabase() {
               Current DB size: {formatBytes(databaseSize.bytes)}
             </button>
             {showTableSizes && (
-              <div className="border-glass-border bg-bg-1 text-ink-2 absolute z-10 mt-2 max-h-72 w-72 overflow-y-auto rounded-lg border p-3 shadow-lg">
+              <div className="border-glass-border text-ink-2 absolute isolate z-[10020] mt-2 max-h-72 w-72 overflow-y-auto rounded-lg border bg-[rgb(20,18,30)] p-3 shadow-lg">
                 <div className="text-ink-1 mb-2 text-xs font-semibold tracking-wide uppercase">
                   Table sizes
                 </div>
