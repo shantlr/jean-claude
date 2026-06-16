@@ -1,3 +1,7 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
 import { nanoid } from 'nanoid';
 
 import type {
@@ -426,7 +430,12 @@ function createCodexThreadConfig(config: AgentBackendConfig): {
   model: string | undefined;
   approvalPolicy: string;
   sandbox: string;
-  config?: { sandbox_workspace_write: { network_access: boolean } };
+  config?: {
+    sandbox_workspace_write: {
+      network_access: boolean;
+      writable_roots: string[];
+    };
+  };
 } {
   const sandbox = toCodexSandbox(config.interactionMode);
   return {
@@ -435,9 +444,87 @@ function createCodexThreadConfig(config: AgentBackendConfig): {
     approvalPolicy: toCodexApprovalPolicy(config.interactionMode),
     sandbox,
     ...(sandbox === 'workspace-write'
-      ? { config: { sandbox_workspace_write: { network_access: true } } }
+      ? {
+          config: {
+            sandbox_workspace_write: {
+              network_access: true,
+              writable_roots: getCodexWritableRoots(config.cwd),
+            },
+          },
+        }
       : {}),
   };
+}
+
+function getCodexWritableRoots(cwd: string): string[] {
+  return [
+    ...getCodexPackageManagerCacheRoots(),
+    ...getCodexWorktreeGitWritableRoots(cwd),
+  ];
+}
+
+function getCodexPackageManagerCacheRoots(): string[] {
+  const home = os.homedir();
+  return [
+    path.join(home, 'Library/pnpm'),
+    path.join(home, 'Library/Caches/pnpm'),
+    path.join(home, '.local/share/pnpm'),
+    path.join(home, '.pnpm-store'),
+    path.join(home, '.cache/pnpm'),
+    path.join(home, '.npm'),
+    path.join(home, '.cache/node-gyp'),
+    path.join(home, 'Library/Caches/Yarn'),
+    path.join(home, '.cache/yarn'),
+    path.join(home, '.yarn/berry/cache'),
+    path.join(home, 'Library/Caches/electron'),
+    path.join(home, '.cache/electron'),
+    path.join(home, 'Library/Caches/electron-builder'),
+    path.join(home, '.cache/electron-builder'),
+    path.join(home, 'Library/Caches/Cypress'),
+    path.join(home, '.cache/Cypress'),
+    path.join(home, 'Library/Caches/ms-playwright'),
+    path.join(home, '.cache/ms-playwright'),
+    path.join(home, 'Library/Caches/puppeteer'),
+    path.join(home, '.cache/puppeteer'),
+    path.join(home, '.cache/vite'),
+    path.join(home, '.cache/turbo'),
+    path.join(home, '.turbo'),
+    path.join(home, '.cache/esbuild'),
+    path.join(home, '.cache/swc'),
+    path.join(home, '.cache/parcel'),
+    path.join(home, 'Library/Caches/nx'),
+    path.join(home, '.cache/nx'),
+    path.join(home, '.gradle/caches'),
+    path.join(home, 'Library/Caches/Homebrew'),
+    path.join(home, '.cargo/registry'),
+    path.join(home, '.cargo/git'),
+    path.join(home, 'go/pkg/mod'),
+    path.join(home, '.m2/repository'),
+    path.join(home, '.ivy2/cache'),
+  ];
+}
+
+function getCodexWorktreeGitWritableRoots(cwd: string): string[] {
+  const gitFilePath = path.join(cwd, '.git');
+  if (!fs.existsSync(gitFilePath) || !fs.statSync(gitFilePath).isFile()) {
+    return [];
+  }
+
+  const gitFile = fs.readFileSync(gitFilePath, 'utf8').trim();
+  const match = /^gitdir:\s*(.+)$/i.exec(gitFile);
+  if (!match) return [];
+
+  const gitDir = path.resolve(cwd, match[1]);
+  const roots = [gitDir];
+  const commonDirPath = path.join(gitDir, 'commondir');
+  if (fs.existsSync(commonDirPath)) {
+    const commonDir = fs.readFileSync(commonDirPath, 'utf8').trim();
+    if (commonDir) {
+      roots.push(path.resolve(gitDir, commonDir));
+    }
+  }
+
+  return Array.from(new Set(roots));
 }
 
 function idFromResult(result: unknown, key: string): string | null {

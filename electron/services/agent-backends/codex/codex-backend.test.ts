@@ -1,3 +1,7 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import type {
@@ -33,7 +37,12 @@ describe('CodexBackend', () => {
       model: undefined,
       approvalPolicy: 'on-request',
       sandbox: 'workspace-write',
-      config: { sandbox_workspace_write: { network_access: true } },
+      config: {
+        sandbox_workspace_write: {
+          network_access: true,
+          writable_roots: expectedPackageManagerCacheRoots(),
+        },
+      },
       serviceName: 'jean_claude',
     });
   });
@@ -51,12 +60,55 @@ describe('CodexBackend', () => {
       model: undefined,
       approvalPolicy: 'on-request',
       sandbox: 'workspace-write',
-      config: { sandbox_workspace_write: { network_access: true } },
+      config: {
+        sandbox_workspace_write: {
+          network_access: true,
+          writable_roots: expectedPackageManagerCacheRoots(),
+        },
+      },
     });
     expect(client.request).not.toHaveBeenCalledWith(
       'thread/start',
       expect.anything(),
     );
+  });
+
+  it('allows Codex to write linked worktree git metadata', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jc-codex-git-'));
+    try {
+      const worktreePath = path.join(root, 'worktree');
+      const gitDir = path.join(root, 'repo.git', 'worktrees', 'task-1');
+      const commonDir = path.join(root, 'repo.git');
+      fs.mkdirSync(worktreePath, { recursive: true });
+      fs.mkdirSync(gitDir, { recursive: true });
+      fs.writeFileSync(path.join(worktreePath, '.git'), `gitdir: ${gitDir}\n`);
+      fs.writeFileSync(path.join(gitDir, 'commondir'), '../..\n');
+
+      const { backend, client } = createBackend();
+      await backend.start(createConfig({ cwd: worktreePath }), [
+        { type: 'text', text: 'Commit changes' },
+      ]);
+
+      expect(client.request).toHaveBeenCalledWith('thread/start', {
+        cwd: worktreePath,
+        model: undefined,
+        approvalPolicy: 'on-request',
+        sandbox: 'workspace-write',
+        config: {
+          sandbox_workspace_write: {
+            network_access: true,
+            writable_roots: [
+              ...expectedPackageManagerCacheRoots(),
+              gitDir,
+              commonDir,
+            ],
+          },
+        },
+        serviceName: 'jean_claude',
+      });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('starts a turn with prompt input', async () => {
@@ -633,6 +685,47 @@ describe('CodexBackend', () => {
     expect(serverDispose).not.toHaveBeenCalled();
   });
 });
+
+function expectedPackageManagerCacheRoots(): string[] {
+  const home = os.homedir();
+  return [
+    path.join(home, 'Library/pnpm'),
+    path.join(home, 'Library/Caches/pnpm'),
+    path.join(home, '.local/share/pnpm'),
+    path.join(home, '.pnpm-store'),
+    path.join(home, '.cache/pnpm'),
+    path.join(home, '.npm'),
+    path.join(home, '.cache/node-gyp'),
+    path.join(home, 'Library/Caches/Yarn'),
+    path.join(home, '.cache/yarn'),
+    path.join(home, '.yarn/berry/cache'),
+    path.join(home, 'Library/Caches/electron'),
+    path.join(home, '.cache/electron'),
+    path.join(home, 'Library/Caches/electron-builder'),
+    path.join(home, '.cache/electron-builder'),
+    path.join(home, 'Library/Caches/Cypress'),
+    path.join(home, '.cache/Cypress'),
+    path.join(home, 'Library/Caches/ms-playwright'),
+    path.join(home, '.cache/ms-playwright'),
+    path.join(home, 'Library/Caches/puppeteer'),
+    path.join(home, '.cache/puppeteer'),
+    path.join(home, '.cache/vite'),
+    path.join(home, '.cache/turbo'),
+    path.join(home, '.turbo'),
+    path.join(home, '.cache/esbuild'),
+    path.join(home, '.cache/swc'),
+    path.join(home, '.cache/parcel'),
+    path.join(home, 'Library/Caches/nx'),
+    path.join(home, '.cache/nx'),
+    path.join(home, '.gradle/caches'),
+    path.join(home, 'Library/Caches/Homebrew'),
+    path.join(home, '.cargo/registry'),
+    path.join(home, '.cargo/git'),
+    path.join(home, 'go/pkg/mod'),
+    path.join(home, '.m2/repository'),
+    path.join(home, '.ivy2/cache'),
+  ];
+}
 
 function createBackend(
   options: {
