@@ -114,6 +114,7 @@ import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
 import { getBranchFromWorktreePath } from '@/lib/worktree';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import {
+  type AddStepPresetType,
   useNavigationStore,
   useTaskState,
   useDiffViewState,
@@ -151,7 +152,7 @@ import {
   type ThinkingEffort,
 } from '@shared/types';
 
-import { AddStepDialog, type AddStepPresetType } from './add-step-dialog';
+import { AddStepDialog } from './add-step-dialog';
 import { ChangeWorktreePathDialog } from './change-worktree-path-dialog';
 import { CommandLogsPane } from './command-logs-pane';
 import { CompleteTaskDialog } from './complete-task-dialog';
@@ -954,7 +955,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
           message:
             'No usable previous step to continue from. Pick step with actual messages or finish current step first.',
         });
-        return;
+        return false;
       }
 
       const insertionSortOrder = (() => {
@@ -1037,12 +1038,14 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             stepStartJobIdsRef.current.set(step.id, jobId);
           }
         }
+        return true;
       } catch (error) {
         addToast({
           type: 'error',
           message:
             error instanceof Error ? error.message : 'Failed to create step',
         });
+        return false;
       }
     },
     [
@@ -1967,7 +1970,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
             setAddStepAfterStepId(null);
             setAddStepAtEnd(false);
           }}
-          onConfirm={(data) => void handleAddStep(data)}
+          onConfirm={handleAddStep}
           defaultBackend={defaultAddStepBackend}
           defaultModel={defaultAddStepModel}
           defaultThinkingEffort={activeStep?.thinkingEffort ?? 'default'}

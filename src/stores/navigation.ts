@@ -36,6 +36,12 @@ export type RightPane =
     };
 
 export type ReviewMode = 'changes' | 'files' | 'commits';
+export type AddStepPresetType = 'new-session' | 'continue' | 'review-changes';
+
+interface AddStepDialogDraft {
+  promptTemplate: string;
+  presetType: AddStepPresetType;
+}
 
 interface DiffViewState {
   selectedFilePath: string | null;
@@ -80,7 +86,13 @@ interface TaskState {
   fileExplorer?: FileExplorerState;
   activeStepId: string | null;
   prDraft?: PrDraft;
+  addStepDraft?: AddStepDialogDraft;
 }
+
+const defaultAddStepDialogDraft: AddStepDialogDraft = {
+  promptTemplate: '',
+  presetType: 'new-session',
+};
 
 const defaultDiffViewState: DiffViewState = {
   selectedFilePath: null,
@@ -230,6 +242,8 @@ interface NavigationState {
   ) => void;
   setActiveStepId: (taskId: string, stepId: string | null) => void;
   setPrDraft: (taskId: string, draft: PrDraft) => void;
+  setAddStepDraft: (taskId: string, draft: Partial<AddStepDialogDraft>) => void;
+  clearAddStepDraft: (taskId: string) => void;
   setPrSelectedFile: (prKey: string, filePath: string | null) => void;
   setPrActiveTab: (prKey: string, tab: PrDetailTab) => void;
   setPrSelectedCommit: (prKey: string, commitId: string | null) => void;
@@ -499,6 +513,36 @@ const useStore = create<NavigationState>()(
           };
         }),
 
+      setAddStepDraft: (taskId, draft) =>
+        set((state) => ({
+          taskState: {
+            ...state.taskState,
+            [taskId]: {
+              ...defaultTaskState,
+              ...state.taskState[taskId],
+              addStepDraft: {
+                ...defaultAddStepDialogDraft,
+                ...state.taskState[taskId]?.addStepDraft,
+                ...draft,
+              },
+            },
+          },
+        })),
+
+      clearAddStepDraft: (taskId) =>
+        set((state) => {
+          const taskState = state.taskState[taskId];
+          if (!taskState) return state;
+
+          const { addStepDraft: _, ...restTaskState } = taskState;
+          return {
+            taskState: {
+              ...state.taskState,
+              [taskId]: restTaskState,
+            },
+          };
+        }),
+
       setReviewMode: (taskId, mode) =>
         set((state) => ({
           taskState: {
@@ -651,6 +695,7 @@ const useStore = create<NavigationState>()(
                 reviewMode: taskState.diffView.reviewMode,
               },
               prDraft: taskState.prDraft,
+              addStepDraft: taskState.addStepDraft,
             },
           ]),
         ),
@@ -932,6 +977,27 @@ export function useTaskState(taskId: string) {
     closeRightPane,
     toggleRightPane,
   };
+}
+
+export function useAddStepDialogDraft(taskId: string) {
+  const draft = useStore(
+    (state) =>
+      state.taskState[taskId]?.addStepDraft ?? defaultAddStepDialogDraft,
+  );
+  const setDraftAction = useStore((state) => state.setAddStepDraft);
+  const clearDraftAction = useStore((state) => state.clearAddStepDraft);
+
+  const setDraft = useCallback(
+    (update: Partial<AddStepDialogDraft>) => setDraftAction(taskId, update),
+    [taskId, setDraftAction],
+  );
+
+  const clearDraft = useCallback(
+    () => clearDraftAction(taskId),
+    [taskId, clearDraftAction],
+  );
+
+  return { draft, setDraft, clearDraft };
 }
 
 export function useTaskFileExplorerState(taskId: string) {
