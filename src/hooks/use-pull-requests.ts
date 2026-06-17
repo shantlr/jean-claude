@@ -645,7 +645,7 @@ export function useUpdateThreadStatus(projectId: string, prId: number) {
 export function usePullRequestPolicyEvaluations(
   projectId: string,
   prId: number,
-  options?: { refetchInterval?: number | false },
+  options?: { refetchInterval?: number | false; enabled?: boolean },
 ) {
   const repoInfo = useProjectRepoInfo(projectId);
 
@@ -657,7 +657,7 @@ export function usePullRequestPolicyEvaluations(
         projectId: repoInfo!.projectId,
         pullRequestId: prId,
       }),
-    enabled: !!repoInfo && prId > 0,
+    enabled: !!repoInfo && prId > 0 && (options?.enabled ?? true),
     staleTime: 30_000,
     refetchInterval: options?.refetchInterval,
   });

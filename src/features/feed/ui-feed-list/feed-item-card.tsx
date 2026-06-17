@@ -12,6 +12,7 @@ import {
   ListTodo,
   Loader2,
   MessageSquare,
+  MinusCircle,
   Pin,
   ShieldAlert,
   ShieldQuestion,
@@ -22,7 +23,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import type React from 'react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   Dropdown,
@@ -35,6 +36,7 @@ import { PrAutoComplete } from '@/features/pull-request/ui-pr-auto-complete';
 import { CompleteTaskDialog } from '@/features/task/ui-task-panel/complete-task-dialog';
 import {
   useCachedPullRequest,
+  usePullRequestPolicyEvaluations,
   usePullRequest,
 } from '@/hooks/use-pull-requests';
 import { useCompleteTask, useTask } from '@/hooks/use-tasks';
@@ -316,6 +318,91 @@ function RailPrAutoCompleteButton({
   }
 
   return <PrAutoComplete pr={pr} projectId={projectId} variant="compact" />;
+}
+
+function RailPrCiStatus({
+  projectId,
+  prId,
+}: {
+  projectId: string;
+  prId: number;
+}) {
+  const { data: pr } = usePullRequest(projectId, prId);
+  const isAutoCompleteSet = !!pr?.autoCompleteSetBy;
+  const [shouldPollCi, setShouldPollCi] = useState(false);
+  const { data: evaluations = [] } = usePullRequestPolicyEvaluations(
+    projectId,
+    prId,
+    {
+      enabled: isAutoCompleteSet,
+      refetchInterval: isAutoCompleteSet && shouldPollCi ? 10_000 : false,
+    },
+  );
+
+  const ciCounts = evaluations.reduce(
+    (counts, evaluation) => {
+      if (!evaluation.configuration.settings.buildDefinitionId) {
+        return counts;
+      }
+
+      if (
+        evaluation.status === 'running' ||
+        (evaluation.status === 'queued' && !!evaluation.context?.buildId)
+      ) {
+        counts.running += 1;
+      } else if (evaluation.status === 'queued') {
+        counts.pending += 1;
+      } else if (
+        evaluation.status === 'rejected' ||
+        evaluation.status === 'broken'
+      ) {
+        counts.failed += 1;
+      }
+
+      return counts;
+    },
+    { running: 0, pending: 0, failed: 0 },
+  );
+
+  useEffect(() => {
+    setShouldPollCi(ciCounts.running > 0);
+  }, [ciCounts.running]);
+
+  if (!isAutoCompleteSet) {
+    return null;
+  }
+
+  if (
+    ciCounts.running === 0 &&
+    ciCounts.pending === 0 &&
+    ciCounts.failed === 0
+  ) {
+    return null;
+  }
+
+  return (
+    <span className="flex items-center gap-1">
+      {ciCounts.running > 0 && (
+        <span className="flex items-center gap-0.5 text-blue-400">
+          <Loader2 className="h-2.5 w-2.5 animate-spin" />
+          <span className="text-[9.5px]">{ciCounts.running}</span>
+        </span>
+      )}
+      {ciCounts.pending > 0 && (
+        <span className="flex items-center gap-0.5 text-yellow-400">
+          <MinusCircle className="h-2.5 w-2.5" />
+          <span className="text-[9.5px]">{ciCounts.pending}</span>
+        </span>
+      )}
+      {ciCounts.failed > 0 && (
+        <span className="text-status-fail flex items-center gap-0.5">
+          <XCircle className="h-2.5 w-2.5" />
+          <span className="text-[9.5px]">{ciCounts.failed}</span>
+        </span>
+      )}
+      <span className="text-ink-3 text-[9.5px]">CI</span>
+    </span>
+  );
 }
 
 // ─── Main FeedItemCard ───────────────────────────────────────────
@@ -946,6 +1033,12 @@ export function FeedItemCard({
                         {item.activeThreadCount}
                       </span>
                     </span>
+                  )}
+                  {!prMerged && item.pullRequestId && (
+                    <RailPrCiStatus
+                      projectId={item.projectId}
+                      prId={item.pullRequestId}
+                    />
                   )}
                   {canComplete && <CompleteTaskButton taskId={item.taskId!} />}
                 </div>
