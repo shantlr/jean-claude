@@ -740,6 +740,9 @@ contextBridge.exposeInMainWorld('api', {
         taskId,
         stepId,
       ),
+    getResourceSnapshots: () =>
+      ipcRenderer.invoke('agent:resources:getSnapshots'),
+    getResourceHistory: () => ipcRenderer.invoke('agent:resources:getHistory'),
     compactRawMessages: (taskId: string) =>
       ipcRenderer.invoke(AGENT_CHANNELS.COMPACT_RAW_MESSAGES, taskId),
     reprocessNormalization: (taskId: string) =>

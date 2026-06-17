@@ -4,6 +4,7 @@ import type {
   AgentMigrationPreviewResult,
   ManagedAgent,
 } from '@shared/agent-management-types';
+import type { AgentResourceSnapshot } from '@shared/agent-resource-types';
 import type {
   AgentQuestion,
   PermissionResponse,
@@ -1037,6 +1038,8 @@ export interface Api {
       taskId: string,
       stepId: string,
     ) => Promise<DebugMessageWithRawData[]>;
+    getResourceSnapshots: () => Promise<AgentResourceSnapshot[]>;
+    getResourceHistory: () => Promise<Record<string, AgentResourceSnapshot[]>>;
     compactRawMessages: (taskId: string) => Promise<void>;
     reprocessNormalization: (taskId: string) => Promise<number>;
     getPendingRequest: (stepId: string) => Promise<
@@ -1923,6 +1926,8 @@ export const api: Api = hasWindowApi
         getMessages: async () => [],
         getMessageCount: async () => 0,
         getMessagesWithRawData: async () => [],
+        getResourceSnapshots: async () => [],
+        getResourceHistory: async () => ({}),
         compactRawMessages: async () => {},
         reprocessNormalization: async () => 0,
         getPendingRequest: async () => null,

@@ -78,6 +78,7 @@ export interface AgentBackendConfig {
 export interface AgentSession {
   sessionId: string;
   events: AsyncIterable<AgentEvent>;
+  rootPid?: number;
 }
 
 /**

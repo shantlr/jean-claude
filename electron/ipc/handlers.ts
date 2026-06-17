@@ -117,6 +117,7 @@ import {
   previewLegacyAgentMigration,
   updateAgent,
 } from '../services/agent-management-service';
+import { agentResourceMonitorService } from '../services/agent-resource-monitor-service';
 import { agentService } from '../services/agent-service';
 import { agentUsageService } from '../services/agent-usage-service';
 import {
@@ -4138,6 +4139,14 @@ export function registerIpcHandlers() {
 
   ipcMain.handle('agent:usage:getTaskUsage', (_, taskId: string) => {
     return AiUsageRepository.getTaskUsage(taskId);
+  });
+
+  ipcMain.handle('agent:resources:getSnapshots', () => {
+    return agentResourceMonitorService.getSnapshots();
+  });
+
+  ipcMain.handle('agent:resources:getHistory', () => {
+    return agentResourceMonitorService.getHistory();
   });
 
   ipcMain.handle(

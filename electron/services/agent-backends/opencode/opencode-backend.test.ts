@@ -1,7 +1,23 @@
+import { EventEmitter } from 'node:events';
+
 import type { AssistantMessage, Part } from '@opencode-ai/sdk/v2';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { AgentEvent, AgentTaskContext } from '@shared/agent-backend-types';
+
+const createOpencodeClientMock = vi.hoisted(() => vi.fn());
+const spawnMock = vi.hoisted(() => vi.fn());
+const spawnSyncMock = vi.hoisted(() => vi.fn());
+
+vi.mock('node:child_process', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('node:child_process')>()),
+  spawn: spawnMock,
+  spawnSync: spawnSyncMock,
+}));
+
+vi.mock('@opencode-ai/sdk/v2', () => ({
+  createOpencodeClient: createOpencodeClientMock,
+}));
 
 vi.mock('../../../database/repositories', () => ({
   RawMessageRepository: {
@@ -18,6 +34,44 @@ vi.mock('../../../lib/debug', () => ({
 
 import { OpenCodeBackend } from './opencode-backend';
 import { applyDeltaToMessageParts } from './opencode-message-delta';
+
+afterEach(() => {
+  createOpencodeClientMock.mockReset();
+  spawnMock.mockReset();
+  spawnSyncMock.mockReset();
+  vi.restoreAllMocks();
+});
+
+function createMockProcess(pid = 1234) {
+  const proc = new EventEmitter() as EventEmitter & {
+    stdout: EventEmitter;
+    stderr: EventEmitter;
+    pid: number;
+    exitCode: number | null;
+    signalCode: string | null;
+    kill: ReturnType<typeof vi.fn>;
+  };
+  proc.stdout = new EventEmitter();
+  proc.stderr = new EventEmitter();
+  proc.pid = pid;
+  proc.exitCode = null;
+  proc.signalCode = null;
+  proc.kill = vi.fn(() => true);
+  return proc;
+}
+
+function mockOpencodeServer(client: unknown, pid = 1234) {
+  const proc = createMockProcess(pid);
+  spawnMock.mockReturnValue(proc);
+  createOpencodeClientMock.mockReturnValue(client);
+  queueMicrotask(() => {
+    proc.stdout.emit(
+      'data',
+      Buffer.from('opencode server listening on http://127.0.0.1:4321\n'),
+    );
+  });
+  return proc;
+}
 
 describe('applyDeltaToMessageParts', () => {
   it('appends a text delta once for a matching part', () => {
@@ -42,6 +96,128 @@ describe('applyDeltaToMessageParts', () => {
 });
 
 describe('OpenCodeBackend event stream', () => {
+  it('exposes dedicated server process PID on start', async () => {
+    const processKill = vi.spyOn(process, 'kill').mockReturnValue(true);
+    const client = {
+      event: { subscribe: vi.fn() },
+      permission: { reply: vi.fn() },
+      question: { reply: vi.fn() },
+      session: {
+        abort: vi.fn(async () => ({ data: null })),
+        create: vi.fn(async () => ({
+          data: { id: 'session-1' },
+        })),
+      },
+    };
+    const proc = mockOpencodeServer(client, 1234);
+    const backend = new OpenCodeBackend({
+      taskId: 'task-1',
+      sessionStartIndex: 0,
+      persistRaw: vi.fn(async () => 'raw-1'),
+    });
+
+    const session = await backend.start(
+      {
+        type: 'opencode',
+        cwd: '/tmp/project',
+        interactionMode: 'auto',
+      },
+      [{ type: 'text', text: 'hi' }],
+    );
+
+    expect(session.rootPid).toBe(1234);
+    expect(spawnMock).toHaveBeenCalledWith(
+      'opencode',
+      ['serve', '--hostname=127.0.0.1', '--port=0'],
+      expect.objectContaining({
+        detached: process.platform !== 'win32',
+        env: expect.objectContaining({ OPENCODE_CONFIG_CONTENT: '{}' }),
+      }),
+    );
+    expect(createOpencodeClientMock).toHaveBeenCalledWith({
+      baseUrl: 'http://127.0.0.1:4321',
+    });
+    expect(proc.stdout.listenerCount('data')).toBeGreaterThan(0);
+    expect(proc.stderr.listenerCount('data')).toBeGreaterThan(0);
+    await backend.stop(session.sessionId);
+    expect(proc.stdout.listenerCount('data')).toBe(0);
+    expect(proc.stderr.listenerCount('data')).toBe(0);
+    if (process.platform === 'win32') {
+      expect(spawnSyncMock).toHaveBeenCalledWith(
+        'taskkill',
+        ['/pid', '1234', '/T', '/F'],
+        { windowsHide: true },
+      );
+    } else {
+      expect(processKill).toHaveBeenCalledWith(-1234, 'SIGTERM');
+    }
+    expect(proc.kill).not.toHaveBeenCalled();
+  });
+
+  it('closes dedicated server when session creation fails', async () => {
+    const processKill = vi.spyOn(process, 'kill').mockReturnValue(true);
+    const client = {
+      session: {
+        create: vi.fn(async () => {
+          throw new Error('session create failed');
+        }),
+      },
+    };
+    mockOpencodeServer(client);
+    const backend = new OpenCodeBackend({
+      taskId: 'task-1',
+      sessionStartIndex: 0,
+      persistRaw: vi.fn(async () => 'raw-1'),
+    });
+
+    await expect(
+      backend.start(
+        {
+          type: 'opencode',
+          cwd: '/tmp/project',
+          interactionMode: 'auto',
+        },
+        [{ type: 'text', text: 'hi' }],
+      ),
+    ).rejects.toThrow('session create failed');
+
+    if (process.platform === 'win32') {
+      expect(spawnSyncMock).toHaveBeenCalledOnce();
+    } else {
+      expect(processKill).toHaveBeenCalledWith(-1234, 'SIGTERM');
+    }
+  });
+
+  it('rejects OpenCode runtime MCP env values instead of serializing them into OPENCODE_CONFIG_CONTENT', async () => {
+    const backend = new OpenCodeBackend({
+      taskId: 'task-1',
+      sessionStartIndex: 0,
+      persistRaw: vi.fn(async () => 'raw-1'),
+    });
+
+    await expect(
+      backend.start(
+        {
+          type: 'opencode',
+          cwd: '/tmp/project',
+          interactionMode: 'auto',
+          mcpServers: {
+            secret: {
+              command: 'node',
+              args: ['server.js'],
+              env: { TOKEN: 'secret-token' },
+            },
+          },
+        },
+        [{ type: 'text', text: 'hi' }],
+      ),
+    ).rejects.toThrow(
+      'OpenCode runtime MCP server "secret" cannot include env values',
+    );
+
+    expect(spawnMock).not.toHaveBeenCalled();
+  });
+
   it('updates one raw row for repeated OpenCode text deltas', async () => {
     const rawIds = ['raw-1', 'raw-2'];
     const persistRaw = vi.fn<AgentTaskContext['persistRaw']>(
@@ -1604,7 +1780,7 @@ function createOpenCodeState(client: unknown) {
       client,
       server: { url: 'http://127.0.0.1', close: vi.fn() },
     },
-    ownsServerHandle: false,
+    ownsServerHandle: true,
     serverClosed: false,
   };
 }

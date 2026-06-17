@@ -2,14 +2,20 @@
 // Wraps the @opencode-ai/sdk client into the common AgentBackend interface.
 //
 // Architecture:
-// - Uses createOpencode() to spawn a server + client on first use
-// - Server is shared across all sessions (one per app instance)
+// - Uses createOpencode() to spawn a dedicated server + client per session
+// - Per-session servers make process resource tracking and cleanup precise
 // - Events received via SSE subscription, filtered by session ID
 // - Permissions handled via client.permission.reply()
 // - Sessions created via client.session.create() + client.session.prompt()
 
 import {
-  createOpencode,
+  spawn,
+  spawnSync,
+  type ChildProcessWithoutNullStreams,
+} from 'node:child_process';
+
+import {
+  createOpencodeClient,
   type OpencodeClient,
   type Session as OcSession,
   type Event as OcEvent,
@@ -54,7 +60,7 @@ import { applyDeltaToMessageParts } from './opencode-message-delta';
 
 interface ServerHandle {
   client: OpencodeClient;
-  server: { url: string; close(): void };
+  server: { url: string; close(): void; process?: { pid?: number } };
 }
 
 type RuntimeMcpServers = NonNullable<AgentBackendConfig['mcpServers']>;
@@ -62,6 +68,15 @@ const RUNTIME_MCP_TIMEOUT_MS = 30 * 60 * 1000;
 
 let serverInstance: ServerHandle | null = null;
 let serverInitPromise: Promise<ServerHandle> | null = null;
+
+type OpencodeServerConfig = {
+  mcp?: ReturnType<typeof toOpenCodeMcpConfig>;
+};
+
+function getServerPid(server: ServerHandle['server']): number | undefined {
+  const maybeProcess = (server as { process?: { pid?: unknown } }).process;
+  return typeof maybeProcess?.pid === 'number' ? maybeProcess.pid : undefined;
+}
 
 /**
  * Get or create the shared OpenCode server + client.
@@ -78,7 +93,7 @@ export async function getOrCreateServer(): Promise<ServerHandle> {
   serverInitPromise = (async () => {
     dbg.agent('Starting OpenCode server...');
     try {
-      const instance = await createOpencode({
+      const instance = await createOpencodeServerHandle({
         hostname: '127.0.0.1',
         port: 0,
         timeout: 30_000,
@@ -96,15 +111,10 @@ export async function getOrCreateServer(): Promise<ServerHandle> {
   return (await serverInitPromise)!;
 }
 
-function hasRuntimeMcpServers(config: AgentBackendConfig): boolean {
-  return !!config.mcpServers && Object.keys(config.mcpServers).length > 0;
-}
-
 function toOpenCodeMcpConfig(runtimeMcpServers: RuntimeMcpServers): {
   [key: string]: {
     type: 'local';
     command: string[];
-    environment?: Record<string, string>;
     enabled: boolean;
     timeout: number;
   };
@@ -113,7 +123,6 @@ function toOpenCodeMcpConfig(runtimeMcpServers: RuntimeMcpServers): {
     [key: string]: {
       type: 'local';
       command: string[];
-      environment?: Record<string, string>;
       enabled: boolean;
       timeout: number;
     };
@@ -122,10 +131,14 @@ function toOpenCodeMcpConfig(runtimeMcpServers: RuntimeMcpServers): {
   for (const [name, server] of Object.entries(runtimeMcpServers)) {
     const command = [server.command, ...(server.args ?? [])];
     if (command.length === 0 || !command[0]) continue;
+    if (server.env && Object.keys(server.env).length > 0) {
+      throw new Error(
+        `OpenCode runtime MCP server "${name}" cannot include env values because OpenCode receives runtime config through OPENCODE_CONFIG_CONTENT`,
+      );
+    }
     mcp[name] = {
       type: 'local',
       command,
-      ...(server.env ? { environment: server.env } : {}),
       enabled: true,
       timeout: RUNTIME_MCP_TIMEOUT_MS,
     };
@@ -143,14 +156,151 @@ async function createDedicatedServer(
     'Starting dedicated OpenCode server with %d runtime MCP servers',
     Object.keys(mcp).length,
   );
-  return createOpencode({
+  return createOpencodeServerHandle({
     hostname: '127.0.0.1',
     port: 0,
     timeout: 30_000,
-    config: {
-      mcp,
-    },
+    ...(Object.keys(mcp).length > 0 ? { config: { mcp } } : {}),
   });
+}
+
+async function createOpencodeServerHandle(options: {
+  hostname: string;
+  port: number;
+  timeout: number;
+  config?: OpencodeServerConfig;
+}): Promise<ServerHandle> {
+  const proc = spawn(
+    'opencode',
+    ['serve', `--hostname=${options.hostname}`, `--port=${options.port}`],
+    {
+      detached: process.platform !== 'win32',
+      env: {
+        ...process.env,
+        OPENCODE_CONFIG_CONTENT: JSON.stringify(options.config ?? {}),
+      },
+    },
+  );
+
+  const url = await waitForOpencodeServerUrl(proc, options.timeout);
+  const removeLogDrains = attachOpencodeLogDrains(proc);
+  return {
+    client: createOpencodeClient({ baseUrl: url }),
+    server: {
+      url,
+      process: { pid: proc.pid },
+      close() {
+        removeLogDrains();
+        stopOpencodeProcess(proc);
+      },
+    },
+  };
+}
+
+function attachOpencodeLogDrains(
+  proc: ChildProcessWithoutNullStreams,
+): () => void {
+  const drain = () => {};
+  proc.stdout.on('data', drain);
+  proc.stderr.on('data', drain);
+  return () => {
+    proc.stdout.off('data', drain);
+    proc.stderr.off('data', drain);
+  };
+}
+
+function waitForOpencodeServerUrl(
+  proc: ChildProcessWithoutNullStreams,
+  timeout: number,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let output = '';
+    let settled = false;
+    const appendOutput = (chunk: Buffer) => {
+      output = `${output}${chunk.toString()}`.slice(-8_192);
+    };
+    const finish = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      proc.stdout.off('data', handleStdout);
+      proc.stderr.off('data', handleStderr);
+      proc.off('exit', handleExit);
+      proc.off('error', handleError);
+      callback();
+    };
+    const timeoutId = setTimeout(() => {
+      finish(() => {
+        stopOpencodeProcess(proc);
+        reject(
+          new Error(`Timeout waiting for server to start after ${timeout}ms`),
+        );
+      });
+    }, timeout);
+
+    const handleStdout = (chunk: Buffer) => {
+      if (settled) return;
+      appendOutput(chunk);
+      for (const line of output.split('\n')) {
+        if (!line.startsWith('opencode server listening')) continue;
+
+        const match = line.match(/on\s+(https?:\/\/[^\s]+)/);
+        if (!match) {
+          finish(() => {
+            stopOpencodeProcess(proc);
+            reject(
+              new Error(`Failed to parse server url from output: ${line}`),
+            );
+          });
+          return;
+        }
+
+        finish(() => resolve(match[1]));
+        return;
+      }
+    };
+
+    const handleStderr = (chunk: Buffer) => appendOutput(chunk);
+
+    const handleExit = (code: number | null) => {
+      finish(() => {
+        const outputText = output.trim();
+        reject(
+          new Error(
+            `Server exited with code ${code}${outputText ? `\nServer output: ${outputText}` : ''}`,
+          ),
+        );
+      });
+    };
+
+    const handleError = (error: Error) => {
+      finish(() => reject(error));
+    };
+
+    proc.stdout.on('data', handleStdout);
+    proc.stderr.on('data', handleStderr);
+    proc.on('exit', handleExit);
+    proc.on('error', handleError);
+  });
+}
+
+function stopOpencodeProcess(proc: ChildProcessWithoutNullStreams): void {
+  if (proc.exitCode !== null || proc.signalCode !== null) return;
+  if (process.platform === 'win32' && proc.pid) {
+    spawnSync('taskkill', ['/pid', String(proc.pid), '/T', '/F'], {
+      windowsHide: true,
+    });
+    return;
+  }
+  if (proc.pid) {
+    try {
+      process.kill(-proc.pid, 'SIGTERM');
+      return;
+    } catch {
+      // Fall back to root process kill if process groups are unavailable.
+    }
+  }
+  proc.kill();
 }
 
 // --- Backend deps (injected by agent-service for raw persistence) ---
@@ -243,18 +393,15 @@ export class OpenCodeBackend implements AgentBackend {
     parts: PromptPart[],
   ): Promise<AgentSession> {
     dbg.agent(
-      'OpenCodeBackend.start() — cwd: %s, sessionId: %s, model: %s, mode: %s, hasMcpServers: %s',
+      'OpenCodeBackend.start() — cwd: %s, sessionId: %s, model: %s, mode: %s, dedicatedServer: true, mcpServerCount: %d',
       config.cwd,
       config.sessionId ?? '(new)',
       config.model ?? '(default)',
       config.interactionMode,
-      hasRuntimeMcpServers(config),
+      Object.keys(config.mcpServers ?? {}).length,
     );
 
-    const ownsServerHandle = hasRuntimeMcpServers(config);
-    const serverHandle = ownsServerHandle
-      ? await createDedicatedServer(config)
-      : await getOrCreateServer();
+    const serverHandle = await createDedicatedServer(config);
     const { client } = serverHandle;
 
     dbg.agent(
@@ -264,36 +411,40 @@ export class OpenCodeBackend implements AgentBackend {
 
     // Create or resume an OpenCode session
     let session: OcSession;
-
-    if (config.sessionId) {
-      // Try to resume existing session — never fall back to creating a new one
-      try {
-        const existing = await client.session.get({
-          sessionID: config.sessionId,
-          directory: config.cwd,
-        });
-        if (existing.data) {
-          session = existing.data;
-          dbg.agent('Resuming OpenCode session %s', session.id);
-        } else {
+    try {
+      if (config.sessionId) {
+        // Try to resume existing session — never fall back to creating a new one
+        try {
+          const existing = await client.session.get({
+            sessionID: config.sessionId,
+            directory: config.cwd,
+          });
+          if (existing.data) {
+            session = existing.data;
+            dbg.agent('Resuming OpenCode session %s', session.id);
+          } else {
+            throw new Error(
+              `Failed to resume OpenCode session ${config.sessionId}: session not found`,
+            );
+          }
+        } catch (error) {
+          // Re-throw if it's already our error, otherwise wrap it
+          if (
+            error instanceof Error &&
+            error.message.includes('Failed to resume')
+          ) {
+            throw error;
+          }
           throw new Error(
-            `Failed to resume OpenCode session ${config.sessionId}: session not found`,
+            `Failed to resume OpenCode session ${config.sessionId}: ${error instanceof Error ? error.message : String(error)}`,
           );
         }
-      } catch (error) {
-        // Re-throw if it's already our error, otherwise wrap it
-        if (
-          error instanceof Error &&
-          error.message.includes('Failed to resume')
-        ) {
-          throw error;
-        }
-        throw new Error(
-          `Failed to resume OpenCode session ${config.sessionId}: ${error instanceof Error ? error.message : String(error)}`,
-        );
+      } else {
+        session = await this.createSession(client, config);
       }
-    } else {
-      session = await this.createSession(client, config);
+    } catch (error) {
+      serverHandle.server.close();
+      throw error;
     }
 
     const state: OpenCodeSessionState = {
@@ -327,7 +478,7 @@ export class OpenCodeBackend implements AgentBackend {
       emittedQuestionRequestIds: new Set(),
       permissionRules: config.permissionRules ?? [],
       serverHandle,
-      ownsServerHandle,
+      ownsServerHandle: true,
       serverClosed: false,
     };
 
@@ -339,6 +490,7 @@ export class OpenCodeBackend implements AgentBackend {
     return {
       sessionId: session.id,
       events,
+      rootPid: getServerPid(serverHandle.server),
     };
   }
 

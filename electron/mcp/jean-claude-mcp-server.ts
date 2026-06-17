@@ -30,6 +30,11 @@ const THINKING_EFFORT_ENUM = z.enum([
 ]);
 
 function getMcpWorkingDirectory(): string {
+  const workdirArgIndex = process.argv.indexOf('--workdir');
+  const workdirArg =
+    workdirArgIndex >= 0 ? process.argv[workdirArgIndex + 1]?.trim() : '';
+  if (workdirArg) return workdirArg;
+
   const configured = process.env.JC_MCP_WORKDIR?.trim();
   if (configured) return configured;
   return process.cwd();
@@ -50,7 +55,11 @@ function getCurrentDepth(): number {
  * Strips NODE_ENV to avoid interfering with tools like vitest.
  */
 function buildSubAgentEnv(currentDepth: number): Record<string, string> {
-  const { NODE_ENV: _nodeEnv, ...rest } = process.env;
+  const {
+    NODE_ENV: _nodeEnv,
+    OPENCODE_CONFIG_CONTENT: _opencodeConfig,
+    ...rest
+  } = process.env;
   return {
     ...(rest as Record<string, string>),
     JC_MCP_DEPTH: String(currentDepth + 1),

@@ -18,8 +18,9 @@ import {
   ListTodo,
   Search,
 } from 'lucide-react';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, PointerEvent, ReactNode } from 'react';
 import { useEffect, useState, useCallback, useMemo, useRef, memo } from 'react';
+import { createPortal } from 'react-dom';
 import { useShallow } from 'zustand/react/shallow';
 
 import { useModal } from '@/common/context/modal';
@@ -71,6 +72,8 @@ import { StepFlowBar } from '@/features/task/ui-step-flow-bar';
 import { TaskPrView } from '@/features/task/ui-task-pr-view';
 import { WorkItemPicker } from '@/features/work-item/ui-work-item-picker';
 import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
+import { useAgentResourceSnapshots } from '@/hooks/use-agent-resource-snapshots';
+import type { AgentResourceSample } from '@/hooks/use-agent-resource-snapshots';
 import { useBackendModels } from '@/hooks/use-backend-models';
 import { useContextUsage } from '@/hooks/use-context-usage';
 import { getModelFromEntry, formatModelName } from '@/hooks/use-model';
@@ -310,6 +313,415 @@ function getLastAssistantMessage(messages: NormalizedEntry[]): string {
 
 const EMPTY_QUEUED_PROMPTS: { content: string }[] = [];
 const EMPTY_MESSAGES: NormalizedEntry[] = [];
+
+function formatResourceBytes(bytes: number): string {
+  const mb = bytes / 1_048_576;
+  return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(0)} MB`;
+}
+
+function formatResourceTime(isoDate: string): string {
+  return new Date(isoDate).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
+function getResourceSparklinePath({
+  values,
+  width,
+  height,
+  minValue = Math.min(...values),
+  maxValue = Math.max(...values),
+}: {
+  values: number[];
+  width: number;
+  height: number;
+  minValue?: number;
+  maxValue?: number;
+}): string {
+  if (values.length === 0) return '';
+
+  return values
+    .map((value, index) => {
+      const point = getResourceSparklinePoint({
+        value,
+        index,
+        count: values.length,
+        width,
+        height,
+        minValue,
+        maxValue,
+      });
+      return `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`;
+    })
+    .join(' ');
+}
+
+function getResourceSparklinePoint({
+  value,
+  index,
+  count,
+  width,
+  height,
+  minValue,
+  maxValue,
+}: {
+  value: number;
+  index: number;
+  count: number;
+  width: number;
+  height: number;
+  minValue: number;
+  maxValue: number;
+}): { x: number; y: number } {
+  const range = maxValue - minValue;
+  const normalized = range <= 0 ? 0.5 : (value - minValue) / range;
+  const xStep = count > 1 ? width / (count - 1) : 0;
+  return {
+    x: index * xStep,
+    y: height - Math.max(0, Math.min(1, normalized)) * height,
+  };
+}
+
+function AgentResourceChartTooltip({
+  label,
+  sample,
+  formatValue,
+}: {
+  label: string;
+  sample: AgentResourceSample;
+  formatValue: (value: number) => string;
+}) {
+  const value = label === 'CPU' ? sample.cpuPercent : sample.rssBytes;
+  return (
+    <div className="border-glass-border bg-bg-0/95 pointer-events-none absolute -top-1 right-1 z-10 rounded-md border px-2 py-1 text-[10px] shadow-[0_10px_30px_rgba(0,0,0,0.32)]">
+      <div className="text-ink-0 font-mono tabular-nums">
+        {formatValue(value)}
+      </div>
+      <div className="text-ink-4 mt-0.5 font-mono whitespace-nowrap">
+        {formatResourceTime(sample.sampledAt)}
+      </div>
+    </div>
+  );
+}
+
+function AgentResourceChart({
+  label,
+  value,
+  samples,
+  formatValue,
+  maxValue,
+  accentClassName,
+}: {
+  label: string;
+  value: number;
+  samples: AgentResourceSample[];
+  formatValue: (value: number) => string;
+  maxValue?: number;
+  accentClassName: string;
+}) {
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const width = 150;
+  const height = 34;
+  const values = samples.map((sample) =>
+    label === 'CPU' ? sample.cpuPercent : sample.rssBytes,
+  );
+  const path = getResourceSparklinePath({
+    values: values.length > 0 ? values : [value],
+    width,
+    height,
+    minValue: maxValue === undefined ? undefined : 0,
+    maxValue,
+  });
+  const hoverSample = hoverIndex === null ? null : samples[hoverIndex];
+  const hoverValue = hoverIndex === null ? undefined : values[hoverIndex];
+  const hoverPoint =
+    hoverIndex === null || hoverValue === undefined
+      ? null
+      : getResourceSparklinePoint({
+          value: hoverValue,
+          index: hoverIndex,
+          count: values.length,
+          width,
+          height,
+          minValue: maxValue === undefined ? Math.min(...values) : 0,
+          maxValue: maxValue ?? Math.max(...values),
+        });
+  const samplePoints = values.map((sampleValue, index) =>
+    getResourceSparklinePoint({
+      value: sampleValue,
+      index,
+      count: values.length,
+      width,
+      height,
+      minValue: maxValue === undefined ? Math.min(...values) : 0,
+      maxValue: maxValue ?? Math.max(...values),
+    }),
+  );
+
+  function handlePointerMove(event: PointerEvent<SVGSVGElement>) {
+    if (samples.length === 0) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = Math.min(
+      Math.max((event.clientX - rect.left) / rect.width, 0),
+      1,
+    );
+    setHoverIndex(Math.round(ratio * (samples.length - 1)));
+  }
+
+  return (
+    <div className="relative grid grid-cols-[38px_64px_150px] items-center gap-3">
+      <span className="text-ink-4 tracking-[0.24em] uppercase">{label}</span>
+      <span className="text-ink-1 text-right font-mono text-[12px] tabular-nums">
+        {formatValue(value)}
+      </span>
+      <svg
+        width={width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        className="overflow-visible"
+        aria-hidden
+        onPointerLeave={() => setHoverIndex(null)}
+        onPointerMove={handlePointerMove}
+      >
+        <path
+          d={`M 0 ${height - 0.5} H ${width}`}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1"
+          className="text-white/10"
+        />
+        <path
+          d={path}
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.5"
+          className={accentClassName}
+        />
+        {samplePoints.map((point, index) => (
+          <circle
+            key={`${samples[index]?.sampledAt ?? index}-${label}`}
+            cx={point.x}
+            cy={point.y}
+            r="1.7"
+            className={accentClassName}
+            fill="currentColor"
+            opacity="0.72"
+          />
+        ))}
+        {hoverSample && hoverPoint ? (
+          <circle
+            cx={hoverPoint.x}
+            cy={hoverPoint.y}
+            r="3"
+            className={accentClassName}
+            fill="currentColor"
+          />
+        ) : null}
+      </svg>
+      {hoverSample ? (
+        <AgentResourceChartTooltip
+          label={label}
+          sample={hoverSample}
+          formatValue={formatValue}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function AgentResourceHoverPanel({
+  cpuSamples,
+  displayCpu,
+  displayRss,
+  rootPid,
+  rssMax,
+  rssSamples,
+}: {
+  cpuSamples: AgentResourceSample[];
+  rssSamples: AgentResourceSample[];
+  displayCpu: number;
+  displayRss: number;
+  rootPid: number | null;
+  rssMax: number;
+}) {
+  return (
+    <div className="border-glass-border bg-bg-1/95 min-w-[360px] rounded-xl border p-3 text-[11px] shadow-[0_24px_70px_rgba(0,0,0,0.38),0_0_0_1px_rgba(255,255,255,0.03)] backdrop-blur-xl">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="text-ink-1 text-xs font-medium">Agent Resources</div>
+        <div className="text-ink-4 font-mono text-[10px] tabular-nums">
+          {rootPid === null ? 'PID n/a' : `PID ${rootPid}`}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <AgentResourceChart
+          label="CPU"
+          value={displayCpu}
+          samples={cpuSamples}
+          formatValue={(value) => `${value.toFixed(1)}%`}
+          maxValue={Math.max(
+            100,
+            displayCpu,
+            ...cpuSamples.map((sample) => sample.cpuPercent),
+          )}
+          accentClassName="text-accent-1"
+        />
+        <AgentResourceChart
+          label="RAM"
+          value={displayRss}
+          samples={rssSamples}
+          formatValue={formatResourceBytes}
+          maxValue={rssMax}
+          accentClassName="text-ink-1"
+        />
+      </div>
+    </div>
+  );
+}
+
+function AgentResourceTooltip({
+  children,
+  content,
+}: {
+  children: ReactNode;
+  content: ReactNode;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [position, setPosition] = useState<{
+    left: number;
+    top: number;
+  } | null>(null);
+  const triggerRef = useRef<HTMLDivElement | null>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearCloseTimer = useCallback(() => {
+    if (!closeTimerRef.current) return;
+    clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = null;
+  }, []);
+
+  const open = useCallback(() => {
+    clearCloseTimer();
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (rect) {
+      setPosition({
+        left: Math.min(
+          Math.max(rect.left + rect.width / 2 - 180, 8),
+          window.innerWidth - 368,
+        ),
+        top: rect.bottom + 8,
+      });
+    }
+    setIsOpen(true);
+  }, [clearCloseTimer]);
+
+  const scheduleClose = useCallback(() => {
+    clearCloseTimer();
+    closeTimerRef.current = setTimeout(() => setIsOpen(false), 120);
+  }, [clearCloseTimer]);
+
+  useEffect(() => () => clearCloseTimer(), [clearCloseTimer]);
+
+  return (
+    <>
+      <div
+        ref={triggerRef}
+        onFocus={open}
+        onBlur={scheduleClose}
+        onMouseEnter={open}
+        onMouseLeave={scheduleClose}
+        tabIndex={0}
+      >
+        {children}
+      </div>
+      {isOpen && position
+        ? createPortal(
+            <div
+              className="fixed z-[10020]"
+              onMouseEnter={open}
+              onMouseLeave={scheduleClose}
+              style={{ left: position.left, top: position.top }}
+            >
+              {content}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  );
+}
+
+function AgentResourcePill({
+  isRunning,
+  stepId,
+}: {
+  stepId: string;
+  isRunning: boolean;
+}) {
+  const { data, historyByStepId } = useAgentResourceSnapshots();
+  const snapshot = data?.find((item) => item.stepId === stepId);
+  const history = historyByStepId[stepId] ?? [];
+  if (snapshot?.unsupportedReason || (!snapshot && history.length === 0)) {
+    return null;
+  }
+
+  const lastSample = history[history.length - 1] ?? snapshot;
+  const displayCpu = isRunning
+    ? (snapshot?.cpuPercent ?? lastSample.cpuPercent)
+    : 0;
+  const displayRss = isRunning
+    ? (snapshot?.rssBytes ?? lastSample.rssBytes)
+    : 0;
+  const stoppedSample =
+    !isRunning && lastSample
+      ? {
+          ...lastSample,
+          sampledAt: new Date().toISOString(),
+          cpuPercent: 0,
+          rssBytes: 0,
+        }
+      : null;
+  const samples = stoppedSample ? [...history, stoppedSample] : history;
+  const rootPid = snapshot?.rootPid ?? lastSample?.rootPid ?? null;
+  const rssMax = Math.max(
+    lastSample?.peakRssBytes ?? 0,
+    ...samples.map((sample) => sample.rssBytes),
+    1,
+  );
+
+  return (
+    <AgentResourceTooltip
+      content={
+        <AgentResourceHoverPanel
+          cpuSamples={samples}
+          displayCpu={displayCpu}
+          displayRss={displayRss}
+          rootPid={rootPid}
+          rssMax={rssMax}
+          rssSamples={samples}
+        />
+      }
+    >
+      <div className="border-glass-border bg-bg-1/60 text-ink-2 hover:border-glass-border-strong hover:bg-bg-1/90 flex cursor-default items-center gap-2 rounded-md border px-2.5 py-1 font-mono text-[11px] tabular-nums transition-colors">
+        <span className="text-ink-4 tracking-[0.16em] uppercase">CPU</span>
+        <span>{displayCpu.toFixed(1)}%</span>
+        <span className="text-ink-4/60">/</span>
+        <span className="text-ink-4 tracking-[0.16em] uppercase">RAM</span>
+        <span>{formatResourceBytes(displayRss)}</span>
+        {rootPid === null ? null : (
+          <>
+            <span className="text-ink-4/60">/</span>
+            <span className="text-ink-4 tracking-[0.16em] uppercase">PID</span>
+            <span>{rootPid}</span>
+          </>
+        )}
+      </div>
+    </AgentResourceTooltip>
+  );
+}
 
 function useTaskMessageMeta(stepId: string | null) {
   return useTaskMessagesStore(
@@ -1471,6 +1883,13 @@ export function TaskPanel({ taskId }: { taskId: string }) {
 
             {/* Center: Branch, PR badge, Work items */}
             <div className="flex min-w-0 shrink items-center gap-2">
+              {activeStepId && (
+                <AgentResourcePill
+                  stepId={activeStepId}
+                  isRunning={activeStep?.status === 'running'}
+                />
+              )}
+
               {/* Backend chip */}
               <Chip size="sm" className="max-w-40">
                 {backendLabel}

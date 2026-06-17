@@ -1,3 +1,4 @@
+import type { AgentResourceSnapshot } from './agent-resource-types';
 import type { AgentQuestion, QueuedPrompt } from './agent-types';
 import type {
   NormalizedEntry,
@@ -19,6 +20,7 @@ export type AgentUIEventPayload =
   | ({ type: 'permission' } & NormalizedPermissionRequest)
   | { type: 'question'; requestId: string; questions: AgentQuestion[] }
   | { type: 'name-updated'; name: string }
+  | { type: 'resource-snapshot'; snapshot: AgentResourceSnapshot }
   | { type: 'queue-update'; queuedPrompts: QueuedPrompt[] };
 
 export type AgentUIEvent = {
