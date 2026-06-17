@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
 import { AGENT_CHANNELS } from '@shared/agent-types';
+import type { AiUsageDashboardParams } from '@shared/ai-usage-types';
 import type { CacheEvent, CacheSubscriptionUpdate } from '@shared/cache-events';
 import type { DebugLogEntry } from '@shared/debug-log-types';
 import type {
@@ -776,7 +777,7 @@ contextBridge.exposeInMainWorld('api', {
       since: string;
       until?: string;
     }) => ipcRenderer.invoke('agent:usage:getHistory', params),
-    getDashboard: (params: { since: string; until?: string }) =>
+    getDashboard: (params: AiUsageDashboardParams) =>
       ipcRenderer.invoke('agent:usage:getDashboard', params),
     getTaskUsage: (taskId: string) =>
       ipcRenderer.invoke('agent:usage:getTaskUsage', taskId),

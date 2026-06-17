@@ -4132,7 +4132,7 @@ export function registerIpcHandlers() {
 
   ipcMain.handle(
     'agent:usage:getDashboard',
-    (_, params: { since: string; until?: string }) => {
+    (_, params: { since: string; until?: string; projectIds?: string[] }) => {
       return AiUsageRepository.getDashboard(params);
     },
   );

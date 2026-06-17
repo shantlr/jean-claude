@@ -60,6 +60,7 @@ export interface AiUsageEvent {
 export interface AiUsageDashboardParams {
   since: string;
   until?: string;
+  projectIds?: string[];
 }
 
 export interface AiUsageDashboard {

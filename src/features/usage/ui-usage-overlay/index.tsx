@@ -9,6 +9,7 @@ import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
 import { Tooltip } from '@/common/ui/tooltip';
 import { useAiUsageDashboard } from '@/hooks/use-ai-usage-dashboard';
+import { useProjects } from '@/hooks/use-projects';
 
 type Range = 'today' | '7d' | '30d' | 'all';
 
@@ -715,7 +716,17 @@ function Donut({
 export function UsageOverlay({ onClose }: { onClose: () => void }) {
   const layer = useKeyboardLayer('dialog', { exclusive: true });
   const [range, setRange] = useState<Range>('30d');
-  const { data, isLoading } = useAiUsageDashboard(range);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
+  const { data: projects = [] } = useProjects();
+  const { data, isLoading } = useAiUsageDashboard(range, selectedProjectIds);
+
+  function toggleProject(projectId: string) {
+    setSelectedProjectIds((current) =>
+      current.includes(projectId)
+        ? current.filter((id) => id !== projectId)
+        : [...current, projectId],
+    );
+  }
 
   const modelRows = useMemo(
     () =>
@@ -805,42 +816,77 @@ export function UsageOverlay({ onClose }: { onClose: () => void }) {
         <div className="pointer-events-none absolute -top-28 right-8 h-64 w-64 rounded-full bg-violet-500/20 blur-3xl" />
         <div className="pointer-events-none absolute top-28 left-12 h-44 w-44 rounded-full bg-sky-400/10 blur-3xl" />
 
-        <div className="border-glass-border relative flex flex-wrap items-center gap-3 border-b bg-gradient-to-b from-violet-400/10 to-transparent px-4 py-3 sm:px-5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-violet-300/20 bg-violet-400/15 text-violet-200 shadow-[0_0_30px_rgba(167,139,250,0.22)]">
-            <BarChart3 className="h-4 w-4" />
-          </div>
-          <div className="min-w-[220px] flex-1">
-            <div className="text-ink-0 text-base font-semibold tracking-[-0.03em]">
-              AI Usage Command Center
+        <div className="border-glass-border relative space-y-3 border-b bg-gradient-to-b from-violet-400/10 to-transparent px-4 py-3 sm:px-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-violet-300/20 bg-violet-400/15 text-violet-200 shadow-[0_0_30px_rgba(167,139,250,0.22)]">
+              <BarChart3 className="h-4 w-4" />
             </div>
-            <div className="text-ink-3 text-xs">
-              Subscription value shown as API estimate, not actual spend.
+            <div className="min-w-[220px] flex-1">
+              <div className="text-ink-0 text-base font-semibold tracking-[-0.03em]">
+                AI Usage Command Center
+              </div>
+              <div className="text-ink-3 text-xs">
+                Subscription value shown as API estimate, not actual spend.
+              </div>
             </div>
+            <div className="flex items-center gap-1 rounded-xl border border-white/8 bg-black/15 p-1">
+              {(['today', '7d', '30d', 'all'] as Range[]).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setRange(item)}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
+                    range === item
+                      ? 'bg-violet-300 text-[#100d19]'
+                      : 'text-ink-3 hover:text-ink-1 hover:bg-white/5'
+                  }`}
+                >
+                  {item === 'today' ? 'Today' : item.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              aria-label="Close usage overlay"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-          <div className="flex items-center gap-1 rounded-xl border border-white/8 bg-black/15 p-1">
-            {(['today', '7d', '30d', 'all'] as Range[]).map((item) => (
+          {projects.length > 0 ? (
+            <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-xl border border-white/8 bg-black/15 p-1">
               <button
-                key={item}
                 type="button"
-                onClick={() => setRange(item)}
-                className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
-                  range === item
-                    ? 'bg-violet-300 text-[#100d19]'
+                onClick={() => setSelectedProjectIds([])}
+                className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
+                  selectedProjectIds.length === 0
+                    ? 'bg-sky-300 text-[#07131a]'
                     : 'text-ink-3 hover:text-ink-1 hover:bg-white/5'
                 }`}
               >
-                {item === 'today' ? 'Today' : item.toUpperCase()}
+                All projects
               </button>
-            ))}
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            aria-label="Close usage overlay"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+              {projects.map((project) => {
+                const isSelected = selectedProjectIds.includes(project.id);
+                return (
+                  <button
+                    key={project.id}
+                    type="button"
+                    onClick={() => toggleProject(project.id)}
+                    className={`max-w-40 shrink-0 truncate rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
+                      isSelected
+                        ? 'bg-sky-300 text-[#07131a]'
+                        : 'text-ink-3 hover:text-ink-1 hover:bg-white/5'
+                    }`}
+                    title={project.name}
+                  >
+                    {project.name}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
 
         <div className="relative min-h-0 flex-1 overflow-auto p-3 sm:p-4">

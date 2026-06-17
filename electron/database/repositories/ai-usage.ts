@@ -300,6 +300,9 @@ export const AiUsageRepository = {
     if (params.until) {
       query = query.where('createdAt', '<=', params.until);
     }
+    if (params.projectIds?.length) {
+      query = query.where('projectId', 'in', params.projectIds);
+    }
 
     const events = ((await query.execute()) as AiUsageEvent[]).map(
       eventFromRow,

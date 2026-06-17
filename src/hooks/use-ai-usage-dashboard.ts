@@ -14,11 +14,19 @@ function rangeToSince(range: 'today' | '7d' | '30d' | 'all'): string {
   return now.toISOString();
 }
 
-export function useAiUsageDashboard(range: 'today' | '7d' | '30d' | 'all') {
+export function useAiUsageDashboard(
+  range: 'today' | '7d' | '30d' | 'all',
+  projectIds: string[] = [],
+) {
   const since = useMemo(() => rangeToSince(range), [range]);
+  const projectKey = projectIds.join('\n');
   return useQuery({
-    queryKey: ['ai-usage-dashboard', range, since],
-    queryFn: () => api.usage.getDashboard({ since }),
+    queryKey: ['ai-usage-dashboard', range, since, projectKey],
+    queryFn: () =>
+      api.usage.getDashboard({
+        since,
+        ...(projectIds.length ? { projectIds } : {}),
+      }),
     refetchInterval: range === 'all' ? false : 30_000,
     refetchIntervalInBackground: false,
     staleTime: 30_000,
