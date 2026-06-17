@@ -332,12 +332,6 @@ function buildTree(files: DiffFile[]): TreeNode[] {
         };
         folderMap.set(currentPath, folder);
         currentLevel.push(folder);
-        // Sort after adding to maintain order
-        currentLevel.sort((a, b) => {
-          // Folders first, then files
-          if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
-          return a.name.localeCompare(b.name);
-        });
       }
       currentLevel = folder.children!;
     }
@@ -351,14 +345,20 @@ function buildTree(files: DiffFile[]): TreeNode[] {
       status: file.status,
       originalPath: file.originalPath,
     });
-
-    // Sort the current level
-    currentLevel.sort((a, b) => {
-      // Folders first, then files
-      if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
   }
 
+  sortTree(root);
+
   return root;
+}
+
+function sortTree(nodes: TreeNode[]) {
+  nodes.sort((a, b) => {
+    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  for (const node of nodes) {
+    if (node.children) sortTree(node.children);
+  }
 }

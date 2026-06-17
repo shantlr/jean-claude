@@ -679,31 +679,12 @@ export async function getWorktreeDiff(
           !filePath.endsWith('/') &&
           !filesMap.has(filePath)
         ) {
-          // Check if file existed at baseCommit
-          try {
-            await execAsync(
-              `git cat-file -e ${baseCommit}:"${escapeForShell(filePath)}"`,
-              {
-                cwd: worktreePath,
-                encoding: 'utf-8',
-              },
-            );
-            // File existed at baseCommit, so this is modified (shouldn't happen for ??)
-            filesMap.set(filePath, {
-              path: filePath,
-              status: 'modified',
-              additions: 0,
-              deletions: 0,
-            });
-          } catch {
-            // File didn't exist at baseCommit, so it's added
-            filesMap.set(filePath, {
-              path: filePath,
-              status: 'added',
-              additions: 0,
-              deletions: 0,
-            });
-          }
+          filesMap.set(filePath, {
+            path: filePath,
+            status: 'added',
+            additions: 0,
+            deletions: 0,
+          });
           dbg.worktree('From git status (untracked): %o', {
             filePath,
             status: filesMap.get(filePath)?.status,
