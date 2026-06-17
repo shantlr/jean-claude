@@ -406,6 +406,43 @@ function AgentResourceChartTooltip({
   );
 }
 
+function AgentResourceMicroSpark({
+  accentClassName,
+  values,
+}: {
+  accentClassName: string;
+  values: number[];
+}) {
+  const width = 30;
+  const height = 13;
+  const path = getResourceSparklinePath({
+    values: values.length > 0 ? values : [0],
+    width,
+    height,
+  });
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      className="block shrink-0"
+      aria-hidden
+    >
+      <path
+        d={path}
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.4"
+        className={accentClassName}
+        opacity="0.9"
+      />
+    </svg>
+  );
+}
+
 function AgentResourceChart({
   label,
   value,
@@ -459,6 +496,7 @@ function AgentResourceChart({
       maxValue: maxValue ?? Math.max(...values),
     }),
   );
+  const areaPath = path ? `${path} L ${width} ${height} L 0 ${height} Z` : '';
 
   function handlePointerMove(event: PointerEvent<SVGSVGElement>) {
     if (samples.length === 0) return;
@@ -471,57 +509,76 @@ function AgentResourceChart({
   }
 
   return (
-    <div className="relative grid grid-cols-[38px_64px_150px] items-center gap-3">
-      <span className="text-ink-4 tracking-[0.24em] uppercase">{label}</span>
-      <span className="text-ink-1 text-right font-mono text-[12px] tabular-nums">
-        {formatValue(value)}
-      </span>
-      <svg
-        width={width}
-        height={height}
-        viewBox={`0 0 ${width} ${height}`}
-        className="overflow-visible"
-        aria-hidden
-        onPointerLeave={() => setHoverIndex(null)}
-        onPointerMove={handlePointerMove}
-      >
-        <path
-          d={`M 0 ${height - 0.5} H ${width}`}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1"
-          className="text-white/10"
+    <div className="relative">
+      <div className="mb-1.5 flex items-baseline gap-2">
+        <span
+          className={clsx(
+            'h-1.5 w-1.5 rounded-[2px] bg-current',
+            accentClassName,
+          )}
         />
-        <path
-          d={path}
-          fill="none"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="1.5"
-          className={accentClassName}
-        />
-        {samplePoints.map((point, index) => (
-          <circle
-            key={`${samples[index]?.sampledAt ?? index}-${label}`}
-            cx={point.x}
-            cy={point.y}
-            r="1.7"
+        <span className="text-ink-2 text-[11px] font-medium">{label}</span>
+        <span className="flex-1" />
+        <span className="text-ink-0 font-mono text-[17px] font-semibold tracking-[-0.02em] tabular-nums">
+          {formatValue(value)}
+        </span>
+      </div>
+      <div className="bg-bg-0/45 overflow-hidden rounded-md">
+        <svg
+          width="100%"
+          height={height}
+          viewBox={`0 0 ${width} ${height}`}
+          preserveAspectRatio="none"
+          className="block"
+          aria-hidden
+          onPointerLeave={() => setHoverIndex(null)}
+          onPointerMove={handlePointerMove}
+        >
+          {areaPath ? (
+            <path
+              d={areaPath}
+              fill="currentColor"
+              className={clsx(accentClassName, 'opacity-20')}
+            />
+          ) : null}
+          <path
+            d={path}
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.6"
             className={accentClassName}
-            fill="currentColor"
-            opacity="0.72"
           />
-        ))}
-        {hoverSample && hoverPoint ? (
-          <circle
-            cx={hoverPoint.x}
-            cy={hoverPoint.y}
-            r="3"
-            className={accentClassName}
-            fill="currentColor"
-          />
-        ) : null}
-      </svg>
+          {samplePoints.map((point, index) => (
+            <circle
+              key={`${samples[index]?.sampledAt ?? index}-${label}`}
+              cx={point.x}
+              cy={point.y}
+              r="1.4"
+              className={accentClassName}
+              fill="currentColor"
+              opacity="0.55"
+            />
+          ))}
+          {hoverSample && hoverPoint ? (
+            <circle
+              cx={hoverPoint.x}
+              cy={hoverPoint.y}
+              r="3"
+              className={accentClassName}
+              fill="currentColor"
+            />
+          ) : null}
+        </svg>
+      </div>
+      <div className="text-ink-4 mt-1 flex justify-between font-mono text-[9.5px] tabular-nums">
+        <span>60s</span>
+        <span>
+          peak{' '}
+          {formatValue(Math.max(value, ...values, label === 'CPU' ? 0 : 1))}
+        </span>
+      </div>
       {hoverSample ? (
         <AgentResourceChartTooltip
           label={label}
@@ -534,6 +591,7 @@ function AgentResourceChart({
 }
 
 function AgentResourceHoverPanel({
+  backendLabel,
   cpuSamples,
   displayCpu,
   displayRss,
@@ -541,6 +599,7 @@ function AgentResourceHoverPanel({
   rssMax,
   rssSamples,
 }: {
+  backendLabel: string;
   cpuSamples: AgentResourceSample[];
   rssSamples: AgentResourceSample[];
   displayCpu: number;
@@ -548,10 +607,28 @@ function AgentResourceHoverPanel({
   rootPid: number | null;
   rssMax: number;
 }) {
+  const firstSample = [...cpuSamples, ...rssSamples].sort((a, b) =>
+    a.sampledAt.localeCompare(b.sampledAt),
+  )[0];
+  const historySeconds = firstSample
+    ? Math.max(
+        1,
+        Math.round(
+          (Date.now() - new Date(firstSample.sampledAt).getTime()) / 1000,
+        ),
+      )
+    : 0;
+
   return (
-    <div className="border-glass-border bg-bg-1/95 min-w-[360px] rounded-xl border p-3 text-[11px] shadow-[0_24px_70px_rgba(0,0,0,0.38),0_0_0_1px_rgba(255,255,255,0.03)] backdrop-blur-xl">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <div className="text-ink-1 text-xs font-medium">Agent Resources</div>
+    <div className="border-glass-border bg-bg-1/95 w-[312px] rounded-xl border p-3.5 text-[11px] shadow-[0_24px_64px_rgba(0,0,0,0.6),0_0_0_1px_rgba(0,0,0,0.4)] backdrop-blur-xl">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="border-ink-4 text-ink-3 flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border">
+          <span className="bg-ink-3 h-1.5 w-1.5 rounded-[1px]" />
+        </span>
+        <div className="text-ink-0 text-xs font-semibold tracking-[-0.01em]">
+          Agent Resources
+        </div>
+        <span className="flex-1" />
         <div className="text-ink-4 font-mono text-[10px] tabular-nums">
           {rootPid === null ? 'PID n/a' : `PID ${rootPid}`}
         </div>
@@ -563,20 +640,47 @@ function AgentResourceHoverPanel({
           samples={cpuSamples}
           formatValue={(value) => `${value.toFixed(1)}%`}
           maxValue={Math.max(
-            100,
+            200,
             displayCpu,
             ...cpuSamples.map((sample) => sample.cpuPercent),
           )}
-          accentClassName="text-accent-1"
+          accentClassName="text-[oklch(0.74_0.19_295)]"
         />
+        <div className="bg-ink-4/15 h-px" />
         <AgentResourceChart
-          label="RAM"
+          label="Memory"
           value={displayRss}
           samples={rssSamples}
           formatValue={formatResourceBytes}
           maxValue={rssMax}
-          accentClassName="text-ink-1"
+          accentClassName="text-[oklch(0.78_0.16_155)]"
         />
+      </div>
+      <div className="border-ink-4/15 mt-3 flex gap-4 border-t pt-2.5">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-ink-4 text-[9.5px] tracking-[0.06em] uppercase">
+            Window
+          </span>
+          <span className="text-ink-1 font-mono text-[11.5px]">
+            {historySeconds}s
+          </span>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-ink-4 text-[9.5px] tracking-[0.06em] uppercase">
+            Samples
+          </span>
+          <span className="text-ink-1 font-mono text-[11.5px]">
+            {Math.max(cpuSamples.length, rssSamples.length)}
+          </span>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-ink-4 text-[9.5px] tracking-[0.06em] uppercase">
+            Backend
+          </span>
+          <span className="text-ink-1 font-mono text-[11.5px]">
+            {backendLabel}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -609,8 +713,8 @@ function AgentResourceTooltip({
     if (rect) {
       setPosition({
         left: Math.min(
-          Math.max(rect.left + rect.width / 2 - 180, 8),
-          window.innerWidth - 368,
+          Math.max(rect.left + rect.width / 2 - 156, 8),
+          Math.max(window.innerWidth - 320, 8),
         ),
         top: rect.bottom + 8,
       });
@@ -655,9 +759,11 @@ function AgentResourceTooltip({
 }
 
 function AgentResourcePill({
+  backendLabel,
   isRunning,
   stepId,
 }: {
+  backendLabel: string;
   stepId: string;
   isRunning: boolean;
 }) {
@@ -691,11 +797,14 @@ function AgentResourcePill({
     ...samples.map((sample) => sample.rssBytes),
     1,
   );
+  const cpuValues = samples.map((sample) => sample.cpuPercent);
+  const rssValues = samples.map((sample) => sample.rssBytes);
 
   return (
     <AgentResourceTooltip
       content={
         <AgentResourceHoverPanel
+          backendLabel={backendLabel}
           cpuSamples={samples}
           displayCpu={displayCpu}
           displayRss={displayRss}
@@ -705,19 +814,34 @@ function AgentResourcePill({
         />
       }
     >
-      <div className="border-glass-border bg-bg-1/60 text-ink-2 hover:border-glass-border-strong hover:bg-bg-1/90 flex cursor-default items-center gap-2 rounded-md border px-2.5 py-1 font-mono text-[11px] tabular-nums transition-colors">
-        <span className="text-ink-4 tracking-[0.16em] uppercase">CPU</span>
-        <span>{displayCpu.toFixed(1)}%</span>
-        <span className="text-ink-4/60">/</span>
-        <span className="text-ink-4 tracking-[0.16em] uppercase">RAM</span>
-        <span>{formatResourceBytes(displayRss)}</span>
-        {rootPid === null ? null : (
-          <>
-            <span className="text-ink-4/60">/</span>
-            <span className="text-ink-4 tracking-[0.16em] uppercase">PID</span>
-            <span>{rootPid}</span>
-          </>
-        )}
+      <div className="border-glass-border bg-bg-0/25 text-ink-1 hover:border-accent-1/40 hover:bg-bg-2 flex h-7 w-[178px] cursor-default items-center gap-2 rounded-[7px] border px-2 pr-2.5 font-mono text-[11.5px] font-semibold tabular-nums transition-colors">
+        <span
+          className={clsx(
+            'h-[5px] w-[5px] rounded-full',
+            isRunning
+              ? 'animate-pulse bg-[oklch(0.74_0.19_295)] shadow-[0_0_7px_oklch(0.74_0.19_295)]'
+              : 'bg-ink-4/60',
+          )}
+        />
+        <span className="inline-flex min-w-0 flex-1 items-center gap-1.5">
+          <AgentResourceMicroSpark
+            values={cpuValues}
+            accentClassName="text-[oklch(0.74_0.19_295)]"
+          />
+          <span className="min-w-[42px] text-right">
+            {displayCpu.toFixed(1)}%
+          </span>
+        </span>
+        <span className="bg-ink-4/25 h-[13px] w-px" />
+        <span className="inline-flex min-w-0 flex-1 items-center gap-1.5">
+          <AgentResourceMicroSpark
+            values={rssValues}
+            accentClassName="text-[oklch(0.78_0.16_155)]"
+          />
+          <span className="min-w-[45px] text-right">
+            {formatResourceBytes(displayRss).replace(' ', '')}
+          </span>
+        </span>
       </div>
     </AgentResourceTooltip>
   );
@@ -1887,6 +2011,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
                 <AgentResourcePill
                   stepId={activeStepId}
                   isRunning={activeStep?.status === 'running'}
+                  backendLabel={backendLabel}
                 />
               )}
 
