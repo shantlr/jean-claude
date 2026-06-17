@@ -69,6 +69,30 @@ describe('getFeedQueryKeyForCacheEvent', () => {
     ).toEqual([feedQueryKeys.pullRequests]);
   });
 
+  it('does not map feed snapshot pull request upserts to feed query invalidations', () => {
+    expect(
+      getReactQueryKeysForCacheEvent({
+        type: 'pullRequest.upsert',
+        providerId: 'github',
+        repoId: 'repo-1',
+        projectId: 'project-1',
+        invalidateFeed: false,
+        pullRequest: {
+          id: 42,
+          title: 'PR title',
+          status: 'active',
+          isDraft: false,
+          createdBy: { id: 'user-1', displayName: 'User', uniqueName: 'u' },
+          creationDate: '2026-01-01T00:00:00.000Z',
+          sourceRefName: 'refs/heads/feature',
+          targetRefName: 'refs/heads/main',
+          url: 'https://example.com/pr/42',
+          reviewers: [],
+        },
+      }),
+    ).toEqual([]);
+  });
+
   it('maps task events to task feed and completed-task keys', () => {
     expect(
       getReactQueryKeysForCacheEvent({
@@ -147,6 +171,39 @@ describe('handleCacheEvent', () => {
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
       queryKey: feedQueryKeys.pullRequests,
     });
+  });
+
+  it('hydrates pull request snapshots without invalidating the producing feed query', () => {
+    const queryClient = { invalidateQueries: vi.fn() };
+    retainResource('feed:pullRequests');
+
+    handleCacheEvent(
+      {
+        type: 'pullRequest.upsert',
+        providerId: 'github',
+        repoId: 'repo-1',
+        projectId: 'project-1',
+        invalidateFeed: false,
+        pullRequest: {
+          id: 42,
+          title: 'PR title',
+          status: 'active',
+          isDraft: false,
+          createdBy: { id: 'user-1', displayName: 'User', uniqueName: 'u' },
+          creationDate: '2026-01-01T00:00:00.000Z',
+          sourceRefName: 'refs/heads/feature',
+          targetRefName: 'refs/heads/main',
+          url: 'https://example.com/pr/42',
+          reviewers: [],
+        },
+      },
+      queryClient,
+    );
+
+    expect(
+      cache$.pullRequests['pullRequest:github:repo-1:42'].get()?.title,
+    ).toBe('PR title');
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalled();
   });
 
   it('invalidates task feed data for active feed subscriptions on task events', () => {

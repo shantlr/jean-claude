@@ -32,7 +32,12 @@ export function getFeedQueryKeyForCacheEvent(event: CacheEvent) {
     case 'step.delete':
       return feedQueryKeys.tasks;
     case 'pullRequest.upsert':
+      if (event.invalidateFeed === false) {
+        return null;
+      }
+      return feedQueryKeys.pullRequests;
     case 'pullRequest.patch':
+      return feedQueryKeys.pullRequests;
     case 'pullRequest.threadsChanged':
       return feedQueryKeys.pullRequests;
   }

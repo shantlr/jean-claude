@@ -33,7 +33,10 @@ import {
 import { ProjectLogoBackground } from '@/features/project/ui-project-logo';
 import { PrAutoComplete } from '@/features/pull-request/ui-pr-auto-complete';
 import { CompleteTaskDialog } from '@/features/task/ui-task-panel/complete-task-dialog';
-import { usePullRequest } from '@/hooks/use-pull-requests';
+import {
+  useCachedPullRequest,
+  usePullRequest,
+} from '@/hooks/use-pull-requests';
 import { useCompleteTask, useTask } from '@/hooks/use-tasks';
 import { formatRelativeTime } from '@/lib/time';
 import {
@@ -358,6 +361,10 @@ export function FeedItemCard({
   );
   const hasRunningCommand = runningCommands.length > 0;
   const runningBgJobs = useRunningBackgroundJobsForTask(item.taskId ?? null);
+  const { data: cachedPr } = useCachedPullRequest(
+    item.projectId,
+    item.pullRequestId,
+  );
   const pendingCommentCount = useOpenReviewCommentCount(item.taskId ?? '');
   const isDeleting = runningBgJobs.some((j) => j.type === 'task-deletion');
   const isCompleting = runningBgJobs.some((j) => j.type === 'task-completion');
@@ -367,6 +374,33 @@ export function FeedItemCard({
   const menuRef = useRef<{ toggle: () => void } | null>(null);
 
   const isTask = item.source === 'task';
+  const itemTitle =
+    item.source === 'pull-request'
+      ? (cachedPr?.title ?? item.title)
+      : item.title;
+  const itemTimestamp =
+    item.source === 'pull-request'
+      ? (cachedPr?.creationDate ?? item.timestamp)
+      : item.timestamp;
+  const pullRequestUrl = cachedPr?.url ?? item.pullRequestUrl;
+  const isDraft = cachedPr?.isDraft ?? item.isDraft;
+  const pullRequestMergeStatus =
+    cachedPr?.mergeStatus ?? item.pullRequestMergeStatus;
+  const approvedBy =
+    cachedPr?.reviewers
+      .filter(
+        (reviewer) =>
+          !reviewer.isContainer &&
+          (reviewer.voteStatus === 'approved' ||
+            reviewer.voteStatus === 'approved-with-suggestions'),
+      )
+      .map((reviewer) => ({
+        displayName: reviewer.displayName,
+        uniqueName: reviewer.uniqueName,
+        imageUrl: reviewer.imageUrl,
+      })) ??
+    item.approvedBy ??
+    [];
   const isRunning = item.attention === 'running';
   const hasUnread = Boolean(item.hasUnread);
   const needsPermission = item.attention === 'needs-permission';
@@ -374,9 +408,10 @@ export function FeedItemCard({
   const needsAttention = needsPermission || hasQuestion;
   const hasChildren = !isSubtask && (item.children?.length ?? 0) > 0;
   const hasPr = isTask && !!item.pullRequestId;
-  const prMerged = item.workItemPrStatus === 'completed';
-  const prHasConflicts = item.pullRequestMergeStatus === 'conflicts';
-  const prApprovalCount = item.approvedBy?.length ?? 0;
+  const prMerged =
+    item.workItemPrStatus === 'completed' || cachedPr?.status === 'completed';
+  const prHasConflicts = pullRequestMergeStatus === 'conflicts';
+  const prApprovalCount = approvedBy.length;
   const showRail = isTask && !isSubtask && (hasChildren || hasPr);
   const isPrFocused = hasPr && currentPrId === String(item.pullRequestId);
   const canSetPrAutoComplete =
@@ -384,10 +419,10 @@ export function FeedItemCard({
     prApprovalCount > 0 &&
     !prMerged &&
     !prHasConflicts &&
-    !item.isDraft &&
+    !isDraft &&
     !!item.pullRequestId;
   const showRailPrAutoComplete =
-    hasPr && !prMerged && !item.isDraft && !!item.pullRequestId;
+    hasPr && !prMerged && !isDraft && !!item.pullRequestId;
 
   // Complete task (for merged PRs)
   const canComplete =
@@ -408,7 +443,7 @@ export function FeedItemCard({
         e &&
         item.source === 'pull-request' &&
         isModifiedClick(e) &&
-        openExternalUrl(item.pullRequestUrl)
+        openExternalUrl(pullRequestUrl)
       ) {
         return;
       }
@@ -436,7 +471,7 @@ export function FeedItemCard({
         });
       }
     },
-    [navigate, item],
+    [navigate, item, pullRequestUrl],
   );
 
   const openMenu = useCallback((e: React.MouseEvent | React.KeyboardEvent) => {
@@ -499,7 +534,7 @@ export function FeedItemCard({
   const handlePrClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (isModifiedClick(e) && openExternalUrl(item.pullRequestUrl)) {
+      if (isModifiedClick(e) && openExternalUrl(pullRequestUrl)) {
         return;
       }
       if (item.pullRequestId) {
@@ -512,7 +547,7 @@ export function FeedItemCard({
         });
       }
     },
-    [navigate, item.projectId, item.pullRequestId, item.pullRequestUrl],
+    [navigate, item.projectId, item.pullRequestId, pullRequestUrl],
   );
 
   const handleWorkItemClick = useCallback(
@@ -683,7 +718,7 @@ export function FeedItemCard({
                         : 'text-ink-1 text-[12.5px]',
                   )}
                 >
-                  {item.title}
+                  {itemTitle}
                 </span>
               </div>
 
@@ -691,7 +726,7 @@ export function FeedItemCard({
               <div className="flex flex-wrap items-center gap-1.5">
                 {!isSubtask && <FeedProjectLabel item={item} />}
                 <span className="text-ink-3/80 ml-auto shrink-0 font-mono text-[9.5px]">
-                  {formatRelativeTime(item.timestamp)}
+                  {formatRelativeTime(itemTimestamp)}
                 </span>
 
                 {/* PR status badges for work items (non-task) */}
@@ -729,7 +764,7 @@ export function FeedItemCard({
                   )}
 
                 {/* Draft badge (non-task items only, task draft shown in PR rail) */}
-                {item.isDraft && item.source !== 'task' && (
+                {isDraft && item.source !== 'task' && (
                   <span className="border-glass-border text-ink-3 rounded border px-1 py-0 text-[9px]">
                     Draft
                   </span>
@@ -878,7 +913,7 @@ export function FeedItemCard({
                     #{item.pullRequestId}
                   </span>
                   <span>{prMerged ? 'merged' : 'open'}</span>
-                  {item.isDraft && (
+                  {isDraft && (
                     <span className="border-glass-border text-ink-3 rounded border px-1 py-0 text-[9px]">
                       Draft
                     </span>
@@ -886,8 +921,8 @@ export function FeedItemCard({
                   {prApprovalCount > 0 && (
                     <span
                       className="text-status-done flex items-center gap-0.5"
-                      title={item.approvedBy
-                        ?.map((reviewer) => reviewer.displayName)
+                      title={approvedBy
+                        .map((reviewer) => reviewer.displayName)
                         .join(', ')}
                     >
                       <CheckCircle2 className="h-2.5 w-2.5" />

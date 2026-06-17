@@ -1,3 +1,4 @@
+import type { AzureDevOpsPullRequest } from '@shared/azure-devops-types';
 import {
   blockNoteJsonToMarkdown,
   markdownToBlockNoteJson,
@@ -23,10 +24,20 @@ import {
   queryAssignedWorkItems,
 } from './azure-devops-service';
 import type { LinkedPr } from './azure-devops-service';
+import { emitCacheEvent } from './cache-event-service';
 import { getMostRecentlyUpdatedStep } from './step-service';
 
 // In-memory cache for PR feed items to avoid hammering Azure DevOps API
-let prCache: { items: FeedItem[]; fetchedAt: number } | null = null;
+let prCache: {
+  items: FeedItem[];
+  pullRequests: Array<{
+    providerId: string;
+    repoId: string;
+    projectId: string;
+    pullRequest: AzureDevOpsPullRequest;
+  }>;
+  fetchedAt: number;
+} | null = null;
 const PR_CACHE_TTL_MS = 3 * 60 * 1000;
 
 let activityCache: {
@@ -96,6 +107,21 @@ function feedItemPrIdentityKey(item: FeedItem): string | null {
   }
 
   return `${item.projectId}:${item.pullRequestId}`;
+}
+
+function emitPullRequestSnapshots(
+  pullRequests: NonNullable<typeof prCache>['pullRequests'],
+) {
+  for (const snapshot of pullRequests) {
+    emitCacheEvent({
+      type: 'pullRequest.upsert',
+      providerId: snapshot.providerId,
+      repoId: snapshot.repoId,
+      projectId: snapshot.projectId,
+      pullRequest: snapshot.pullRequest,
+      invalidateFeed: false,
+    });
+  }
 }
 
 /**
@@ -607,6 +633,7 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
   // Return cached items if still fresh
   if (prCache && Date.now() - prCache.fetchedAt < PR_CACHE_TTL_MS) {
     dbg.feed('fetchPrFeedItems: using cache (%d items)', prCache.items.length);
+    emitPullRequestSnapshots(prCache.pullRequests);
     return prCache.items;
   }
 
@@ -638,7 +665,7 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
     ),
   );
 
-  const projectItems = await Promise.all(
+  const projectResults = await Promise.all(
     repoProjects.map(async (project) => {
       try {
         const prs = await listPullRequests({
@@ -648,7 +675,14 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
           status: 'active',
         });
 
-        return prs.map(
+        const pullRequests = prs.map((pr) => ({
+          providerId: project.repoProviderId!,
+          repoId: project.repoId!,
+          projectId: project.id,
+          pullRequest: pr,
+        }));
+
+        const items = prs.map(
           (pr): FeedItem => ({
             id: `pr:${project.id}:${pr.id}`,
             source: 'pull-request',
@@ -659,31 +693,14 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
             projectColor: project.color,
             projectLogoPath: project.logoPath,
             projectPriority: project.prPriority as 'high' | 'normal' | 'low',
-            title: pr.title,
-            subtitle: pr.createdBy.displayName,
-            ownerName: pr.createdBy.displayName,
+            title: `#${pr.id}`,
             isOwnedByCurrentUser:
               !!project.repoProviderId &&
               pr.createdBy.uniqueName.toLowerCase() ===
                 providerUserEmailMap.get(project.repoProviderId),
-            isDraft: pr.isDraft,
             pullRequestId: pr.id,
             pullRequestProviderId: project.repoProviderId ?? undefined,
             pullRequestRepoId: project.repoId ?? undefined,
-            pullRequestUrl: pr.url,
-            pullRequestMergeStatus: pr.mergeStatus,
-            approvedBy: pr.reviewers
-              .filter(
-                (r) =>
-                  !r.isContainer &&
-                  (r.voteStatus === 'approved' ||
-                    r.voteStatus === 'approved-with-suggestions'),
-              )
-              .map((r) => ({
-                displayName: r.displayName,
-                uniqueName: r.uniqueName,
-                imageUrl: r.imageUrl,
-              })),
             isApprovedByMe:
               !!project.repoProviderId &&
               pr.reviewers.some(
@@ -696,6 +713,8 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
               ),
           }),
         );
+
+        return { items, pullRequests };
       } catch (err) {
         // Non-fatal: skip this project's PRs on error
         dbg.feed(
@@ -703,12 +722,14 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
           project.id,
           err,
         );
-        return [];
+        return { items: [], pullRequests: [] };
       }
     }),
   );
 
-  const prItems = projectItems.flat();
+  const prItems = projectResults.flatMap((result) => result.items);
+  const pullRequests = projectResults.flatMap((result) => result.pullRequests);
+  emitPullRequestSnapshots(pullRequests);
   const repoProjectsById = new Map(
     repoProjects.map((project) => [project.id, project]),
   );
@@ -836,7 +857,7 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
     };
   });
 
-  prCache = { items: enrichedItems, fetchedAt: Date.now() };
+  prCache = { items: enrichedItems, pullRequests, fetchedAt: Date.now() };
   dbg.feed('fetchPrFeedItems: cached %d PR items', enrichedItems.length);
   return enrichedItems;
 }

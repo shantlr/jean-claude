@@ -28,6 +28,7 @@ import { Modal } from '@/common/ui/modal';
 import { ProjectLogo } from '@/features/project/ui-project-logo';
 import { useFeed } from '@/hooks/use-feed';
 import { useProjects } from '@/hooks/use-projects';
+import { useCachedPullRequest } from '@/hooks/use-pull-requests';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useFeedStore } from '@/stores/feed';
 import { useNavigationStore } from '@/stores/navigation';
@@ -823,6 +824,13 @@ function PrReviewCarouselCard({
 
   const stateLabel = item.hasNewActivity ? 'UPDATED' : 'REVIEW';
   const project = useFeedItemProject(item);
+  const { data: cachedPr } = useCachedPullRequest(
+    item.projectId,
+    item.pullRequestId,
+  );
+  const title = cachedPr?.title ?? item.title;
+  const ownerName =
+    cachedPr?.createdBy.displayName ?? item.subtitle ?? item.ownerName ?? '';
   const isHighPriority = project.priority === 'high';
   const accent = isHighPriority
     ? 'var(--color-status-fail)'
@@ -870,11 +878,11 @@ function PrReviewCarouselCard({
             {stateLabel}
           </span>
           <span className="text-ink-3 ml-auto max-w-[76px] truncate font-mono text-[9.5px]">
-            {item.subtitle ?? item.ownerName ?? ''}
+            {ownerName}
           </span>
         </div>
         <div className="text-ink-0 mb-2 truncate text-[12.5px] leading-snug font-medium">
-          {item.title}
+          {title}
         </div>
         <div className="mb-2 flex items-center gap-1.5">
           <MiniProjectLabel item={item} />

@@ -56,13 +56,9 @@ export function mergeTaskPrInfo(taskItems: FeedItem[], prItems: FeedItem[]) {
 
     return {
       ...withChildren,
-      isDraft: pr.isDraft,
       workItemPrStatus: 'active',
-      pullRequestMergeStatus: pr.pullRequestMergeStatus,
-      approvedBy: pr.approvedBy,
       activeThreadCount: pr.activeThreadCount,
       unresolvedCommentCount: pr.unresolvedCommentCount,
-      workItemPrUrl: pr.pullRequestUrl,
     };
   };
 

@@ -160,7 +160,8 @@ describe('pull request feed identity', () => {
     );
 
     expect(merged.activeThreadCount).toBe(2);
-    expect(merged.workItemPrUrl).toBe('https://example.com/repo-a/pull/42');
+    expect(merged.workItemPrStatus).toBe('active');
+    expect(merged.workItemPrUrl).toBeUndefined();
   });
 
   it('hides only standalone PR with same canonical identity as a task PR', () => {

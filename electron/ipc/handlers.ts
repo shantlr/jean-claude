@@ -3109,7 +3109,7 @@ export function registerIpcHandlers() {
 
   ipcMain.handle(
     'azureDevOps:addPullRequestComment',
-    (
+    async (
       _,
       params: {
         providerId: string;
@@ -3118,12 +3118,16 @@ export function registerIpcHandlers() {
         pullRequestId: number;
         content: string;
       },
-    ) => addPullRequestComment(params),
+    ) => {
+      const result = await addPullRequestComment(params);
+      invalidatePrCache();
+      return result;
+    },
   );
 
   ipcMain.handle(
     'azureDevOps:addPullRequestFileComment',
-    (
+    async (
       _,
       params: {
         providerId: string;
@@ -3135,12 +3139,16 @@ export function registerIpcHandlers() {
         lineEnd?: number;
         content: string;
       },
-    ) => addPullRequestFileComment(params),
+    ) => {
+      const result = await addPullRequestFileComment(params);
+      invalidatePrCache();
+      return result;
+    },
   );
 
   ipcMain.handle(
     'azureDevOps:addThreadReply',
-    (
+    async (
       _,
       params: {
         providerId: string;
@@ -3150,12 +3158,16 @@ export function registerIpcHandlers() {
         threadId: number;
         content: string;
       },
-    ) => addThreadReply(params),
+    ) => {
+      const result = await addThreadReply(params);
+      invalidatePrCache();
+      return result;
+    },
   );
 
   ipcMain.handle(
     'azureDevOps:updateThreadComment',
-    (
+    async (
       _,
       params: {
         providerId: string;
@@ -3166,12 +3178,16 @@ export function registerIpcHandlers() {
         commentId: number;
         content: string;
       },
-    ) => updateThreadComment(params),
+    ) => {
+      const result = await updateThreadComment(params);
+      invalidatePrCache();
+      return result;
+    },
   );
 
   ipcMain.handle(
     'azureDevOps:deleteThreadComment',
-    (
+    async (
       _,
       params: {
         providerId: string;
@@ -3181,12 +3197,16 @@ export function registerIpcHandlers() {
         threadId: number;
         commentId: number;
       },
-    ) => deleteThreadComment(params),
+    ) => {
+      const result = await deleteThreadComment(params);
+      invalidatePrCache();
+      return result;
+    },
   );
 
   ipcMain.handle(
     'azureDevOps:setThreadCommentLike',
-    (
+    async (
       _,
       params: {
         providerId: string;
@@ -3197,12 +3217,16 @@ export function registerIpcHandlers() {
         commentId: number;
         liked: boolean;
       },
-    ) => setThreadCommentLike(params),
+    ) => {
+      const result = await setThreadCommentLike(params);
+      invalidatePrCache();
+      return result;
+    },
   );
 
   ipcMain.handle(
     'azureDevOps:updateThreadStatus',
-    (
+    async (
       _,
       params: {
         providerId: string;
@@ -3212,7 +3236,11 @@ export function registerIpcHandlers() {
         threadId: number;
         status: string;
       },
-    ) => updateThreadStatus(params),
+    ) => {
+      const result = await updateThreadStatus(params);
+      invalidatePrCache();
+      return result;
+    },
   );
 
   ipcMain.handle(
@@ -3247,7 +3275,7 @@ export function registerIpcHandlers() {
 
   ipcMain.handle(
     'azureDevOps:votePullRequest',
-    (
+    async (
       _,
       params: {
         providerId: string;
@@ -3257,12 +3285,16 @@ export function registerIpcHandlers() {
         reviewerId: string;
         vote: number;
       },
-    ) => votePullRequest(params),
+    ) => {
+      const result = await votePullRequest(params);
+      invalidatePrCache();
+      return result;
+    },
   );
 
   ipcMain.handle(
     'azureDevOps:setPullRequestAutoComplete',
-    (
+    async (
       _,
       params: {
         providerId: string;
@@ -3279,12 +3311,16 @@ export function registerIpcHandlers() {
           autoCompleteIgnoreConfigIds?: number[];
         };
       },
-    ) => setPullRequestAutoComplete(params),
+    ) => {
+      const result = await setPullRequestAutoComplete(params);
+      invalidatePrCache();
+      return result;
+    },
   );
 
   ipcMain.handle(
     'azureDevOps:publishPullRequest',
-    (
+    async (
       _,
       params: {
         providerId: string;
@@ -3292,7 +3328,11 @@ export function registerIpcHandlers() {
         repoId: string;
         pullRequestId: number;
       },
-    ) => publishPullRequest(params),
+    ) => {
+      const result = await publishPullRequest(params);
+      invalidatePrCache();
+      return result;
+    },
   );
 
   ipcMain.handle(

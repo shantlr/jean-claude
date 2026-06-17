@@ -54,6 +54,7 @@ export type CacheEvent =
       repoId: string;
       projectId?: string;
       pullRequest: AzureDevOpsPullRequest | AzureDevOpsPullRequestDetails;
+      invalidateFeed?: boolean;
     }
   | {
       type: 'pullRequest.patch';
