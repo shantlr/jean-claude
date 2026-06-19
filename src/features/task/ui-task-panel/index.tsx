@@ -413,7 +413,7 @@ function AgentResourceMicroSpark({
   accentClassName: string;
   values: number[];
 }) {
-  const width = 30;
+  const width = 26;
   const height = 13;
   const path = getResourceSparklinePath({
     values: values.length > 0 ? values : [0],
@@ -814,7 +814,7 @@ function AgentResourcePill({
         />
       }
     >
-      <div className="border-glass-border bg-bg-0/25 text-ink-1 hover:border-accent-1/40 hover:bg-bg-2 flex h-7 w-[178px] cursor-default items-center gap-2 rounded-[7px] border px-2 pr-2.5 font-mono text-[11.5px] font-semibold tabular-nums transition-colors">
+      <div className="border-glass-border bg-bg-0/25 text-ink-1 hover:border-accent-1/40 hover:bg-bg-2 flex h-7 w-[196px] cursor-default items-center gap-1.5 rounded-[7px] border px-2 font-mono text-[11.5px] font-semibold tabular-nums transition-colors">
         <span
           className={clsx(
             'h-[5px] w-[5px] rounded-full',
@@ -823,7 +823,7 @@ function AgentResourcePill({
               : 'bg-ink-4/60',
           )}
         />
-        <span className="inline-flex min-w-0 flex-1 items-center gap-1.5">
+        <span className="inline-flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
           <AgentResourceMicroSpark
             values={cpuValues}
             accentClassName="text-[oklch(0.74_0.19_295)]"
@@ -833,7 +833,7 @@ function AgentResourcePill({
           </span>
         </span>
         <span className="bg-ink-4/25 h-[13px] w-px" />
-        <span className="inline-flex min-w-0 flex-1 items-center gap-1.5">
+        <span className="inline-flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
           <AgentResourceMicroSpark
             values={rssValues}
             accentClassName="text-[oklch(0.78_0.16_155)]"
