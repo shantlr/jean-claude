@@ -7,6 +7,8 @@ import { feedQueryKeys } from '@/lib/feed-query-keys';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { NormalizedEntry } from '@shared/normalized-message-v2';
 
+const MESSAGE_UPDATE_FLUSH_MS = 300;
+
 function invalidateWorktreeDiffIfNeeded(
   queryClient: QueryClient,
   taskId: string,
@@ -26,8 +28,7 @@ function invalidateWorktreeDiffIfNeeded(
 
 export function TaskMessageManager() {
   const queryClient = useQueryClient();
-  const addEntry = useTaskMessagesStore((s) => s.addEntry);
-  const updateEntry = useTaskMessagesStore((s) => s.updateEntry);
+  const applyEntryBatch = useTaskMessagesStore((s) => s.applyEntryBatch);
   const updateToolResult = useTaskMessagesStore((s) => s.updateToolResult);
   const setStatus = useTaskMessagesStore((s) => s.setStatus);
   const setPermission = useTaskMessagesStore((s) => s.setPermission);
@@ -51,23 +52,70 @@ export function TaskMessageManager() {
   );
 
   useEffect(() => {
+    const pendingEntryUpdates: Array<{
+      stepId: string;
+      entry: NormalizedEntry;
+      mode: 'append' | 'upsert';
+    }> = [];
+    let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const flushPendingEntryUpdates = (stepId?: string) => {
+      if (pendingEntryUpdates.length === 0) return;
+
+      if (stepId) {
+        const matchingUpdates = pendingEntryUpdates.filter(
+          (update) => update.stepId === stepId,
+        );
+        if (matchingUpdates.length === 0) return;
+
+        const remainingUpdates = pendingEntryUpdates.filter(
+          (update) => update.stepId !== stepId,
+        );
+        pendingEntryUpdates.length = 0;
+        pendingEntryUpdates.push(...remainingUpdates);
+        applyEntryBatch(matchingUpdates);
+        return;
+      }
+
+      const updates = pendingEntryUpdates.splice(0);
+      applyEntryBatch(updates);
+    };
+
+    const scheduleEntryUpdateFlush = () => {
+      if (flushTimer) return;
+      flushTimer = setTimeout(() => {
+        flushTimer = null;
+        flushPendingEntryUpdates();
+      }, MESSAGE_UPDATE_FLUSH_MS);
+    };
+
+    const queueEntryUpdate = (
+      stepId: string,
+      entry: NormalizedEntry,
+      mode: 'append' | 'upsert',
+    ) => {
+      pendingEntryUpdates.push({ stepId, entry, mode });
+      scheduleEntryUpdateFlush();
+    };
+
     const unsub = api.agent.onEvent((event) => {
       const { taskId, stepId } = event;
 
       switch (event.type) {
         case 'entry':
           if (isLoaded(stepId)) {
-            addEntry(stepId, event.entry);
+            queueEntryUpdate(stepId, event.entry, 'append');
             invalidateWorktreeDiffIfNeeded(queryClient, taskId, event.entry);
           }
           break;
         case 'entry-update':
           if (isLoaded(stepId)) {
-            updateEntry(stepId, event.entry);
+            queueEntryUpdate(stepId, event.entry, 'upsert');
             invalidateWorktreeDiffIfNeeded(queryClient, taskId, event.entry);
           }
           break;
         case 'tool-result':
+          flushPendingEntryUpdates(stepId);
           if (isLoaded(stepId)) {
             updateToolResult(
               stepId,
@@ -79,6 +127,7 @@ export function TaskMessageManager() {
           }
           break;
         case 'status':
+          flushPendingEntryUpdates(stepId);
           if (isLoaded(stepId)) {
             setStatus(stepId, event.status, event.error);
           }
@@ -97,6 +146,7 @@ export function TaskMessageManager() {
           });
           break;
         case 'permission':
+          flushPendingEntryUpdates(stepId);
           if (isLoaded(stepId)) {
             setPermission(stepId, event);
           }
@@ -112,6 +162,7 @@ export function TaskMessageManager() {
           });
           break;
         case 'question':
+          flushPendingEntryUpdates(stepId);
           if (isLoaded(stepId)) {
             setQuestion(stepId, event);
           }
@@ -131,6 +182,7 @@ export function TaskMessageManager() {
           queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
           break;
         case 'queue-update':
+          flushPendingEntryUpdates(stepId);
           if (isLoaded(stepId)) {
             setQueuedPrompts(stepId, event.queuedPrompts);
           }
@@ -138,11 +190,16 @@ export function TaskMessageManager() {
       }
     });
 
-    return unsub;
+    return () => {
+      if (flushTimer) {
+        clearTimeout(flushTimer);
+      }
+      flushPendingEntryUpdates();
+      unsub();
+    };
   }, [
     queryClient,
-    addEntry,
-    updateEntry,
+    applyEntryBatch,
     updateToolResult,
     setStatus,
     setPermission,

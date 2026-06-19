@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import type { NormalizedEntry } from '@shared/normalized-message-v2';
+
 import { useTaskMessagesStore } from './task-messages';
 
 describe('task messages store', () => {
   beforeEach(() => {
     useTaskMessagesStore.setState({
+      steps: {},
       runCommandLogs: {},
       runCommandLogGenerations: {},
       runCommandRunning: {},
@@ -103,5 +106,53 @@ describe('task messages store', () => {
       useTaskMessagesStore.getState().runCommandLogs['task-1']['cmd-1'];
 
     expect(log.pendingLines.stdout).toMatchObject({ line: 'new' });
+  });
+
+  it('does not let delayed batches shorten refetched text entries', () => {
+    const store = useTaskMessagesStore.getState();
+    const olderEntry: NormalizedEntry = {
+      id: 'msg-1',
+      date: '2026-01-01T00:00:00.000Z',
+      type: 'assistant-message',
+      value: 'hello',
+    };
+    const refetchedEntry: NormalizedEntry = {
+      ...olderEntry,
+      value: 'hello world',
+    };
+
+    store.loadStep('step-1', 'task-1', [refetchedEntry], 'running');
+    store.applyEntryBatch([
+      { stepId: 'step-1', entry: olderEntry, mode: 'upsert' },
+    ]);
+
+    expect(useTaskMessagesStore.getState().steps['step-1'].messages).toEqual([
+      refetchedEntry,
+    ]);
+  });
+
+  it('does not let delayed batches remove refetched tool results', () => {
+    const store = useTaskMessagesStore.getState();
+    const pendingTool: NormalizedEntry = {
+      id: 'tool-entry-1',
+      date: '2026-01-01T00:00:00.000Z',
+      type: 'tool-use',
+      toolId: 'tool-1',
+      name: 'read',
+      input: { filePath: 'README.md' },
+    };
+    const completedTool: NormalizedEntry = {
+      ...pendingTool,
+      result: 'contents',
+    };
+
+    store.loadStep('step-1', 'task-1', [completedTool], 'running');
+    store.applyEntryBatch([
+      { stepId: 'step-1', entry: pendingTool, mode: 'append' },
+    ]);
+
+    expect(useTaskMessagesStore.getState().steps['step-1'].messages).toEqual([
+      completedTool,
+    ]);
   });
 });

@@ -112,6 +112,13 @@ interface TaskMessagesStore {
     messages: NormalizedEntry[],
     status: StepExecutionStatus,
   ) => void;
+  applyEntryBatch: (
+    updates: Array<{
+      stepId: string;
+      entry: NormalizedEntry;
+      mode: 'append' | 'upsert';
+    }>,
+  ) => void;
   addEntry: (stepId: string, entry: NormalizedEntry) => void;
   updateEntry: (stepId: string, entry: NormalizedEntry) => void;
   updateToolResult: (
@@ -270,6 +277,37 @@ function capLogChunks({
   return { chunks: nextChunks, totalLineCount: nextLineCount };
 }
 
+function shouldKeepExistingEntry({
+  existing,
+  next,
+}: {
+  existing: NormalizedEntry;
+  next: NormalizedEntry;
+}): boolean {
+  if (
+    (existing.type === 'assistant-message' ||
+      existing.type === 'thinking' ||
+      existing.type === 'user-prompt') &&
+    existing.type === next.type &&
+    next.value.length < existing.value.length &&
+    existing.value.startsWith(next.value)
+  ) {
+    return true;
+  }
+
+  if (
+    existing.type === 'tool-use' &&
+    next.type === 'tool-use' &&
+    'result' in existing &&
+    existing.result !== undefined &&
+    (!('result' in next) || next.result === undefined)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
   steps: {},
   pendingRequestsByTaskId: {},
@@ -294,6 +332,56 @@ export const useTaskMessagesStore = create<TaskMessagesStore>((set, get) => ({
         },
       };
       return { steps: evictIfNeeded(newSteps, state.cacheLimit) };
+    });
+  },
+
+  applyEntryBatch: (updates) => {
+    if (updates.length === 0) return;
+
+    set((state) => {
+      let changed = false;
+      const nextSteps = { ...state.steps };
+
+      for (const update of updates) {
+        const step = nextSteps[update.stepId];
+        if (!step) continue;
+
+        let updatedMessages: NormalizedEntry[];
+        if (update.mode === 'append') {
+          const idx = step.messages.findIndex((m) => m.id === update.entry.id);
+          if (idx !== -1) {
+            const existing = step.messages[idx];
+            if (shouldKeepExistingEntry({ existing, next: update.entry })) {
+              continue;
+            }
+            updatedMessages = [...step.messages];
+            updatedMessages[idx] = update.entry;
+          } else {
+            updatedMessages = [...step.messages, update.entry];
+          }
+        } else {
+          const idx = step.messages.findIndex((m) => m.id === update.entry.id);
+          if (idx !== -1) {
+            const existing = step.messages[idx];
+            if (shouldKeepExistingEntry({ existing, next: update.entry })) {
+              continue;
+            }
+            updatedMessages = [...step.messages];
+            updatedMessages[idx] = update.entry;
+          } else {
+            updatedMessages = [...step.messages, update.entry];
+          }
+        }
+
+        nextSteps[update.stepId] = {
+          ...step,
+          messages: updatedMessages,
+        };
+        changed = true;
+      }
+
+      if (!changed) return state;
+      return { steps: nextSteps };
     });
   },
 
