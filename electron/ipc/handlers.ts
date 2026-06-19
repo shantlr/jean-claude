@@ -3589,6 +3589,16 @@ export function registerIpcHandlers() {
     return result.canceled ? null : result.filePaths[0];
   });
 
+  ipcMain.handle('dialog:openFiles', async (event) => {
+    dbg.ipc('dialog:openFiles called');
+    const window = BrowserWindow.fromWebContents(event.sender);
+    const result = await dialog.showOpenDialog(window!, {
+      properties: ['openFile', 'multiSelections'],
+    });
+    dbg.ipc('dialog:openFiles result: %o', result);
+    return result.canceled ? null : result.filePaths;
+  });
+
   // Projects: get detected projects from all known CLI sources
   ipcMain.handle('projects:getDetected', async () => {
     const existingProjects = await ProjectRepository.findAll();
@@ -3648,6 +3658,15 @@ export function registerIpcHandlers() {
         dockerfile: 'dockerfile',
       };
       return { content, language: languageMap[ext] || 'text' };
+    } catch {
+      return null;
+    }
+  });
+
+  ipcMain.handle('fs:getFileSize', async (_, filePath: string) => {
+    try {
+      const stat = await fs.stat(filePath);
+      return stat.isFile() ? stat.size : null;
     } catch {
       return null;
     }

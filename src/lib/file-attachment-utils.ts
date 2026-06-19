@@ -36,6 +36,10 @@ function escapeXmlAttr(value: string): string {
     .replaceAll('>', '&gt;');
 }
 
+function getPathBasename(filePath: string): string {
+  return filePath.split(/[\\/]/).pop() || filePath;
+}
+
 /**
  * Build an `<attached_files>` XML block from file parts.
  * Returns empty string if no files.
@@ -118,5 +122,37 @@ export async function processAttachmentFile(
   } catch (err) {
     onError?.(`Failed to process file: ${file.name}`);
     console.error('Failed to process attachment file:', err);
+  }
+}
+
+export async function processAttachmentPath(
+  sourcePath: string,
+  projectPath: string,
+  onAttach: (file: PromptFilePart) => void,
+  onError?: (message: string) => void,
+): Promise<void> {
+  const size = await window.api.fs.getFileSize(sourcePath);
+  if (typeof size === 'number' && size > MAX_FILE_ATTACHMENT_SIZE) {
+    onAttach({
+      type: 'file',
+      filePath: sourcePath,
+      filename: getPathBasename(sourcePath),
+    });
+    return;
+  }
+
+  try {
+    const result = await window.api.fs.copyAttachmentFile(
+      projectPath,
+      sourcePath,
+    );
+    onAttach({
+      type: 'file',
+      filePath: result.filePath,
+      filename: result.filename,
+    });
+  } catch (err) {
+    onError?.(`Failed to copy file: ${sourcePath}`);
+    console.error('Failed to copy attachment file:', err);
   }
 }

@@ -3,10 +3,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   MAX_FILE_ATTACHMENT_SIZE,
   processAttachmentFile,
+  processAttachmentPath,
 } from './file-attachment-utils';
 
 function stubFsApi(overrides: {
   getPathForFile?: (file: File) => string | null;
+  getFileSize?: (filePath: string) => Promise<number | null>;
   copyAttachmentFile?: (
     projectPath: string,
     sourcePath: string,
@@ -22,6 +24,7 @@ function stubFsApi(overrides: {
     api: {
       fs: {
         getPathForFile: overrides.getPathForFile ?? (() => null),
+        getFileSize: overrides.getFileSize ?? (async () => null),
         copyAttachmentFile:
           overrides.copyAttachmentFile ??
           (async () => ({ filePath: '', filename: '' })),
@@ -85,6 +88,53 @@ describe('processAttachmentFile', () => {
       type: 'file',
       filePath: '/repo/.jean-claude/tmp/abc-small.txt',
       filename: 'small.txt',
+    });
+  });
+
+  it('copies main-process picker paths directly', async () => {
+    const copyAttachmentFile = vi.fn(async () => ({
+      filePath: '/repo/.jean-claude/tmp/abc-picked.txt',
+      filename: 'picked.txt',
+    }));
+    stubFsApi({ copyAttachmentFile });
+    const onAttach = vi.fn();
+
+    await processAttachmentPath(
+      '/Users/patrick/Downloads/picked.txt',
+      '/repo',
+      onAttach,
+    );
+
+    expect(copyAttachmentFile).toHaveBeenCalledWith(
+      '/repo',
+      '/Users/patrick/Downloads/picked.txt',
+    );
+    expect(onAttach).toHaveBeenCalledWith({
+      type: 'file',
+      filePath: '/repo/.jean-claude/tmp/abc-picked.txt',
+      filename: 'picked.txt',
+    });
+  });
+
+  it('attaches oversized picker paths without copying', async () => {
+    const copyAttachmentFile = vi.fn();
+    stubFsApi({
+      getFileSize: async () => MAX_FILE_ATTACHMENT_SIZE + 1,
+      copyAttachmentFile,
+    });
+    const onAttach = vi.fn();
+
+    await processAttachmentPath(
+      '/Users/patrick/Downloads/large.zip',
+      '/repo',
+      onAttach,
+    );
+
+    expect(copyAttachmentFile).not.toHaveBeenCalled();
+    expect(onAttach).toHaveBeenCalledWith({
+      type: 'file',
+      filePath: '/Users/patrick/Downloads/large.zip',
+      filename: 'large.zip',
     });
   });
 });

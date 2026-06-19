@@ -33,6 +33,7 @@ import type { AzureDevOpsWorkItem, WorkItemComment } from '@/lib/api';
 import {
   buildAttachedFilesXml,
   processAttachmentFile,
+  processAttachmentPath,
   MAX_FILES,
 } from '@/lib/file-attachment-utils';
 import { formatBytes } from '@/lib/format-bytes';
@@ -596,7 +597,6 @@ export function PromptComposer({
   ]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const nonImageFileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [showFileEditor, setShowFileEditor] = useState(false);
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -737,26 +737,24 @@ export function PromptComposer({
     [onImageAttach, images, showImageError],
   );
 
-  const handleNonImageFileSelect = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
-      if (!onFileAttach || !projectRoot || !e.target.files) return;
-      const currentFileCount = files?.length ?? 0;
-      const allowed = MAX_FILES - currentFileCount;
-      if (allowed <= 0) return;
+  const handleOpenFilePicker = useCallback(async () => {
+    if (!onFileAttach || !projectRoot) return;
+    const currentFileCount = files?.length ?? 0;
+    const allowed = MAX_FILES - currentFileCount;
+    if (allowed <= 0) return;
 
-      const selectedFiles = Array.from(e.target.files);
-      for (const file of selectedFiles.slice(0, allowed)) {
-        void processAttachmentFile(
-          file,
-          projectRoot,
-          onFileAttach,
-          showImageError,
-        );
-      }
-      e.target.value = '';
-    },
-    [onFileAttach, files, projectRoot, showImageError],
-  );
+    const selectedPaths = await window.api.dialog.openFiles();
+    if (!selectedPaths) return;
+
+    for (const sourcePath of selectedPaths.slice(0, allowed)) {
+      void processAttachmentPath(
+        sourcePath,
+        projectRoot,
+        onFileAttach,
+        showImageError,
+      );
+    }
+  }, [onFileAttach, files, projectRoot, showImageError]);
 
   const handleFileCreate = useCallback(
     async (filename: string, content: string) => {
@@ -1051,16 +1049,9 @@ export function PromptComposer({
             )}
             {onFileAttach && projectRoot && (
               <>
-                <input
-                  ref={nonImageFileInputRef}
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={handleNonImageFileSelect}
-                />
                 <button
                   type="button"
-                  onClick={() => nonImageFileInputRef.current?.click()}
+                  onClick={() => void handleOpenFilePicker()}
                   className="text-ink-3 hover:bg-glass-medium hover:text-ink-1 rounded p-1"
                   title="Attach file"
                 >

@@ -39,7 +39,11 @@ import {
   getFilePathSuggestions,
   useProjectFilePaths,
 } from '@/hooks/use-project-file-paths';
-import { processAttachmentFile, MAX_FILES } from '@/lib/file-attachment-utils';
+import {
+  processAttachmentFile,
+  processAttachmentPath,
+  MAX_FILES,
+} from '@/lib/file-attachment-utils';
 import { formatBytes } from '@/lib/format-bytes';
 import { formatPastedPromptContent } from '@/lib/format-pasted-prompt-content';
 import { processImageFile, MAX_IMAGES } from '@/lib/image-utils';
@@ -1059,29 +1063,25 @@ export const PromptTextarea = forwardRef<
     [onImageAttach, images, showImageError],
   );
 
-  const nonImageFileInputRef = useRef<HTMLInputElement>(null);
+  const handleOpenFilePicker = useCallback(async () => {
+    if (!onFileAttach || !projectRoot) return;
 
-  const handleNonImageFileSelect = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
-      if (!onFileAttach || !projectRoot || !e.target.files) return;
+    const currentFileCount = files?.length ?? 0;
+    const allowedFiles = MAX_FILES - currentFileCount;
+    if (allowedFiles <= 0) return;
 
-      const currentFileCount = files?.length ?? 0;
-      const allowedFiles = MAX_FILES - currentFileCount;
-      if (allowedFiles <= 0) return;
+    const selectedPaths = await window.api.dialog.openFiles();
+    if (!selectedPaths) return;
 
-      const selectedFiles = Array.from(e.target.files);
-      for (const file of selectedFiles.slice(0, allowedFiles)) {
-        void processAttachmentFile(
-          file,
-          projectRoot,
-          onFileAttach,
-          showImageError,
-        );
-      }
-      e.target.value = '';
-    },
-    [onFileAttach, files, projectRoot, showImageError],
-  );
+    for (const sourcePath of selectedPaths.slice(0, allowedFiles)) {
+      void processAttachmentPath(
+        sourcePath,
+        projectRoot,
+        onFileAttach,
+        showImageError,
+      );
+    }
+  }, [onFileAttach, files, projectRoot, showImageError]);
 
   const handleFileCreate = useCallback(
     async (filename: string, content: string) => {
@@ -1539,16 +1539,9 @@ export const PromptTextarea = forwardRef<
             )}
             {onFileAttach && projectRoot && (
               <>
-                <input
-                  ref={nonImageFileInputRef}
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={handleNonImageFileSelect}
-                />
                 <button
                   type="button"
-                  onClick={() => nonImageFileInputRef.current?.click()}
+                  onClick={() => void handleOpenFilePicker()}
                   className="text-ink-3 hover:bg-glass-medium hover:text-ink-1 rounded p-1"
                   title="Attach file"
                 >
