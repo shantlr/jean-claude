@@ -19,7 +19,8 @@ export type BackgroundJobType =
   | 'task-deletion'
   | 'commit'
   | 'merge'
-  | 'worktree-cleanup';
+  | 'worktree-cleanup'
+  | 'pipeline-run';
 export type BackgroundJobStatus = 'running' | 'succeeded' | 'failed';
 
 interface BackgroundJobBase {
@@ -129,6 +130,15 @@ export type BackgroundJob =
       details: {
         branchName: string;
         worktreePath: string;
+      };
+    })
+  | (BackgroundJobBase & {
+      type: 'pipeline-run';
+      details: {
+        pipelineName: string;
+        runName: string;
+        runId: number;
+        kind: 'build' | 'release';
       };
     });
 
@@ -269,6 +279,18 @@ type NewBackgroundJobInput =
       details: {
         branchName: string;
         worktreePath: string;
+      };
+    }
+  | {
+      type: 'pipeline-run';
+      title: string;
+      taskId?: string | null;
+      projectId?: string | null;
+      details: {
+        pipelineName: string;
+        runName: string;
+        runId: number;
+        kind: 'build' | 'release';
       };
     };
 
@@ -430,6 +452,8 @@ export function bgJobLabel(type: BackgroundJobType): string {
       return 'Creating PR review…';
     case 'worktree-cleanup':
       return 'Cleaning up worktree…';
+    case 'pipeline-run':
+      return 'Running pipeline…';
   }
 }
 

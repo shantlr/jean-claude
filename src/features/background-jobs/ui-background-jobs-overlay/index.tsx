@@ -479,6 +479,19 @@ function JobDetails({ job }: { job: BackgroundJob }) {
         </div>
       );
     },
+    'pipeline-run': (typedJob) => {
+      if (typedJob.type !== 'pipeline-run') return null;
+
+      return (
+        <div className="text-ink-2 mt-1 space-y-0.5 text-xs">
+          <p className="truncate">Pipeline: {typedJob.details.pipelineName}</p>
+          <p>
+            {typedJob.details.kind === 'build' ? 'Build' : 'Release'}:{' '}
+            {typedJob.details.runName}
+          </p>
+        </div>
+      );
+    },
   };
 
   return renderers[job.type](job);

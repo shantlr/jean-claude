@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { Play } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -22,14 +23,60 @@ import {
   useQueueBuild,
   useYamlPipelineParameters,
 } from '@/hooks/use-pipeline-runs';
+import { api } from '@/lib/api';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import type { TrackedPipeline } from '@shared/pipeline-types';
 import type { Project } from '@shared/types';
 
 /** Azure DevOps process type for YAML pipelines. */
 const PROCESS_TYPE_YAML = 2;
+const RUN_POLL_INTERVAL_MS = 15_000;
+const RUN_POLL_MAX_ATTEMPTS = 240;
+const RUN_POLL_MAX_FAILURES = 3;
+const TERMINAL_RELEASE_ENV_STATUSES = new Set([
+  'canceled',
+  'partiallySucceeded',
+  'rejected',
+  'skipped',
+  'succeeded',
+]);
 
 /** Stable empty array to avoid unstable selector references. */
 const EMPTY_ARRAY: never[] = [];
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function isBuildTerminal(status: string) {
+  return status === 'completed';
+}
+
+function isBuildSuccessful(result: string) {
+  return result === 'succeeded' || result === 'partiallySucceeded';
+}
+
+function isReleaseTerminal(status: string, environments: { status: string }[]) {
+  if (status !== 'active') return true;
+  if (environments.length === 0) return false;
+
+  return environments.every((environment) =>
+    TERMINAL_RELEASE_ENV_STATUSES.has(environment.status),
+  );
+}
+
+function isReleaseSuccessful(environments: { status: string }[]) {
+  return (
+    environments.length === 0 ||
+    environments.every((environment) =>
+      ['succeeded', 'partiallySucceeded'].includes(environment.status),
+    )
+  );
+}
+
+async function wait(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 // ---------------------------------------------------------------------------
 // ParameterField — shared input renderer for all parameter sources
@@ -124,6 +171,7 @@ export function TriggerRunDialog({
       favoriteBranches={project.favoriteBranches}
       protectedBranches={project.protectedBranches}
       isBuild={isBuild}
+      projectId={project.id}
       pipelineName={pipeline.name}
       onClose={onClose}
     />
@@ -189,6 +237,7 @@ function TriggerRunDialogInner({
   favoriteBranches,
   protectedBranches,
   isBuild,
+  projectId,
   pipelineName,
   onClose,
 }: {
@@ -200,9 +249,17 @@ function TriggerRunDialogInner({
   favoriteBranches?: string[];
   protectedBranches?: string[];
   isBuild: boolean;
+  projectId: string;
   pipelineName: string;
   onClose: () => void;
 }) {
+  const queryClient = useQueryClient();
+  const addRunningJob = useBackgroundJobsStore((state) => state.addRunningJob);
+  const markJobSucceeded = useBackgroundJobsStore(
+    (state) => state.markJobSucceeded,
+  );
+  const markJobFailed = useBackgroundJobsStore((state) => state.markJobFailed);
+
   // Branch state (build only)
   const [branchFilter, setBranchFilter] = useState(defaultBranch);
 
@@ -360,6 +417,143 @@ function TriggerRunDialogInner({
   const createRelease = useCreateRelease();
   const isPending = queueBuild.isPending || createRelease.isPending;
 
+  const invalidateRunLists = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['pipeline-runs'] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-runs-all'] });
+  }, [queryClient]);
+
+  const trackBuildRun = useCallback(
+    (buildId: number, buildNumber: string) => {
+      const jobId = addRunningJob({
+        type: 'pipeline-run',
+        title: `Running ${pipelineName}`,
+        projectId,
+        details: {
+          pipelineName,
+          runName: buildNumber,
+          runId: buildId,
+          kind: 'build',
+        },
+      });
+
+      void (async () => {
+        let pollFailures = 0;
+        for (let attempt = 0; attempt < RUN_POLL_MAX_ATTEMPTS; attempt += 1) {
+          try {
+            const build = await api.pipelines.getBuild({
+              providerId,
+              azureProjectId,
+              buildId,
+            });
+
+            if (isBuildTerminal(build.status)) {
+              invalidateRunLists();
+              if (isBuildSuccessful(build.result)) {
+                markJobSucceeded(jobId);
+              } else {
+                markJobFailed(jobId, `Build ${build.result || build.status}`);
+              }
+              return;
+            }
+            pollFailures = 0;
+          } catch (error) {
+            pollFailures += 1;
+            if (pollFailures < RUN_POLL_MAX_FAILURES) {
+              await wait(RUN_POLL_INTERVAL_MS);
+              continue;
+            }
+
+            markJobFailed(
+              jobId,
+              getErrorMessage(error, 'Failed to poll build'),
+            );
+            return;
+          }
+
+          await wait(RUN_POLL_INTERVAL_MS);
+        }
+
+        markJobFailed(jobId, 'Timed out waiting for build');
+      })();
+    },
+    [
+      addRunningJob,
+      azureProjectId,
+      invalidateRunLists,
+      markJobFailed,
+      markJobSucceeded,
+      pipelineName,
+      projectId,
+      providerId,
+    ],
+  );
+
+  const trackReleaseRun = useCallback(
+    (releaseId: number, releaseName: string) => {
+      const jobId = addRunningJob({
+        type: 'pipeline-run',
+        title: `Running ${pipelineName}`,
+        projectId,
+        details: {
+          pipelineName,
+          runName: releaseName,
+          runId: releaseId,
+          kind: 'release',
+        },
+      });
+
+      void (async () => {
+        let pollFailures = 0;
+        for (let attempt = 0; attempt < RUN_POLL_MAX_ATTEMPTS; attempt += 1) {
+          try {
+            const release = await api.pipelines.getRelease({
+              providerId,
+              azureProjectId,
+              releaseId,
+            });
+
+            if (isReleaseTerminal(release.status, release.environments)) {
+              invalidateRunLists();
+              if (isReleaseSuccessful(release.environments)) {
+                markJobSucceeded(jobId);
+              } else {
+                markJobFailed(jobId, `Release ${release.status}`);
+              }
+              return;
+            }
+            pollFailures = 0;
+          } catch (error) {
+            pollFailures += 1;
+            if (pollFailures < RUN_POLL_MAX_FAILURES) {
+              await wait(RUN_POLL_INTERVAL_MS);
+              continue;
+            }
+
+            markJobFailed(
+              jobId,
+              getErrorMessage(error, 'Failed to poll release'),
+            );
+            return;
+          }
+
+          await wait(RUN_POLL_INTERVAL_MS);
+        }
+
+        markJobFailed(jobId, 'Timed out waiting for release');
+      })();
+    },
+    [
+      addRunningJob,
+      azureProjectId,
+      invalidateRunLists,
+      markJobFailed,
+      markJobSucceeded,
+      pipelineName,
+      projectId,
+      providerId,
+    ],
+  );
+
   const handleSubmit = useCallback(() => {
     setError(null);
     if (isBuild) {
@@ -399,7 +593,11 @@ function TriggerRunDialogInner({
           templateParameters: hasTemplateParams ? templateParams : undefined,
         },
         {
-          onSuccess: () => onClose(),
+          onSuccess: (build) => {
+            invalidateRunLists();
+            trackBuildRun(build.id, build.buildNumber);
+            onClose();
+          },
           onError: (err) => setError(err.message),
         },
       );
@@ -412,7 +610,11 @@ function TriggerRunDialogInner({
           description: description || undefined,
         },
         {
-          onSuccess: () => onClose(),
+          onSuccess: (release) => {
+            invalidateRunLists();
+            trackReleaseRun(release.id, release.name);
+            onClose();
+          },
           onError: (err) => setError(err.message),
         },
       );
@@ -430,6 +632,9 @@ function TriggerRunDialogInner({
     description,
     queueBuild,
     createRelease,
+    invalidateRunLists,
+    trackBuildRun,
+    trackReleaseRun,
     onClose,
   ]);
 
