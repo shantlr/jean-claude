@@ -1,5 +1,5 @@
-import { exec, type ExecOptions, spawn } from 'child_process';
-import { readFile, writeFile } from 'fs/promises';
+import { exec, type ExecOptions } from 'child_process';
+import { readFile } from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { promisify } from 'util';
@@ -40,9 +40,6 @@ export class ClaudeUsageProvider implements BackendUsageProvider {
   private readonly credentialsPath: string;
   private readonly TOKEN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
   private readonly FALLBACK_CLAUDE_CODE_VERSION = '2.1.0';
-  private readonly OAUTH_CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e';
-  private readonly OAUTH_TOKEN_URL =
-    'https://platform.claude.com/v1/oauth/token';
   private readonly KEYCHAIN_SERVICE = 'Claude Code-credentials';
 
   constructor(options: ClaudeUsageProviderOptions = {}) {
@@ -79,13 +76,6 @@ export class ClaudeUsageProvider implements BackendUsageProvider {
 
       if (response.status === 401 || response.status === 403) {
         this.clearTokenCache();
-        const refreshedToken = await this.refreshOAuthToken(oauthToken);
-        if (refreshedToken) {
-          const retryResponse = await this.fetchUsage(
-            refreshedToken.accessToken,
-          );
-          return await this.handleUsageResponse(retryResponse);
-        }
         const latestToken = await this.getOAuthToken();
         if (latestToken && latestToken.accessToken !== oauthToken.accessToken) {
           const retryResponse = await this.fetchUsage(latestToken.accessToken);
@@ -246,147 +236,6 @@ export class ClaudeUsageProvider implements BackendUsageProvider {
       credentials: record,
       source,
     };
-  }
-
-  private async refreshOAuthToken(
-    expiredToken: ClaudeOAuthToken,
-  ): Promise<ClaudeOAuthToken | null> {
-    if (!expiredToken.refreshToken) return null;
-
-    const response = await fetch(this.OAUTH_TOKEN_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        grant_type: 'refresh_token',
-        refresh_token: expiredToken.refreshToken,
-        client_id:
-          process.env.CLAUDE_CODE_OAUTH_CLIENT_ID ?? this.OAUTH_CLIENT_ID,
-        scope: (expiredToken.scopes?.length
-          ? expiredToken.scopes
-          : ['user:inference', 'user:profile']
-        ).join(' '),
-      }),
-    });
-
-    if (!response.ok) return null;
-
-    const data = (await response.json()) as Record<string, unknown>;
-    const accessToken = data.access_token ?? data.accessToken;
-    if (typeof accessToken !== 'string' || accessToken.length === 0)
-      return null;
-
-    const refreshToken = data.refresh_token ?? data.refreshToken;
-    const expiresIn = data.expires_in ?? data.expiresIn;
-    const expiresAt =
-      typeof expiresIn === 'number' ? Date.now() + expiresIn * 1000 : null;
-
-    const updatedCredentials = this.mergeRefreshedCredentials(
-      expiredToken.credentials,
-      {
-        accessToken,
-        refreshToken:
-          typeof refreshToken === 'string'
-            ? refreshToken
-            : expiredToken.refreshToken,
-        expiresAt,
-      },
-    );
-    const refreshedToken = this.extractOAuthToken(
-      updatedCredentials,
-      expiredToken.source,
-    );
-    if (!refreshedToken) return null;
-
-    await this.saveOAuthCredentials(refreshedToken);
-    this.cacheToken(refreshedToken);
-    return refreshedToken;
-  }
-
-  private mergeRefreshedCredentials(
-    credentials: Record<string, unknown>,
-    refreshed: {
-      accessToken: string;
-      refreshToken: string;
-      expiresAt: number | null;
-    },
-  ): Record<string, unknown> {
-    const claudeAiOauth = credentials.claudeAiOauth;
-    if (claudeAiOauth && typeof claudeAiOauth === 'object') {
-      return {
-        ...credentials,
-        claudeAiOauth: {
-          ...(claudeAiOauth as Record<string, unknown>),
-          accessToken: refreshed.accessToken,
-          refreshToken: refreshed.refreshToken,
-          expiresAt: refreshed.expiresAt,
-        },
-      };
-    }
-
-    return {
-      ...credentials,
-      accessToken: refreshed.accessToken,
-      refreshToken: refreshed.refreshToken,
-      expiresAt: refreshed.expiresAt,
-    };
-  }
-
-  private async saveOAuthCredentials(token: ClaudeOAuthToken): Promise<void> {
-    const contents = JSON.stringify(token.credentials);
-    if (token.source === 'file') {
-      await writeFile(this.credentialsPath, contents);
-      return;
-    }
-
-    const account = await this.getKeychainAccount();
-    await this.writeKeychainPassword(account, contents);
-  }
-
-  private async getKeychainAccount(): Promise<string> {
-    try {
-      const { stdout } = await execAsync(
-        `security find-generic-password -s "${this.KEYCHAIN_SERVICE}"`,
-        { encoding: 'utf-8' },
-      );
-      const match = stdout.match(/"acct"<blob>="([^"]+)"/);
-      if (match?.[1]) return match[1];
-    } catch {
-      // Fall back to current user if metadata lookup fails.
-    }
-
-    return os.userInfo().username;
-  }
-
-  private writeKeychainPassword(
-    account: string,
-    contents: string,
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const child = spawn('security', [
-        'add-generic-password',
-        '-a',
-        account,
-        '-s',
-        this.KEYCHAIN_SERVICE,
-        '-U',
-        '-w',
-      ]);
-      let stderr = '';
-      child.stderr.on('data', (chunk) => {
-        stderr += String(chunk);
-      });
-      child.on('error', reject);
-      child.on('close', (code) => {
-        if (code === 0) {
-          resolve();
-          return;
-        }
-        reject(new Error(stderr.trim() || `security exited with code ${code}`));
-      });
-      child.stdin.end(`${contents}\n${contents}\n`);
-    });
   }
 
   private parseRetryAfter(value: string | null): Date {
