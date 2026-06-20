@@ -493,7 +493,14 @@ export function FeedItemCard({
   const needsPermission = item.attention === 'needs-permission';
   const hasQuestion = item.attention === 'has-question';
   const needsAttention = needsPermission || hasQuestion;
-  const hasChildren = !isSubtask && (item.children?.length ?? 0) > 0;
+  const visibleChildren = useMemo(
+    () =>
+      (item.children ?? []).filter(
+        (child) => !child.isCompleted && child.attention !== 'completed',
+      ),
+    [item.children],
+  );
+  const hasChildren = !isSubtask && visibleChildren.length > 0;
   const hasPr = isTask && !!item.pullRequestId;
   const prMerged =
     item.workItemPrStatus === 'completed' || cachedPr?.status === 'completed';
@@ -946,7 +953,7 @@ export function FeedItemCard({
 
           {/* ─── Sub-task rows (branch off main rail) ─── */}
           {hasChildren &&
-            item.children!.map((child) => (
+            visibleChildren.map((child) => (
               <SubtaskRow
                 key={child.id}
                 child={child}

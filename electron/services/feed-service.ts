@@ -318,6 +318,7 @@ export async function getTaskFeedItems({
         title: child.name ?? (child.prompt as string).slice(0, 80),
         subtitle: childSubtitle,
         hasUnread: Boolean(child.hasUnread),
+        isCompleted: Boolean(child.userCompleted),
         taskId: child.id,
         taskType: (child.type ?? 'agent') as string,
         parentTaskId: child.parentTaskId ?? undefined,

@@ -10,7 +10,9 @@ const SOURCE_ORDER: Record<FeedItem['source'], number> = {
 const bySourceThenTimestamp = (a: FeedItem, b: FeedItem) => {
   const so = SOURCE_ORDER[a.source] - SOURCE_ORDER[b.source];
   if (so !== 0) return so;
-  return b.timestamp < a.timestamp ? -1 : b.timestamp > a.timestamp ? 1 : 0;
+  const aTimestamp = getFeedItemActivityTimestamp(a);
+  const bTimestamp = getFeedItemActivityTimestamp(b);
+  return bTimestamp < aTimestamp ? -1 : bTimestamp > aTimestamp ? 1 : 0;
 };
 
 const PRIORITY_ORDER: Record<FeedItem['projectPriority'], number> = {
@@ -18,6 +20,17 @@ const PRIORITY_ORDER: Record<FeedItem['projectPriority'], number> = {
   normal: 1,
   low: 2,
 };
+
+function getFeedItemActivityTimestamp(item: FeedItem): string {
+  if (item.source !== 'task' || !item.children?.length) {
+    return item.timestamp;
+  }
+
+  return item.children.reduce(
+    (latest, child) => (child.timestamp > latest ? child.timestamp : latest),
+    item.timestamp,
+  );
+}
 
 export function getFeedPullRequestIdentityKey(item: FeedItem) {
   if (item.pullRequestId == null) {
@@ -59,7 +72,9 @@ const byManualLowPriorityThenProjectPriority = ({
     const priority = PRIORITY_ORDER[aPriority] - PRIORITY_ORDER[bPriority];
     if (priority !== 0) return priority;
 
-    return b.timestamp < a.timestamp ? -1 : b.timestamp > a.timestamp ? 1 : 0;
+    const aTimestamp = getFeedItemActivityTimestamp(a);
+    const bTimestamp = getFeedItemActivityTimestamp(b);
+    return bTimestamp < aTimestamp ? -1 : bTimestamp > aTimestamp ? 1 : 0;
   };
 };
 
