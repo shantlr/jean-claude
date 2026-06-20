@@ -22,6 +22,7 @@ import { NewTaskOverlay } from '@/features/new-task/ui-new-task-overlay';
 import { PipelinesOverlay } from '@/features/pipelines/ui-pipelines-overlay';
 import { BacklogOverlay } from '@/features/project/ui-backlog-overlay';
 import { ProjectOverlay } from '@/features/project/ui-project-overlay';
+import { ResourcesOverlay } from '@/features/resources/ui-resources-overlay';
 import { RunningCommandsOverlay } from '@/features/run-commands/ui-running-commands-overlay';
 import { SettingsOverlay } from '@/features/settings/ui-settings-overlay';
 import { UsageOverlay } from '@/features/usage/ui-usage-overlay';
@@ -277,6 +278,14 @@ function UsageContainer() {
   return <UsageOverlay onClose={() => close('usage')} />;
 }
 
+function ResourcesContainer() {
+  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'resources');
+  const close = useOverlaysStore((s) => s.close);
+
+  if (!isOpen) return null;
+  return <ResourcesOverlay onClose={() => close('resources')} />;
+}
+
 function BacklogContainer() {
   const layer = useKeyboardLayer('global-nav');
   const isOpen = useOverlaysStore((s) => s.activeOverlay === 'backlog');
@@ -416,6 +425,7 @@ function RootLayout() {
       <CalendarContainer />
       <SettingsContainer />
       <UsageContainer />
+      <ResourcesContainer />
       <RunningCommandsContainer />
       <PipelinesOverlayContainer />
 
