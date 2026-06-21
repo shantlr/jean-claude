@@ -26,6 +26,7 @@ export type CodexNormalizationContext = {
   itemEntries: Map<string, NormalizedEntry>;
   itemText: Map<string, string>;
   model?: string;
+  subagentToolIdsByThreadId: Map<string, string>;
 };
 
 export function createCodexNormalizationContext(): CodexNormalizationContext {
@@ -33,6 +34,7 @@ export function createCodexNormalizationContext(): CodexNormalizationContext {
     emittedSessionIds: new Set(),
     itemEntries: new Map(),
     itemText: new Map(),
+    subagentToolIdsByThreadId: new Map(),
   };
 }
 
@@ -130,7 +132,10 @@ function normalizeItemStarted(
 
   if (isAssistantMessageItem(item)) {
     const text = textFromItem(item) ?? '';
-    const entry = createAssistantEntry(itemId, item, text);
+    const entry = withParentToolId(
+      createAssistantEntry(itemId, item, text),
+      parentToolIdFromParams(params, ctx),
+    );
     ctx.itemEntries.set(itemId, entry);
     ctx.itemText.set(itemId, text);
     return [{ type: 'entry', entry }];
@@ -146,15 +151,24 @@ function normalizeItemStarted(
       type: 'user-prompt',
       value: text,
     };
-    ctx.itemEntries.set(itemId, entry);
-    return [{ type: 'entry', entry }];
+    const entryWithParent = withParentToolId(
+      entry,
+      parentToolIdFromParams(params, ctx),
+    );
+    ctx.itemEntries.set(itemId, entryWithParent);
+    return [{ type: 'entry', entry: entryWithParent }];
   }
 
   const entry = createToolEntry(item, itemId);
   if (entry === undefined) return [];
 
-  ctx.itemEntries.set(itemId, entry);
-  return [{ type: 'entry', entry }];
+  const entryWithParent = withParentToolId(
+    entry,
+    parentToolIdFromParams(params, ctx),
+  );
+  ctx.itemEntries.set(itemId, entryWithParent);
+  registerSubagentThreadIds(entryWithParent, item, ctx);
+  return [{ type: 'entry', entry: entryWithParent }];
 }
 
 function normalizeAgentMessageDelta(
@@ -168,6 +182,7 @@ function normalizeAgentMessageDelta(
   const existingText = ctx.itemText.get(itemId) ?? '';
   const nextText = existingText + delta;
   const existingEntry = ctx.itemEntries.get(itemId);
+  const parentToolId = parentToolIdFromParams(params, ctx);
   const entry: AssistantEntry = {
     ...(existingEntry?.type === 'assistant-message'
       ? existingEntry
@@ -178,14 +193,15 @@ function normalizeAgentMessageDelta(
         }),
     value: nextText,
   };
+  const entryWithParent = withParentToolId(entry, parentToolId);
 
-  ctx.itemEntries.set(itemId, entry);
+  ctx.itemEntries.set(itemId, entryWithParent);
   ctx.itemText.set(itemId, nextText);
   return [
     {
       type:
         existingEntry?.type === 'assistant-message' ? 'entry-update' : 'entry',
-      entry,
+      entry: entryWithParent,
     },
   ];
 }
@@ -200,6 +216,9 @@ function normalizeItemCompleted(
   const itemId = itemIdFromItem(item, params);
   if (itemId === undefined) return [];
 
+  const collabUpdate = normalizeCollabAgentCompletion(item, ctx);
+  if (collabUpdate.length > 0) return collabUpdate;
+
   if (isUserMessageItem(item)) {
     const text = textFromItem(item);
     if (text === undefined) return [];
@@ -211,11 +230,15 @@ function normalizeItemCompleted(
       type: 'user-prompt',
       value: text,
     };
-    ctx.itemEntries.set(itemId, entry);
+    const entryWithParent = withParentToolId(
+      entry,
+      parentToolIdFromParams(params, ctx),
+    );
+    ctx.itemEntries.set(itemId, entryWithParent);
     return [
       {
         type: existingEntry?.type === 'user-prompt' ? 'entry-update' : 'entry',
-        entry,
+        entry: entryWithParent,
       },
     ];
   }
@@ -223,13 +246,15 @@ function normalizeItemCompleted(
   if (isAssistantMessageItem(item)) {
     const text = textFromItem(item) ?? ctx.itemText.get(itemId) ?? '';
     const existingEntry = ctx.itemEntries.get(itemId);
+    const parentToolId = parentToolIdFromParams(params, ctx);
     const entry: AssistantEntry = {
       ...(existingEntry?.type === 'assistant-message'
         ? existingEntry
         : createAssistantEntry(itemId, item, text)),
       value: text,
     };
-    ctx.itemEntries.set(itemId, entry);
+    const entryWithParent = withParentToolId(entry, parentToolId);
+    ctx.itemEntries.set(itemId, entryWithParent);
     ctx.itemText.set(itemId, text);
     return [
       {
@@ -237,7 +262,7 @@ function normalizeItemCompleted(
           existingEntry?.type === 'assistant-message'
             ? 'entry-update'
             : 'entry',
-        entry,
+        entry: entryWithParent,
       },
     ];
   }
@@ -256,8 +281,13 @@ function normalizeItemCompleted(
 
   const entryWithResult =
     entry.type === 'tool-use' ? (addToolResult(entry, item) ?? entry) : entry;
-  ctx.itemEntries.set(itemId, entryWithResult);
-  return [{ type: 'entry', entry: entryWithResult }];
+  const entryWithParent = withParentToolId(
+    entryWithResult,
+    parentToolIdFromParams(params, ctx),
+  );
+  ctx.itemEntries.set(itemId, entryWithParent);
+  registerSubagentThreadIds(entryWithParent, item, ctx);
+  return [{ type: 'entry', entry: entryWithParent }];
 }
 
 function normalizeTurnCompleted(
@@ -356,6 +386,17 @@ function createToolEntry(
     };
   }
 
+  if (type === 'collabAgentToolCall') {
+    return createCollabAgentToolEntry(item, itemId);
+  }
+
+  if (type === 'webSearch') {
+    const entry = createWebSearchToolEntry(item, itemId);
+    if (entry !== undefined || isEmptyWebSearchPlaceholder(item)) {
+      return entry;
+    }
+  }
+
   return {
     id: itemId,
     date: dateFromItem(item),
@@ -364,6 +405,175 @@ function createToolEntry(
     name: 'codex-tool',
     input: { originalType: type, item: { ...item } },
   };
+}
+
+function createCollabAgentToolEntry(
+  item: Record<string, unknown>,
+  itemId: string,
+): ToolUseEntry | undefined {
+  if (str(item.tool) !== 'spawnAgent') return undefined;
+
+  const prompt = str(item.prompt) ?? '';
+  const receiverThreadIds = stringArray(item.receiverThreadIds);
+  if (prompt.trim() === '' || receiverThreadIds.length === 0) {
+    return undefined;
+  }
+
+  return {
+    id: itemId,
+    date: dateFromItem(item),
+    type: 'tool-use',
+    toolId: itemId,
+    name: 'sub-agent',
+    input: {
+      agentType: nonEmptyString(item.model) ?? 'Codex',
+      description: firstLine(prompt) || 'Codex subagent',
+      prompt,
+    },
+  };
+}
+
+function createWebSearchToolEntry(
+  item: Record<string, unknown>,
+  itemId: string,
+): ToolUseEntry | undefined {
+  const action = webSearchAction(item);
+
+  if (action === 'search') {
+    const query = str(item.query);
+    if (query === undefined || query.trim() === '') return undefined;
+
+    return {
+      id: itemId,
+      date: dateFromItem(item),
+      type: 'tool-use',
+      toolId: itemId,
+      name: 'web-search',
+      input: { query },
+    };
+  }
+
+  if (action === 'openPage') {
+    const actionRecord = record(item.action);
+    const url = str(item.url) ?? str(actionRecord?.url);
+    if (url === undefined || url.trim() === '') return undefined;
+
+    return {
+      id: itemId,
+      date: dateFromItem(item),
+      type: 'tool-use',
+      toolId: itemId,
+      name: 'web-fetch',
+      input: {
+        url,
+        prompt: str(item.prompt) ?? str(item.query) ?? '',
+      },
+    };
+  }
+
+  return undefined;
+}
+
+function isEmptyWebSearchPlaceholder(item: Record<string, unknown>): boolean {
+  const placeholderKeys = new Set([
+    'id',
+    'type',
+    'action',
+    'status',
+    'timestamp',
+    'createdAt',
+    'created_at',
+    'time',
+  ]);
+
+  return Object.entries(item).every(
+    ([key, value]) =>
+      placeholderKeys.has(key) || isEmptyPlaceholderValue(value),
+  );
+}
+
+function isEmptyPlaceholderValue(value: unknown): boolean {
+  if (value == null) return true;
+  if (typeof value === 'string') return value.trim() === '';
+  if (Array.isArray(value)) return value.length === 0;
+  if (record(value)?.type === 'other') return true;
+  return false;
+}
+
+function webSearchAction(item: Record<string, unknown>): string | undefined {
+  return str(item.action) ?? str(record(item.action)?.type);
+}
+
+function normalizeCollabAgentCompletion(
+  item: Record<string, unknown>,
+  ctx: CodexNormalizationContext,
+): NormalizationEvent[] {
+  if (str(item.type) !== 'collabAgentToolCall') return [];
+
+  const tool = str(item.tool);
+  if (tool !== 'wait' && tool !== 'closeAgent') return [];
+
+  const events: NormalizationEvent[] = [];
+  const threadIds = stringArray(item.receiverThreadIds);
+  for (const threadId of threadIds) {
+    const output = collabAgentOutput(item, threadId);
+    if (output === undefined) continue;
+
+    const toolId = ctx.subagentToolIdsByThreadId.get(threadId);
+    if (toolId === undefined) continue;
+
+    const existingEntry = ctx.itemEntries.get(toolId);
+    if (existingEntry?.type !== 'tool-use') continue;
+    if (existingEntry.name !== 'sub-agent') continue;
+
+    const entry: ToolUseEntry = {
+      ...existingEntry,
+      result: { output },
+    };
+    ctx.itemEntries.set(toolId, entry);
+    events.push({ type: 'entry-update', entry });
+  }
+
+  return events;
+}
+
+function collabAgentOutput(
+  item: Record<string, unknown>,
+  threadId: string,
+): string | undefined {
+  const agentsStates = record(item.agentsStates);
+  if (agentsStates === undefined) return undefined;
+
+  return str(record(agentsStates[threadId])?.message);
+}
+
+function registerSubagentThreadIds(
+  entry: NormalizedEntry,
+  item: Record<string, unknown>,
+  ctx: CodexNormalizationContext,
+): void {
+  if (entry.type !== 'tool-use' || entry.name !== 'sub-agent') return;
+
+  for (const threadId of stringArray(item.receiverThreadIds)) {
+    ctx.subagentToolIdsByThreadId.set(threadId, entry.toolId);
+  }
+}
+
+function parentToolIdFromParams(
+  params: Record<string, unknown>,
+  ctx: CodexNormalizationContext,
+): string | undefined {
+  const threadId = str(params.threadId) ?? str(params.thread_id);
+  return threadId === undefined
+    ? undefined
+    : ctx.subagentToolIdsByThreadId.get(threadId);
+}
+
+function withParentToolId<T extends NormalizedEntry>(
+  entry: T,
+  parentToolId: string | undefined,
+): T {
+  return parentToolId === undefined ? entry : { ...entry, parentToolId };
 }
 
 function addToolResult(
@@ -398,6 +608,14 @@ function addToolResult(
     if (status === 'completed' || status === 'failed') {
       return { ...entry, result: { changes: [] } };
     }
+  }
+
+  if (entry.name === 'web-search' || entry.name === 'web-fetch') {
+    if (content === undefined) return undefined;
+    return {
+      ...entry,
+      result: { content },
+    };
   }
 
   if (content === undefined && !isError) return undefined;
@@ -557,6 +775,16 @@ function textFromArray(value: unknown): string | undefined {
   return parts.length === 0 ? undefined : parts.join('');
 }
 
+function firstLine(value: string): string {
+  return value.split(/\r?\n/, 1)[0]?.trim() ?? '';
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
+}
+
 function bashResultContent(result: unknown): string {
   const resultRecord = record(result);
   if (resultRecord === undefined)
@@ -582,6 +810,11 @@ function record(value: unknown): Record<string, unknown> | undefined {
 
 function str(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
+}
+
+function nonEmptyString(value: unknown): string | undefined {
+  const text = str(value);
+  return text === undefined || text.trim() === '' ? undefined : text;
 }
 
 function num(value: unknown): number | undefined {

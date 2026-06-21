@@ -283,6 +283,68 @@ describe('CodexBackend', () => {
     });
   });
 
+  it('accepts item notifications for registered Codex sub-agent child threads', async () => {
+    const { backend, emitNotification } = createBackend();
+    const session = await backend.start(createConfig(), [
+      { type: 'text', text: 'Review with subagent' },
+    ]);
+    const iterator = session.events[Symbol.asyncIterator]();
+    await iterator.next();
+
+    emitNotification({
+      method: 'item/completed',
+      params: {
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        item: {
+          id: 'call-spawn',
+          type: 'collabAgentToolCall',
+          tool: 'spawnAgent',
+          status: 'completed',
+          receiverThreadIds: ['thread-child'],
+          prompt: 'Review diff',
+          model: '',
+        },
+      },
+    });
+
+    await expect(iterator.next()).resolves.toMatchObject({
+      value: {
+        type: 'entry',
+        entry: {
+          id: 'call-spawn',
+          type: 'tool-use',
+          name: 'sub-agent',
+        },
+      },
+    });
+
+    emitNotification({
+      method: 'item/completed',
+      params: {
+        threadId: 'thread-child',
+        turnId: 'turn-child',
+        item: {
+          id: 'child-message',
+          type: 'agentMessage',
+          text: 'Child finding',
+        },
+      },
+    });
+
+    await expect(iterator.next()).resolves.toMatchObject({
+      value: {
+        type: 'entry',
+        entry: {
+          id: 'child-message',
+          type: 'assistant-message',
+          value: 'Child finding',
+          parentToolId: 'call-spawn',
+        },
+      },
+    });
+  });
+
   it('ignores other-thread started notifications using top-level params id', async () => {
     const { backend, emitNotification, persistRaw } = createBackend();
     const session = await backend.start(createConfig(), [

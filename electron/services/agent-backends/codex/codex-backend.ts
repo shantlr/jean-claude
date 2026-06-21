@@ -547,6 +547,7 @@ function threadIdFromNotification(
   const thread = record(params?.thread);
   return (
     stringOrNull(params?.threadId) ??
+    stringOrNull(params?.thread_id) ??
     stringOrNull(thread?.id) ??
     (notification.method === 'thread/started' ? stringOrNull(params?.id) : null)
   );
@@ -567,10 +568,14 @@ function notificationMatchesSession(
   const threadId = threadIdFromNotification(notification);
   const turnId = turnIdFromNotification(notification);
   let hasScope = false;
+  let isChildThread = false;
 
   if (threadId !== null) {
     if (session.threadId !== null && threadId !== session.threadId) {
-      return false;
+      isChildThread =
+        notification.method.startsWith('item/') &&
+        session.normalizationCtx.subagentToolIdsByThreadId.has(threadId);
+      if (!isChildThread) return false;
     }
     hasScope = true;
   }
@@ -579,7 +584,11 @@ function notificationMatchesSession(
     if (session.turnId === null && threadId === null) {
       return false;
     }
-    if (session.turnId !== null && turnId !== session.turnId) {
+    if (
+      session.turnId !== null &&
+      turnId !== session.turnId &&
+      !isChildThread
+    ) {
       return false;
     }
     hasScope = true;

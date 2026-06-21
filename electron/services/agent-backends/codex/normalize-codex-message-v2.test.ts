@@ -477,6 +477,680 @@ describe('normalizeCodexNotification', () => {
     ]);
   });
 
+  it('emits a sub-agent tool use for completed Codex spawnAgent calls', () => {
+    const ctx = createCodexNormalizationContext();
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/completed',
+          params: {
+            item: {
+              id: 'call-spawn',
+              type: 'collabAgentToolCall',
+              tool: 'spawnAgent',
+              status: 'completed',
+              receiverThreadIds: ['thread-child'],
+              prompt: 'Review the diff carefully.\nReturn findings only.',
+              model: 'gpt-5.5',
+              reasoningEffort: 'medium',
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'entry',
+        entry: expect.objectContaining({
+          id: 'call-spawn',
+          type: 'tool-use',
+          toolId: 'call-spawn',
+          name: 'sub-agent',
+          input: {
+            agentType: 'gpt-5.5',
+            description: 'Review the diff carefully.',
+            prompt: 'Review the diff carefully.\nReturn findings only.',
+          },
+        }),
+      },
+    ]);
+  });
+
+  it('uses Codex as the sub-agent type when Codex spawnAgent model is empty', () => {
+    const ctx = createCodexNormalizationContext();
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/completed',
+          params: {
+            item: {
+              id: 'call-spawn-empty-model',
+              type: 'collabAgentToolCall',
+              tool: 'spawnAgent',
+              status: 'completed',
+              receiverThreadIds: ['thread-empty-model'],
+              prompt: 'Review the diff carefully.',
+              model: '   ',
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'entry',
+        entry: expect.objectContaining({
+          id: 'call-spawn-empty-model',
+          name: 'sub-agent',
+          input: expect.objectContaining({ agentType: 'Codex' }),
+        }),
+      },
+    ]);
+  });
+
+  it('updates the spawned Codex sub-agent with wait output', () => {
+    const ctx = createCodexNormalizationContext();
+
+    normalizeCodexNotification(
+      {
+        method: 'item/completed',
+        params: {
+          item: {
+            id: 'call-spawn',
+            type: 'collabAgentToolCall',
+            tool: 'spawnAgent',
+            status: 'completed',
+            receiverThreadIds: ['thread-child'],
+            prompt: 'Review diff',
+            model: 'gpt-5.5',
+          },
+        },
+      },
+      ctx,
+    );
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/completed',
+          params: {
+            item: {
+              id: 'call-wait',
+              type: 'collabAgentToolCall',
+              tool: 'wait',
+              status: 'completed',
+              receiverThreadIds: ['thread-child'],
+              agentsStates: {
+                'thread-child': {
+                  status: 'completed',
+                  message: 'Important finding',
+                },
+              },
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'entry-update',
+        entry: expect.objectContaining({
+          id: 'call-spawn',
+          name: 'sub-agent',
+          result: { output: 'Important finding' },
+        }),
+      },
+    ]);
+  });
+
+  it('updates all spawned Codex sub-agents referenced by wait output', () => {
+    const ctx = createCodexNormalizationContext();
+
+    normalizeCodexNotification(
+      {
+        method: 'item/completed',
+        params: {
+          item: {
+            id: 'call-spawn-a',
+            type: 'collabAgentToolCall',
+            tool: 'spawnAgent',
+            status: 'completed',
+            receiverThreadIds: ['thread-child-a'],
+            prompt: 'Review diff A',
+            model: 'gpt-5.5',
+          },
+        },
+      },
+      ctx,
+    );
+    normalizeCodexNotification(
+      {
+        method: 'item/completed',
+        params: {
+          item: {
+            id: 'call-spawn-b',
+            type: 'collabAgentToolCall',
+            tool: 'spawnAgent',
+            status: 'completed',
+            receiverThreadIds: ['thread-child-b'],
+            prompt: 'Review diff B',
+            model: 'gpt-5.5',
+          },
+        },
+      },
+      ctx,
+    );
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/completed',
+          params: {
+            item: {
+              id: 'call-wait-multi',
+              type: 'collabAgentToolCall',
+              tool: 'wait',
+              status: 'completed',
+              receiverThreadIds: ['thread-child-a', 'thread-child-b'],
+              agentsStates: {
+                'thread-child-a': {
+                  status: 'completed',
+                  message: 'Finding A',
+                },
+                'thread-child-b': {
+                  status: 'completed',
+                  message: 'Finding B',
+                },
+              },
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'entry-update',
+        entry: expect.objectContaining({
+          id: 'call-spawn-a',
+          result: { output: 'Finding A' },
+        }),
+      },
+      {
+        type: 'entry-update',
+        entry: expect.objectContaining({
+          id: 'call-spawn-b',
+          result: { output: 'Finding B' },
+        }),
+      },
+    ]);
+  });
+
+  it('updates the spawned Codex sub-agent with closeAgent output', () => {
+    const ctx = createCodexNormalizationContext();
+
+    normalizeCodexNotification(
+      {
+        method: 'item/completed',
+        params: {
+          item: {
+            id: 'call-spawn-close',
+            type: 'collabAgentToolCall',
+            tool: 'spawnAgent',
+            status: 'completed',
+            receiverThreadIds: ['thread-child-close'],
+            prompt: 'Review diff',
+            model: 'gpt-5.5',
+          },
+        },
+      },
+      ctx,
+    );
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/completed',
+          params: {
+            item: {
+              id: 'call-close',
+              type: 'collabAgentToolCall',
+              tool: 'closeAgent',
+              status: 'completed',
+              receiverThreadIds: ['thread-child-close'],
+              agentsStates: {
+                'thread-child-close': {
+                  status: 'completed',
+                  message: 'Closed with result',
+                },
+              },
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'entry-update',
+        entry: expect.objectContaining({
+          id: 'call-spawn-close',
+          name: 'sub-agent',
+          result: { output: 'Closed with result' },
+        }),
+      },
+    ]);
+  });
+
+  it('links child Codex thread messages to parent sub-agent tool id', () => {
+    const ctx = createCodexNormalizationContext();
+
+    normalizeCodexNotification(
+      {
+        method: 'item/completed',
+        params: {
+          item: {
+            id: 'call-spawn-parent',
+            type: 'collabAgentToolCall',
+            tool: 'spawnAgent',
+            status: 'completed',
+            receiverThreadIds: ['thread-child-parent'],
+            prompt: 'Review diff',
+            model: 'gpt-5.5',
+          },
+        },
+      },
+      ctx,
+    );
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/completed',
+          params: {
+            threadId: 'thread-child-parent',
+            item: {
+              id: 'child-message',
+              type: 'agentMessage',
+              text: 'Child analysis',
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'entry',
+        entry: expect.objectContaining({
+          id: 'child-message',
+          type: 'assistant-message',
+          value: 'Child analysis',
+          parentToolId: 'call-spawn-parent',
+        }),
+      },
+    ]);
+  });
+
+  it('links child Codex thread messages to parent sub-agent tool id from thread_id', () => {
+    const ctx = createCodexNormalizationContext();
+
+    normalizeCodexNotification(
+      {
+        method: 'item/completed',
+        params: {
+          item: {
+            id: 'call-spawn-thread-id',
+            type: 'collabAgentToolCall',
+            tool: 'spawnAgent',
+            status: 'completed',
+            receiverThreadIds: ['thread-child-thread-id'],
+            prompt: 'Review diff',
+            model: 'gpt-5.5',
+          },
+        },
+      },
+      ctx,
+    );
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/completed',
+          params: {
+            thread_id: 'thread-child-thread-id',
+            item: {
+              id: 'child-message-thread-id',
+              type: 'agentMessage',
+              text: 'Child analysis',
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'entry',
+        entry: expect.objectContaining({
+          id: 'child-message-thread-id',
+          parentToolId: 'call-spawn-thread-id',
+        }),
+      },
+    ]);
+  });
+
+  it('normalizes Codex webSearch actions and ignores empty placeholders', () => {
+    const ctx = createCodexNormalizationContext();
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/started',
+          params: {
+            item: {
+              id: 'web-search-1',
+              type: 'webSearch',
+              action: { type: 'search' },
+              query: 'vitest focused test command',
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'entry',
+        entry: expect.objectContaining({
+          id: 'web-search-1',
+          type: 'tool-use',
+          toolId: 'web-search-1',
+          name: 'web-search',
+          input: { query: 'vitest focused test command' },
+        }),
+      },
+    ]);
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/completed',
+          params: {
+            item: {
+              id: 'web-search-1',
+              type: 'webSearch',
+              action: { type: 'search' },
+              query: 'vitest focused test command',
+              output: 'Search result',
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'entry-update',
+        entry: expect.objectContaining({
+          id: 'web-search-1',
+          name: 'web-search',
+          result: { content: 'Search result' },
+        }),
+      },
+    ]);
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/started',
+          params: {
+            item: {
+              id: 'web-fetch-1',
+              type: 'webSearch',
+              action: {
+                type: 'openPage',
+                url: 'https://vitest.dev/guide/cli.html',
+              },
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'entry',
+        entry: expect.objectContaining({
+          id: 'web-fetch-1',
+          type: 'tool-use',
+          toolId: 'web-fetch-1',
+          name: 'web-fetch',
+          input: { url: 'https://vitest.dev/guide/cli.html', prompt: '' },
+        }),
+      },
+    ]);
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/started',
+          params: {
+            item: {
+              id: 'web-fetch-query-prompt',
+              type: 'webSearch',
+              action: {
+                type: 'openPage',
+                url: 'https://vitest.dev/api/',
+              },
+              query: 'extract API docs',
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'entry',
+        entry: expect.objectContaining({
+          id: 'web-fetch-query-prompt',
+          type: 'tool-use',
+          toolId: 'web-fetch-query-prompt',
+          name: 'web-fetch',
+          input: {
+            url: 'https://vitest.dev/api/',
+            prompt: 'extract API docs',
+          },
+        }),
+      },
+    ]);
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/completed',
+          params: {
+            item: {
+              id: 'web-fetch-1',
+              type: 'webSearch',
+              action: {
+                type: 'openPage',
+                url: 'https://vitest.dev/guide/cli.html',
+              },
+              text: 'Fetched page',
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'entry-update',
+        entry: expect.objectContaining({
+          id: 'web-fetch-1',
+          name: 'web-fetch',
+          result: { content: 'Fetched page' },
+        }),
+      },
+    ]);
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/started',
+          params: {
+            item: {
+              id: 'web-empty',
+              type: 'webSearch',
+              query: '',
+              action: { type: 'other' },
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([]);
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/started',
+          params: {
+            item: {
+              id: 'web-unknown',
+              type: 'webSearch',
+              action: { type: 'unknownAction' },
+              payload: { value: 'keep fallback' },
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'entry',
+        entry: expect.objectContaining({
+          id: 'web-unknown',
+          type: 'tool-use',
+          toolId: 'web-unknown',
+          name: 'codex-tool',
+          input: expect.objectContaining({ originalType: 'webSearch' }),
+        }),
+      },
+    ]);
+  });
+
+  it('normalizes a compact Codex sub-agent and web-search sample', () => {
+    const ctx = createCodexNormalizationContext();
+    const receiverThreadId = '019ee9da-8c31-7d52-a368-1d2d530d4fdb';
+
+    const spawn = normalizeCodexNotification(
+      {
+        method: 'item/completed',
+        params: {
+          item: {
+            id: 'call_R0QmTpweUUCQwbzrauqog4LD',
+            type: 'collabAgentToolCall',
+            tool: 'spawnAgent',
+            receiverThreadIds: [receiverThreadId],
+            prompt: 'Audit tests\nFocus on regressions.',
+            model: 'gpt-5.5',
+            agentsStates: {
+              [receiverThreadId]: {
+                status: 'pendingInit',
+                message: null,
+              },
+            },
+          },
+        },
+      },
+      ctx,
+    );
+    const child = normalizeCodexNotification(
+      {
+        method: 'item/completed',
+        params: {
+          threadId: receiverThreadId,
+          item: {
+            id: 'sample-child-message',
+            type: 'agentMessage',
+            text: '**Critical**\nNone.',
+          },
+        },
+      },
+      ctx,
+    );
+    const wait = normalizeCodexNotification(
+      {
+        method: 'item/completed',
+        params: {
+          item: {
+            id: 'call_gOg8ufrFZNodWuLD4y1UnBJ3',
+            type: 'collabAgentToolCall',
+            tool: 'wait',
+            receiverThreadIds: [receiverThreadId],
+            agentsStates: {
+              [receiverThreadId]: { message: '**Critical**\nNone.' },
+            },
+          },
+        },
+      },
+      ctx,
+    );
+    const search = normalizeCodexNotification(
+      {
+        method: 'item/started',
+        params: {
+          item: {
+            id: 'sample-search',
+            type: 'webSearch',
+            action: { type: 'search' },
+            query: 'Codex message normalization',
+          },
+        },
+      },
+      ctx,
+    );
+
+    expect(spawn).toEqual([
+      {
+        type: 'entry',
+        entry: expect.objectContaining({
+          id: 'call_R0QmTpweUUCQwbzrauqog4LD',
+          name: 'sub-agent',
+          input: {
+            agentType: 'gpt-5.5',
+            description: 'Audit tests',
+            prompt: 'Audit tests\nFocus on regressions.',
+          },
+        }),
+      },
+    ]);
+    expect(child).toEqual([
+      {
+        type: 'entry',
+        entry: expect.objectContaining({
+          id: 'sample-child-message',
+          parentToolId: 'call_R0QmTpweUUCQwbzrauqog4LD',
+        }),
+      },
+    ]);
+    expect(wait).toEqual([
+      {
+        type: 'entry-update',
+        entry: expect.objectContaining({
+          id: 'call_R0QmTpweUUCQwbzrauqog4LD',
+          result: { output: '**Critical**\nNone.' },
+        }),
+      },
+    ]);
+    expect(search).toEqual([
+      {
+        type: 'entry',
+        entry: expect.objectContaining({
+          id: 'sample-search',
+          name: 'web-search',
+          input: { query: 'Codex message normalization' },
+        }),
+      },
+    ]);
+  });
+
   it('emits completion when Codex thread becomes idle', () => {
     const ctx = createCodexNormalizationContext();
 
