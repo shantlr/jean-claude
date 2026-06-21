@@ -135,7 +135,7 @@ export class CodexBackend implements AgentBackend {
     this.sessions.set(sessionKey, session);
 
     try {
-      const { client } = await getOrCreateCodexAppServer();
+      const { client, rootPid } = await getOrCreateCodexAppServer();
       const threadConfig = createCodexThreadConfig(config);
       const threadResult = config.sessionId
         ? await client.request('thread/resume', {
@@ -175,6 +175,7 @@ export class CodexBackend implements AgentBackend {
       return {
         sessionId: sessionKey,
         events: session.eventChannel,
+        rootPid,
       };
     } catch (error) {
       this.cleanupSession(sessionKey, session);

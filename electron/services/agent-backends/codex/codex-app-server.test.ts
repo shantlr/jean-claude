@@ -80,8 +80,9 @@ import {
   resetCodexAppServerForTest,
 } from './codex-app-server';
 
-function createFakeProcess() {
+function createFakeProcess(pid = 1234) {
   return Object.assign(new EventEmitter(), {
+    pid,
     stdin: new PassThrough(),
     stdout: new PassThrough(),
     stderr: new PassThrough(),
@@ -127,6 +128,7 @@ describe('Codex app server process manager', () => {
       }),
     );
     expect(handle.client).toBeInstanceOf(mocks.CodexJsonRpcClient);
+    expect(handle.rootPid).toBe(1234);
     expect(mocks.clientInstances).toHaveLength(1);
     expect(mocks.clientInstances[0].process).toBe(proc);
     expect(mocks.clientInstances[0].request).toHaveBeenCalledWith(

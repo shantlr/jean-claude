@@ -131,6 +131,16 @@ describe('CodexBackend', () => {
     });
   });
 
+  it('exposes the Codex app-server root PID for resource tracking', async () => {
+    const { backend } = createBackend({ rootPid: 4321 });
+
+    const session = await backend.start(createConfig(), [
+      { type: 'text', text: 'Track resources' },
+    ]);
+
+    expect(session.rootPid).toBe(4321);
+  });
+
   it('yields entry events with persisted raw row ids', async () => {
     const { backend, emitNotification, persistRaw } = createBackend();
     const session = await backend.start(createConfig(), [
@@ -733,6 +743,7 @@ function createBackend(
     threadResult?: unknown;
     turnResult?: unknown;
     updateRaw?: AgentTaskContext['updateRaw'];
+    rootPid?: number;
   } = {},
 ) {
   let notificationListener:
@@ -760,6 +771,7 @@ function createBackend(
   const serverDispose = vi.fn(async () => undefined);
   mocks.getOrCreateCodexAppServer.mockResolvedValue({
     client,
+    rootPid: options.rootPid,
     dispose: serverDispose,
   });
   const persistRaw =

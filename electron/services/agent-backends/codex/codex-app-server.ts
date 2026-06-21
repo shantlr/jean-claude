@@ -7,6 +7,7 @@ import { CodexJsonRpcClient } from './codex-json-rpc-client';
 
 export interface CodexAppServerHandle {
   client: CodexJsonRpcClient;
+  rootPid?: number;
   dispose(): Promise<void>;
 }
 
@@ -89,6 +90,7 @@ async function startCodexAppServer(
 
   const handle: CodexAppServerHandle = {
     client,
+    rootPid: proc.pid,
     async dispose() {
       if (disposed) {
         return;
