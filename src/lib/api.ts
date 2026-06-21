@@ -1515,6 +1515,7 @@ export interface Api {
   };
   system: {
     getMemoryUsage: () => Promise<{
+      logicalCpuCount: number;
       totalRssBytes: number;
       mainProcess: {
         heapUsedBytes: number;
@@ -2347,6 +2348,7 @@ export const api: Api = hasWindowApi
       },
       system: {
         getMemoryUsage: async () => ({
+          logicalCpuCount: 1,
           totalRssBytes: 0,
           mainProcess: {
             heapUsedBytes: 0,

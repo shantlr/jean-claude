@@ -6032,6 +6032,7 @@ export function registerIpcHandlers() {
       (rendererMetric?.memory?.privateBytes ?? 0) * 1024;
 
     return {
+      logicalCpuCount: os.cpus().length,
       totalRssBytes: mainMem.rss + rendererRssBytes,
       mainProcess: {
         heapUsedBytes: mainMem.heapUsed,

@@ -163,6 +163,7 @@ function Gauge({
   const circumference = 2 * Math.PI * radius;
   const arc = circumference * 0.76;
   const fill = arc * Math.max(0, Math.min(1, percent / 100));
+  const activeDash = `${fill} ${circumference}`;
 
   return (
     <div className="relative h-[132px] w-[132px] shrink-0">
@@ -173,6 +174,17 @@ function Gauge({
         className="rotate-[137deg]"
         aria-hidden
       >
+        <defs>
+          <filter
+            id="resources-gauge-glow"
+            x="-35%"
+            y="-35%"
+            width="170%"
+            height="170%"
+          >
+            <feGaussianBlur stdDeviation="5" />
+          </filter>
+        </defs>
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -190,10 +202,24 @@ function Gauge({
           r={radius}
           fill="none"
           stroke="currentColor"
-          strokeDasharray={`${fill} ${circumference}`}
+          strokeDasharray={activeDash}
+          strokeLinecap="round"
+          strokeWidth={stroke + 3}
+          filter="url(#resources-gauge-glow)"
+          className="text-[oklch(0.74_0.19_295)] opacity-55"
+          style={{ transition: 'stroke-dasharray 420ms ease-out' }}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeDasharray={activeDash}
           strokeLinecap="round"
           strokeWidth={stroke}
-          className="text-[oklch(0.74_0.19_295)] drop-shadow-[0_0_8px_oklch(0.74_0.19_295/0.55)]"
+          className="text-[oklch(0.74_0.19_295)]"
+          style={{ transition: 'stroke-dasharray 420ms ease-out' }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -363,7 +389,10 @@ export function ResourcesOverlay({ onClose }: { onClose: () => void }) {
     : 0;
   const appRss = memory?.totalRssBytes ?? 0;
   const trackedRss = Math.max(totalRss + appRss, 1);
-  const totalCpuGaugePercent = Math.min(100, totalCpu);
+  const logicalCpuCount =
+    memory?.logicalCpuCount ?? window.navigator.hardwareConcurrency ?? 1;
+  const totalCpuGaugePercent =
+    (totalCpu / Math.max(1, logicalCpuCount * 100)) * 100;
   const unsupportedSnapshots = snapshots.filter(
     (snapshot) => snapshot.unsupportedReason,
   );
