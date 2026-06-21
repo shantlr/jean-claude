@@ -86,7 +86,6 @@ interface TaskState {
   fileExplorer?: FileExplorerState;
   activeStepId: string | null;
   prDraft?: PrDraft;
-  addStepDraft?: AddStepDialogDraft;
 }
 
 const defaultAddStepDialogDraft: AddStepDialogDraft = {
@@ -209,6 +208,7 @@ interface NavigationState {
 
   // Per-task: state including right pane
   taskState: Record<string, TaskState>; // taskId -> state
+  addStepDrafts: Record<string, AddStepDialogDraft>; // taskId -> draft
 
   // Per-PR: view state (selected file, active tab)
   prState: Record<string, PrViewState>; // `${projectId}:${prId}` -> state
@@ -272,6 +272,7 @@ const useStore = create<NavigationState>()(
       sidebarTab: 'tasks' as 'tasks' | 'prs',
       lastTaskByProject: {},
       taskState: {},
+      addStepDrafts: {},
       prState: {},
 
       setLastLocation: (location) => set({ lastLocation: location }),
@@ -515,31 +516,23 @@ const useStore = create<NavigationState>()(
 
       setAddStepDraft: (taskId, draft) =>
         set((state) => ({
-          taskState: {
-            ...state.taskState,
+          addStepDrafts: {
+            ...state.addStepDrafts,
             [taskId]: {
-              ...defaultTaskState,
-              ...state.taskState[taskId],
-              addStepDraft: {
-                ...defaultAddStepDialogDraft,
-                ...state.taskState[taskId]?.addStepDraft,
-                ...draft,
-              },
+              ...defaultAddStepDialogDraft,
+              ...state.addStepDrafts[taskId],
+              ...draft,
             },
           },
         })),
 
       clearAddStepDraft: (taskId) =>
         set((state) => {
-          const taskState = state.taskState[taskId];
-          if (!taskState) return state;
+          if (!state.addStepDrafts[taskId]) return state;
 
-          const { addStepDraft: _, ...restTaskState } = taskState;
+          const { [taskId]: _, ...restAddStepDrafts } = state.addStepDrafts;
           return {
-            taskState: {
-              ...state.taskState,
-              [taskId]: restTaskState,
-            },
+            addStepDrafts: restAddStepDrafts,
           };
         }),
 
@@ -647,6 +640,7 @@ const useStore = create<NavigationState>()(
 
         set((state) => {
           const { [taskId]: _, ...restTaskState } = state.taskState;
+          const { [taskId]: __, ...restAddStepDrafts } = state.addStepDrafts;
 
           // Also remove from lastTaskByProject if this task was the last viewed
           const newLastTaskByProject = { ...state.lastTaskByProject };
@@ -672,6 +666,7 @@ const useStore = create<NavigationState>()(
 
           return {
             taskState: restTaskState,
+            addStepDrafts: restAddStepDrafts,
             lastTaskByProject: newLastTaskByProject,
             lastLocation: newLastLocation,
           };
@@ -695,10 +690,10 @@ const useStore = create<NavigationState>()(
                 reviewMode: taskState.diffView.reviewMode,
               },
               prDraft: taskState.prDraft,
-              addStepDraft: taskState.addStepDraft,
             },
           ]),
         ),
+        addStepDrafts: state.addStepDrafts,
       }),
       merge: (persisted, current) => {
         const persistedState = persisted as Partial<NavigationState>;
@@ -706,27 +701,43 @@ const useStore = create<NavigationState>()(
 
         // Rehydrate collapsedFolders from arrays back to Sets
         if (persistedState.taskState) {
+          const migratedAddStepDrafts: Record<string, AddStepDialogDraft> = {};
           merged.taskState = Object.fromEntries(
             Object.entries(persistedState.taskState).map(
               ([taskId, taskState]) => [
                 taskId,
-                {
-                  ...defaultTaskState,
-                  ...taskState,
-                  diffView: {
-                    ...defaultDiffViewState,
-                    ...taskState.diffView,
-                    collapsedFolders: new Set(
-                      (taskState.diffView?.collapsedFolders as any) ?? [],
-                    ),
-                    reviewMode:
-                      (taskState.diffView?.reviewMode as ReviewMode) ??
-                      'changes',
-                  },
-                },
+                (() => {
+                  const legacyTaskState = taskState as TaskState & {
+                    addStepDraft?: AddStepDialogDraft;
+                  };
+                  if (legacyTaskState.addStepDraft) {
+                    migratedAddStepDrafts[taskId] =
+                      legacyTaskState.addStepDraft;
+                  }
+                  const { addStepDraft: _, ...taskStateWithoutDraft } =
+                    legacyTaskState;
+                  return {
+                    ...defaultTaskState,
+                    ...taskStateWithoutDraft,
+                    diffView: {
+                      ...defaultDiffViewState,
+                      ...taskState.diffView,
+                      collapsedFolders: new Set(
+                        (taskState.diffView?.collapsedFolders as any) ?? [],
+                      ),
+                      reviewMode:
+                        (taskState.diffView?.reviewMode as ReviewMode) ??
+                        'changes',
+                    },
+                  };
+                })(),
               ],
             ),
           );
+          merged.addStepDrafts = {
+            ...migratedAddStepDrafts,
+            ...persistedState.addStepDrafts,
+          };
         }
 
         return merged as NavigationState;
@@ -981,8 +992,7 @@ export function useTaskState(taskId: string) {
 
 export function useAddStepDialogDraft(taskId: string) {
   const draft = useStore(
-    (state) =>
-      state.taskState[taskId]?.addStepDraft ?? defaultAddStepDialogDraft,
+    (state) => state.addStepDrafts[taskId] ?? defaultAddStepDialogDraft,
   );
   const setDraftAction = useStore((state) => state.setAddStepDraft);
   const clearDraftAction = useStore((state) => state.clearAddStepDraft);
