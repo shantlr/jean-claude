@@ -1,5 +1,6 @@
+import { KeyboardEvent, useState } from 'react';
 import { X } from 'lucide-react';
-import { useState, KeyboardEvent } from 'react';
+
 
 import { IconButton } from '@/common/ui/icon-button';
 

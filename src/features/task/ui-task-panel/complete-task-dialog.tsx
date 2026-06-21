@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react';
+import { startTransition, useEffect, useState } from 'react';
 
 import {
   KeyboardLayerProvider,
   useKeyboardLayer,
 } from '@/common/context/keyboard-bindings';
-import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
 import { Checkbox } from '@/common/ui/checkbox';
 import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
+import { useCommands } from '@/common/hooks/use-commands';
+
+
 
 export function CompleteTaskDialog({
   isOpen,
@@ -29,7 +31,7 @@ export function CompleteTaskDialog({
   // Reset state when dialog opens
   useEffect(() => {
     if (isOpen) {
-      setCleanupWorktree(true);
+      startTransition(() => setCleanupWorktree(true));
     }
   }, [isOpen]);
 

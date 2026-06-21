@@ -1,12 +1,15 @@
+import { ArrowLeft, GitPullRequest, Loader2 } from 'lucide-react';
 import { Link, useParams } from '@tanstack/react-router';
 import clsx from 'clsx';
-import { Loader2, GitPullRequest, ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 
+
+
 import { Separator } from '@/common/ui/separator';
+import { useOverlaysStore } from '@/stores/overlays';
 import { useProject } from '@/hooks/use-projects';
 import { usePullRequests } from '@/hooks/use-pull-requests';
-import { useOverlaysStore } from '@/stores/overlays';
+
 
 import { PrListItem } from '../ui-pr-list-item';
 

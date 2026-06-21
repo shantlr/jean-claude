@@ -1,14 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { managedAgentsQueryKeys } from '@/hooks/use-managed-agents';
-import { managedSkillsQueryKeys } from '@/hooks/use-managed-skills';
-import { skillsQueryKeys } from '@/hooks/use-skills';
-import { api } from '@/lib/api';
 import type {
   AddGitHubSourceParams,
   InstallSourceItemsParams,
   UpdateSourceInstallParams,
 } from '@shared/source-management-types';
+import { api } from '@/lib/api';
+import { managedAgentsQueryKeys } from '@/hooks/use-managed-agents';
+import { managedSkillsQueryKeys } from '@/hooks/use-managed-skills';
+import { skillsQueryKeys } from '@/hooks/use-skills';
+
 
 export const sourcesQueryKeys = {
   all: ['sources'] as const,

@@ -1,8 +1,9 @@
 import * as os from 'os';
 import * as path from 'path';
 
-import { vol } from 'memfs';
 import { afterEach, describe, expect, it } from 'vitest';
+import { vol } from 'memfs';
+
 
 import { detectProjects } from './project-detection-service';
 

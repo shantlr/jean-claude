@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -18,17 +17,20 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
+import clsx from 'clsx';
 
+
+import type {
+  AzureBuildDetail,
+  AzureBuildTimelineRecord,
+} from '@shared/pipeline-types';
 import {
   computeDuration,
   stripRefsHeads,
 } from '@/features/pipelines/ui-pipelines-overlay/utils';
 import { useBuildLog, useBuildTimeline } from '@/hooks/use-pipeline-runs';
 import { useWindowFocused } from '@/hooks/use-window-focused';
-import type {
-  AzureBuildDetail,
-  AzureBuildTimelineRecord,
-} from '@shared/pipeline-types';
+
 
 import { useBuildDetail } from '../ui-pr-pipeline-pane/use-build-detail';
 
@@ -507,6 +509,7 @@ function JobCard({
 // ---------------------------------------------------------------------------
 
 function GanttTimeline({ stageGroups }: { stageGroups: StageGroup[] }) {
+  const [nowMs] = useState(() => Date.now());
   const allJobs = useMemo(
     () => stageGroups.flatMap((sg) => sg.jobs.map((jg) => jg.job)),
     [stageGroups],
@@ -520,12 +523,12 @@ function GanttTimeline({ stageGroups }: { stageGroups: StageGroup[] }) {
       if (job.finishTime)
         max = Math.max(max, new Date(job.finishTime).getTime());
       if (job.state === 'inProgress' && job.startTime)
-        max = Math.max(max, Date.now());
+        max = Math.max(max, nowMs);
     }
     if (!isFinite(min)) min = 0;
     if (!isFinite(max)) max = min + 1;
     return { minTime: min, maxTime: max, totalMs: max - min };
-  }, [allJobs]);
+  }, [allJobs, nowMs]);
 
   const totalDuration = useMemo(
     () =>
@@ -590,7 +593,7 @@ function GanttTimeline({ stageGroups }: { stageGroups: StageGroup[] }) {
             const endMs = job.finishTime
               ? new Date(job.finishTime).getTime() - minTime
               : job.state === 'inProgress'
-                ? Date.now() - minTime
+                ? nowMs - minTime
                 : 0;
 
             const leftPercent = totalMs > 0 ? (startMs / totalMs) * 100 : 0;
@@ -664,21 +667,25 @@ function FailureCallout({
   stageGroups: StageGroup[];
   onJumpToFailure: () => void;
 }) {
-  const failedInfo = useMemo(() => {
-    for (const sg of stageGroups) {
-      for (const jg of sg.jobs) {
-        const failedTasks = jg.tasks.filter((t) => t.result === 'failed');
-        if (failedTasks.length > 0) {
-          return {
-            jobName: jg.job.name,
-            failedCount: failedTasks.length,
-            firstFailed: failedTasks[0],
-          };
-        }
+  let failedInfo: {
+    jobName: string;
+    failedCount: number;
+    firstFailed: AzureBuildTimelineRecord;
+  } | null = null;
+  for (const sg of stageGroups) {
+    for (const jg of sg.jobs) {
+      const failedTasks = jg.tasks.filter((t) => t.result === 'failed');
+      if (failedTasks.length > 0) {
+        failedInfo = {
+          jobName: jg.job.name,
+          failedCount: failedTasks.length,
+          firstFailed: failedTasks[0],
+        };
+        break;
       }
     }
-    return null;
-  }, [stageGroups]);
+    if (failedInfo) break;
+  }
 
   if (!failedInfo) return null;
 
@@ -859,7 +866,7 @@ export function CIInlinePanel({
   const stageGroups = useMemo(() => {
     if (!timeline?.records) return [];
     return buildStageGroups(timeline.records);
-  }, [timeline?.records]);
+  }, [timeline]);
 
   const isFailed = build?.result === 'failed';
 

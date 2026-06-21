@@ -1,19 +1,22 @@
 import {
   createContext,
+  type ReactNode,
+  type RefObject,
   useCallback,
   useContext,
   useEffect,
   useId,
   useMemo,
   useRef,
-  type ReactNode,
-  type RefObject,
 } from 'react';
 
-import type { LayerName } from './layers';
-import type { BindingKey } from './types';
 import { formatKeyboardEvent, isTypingInInput } from './utils';
+import type { BindingKey } from './types';
+import type { LayerName } from './layers';
 
+
+
+import { useLatestRef } from '@/hooks/use-latest-ref';
 export type { LayerName } from './layers';
 
 // --- Types ---
@@ -215,8 +218,7 @@ export function useKeyboardLayer(
 
   const exclusive = options?.exclusive;
   const passthroughKey = options?.passthrough?.join(',') ?? '';
-  const passthroughRef = useRef(options?.passthrough);
-  passthroughRef.current = options?.passthrough;
+  const passthroughRef = useLatestRef(options?.passthrough);
 
   useEffect(() => {
     return root.registerLayer({
@@ -225,7 +227,7 @@ export function useKeyboardLayer(
       exclusive,
       passthrough: passthroughRef.current,
     });
-  }, [id, name, exclusive, passthroughKey, root]);
+  }, [id, name, exclusive, passthroughKey, root, passthroughRef]);
 
   return useMemo(() => ({ id, name }), [id, name]);
 }
@@ -255,8 +257,7 @@ export function useRegisterKeyboardBindings(
 ): void {
   const root = useRootKeyboardBindings();
   const contextLayer = useContext(KeyboardLayerContext);
-  const bindingsRef = useRef(bindings);
-  bindingsRef.current = bindings;
+  const bindingsRef = useLatestRef(bindings);
 
   const enabled = options?.enabled ?? true;
   const layer = options?.layer ?? contextLayer;
@@ -265,7 +266,7 @@ export function useRegisterKeyboardBindings(
   useEffect(() => {
     if (!enabled) return;
     return root.register(id, bindingsRef, { layerId });
-  }, [id, root, enabled, layerId]);
+  }, [id, root, enabled, layerId, bindingsRef]);
 }
 
 // --- Internal ---

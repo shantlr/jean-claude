@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 
+import { TaskState, useTaskMessagesStore } from '@/stores/task-messages';
 import { api } from '@/lib/api';
-import { useTaskMessagesStore, TaskState } from '@/stores/task-messages';
+
 
 // Hoisted outside component to avoid recreation on every render
 const DEFAULT_TASK_STATE: TaskState = {

@@ -1,11 +1,15 @@
 import { RefObject, useEffect, useRef } from 'react';
 import { create } from 'zustand/react';
 
+
+
 import {
-  useRegisterKeyboardBindings,
   type KeyboardLayer,
+  useRegisterKeyboardBindings,
 } from '@/common/context/keyboard-bindings';
 import { BindingKey } from '@/common/context/keyboard-bindings/types';
+
+
 
 type Command = {
   label: string;

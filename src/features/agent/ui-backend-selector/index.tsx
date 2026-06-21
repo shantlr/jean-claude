@@ -1,13 +1,15 @@
 import { forwardRef, useCallback, useMemo } from 'react';
 
-import type { KeyboardLayer } from '@/common/context/keyboard-bindings';
-import type { BindingKey } from '@/common/context/keyboard-bindings/types';
 import { Select, type SelectRef } from '@/common/ui/select';
-import type { BackendModel } from '@/hooks/use-backend-models';
-import { useBackendsSetting } from '@/hooks/use-settings';
 import type { AgentBackendType } from '@shared/agent-backend-types';
-import type { ThinkingModelCapabilities } from '@shared/thinking-settings';
+import type { BackendModel } from '@/hooks/use-backend-models';
+import type { BindingKey } from '@/common/context/keyboard-bindings/types';
+import type { KeyboardLayer } from '@/common/context/keyboard-bindings';
 import type { ModelPreference } from '@shared/types';
+import type { ThinkingModelCapabilities } from '@shared/thinking-settings';
+import { useBackendsSetting } from '@/hooks/use-settings';
+
+
 
 export type { SelectRef } from '@/common/ui/select';
 

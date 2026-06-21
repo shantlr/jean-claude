@@ -3,14 +3,15 @@ import { useStore } from 'zustand';
 import type { PromptImagePart, PromptPart } from '@shared/agent-backend-types';
 
 import {
-  escapePromptTagContent,
-  formatPromptLineRange,
-} from './utils-comment-prompt';
-import {
   createCommentSelectors,
   createKeyedCommentStore,
   type FileCommentAnchor,
 } from './utils-comment-store';
+import {
+  escapePromptTagContent,
+  formatPromptLineRange,
+} from './utils-comment-prompt';
+
 
 // -- Types --
 

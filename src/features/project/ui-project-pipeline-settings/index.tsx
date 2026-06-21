@@ -1,16 +1,19 @@
 import { Bell, Eye, RefreshCw } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
 
-import { Tooltip } from '@/common/ui/tooltip';
-import { useProject } from '@/hooks/use-projects';
 import {
-  useTrackedPipelines,
+  useDiscoverPipelines,
   useToggleTrackedPipeline,
   useToggleTrackedPipelineVisible,
-  useDiscoverPipelines,
+  useTrackedPipelines,
 } from '@/hooks/use-tracked-pipelines';
+import { Tooltip } from '@/common/ui/tooltip';
 import type { TrackedPipeline } from '@shared/pipeline-types';
+import { useProject } from '@/hooks/use-projects';
 
+
+
+import { useLatestRef } from '@/hooks/use-latest-ref';
 function Toggle({
   checked,
   disabled,
@@ -140,8 +143,7 @@ export function ProjectPipelineSettings({ projectId }: { projectId: string }) {
 
   // Auto-discover on first visit
   const hasAutoDiscovered = useRef(false);
-  const discoverMutateRef = useRef(discoverMutation.mutate);
-  discoverMutateRef.current = discoverMutation.mutate;
+  const discoverMutateRef = useLatestRef(discoverMutation.mutate);
 
   useEffect(() => {
     if (
@@ -154,7 +156,7 @@ export function ProjectPipelineSettings({ projectId }: { projectId: string }) {
       hasAutoDiscovered.current = true;
       discoverMutateRef.current();
     }
-  }, [hasRepoLink, isLoading, pipelines]);
+  }, [hasRepoLink, isLoading, pipelines, discoverMutateRef]);
 
   if (!hasRepoLink) {
     return (

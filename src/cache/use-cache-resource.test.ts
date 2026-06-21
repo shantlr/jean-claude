@@ -1,10 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  isResourceFresh,
-  markResourceChanged,
-  markResourceStale,
-} from './cache-actions';
 import { cache$, resetCache } from './cache-store';
 import {
   clearPendingResources,
@@ -13,6 +8,12 @@ import {
   isResourceInitialLoading,
   shouldLoadChangedResource,
 } from './use-cache-resource';
+import {
+  isResourceFresh,
+  markResourceChanged,
+  markResourceStale,
+} from './cache-actions';
+
 
 describe('ensureResource', () => {
   beforeEach(() => {

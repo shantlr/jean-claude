@@ -1,7 +1,8 @@
 import { EventEmitter } from 'node:events';
 
-import type { AssistantMessage, Part } from '@opencode-ai/sdk/v2';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AssistantMessage, Part } from '@opencode-ai/sdk/v2';
+
 
 import type { AgentEvent, AgentTaskContext } from '@shared/agent-backend-types';
 
@@ -36,11 +37,12 @@ vi.mock('../../../lib/debug', () => ({
   },
 }));
 
+import { applyDeltaToMessageParts } from './opencode-message-delta';
 import {
   killAllOpenCodeServersSync,
   OpenCodeBackend,
 } from './opencode-backend';
-import { applyDeltaToMessageParts } from './opencode-message-delta';
+
 
 beforeEach(() => {
   settingsGetMock.mockResolvedValue({ mode: 'standalone' });

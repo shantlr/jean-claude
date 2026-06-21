@@ -14,9 +14,10 @@ import type {
   ThinkingEffort,
 } from '@shared/types';
 
-import { dbg } from '../../lib/debug';
 import { db } from '../index';
+import { dbg } from '../../lib/debug';
 import type { TaskStepRow } from '../schema';
+
 
 function toStep(row: TaskStepRow): TaskStep {
   return {

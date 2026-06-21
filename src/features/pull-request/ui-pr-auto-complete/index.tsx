@@ -1,25 +1,28 @@
-import clsx from 'clsx';
 import { Circle, GitMerge, Loader2, Play, X } from 'lucide-react';
 import React, {
+  startTransition,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
+import clsx from 'clsx';
 
-import { Checkbox } from '@/common/ui/checkbox';
-import { Modal } from '@/common/ui/modal';
 import {
-  useSetAutoComplete,
+  getAllowedMergeStrategies,
+  MERGE_STRATEGY_LABELS,
   useCurrentAzureUser,
   usePullRequestPolicyEvaluations,
   useRequeuePolicyEvaluation,
-  getAllowedMergeStrategies,
-  MERGE_STRATEGY_LABELS,
+  useSetAutoComplete,
 } from '@/hooks/use-pull-requests';
-import type { MergeStrategy } from '@/hooks/use-pull-requests';
 import type { AzureDevOpsPullRequestDetails } from '@/lib/api';
+import { Checkbox } from '@/common/ui/checkbox';
+import type { MergeStrategy } from '@/hooks/use-pull-requests';
+import { Modal } from '@/common/ui/modal';
+
+
 
 import { getCurrentIdentityId } from '../utils-pr-current-user';
 
@@ -137,7 +140,7 @@ export function PrAutoComplete({
 
   useEffect(() => {
     if (!allowedStrategies.includes(mergeStrategy)) {
-      setMergeStrategy(allowedStrategies[0] ?? 'noFastForward');
+      startTransition(() => setMergeStrategy(allowedStrategies[0] ?? 'noFastForward'));
     }
   }, [allowedStrategies, mergeStrategy]);
 

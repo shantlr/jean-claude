@@ -1,20 +1,24 @@
-import { useQueries } from '@tanstack/react-query';
 import { Cpu, X } from 'lucide-react';
+import FocusLock from 'react-focus-lock';
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
-import FocusLock from 'react-focus-lock';
+import { useQueries } from '@tanstack/react-query';
 
-import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
-import { useCommands } from '@/common/hooks/use-commands';
+
+
+import {
+  type AgentResourceSample,
+  useAgentResourceSnapshots,
+} from '@/hooks/use-agent-resource-snapshots';
+import type { AgentResourceSnapshot } from '@shared/agent-resource-types';
+import { api } from '@/lib/api';
 import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
-import {
-  useAgentResourceSnapshots,
-  type AgentResourceSample,
-} from '@/hooks/use-agent-resource-snapshots';
+import { useCommands } from '@/common/hooks/use-commands';
+import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
 import { useMemoryUsage } from '@/hooks/use-memory-usage';
-import { api } from '@/lib/api';
-import type { AgentResourceSnapshot } from '@shared/agent-resource-types';
+
+
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat().format(value);

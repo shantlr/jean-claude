@@ -3,6 +3,7 @@ import type {
   AzureDevOpsPullRequestDetails,
 } from '@shared/azure-devops-types';
 
+import { applyEntityPatch, mergeEntitySnapshot } from '../entity-merge';
 import {
   markResourceStale,
   setIndexResource,
@@ -10,7 +11,8 @@ import {
 } from '../cache-actions';
 import { cache$ } from '../cache-store';
 import type { CachedPullRequest } from '../cache-types';
-import { applyEntityPatch, mergeEntitySnapshot } from '../entity-merge';
+
+
 
 type PullRequestIdentity = {
   providerId: string;

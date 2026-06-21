@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import {
   BellOff,
   Calendar,
@@ -9,31 +8,36 @@ import {
   Search,
   Zap,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
+import clsx from 'clsx';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
 import { RemoveScroll } from 'react-remove-scroll';
 
-import {
-  useKeyboardLayer,
-  useRegisterKeyboardBindings,
-} from '@/common/context/keyboard-bindings';
-import { Kbd } from '@/common/ui/kbd';
-import { MeetingDetail } from '@/features/calendar/ui-meeting-detail';
-import { MeetingListItem } from '@/features/calendar/ui-meeting-list-item';
-import { TodayTimelineView } from '@/features/calendar/ui-today-timeline-view';
-import { WeekView } from '@/features/calendar/ui-week-view';
+
+
 import {
   dayBadge,
   groupByDay,
   isSameDay,
   sortMeetings,
 } from '@/features/calendar/utils-calendar';
-import { useCalendarNotificationsSetting } from '@/hooks/use-settings';
+import {
+  useKeyboardLayer,
+  useRegisterKeyboardBindings,
+} from '@/common/context/keyboard-bindings';
 import { api } from '@/lib/api';
-import { useCalendarIgnoredStore } from '@/stores/calendar-ignored';
-import { useToastStore } from '@/stores/toasts';
+import { Kbd } from '@/common/ui/kbd';
+import { MeetingDetail } from '@/features/calendar/ui-meeting-detail';
+import { MeetingListItem } from '@/features/calendar/ui-meeting-list-item';
+import { TodayTimelineView } from '@/features/calendar/ui-today-timeline-view';
 import type { UpcomingMeeting } from '@shared/calendar-types';
+import { useCalendarIgnoredStore } from '@/stores/calendar-ignored';
+import { useCalendarNotificationsSetting } from '@/hooks/use-settings';
+import { useToastStore } from '@/stores/toasts';
+import { WeekView } from '@/features/calendar/ui-week-view';
+
+
 
 type CalendarTab = 'next' | 'today' | 'week';
 
@@ -338,7 +342,7 @@ export function CalendarOverlay({ onClose }: { onClose: () => void }) {
   // Auto-select first meeting on mount
   useEffect(() => {
     if (!selectedId && upNextMeetings.length > 0) {
-      setSelectedId(upNextMeetings[0].id);
+      startTransition(() => setSelectedId(upNextMeetings[0].id));
     }
   }, [selectedId, upNextMeetings]);
 

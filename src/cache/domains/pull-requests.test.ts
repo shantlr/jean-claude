@@ -5,8 +5,9 @@ import type {
   AzureDevOpsPullRequestDetails,
 } from '@shared/azure-devops-types';
 
-import { markResourceStale, setResourceSuccess } from '../cache-actions';
 import { cache$, resetCache } from '../cache-store';
+import { markResourceStale, setResourceSuccess } from '../cache-actions';
+
 
 import {
   allProjectsPullRequestsResourceKey,

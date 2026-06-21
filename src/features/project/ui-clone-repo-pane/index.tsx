@@ -10,13 +10,15 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import { api, ProviderProject, ProviderRepo } from '@/lib/api';
+import { useProviderDetails, useProviders } from '@/hooks/use-providers';
 import { Button } from '@/common/ui/button';
 import { IconButton } from '@/common/ui/icon-button';
 import { Input } from '@/common/ui/input';
-import { Select } from '@/common/ui/select';
-import { useProviders, useProviderDetails } from '@/hooks/use-providers';
-import { api, ProviderProject, ProviderRepo } from '@/lib/api';
 import type { Provider } from '@shared/types';
+import { Select } from '@/common/ui/select';
+
+
 
 export interface CloneResult {
   path: string;

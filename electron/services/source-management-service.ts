@@ -1,21 +1,23 @@
-import { execFile } from 'child_process';
-import { createHash, randomUUID } from 'crypto';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { createHash, randomUUID } from 'crypto';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 
-import type { AgentBackendType } from '@shared/agent-backend-types';
+
 import type {
   AddGitHubSourceParams,
   DetectedSourceItem,
   InstallSourceItemsParams,
   ManagedSource,
   SourceInstallRecord,
-  SourceManifest,
   SourceItemView,
+  SourceManifest,
   SourceView,
   UpdateSourceInstallParams,
 } from '@shared/source-management-types';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+
 
 import { parseFrontmatter } from '../lib/skill-frontmatter';
 
@@ -23,20 +25,20 @@ import {
   assertValidAgentTargetName,
   enableAgent,
   getAgentPathConfig,
-  getUserAgentCanonicalRoot,
   getUserAgentCanonicalPath,
+  getUserAgentCanonicalRoot,
 } from './agent-management-service';
 import {
   assertValidSkillTargetName,
   enableSkill,
   getSkillPathConfig,
-  getUserSkillCanonicalRoot,
   getUserSkillCanonicalPath,
+  getUserSkillCanonicalRoot,
 } from './skill-management-service';
 import {
   readSourceManifest,
-  SOURCE_MANIFEST_DIR,
   setSourceManifestPathForTests as setSourceManifestPathForTestsInStore,
+  SOURCE_MANIFEST_DIR,
   writeSourceManifest,
 } from './source-manifest-store';
 

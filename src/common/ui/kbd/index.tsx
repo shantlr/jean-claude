@@ -1,11 +1,12 @@
 import clsx from 'clsx';
 
-import type { BindingKey } from '../../context/keyboard-bindings/types';
-import { formatKeyForDisplay } from '../../context/keyboard-bindings/utils';
 import {
   getLayoutAwareDigit,
   useKeyboardLayout,
 } from '../../context/keyboard-layout';
+import type { BindingKey } from '../../context/keyboard-bindings/types';
+import { formatKeyForDisplay } from '../../context/keyboard-bindings/utils';
+
 
 export function Kbd({
   shortcut,

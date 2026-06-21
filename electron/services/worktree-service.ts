@@ -1,26 +1,34 @@
-import { exec, execFile, spawn, type ExecOptions } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { exec, execFile, type ExecOptions, spawn } from 'child_process';
 import { promisify } from 'util';
+
 
 import { app } from 'electron';
 import ignore from 'ignore';
 import { nanoid } from 'nanoid';
 
+
+
 import { getImageMimeType, isSvgPath } from '@shared/image-types';
-import type { WorktreeFileCopyEntry } from '@shared/permission-types';
 import type { BranchInfo } from '@shared/types';
+import type { WorktreeFileCopyEntry } from '@shared/permission-types';
 
-import { ProjectRepository } from '../database/repositories/projects';
-import { dbg } from '../lib/debug';
+
+
 import { isEnoent, pathExists } from '../lib/fs';
+import { dbg } from '../lib/debug';
+import { ProjectRepository } from '../database/repositories/projects';
 
-import { installMcpForWorktree } from './mcp-template-service';
+
+
 import {
   buildWorktreeSettings,
   readSettings,
 } from './permission-settings-service';
 import { formatCreateWorktreeError } from './utils-worktree-errors';
+import { installMcpForWorktree } from './mcp-template-service';
+
 
 const execAsync = promisify(exec) as (
   command: string,

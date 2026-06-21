@@ -1,13 +1,15 @@
 import { RefreshCw, Trash2, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useModal } from '@/common/context/modal';
+import { useDeleteToken, useUpdateToken } from '@/hooks/use-tokens';
 import { Button } from '@/common/ui/button';
 import { IconButton } from '@/common/ui/icon-button';
 import { Input } from '@/common/ui/input';
-import { useGetAzureDevOpsTokenExpiration } from '@/hooks/use-azure-devops';
-import { useDeleteToken, useUpdateToken } from '@/hooks/use-tokens';
 import type { Token } from '@shared/types';
+import { useGetAzureDevOpsTokenExpiration } from '@/hooks/use-azure-devops';
+import { useModal } from '@/common/context/modal';
+
+
 
 export function EditTokenPane({
   token,
@@ -40,10 +42,10 @@ export function EditTokenPane({
   }, [expiresAt, label, newToken]);
 
   useEffect(() => {
-    setLabel(token.label);
-    setNewToken('');
-    setExpiresAt(token.expiresAt ? token.expiresAt.split('T')[0] : '');
-    setError(null);
+    startTransition(() => setLabel(token.label));
+    startTransition(() => setNewToken(''));
+    startTransition(() => setExpiresAt(token.expiresAt ? token.expiresAt.split('T')[0] : ''));
+    startTransition(() => setError(null));
   }, [token]);
 
   const handleRefreshExpiration = async () => {

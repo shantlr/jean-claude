@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
-import { invalidateFeedItems } from '@/hooks/use-tasks';
+
+
 import {
   api,
   type WorktreeCommit,
@@ -9,6 +10,8 @@ import {
   type WorktreeDiffResult,
   type WorktreeFileContent,
 } from '@/lib/api';
+import { invalidateFeedItems } from '@/hooks/use-tasks';
+
 
 export function useWorktreeDiff(
   taskId: string | null,

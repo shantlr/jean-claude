@@ -1,18 +1,18 @@
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 
-import { useRegisterOverlay } from '@/common/context/overlay';
-import { Button } from '@/common/ui/button';
-import { Input } from '@/common/ui/input';
-import { Switch } from '@/common/ui/switch';
 import {
-  useDeleteOldCompletedTasks,
   useDebugDatabaseSize,
   useDebugTableNames,
   useDebugTableQuery,
+  useDeleteOldCompletedTasks,
   useOldCompletedTasksCount,
 } from '@/hooks/use-debug';
 import { useUISetting, useUIStore } from '@/stores/ui';
+import { Button } from '@/common/ui/button';
+import { Input } from '@/common/ui/input';
+import { Switch } from '@/common/ui/switch';
+import { useRegisterOverlay } from '@/common/context/overlay';
 
 const PAGE_SIZE = 20;
 

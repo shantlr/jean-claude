@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, startTransition, useEffect, useMemo, useState } from 'react';
 
 import { ensureUtc } from '@/lib/time';
 
@@ -29,7 +29,7 @@ export const RunningTimer = memo(function RunningTimer({
   useEffect(() => {
     if (startMs === null) return;
 
-    setNowMs(Date.now());
+    startTransition(() => setNowMs(Date.now()));
 
     const intervalId = window.setInterval(() => {
       setNowMs(Date.now());

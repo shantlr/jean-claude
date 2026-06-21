@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronUp, X } from 'lucide-react';
-import type { KeyboardEvent } from 'react';
 import { forwardRef, useCallback, useImperativeHandle, useRef } from 'react';
+import type { KeyboardEvent } from 'react';
+
 
 import { IconButton } from '@/common/ui/icon-button';
 import { Input } from '@/common/ui/input';

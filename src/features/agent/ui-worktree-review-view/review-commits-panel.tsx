@@ -1,8 +1,11 @@
 import clsx from 'clsx';
 import { Loader2 } from 'lucide-react';
 
-import type { WorktreeCommit } from '@/lib/api';
+
+
 import { formatRelativeTime } from '@/lib/time';
+import type { WorktreeCommit } from '@/lib/api';
+
 
 export function ReviewCommitsPanel({
   commits,

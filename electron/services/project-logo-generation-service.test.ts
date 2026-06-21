@@ -1,7 +1,8 @@
 import * as fs from 'fs/promises';
 
-import { vol } from 'memfs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { vol } from 'memfs';
+
 
 const {
   appGetPathMock,
@@ -215,7 +216,9 @@ describe('generateProjectLogo', () => {
       }),
     );
     const [, request] = vi.mocked(fetch).mock.calls[0];
-    const prompt = (request?.body as FormData).get('prompt');
+    const body = request?.body;
+    expect(body).toBeInstanceOf(FormData);
+    const prompt = (body as FormData).get('prompt');
     expect(prompt).toContain('Create one polished square app icon');
     expect(prompt).toContain('Follow the original image');
     expect(prompt).toContain(
@@ -276,7 +279,9 @@ describe('generateProjectLogo', () => {
     });
 
     const [, request] = vi.mocked(fetch).mock.calls[0];
-    const prompt = (request?.body as FormData).get('prompt');
+    const body = request?.body;
+    expect(body).toBeInstanceOf(FormData);
+    const prompt = (body as FormData).get('prompt');
     expect(prompt).toContain('Make the mascot hold a map.');
   });
 

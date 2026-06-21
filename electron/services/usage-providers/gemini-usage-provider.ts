@@ -1,6 +1,7 @@
-import { readFile } from 'fs/promises';
 import os from 'os';
 import path from 'path';
+import { readFile } from 'fs/promises';
+
 
 import type { UsageDisplayData, UsageResult } from '@shared/usage-types';
 

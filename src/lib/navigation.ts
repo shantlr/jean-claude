@@ -1,7 +1,8 @@
 import { NavigateOptions, RegisteredRouter } from '@tanstack/react-router';
 
-import { api } from '@/lib/api';
 import { LastLocation, useNavigationStore } from '@/stores/navigation';
+import { api } from '@/lib/api';
+
 
 // Type-safe redirect targets using TanStack Router's types
 // These are the routes that the restore navigation logic can redirect to

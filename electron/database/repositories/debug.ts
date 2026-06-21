@@ -1,7 +1,8 @@
-import { sql, ExpressionWrapper, SqlBool } from 'kysely';
+import { ExpressionWrapper, sql, SqlBool } from 'kysely';
 
-import { db } from '../index';
 import type { Database } from '../schema';
+import { db } from '../index';
+
 
 type TableName = keyof Database;
 

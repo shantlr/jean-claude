@@ -1,22 +1,26 @@
-import { useNavigate } from '@tanstack/react-router';
-import clsx from 'clsx';
 import { ArrowRight, Check, Pencil, StickyNote, Trash2 } from 'lucide-react';
-import type React from 'react';
 import { useCallback, useMemo, useRef, useState } from 'react';
+import clsx from 'clsx';
+import type React from 'react';
+import { useNavigate } from '@tanstack/react-router';
 
-import { Checkbox } from '@/common/ui/checkbox';
+
+
 import { Dropdown, DropdownDivider, DropdownItem } from '@/common/ui/dropdown';
-import { useDeleteFeedNote, useUpdateFeedNote } from '@/hooks/use-feed-notes';
-import { useProjects } from '@/hooks/use-projects';
 import {
   getFeedNoteTaskIndex,
   parseFeedNoteLines,
   toggleFeedNoteContentCheckbox,
 } from '@/lib/feed-note-checkboxes';
+import { useDeleteFeedNote, useUpdateFeedNote } from '@/hooks/use-feed-notes';
+import { Checkbox } from '@/common/ui/checkbox';
+import type { FeedItem } from '@shared/feed-types';
 import { formatRelativeTime } from '@/lib/time';
 import { useNewTaskDraftStore } from '@/stores/new-task-draft';
 import { useOverlaysStore } from '@/stores/overlays';
-import type { FeedItem } from '@shared/feed-types';
+import { useProjects } from '@/hooks/use-projects';
+
+
 
 function parseNotePreview(text: string): {
   title: ReturnType<typeof parseFeedNoteLines>[number];

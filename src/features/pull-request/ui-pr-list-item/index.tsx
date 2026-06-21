@@ -1,10 +1,13 @@
-import { Link } from '@tanstack/react-router';
+import { GitMerge, GitPullRequest } from 'lucide-react';
 import clsx from 'clsx';
-import { GitPullRequest, GitMerge } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
 
-import { UserAvatar } from '@/common/ui/user-avatar';
+
+
 import type { AzureDevOpsPullRequest } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/time';
+import { UserAvatar } from '@/common/ui/user-avatar';
+
 
 function getStatusIcon(
   status: AzureDevOpsPullRequest['status'],

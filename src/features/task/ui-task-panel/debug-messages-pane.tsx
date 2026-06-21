@@ -1,32 +1,35 @@
-import { useMutation } from '@tanstack/react-query';
-import clsx from 'clsx';
 import {
-  X,
-  Loader2,
-  ChevronRight,
+  Check,
   ChevronDown,
+  ChevronRight,
+  Copy,
+  Download,
+  FolderArchive,
+  Loader2,
   RefreshCw,
   RotateCcw,
-  Copy,
-  Check,
-  FolderArchive,
-  Download,
+  X,
 } from 'lucide-react';
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
+import clsx from 'clsx';
 import type { Ref } from 'react';
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useMutation } from '@tanstack/react-query';
 
+
+
+import { api } from '@/lib/api';
 import { Button } from '@/common/ui/button';
 import { Chip } from '@/common/ui/chip';
+import type { DebugMessageWithRawData } from '@/lib/api';
+import { downloadMessageMapping } from '@/lib/utils-download-message-mapping';
 import { IconButton } from '@/common/ui/icon-button';
 import { Input } from '@/common/ui/input';
 import { Separator } from '@/common/ui/separator';
+import { useDebugMessagesPaneWidth } from '@/stores/navigation';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useMessagesWithRawData } from '@/hooks/use-messages-with-raw-data';
-import { api } from '@/lib/api';
-import type { DebugMessageWithRawData } from '@/lib/api';
-import { downloadMessageMapping } from '@/lib/utils-download-message-mapping';
-import { useDebugMessagesPaneWidth } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
+
 
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
 
@@ -388,13 +391,11 @@ export function DebugMessagesPane({
     scrollToEntryId ?? null,
   );
   const scrollTargetRef = useRef<HTMLDivElement>(null);
-  const prevScrollToEntryIdRef = useRef(scrollToEntryId);
 
   // Reset highlight when scrollToEntryId changes (e.g., right-clicking a different message)
-  if (prevScrollToEntryIdRef.current !== scrollToEntryId) {
-    prevScrollToEntryIdRef.current = scrollToEntryId;
-    setHighlightedEntryId(scrollToEntryId ?? null);
-  }
+  useEffect(() => {
+    startTransition(() => setHighlightedEntryId(scrollToEntryId ?? null));
+  }, [scrollToEntryId]);
 
   // Scroll to target entry when data loads or scrollToEntryId changes
   useEffect(() => {

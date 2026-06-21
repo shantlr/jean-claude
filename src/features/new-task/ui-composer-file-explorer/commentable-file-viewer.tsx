@@ -1,25 +1,29 @@
-import { useQuery } from '@tanstack/react-query';
-import clsx from 'clsx';
+import { type BundledLanguage, codeToTokens, type ThemedToken } from 'shiki';
 import { Loader2, MessageSquarePlus } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { codeToTokens, type BundledLanguage, type ThemedToken } from 'shiki';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import clsx from 'clsx';
+import { useQuery } from '@tanstack/react-query';
+
+
 
 import {
   COMMENT_ACCENT,
   InlineCommentBubble,
   InlineCommentComposer,
 } from '@/features/common/ui-inline-comments';
-import { api } from '@/lib/api';
-import {
-  useComposerFileCommentActions,
-  useComposerFileCommentsForFile,
-} from '@/stores/composer-file-comments';
-import { getSelectedTextForRange } from '@/stores/utils-comment-prompt';
 import {
   getCommentedLineSet,
   groupCommentsByLine,
 } from '@/stores/utils-comment-store';
+import {
+  useComposerFileCommentActions,
+  useComposerFileCommentsForFile,
+} from '@/stores/composer-file-comments';
+import { api } from '@/lib/api';
+import { getSelectedTextForRange } from '@/stores/utils-comment-prompt';
 import type { PromptImagePart } from '@shared/agent-backend-types';
+
+
 
 export function CommentableFileViewer({
   filePath,
@@ -66,7 +70,7 @@ export function CommentableFileViewer({
   // Tokenize file content with shiki
   useEffect(() => {
     if (!fileData) {
-      setTokens(null);
+      startTransition(() => setTokens(null));
       return;
     }
 

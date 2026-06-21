@@ -1,5 +1,6 @@
-import { db } from '../index';
 import { NewTaskSummaryRow, TaskSummaryRow } from '../schema';
+import { db } from '../index';
+
 
 // Types for parsed summary and annotations
 export interface TaskSummaryContent {

@@ -1,5 +1,3 @@
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import {
   Check,
   GripVertical,
@@ -10,20 +8,26 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { startTransition, useEffect, useState } from 'react';
+import { CSS } from '@dnd-kit/utilities';
+import { useSortable } from '@dnd-kit/sortable';
 
+
+
+import type {
+  ProjectCommand,
+  RunCommandEnvSource,
+  RunCommandEnvVar,
+  UpdateProjectCommand,
+} from '@shared/run-command-types';
 import { Checkbox } from '@/common/ui/checkbox';
 import { IconButton } from '@/common/ui/icon-button';
 import { Input } from '@/common/ui/input';
+import { RUN_COMMAND_ENV_SOURCES } from '@shared/run-command-types';
 import { Select } from '@/common/ui/select';
 import { Tooltip } from '@/common/ui/tooltip';
-import type {
-  ProjectCommand,
-  RunCommandEnvVar,
-  RunCommandEnvSource,
-  UpdateProjectCommand,
-} from '@shared/run-command-types';
-import { RUN_COMMAND_ENV_SOURCES } from '@shared/run-command-types';
+
+
 
 import { PortChipInput } from './port-chip-input';
 
@@ -92,27 +96,27 @@ export function CommandRow({
   };
 
   useEffect(() => {
-    setLocalName(command.name ?? '');
+    startTransition(() => setLocalName(command.name ?? ''));
   }, [command.name]);
 
   useEffect(() => {
-    setLocalCommand(command.command);
+    startTransition(() => setLocalCommand(command.command));
   }, [command.command]);
 
   useEffect(() => {
-    setLocalConfirmMessage(command.confirmMessage ?? '');
+    startTransition(() => setLocalConfirmMessage(command.confirmMessage ?? ''));
   }, [command.confirmMessage]);
 
   useEffect(() => {
     if (hasPendingEnvEdits) {
       if (areEnvVarsEqual(command.envVars, getPersistedEnvVars(localEnvVars))) {
-        setHasPendingEnvEdits(false);
+        startTransition(() => setHasPendingEnvEdits(false));
       }
       return;
     }
 
     if (!hasLocalEnvDraftRows) {
-      setLocalEnvVars(command.envVars);
+      startTransition(() => setLocalEnvVars(command.envVars));
     }
   }, [command.envVars, hasLocalEnvDraftRows, hasPendingEnvEdits, localEnvVars]);
 

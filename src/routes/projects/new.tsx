@@ -1,22 +1,25 @@
-import { useQuery } from '@tanstack/react-query';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, Folder, FolderOpen, Search } from 'lucide-react';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import type { FormEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import { Button } from '@/common/ui/button';
-import { Input } from '@/common/ui/input';
+
 import {
   AddProjectForm,
   type ProjectFormData,
 } from '@/features/project/ui-add-project-form';
+import { api, type DetectedProject } from '@/lib/api';
 import {
   CloneRepoPane,
   type CloneResult,
 } from '@/features/project/ui-clone-repo-pane';
 import { useCreateProject, useUploadProjectLogo } from '@/hooks/use-projects';
-import { api, type DetectedProject } from '@/lib/api';
+import { Button } from '@/common/ui/button';
 import { getRandomColor } from '@/lib/colors';
+import { Input } from '@/common/ui/input';
+
+
 
 export const Route = createFileRoute('/projects/new')({
   component: AddProjectPage,

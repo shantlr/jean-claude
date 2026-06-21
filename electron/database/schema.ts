@@ -6,7 +6,7 @@ import type {
   AiUsageFeature,
   AiUsagePricingStatus,
 } from '@shared/ai-usage-types';
-import type { ProviderType, ProjectType, TaskStatus } from '@shared/types';
+import type { ProjectType, ProviderType, TaskStatus } from '@shared/types';
 
 // Re-export shared types for convenience
 export type {

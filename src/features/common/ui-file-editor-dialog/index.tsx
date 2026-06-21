@@ -1,6 +1,10 @@
 import { FilePlus, X } from 'lucide-react';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+
+import { useLatestRef } from '@/hooks/use-latest-ref';
+
+
 
 export function FileEditorDialog({
   onSave,
@@ -13,8 +17,10 @@ export function FileEditorDialog({
   const [content, setContent] = useState('');
   const filenameRef = useRef<HTMLInputElement>(null);
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     filenameRef.current?.focus();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSave = useCallback(() => {
@@ -23,11 +29,8 @@ export function FileEditorDialog({
     onSave(trimmedFilename, content);
   }, [filename, content, onSave]);
 
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-
-  const handleSaveRef = useRef(handleSave);
-  handleSaveRef.current = handleSave;
+  const onCloseRef = useLatestRef(onClose);
+  const handleSaveRef = useLatestRef(handleSave);
 
   useEffect(() => {
     const handleKeyDown = (e: globalThis.KeyboardEvent) => {
@@ -43,6 +46,7 @@ export function FileEditorDialog({
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, []);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   return createPortal(
     <div

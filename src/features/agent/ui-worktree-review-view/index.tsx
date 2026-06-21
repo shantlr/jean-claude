@@ -1,5 +1,3 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import clsx from 'clsx';
 import { FileX, FolderX, Loader2, RefreshCw } from 'lucide-react';
 import React, {
   useCallback,
@@ -8,49 +6,54 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import clsx from 'clsx';
 
-import { useCommands } from '@/common/hooks/use-commands';
-import { Separator } from '@/common/ui/separator';
-import { getFilesWithAnnotations } from '@/features/agent/ui-diff-annotation';
-import { SummaryPanel } from '@/features/agent/ui-summary-panel';
-import { WorktreeActions } from '@/features/agent/ui-worktree-actions';
-import {
-  DiffFileTree,
-  FileDiffContent,
-  normalizeWorktreeStatus,
-} from '@/features/common/ui-file-diff';
-import type { DiffFile, DiffFileStatus } from '@/features/common/ui-file-diff';
-import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
-import { useTaskSummary } from '@/hooks/use-task-summary';
-import {
-  useWorktreeDiff,
-  useWorktreeFileContent,
-  useWorktreeCommits,
-  useWorktreeCommitDiff,
-  useWorktreeCommitFileContent,
-} from '@/hooks/use-worktree-diff';
+
 import {
   api,
   type FileAnnotation,
   type WorktreeCommit,
   type WorktreeDiffFile,
 } from '@/lib/api';
-import { useBackgroundJobsStore } from '@/stores/background-jobs';
-import { useDiffFileTreeWidth, type ReviewMode } from '@/stores/navigation';
+import type { DiffFile, DiffFileStatus } from '@/features/common/ui-file-diff';
 import {
-  useReviewCommentsStore,
-  useReviewCommentsForFile,
-  useReviewCommentsForCommitFile,
-  useReviewCommentsByFile,
-  useReviewCommentsByCommitFile,
+  DiffFileTree,
+  FileDiffContent,
+  normalizeWorktreeStatus,
+} from '@/features/common/ui-file-diff';
+import { isImagePath, isSvgPath } from '@shared/image-types';
+import { type ReviewMode, useDiffFileTreeWidth } from '@/stores/navigation';
+import {
   type ReviewPresetId,
+  useReviewCommentsByCommitFile,
+  useReviewCommentsByFile,
+  useReviewCommentsForCommitFile,
+  useReviewCommentsForFile,
+  useReviewCommentsStore,
 } from '@/stores/review-comments';
 import {
   useTaskReviewDraftCountByFile,
   useTaskReviewFileDrafts,
 } from '@/stores/task-review-comment-drafts';
+import {
+  useWorktreeCommitDiff,
+  useWorktreeCommitFileContent,
+  useWorktreeCommits,
+  useWorktreeDiff,
+  useWorktreeFileContent,
+} from '@/hooks/use-worktree-diff';
+import { getFilesWithAnnotations } from '@/features/agent/ui-diff-annotation';
 import type { PromptImagePart } from '@shared/agent-backend-types';
-import { isImagePath, isSvgPath } from '@shared/image-types';
+import { Separator } from '@/common/ui/separator';
+import { SummaryPanel } from '@/features/agent/ui-summary-panel';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
+import { useCommands } from '@/common/hooks/use-commands';
+import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
+import { useTaskSummary } from '@/hooks/use-task-summary';
+import { WorktreeActions } from '@/features/agent/ui-worktree-actions';
+
+
 
 import { ReviewCommitsPanel } from './review-commits-panel';
 import { ReviewFilesTree } from './review-files-tree';
@@ -316,10 +319,10 @@ export function WorktreeReviewView({
   );
 
   // Keyboard shortcut for opening submit review overlay (cmd+enter)
-  const selectedFile = useMemo(() => {
-    if (!selectedFilePath || !data?.files) return null;
-    return data.files.find((f) => f.path === selectedFilePath) ?? null;
-  }, [selectedFilePath, data?.files]);
+  const selectedFile =
+    selectedFilePath && data?.files
+      ? (data.files.find((f) => f.path === selectedFilePath) ?? null)
+      : null;
 
   // Convert worktree files to unified DiffFile format for the tree
   const diffFiles: DiffFile[] = useMemo(() => {
@@ -327,7 +330,7 @@ export function WorktreeReviewView({
       path: f.path,
       status: normalizeWorktreeStatus(f.status),
     }));
-  }, [data?.files]);
+  }, [data]);
 
   // Build set of files that have annotations for the tree indicator
   const filesWithAnnotations = useMemo(() => {
@@ -351,7 +354,7 @@ export function WorktreeReviewView({
       }
     }
     return map;
-  }, [fileExplorerRootPath, data?.files]);
+  }, [fileExplorerRootPath, data]);
 
   const fileExplorerCommentCountByFile = useMemo(() => {
     const map = new Map<string, number>();
@@ -1135,9 +1138,8 @@ function CommitsSidebarSplit({
     }
   }, [hasFiles, commitsPanelHeight]);
 
-  const handleResizeStart = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      e.preventDefault();
+  const handleResizeStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
       setIsResizing(true);
       const startY = e.clientY;
       const startHeight = commitsPanelHeight ?? 200;
@@ -1163,11 +1165,9 @@ function CommitsSidebarSplit({
         document.removeEventListener('mouseup', handleMouseUp);
       };
 
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    },
-    [commitsPanelHeight],
-  );
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
 
   return (
     <div

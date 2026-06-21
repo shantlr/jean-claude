@@ -2,8 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { TaskStep } from '@shared/types';
 
-import { setResourceSuccess } from '../cache-actions';
 import { cache$, resetCache } from '../cache-store';
+import { setResourceSuccess } from '../cache-actions';
+
 
 import {
   ensureStepInTaskIndex,

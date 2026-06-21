@@ -1,9 +1,10 @@
-import type { AgentBackendType } from '@shared/agent-backend-types';
 import type {
   BackendDefaultModelsSetting,
   ModelPreference,
   Project,
 } from '@shared/types';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+
 
 export function getDefaultModelForBackend({
   backend,

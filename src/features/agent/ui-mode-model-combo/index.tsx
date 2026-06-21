@@ -1,20 +1,24 @@
-import clsx from 'clsx';
 import { Check, ChevronDown } from 'lucide-react';
 import { useCallback, useId, useRef, useState } from 'react';
+import clsx from 'clsx';
 import { createPortal } from 'react-dom';
 
-import { useRegisterOverlay } from '@/common/context/overlay';
-import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
-import type { AgentBackendType } from '@shared/agent-backend-types';
-import type { ThinkingEffortOption } from '@shared/thinking-settings';
-import { THINKING_EFFORT_OPTIONS } from '@shared/thinking-settings';
+
+
 import {
   getInteractionModeOptions,
-  normalizeInteractionModeForBackend,
   type InteractionMode,
+  normalizeInteractionModeForBackend,
 } from '@shared/types';
+import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { ModelPreference } from '@shared/types';
+import { THINKING_EFFORT_OPTIONS } from '@shared/thinking-settings';
 import type { ThinkingEffort } from '@shared/types';
+import type { ThinkingEffortOption } from '@shared/thinking-settings';
+import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
+import { useRegisterOverlay } from '@/common/context/overlay';
+
+
 
 import type { BackendModelOption } from '../ui-backend-selector';
 

@@ -1,88 +1,91 @@
-import { useQueryClient } from '@tanstack/react-query';
 import {
   Check,
-  FolderOpen,
-  GitBranch,
   CircleAlert,
   ExternalLink,
+  FolderOpen,
+  GitBranch,
   RefreshCw,
   Search,
   Star,
   Trash2,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { startTransition, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
-import { Button } from '@/common/ui/button';
-import { Checkbox } from '@/common/ui/checkbox';
-import { Input } from '@/common/ui/input';
-import { Select } from '@/common/ui/select';
-import { Textarea } from '@/common/ui/textarea';
-import {
-  AVAILABLE_BACKENDS,
-  getModelThinkingCapabilities,
-  getModelsForBackend,
-} from '@/features/agent/ui-backend-selector';
-import { ModelSelector } from '@/features/agent/ui-model-selector';
-import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
-import { useBackendModels } from '@/hooks/use-backend-models';
-import {
-  useScanNonExistentProjects,
-  useCleanupClaudeProjects,
-} from '@/hooks/use-claude-projects-cleanup';
-import {
-  getEditorLabel,
-  useBackendDefaultModelsSetting,
-  useAppearanceSetting,
-  useBackendsSetting,
-  useCalendarNotificationsSetting,
-  useEditorAutomationSetting,
-  useEditorSetting,
-  useTaskEventNotificationsSetting,
-  useSummaryModelsSetting,
-  useThinkingSettingsSetting,
-  useUpdateBackendsSetting,
-  useUpdateBackendDefaultModelsSetting,
-  useUpdateAppearanceSetting,
-  useUpdateCalendarNotificationsSetting,
-  useUpdateEditorAutomationSetting,
-  useUpdateEditorSetting,
-  useUpdateTaskEventNotificationsSetting,
-  useRawMessageCleanupSetting,
-  useUpdateRawMessageCleanupSetting,
-  useUpdateSummaryModelsSetting,
-  useUpdateThinkingSettingsSetting,
-  useAvailableEditors,
-  useUsageDisplaySetting,
-  useUpdateUsageDisplaySetting,
-  usePromptPrefaceSetting,
-  useUpdatePromptPrefaceSetting,
-  useSetting,
-  useUpdateSetting,
-} from '@/hooks/use-settings';
-import { useDeleteWorkActivity } from '@/hooks/use-work-activity';
+
 import {
   api,
   type DesktopNotificationStatus,
   type NonExistentClaudeProject,
 } from '@/lib/api';
-import { useToastStore } from '@/stores/toasts';
-import type { AgentBackendType } from '@shared/agent-backend-types';
+import {
+  AVAILABLE_BACKENDS,
+  getModelsForBackend,
+  getModelThinkingCapabilities,
+} from '@/features/agent/ui-backend-selector';
+import {
+  type CalendarNotificationsSetting,
+  DEFAULT_CALENDAR_NOTIFICATION_LEAD_TIME_MINUTES,
+  DEFAULT_TASK_NOTIFICATION_MODES,
+  type ModelPreference,
+  PRESET_EDITORS,
+  type RawMessageCleanupSetting,
+  type TaskNotificationEvent,
+  type TaskNotificationMode,
+  type ThinkingEffort,
+} from '@shared/types';
+import {
+  getEditorLabel,
+  useAppearanceSetting,
+  useAvailableEditors,
+  useBackendDefaultModelsSetting,
+  useBackendsSetting,
+  useCalendarNotificationsSetting,
+  useEditorAutomationSetting,
+  useEditorSetting,
+  usePromptPrefaceSetting,
+  useRawMessageCleanupSetting,
+  useSetting,
+  useSummaryModelsSetting,
+  useTaskEventNotificationsSetting,
+  useThinkingSettingsSetting,
+  useUpdateAppearanceSetting,
+  useUpdateBackendDefaultModelsSetting,
+  useUpdateBackendsSetting,
+  useUpdateCalendarNotificationsSetting,
+  useUpdateEditorAutomationSetting,
+  useUpdateEditorSetting,
+  useUpdatePromptPrefaceSetting,
+  useUpdateRawMessageCleanupSetting,
+  useUpdateSetting,
+  useUpdateSummaryModelsSetting,
+  useUpdateTaskEventNotificationsSetting,
+  useUpdateThinkingSettingsSetting,
+  useUpdateUsageDisplaySetting,
+  useUsageDisplaySetting,
+} from '@/hooks/use-settings';
 import {
   getThinkingEffortOptions,
   normalizeThinkingEffortForModel,
 } from '@shared/thinking-settings';
-import {
-  DEFAULT_CALENDAR_NOTIFICATION_LEAD_TIME_MINUTES,
-  DEFAULT_TASK_NOTIFICATION_MODES,
-  PRESET_EDITORS,
-  type ModelPreference,
-  type RawMessageCleanupSetting,
-  type ThinkingEffort,
-  type CalendarNotificationsSetting,
-  type TaskNotificationEvent,
-  type TaskNotificationMode,
-} from '@shared/types';
 import { USAGE_PROVIDERS, type UsageProviderType } from '@shared/usage-types';
+import {
+  useCleanupClaudeProjects,
+  useScanNonExistentProjects,
+} from '@/hooks/use-claude-projects-cleanup';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { Input } from '@/common/ui/input';
+import { ModelSelector } from '@/features/agent/ui-model-selector';
+import { Select } from '@/common/ui/select';
+import { Textarea } from '@/common/ui/textarea';
+import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
+import { useBackendModels } from '@/hooks/use-backend-models';
+import { useDeleteWorkActivity } from '@/hooks/use-work-activity';
+import { useToastStore } from '@/stores/toasts';
+
+
 
 const PROMPT_PREFACE_PLACEMENT_OPTIONS = [
   { value: 'before', label: 'Before user prompt' },
@@ -311,7 +314,7 @@ export function PromptPrefaceSettings() {
 
   useEffect(() => {
     if (setting) {
-      setDraftText(setting.text);
+      startTransition(() => setDraftText(setting.text));
     }
   }, [setting]);
 
@@ -405,7 +408,7 @@ function RawMessageCleanupSettings() {
   );
 
   useEffect(() => {
-    setRetentionInput(String(settings.retentionHours));
+    startTransition(() => setRetentionInput(String(settings.retentionHours)));
   }, [settings.retentionHours]);
 
   const updateSetting = (next: RawMessageCleanupSetting) => {
@@ -890,7 +893,7 @@ function CalendarNotificationSettings() {
   );
 
   useEffect(() => {
-    setLeadTimeInput(String(settings.leadTimeMinutes));
+    startTransition(() => setLeadTimeInput(String(settings.leadTimeMinutes)));
   }, [settings.leadTimeMinutes]);
 
   const updateSetting = (next: CalendarNotificationsSetting) => {
@@ -1063,7 +1066,7 @@ function TaskNotificationSettings() {
   };
 
   useEffect(() => {
-    checkDesktopStatus();
+    startTransition(() => checkDesktopStatus());
 
     window.addEventListener('focus', checkDesktopStatus);
     return () => window.removeEventListener('focus', checkDesktopStatus);
@@ -1212,11 +1215,11 @@ export function UsageDisplaySettings() {
   const hasStoredCopilotToken = usageDisplaySetting?.copilotToken === 'stored';
 
   useEffect(() => {
-    setCopilotToken(
+    startTransition(() => setCopilotToken(
       usageDisplaySetting?.copilotToken === 'stored'
         ? ''
         : (usageDisplaySetting?.copilotToken ?? ''),
-    );
+    ));
   }, [usageDisplaySetting?.copilotToken]);
 
   const isEnabled = (id: UsageProviderType) => enabledProviders.includes(id);

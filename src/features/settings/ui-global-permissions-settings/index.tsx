@@ -1,16 +1,18 @@
 import { useCallback } from 'react';
 
 import {
-  PermissionsEditor,
   type FlatRule,
+  PermissionsEditor,
 } from '@/features/common/ui-permissions-editor';
 import {
-  useGlobalPermissions,
   useAddGlobalPermissionRule,
-  useRemoveGlobalPermissionRule,
   useEditGlobalPermissionRule,
+  useGlobalPermissions,
+  useRemoveGlobalPermissionRule,
 } from '@/hooks/use-global-permissions';
 import type { PermissionAction } from '@shared/permission-types';
+
+
 
 export function GlobalPermissionsSettings() {
   const { data: permissions, isLoading } = useGlobalPermissions();

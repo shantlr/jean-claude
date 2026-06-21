@@ -19,8 +19,8 @@ import {
   removeSource,
   scanSourceDirectory,
   setGitRunnerForTests,
-  setSourcesBaseDirForTests,
   setSourceManifestPathForTests,
+  setSourcesBaseDirForTests,
   updateSourceInstall,
   writeSourceManifest,
 } from './source-management-service';

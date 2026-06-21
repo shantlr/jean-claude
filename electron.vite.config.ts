@@ -1,11 +1,11 @@
+import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import { execSync } from 'child_process';
+import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
-
+import svgr from 'vite-plugin-svgr';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
-import react from '@vitejs/plugin-react';
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
-import svgr from 'vite-plugin-svgr';
+
 
 const commitHash = execSync('git rev-parse --short HEAD', {
   encoding: 'utf8',

@@ -1,16 +1,19 @@
-import { useNavigate, useParams } from '@tanstack/react-router';
 import { ChevronDown, ListTodo } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
+import { useNavigate, useParams } from '@tanstack/react-router';
 
-import { useCommands } from '@/common/hooks/use-commands';
-import { Button } from '@/common/ui/button';
-import { SidebarContentTabs } from '@/features/project/ui-sidebar-content-tabs';
-import { PrSidebarList } from '@/features/pull-request/ui-pr-sidebar-list';
-import { TaskSummaryCard } from '@/features/task/ui-task-summary-card';
-import { useProjects } from '@/hooks/use-projects';
+
 import { useAllActiveTasks, useAllCompletedTasks } from '@/hooks/use-tasks';
 import { useCurrentVisibleProject, useSidebarTab } from '@/stores/navigation';
+import { Button } from '@/common/ui/button';
+import { PrSidebarList } from '@/features/pull-request/ui-pr-sidebar-list';
+import { SidebarContentTabs } from '@/features/project/ui-sidebar-content-tabs';
+import { TaskSummaryCard } from '@/features/task/ui-task-summary-card';
+import { useCommands } from '@/common/hooks/use-commands';
 import { useOverlaysStore } from '@/stores/overlays';
+import { useProjects } from '@/hooks/use-projects';
+
+
 
 const COMPLETED_TASKS_PAGE_SIZE = 5;
 

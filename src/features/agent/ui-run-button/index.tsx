@@ -1,19 +1,22 @@
-import clsx from 'clsx';
 import { FileText, Loader2, Play, Square } from 'lucide-react';
 import { type MutableRefObject, useMemo, useState } from 'react';
+import clsx from 'clsx';
 
-import { Button } from '@/common/ui/button';
-import { Chip } from '@/common/ui/chip';
-import { Dropdown, DropdownItem, DropdownDivider } from '@/common/ui/dropdown';
-import { Kbd } from '@/common/ui/kbd';
-import { useProjectCommandGroups } from '@/hooks/use-project-command-groups';
-import { useProjectCommands } from '@/hooks/use-project-commands';
-import { useRunCommands } from '@/hooks/use-run-commands';
+
+import { Dropdown, DropdownDivider, DropdownItem } from '@/common/ui/dropdown';
 import {
   getRunCommandLogLineCount,
   useTaskMessagesStore,
 } from '@/stores/task-messages';
+import { Button } from '@/common/ui/button';
+import { Chip } from '@/common/ui/chip';
 import { getRunCommandDisplayName } from '@shared/run-command-types';
+import { Kbd } from '@/common/ui/kbd';
+import { useProjectCommandGroups } from '@/hooks/use-project-command-groups';
+import { useProjectCommands } from '@/hooks/use-project-commands';
+import { useRunCommands } from '@/hooks/use-run-commands';
+
+
 
 import { ConfirmRunModal } from './confirm-run-modal';
 import { KillPortsModal } from './kill-ports-modal';

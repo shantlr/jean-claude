@@ -1,12 +1,15 @@
-import clsx from 'clsx';
 import { CheckCircle2, FileCode, GitMerge, User } from 'lucide-react';
+import clsx from 'clsx';
 import type { ReactNode } from 'react';
 
-import { UserAvatar } from '@/common/ui/user-avatar';
-import { PrWorkItems } from '@/features/pull-request/ui-pr-work-items';
+
+
+import type { AzureDevOpsPullRequestDetails } from '@shared/azure-devops-types';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
 import { encodeProxyUrl } from '@/lib/azure-image-proxy';
-import type { AzureDevOpsPullRequestDetails } from '@shared/azure-devops-types';
+import { PrWorkItems } from '@/features/pull-request/ui-pr-work-items';
+import { UserAvatar } from '@/common/ui/user-avatar';
+
 
 // --- Vote status config ---
 

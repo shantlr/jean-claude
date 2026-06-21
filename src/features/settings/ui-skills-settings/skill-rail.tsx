@@ -1,13 +1,16 @@
-import clsx from 'clsx';
 import { Bot, Loader2, Plus, Search } from 'lucide-react';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import clsx from 'clsx';
 
-import { Chip } from '@/common/ui/chip';
+
 import { ListPane, ListSearchInput } from '@/common/ui/list-detail-layout';
-import { useRegistrySearch } from '@/hooks/use-managed-skills';
-import { formatCompactNumber } from '@/lib/numbers';
-import { useSkillsRailWidth } from '@/stores/navigation';
 import type { ManagedSkill, RegistrySkill } from '@shared/skill-types';
+import { Chip } from '@/common/ui/chip';
+import { formatCompactNumber } from '@/lib/numbers';
+import { useRegistrySearch } from '@/hooks/use-managed-skills';
+import { useSkillsRailWidth } from '@/stores/navigation';
+
+
 
 import { GroupHeader, SkillRow } from './skill-row';
 

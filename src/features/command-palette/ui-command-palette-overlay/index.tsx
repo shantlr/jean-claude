@@ -1,14 +1,18 @@
-import clsx from 'clsx';
-import Fuse from 'fuse.js';
 import { groupBy, map } from 'lodash-es';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import clsx from 'clsx';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
+import Fuse from 'fuse.js';
 
-import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
+
+
 import { useCommands, useCommandSources } from '@/common/hooks/use-commands';
 import { Input } from '@/common/ui/input';
 import { Kbd } from '@/common/ui/kbd';
+import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
+
+
 
 export function CommandPaletteOverlay({ onClose }: { onClose: () => void }) {
   const layer = useKeyboardLayer('overlay', {

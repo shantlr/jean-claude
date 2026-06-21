@@ -2,14 +2,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { feedQueryKeys } from '@/lib/feed-query-keys';
 
-import { retainResource } from './cache-actions';
+import { cache$, resetCache } from './cache-store';
 import {
   getFeedQueryKeyForCacheEvent,
   getReactQueryKeysForCacheEvent,
   handleCacheEvent,
 } from './cache-listener';
-import { cache$, resetCache } from './cache-store';
 import { resetCacheResourceSubscriptionsForTests } from './cache-subscriptions';
+import { retainResource } from './cache-actions';
+
 
 beforeEach(() => {
   resetCache();

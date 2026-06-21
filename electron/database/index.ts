@@ -1,13 +1,16 @@
 import { join } from 'path';
 
-import Database from 'better-sqlite3';
+import { Kysely, Migrator, sql, SqliteDialect } from 'kysely';
 import { app } from 'electron';
-import { Kysely, Migrator, SqliteDialect, sql } from 'kysely';
+import Database from 'better-sqlite3';
+
+
 
 import { dbg } from '../lib/debug';
 
-import { migrationProvider } from './migrator';
 import { Database as DatabaseSchema } from './schema';
+import { migrationProvider } from './migrator';
+
 
 const defaultDbPath = join(app.getPath('userData'), 'jean-claude.db');
 const dbPath = process.env.JEAN_CLAUDE_DB_PATH || defaultDbPath;

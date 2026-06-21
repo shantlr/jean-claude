@@ -1,6 +1,8 @@
 import clsx from 'clsx';
-import { Search } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { Search } from 'lucide-react';
+
+
 
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 

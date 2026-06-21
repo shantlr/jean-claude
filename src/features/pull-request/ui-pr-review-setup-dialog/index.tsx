@@ -1,22 +1,24 @@
 import { Eye, GitPullRequest } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useState } from 'react';
 
-import { Button } from '@/common/ui/button';
-import { Modal } from '@/common/ui/modal';
-import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
-import { getModelThinkingCapabilities } from '@/features/agent/ui-backend-selector';
-import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
-import { useBackendModels } from '@/hooks/use-backend-models';
-import {
-  useBackendsSetting,
-  useThinkingSettingsSetting,
-} from '@/hooks/use-settings';
-import type { AgentBackendType } from '@shared/agent-backend-types';
 import {
   getThinkingEffortOptions,
   normalizeThinkingEffortForModel,
 } from '@shared/thinking-settings';
 import type { ModelPreference, ThinkingEffort } from '@shared/types';
+import {
+  useBackendsSetting,
+  useThinkingSettingsSetting,
+} from '@/hooks/use-settings';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
+import { Button } from '@/common/ui/button';
+import { getModelThinkingCapabilities } from '@/features/agent/ui-backend-selector';
+import { Modal } from '@/common/ui/modal';
+import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
+import { useBackendModels } from '@/hooks/use-backend-models';
+
+
 
 export function PrReviewSetupDialog({
   isOpen,
@@ -62,10 +64,10 @@ export function PrReviewSetupDialog({
 
   useEffect(() => {
     if (!isOpen) return;
-    setBackend(defaultBackend);
-    setModel(defaultModel);
-    setThinkingEffort(defaultThinkingEffort);
-    setBackendModelPresetId(null);
+    startTransition(() => setBackend(defaultBackend));
+    startTransition(() => setModel(defaultModel));
+    startTransition(() => setThinkingEffort(defaultThinkingEffort));
+    startTransition(() => setBackendModelPresetId(null));
   }, [defaultBackend, defaultModel, defaultThinkingEffort, isOpen]);
 
   const availableThinkingOptions = useMemo(() => {

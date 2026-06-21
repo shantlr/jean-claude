@@ -1,35 +1,39 @@
-import clsx from 'clsx';
-import { Send, Square, Loader2, ListPlus } from 'lucide-react';
 import {
-  useState,
-  useRef,
-  useCallback,
   type KeyboardEvent,
   type ReactNode,
+  useCallback,
+  useRef,
+  useState,
 } from 'react';
+import { ListPlus, Loader2, Send, Square } from 'lucide-react';
+import clsx from 'clsx';
 
-import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
-import { Button } from '@/common/ui/button';
-import { IconButton } from '@/common/ui/icon-button';
-import { Kbd } from '@/common/ui/kbd';
-import type { ComponentSize } from '@/common/ui/styles';
+
+
+import type {
+  PromptFilePart,
+  PromptImagePart,
+  PromptPart,
+} from '@shared/agent-backend-types';
 import {
   PromptTextarea,
   PromptTextareaRef,
 } from '@/features/common/ui-prompt-textarea';
-import { useProjectFeatureMap } from '@/hooks/use-projects';
-import { useCompletionSetting } from '@/hooks/use-settings';
 import { buildAttachedFilesXml } from '@/lib/file-attachment-utils';
+import { Button } from '@/common/ui/button';
+import type { ComponentSize } from '@/common/ui/styles';
 import { expandFeatureReferencesInPrompt } from '@/lib/prompt-feature-context';
-import { resolveMessageInputText } from '@/lib/resolve-message-input-text';
-import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
-import type {
-  PromptPart,
-  PromptImagePart,
-  PromptFilePart,
-} from '@shared/agent-backend-types';
-import type { Skill } from '@shared/skill-types';
+import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
+import { IconButton } from '@/common/ui/icon-button';
+import { Kbd } from '@/common/ui/kbd';
 import type { PromptSnippet } from '@shared/types';
+import { resolveMessageInputText } from '@/lib/resolve-message-input-text';
+import type { Skill } from '@shared/skill-types';
+import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
+import { useCompletionSetting } from '@/hooks/use-settings';
+import { useProjectFeatureMap } from '@/hooks/use-projects';
+
+
 
 const DOUBLE_ESCAPE_THRESHOLD = 300; // ms
 

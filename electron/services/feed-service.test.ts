@@ -10,8 +10,10 @@ import {
   getPullRequestActivityMetadata,
   listPullRequests,
 } from './azure-devops-service';
-import { emitCacheEvent } from './cache-event-service';
 import { getPrFeedItems, invalidatePrCache } from './feed-service';
+import { emitCacheEvent } from './cache-event-service';
+
+
 
 vi.mock('../database/repositories', () => ({
   FeedNoteRepository: {},

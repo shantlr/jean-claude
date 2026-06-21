@@ -1,4 +1,3 @@
-import { useNavigate } from '@tanstack/react-router';
 import {
   ChevronDown,
   ChevronRight,
@@ -10,17 +9,21 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 
-import { useModal } from '@/common/context/modal';
+
+import { api, type ProviderProject, type ProviderRepo } from '@/lib/api';
+import { useDeleteProvider, useProviderDetails } from '@/hooks/use-providers';
 import { Button } from '@/common/ui/button';
+import { getRandomColor } from '@/lib/colors';
 import { IconButton } from '@/common/ui/icon-button';
 import { Input } from '@/common/ui/input';
-import { useCreateProject } from '@/hooks/use-projects';
-import { useDeleteProvider, useProviderDetails } from '@/hooks/use-providers';
-import { api, type ProviderProject, type ProviderRepo } from '@/lib/api';
-import { getRandomColor } from '@/lib/colors';
 import type { Provider } from '@shared/types';
+import { useCreateProject } from '@/hooks/use-projects';
+import { useModal } from '@/common/context/modal';
+
+
 
 interface CloneConfig {
   parentPath: string;

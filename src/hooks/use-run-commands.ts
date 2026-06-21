@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { api } from '@/lib/api';
-import { useTaskMessagesStore } from '@/stores/task-messages';
 import type { PortsInUseErrorData, RunStatus } from '@shared/run-command-types';
+import { api } from '@/lib/api';
 import { isPortsInUseError } from '@shared/run-command-types';
+import { useLatestRef } from '@/hooks/use-latest-ref';
+import { useTaskMessagesStore } from '@/stores/task-messages';
+
+
 
 interface PendingStart {
   commandIds: string[];
@@ -29,6 +32,10 @@ export function useRunCommands({
   const resetRunCommandLogs = useTaskMessagesStore(
     (state) => state.resetRunCommandLogs,
   );
+  const projectIdRef = useLatestRef(projectId);
+  const resetRunCommandLogsRef = useLatestRef(resetRunCommandLogs);
+  const taskIdRef = useLatestRef(taskId);
+  const workingDirRef = useLatestRef(workingDir);
 
   useEffect(() => {
     api.runCommands.getStatus(taskId).then(setStatus);
@@ -51,6 +58,10 @@ export function useRunCommands({
   const runStart = useCallback(
     async (commandIds: string[], kind: PendingStart['kind']) => {
       const uniqueCommandIds = [...new Set(commandIds)];
+      const currentProjectId = projectIdRef.current;
+      const currentResetRunCommandLogs = resetRunCommandLogsRef.current;
+      const currentTaskId = taskIdRef.current;
+      const currentWorkingDir = workingDirRef.current;
       try {
         setStartingCommandIds(uniqueCommandIds);
         setPortsInUseError(null);
@@ -58,15 +69,18 @@ export function useRunCommands({
 
         await Promise.all(
           uniqueCommandIds.map((runCommandId) =>
-            api.runCommands.stopCommand({ taskId, runCommandId }),
+            api.runCommands.stopCommand({ taskId: currentTaskId, runCommandId }),
           ),
         );
 
         await Promise.all(
           uniqueCommandIds.map((runCommandId) => {
-            const generation = resetRunCommandLogs(taskId, runCommandId);
+            const generation = currentResetRunCommandLogs(
+              currentTaskId,
+              runCommandId,
+            );
             return api.runCommands.resetLogs({
-              taskId,
+              taskId: currentTaskId,
               runCommandId,
               generation,
             });
@@ -76,15 +90,15 @@ export function useRunCommands({
         const result =
           uniqueCommandIds.length === 1
             ? await api.runCommands.startCommand({
-                taskId,
-                projectId,
-                workingDir,
+                taskId: currentTaskId,
+                projectId: currentProjectId,
+                workingDir: currentWorkingDir,
                 runCommandId: uniqueCommandIds[0],
               })
             : await api.runCommands.startGroup({
-                taskId,
-                projectId,
-                workingDir,
+                taskId: currentTaskId,
+                projectId: currentProjectId,
+                workingDir: currentWorkingDir,
                 runCommandIds: uniqueCommandIds,
               });
 
@@ -99,7 +113,8 @@ export function useRunCommands({
         setStartingCommandIds([]);
       }
     },
-    [projectId, resetRunCommandLogs, taskId, workingDir],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   const startCommand = useCallback(
@@ -116,12 +131,16 @@ export function useRunCommands({
     async (runCommandId: string) => {
       setStoppingCommandIds([runCommandId]);
       try {
-        await api.runCommands.stopCommand({ taskId, runCommandId });
+        await api.runCommands.stopCommand({
+          taskId: taskIdRef.current,
+          runCommandId,
+        });
       } finally {
         setStoppingCommandIds([]);
       }
     },
-    [taskId],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   const stopGroup = useCallback(
@@ -131,14 +150,18 @@ export function useRunCommands({
       try {
         await Promise.all(
           uniqueCommandIds.map((runCommandId) =>
-            api.runCommands.stopCommand({ taskId, runCommandId }),
+            api.runCommands.stopCommand({
+              taskId: taskIdRef.current,
+              runCommandId,
+            }),
           ),
         );
       } finally {
         setStoppingCommandIds([]);
       }
     },
-    [taskId],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   const confirmKillPorts = useCallback(async () => {

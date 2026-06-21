@@ -1,9 +1,12 @@
-import type { PermissionScope } from '@shared/permission-types';
 import { Task, TaskStatus, TaskTodoItem, TaskType } from '@shared/types';
+import type { PermissionScope } from '@shared/permission-types';
 
-import { dbg } from '../../lib/debug';
-import { db } from '../index';
+
 import { NewTaskRow, TaskRow, UpdateTaskRow } from '../schema';
+import { db } from '../index';
+import { dbg } from '../../lib/debug';
+
+
 
 // Input types for repository methods (matching shared types but with db-compatible values)
 interface CreateTaskInput {

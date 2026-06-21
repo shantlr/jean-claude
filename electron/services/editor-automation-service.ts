@@ -1,5 +1,6 @@
-import { SettingsRepository } from '../database/repositories/settings';
 import { dbg } from '../lib/debug';
+import { SettingsRepository } from '../database/repositories/settings';
+
 
 import { closeEditorWindowsForWorktree } from './editor-window-service';
 

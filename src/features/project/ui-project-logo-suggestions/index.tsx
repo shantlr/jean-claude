@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
+import { useQuery } from '@tanstack/react-query';
+
 
 import { api } from '@/lib/api';
 import type { DetectedProjectLogo } from '@shared/types';

@@ -1,18 +1,21 @@
-import { execFile } from 'child_process';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 
-import type { AgentBackendType } from '@shared/agent-backend-types';
+
 import type {
   ManagedSkill,
   RegistrySearchResult,
   RegistrySkillContent,
 } from '@shared/skill-types';
+import type { AgentBackendType } from '@shared/agent-backend-types';
 
-import { dbg } from '../lib/debug';
+
 import { extractBody, parseFrontmatter } from '../lib/skill-frontmatter';
+import { dbg } from '../lib/debug';
+
 
 import { createSkill, getSkillContent } from './skill-management-service';
 

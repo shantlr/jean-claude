@@ -1,24 +1,27 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileJson, RotateCcw, Save } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
 import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { Button } from '@/common/ui/button';
-import { Input } from '@/common/ui/input';
+
 import {
   ListDetailLayout,
   ListGroupHeader,
   ListItemButton,
   ListPane,
 } from '@/common/ui/list-detail-layout';
+import { useSetting, useUpdateSetting } from '@/hooks/use-settings';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import { api } from '@/lib/api';
+import { Button } from '@/common/ui/button';
+import { Input } from '@/common/ui/input';
+import type { OpenCodeProcessMode } from '@shared/types';
 import { Select } from '@/common/ui/select';
 import { Switch } from '@/common/ui/switch';
 import { Textarea } from '@/common/ui/textarea';
-import { useSetting, useUpdateSetting } from '@/hooks/use-settings';
-import { api } from '@/lib/api';
 import { useToastStore } from '@/stores/toasts';
-import type { AgentBackendType } from '@shared/agent-backend-types';
-import type { OpenCodeProcessMode } from '@shared/types';
+
+
 
 type ConfigObject = Record<string, unknown>;
 
@@ -1772,10 +1775,10 @@ function StructuredBackendConfigSettings({
       if (hasLocalEdits && currentSerialized !== serialized) return;
 
       appliedDataRef.current = dataKey;
-      setConfig(parsed);
-      setBaselineConfig(serialized);
-      setLoadError(null);
-      setTextValues(
+      startTransition(() => setConfig(parsed));
+      startTransition(() => setBaselineConfig(serialized));
+      startTransition(() => setLoadError(null));
+      startTransition(() => setTextValues(
         Object.fromEntries(
           getFields(backend)
             .filter((field) => field.kind === 'array' || field.kind === 'json')
@@ -1784,22 +1787,22 @@ function StructuredBackendConfigSettings({
               valueToText(getPathValue(parsed, field.path)),
             ]),
         ),
-      );
+      ));
     } catch (error) {
       appliedDataRef.current = dataKey;
-      setConfig(null);
-      setBaselineConfig('');
-      setLoadError(formatError(error));
+      startTransition(() => setConfig(null));
+      startTransition(() => setBaselineConfig(''));
+      startTransition(() => setLoadError(formatError(error)));
     }
   }, [backend, baselineConfig, config, query.data]);
 
   useEffect(() => {
-    setSelectedFieldPath((current) => {
+    startTransition(() => setSelectedFieldPath((current) => {
       if (current && visibleFields.some((field) => field.path === current)) {
         return current;
       }
       return visibleFields[0]?.path ?? null;
-    });
+    }));
   }, [visibleFields]);
 
   const fieldErrors = useMemo(() => {

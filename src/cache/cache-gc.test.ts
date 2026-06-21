@@ -1,19 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { AzureDevOpsPullRequest } from '@shared/azure-devops-types';
 import type { Project, Task, TaskStep } from '@shared/types';
+import type { AzureDevOpsPullRequest } from '@shared/azure-devops-types';
 
-import {
-  releaseResource,
-  retainResource,
-  setDocumentResource,
-} from './cache-actions';
-import { collectUnusedCache } from './cache-gc';
+
 import { cache$, resetCache } from './cache-store';
 import {
-  PROJECTS_INDEX_KEY,
   ingestProjects,
   projectResourceKey,
+  PROJECTS_INDEX_KEY,
   setProjectIndexIds,
 } from './domains/projects';
 import {
@@ -30,13 +25,21 @@ import {
   taskStepsResourceKey,
 } from './domains/steps';
 import {
-  TASKS_INDEX_KEY,
   ingestTask,
   ingestTasks,
   projectTasksResourceKey,
   setProjectTaskIndexIds,
   taskResourceKey,
+  TASKS_INDEX_KEY,
 } from './domains/tasks';
+import {
+  releaseResource,
+  retainResource,
+  setDocumentResource,
+} from './cache-actions';
+import { collectUnusedCache } from './cache-gc';
+
+
 
 function createProject(overrides: Partial<Project> = {}): Project {
   return {

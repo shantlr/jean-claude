@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import {
   Calendar,
   Clock,
@@ -10,23 +9,27 @@ import {
   User,
   Video,
 } from 'lucide-react';
+import clsx from 'clsx';
 
-import { Button } from '@/common/ui/button';
-import { Kbd } from '@/common/ui/kbd';
-import { CountdownRing } from '@/features/calendar/ui-countdown-ring';
-import { OrganizerTooltip } from '@/features/calendar/ui-organizer-tooltip';
+
 import {
   extractTeamsUrl,
   formatDayHeader,
   formatTimeRange,
-  getTeamsJoinUrl,
   getMeetingState,
+  getTeamsJoinUrl,
   minutesBetween,
 } from '@/features/calendar/utils-calendar';
-import { useCalendarNotificationsSetting } from '@/hooks/use-settings';
 import { api } from '@/lib/api';
-import { useToastStore } from '@/stores/toasts';
+import { Button } from '@/common/ui/button';
+import { CountdownRing } from '@/features/calendar/ui-countdown-ring';
+import { Kbd } from '@/common/ui/kbd';
+import { OrganizerTooltip } from '@/features/calendar/ui-organizer-tooltip';
 import type { UpcomingMeeting } from '@shared/calendar-types';
+import { useCalendarNotificationsSetting } from '@/hooks/use-settings';
+import { useToastStore } from '@/stores/toasts';
+
+
 
 export function MeetingDetail({
   meeting,

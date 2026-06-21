@@ -1,7 +1,7 @@
 // electron/database/repositories/project-mcp-overrides.ts
 import type {
-  ProjectMcpOverride,
   NewProjectMcpOverride,
+  ProjectMcpOverride,
 } from '@shared/mcp-types';
 
 import { db } from '../index';

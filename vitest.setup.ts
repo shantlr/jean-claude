@@ -1,5 +1,6 @@
-import { vol } from 'memfs';
 import { afterEach, beforeEach, vi } from 'vitest';
+import { vol } from 'memfs';
+
 
 vi.mock('fs/promises', async () => {
   const { fs } = await vi.importActual<typeof import('memfs')>('memfs');

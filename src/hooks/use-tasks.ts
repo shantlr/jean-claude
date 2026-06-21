@@ -4,10 +4,8 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 
-import { ingestStep, markStepListsStale } from '@/cache/domains/steps';
 import {
   ACTIVE_TASKS_INDEX_KEY,
-  TASKS_INDEX_KEY,
   appendTaskToKnownIndexes,
   ingestActiveTasks,
   ingestProjectTasks,
@@ -22,20 +20,24 @@ import {
   selectTasks,
   setProjectTaskIndexIds,
   taskResourceKey,
+  TASKS_INDEX_KEY,
 } from '@/cache/domains/tasks';
-import { useCacheResource } from '@/cache/use-cache-resource';
-import { api } from '@/lib/api';
-import { feedQueryKeys } from '@/lib/feed-query-keys';
-import { useBackgroundJobsStore } from '@/stores/background-jobs';
-import { useTaskMessagesStore } from '@/stores/task-messages';
-import { useToastStore } from '@/stores/toasts';
-import type { AgentBackendType } from '@shared/agent-backend-types';
+import { ingestStep, markStepListsStale } from '@/cache/domains/steps';
 import type {
   InteractionMode,
   NewTask,
   ThinkingEffort,
   UpdateTask,
 } from '@shared/types';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import { api } from '@/lib/api';
+import { feedQueryKeys } from '@/lib/feed-query-keys';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
+import { useCacheResource } from '@/cache/use-cache-resource';
+import { useTaskMessagesStore } from '@/stores/task-messages';
+import { useToastStore } from '@/stores/toasts';
+
+
 
 // The creation payload includes step-related fields alongside task fields.
 // The IPC handler extracts interactionMode/modelPreference/agentBackend

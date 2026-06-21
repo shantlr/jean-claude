@@ -1,11 +1,9 @@
+import { useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { useMemo } from 'react';
-
-import { Sparkline } from '@/common/ui/sparkline';
-import { useUsageHistory } from '@/hooks/use-usage-history';
-import type { UsageProviderType } from '@shared/usage-types';
-
 import { interpolateResets } from './utils-interpolate-resets';
+import { Sparkline } from '@/common/ui/sparkline';
+import type { UsageProviderType } from '@shared/usage-types';
+import { useUsageHistory } from '@/hooks/use-usage-history';
 
 const HISTORY_LOOKBACK_MS = 10 * 60 * 60 * 1000;
 const OVER_PACE_COLOR = 'var(--color-status-fail)';
@@ -36,7 +34,7 @@ export function UsageHistoryChart({
   limitKey: string;
   windowDurationMs: number;
 }) {
-  const nowMs = Date.now();
+  const [nowMs] = useState(() => Date.now());
   const windowStartMs = nowMs - HISTORY_LOOKBACK_MS;
 
   const since = useMemo(() => {

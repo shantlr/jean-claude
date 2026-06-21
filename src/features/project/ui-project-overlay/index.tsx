@@ -1,15 +1,18 @@
-import { Link } from '@tanstack/react-router';
+import { startTransition, useCallback, useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { Plus } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
+import { Link } from '@tanstack/react-router';
+import { Plus } from 'lucide-react';
 
-import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
-import { useCommands } from '@/common/hooks/use-commands';
+
+
 import { ProjectLogoBackground } from '@/features/project/ui-project-logo';
-import { useProjects } from '@/hooks/use-projects';
+import { useCommands } from '@/common/hooks/use-commands';
 import { useCurrentVisibleProject } from '@/stores/navigation';
+import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
+import { useProjects } from '@/hooks/use-projects';
+
 
 const PROJECT_OVERLAY_GRID_COLUMNS = 3;
 
@@ -48,13 +51,13 @@ export function ProjectOverlay({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     if (selectedIndex >= 0) {
-      setHighlightedIndex(selectedIndex);
+      startTransition(() => setHighlightedIndex(selectedIndex));
     }
   }, [selectedIndex]);
 
   useEffect(() => {
     if (highlightedIndex >= options.length) {
-      setHighlightedIndex(Math.max(0, options.length - 1));
+      startTransition(() => setHighlightedIndex(Math.max(0, options.length - 1)));
     }
   }, [highlightedIndex, options.length, selectedIndex]);
 

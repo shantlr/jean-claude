@@ -1,7 +1,4 @@
-import clsx from 'clsx';
-import Fuse from 'fuse.js';
 import { Columns3, List } from 'lucide-react';
-import type React from 'react';
 import {
   startTransition,
   useCallback,
@@ -10,15 +7,21 @@ import {
   useRef,
   useState,
 } from 'react';
+import clsx from 'clsx';
+import Fuse from 'fuse.js';
+import type React from 'react';
 
+
+import { useIterations, useWorkItems } from '@/hooks/use-work-items';
+import type { AzureDevOpsWorkItem } from '@/lib/api';
 import { Select } from '@/common/ui/select';
 import type { SelectOption } from '@/common/ui/select';
 import { WorkItemBoard } from '@/features/work-item/ui-work-item-board';
 import { WorkItemList } from '@/features/work-item/ui-work-item-list';
 import { WorkItemPreview } from '@/features/work-item/ui-work-item-preview';
-import { useIterations, useWorkItems } from '@/hooks/use-work-items';
-import type { AzureDevOpsWorkItem } from '@/lib/api';
 import type { WorkItemsViewMode } from '@/stores/new-task-draft';
+
+
 
 export type { WorkItemsViewMode };
 
@@ -112,7 +115,7 @@ export function WorkItemPicker({
   // Reset iteration when project changes
   useEffect(() => {
     if (controlledIterationFilter === undefined) {
-      setInternalIterationFilter('__current__');
+      startTransition(() => setInternalIterationFilter('__current__'));
     }
   }, [projectId, controlledIterationFilter]);
 
@@ -159,7 +162,7 @@ export function WorkItemPicker({
       return;
     }
 
-    setSelectedIteration('__current__');
+    startTransition(() => setSelectedIteration('__current__'));
   }, [iterations, iterationOptions, selectedIteration, setSelectedIteration]);
 
   // Fetch work items
@@ -242,9 +245,8 @@ export function WorkItemPicker({
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
 
-  const handleDragStart = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
+  const handleDragStart = (e: React.MouseEvent) => {
+    e.preventDefault();
       isDragging.current = true;
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
@@ -261,11 +263,9 @@ export function WorkItemPicker({
         document.removeEventListener('mouseup', handleMouseUp);
       };
 
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    },
-    [setPanelWidth],
-  );
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
 
   // Loading state
   if (isLoading) {

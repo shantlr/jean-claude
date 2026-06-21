@@ -1,9 +1,11 @@
-import { randomUUID } from 'crypto';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { randomUUID } from 'crypto';
 
+
+import { type Kysely, sql } from 'kysely';
 import { app } from 'electron';
-import { sql, type Kysely } from 'kysely';
+
 
 function getLogosDir(): string {
   return path.join(app.getPath('userData'), 'project-logos');

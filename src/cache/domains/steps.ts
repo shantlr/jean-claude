@@ -1,12 +1,14 @@
 import type { TaskStep } from '@shared/types';
 
+import { applyEntityPatch, mergeEntitySnapshot } from '../entity-merge';
 import {
   markResourceStale,
   setIndexResource,
   setResourceSuccess,
 } from '../cache-actions';
 import { cache$ } from '../cache-store';
-import { applyEntityPatch, mergeEntitySnapshot } from '../entity-merge';
+
+
 
 export const STEPS_INDEX_KEY = 'steps';
 

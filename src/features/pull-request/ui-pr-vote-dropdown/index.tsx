@@ -1,14 +1,17 @@
-import clsx from 'clsx';
-import { Check, ChevronDown, Hand, ThumbsUp, RotateCcw, X } from 'lucide-react';
+import { Check, ChevronDown, Hand, RotateCcw, ThumbsUp, X } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
+import clsx from 'clsx';
 
-import { Dropdown, DropdownItem, DropdownDivider } from '@/common/ui/dropdown';
+
+import { Dropdown, DropdownDivider, DropdownItem } from '@/common/ui/dropdown';
 import {
-  useVotePullRequest,
   useCurrentAzureUser,
+  useVotePullRequest,
 } from '@/hooks/use-pull-requests';
 import type { AzureDevOpsPullRequestDetails } from '@/lib/api';
 import type { ReviewerVoteStatus } from '@shared/azure-devops-types';
+
+
 
 import {
   findCurrentReviewer,

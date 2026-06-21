@@ -1,13 +1,15 @@
 import type { AgentBackendType } from '@shared/agent-backend-types';
-import type { AiUsageContext } from '@shared/ai-usage-types';
 import type { AiSkillSlotsSetting } from '@shared/types';
+import type { AiUsageContext } from '@shared/ai-usage-types';
+
 
 import { dbg } from '../lib/debug';
 
 import { generateText } from './ai-generation-service';
-import { resolveAiSkillSlot } from './ai-skill-slot-resolver';
 import { getBuiltinSkillPath } from './builtin-skills-service';
 import { getSkillContent } from './skill-management-service';
+import { resolveAiSkillSlot } from './ai-skill-slot-resolver';
+
 
 const TASK_NAME_TIMEOUT_MS = 10 * 60 * 1000;
 const TASK_NAME_MAX_PROMPT_LENGTH = 8000;

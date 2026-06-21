@@ -1,11 +1,10 @@
-import type { AgentBackendType } from '@shared/agent-backend-types';
 import {
-  DEFAULT_TASK_NOTIFICATION_MODES,
-  SETTINGS_DEFINITIONS,
   AppSettings,
   type BackendDefaultModelsSetting,
   type CalendarNotificationsSetting,
+  DEFAULT_TASK_NOTIFICATION_MODES,
   type RateLimitSwapSetting,
+  SETTINGS_DEFINITIONS,
   type SummaryModelsSetting,
   type TaskEventNotificationsSetting,
   type TaskNotificationEvent,
@@ -14,9 +13,12 @@ import {
   type ThinkingSettingsSetting,
   type WorkActivitySetting,
 } from '@shared/types';
+import type { AgentBackendType } from '@shared/agent-backend-types';
 
-import { dbg } from '../../lib/debug';
+
 import { db } from '../index';
+import { dbg } from '../../lib/debug';
+
 
 const VALID_AGENT_BACKENDS: AgentBackendType[] = [
   'claude-code',

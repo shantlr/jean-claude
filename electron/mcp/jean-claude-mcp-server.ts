@@ -8,11 +8,12 @@
  * Recursion is guarded by the JC_MCP_DEPTH environment variable (max depth 3).
  */
 
-import { query } from '@anthropic-ai/claude-agent-sdk';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createOpencode } from '@opencode-ai/sdk/v2';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { query } from '@anthropic-ai/claude-agent-sdk';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+
 
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { ThinkingEffort } from '@shared/types';

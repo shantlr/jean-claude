@@ -1,16 +1,18 @@
-import clsx from 'clsx';
-import { Check } from 'lucide-react';
 import {
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
   useId,
 } from 'react';
+import { Check } from 'lucide-react';
+import clsx from 'clsx';
+
+
 
 import {
   checkboxSizeClasses,
-  sizeClasses,
   type ComponentSize,
+  sizeClasses,
 } from '@/common/ui/styles';
 
 export function CheckboxIndicator({

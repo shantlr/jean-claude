@@ -1,5 +1,3 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { Image, Plus, Sparkles, X } from 'lucide-react';
 import {
   type ChangeEvent,
   type ClipboardEvent,
@@ -8,36 +6,41 @@ import {
   useRef,
   useState,
 } from 'react';
+import { Image, Plus, Sparkles, X } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 
-import { useCommands } from '@/common/hooks/use-commands';
-import { Button } from '@/common/ui/button';
-import { Checkbox } from '@/common/ui/checkbox';
-import { Input } from '@/common/ui/input';
-import { Kbd } from '@/common/ui/kbd';
-import { Separator } from '@/common/ui/separator';
-import { Textarea } from '@/common/ui/textarea';
+
 import {
   isVideoFile,
   VideoGifConverter,
 } from '@/features/common/ui-video-gif-converter';
-import {
-  useCreatePullRequest,
-  useAddPrFileComments,
-} from '@/hooks/use-create-pull-request';
-import { useProject } from '@/hooks/use-projects';
-import { useAiSkillSlotsSetting } from '@/hooks/use-settings';
-import { useGenerateSummary, useTaskSummary } from '@/hooks/use-task-summary';
-import { useTask } from '@/hooks/use-tasks';
-import { useWorktreeStatus } from '@/hooks/use-worktree-diff';
-import { api } from '@/lib/api';
-import type { FileAnnotation } from '@/lib/api';
-import { feedQueryKeys } from '@/lib/feed-query-keys';
-import { formatBytes } from '@/lib/format-bytes';
 import { MAX_IMAGES, processImageFile } from '@/lib/image-utils';
-import { useBackgroundJobsStore } from '@/stores/background-jobs';
-import { usePrDraftState } from '@/stores/navigation';
-import { useToastStore } from '@/stores/toasts';
+import {
+  useAddPrFileComments,
+  useCreatePullRequest,
+} from '@/hooks/use-create-pull-request';
+import { useGenerateSummary, useTaskSummary } from '@/hooks/use-task-summary';
+import { api } from '@/lib/api';
+import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { feedQueryKeys } from '@/lib/feed-query-keys';
+import type { FileAnnotation } from '@/lib/api';
+import { formatBytes } from '@/lib/format-bytes';
+import { Input } from '@/common/ui/input';
+import { Kbd } from '@/common/ui/kbd';
 import type { PromptImagePart } from '@shared/agent-backend-types';
+import { Separator } from '@/common/ui/separator';
+import { Textarea } from '@/common/ui/textarea';
+import { useAiSkillSlotsSetting } from '@/hooks/use-settings';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
+import { useCommands } from '@/common/hooks/use-commands';
+import { usePrDraftState } from '@/stores/navigation';
+import { useProject } from '@/hooks/use-projects';
+import { useTask } from '@/hooks/use-tasks';
+import { useToastStore } from '@/stores/toasts';
+import { useWorktreeStatus } from '@/hooks/use-worktree-diff';
+
+
 
 type StagedPrImage = PromptImagePart & { placeholderMarkdown: string };
 

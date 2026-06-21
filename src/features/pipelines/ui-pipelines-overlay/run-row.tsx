@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import {
   AlertCircle,
   CheckCircle2,
@@ -12,18 +11,22 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
+import clsx from 'clsx';
 
+
+import type { AzureBuildRun, AzureRelease } from '@shared/pipeline-types';
 import { Button } from '@/common/ui/button';
 import { formatRelativeTime } from '@/lib/time';
-import type { AzureBuildRun, AzureRelease } from '@shared/pipeline-types';
 
-import { RunDetail } from './run-detail';
+
 import {
   computeDuration,
   getReleaseStatus,
   isBuildRun,
   stripRefsHeads,
 } from './utils';
+import { RunDetail } from './run-detail';
+
 
 function getStatusIcon(status: string, result: string | null) {
   if (status === 'inProgress' || status === 'notStarted') {

@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import {
   ChevronDown,
   ChevronRight,
@@ -8,6 +7,8 @@ import {
   Loader2,
   PenLine,
 } from 'lucide-react';
+import clsx from 'clsx';
+
 
 import type { DiffFileStatus } from '@/features/common/ui-file-diff/types';
 import { useDirectoryListing } from '@/hooks/use-directory-listing';

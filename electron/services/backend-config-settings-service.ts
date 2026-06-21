@@ -4,11 +4,12 @@ import * as path from 'path';
 
 import { parse as parseToml } from 'smol-toml';
 
-import type { AgentBackendType } from '@shared/agent-backend-types';
 import type {
   BackendUserConfig,
   BackendUserConfigUpdate,
 } from '@shared/backend-config-settings-types';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+
 
 function getConfig(backend: AgentBackendType): {
   paths: string[];

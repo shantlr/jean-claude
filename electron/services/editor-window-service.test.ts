@@ -1,7 +1,8 @@
 import { execFile } from 'child_process';
 
-import { systemPreferences } from 'electron';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { systemPreferences } from 'electron';
+
 
 import { closeEditorWindowsForWorktree } from './editor-window-service';
 

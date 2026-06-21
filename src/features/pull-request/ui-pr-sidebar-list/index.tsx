@@ -1,18 +1,22 @@
-import { useParams } from '@tanstack/react-router';
-import clsx from 'clsx';
 import { GitPullRequest, Loader2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
+import clsx from 'clsx';
+import { useParams } from '@tanstack/react-router';
 
-import { useCommands } from '@/common/hooks/use-commands';
-import { useProjects } from '@/hooks/use-projects';
+
+
 import {
-  usePullRequests,
-  useAllProjectsPullRequests,
   type PullRequestWithProject,
+  useAllProjectsPullRequests,
+  usePullRequests,
 } from '@/hooks/use-pull-requests';
-import { useCurrentAzureUser } from '@/hooks/use-work-items';
-import type { AzureDevOpsPullRequest } from '@/lib/api';
 import { useCurrentVisibleProject, useSidebarTab } from '@/stores/navigation';
+import type { AzureDevOpsPullRequest } from '@/lib/api';
+import { useCommands } from '@/common/hooks/use-commands';
+import { useCurrentAzureUser } from '@/hooks/use-work-items';
+import { useProjects } from '@/hooks/use-projects';
+
+
 
 import { PrListItem } from '../ui-pr-list-item';
 

@@ -1,10 +1,10 @@
+import { type ComponentType, type SVGProps, useState } from 'react';
 import clsx from 'clsx';
 import { Loader2 } from 'lucide-react';
-import type { ComponentType, SVGProps } from 'react';
+
+
 
 import { IconClaude, IconCodex, IconGithubCopilot } from '@/common/ui/icons';
-import { Tooltip } from '@/common/ui/tooltip';
-import { useBackendUsage } from '@/hooks/use-usage';
 import type {
   UsageDisplayData,
   UsageLevel,
@@ -12,7 +12,11 @@ import type {
   UsageRange,
   UsageResult,
 } from '@shared/usage-types';
+import { Tooltip } from '@/common/ui/tooltip';
 import { USAGE_PROVIDERS } from '@shared/usage-types';
+import { useBackendUsage } from '@/hooks/use-usage';
+
+
 
 import { UsageHistoryChart } from './usage-history-chart';
 
@@ -295,7 +299,8 @@ function ProviderUsageChip({
 
 export function UsageDisplay() {
   const { data: usageMap, isLoading, dataUpdatedAt } = useBackendUsage();
-  const fetchedAtMs = dataUpdatedAt || Date.now();
+  const [fallbackFetchedAtMs] = useState(() => Date.now());
+  const fetchedAtMs = dataUpdatedAt || fallbackFetchedAtMs;
 
   if (isLoading) {
     return (

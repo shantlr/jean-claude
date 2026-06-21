@@ -1,13 +1,15 @@
-import clsx from 'clsx';
 import { MapPin, Repeat, User, Video } from 'lucide-react';
+import clsx from 'clsx';
 
-import { OrganizerTooltip } from '@/features/calendar/ui-organizer-tooltip';
+
 import {
   extractTeamsUrl,
   formatTimeRange,
   getMeetingState,
 } from '@/features/calendar/utils-calendar';
+import { OrganizerTooltip } from '@/features/calendar/ui-organizer-tooltip';
 import type { UpcomingMeeting } from '@shared/calendar-types';
+
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

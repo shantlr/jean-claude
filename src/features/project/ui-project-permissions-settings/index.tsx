@@ -1,16 +1,18 @@
 import { useCallback } from 'react';
 
 import {
-  PermissionsEditor,
   type FlatRule,
+  PermissionsEditor,
 } from '@/features/common/ui-permissions-editor';
 import {
-  useProjectPermissions,
   useAddProjectPermissionRule,
-  useRemoveProjectPermissionRule,
   useEditProjectPermissionRule,
+  useProjectPermissions,
+  useRemoveProjectPermissionRule,
 } from '@/hooks/use-project-permissions';
 import type { PermissionAction } from '@shared/permission-types';
+
+
 
 export function ProjectPermissionsSettings({
   projectPath,

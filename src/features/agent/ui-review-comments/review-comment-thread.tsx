@@ -1,12 +1,15 @@
 import clsx from 'clsx';
 import { Sparkles } from 'lucide-react';
 
+
+
 import {
   COMMENT_ACCENT,
   InlineCommentBubble,
 } from '@/features/common/ui-inline-comments';
-import type { ReviewComment } from '@/stores/review-comments';
 import type { PromptImagePart } from '@shared/agent-backend-types';
+import type { ReviewComment } from '@/stores/review-comments';
+
 
 function StatusPill({ status }: { status: ReviewComment['status'] }) {
   const config = {

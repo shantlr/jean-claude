@@ -1,5 +1,4 @@
 import { MessageSquare, MessageSquarePlus } from 'lucide-react';
-import type { ReactNode } from 'react';
 import {
   useCallback,
   useEffect,
@@ -8,8 +7,9 @@ import {
   useRef,
   useState,
 } from 'react';
+import type { ReactNode } from 'react';
 
-import { useReviewContext } from '@/common/context/review-context';
+
 import {
   COMMENT_ACCENT,
   InlineCommentComposer,
@@ -19,6 +19,9 @@ import {
   useReviewCommentsStore,
 } from '@/stores/review-comments';
 import type { PromptImagePart } from '@shared/agent-backend-types';
+import { useReviewContext } from '@/common/context/review-context';
+
+
 
 import { MarkdownContent } from '../../ui-markdown-content';
 

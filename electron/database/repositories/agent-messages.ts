@@ -1,16 +1,15 @@
 import type {
-  Event as OcEvent,
-  Part as OcPart,
-  Message as OcMessage,
   AssistantMessage as OcAssistantMessage,
+  Event as OcEvent,
+  Message as OcMessage,
+  Part as OcPart,
 } from '@opencode-ai/sdk/v2';
 
 import type { AgentMessage } from '@shared/agent-types';
-import type { NormalizedEntry } from '@shared/normalized-message-v2';
 import { CURRENT_NORMALIZATION_VERSION } from '@shared/normalized-message-v2';
+import type { NormalizedEntry } from '@shared/normalized-message-v2';
 
-import type { NormalizationContext } from '../../services/agent-backends/claude/normalize-claude-message-v2';
-import { normalizeClaudeMessageV2 } from '../../services/agent-backends/claude/normalize-claude-message-v2';
+
 import {
   createCodexNormalizationContext,
   normalizeCodexNotification,
@@ -20,8 +19,12 @@ import {
   type OpenCodeNormalizationContext,
   type OpenCodeRawInput,
 } from '../../services/agent-backends/opencode/normalize-opencode-message-v2';
-import { replayOpenCodeContextUpdate } from '../../services/agent-backends/opencode/opencode-context-replay';
 import { db } from '../index';
+import type { NormalizationContext } from '../../services/agent-backends/claude/normalize-claude-message-v2';
+import { normalizeClaudeMessageV2 } from '../../services/agent-backends/claude/normalize-claude-message-v2';
+import { replayOpenCodeContextUpdate } from '../../services/agent-backends/opencode/opencode-context-replay';
+
+
 
 import { decodeRawMessageData } from './raw-message-data';
 

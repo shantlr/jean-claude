@@ -1,9 +1,10 @@
 // electron/database/repositories/tokens.ts
-import type { Token, NewToken, UpdateToken, ProviderType } from '@shared/types';
+import type { NewToken, ProviderType, Token, UpdateToken } from '@shared/types';
 
-import { encryptionService } from '../../services/encryption-service';
 import { db } from '../index';
+import { encryptionService } from '../../services/encryption-service';
 import type { TokenRow } from '../schema';
+
 
 // Convert DB row to Token (without encrypted value)
 function toToken(row: TokenRow): Token {

@@ -1,152 +1,57 @@
-import { useNavigate, useRouterState } from '@tanstack/react-router';
-import clsx from 'clsx';
 import {
-  Loader2,
-  Play,
-  Trash2,
+  Bug,
   ExternalLink,
-  RefreshCw,
-  Settings,
+  FolderSymlink,
+  FolderTree,
   GitBranch,
   GitCompare,
   GitFork,
   GitPullRequest,
-  MoreHorizontal,
-  FolderTree,
-  FolderSymlink,
-  Bug,
   ListTodo,
+  Loader2,
+  MoreHorizontal,
+  Play,
+  RefreshCw,
   Search,
+  Settings,
+  Trash2,
 } from 'lucide-react';
 import type { ComponentProps, PointerEvent, ReactNode } from 'react';
-import { useEffect, useState, useCallback, useMemo, useRef, memo } from 'react';
+import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useRouterState } from '@tanstack/react-router';
+import clsx from 'clsx';
 import { createPortal } from 'react-dom';
 import { useShallow } from 'zustand/react/shallow';
 
-import { useModal } from '@/common/context/modal';
-import {
-  ReviewProvider,
-  type ReviewCommentParams,
-} from '@/common/context/review-context';
-import { useCommands } from '@/common/hooks/use-commands';
-import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
-import { Button } from '@/common/ui/button';
-import { Chip } from '@/common/ui/chip';
-import {
-  Dropdown,
-  DropdownItem,
-  DropdownDivider,
-  DropdownInfo,
-} from '@/common/ui/dropdown';
-import { Input } from '@/common/ui/input';
-import { Kbd } from '@/common/ui/kbd';
-import { Modal } from '@/common/ui/modal';
-import { Separator } from '@/common/ui/separator';
-import { AddPermissionModal } from '@/features/agent/ui-add-permission-modal';
-import {
-  AVAILABLE_BACKENDS,
-  getModelsForBackend,
-  getModelThinkingCapabilities,
-} from '@/features/agent/ui-backend-selector';
-import { ContextUsageDisplay } from '@/features/agent/ui-context-usage-display';
-import { FilePreviewPane } from '@/features/agent/ui-file-preview-pane';
-import { MessageInput } from '@/features/agent/ui-message-input';
-import { MessageStream } from '@/features/agent/ui-message-stream';
-import { ModeModelComboSelector } from '@/features/agent/ui-mode-model-combo';
-import { ModeSelector } from '@/features/agent/ui-mode-selector';
-import { ModelSelector } from '@/features/agent/ui-model-selector';
-import { PermissionBar } from '@/features/agent/ui-permission-bar';
-import { PrBadge } from '@/features/agent/ui-pr-badge';
-import { QuestionOptions } from '@/features/agent/ui-question-options';
-import { RunButton } from '@/features/agent/ui-run-button';
-import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
-import { WorktreeReviewView } from '@/features/agent/ui-worktree-review-view';
-import {
-  ReviewPillsQueue,
-  reviewCommentToPill,
-} from '@/features/common/ui-review-pills';
-import { FeatureMapSaveAction } from '@/features/task/ui-feature-map-save-action';
-import { PrReviewValidation } from '@/features/task/ui-pr-review-validation';
-import { SkillPublishAction } from '@/features/task/ui-skill-publish-action';
-import { StepFlowBar } from '@/features/task/ui-step-flow-bar';
-import { TaskPrView } from '@/features/task/ui-task-pr-view';
-import { WorkItemPicker } from '@/features/work-item/ui-work-item-picker';
-import { useAgentStream, useAgentControls } from '@/hooks/use-agent';
-import { useAgentResourceSnapshots } from '@/hooks/use-agent-resource-snapshots';
-import type { AgentResourceSample } from '@/hooks/use-agent-resource-snapshots';
-import { useBackendModels } from '@/hooks/use-backend-models';
-import { useContextUsage } from '@/hooks/use-context-usage';
-import { getModelFromEntry, formatModelName } from '@/hooks/use-model';
-import { useProject, useProjectIsGitRepository } from '@/hooks/use-projects';
-import {
-  getEditorLabel,
-  useBackendDefaultModelsSetting,
-  useBackendsSetting,
-  useEditorSetting,
-  usePromptSnippetsSetting,
-} from '@/hooks/use-settings';
-import { useSkills } from '@/hooks/use-skills';
-import {
-  useCreateStep,
-  useStep,
-  useSteps,
-  useUpdateStep,
-} from '@/hooks/use-steps';
-import { useTaskRootPath } from '@/hooks/use-task-root-path';
-import {
-  useTask,
-  useDeleteTask,
-  useDeleteWorktree,
-  useSetTaskMode,
-  useUpdateTask,
-  useClearTaskUserCompleted,
-  useAddSessionAllowedTool,
-  useRemoveSessionAllowedTool,
-  useAllowForProject,
-  useAllowForProjectWorktrees,
-  useAllowGlobally,
-  useToggleTaskUserCompleted,
-  useCompleteTask,
-} from '@/hooks/use-tasks';
-import { api } from '@/lib/api';
-import type { AzureDevOpsWorkItem } from '@/lib/api';
-import { getDefaultModelForBackend } from '@/lib/default-models';
-import { getContextWindowForModel } from '@/lib/model-context-window';
-import { formatNumber } from '@/lib/number';
-import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
-import { getBranchFromWorktreePath } from '@/lib/worktree';
-import { useBackgroundJobsStore } from '@/stores/background-jobs';
+
+
 import {
   type AddStepPresetType,
-  useNavigationStore,
-  useTaskState,
+  type ReviewMode,
   useDiffViewState,
+  useNavigationStore,
   usePrViewState,
   useTaskFileExplorerState,
-  type ReviewMode,
+  useTaskState,
 } from '@/stores/navigation';
-import { useNewTaskDraftStore } from '@/stores/new-task-draft';
-import { useOverlaysStore } from '@/stores/overlays';
-import {
-  useReviewComments,
-  useReviewCommentsStore,
-  synthesizeReviewPrompt,
-  type ReviewPresetId,
-} from '@/stores/review-comments';
-import { useTaskMessagesStore } from '@/stores/task-messages';
-import { useTaskPrompt } from '@/stores/task-prompts';
-import { useToastStore } from '@/stores/toasts';
-import { DiffViewMode, useUIStore } from '@/stores/ui';
 import type {
   AgentBackendType,
   PromptImagePart,
   PromptPart,
 } from '@shared/agent-backend-types';
-import type { NormalizedEntry } from '@shared/normalized-message-v2';
 import {
-  getThinkingEffortOptions,
-  normalizeThinkingEffortForModel,
-} from '@shared/thinking-settings';
+  AVAILABLE_BACKENDS,
+  getModelsForBackend,
+  getModelThinkingCapabilities,
+} from '@/features/agent/ui-backend-selector';
+import { DiffViewMode, useUIStore } from '@/stores/ui';
+import {
+  Dropdown,
+  DropdownDivider,
+  DropdownInfo,
+  DropdownItem,
+} from '@/common/ui/dropdown';
+import { formatModelName, getModelFromEntry } from '@/hooks/use-model';
 import {
   getDefaultInteractionModeForBackend,
   type InteractionMode,
@@ -154,18 +59,119 @@ import {
   type TaskStep,
   type ThinkingEffort,
 } from '@shared/types';
+import {
+  getEditorLabel,
+  useBackendDefaultModelsSetting,
+  useBackendsSetting,
+  useEditorSetting,
+  usePromptSnippetsSetting,
+} from '@/hooks/use-settings';
+import {
+  getThinkingEffortOptions,
+  normalizeThinkingEffortForModel,
+} from '@shared/thinking-settings';
+import {
+  type ReviewCommentParams,
+  ReviewProvider,
+} from '@/common/context/review-context';
+import {
+  reviewCommentToPill,
+  ReviewPillsQueue,
+} from '@/features/common/ui-review-pills';
+import {
+  type ReviewPresetId,
+  synthesizeReviewPrompt,
+  useReviewComments,
+  useReviewCommentsStore,
+} from '@/stores/review-comments';
+import {
+  useAddSessionAllowedTool,
+  useAllowForProject,
+  useAllowForProjectWorktrees,
+  useAllowGlobally,
+  useClearTaskUserCompleted,
+  useCompleteTask,
+  useDeleteTask,
+  useDeleteWorktree,
+  useRemoveSessionAllowedTool,
+  useSetTaskMode,
+  useTask,
+  useToggleTaskUserCompleted,
+  useUpdateTask,
+} from '@/hooks/use-tasks';
+import { useAgentControls, useAgentStream } from '@/hooks/use-agent';
+import {
+  useCreateStep,
+  useStep,
+  useSteps,
+  useUpdateStep,
+} from '@/hooks/use-steps';
+import { useProject, useProjectIsGitRepository } from '@/hooks/use-projects';
+import { AddPermissionModal } from '@/features/agent/ui-add-permission-modal';
+import type { AgentResourceSample } from '@/hooks/use-agent-resource-snapshots';
+import { api } from '@/lib/api';
+import type { AzureDevOpsWorkItem } from '@/lib/api';
+import { Button } from '@/common/ui/button';
+import { Chip } from '@/common/ui/chip';
+import { ContextUsageDisplay } from '@/features/agent/ui-context-usage-display';
+import { FeatureMapSaveAction } from '@/features/task/ui-feature-map-save-action';
+import { FilePreviewPane } from '@/features/agent/ui-file-preview-pane';
+import { formatNumber } from '@/lib/number';
+import { getBranchFromWorktreePath } from '@/lib/worktree';
+import { getContextWindowForModel } from '@/lib/model-context-window';
+import { getDefaultModelForBackend } from '@/lib/default-models';
+import { Input } from '@/common/ui/input';
+import { Kbd } from '@/common/ui/kbd';
+import { MessageInput } from '@/features/agent/ui-message-input';
+import { MessageStream } from '@/features/agent/ui-message-stream';
+import { Modal } from '@/common/ui/modal';
+import { ModelSelector } from '@/features/agent/ui-model-selector';
+import { ModeModelComboSelector } from '@/features/agent/ui-mode-model-combo';
+import { ModeSelector } from '@/features/agent/ui-mode-selector';
+import type { NormalizedEntry } from '@shared/normalized-message-v2';
+import { PermissionBar } from '@/features/agent/ui-permission-bar';
+import { PrBadge } from '@/features/agent/ui-pr-badge';
+import { PrReviewValidation } from '@/features/task/ui-pr-review-validation';
+import { QuestionOptions } from '@/features/agent/ui-question-options';
+import { RunButton } from '@/features/agent/ui-run-button';
+import { Separator } from '@/common/ui/separator';
+import { SkillPublishAction } from '@/features/task/ui-skill-publish-action';
+import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
+import { StepFlowBar } from '@/features/task/ui-step-flow-bar';
+import { TaskPrView } from '@/features/task/ui-task-pr-view';
+import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
+import { useAgentResourceSnapshots } from '@/hooks/use-agent-resource-snapshots';
+import { useBackendModels } from '@/hooks/use-backend-models';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
+import { useCommands } from '@/common/hooks/use-commands';
+import { useContextUsage } from '@/hooks/use-context-usage';
+import { useModal } from '@/common/context/modal';
+import { useNewTaskDraftStore } from '@/stores/new-task-draft';
+import { useOverlaysStore } from '@/stores/overlays';
+import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
+import { useSkills } from '@/hooks/use-skills';
+import { useTaskMessagesStore } from '@/stores/task-messages';
+import { useTaskPrompt } from '@/stores/task-prompts';
+import { useTaskRootPath } from '@/hooks/use-task-root-path';
+import { useToastStore } from '@/stores/toasts';
+import { WorkItemPicker } from '@/features/work-item/ui-work-item-picker';
+import { WorktreeReviewView } from '@/features/agent/ui-worktree-review-view';
 
+
+
+import { getTaskTitle, TaskNameEditor } from './task-name-editor';
 import { AddStepDialog } from './add-step-dialog';
 import { ChangeWorktreePathDialog } from './change-worktree-path-dialog';
 import { CommandLogsPane } from './command-logs-pane';
 import { CompleteTaskDialog } from './complete-task-dialog';
-import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
 import { DebugMessagesPane } from './debug-messages-pane';
 import { DeleteTaskDialog } from './delete-task-dialog';
-import { getTaskTitle, TaskNameEditor } from './task-name-editor';
+import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
 import { TaskPendingNoteInput } from './task-pending-note-input';
 import { TaskSettingsPane } from './task-settings-pane';
 import { ToolDiffPreviewPane } from './tool-diff-preview-pane';
+
+
 
 const LAST_ASSISTANT_MESSAGE_MAX_LENGTH = 1200;
 
@@ -607,6 +613,7 @@ function AgentResourceHoverPanel({
   rootPid: number | null;
   rssMax: number;
 }) {
+  const [nowMs] = useState(() => Date.now());
   const firstSample = [...cpuSamples, ...rssSamples].sort((a, b) =>
     a.sampledAt.localeCompare(b.sampledAt),
   )[0];
@@ -614,7 +621,7 @@ function AgentResourceHoverPanel({
     ? Math.max(
         1,
         Math.round(
-          (Date.now() - new Date(firstSample.sampledAt).getTime()) / 1000,
+          (nowMs - new Date(firstSample.sampledAt).getTime()) / 1000,
         ),
       )
     : 0;
@@ -1158,7 +1165,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
 
   // Reset work items editor when switching tasks
   useEffect(() => {
-    setShowWorkItemsEditor(false);
+    startTransition(() => setShowWorkItemsEditor(false));
   }, [taskId]);
 
   // Notify backend this task is focused (dismisses completion notifications, etc.)
@@ -1199,7 +1206,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     if (activeStep?.sessionId) {
       await navigator.clipboard.writeText(activeStep.sessionId);
     }
-  }, [activeStep?.sessionId]);
+  }, [activeStep]);
 
   const handleFilePathClick = useCallback(
     (filePath: string, lineStart?: number, lineEnd?: number) => {
@@ -1298,7 +1305,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         content: `The worktree path no longer exists:\n${task.worktreePath}\n\nThe worktree may have been deleted or moved.`,
       });
     }
-  }, [task?.worktreePath, isDiffViewOpen, diffSelectedFile, modal]);
+  }, [task, isDiffViewOpen, diffSelectedFile, modal]);
 
   const handleDeleteWorktree = useCallback(() => {
     if (!task?.worktreePath) return;
@@ -1336,7 +1343,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         }
       },
     });
-  }, [task?.worktreePath, task?.branchName, taskId, deleteWorktree, modal]);
+  }, [task, taskId, deleteWorktree, modal]);
 
   const handleChangeWorktreePath = useCallback(
     (newPath: string) => {
@@ -1454,8 +1461,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     openDebugMessages();
   }, [rightPane, closeRightPane, openDebugMessages]);
 
-  const handleAddStep = useCallback(
-    async (data: {
+  const handleAddStep = async (data: {
       promptTemplate: string;
       hasUserPrompt: boolean;
       presetType: AddStepPresetType;
@@ -1554,9 +1560,9 @@ export function TaskPanel({ taskId }: { taskId: string }) {
               }
             : {}),
         });
-        setIsAddStepDialogOpen(false);
-        setAddStepAfterStepId(null);
-        setAddStepAtEnd(false);
+        startTransition(() => setIsAddStepDialogOpen(false));
+        startTransition(() => setAddStepAfterStepId(null));
+        startTransition(() => setAddStepAtEnd(false));
         setActiveStepId(step.id);
         for (const commentId of data.includedReviewCommentIds) {
           removeReviewComment(taskId, commentId);
@@ -1583,22 +1589,7 @@ export function TaskPanel({ taskId }: { taskId: string }) {
         });
         return false;
       }
-    },
-    [
-      taskId,
-      createStep,
-      setActiveStepId,
-      addToast,
-      steps,
-      activeStepId,
-      addStepAfterStepId,
-      addStepAtEnd,
-      addRunningJob,
-      projectId,
-      task?.projectId,
-      removeReviewComment,
-    ],
-  );
+  };
 
   const handleStartStep = useCallback(async () => {
     if (!activeStepId) return;
@@ -1662,12 +1653,12 @@ export function TaskPanel({ taskId }: { taskId: string }) {
 
   useEffect(() => {
     if (!activeStepId || activeStep?.status === 'ready') return;
-    setStartingStepIds((prev) => {
+    startTransition(() => setStartingStepIds((prev) => {
       if (!prev.has(activeStepId)) return prev;
       const next = new Set(prev);
       next.delete(activeStepId);
       return next;
-    });
+    }));
   }, [activeStepId, activeStep?.status]);
 
   const handleMergeStarted = useCallback(() => {

@@ -1,44 +1,11 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, ListTodo } from 'lucide-react';
-import { nanoid } from 'nanoid';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { nanoid } from 'nanoid';
 
-import { BranchSelect } from '@/common/ui/branch-select';
-import { Button } from '@/common/ui/button';
-import { Checkbox } from '@/common/ui/checkbox';
-import { Input } from '@/common/ui/input';
-import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
-import { findMatchingBackendModelPresetId } from '@/features/agent/ui-backend-preset-selector';
-import { getModelThinkingCapabilities } from '@/features/agent/ui-backend-selector';
-import { ModeSelector } from '@/features/agent/ui-mode-selector';
-import {
-  RateLimitSwapPreview,
-  resolveRateLimitSwapSelection,
-  useRateLimitSwapPreview,
-} from '@/features/agent/ui-rate-limit-swap-preview';
-import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
-import { WorkItemsBrowser } from '@/features/agent/ui-work-items-browser';
-import { PromptTextarea } from '@/features/common/ui-prompt-textarea';
-import { useBackendModels } from '@/hooks/use-backend-models';
-import {
-  useProject,
-  useProjectBranches,
-  useProjectFeatureMap,
-  useProjectIsGitRepository,
-} from '@/hooks/use-projects';
-import {
-  useBackendModelPresetsSetting,
-  useBackendDefaultModelsSetting,
-  useBackendsSetting,
-  useCompletionSetting,
-  useThinkingSettingsSetting,
-} from '@/hooks/use-settings';
-import { useProjectSkills } from '@/hooks/use-skills';
-import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
-import { getDefaultModelForBackend } from '@/lib/default-models';
-import { expandFeatureReferencesInPrompt } from '@/lib/prompt-feature-context';
-import { useNewTaskFormStore } from '@/stores/new-task-form';
+
+
 import {
   getThinkingEffortOptions,
   normalizeThinkingEffortForModel,
@@ -47,6 +14,43 @@ import {
   normalizeInteractionModeForBackend,
   type ThinkingEffort,
 } from '@shared/types';
+import {
+  RateLimitSwapPreview,
+  resolveRateLimitSwapSelection,
+  useRateLimitSwapPreview,
+} from '@/features/agent/ui-rate-limit-swap-preview';
+import {
+  useBackendDefaultModelsSetting,
+  useBackendModelPresetsSetting,
+  useBackendsSetting,
+  useCompletionSetting,
+  useThinkingSettingsSetting,
+} from '@/hooks/use-settings';
+import {
+  useProject,
+  useProjectBranches,
+  useProjectFeatureMap,
+  useProjectIsGitRepository,
+} from '@/hooks/use-projects';
+import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
+import { BranchSelect } from '@/common/ui/branch-select';
+import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { expandFeatureReferencesInPrompt } from '@/lib/prompt-feature-context';
+import { findMatchingBackendModelPresetId } from '@/features/agent/ui-backend-preset-selector';
+import { getDefaultModelForBackend } from '@/lib/default-models';
+import { getModelThinkingCapabilities } from '@/features/agent/ui-backend-selector';
+import { Input } from '@/common/ui/input';
+import { ModeSelector } from '@/features/agent/ui-mode-selector';
+import { PromptTextarea } from '@/features/common/ui-prompt-textarea';
+import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
+import { useBackendModels } from '@/hooks/use-backend-models';
+import { useCreateTaskWithWorktree } from '@/hooks/use-tasks';
+import { useNewTaskFormStore } from '@/stores/new-task-form';
+import { useProjectSkills } from '@/hooks/use-skills';
+import { WorkItemsBrowser } from '@/features/agent/ui-work-items-browser';
+
+
 
 export const Route = createFileRoute('/projects/$projectId/tasks/new')({
   component: NewTask,
@@ -77,6 +81,11 @@ function NewTask() {
   const { draft, hasDraft, setDraft, clearDraft } =
     useNewTaskFormStore(projectId);
   const userTouchedSelectionRef = useRef(hasDraft);
+  const [userTouchedSelection, setUserTouchedSelection] = useState(hasDraft);
+  const markUserTouchedSelection = useCallback(() => {
+    userTouchedSelectionRef.current = true;
+    setUserTouchedSelection(true);
+  }, []);
   const {
     name,
     prompt,
@@ -162,11 +171,10 @@ function NewTask() {
     });
   const { data: rateLimitSuggestion } = useRateLimitSwapPreview(
     effectiveAgentBackend,
-    !userTouchedSelectionRef.current,
+    !userTouchedSelection,
   );
   useEffect(() => {
-    if (!rateLimitSuggestion?.swapped || userTouchedSelectionRef.current)
-      return;
+    if (!rateLimitSuggestion?.swapped || userTouchedSelection) return;
 
     const nextBackend = rateLimitSuggestion.backend;
     const nextModel =
@@ -197,6 +205,7 @@ function NewTask() {
     interactionMode,
     rateLimitSuggestion,
     setDraft,
+    userTouchedSelection,
   ]);
   useEffect(() => {
     if (
@@ -477,7 +486,7 @@ function NewTask() {
               model={effectiveModelPreference}
               selectedPresetId={effectiveBackendModelPresetId}
               onChange={(selection) => {
-                userTouchedSelectionRef.current = true;
+                markUserTouchedSelection();
                 const nextThinkingCapabilities = getModelThinkingCapabilities(
                   selection.model,
                   dynamicModels,
@@ -511,7 +520,7 @@ function NewTask() {
               value={effectiveThinkingEffort}
               options={thinkingOptions}
               onChange={(nextThinkingEffort) => {
-                userTouchedSelectionRef.current = true;
+                markUserTouchedSelection();
                 setDraft({ thinkingEffort: nextThinkingEffort });
               }}
               disabled={thinkingOptions.length <= 1}
@@ -521,7 +530,7 @@ function NewTask() {
               model={effectiveModelPreference}
               thinkingEffort={effectiveThinkingEffort}
               onApplySuggestion={(selection) => {
-                userTouchedSelectionRef.current = true;
+                markUserTouchedSelection();
                 setDraft({
                   agentBackend: selection.backend,
                   backendModelPresetId: null,

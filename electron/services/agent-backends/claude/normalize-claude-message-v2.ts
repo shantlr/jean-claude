@@ -17,13 +17,13 @@ import type {
   ContentBlock,
   TextBlock,
   ThinkingBlock,
-  ToolUseBlock,
   ToolResultBlock,
+  ToolUseBlock,
 } from '@shared/agent-types';
 import type {
+  NormalizationEvent,
   NormalizedEntry,
   NormalizedToolUse,
-  NormalizationEvent,
 } from '@shared/normalized-message-v2';
 
 import { normalizeToolRequest } from '../../permission-settings-service';

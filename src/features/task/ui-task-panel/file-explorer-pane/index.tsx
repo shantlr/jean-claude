@@ -1,30 +1,34 @@
-import { useQuery } from '@tanstack/react-query';
-import clsx from 'clsx';
 import { File, FolderTree, RefreshCw, X } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
+import clsx from 'clsx';
+import { useQuery } from '@tanstack/react-query';
 
-import { IconButton } from '@/common/ui/icon-button';
-import { Separator } from '@/common/ui/separator';
-import { FileDiffContent } from '@/features/common/ui-file-diff';
+
+
 import type {
   DiffFile,
   DiffFileStatus,
 } from '@/features/common/ui-file-diff/types';
-import { normalizeWorktreeStatus } from '@/features/common/ui-file-diff/types';
-import { useInvalidateDirectoryListings } from '@/hooks/use-directory-listing';
-import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
-import { useTaskRootPath } from '@/hooks/use-task-root-path';
-import {
-  useWorktreeDiff,
-  useWorktreeFileContent,
-} from '@/hooks/use-worktree-diff';
-import { api } from '@/lib/api';
+import { isImagePath, isSvgPath } from '@shared/image-types';
 import {
   useFileExplorerPaneWidth,
   useFileExplorerTreeWidth,
   useTaskFileExplorerState,
 } from '@/stores/navigation';
-import { isImagePath, isSvgPath } from '@shared/image-types';
+import {
+  useWorktreeDiff,
+  useWorktreeFileContent,
+} from '@/hooks/use-worktree-diff';
+import { api } from '@/lib/api';
+import { FileDiffContent } from '@/features/common/ui-file-diff';
+import { IconButton } from '@/common/ui/icon-button';
+import { normalizeWorktreeStatus } from '@/features/common/ui-file-diff/types';
+import { Separator } from '@/common/ui/separator';
+import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
+import { useInvalidateDirectoryListings } from '@/hooks/use-directory-listing';
+import { useTaskRootPath } from '@/hooks/use-task-root-path';
+
+
 
 import { FileTree } from './file-tree';
 
@@ -88,7 +92,7 @@ export function FileExplorerPane({
       diffFilesMap: map,
       summary: { changed: map.size, adds: totalAdds, dels: totalDels },
     };
-  }, [rootPath, diffData?.files]);
+  }, [rootPath, diffData]);
 
   const handleToggleDir = useCallback(
     (dirPath: string) => {

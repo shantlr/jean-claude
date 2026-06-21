@@ -1,6 +1,8 @@
-import type { EventEmitter } from 'events';
 import { createInterface, type Interface as ReadlineInterface } from 'readline';
 import type { Readable, Writable } from 'stream';
+import type { EventEmitter } from 'events';
+
+
 
 export type CodexJsonRpcNotification = {
   method: string;

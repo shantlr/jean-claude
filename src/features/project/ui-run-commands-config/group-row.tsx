@@ -1,17 +1,21 @@
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { ChevronRight, GitBranch, GripVertical, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { startTransition, useEffect, useMemo, useState } from 'react';
+import { CSS } from '@dnd-kit/utilities';
+import { useSortable } from '@dnd-kit/sortable';
 
-import { Checkbox } from '@/common/ui/checkbox';
-import { IconButton } from '@/common/ui/icon-button';
-import { Input } from '@/common/ui/input';
+
+
 import type {
   ProjectCommand,
   ProjectCommandGroup,
   UpdateProjectCommandGroup,
 } from '@shared/run-command-types';
+import { Checkbox } from '@/common/ui/checkbox';
 import { getRunCommandDisplayName } from '@shared/run-command-types';
+import { IconButton } from '@/common/ui/icon-button';
+import { Input } from '@/common/ui/input';
+
+
 
 export function GroupRow({
   sortableId,
@@ -45,7 +49,7 @@ export function GroupRow({
   };
 
   useEffect(() => {
-    setLocalName(group.name);
+    startTransition(() => setLocalName(group.name));
   }, [group.name]);
 
   const selectedCount = useMemo(

@@ -1,19 +1,21 @@
-import { randomUUID } from 'crypto';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { randomUUID } from 'crypto';
+
 
 import { app } from 'electron';
 
 import {
+  DEFAULT_OPENAI_LOGO_BASE_IMAGE_ID,
+  isOpenAiLogoBaseImageId,
+  OPENAI_LOGO_BASE_IMAGES,
+  type OpenAiLogoBaseImageId,
+} from '@shared/openai-logo-bases';
+import {
   getImageMimeType,
   getImageMimeTypeFromBytes,
 } from '@shared/image-types';
-import {
-  DEFAULT_OPENAI_LOGO_BASE_IMAGE_ID,
-  OPENAI_LOGO_BASE_IMAGES,
-  isOpenAiLogoBaseImageId,
-  type OpenAiLogoBaseImageId,
-} from '@shared/openai-logo-bases';
+
 
 import { SettingsRepository } from '../database/repositories/settings';
 

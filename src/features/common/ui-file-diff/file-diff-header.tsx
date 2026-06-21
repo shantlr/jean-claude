@@ -1,11 +1,14 @@
 import clsx from 'clsx';
 import { MessageCircle } from 'lucide-react';
 
+
+
 import { Chip } from '@/common/ui/chip';
 import { Separator } from '@/common/ui/separator';
 
-import { DiffStatusBadge } from './status-badge';
 import type { DiffFile } from './types';
+import { DiffStatusBadge } from './status-badge';
+
 
 export function FileDiffHeader({
   file,

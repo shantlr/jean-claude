@@ -1,82 +1,83 @@
+import type {
+  AddGitHubSourceParams,
+  InstallSourceItemsParams,
+  SourceView,
+  UpdateSourceInstallParams,
+} from '@shared/source-management-types';
 import type { AgentBackendType, PromptPart } from '@shared/agent-backend-types';
 import type {
   AgentMigrationExecuteResult,
   AgentMigrationPreviewResult,
   ManagedAgent,
 } from '@shared/agent-management-types';
-import type { AgentResourceSnapshot } from '@shared/agent-resource-types';
 import type {
   AgentQuestion,
   PermissionResponse,
   QuestionResponse,
 } from '@shared/agent-types';
-import type { AgentUIEvent } from '@shared/agent-ui-events';
 import type {
   AiUsageDashboard,
   AiUsageDashboardParams,
   AiUsageTaskUsage,
 } from '@shared/ai-usage-types';
 import type {
-  AzureDevOpsPullRequest,
-  AzureDevOpsPullRequestDetails,
-  AzureDevOpsCommit,
-  AzureDevOpsFileChange,
-  AzureDevOpsIdentity,
-  AzureDevOpsCommentThread,
-  AzureDevOpsComment,
-  AzureDevOpsPolicyEvaluation,
-} from '@shared/azure-devops-types';
-import type { CacheEvent, CacheSubscriptionUpdate } from '@shared/cache-events';
-import type { UpcomingMeeting } from '@shared/calendar-types';
-import type { DebugLogEntry } from '@shared/debug-log-types';
-import type { FeedItem, FeedNote, ProjectPriority } from '@shared/feed-types';
-import type { FoldRange } from '@shared/fold-types';
-import type {
-  GlobalPrompt,
-  GlobalPromptResponse,
-} from '@shared/global-prompt-types';
-import type {
-  McpServerTemplate,
-  McpPreset,
-  NewMcpServerTemplate,
-  UpdateMcpServerTemplate,
-  ProjectMcpOverride,
-  NewProjectMcpOverride,
-  UnifiedMcpServer,
-} from '@shared/mcp-types';
-import type {
-  NormalizedEntry,
-  NormalizedPermissionRequest,
-} from '@shared/normalized-message-v2';
-import type {
   AppNotification,
   TaskNotificationTarget,
 } from '@shared/notification-types';
 import type {
-  TrackedPipeline,
-  AzureBuildRun,
-  AzureRelease,
-  AzureBuildDetail,
-  AzureBuildTimeline,
-  AzureReleaseDetail,
-  AzureGitRef,
+  AppSettings,
+  BranchInfo,
+  DetectedProjectLogo,
+  InteractionMode,
+  NewProject,
+  NewProvider,
+  NewTask,
+  NewTaskStep,
+  NewToken,
+  Project,
+  ProjectFeatureMap,
+  ProjectLogoHistoryItem,
+  ProjectTodo,
+  Provider,
+  Task,
+  TaskStep,
+  ThinkingEffort,
+  Token,
+  UpdateProject,
+  UpdateProvider,
+  UpdateTask,
+  UpdateTaskStep,
+  UpdateToken,
+} from '@shared/types';
+import type {
   AzureBuildDefinitionDetail,
-  YamlPipelineParameter,
+  AzureBuildDetail,
+  AzureBuildRun,
+  AzureBuildTimeline,
+  AzureGitRef,
+  AzureRelease,
+  AzureReleaseDetail,
   GetYamlParametersIpcParams,
   QueueBuildIpcParams,
+  TrackedPipeline,
+  YamlPipelineParameter,
 } from '@shared/pipeline-types';
 import type {
-  ProjectCommand,
-  ProjectCommandGroup,
-  RunCommandConfigItem,
-  NewProjectCommand,
-  NewProjectCommandGroup,
-  UpdateProjectCommand,
-  UpdateProjectCommandGroup,
-  RunStatus,
-  PortsInUseErrorData,
-  PackageScriptsResult,
-} from '@shared/run-command-types';
+  AzureDevOpsComment,
+  AzureDevOpsCommentThread,
+  AzureDevOpsCommit,
+  AzureDevOpsFileChange,
+  AzureDevOpsIdentity,
+  AzureDevOpsPolicyEvaluation,
+  AzureDevOpsPullRequest,
+  AzureDevOpsPullRequestDetails,
+} from '@shared/azure-devops-types';
+import type { CacheEvent, CacheSubscriptionUpdate } from '@shared/cache-events';
+import type { FeedItem, FeedNote, ProjectPriority } from '@shared/feed-types';
+import type {
+  GlobalPrompt,
+  GlobalPromptResponse,
+} from '@shared/global-prompt-types';
 import type {
   LegacySkillMigrationExecuteResult,
   LegacySkillMigrationPreviewResult,
@@ -87,43 +88,44 @@ import type {
   SkillScope,
 } from '@shared/skill-types';
 import type {
-  AddGitHubSourceParams,
-  InstallSourceItemsParams,
-  SourceView,
-  UpdateSourceInstallParams,
-} from '@shared/source-management-types';
+  McpPreset,
+  McpServerTemplate,
+  NewMcpServerTemplate,
+  NewProjectMcpOverride,
+  ProjectMcpOverride,
+  UnifiedMcpServer,
+  UpdateMcpServerTemplate,
+} from '@shared/mcp-types';
 import type {
-  Project,
-  ProjectFeatureMap,
-  NewProject,
-  UpdateProject,
-  Task,
-  NewTask,
-  UpdateTask,
-  TaskStep,
-  NewTaskStep,
-  UpdateTaskStep,
-  Provider,
-  NewProvider,
-  UpdateProvider,
-  Token,
-  NewToken,
-  UpdateToken,
-  BranchInfo,
-  InteractionMode,
-  ThinkingEffort,
-  AppSettings,
-  ProjectTodo,
-  DetectedProjectLogo,
-  ProjectLogoHistoryItem,
-} from '@shared/types';
-import type { UsageProviderMap, UsageSnapshot } from '@shared/usage-types';
+  NewProjectCommand,
+  NewProjectCommandGroup,
+  PackageScriptsResult,
+  PortsInUseErrorData,
+  ProjectCommand,
+  ProjectCommandGroup,
+  RunCommandConfigItem,
+  RunStatus,
+  UpdateProjectCommand,
+  UpdateProjectCommandGroup,
+} from '@shared/run-command-types';
 import type {
   NewWorkActivityEvent,
   WorkActivityEvent,
   WorkActivityWeekParams,
 } from '@shared/work-activity-types';
+import type {
+  NormalizedEntry,
+  NormalizedPermissionRequest,
+} from '@shared/normalized-message-v2';
+import type { UsageProviderMap, UsageSnapshot } from '@shared/usage-types';
+import type { AgentResourceSnapshot } from '@shared/agent-resource-types';
+import type { AgentUIEvent } from '@shared/agent-ui-events';
 import type { CreateWorkItemVerificationNoteParams } from '@shared/work-item-verification-note-types';
+import type { DebugLogEntry } from '@shared/debug-log-types';
+import type { FoldRange } from '@shared/fold-types';
+import type { UpcomingMeeting } from '@shared/calendar-types';
+
+
 
 export type {
   AzureDevOpsPullRequest,

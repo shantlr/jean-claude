@@ -1,5 +1,6 @@
 import type { Task } from '@shared/types';
 
+import { applyEntityPatch, mergeEntitySnapshot } from '../entity-merge';
 import {
   markResourceStale,
   setIndexResource,
@@ -7,7 +8,8 @@ import {
 } from '../cache-actions';
 import { cache$ } from '../cache-store';
 import type { CachedTask } from '../cache-types';
-import { applyEntityPatch, mergeEntitySnapshot } from '../entity-merge';
+
+
 
 export const TASKS_INDEX_KEY = 'tasks';
 export const ACTIVE_TASKS_INDEX_KEY = 'tasks:active';

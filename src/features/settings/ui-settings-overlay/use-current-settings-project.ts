@@ -1,8 +1,9 @@
 import { useParams } from '@tanstack/react-router';
 
+import { useCurrentVisibleProject } from '@/stores/navigation';
 import { useProjects } from '@/hooks/use-projects';
 import { useTask } from '@/hooks/use-tasks';
-import { useCurrentVisibleProject } from '@/stores/navigation';
+
 
 export function useCurrentSettingsProject({
   overrideProjectId,

@@ -19,6 +19,7 @@ import {
   Zap,
 } from 'lucide-react';
 import React, {
+  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -30,35 +31,36 @@ import FocusLock from 'react-focus-lock';
 import { RemoveScroll } from 'react-remove-scroll';
 
 import {
-  useKeyboardLayer,
-  useRegisterKeyboardBindings,
-} from '@/common/context/keyboard-bindings';
-import { Kbd } from '@/common/ui/kbd';
-import { Select, type SelectOption } from '@/common/ui/select';
-import {
-  ProjectSettings,
-  type ProjectSettingsMenuItem,
-} from '@/features/project/ui-project-settings';
-import { AgentsSettings } from '@/features/settings/ui-agents-settings';
-import { AiGenerationSettings } from '@/features/settings/ui-ai-generation-settings';
-import { AutocompleteSettings } from '@/features/settings/ui-autocomplete-settings';
-import { AzureDevOpsTab } from '@/features/settings/ui-azure-devops-tab';
+  AppearanceSettings,
+  CalendarSettings,
+  EditorSettings,
+  MaintenanceSettings,
+  NotificationsSettings,
+  PromptPrefaceSettings,
+  UsageDisplaySettings,
+  WorkActivitySettings,
+} from '@/features/settings/ui-general-settings';
 import {
   BackendConfigSettings,
   OpenCodeProcessModeSettings,
 } from '@/features/settings/ui-backend-config-settings';
-import { DebugDatabase } from '@/features/settings/ui-debug-database';
 import {
-  EditorSettings,
-  AppearanceSettings,
-  NotificationsSettings,
-  CalendarSettings,
-  UsageDisplaySettings,
-  MaintenanceSettings,
-  PromptPrefaceSettings,
-  WorkActivitySettings,
-} from '@/features/settings/ui-general-settings';
+  ProjectSettings,
+  type ProjectSettingsMenuItem,
+} from '@/features/project/ui-project-settings';
+import { Select, type SelectOption } from '@/common/ui/select';
+import {
+  useKeyboardLayer,
+  useRegisterKeyboardBindings,
+} from '@/common/context/keyboard-bindings';
+import { AgentsSettings } from '@/features/settings/ui-agents-settings';
+import { AiGenerationSettings } from '@/features/settings/ui-ai-generation-settings';
+import { api } from '@/lib/api';
+import { AutocompleteSettings } from '@/features/settings/ui-autocomplete-settings';
+import { AzureDevOpsTab } from '@/features/settings/ui-azure-devops-tab';
+import { DebugDatabase } from '@/features/settings/ui-debug-database';
 import { GlobalPermissionsSettings } from '@/features/settings/ui-global-permissions-settings';
+import { Kbd } from '@/common/ui/kbd';
 import { McpServersSettings } from '@/features/settings/ui-mcp-servers-settings';
 import { ModelPresetsSettings } from '@/features/settings/ui-model-presets-settings';
 import { PromptSnippetsSettings } from '@/features/settings/ui-prompt-snippets-settings';
@@ -66,7 +68,8 @@ import { RateLimitSwapSettings } from '@/features/settings/ui-rate-limit-swap-se
 import { SkillsSettings } from '@/features/settings/ui-skills-settings';
 import { SourcesSettings } from '@/features/settings/ui-sources-settings';
 import { TokensTab } from '@/features/settings/ui-tokens-tab';
-import { api } from '@/lib/api';
+
+
 
 import { useCurrentSettingsProject } from './use-current-settings-project';
 
@@ -758,8 +761,8 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
       !hasAutoSelectedProjectTab &&
       resolvedProject
     ) {
-      setActiveTab('project');
-      setHasAutoSelectedProjectTab(true);
+      startTransition(() => setActiveTab('project'));
+      startTransition(() => setHasAutoSelectedProjectTab(true));
     }
   }, [hasAutoSelectedProjectTab, resolvedProject, shouldRestoreNavState]);
 
@@ -1404,7 +1407,7 @@ function SettingsPalette({
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    setActiveIndex(0);
+    startTransition(() => setActiveIndex(0));
   }, [query]);
 
   const trapTab = useCallback((event: React.KeyboardEvent) => {

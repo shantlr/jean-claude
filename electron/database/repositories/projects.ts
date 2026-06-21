@@ -1,8 +1,10 @@
 import { isAiSkillSlotsSetting } from '@shared/types';
 
-import { dbg } from '../../lib/debug';
-import { db } from '../index';
 import { NewProject, ProjectRow, ProjectType, UpdateProject } from '../schema';
+import { db } from '../index';
+import { dbg } from '../../lib/debug';
+
+
 
 const MAX_PROTECTED_BRANCHES = 100;
 const MAX_BRANCH_NAME_LENGTH = 256;

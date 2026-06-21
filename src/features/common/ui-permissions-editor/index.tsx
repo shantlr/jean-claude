@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import {
   Check,
   ChevronDown,
@@ -12,17 +11,21 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import clsx from 'clsx';
+import type React from 'react';
 
-import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
-import { Button } from '@/common/ui/button';
-import { Input } from '@/common/ui/input';
-import { Select } from '@/common/ui/select';
+
 import type {
   PermissionAction,
   PermissionScope,
 } from '@shared/permission-types';
+import { Button } from '@/common/ui/button';
+import { Input } from '@/common/ui/input';
+import { Select } from '@/common/ui/select';
+import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+
+
 
 // ---------------------------------------------------------------------------
 // Constants & types

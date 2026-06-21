@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { api } from '@/lib/api';
 import type { AgentBackendType } from '@shared/agent-backend-types';
+import { api } from '@/lib/api';
 import type { ThinkingEffort } from '@shared/types';
+
 
 export interface BackendModel {
   id: string;

@@ -1,5 +1,3 @@
-import { useRouter } from '@tanstack/react-router';
-import clsx from 'clsx';
 import {
   AlertCircle,
   GitPullRequest,
@@ -7,20 +5,25 @@ import {
   MessageSquare,
   Terminal,
 } from 'lucide-react';
+import clsx from 'clsx';
+import { useRouter } from '@tanstack/react-router';
 
-import { NumberKey } from '@/common/context/keyboard-bindings/types';
-import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
-import { Kbd } from '@/common/ui/kbd';
-import { StatusIndicator } from '@/features/task/ui-status-indicator';
-import type { TaskWithProject } from '@/lib/api';
-import { formatRelativeTime } from '@/lib/time';
+
+
 import {
   bgJobLabel,
   useRunningBackgroundJobsForTask,
 } from '@/stores/background-jobs';
+import { formatKeyForDisplay } from '@/common/context/keyboard-bindings/utils';
+import { formatRelativeTime } from '@/lib/time';
+import { Kbd } from '@/common/ui/kbd';
+import { NumberKey } from '@/common/context/keyboard-bindings/types';
+import { StatusIndicator } from '@/features/task/ui-status-indicator';
+import type { TaskStatus } from '@shared/types';
+import type { TaskWithProject } from '@/lib/api';
 import { useCurrentVisibleProject } from '@/stores/navigation';
 import { useTaskMessagesStore } from '@/stores/task-messages';
-import type { TaskStatus } from '@shared/types';
+
 
 export function TaskSummaryCard({
   task,

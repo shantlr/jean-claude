@@ -1,16 +1,18 @@
-import clsx from 'clsx';
 import { Check, Loader2, X } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, startTransition, useEffect, useMemo, useRef, useState } from 'react';
+import clsx from 'clsx';
 
-import { Kbd } from '@/common/ui/kbd';
-import { useProjects } from '@/hooks/use-projects';
-import { useBackgroundJobsStore } from '@/stores/background-jobs';
-import { useDebugLogsListener } from '@/stores/debug-logs';
+
 import {
   initNotificationsStore,
   useNotificationsStore,
 } from '@/stores/notifications';
+import { Kbd } from '@/common/ui/kbd';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
+import { useDebugLogsListener } from '@/stores/debug-logs';
 import { useOverlaysStore } from '@/stores/overlays';
+import { useProjects } from '@/hooks/use-projects';
+
 
 const CYCLE_INTERVAL_MS = 3000;
 
@@ -34,7 +36,7 @@ export function ActivityButton() {
 
   useEffect(() => {
     if (!isRunning) {
-      setCycleIndex(0);
+      startTransition(() => setCycleIndex(0));
       return;
     }
     cycleRef.current = setInterval(() => {

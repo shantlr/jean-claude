@@ -8,8 +8,10 @@ import {
   ListSearchInput,
 } from '@/common/ui/list-detail-layout';
 import { isBuiltinSnippet } from '@/lib/builtin-snippets';
-import { useSnippetsRailWidth } from '@/stores/navigation';
 import type { PromptSnippet } from '@shared/types';
+import { useSnippetsRailWidth } from '@/stores/navigation';
+
+
 
 function SnippetRailRow({
   snippet,

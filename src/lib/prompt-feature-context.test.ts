@@ -4,9 +4,9 @@ import type { ProjectFeatureMap } from '@shared/types';
 
 import {
   expandFeatureReferencesInPrompt,
+  flattenProjectFeatures,
   getFeatureReferenceText,
   getReferencedFeatures,
-  flattenProjectFeatures,
 } from './prompt-feature-context';
 
 const featureMap: ProjectFeatureMap = {

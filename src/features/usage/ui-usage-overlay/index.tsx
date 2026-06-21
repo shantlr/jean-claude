@@ -3,13 +3,16 @@ import type { PointerEvent, ReactNode } from 'react';
 import { useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
-import { useCommands } from '@/common/hooks/use-commands';
+
+
 import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
 import { Tooltip } from '@/common/ui/tooltip';
 import { useAiUsageDashboard } from '@/hooks/use-ai-usage-dashboard';
+import { useCommands } from '@/common/hooks/use-commands';
+import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
 import { useProjects } from '@/hooks/use-projects';
+
 
 type Range = 'today' | '7d' | '30d' | 'all';
 

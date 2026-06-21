@@ -9,20 +9,20 @@
 // - Sessions created via client.session.create() + client.session.prompt()
 
 import {
+  type ChildProcessWithoutNullStreams,
   spawn,
   spawnSync,
-  type ChildProcessWithoutNullStreams,
 } from 'node:child_process';
 
 import {
   createOpencodeClient,
-  type OpencodeClient,
-  type Session as OcSession,
-  type Event as OcEvent,
-  type Part as OcPart,
-  type Message as OcMessage,
   type AssistantMessage as OcAssistantMessage,
+  type Event as OcEvent,
+  type Message as OcMessage,
+  type Part as OcPart,
   type PermissionRequest as OcPermission,
+  type Session as OcSession,
+  type OpencodeClient,
 } from '@opencode-ai/sdk/v2';
 
 import type {
@@ -36,21 +36,24 @@ import type {
   NormalizedQuestionRequest,
   PromptPart,
 } from '@shared/agent-backend-types';
-import type { TokenUsage } from '@shared/normalized-message-v2';
 import type { InteractionMode } from '@shared/types';
+import type { TokenUsage } from '@shared/normalized-message-v2';
 
-import type { ResolvedPermissionRule } from '../../../../shared/permission-types';
-import {
-  RawMessageRepository,
-  SettingsRepository,
-} from '../../../database/repositories';
-import { dbg } from '../../../lib/debug';
-import { calculateTheoreticalOpenCodeCost } from '../../backend-models-service';
+
 import {
   compileForOpenCode,
   evaluatePermissionWithMatch,
   normalizeToolRequest,
 } from '../../permission-settings-service';
+import {
+  RawMessageRepository,
+  SettingsRepository,
+} from '../../../database/repositories';
+import { calculateTheoreticalOpenCodeCost } from '../../backend-models-service';
+import { dbg } from '../../../lib/debug';
+import type { ResolvedPermissionRule } from '../../../../shared/permission-types';
+
+
 
 import {
   normalizeOpenCodeV2,
@@ -58,6 +61,8 @@ import {
   type OpenCodeRawInput,
 } from './normalize-opencode-message-v2';
 import { applyDeltaToMessageParts } from './opencode-message-delta';
+
+
 
 // --- Server lifecycle (singleton) ---
 

@@ -1,8 +1,10 @@
+import { startTransition, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
 
-import { api } from '@/lib/api';
+
 import type { AgentResourceSnapshot } from '@shared/agent-resource-types';
+import { api } from '@/lib/api';
+
 
 const RESOURCE_HISTORY_WINDOW_MS = 60 * 60 * 1000;
 
@@ -94,7 +96,7 @@ export function useAgentResourceSnapshots() {
     if (!changed) return;
 
     resourceHistoryByStepId = nextHistoryByStepId;
-    setHistoryByStepId(nextHistoryByStepId);
+    startTransition(() => setHistoryByStepId(nextHistoryByStepId));
   }, [query.data]);
 
   return {

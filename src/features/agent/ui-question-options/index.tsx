@@ -1,11 +1,13 @@
 import { Check, HelpCircle, Send } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { startTransition, useCallback, useEffect, useState } from 'react';
 
-import { useCommands } from '@/common/hooks/use-commands';
+import type { AgentQuestion, QuestionResponse } from '@shared/agent-types';
 import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
 import { Textarea } from '@/common/ui/textarea';
-import type { QuestionResponse, AgentQuestion } from '@shared/agent-types';
+import { useCommands } from '@/common/hooks/use-commands';
+
+
 
 function QuestionInput({
   question,
@@ -187,17 +189,17 @@ export function QuestionOptions({
 
   useEffect(() => {
     if (request.questions.length === 0) {
-      setActiveQuestionIndex(0);
-      setActiveOptionIndex(0);
+      startTransition(() => setActiveQuestionIndex(0));
+      startTransition(() => setActiveOptionIndex(0));
       return;
     }
 
-    setActiveQuestionIndex((current) => {
+    startTransition(() => setActiveQuestionIndex((current) => {
       if (current < request.questions.length) {
         return current;
       }
       return 0;
-    });
+    }));
   }, [request.questions]);
 
   const getOptionCount = useCallback((question: AgentQuestion) => {
@@ -208,11 +210,11 @@ export function QuestionOptions({
     const question = request.questions[activeQuestionIndex];
     if (!question) return;
     const optionCount = getOptionCount(question);
-    setActiveOptionIndex((current) => {
+    startTransition(() => setActiveOptionIndex((current) => {
       if (optionCount === 0) return 0;
       if (current < optionCount) return current;
       return 0;
-    });
+    }));
   }, [activeQuestionIndex, getOptionCount, request.questions]);
 
   const activateOption = useCallback(

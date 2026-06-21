@@ -1,8 +1,10 @@
-import clsx from 'clsx';
 import { ChevronDown, ChevronRight, MessageSquarePlus } from 'lucide-react';
-import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useCallback, useMemo, useState } from 'react';
+import clsx from 'clsx';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import type { ThemedToken } from 'shiki';
+
+
 
 import {
   computeDiff,
@@ -10,12 +12,13 @@ import {
   type DiffLine,
   type SideBySideRow,
 } from './diff-utils';
-import type { SearchMatch } from './use-diff-search';
-import { useDividerResize } from './use-divider-resize';
 import {
   renderTokensWithHighlights,
   renderWithHighlights,
 } from './utils-search-highlight';
+import type { SearchMatch } from './use-diff-search';
+import { useDividerResize } from './use-divider-resize';
+
 
 import type {
   CodeFoldingState,

@@ -1,10 +1,12 @@
 import { forwardRef, useMemo } from 'react';
 
-import type { KeyboardLayer } from '@/common/context/keyboard-bindings';
-import type { BindingKey } from '@/common/context/keyboard-bindings/types';
 import { Select, type SelectOption, type SelectRef } from '@/common/ui/select';
+import type { BindingKey } from '@/common/context/keyboard-bindings/types';
 import type { ComponentSize } from '@/common/ui/styles';
+import type { KeyboardLayer } from '@/common/context/keyboard-bindings';
 import type { ModelPreference } from '@shared/types';
+
+
 
 import type { BackendModelOption } from '../ui-backend-selector';
 

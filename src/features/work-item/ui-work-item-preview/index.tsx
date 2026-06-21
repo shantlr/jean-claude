@@ -6,20 +6,23 @@ import {
   Loader2,
   MessagesSquare,
 } from 'lucide-react';
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+
 
 import { Dropdown, DropdownItem } from '@/common/ui/dropdown';
-import { Kbd } from '@/common/ui/kbd';
-import { AzureHtmlContent } from '@/features/common/ui-azure-html-content';
 import {
   useAddWorkItemComment,
   useRelatedTestCases,
   useUpdateWorkItemState,
-  useWorkItemStates,
   useWorkItemComments,
+  useWorkItemStates,
 } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
+import { AzureHtmlContent } from '@/features/common/ui-azure-html-content';
+import { Kbd } from '@/common/ui/kbd';
+
+
 
 import { WorkItemComments } from '../ui-work-item-comments';
 type DetailsTab = 'content' | 'comments' | 'test-cases';
@@ -70,15 +73,15 @@ export function WorkItemPreview({
 
   useEffect(() => {
     if (!hasTestCases && activeTab === 'test-cases') {
-      setActiveTab('content');
+      startTransition(() => setActiveTab('content'));
     }
     if (showCommentsAside && activeTab === 'comments') {
-      setActiveTab('content');
+      startTransition(() => setActiveTab('content'));
     }
   }, [hasTestCases, activeTab, showCommentsAside]);
 
   useEffect(() => {
-    setCurrentState(workItem?.fields.state ?? '');
+    startTransition(() => setCurrentState(workItem?.fields.state ?? ''));
     workItemIdRef.current = workItem?.id ?? null;
   }, [workItem?.id, workItem?.fields.state]);
 

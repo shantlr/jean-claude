@@ -1,17 +1,18 @@
-import { useRef, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useStore } from 'zustand';
 
 import type { PromptImagePart, PromptPart } from '@shared/agent-backend-types';
 
 import {
+  createCommentSelectors,
+  createKeyedCommentStore,
+  type FileCommentAnchor,
+} from './utils-comment-store';
+import {
   escapePromptTagContent,
   formatPromptLineRange,
 } from './utils-comment-prompt';
-import {
-  createKeyedCommentStore,
-  createCommentSelectors,
-  type FileCommentAnchor,
-} from './utils-comment-store';
+
 
 // -- Types --
 
@@ -263,7 +264,6 @@ const EMPTY_RECORD: Record<string, number> = {};
 
 export function useReviewCommentsByFile(taskId: string) {
   const comments = useReviewComments(taskId);
-  const prevRef = useRef<Record<string, number>>(EMPTY_RECORD);
 
   return useMemo(() => {
     const map: Record<string, number> = {};
@@ -273,19 +273,7 @@ export function useReviewCommentsByFile(taskId: string) {
       }
     }
 
-    // Return previous reference if counts are unchanged (avoids unnecessary re-renders)
-    const prev = prevRef.current;
-    const keys = Object.keys(map);
-    const prevKeys = Object.keys(prev);
-    if (
-      keys.length === prevKeys.length &&
-      keys.every((k) => prev[k] === map[k])
-    ) {
-      return prev;
-    }
-
-    prevRef.current = keys.length === 0 ? EMPTY_RECORD : map;
-    return prevRef.current;
+    return Object.keys(map).length === 0 ? EMPTY_RECORD : map;
   }, [comments]);
 }
 
@@ -297,7 +285,6 @@ export function useReviewCommentsByCommitFile({
   commitHash: string | null;
 }) {
   const comments = useReviewComments(taskId);
-  const prevRef = useRef<Record<string, number>>(EMPTY_RECORD);
 
   return useMemo(() => {
     if (!commitHash) return EMPTY_RECORD;
@@ -309,18 +296,7 @@ export function useReviewCommentsByCommitFile({
       }
     }
 
-    const prev = prevRef.current;
-    const keys = Object.keys(map);
-    const prevKeys = Object.keys(prev);
-    if (
-      keys.length === prevKeys.length &&
-      keys.every((k) => prev[k] === map[k])
-    ) {
-      return prev;
-    }
-
-    prevRef.current = keys.length === 0 ? EMPTY_RECORD : map;
-    return prevRef.current;
+    return Object.keys(map).length === 0 ? EMPTY_RECORD : map;
   }, [comments, commitHash]);
 }
 

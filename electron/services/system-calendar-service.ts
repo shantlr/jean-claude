@@ -3,20 +3,24 @@ import { promisify } from 'node:util';
 
 import { BrowserWindow, screen, shell } from 'electron';
 
-import type { UpcomingMeeting } from '@shared/calendar-types';
-import type { AppNotification } from '@shared/notification-types';
 import { getTeamsJoinUrl, isValidTeamsJoinUrl } from '@shared/teams-url';
+import type { AppNotification } from '@shared/notification-types';
+import type { UpcomingMeeting } from '@shared/calendar-types';
 
+
+
+import { dbg } from '../lib/debug';
 import { NotificationRepository } from '../database/repositories/notifications';
 import { SettingsRepository } from '../database/repositories/settings';
-import { dbg } from '../lib/debug';
 
-import { notificationService } from './notification-service';
+
 import {
   buildCalendarNotificationKey,
   type CalendarEventRecord,
   clampCalendarLeadTimeMinutes,
 } from './system-calendar-utils';
+import { notificationService } from './notification-service';
+
 
 const execFileAsync = promisify(execFile);
 

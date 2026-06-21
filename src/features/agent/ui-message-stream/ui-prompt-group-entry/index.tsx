@@ -1,30 +1,35 @@
 import { AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import type { MouseEvent } from 'react';
-import { memo, useCallback, useMemo, useRef, useState } from 'react';
 
-import { countUnifiedPatchStats } from '@/features/agent/ui-diff-view/diff-utils';
-import { formatModelName } from '@/hooks/use-model';
-import { extractImagesFromMarkdown } from '@/lib/markdown-images';
-import { formatNumber } from '@/lib/number';
+
 import { ensureUtc, formatDuration } from '@/lib/time';
 import type {
   NormalizedEntry,
   NormalizedToolUse,
   ToolUseByName,
 } from '@shared/normalized-message-v2';
+import { countUnifiedPatchStats } from '@/features/agent/ui-diff-view/diff-utils';
+import { extractImagesFromMarkdown } from '@/lib/markdown-images';
+import { formatModelName } from '@/hooks/use-model';
+import { formatNumber } from '@/lib/number';
 
-import { MarkdownContent } from '../../ui-markdown-content';
+
+
 import type { DisplayMessage, PromptGroup } from '../message-merger';
+import {
+  getLastActivitySummary,
+  getTodoProgress,
+  getToolActivitySummary,
+} from '../ui-subagent-entry/last-activity';
 import { CommentableWrapper } from '../ui-commentable-text-entry';
+import { MarkdownContent } from '../../ui-markdown-content';
 import { RunningTimer } from '../ui-running-timer';
 import { SkillEntry } from '../ui-skill-entry';
 import { SubagentEntry } from '../ui-subagent-entry';
-import {
-  getToolActivitySummary,
-  getLastActivitySummary,
-  getTodoProgress,
-} from '../ui-subagent-entry/last-activity';
 import { TimelineEntry } from '../ui-timeline-entry';
+
+
 
 import { PromptGroupDiffModal } from './prompt-group-diff-modal';
 
@@ -952,17 +957,6 @@ function getFileChangeToolEntries(
   return entries;
 }
 
-function areEntryArraysEqual(
-  prev: NormalizedEntry[],
-  next: NormalizedEntry[],
-): boolean {
-  if (prev.length !== next.length) return false;
-  for (let i = 0; i < prev.length; i++) {
-    if (prev[i] !== next[i]) return false;
-  }
-  return true;
-}
-
 function getFileStats(fileChangeEntries: NormalizedEntry[]): FileStats | null {
   const files = new Set<string>();
   let added = 0;
@@ -1102,10 +1096,6 @@ export const PromptGroupEntry = memo(function PromptGroupEntry({
   // Last group can still be active while backend has no open tool/result yet.
   const isActiveGroup = isRunning || (isLast && isTaskRunning);
   const [diffModalOpen, setDiffModalOpen] = useState(false);
-  const fileStatsCacheRef = useRef<{
-    entries: NormalizedEntry[];
-    stats: FileStats | null;
-  } | null>(null);
   // Details expand/collapse:
   // - error/interrupted on last group: start expanded
   // - previous (non-last) groups: always default collapsed
@@ -1211,14 +1201,7 @@ export const PromptGroupEntry = memo(function PromptGroupEntry({
   // Compute file edit/write stats from child messages
   const fileStats = useMemo(() => {
     const fileChangeEntries = getFileChangeToolEntries(group.childMessages);
-    const cached = fileStatsCacheRef.current;
-    if (cached && areEntryArraysEqual(cached.entries, fileChangeEntries)) {
-      return cached.stats;
-    }
-
-    const stats = getFileStats(fileChangeEntries);
-    fileStatsCacheRef.current = { entries: fileChangeEntries, stats };
-    return stats;
+    return getFileStats(fileChangeEntries);
   }, [group.childMessages]);
 
   return (

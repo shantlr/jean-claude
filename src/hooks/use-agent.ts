@@ -1,12 +1,15 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
-import { useTaskMessages } from '@/hooks/use-task-messages';
+
+import type { PermissionResponse, QuestionResponse } from '@shared/agent-types';
 import { api } from '@/lib/api';
+import type { PromptPart } from '@shared/agent-backend-types';
+import { useTaskMessages } from '@/hooks/use-task-messages';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 import { useToastStore } from '@/stores/toasts';
-import type { PromptPart } from '@shared/agent-backend-types';
-import type { PermissionResponse, QuestionResponse } from '@shared/agent-types';
+
+
 
 export function useAgentStream({
   taskId,
@@ -80,7 +83,8 @@ export function useAgentControls({
       setIsStopping(false);
       queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
     }
-  }, [stepId, taskId, queryClient]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stepId]);
 
   const respondToPermission = useCallback(
     async (requestId: string, response: PermissionResponse) => {

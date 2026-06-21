@@ -1,7 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import { WorkItemDetails } from '@/features/feed/ui-work-item-details';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { WorkItemDetails } from '@/features/feed/ui-work-item-details';
+
 
 const FEED_NAVIGATION_DEBOUNCE_MS = 100;
 

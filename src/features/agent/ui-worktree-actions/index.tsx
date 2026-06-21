@@ -6,32 +6,35 @@ import {
   GitPullRequest,
   Shield,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useCommands } from '@/common/hooks/use-commands';
-import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
-import { BranchSelect } from '@/common/ui/branch-select';
-import { Button } from '@/common/ui/button';
-import { Kbd } from '@/common/ui/kbd';
-import { useProject } from '@/hooks/use-projects';
-import { useAiSkillSlotsSetting } from '@/hooks/use-settings';
-import {
-  useWorktreeStatus,
-  useWorktreeBranches,
-  useCommitWorktree,
-  useMergeWorktree,
-  usePushBranch,
-} from '@/hooks/use-worktree-diff';
 import {
   useBackgroundJobsStore,
   useRunningBackgroundJobsForTask,
 } from '@/stores/background-jobs';
+import {
+  useCommitWorktree,
+  useMergeWorktree,
+  usePushBranch,
+  useWorktreeBranches,
+  useWorktreeStatus,
+} from '@/hooks/use-worktree-diff';
+import { BranchSelect } from '@/common/ui/branch-select';
+import { Button } from '@/common/ui/button';
+import { Kbd } from '@/common/ui/kbd';
+import { useAiSkillSlotsSetting } from '@/hooks/use-settings';
+import { useCommands } from '@/common/hooks/use-commands';
+import { useProject } from '@/hooks/use-projects';
+import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { useToastStore } from '@/stores/toasts';
 
+
+
+import { canMergeWorktree } from './utils-merge-eligibility';
 import { CommitModal } from './commit-modal';
 import { MergeConfirmDialog } from './merge-confirm-dialog';
 import { PushConfirmDialog } from './push-confirm-dialog';
-import { canMergeWorktree } from './utils-merge-eligibility';
+
 
 export function WorktreeActions({
   taskId,
@@ -165,7 +168,7 @@ export function WorktreeActions({
           : branches.includes('master')
             ? 'master'
             : branches[0]);
-      setSelectedBranch(defaultTarget);
+      startTransition(() => setSelectedBranch(defaultTarget));
     }
   }, [branches, sourceBranch, defaultBranch, selectedBranch]);
 

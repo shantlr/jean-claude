@@ -2,9 +2,10 @@ import { mkdir, readdir, realpath, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
+import { dbg } from '../lib/debug';
 import { ProjectRepository } from '../database/repositories/projects';
 import { TaskRepository } from '../database/repositories/tasks';
-import { dbg } from '../lib/debug';
+
 
 const SYSTEM_PROJECT_DIR = path.join(
   os.homedir(),

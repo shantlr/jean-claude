@@ -1,11 +1,12 @@
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
-import { Button } from '@/common/ui/button';
 import {
-  useMcpTemplates,
   useDeleteMcpTemplate,
+  useMcpTemplates,
 } from '@/hooks/use-mcp-templates';
+import { Button } from '@/common/ui/button';
+
 
 import { McpTemplateForm } from './mcp-template-form';
 import { McpTemplateList } from './mcp-template-list';

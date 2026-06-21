@@ -1,11 +1,14 @@
 import clsx from 'clsx';
 import { X } from 'lucide-react';
 
+
+
+import { DiffView } from '@/features/agent/ui-diff-view';
 import { IconButton } from '@/common/ui/icon-button';
 import { Separator } from '@/common/ui/separator';
-import { DiffView } from '@/features/agent/ui-diff-view';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useToolDiffPreviewPaneWidth } from '@/stores/navigation';
+
 
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
 

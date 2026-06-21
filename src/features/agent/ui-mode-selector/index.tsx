@@ -1,15 +1,17 @@
 import { forwardRef } from 'react';
 
-import type { KeyboardLayer } from '@/common/context/keyboard-bindings';
-import type { BindingKey } from '@/common/context/keyboard-bindings/types';
-import { Select, type SelectRef } from '@/common/ui/select';
-import type { ComponentSize } from '@/common/ui/styles';
-import type { AgentBackendType } from '@shared/agent-backend-types';
 import {
   getInteractionModeOptions,
-  normalizeInteractionModeForBackend,
   type InteractionMode,
+  normalizeInteractionModeForBackend,
 } from '@shared/types';
+import { Select, type SelectRef } from '@/common/ui/select';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import type { BindingKey } from '@/common/context/keyboard-bindings/types';
+import type { ComponentSize } from '@/common/ui/styles';
+import type { KeyboardLayer } from '@/common/context/keyboard-bindings';
+
+
 
 export const ModeSelector = forwardRef<
   SelectRef,

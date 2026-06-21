@@ -1,5 +1,3 @@
-import { useNavigate, useParams } from '@tanstack/react-router';
-import clsx from 'clsx';
 import {
   ChevronDown,
   ChevronLeft,
@@ -18,23 +16,28 @@ import {
   Settings2,
   Trash2,
 } from 'lucide-react';
-import type React from 'react';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from '@tanstack/react-router';
+import clsx from 'clsx';
 import { createPortal } from 'react-dom';
+import type React from 'react';
 
-import { useCommands } from '@/common/hooks/use-commands';
+
+
 import { Dropdown, DropdownDivider, DropdownItem } from '@/common/ui/dropdown';
+import type { FeedItem } from '@shared/feed-types';
 import { Modal } from '@/common/ui/modal';
 import { ProjectLogo } from '@/features/project/ui-project-logo';
-import { useFeed } from '@/hooks/use-feed';
-import { useProjects } from '@/hooks/use-projects';
-import { useCachedPullRequest } from '@/hooks/use-pull-requests';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
+import { useCachedPullRequest } from '@/hooks/use-pull-requests';
+import { useCommands } from '@/common/hooks/use-commands';
+import { useFeed } from '@/hooks/use-feed';
 import { useFeedStore } from '@/stores/feed';
 import { useNavigationStore } from '@/stores/navigation';
 import { useOverlaysStore } from '@/stores/overlays';
+import { useProjects } from '@/hooks/use-projects';
 import { useUIStore } from '@/stores/ui';
-import type { FeedItem } from '@shared/feed-types';
+
 
 import { FeedItemCard } from './feed-item-card';
 import { FeedNoteCard } from './feed-note-card';
@@ -825,7 +828,7 @@ function HorizontalPrReviewStack({
 
   useEffect(() => {
     if (focusedIndex > maxIndex) {
-      setFocusedIndex(Math.max(0, maxIndex));
+      startTransition(() => setFocusedIndex(Math.max(0, maxIndex)));
     }
   }, [focusedIndex, maxIndex]);
 

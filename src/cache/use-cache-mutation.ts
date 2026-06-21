@@ -54,7 +54,8 @@ export function useCacheMutation<TVariables, TResult>({
         stopPending();
       }
     },
-    [mutationFn, onError, onMutate, onSuccess, startPending, stopPending],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mutationFn, onError, onMutate, onSuccess, startPending],
   );
 
   const mutate = useCallback(

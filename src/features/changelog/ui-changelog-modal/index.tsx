@@ -1,9 +1,10 @@
 import { Sparkles, Wrench, X, Zap } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { changelog, type ChangelogEntry, changelogHash } from '@/lib/changelog';
 import { Modal } from '@/common/ui/modal';
-import { type ChangelogEntry, changelog, changelogHash } from '@/lib/changelog';
 import { useChangelogStore } from '@/stores/changelog';
+
 
 const DAYS_PER_PAGE = 10;
 
@@ -180,8 +181,8 @@ export function ChangelogModal() {
 
   useEffect(() => {
     if (!isOpen) return;
-    setDaysShown(DAYS_PER_PAGE);
-    setActiveDate(filteredDays[0]?.date ?? null);
+    startTransition(() => setDaysShown(DAYS_PER_PAGE));
+    startTransition(() => setActiveDate(filteredDays[0]?.date ?? null));
     scrollContainerRef.current?.scrollTo({ top: 0 });
   }, [filter, filteredDays, isOpen]);
 

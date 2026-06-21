@@ -7,7 +7,6 @@ import type { CachedTask } from '../cache-types';
 
 import {
   ACTIVE_TASKS_INDEX_KEY,
-  TASKS_INDEX_KEY,
   appendTaskToProjectIndex,
   ingestActiveTasks,
   ingestProjectTasks,
@@ -23,6 +22,7 @@ import {
   selectTasksFromIndex,
   setProjectTaskIndexIds,
   taskResourceKey,
+  TASKS_INDEX_KEY,
 } from './tasks';
 
 function createTask(overrides: Partial<Task> = {}): Task {

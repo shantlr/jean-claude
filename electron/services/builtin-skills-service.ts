@@ -2,8 +2,9 @@ import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 
-import { dbg } from '../lib/debug';
 import { buildSkillMd } from '../lib/skill-frontmatter';
+import { dbg } from '../lib/debug';
+
 
 const JC_BUILTIN_SKILLS_DIR = path.join(
   os.homedir(),

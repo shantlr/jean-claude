@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
 
 import { api } from '@/lib/api';
 
@@ -101,8 +101,8 @@ export function useInlineCompletion({
 
   // Clear completion and debounce a new request only after typing.
   useEffect(() => {
-    setCompletion(null);
-    setCompletionPosition(null);
+    startTransition(() => setCompletion(null));
+    startTransition(() => setCompletionPosition(null));
 
     const currentText = textRef.current;
     const currentCursorPosition = cursorPositionRef.current;

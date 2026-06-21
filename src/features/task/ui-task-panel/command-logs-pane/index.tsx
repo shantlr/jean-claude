@@ -1,35 +1,39 @@
-import clsx from 'clsx';
-import { RotateCw, Search, Trash2, X } from 'lucide-react';
 import {
+  type MouseEvent,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type MouseEvent,
 } from 'react';
+import { RotateCw, Search, Trash2, X } from 'lucide-react';
+import clsx from 'clsx';
 
+
+
+import {
+  getRunCommandLogLineCount,
+  type RunCommandLogs,
+  type RunCommandLogState,
+  useTaskMessagesStore,
+} from '@/stores/task-messages';
+import { api } from '@/lib/api';
 import { Button } from '@/common/ui/button';
+import { ConfirmRunModal } from '@/features/agent/ui-run-button/confirm-run-modal';
+import { getRunCommandDisplayName } from '@shared/run-command-types';
 import { IconButton } from '@/common/ui/icon-button';
 import { Input } from '@/common/ui/input';
-import { Kbd } from '@/common/ui/kbd';
-import { Separator } from '@/common/ui/separator';
-import { ConfirmRunModal } from '@/features/agent/ui-run-button/confirm-run-modal';
-import { KillPortsModal } from '@/features/agent/ui-run-button/kill-ports-modal';
 import { InteractiveLog } from '@/features/common/interactive-log';
+import { Kbd } from '@/common/ui/kbd';
 import { keyEventToTerminalInput } from '@/features/common/interactive-log/key-event-to-terminal-input';
+import { KillPortsModal } from '@/features/agent/ui-run-button/kill-ports-modal';
+import { Separator } from '@/common/ui/separator';
+import { useCommandLogsPaneWidth } from '@/stores/navigation';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useProjectCommands } from '@/hooks/use-project-commands';
 import { useRunCommands } from '@/hooks/use-run-commands';
-import { api } from '@/lib/api';
-import { useCommandLogsPaneWidth } from '@/stores/navigation';
-import {
-  getRunCommandLogLineCount,
-  type RunCommandLogState,
-  type RunCommandLogs,
-  useTaskMessagesStore,
-} from '@/stores/task-messages';
-import { getRunCommandDisplayName } from '@shared/run-command-types';
+
+
 
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from '../constants';
 
@@ -200,7 +204,8 @@ export function CommandLogsPane({
         restartInFlightRef.current = false;
       }
     },
-    [startCommand],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   const requestRestartActiveCommand = useCallback(() => {

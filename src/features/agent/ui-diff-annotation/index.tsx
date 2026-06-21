@@ -1,8 +1,10 @@
+import { useCallback, useMemo, useState } from 'react';
 import { MessageCircle } from 'lucide-react';
-import { useMemo, useState, useCallback } from 'react';
 
-import type { InlineComment } from '@/features/agent/ui-diff-view';
+
 import type { FileAnnotation } from '@/lib/api';
+import type { InlineComment } from '@/features/agent/ui-diff-view';
+
 
 /**
  * Hook to convert FileAnnotation[] to InlineComment[] format for the DiffView.

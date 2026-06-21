@@ -1,25 +1,28 @@
-import clsx from 'clsx';
 import {
-  X,
-  Shield,
-  Wand2,
-  Loader2,
-  ChevronRight,
+  Bug,
+  Check,
   ChevronDown,
+  ChevronRight,
+  Copy,
   GitBranch,
   GitCommitHorizontal,
-  Copy,
-  Check,
-  Bug,
+  Loader2,
+  Shield,
+  Wand2,
+  X,
 } from 'lucide-react';
+import clsx from 'clsx';
 import { useState } from 'react';
+
+
 
 import { Button } from '@/common/ui/button';
 import { IconButton } from '@/common/ui/icon-button';
-import { Separator } from '@/common/ui/separator';
-import { useSkills } from '@/hooks/use-skills';
 import type { PermissionScope } from '@shared/permission-types';
+import { Separator } from '@/common/ui/separator';
 import type { Skill } from '@shared/skill-types';
+import { useSkills } from '@/hooks/use-skills';
+
 
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from './constants';
 

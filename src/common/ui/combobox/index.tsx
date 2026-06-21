@@ -1,6 +1,6 @@
-import clsx from 'clsx';
 import { Check, ChevronDown, Search } from 'lucide-react';
 import React, {
+  startTransition,
   useCallback,
   useEffect,
   useId,
@@ -8,12 +8,15 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import clsx from 'clsx';
 import { createPortal } from 'react-dom';
 
-import { useRegisterOverlay } from '@/common/context/overlay';
-import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
+import { type ComponentSize, sizeClasses } from '@/common/ui/styles';
 import { Input } from '@/common/ui/input';
-import { sizeClasses, type ComponentSize } from '@/common/ui/styles';
+import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
+import { useRegisterOverlay } from '@/common/context/overlay';
+
+
 
 export interface ComboboxOption {
   value: string;
@@ -107,7 +110,7 @@ export function Combobox({
 
   useEffect(() => {
     if (focusedIndex >= filteredOptions.length) {
-      setFocusedIndex(Math.max(filteredOptions.length - 1, 0));
+      startTransition(() => setFocusedIndex(Math.max(filteredOptions.length - 1, 0)));
     }
   }, [filteredOptions.length, focusedIndex]);
 
@@ -169,7 +172,6 @@ export function Combobox({
                   ? window.innerWidth - position.left
                   : undefined,
               maxHeight: position.maxHeight,
-              width: triggerRef.current?.offsetWidth,
               maxWidth: position.maxWidth,
             }}
           >

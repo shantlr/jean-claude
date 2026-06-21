@@ -1,12 +1,14 @@
-import { useMemo } from 'react';
 import TurndownService from 'turndown';
+import { useMemo } from 'react';
 
-import { MarkdownContent } from '@/features/agent/ui-markdown-content';
+
 import {
-  replaceAzureDevOpsMentions,
   type MentionDisplayNames,
+  replaceAzureDevOpsMentions,
 } from '@/lib/azure-devops-mentions';
+import { MarkdownContent } from '@/features/agent/ui-markdown-content';
 import { rewriteAzureImageUrls } from '@/lib/azure-image-proxy';
+
 
 // Shared Turndown instance for HTML to Markdown conversion
 const turndown = new TurndownService({

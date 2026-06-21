@@ -1,7 +1,7 @@
 export function CountdownRing({
   startAt,
   endAt,
-  now = Date.now(),
+  now = 0,
   size = 28,
   strokeWidth = 2.5,
   className,

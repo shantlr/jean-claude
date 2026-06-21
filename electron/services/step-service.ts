@@ -12,19 +12,22 @@ import type {
 } from '@shared/types';
 
 import { AgentMessageRepository } from '../database/repositories/agent-messages';
+import { createDebug } from '../lib/debug';
 import { ProjectRepository } from '../database/repositories/projects';
 import { SettingsRepository } from '../database/repositories/settings';
-import { TaskStepRepository } from '../database/repositories/task-steps';
 import { TaskRepository } from '../database/repositories/tasks';
-import { createDebug } from '../lib/debug';
+import { TaskStepRepository } from '../database/repositories/task-steps';
+
 
 import {
   emitStepDelete,
   emitStepUpsert,
   emitTaskUpsert,
 } from './cache-event-service';
-import { summarizeNormalizedMessages } from './session-summary-service';
 import { buildSummaryGenerationPrompt } from './session-summary-service';
+import { summarizeNormalizedMessages } from './session-summary-service';
+
+
 
 const debug = createDebug('jc:step-service');
 

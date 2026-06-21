@@ -1,8 +1,8 @@
 import { sql } from 'kysely';
 
 import type {
-  ProjectCommand,
   NewProjectCommand,
+  ProjectCommand,
   RunCommandEnvVar,
   UpdateProjectCommand,
 } from '@shared/run-command-types';

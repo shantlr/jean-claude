@@ -1,7 +1,7 @@
 import type {
+  NormalizationEvent,
   NormalizedEntry,
   NormalizedResult,
-  NormalizationEvent,
   TokenUsage,
 } from '@shared/normalized-message-v2';
 

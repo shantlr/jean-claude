@@ -1,6 +1,6 @@
 import { applyPalette, GIFEncoder, quantize } from 'gifenc';
 import { Film, Loader2, Pause, Play, X } from 'lucide-react';
-import { type PointerEvent, useEffect, useRef, useState } from 'react';
+import { type PointerEvent, startTransition, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/common/ui/button';
 import { formatBytes } from '@/lib/format-bytes';
@@ -281,30 +281,30 @@ export function VideoGifConverter({
 
   useEffect(() => {
     if (!file) {
-      setPreviewUrl(null);
+      startTransition(() => setPreviewUrl(null));
       return;
     }
 
     const nextPreviewUrl = URL.createObjectURL(file);
-    setPreviewUrl(nextPreviewUrl);
+    startTransition(() => setPreviewUrl(nextPreviewUrl));
     return () => {
       URL.revokeObjectURL(nextPreviewUrl);
     };
   }, [file]);
 
   useEffect(() => {
-    setDuration(0);
-    setSourceSize({ width: 0, height: 0 });
-    setStartTime(0);
-    setEndTime(6);
-    setScale(DEFAULT_SCALE);
-    setColors(DEFAULT_QUALITY);
-    setSpeed(DEFAULT_SPEED);
-    setProgress(0);
-    setError(null);
-    setFilmstripFrames([]);
-    setIsPreviewPlaying(false);
-    setPreviewTime(0);
+    startTransition(() => setDuration(0));
+    startTransition(() => setSourceSize({ width: 0, height: 0 }));
+    startTransition(() => setStartTime(0));
+    startTransition(() => setEndTime(6));
+    startTransition(() => setScale(DEFAULT_SCALE));
+    startTransition(() => setColors(DEFAULT_QUALITY));
+    startTransition(() => setSpeed(DEFAULT_SPEED));
+    startTransition(() => setProgress(0));
+    startTransition(() => setError(null));
+    startTransition(() => setFilmstripFrames([]));
+    startTransition(() => setIsPreviewPlaying(false));
+    startTransition(() => setPreviewTime(0));
     isPreviewPlayingRef.current = false;
   }, [file]);
 
@@ -331,7 +331,7 @@ export function VideoGifConverter({
 
   useEffect(() => {
     if (!previewUrl || !duration) {
-      setFilmstripFrames([]);
+      startTransition(() => setFilmstripFrames([]));
       return;
     }
 

@@ -1,5 +1,12 @@
-import clsx from 'clsx';
-import Fuse from 'fuse.js';
+import type {
+  ChangeEvent,
+  ClipboardEvent,
+  DragEvent,
+  KeyboardEvent,
+  SyntheticEvent,
+  TextareaHTMLAttributes,
+  UIEvent,
+} from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -12,58 +19,57 @@ import {
   X,
 } from 'lucide-react';
 import {
-  useState,
-  useRef,
+  forwardRef,
+  startTransition,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
-  forwardRef,
-  useImperativeHandle,
+  useRef,
+  useState,
 } from 'react';
-import type {
-  KeyboardEvent,
-  ChangeEvent,
-  ClipboardEvent,
-  DragEvent,
-  SyntheticEvent,
-  TextareaHTMLAttributes,
-  UIEvent,
-} from 'react';
+import clsx from 'clsx';
 import { createPortal } from 'react-dom';
+import Fuse from 'fuse.js';
 
-import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
-import { FileEditorDialog } from '@/features/common/ui-file-editor-dialog';
-import { useInlineCompletion } from '@/hooks/use-inline-completion';
+
+
+import {
+  type FlatProjectFeature,
+  flattenProjectFeatures,
+  getFeatureReferenceText,
+  getReferencedFeatures,
+} from '@/lib/prompt-feature-context';
 import {
   getFilePathSuggestions,
   useProjectFilePaths,
 } from '@/hooks/use-project-file-paths';
 import {
+  MAX_FILES,
   processAttachmentFile,
   processAttachmentPath,
-  MAX_FILES,
 } from '@/lib/file-attachment-utils';
-import { formatBytes } from '@/lib/format-bytes';
-import { formatPastedPromptContent } from '@/lib/format-pasted-prompt-content';
-import { processImageFile, MAX_IMAGES } from '@/lib/image-utils';
-import {
-  flattenProjectFeatures,
-  getFeatureReferenceText,
-  getReferencedFeatures,
-  type FlatProjectFeature,
-} from '@/lib/prompt-feature-context';
-import { resolveMessageInputText } from '@/lib/resolve-message-input-text';
-import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
-import { resolvePromptSnippet } from '@/lib/resolve-snippet-template';
-import { useToastStore } from '@/stores/toasts';
+import { MAX_IMAGES, processImageFile } from '@/lib/image-utils';
+import type { ProjectFeatureMap, PromptSnippet } from '@shared/types';
 import type {
   PromptFilePart,
   PromptImagePart,
 } from '@shared/agent-backend-types';
+import { FileEditorDialog } from '@/features/common/ui-file-editor-dialog';
+import { formatBytes } from '@/lib/format-bytes';
+import { formatPastedPromptContent } from '@/lib/format-pasted-prompt-content';
+import { resolveMessageInputText } from '@/lib/resolve-message-input-text';
+import { resolvePromptSnippet } from '@/lib/resolve-snippet-template';
 import type { Skill } from '@shared/skill-types';
-import type { ProjectFeatureMap, PromptSnippet } from '@shared/types';
+import type { SnippetVariableContext } from '@/lib/resolve-snippet-template';
+import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
+import { useInlineCompletion } from '@/hooks/use-inline-completion';
+import { useToastStore } from '@/stores/toasts';
 
+
+
+import { useLatestRef } from '@/hooks/use-latest-ref';
 const COMMANDS = [
   { command: '/init', description: 'Initialize CLAUDE.md in project' },
   { command: '/compact', description: 'Compact conversation history' },
@@ -633,7 +639,7 @@ export const PromptTextarea = forwardRef<
   // Reset selected index when filtered items change
   useEffect(() => {
     shouldScrollSelectionRef.current = false;
-    setSelectedIndex(defaultSelectedIndex);
+    startTransition(() => setSelectedIndex(defaultSelectedIndex));
   }, [defaultSelectedIndex, filteredItems]);
 
   // Auto-scroll only for keyboard navigation, not mouse hover.
@@ -662,7 +668,7 @@ export const PromptTextarea = forwardRef<
       }
       // Keep dismissed while adding characters after selection
     } else {
-      setDropdownDismissed(false);
+      startTransition(() => setDropdownDismissed(false));
     }
     prevValueRef.current = value;
   }, [value, dropdownDismissed, activeMentionToken, activeFeatureToken]);
@@ -1206,7 +1212,6 @@ export const PromptTextarea = forwardRef<
                 dropdownPosition.actualAlign === 'right'
                   ? window.innerWidth - dropdownPosition.left
                   : undefined,
-              width: containerRef.current?.getBoundingClientRect().width,
               maxHeight: dropdownPosition.maxHeight,
               maxWidth: dropdownPosition.maxWidth,
             }}
@@ -1691,8 +1696,7 @@ function ImagePreviewDialog({
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const img = images[currentIndex];
 
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  const onCloseRef = useLatestRef(onClose);
 
   useEffect(() => {
     const handleKeyDown = (e: globalThis.KeyboardEvent) => {
@@ -1707,7 +1711,7 @@ function ImagePreviewDialog({
     };
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [images.length]);
+  }, [images.length, onCloseRef]);
 
   if (!img) return null;
 

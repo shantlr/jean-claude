@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { api } from '@/lib/api';
 import type {
   NewMcpServerTemplate,
-  UpdateMcpServerTemplate,
   NewProjectMcpOverride,
+  UpdateMcpServerTemplate,
 } from '@shared/mcp-types';
+import { api } from '@/lib/api';
+
 
 // MCP Templates
 export function useMcpTemplates() {

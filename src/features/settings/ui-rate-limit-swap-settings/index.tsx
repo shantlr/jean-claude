@@ -1,50 +1,54 @@
 import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import clsx from 'clsx';
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
 import { GripVertical, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
+import clsx from 'clsx';
+import { CSS } from '@dnd-kit/utilities';
 
-import { Button } from '@/common/ui/button';
-import { Switch } from '@/common/ui/switch';
+
+
 import {
-  BackendPresetSelector,
-  findMatchingBackendModelPresetId,
-} from '@/features/agent/ui-backend-preset-selector';
-import {
-  useBackendModelOptions,
   type BackendModelOption,
+  useBackendModelOptions,
 } from '@/features/agent/ui-backend-selector';
-import { ModelSelector } from '@/features/agent/ui-model-selector';
-import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
-import { useBackendModels } from '@/hooks/use-backend-models';
-import {
-  useBackendsSetting,
-  useBackendModelPresetsSetting,
-  useRateLimitSwapSetting,
-  useUpdateRateLimitSwapSetting,
-} from '@/hooks/use-settings';
-import type { AgentBackendType } from '@shared/agent-backend-types';
 import type {
   BackendModelPreset,
   ModelPreference,
   RateLimitSwapEntry,
   ThinkingEffort,
 } from '@shared/types';
+import {
+  BackendPresetSelector,
+  findMatchingBackendModelPresetId,
+} from '@/features/agent/ui-backend-preset-selector';
+import {
+  useBackendModelPresetsSetting,
+  useBackendsSetting,
+  useRateLimitSwapSetting,
+  useUpdateRateLimitSwapSetting,
+} from '@/hooks/use-settings';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import { Button } from '@/common/ui/button';
+import { ModelSelector } from '@/features/agent/ui-model-selector';
+import { Switch } from '@/common/ui/switch';
+import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
+import { useBackendModels } from '@/hooks/use-backend-models';
+
+
 
 const GRID_CLASS =
   'grid grid-cols-[44px_minmax(150px,1.45fr)_minmax(120px,1.05fr)_minmax(110px,1.05fr)_minmax(140px,1.35fr)_36px] items-center gap-3';

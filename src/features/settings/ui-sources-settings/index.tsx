@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import {
   AlertTriangle,
   Download,
@@ -7,18 +6,22 @@ import {
   Plus,
   RefreshCw,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, RefObject } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import clsx from 'clsx';
 
-import { Button } from '@/common/ui/button';
-import { Checkbox } from '@/common/ui/checkbox';
-import { Chip } from '@/common/ui/chip';
-import { Input } from '@/common/ui/input';
+
 import {
   DetailPlaceholder,
   ListDetailLayout,
   ListPane,
 } from '@/common/ui/list-detail-layout';
+import type {
+  SourceInstallStatus,
+  SourceItemKind,
+  SourceItemView,
+  SourceView,
+} from '@shared/source-management-types';
 import {
   useAddGithubSource,
   useInstallSourceItems,
@@ -26,16 +29,16 @@ import {
   useSources,
   useUpdateSourceInstall,
 } from '@/hooks/use-sources';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { Chip } from '@/common/ui/chip';
 import { formatRelativeTime } from '@/lib/time';
+import { Input } from '@/common/ui/input';
 import { useSkillsRailWidth } from '@/stores/navigation';
 import { useToastStore } from '@/stores/toasts';
-import type { AgentBackendType } from '@shared/agent-backend-types';
-import type {
-  SourceInstallStatus,
-  SourceItemKind,
-  SourceItemView,
-  SourceView,
-} from '@shared/source-management-types';
+
+
 
 type SourceItemSelection = {
   targetName: string;
@@ -458,7 +461,7 @@ function SourceDetail({ source }: { source: SourceView }) {
         .filter((item) => isInstallableStatus(item.status))
         .map((item) => [item.id, item]),
     );
-    setSelections((current) => {
+    startTransition(() => setSelections((current) => {
       let changed = false;
       const next: Record<string, SourceItemSelection> = {};
 
@@ -481,7 +484,7 @@ function SourceDetail({ source }: { source: SourceView }) {
       }
 
       return changed ? next : current;
-    });
+    }));
   }, [source.id, source.items]);
 
   const handleSelectionChange = useCallback(

@@ -1,9 +1,9 @@
 import {
-  DEFAULT_PROJECT_FEATURE_MAP_SLOT,
-  isAiSkillSlotsSetting,
   type AiSkillSlotConfig,
   type AiSkillSlotKey,
   type AiSkillSlotsSetting,
+  DEFAULT_PROJECT_FEATURE_MAP_SLOT,
+  isAiSkillSlotsSetting,
 } from '@shared/types';
 
 import { SettingsRepository } from '../database/repositories/settings';

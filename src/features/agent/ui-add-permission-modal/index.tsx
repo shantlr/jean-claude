@@ -1,11 +1,13 @@
+import { startTransition, useCallback, useEffect, useMemo, useState } from 'react';
 import { Shield } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
 
+
+import { api } from '@/lib/api';
 import { Checkbox } from '@/common/ui/checkbox';
 import { Modal } from '@/common/ui/modal';
-import { api } from '@/lib/api';
-import { useToastStore } from '@/stores/toasts';
 import { parseCompoundCommand } from '@shared/shell-parse';
+import { useToastStore } from '@/stores/toasts';
+
 
 type PermissionScope = 'project' | 'worktree' | 'global';
 
@@ -37,9 +39,9 @@ export function AddPermissionModal({
   // Reset entries whenever the modal opens (handles same-command reopen)
   useEffect(() => {
     if (isOpen) {
-      setEntries(parsedCommands.map((cmd) => ({ checked: true, value: cmd })));
-      setScope('project');
-      setIsSubmitting(false);
+      startTransition(() => setEntries(parsedCommands.map((cmd) => ({ checked: true, value: cmd }))));
+      startTransition(() => setScope('project'));
+      startTransition(() => setIsSubmitting(false));
     }
   }, [isOpen, parsedCommands]);
 

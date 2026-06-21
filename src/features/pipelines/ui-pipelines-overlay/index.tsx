@@ -1,25 +1,30 @@
-import { Settings } from 'lucide-react';
 import { type MouseEvent, useCallback, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
 import { RemoveScroll } from 'react-remove-scroll';
+import { Settings } from 'lucide-react';
+
+
 
 import {
   useKeyboardLayer,
   useRegisterKeyboardBindings,
 } from '@/common/context/keyboard-bindings';
+import { useProjects, useReorderProjects } from '@/hooks/use-projects';
 import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
+import type { Project } from '@shared/types';
 import { Separator } from '@/common/ui/separator';
-import { useProjects, useReorderProjects } from '@/hooks/use-projects';
+import type { TrackedPipeline } from '@shared/pipeline-types';
 import { useAllTrackedPipelinesGrouped } from '@/hooks/use-tracked-pipelines';
 import { useOverlaysStore } from '@/stores/overlays';
-import type { TrackedPipeline } from '@shared/pipeline-types';
-import type { Project } from '@shared/types';
 
+
+
+import { getNavId, Sidebar } from './sidebar';
 import { RunList } from './run-list';
-import { Sidebar, getNavId } from './sidebar';
 import { TriggerRunDialog } from './trigger-run-dialog';
+
 
 export type SidebarFilter =
   | { type: 'all' }

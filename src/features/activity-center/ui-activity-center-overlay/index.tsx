@@ -1,6 +1,3 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
-import clsx from 'clsx';
 import {
   Ban,
   CalendarClock,
@@ -14,34 +11,43 @@ import {
   XCircle,
 } from 'lucide-react';
 import {
+  type CSSProperties,
+  startTransition,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
 } from 'react';
+import clsx from 'clsx';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
 import { RemoveScroll } from 'react-remove-scroll';
+import { useNavigate } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
 
+
+
+import {
+  type BackgroundJob,
+  useBackgroundJobsStore,
+} from '@/stores/background-jobs';
 import {
   useKeyboardLayer,
   useRegisterKeyboardBindings,
 } from '@/common/context/keyboard-bindings';
-import { useProjects } from '@/hooks/use-projects';
 import { api } from '@/lib/api';
+import type { AppNotification } from '@shared/notification-types';
+import type { DebugLogEntry } from '@shared/debug-log-types';
 import { formatRelativeTime } from '@/lib/time';
-import {
-  useBackgroundJobsStore,
-  type BackgroundJob,
-} from '@/stores/background-jobs';
+import type { Project } from '@shared/types';
 import { useDebugLogsStore } from '@/stores/debug-logs';
 import { useNotificationsStore } from '@/stores/notifications';
 import { useOverlaysStore } from '@/stores/overlays';
+import { useProjects } from '@/hooks/use-projects';
 import { useToastStore } from '@/stores/toasts';
-import type { DebugLogEntry } from '@shared/debug-log-types';
-import type { AppNotification } from '@shared/notification-types';
-import type { Project } from '@shared/types';
+
+
 
 // ---------------------------------------------------------------------------
 // Types
@@ -545,13 +551,9 @@ export function ActivityCenterOverlay({
   ]);
 
   // Reset selection when tab or search changes
-  const prevTab = useRef(activeTab);
-  const prevSearch = useRef(search);
-  if (prevTab.current !== activeTab || prevSearch.current !== search) {
-    prevTab.current = activeTab;
-    prevSearch.current = search;
-    setSelectedIndex(-1);
-  }
+  useEffect(() => {
+    startTransition(() => setSelectedIndex(-1));
+  }, [activeTab, search]);
 
   const scrollToSelected = useCallback((index: number) => {
     const container = scrollRef.current;

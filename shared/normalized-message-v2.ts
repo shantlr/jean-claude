@@ -1,5 +1,6 @@
-import type { TodoItem } from './agent-types';
 import type { InteractionMode } from './types';
+import type { TodoItem } from './agent-types';
+
 export type NormalizedEntry = {
   id: string;
   date: string;

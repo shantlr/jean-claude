@@ -1,8 +1,9 @@
 import { createFileRoute, Navigate } from '@tanstack/react-router';
 import { useEffect } from 'react';
 
-import { useProjectTasks } from '@/hooks/use-tasks';
 import { useLastTaskForProject } from '@/stores/navigation';
+import { useProjectTasks } from '@/hooks/use-tasks';
+
 
 export const Route = createFileRoute('/projects/$projectId/')({
   component: ProjectIndex,

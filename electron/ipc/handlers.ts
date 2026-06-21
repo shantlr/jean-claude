@@ -1,40 +1,68 @@
-import { exec, spawn } from 'child_process';
 import * as crypto from 'crypto';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
+import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 
+
 import {
-  BrowserWindow,
-  Notification,
   app,
-  ipcMain,
+  BrowserWindow,
   dialog,
+  ipcMain,
+  Notification,
   shell,
 } from 'electron';
 
-import type { AgentBackendType, PromptPart } from '@shared/agent-backend-types';
+import type {
+  AddGitHubSourceParams,
+  InstallSourceItemsParams,
+  UpdateSourceInstallParams,
+} from '@shared/source-management-types';
 import {
   AGENT_CHANNELS,
   PermissionResponse,
   QuestionResponse,
 } from '@shared/agent-types';
+import type { AgentBackendType, PromptPart } from '@shared/agent-backend-types';
+import {
+  type AiGenerationSetting,
+  type AppSettings,
+  type EditorSetting,
+  type FeatureMapStepMeta,
+  type InteractionMode,
+  isAiSkillSlotsSetting,
+  isFeatureMapStepMeta,
+  isOpenAiImageModel,
+  isSkillCreationStepMeta,
+  type ModelPreference,
+  type NewTaskStep,
+  type NewToken,
+  PRESET_EDITORS,
+  type Project,
+  type ReviewerConfig,
+  type ReviewStepMeta,
+  type SkillCreationStepMeta,
+  type Task,
+  type ThinkingEffort,
+  type UpdateTaskStep,
+  type UpdateToken,
+  type UsageDisplaySetting,
+} from '@shared/types';
 import type {
   CacheSubscription,
   CacheSubscriptionUpdate,
 } from '@shared/cache-events';
-import type { GlobalPromptResponse } from '@shared/global-prompt-types';
-import { getImageMimeType } from '@shared/image-types';
-import type {
-  NewMcpServerTemplate,
-  UpdateMcpServerTemplate,
-  NewProjectMcpOverride,
-} from '@shared/mcp-types';
 import type {
   GetYamlParametersIpcParams,
   QueueBuildIpcParams,
 } from '@shared/pipeline-types';
+import type {
+  NewMcpServerTemplate,
+  NewProjectMcpOverride,
+  UpdateMcpServerTemplate,
+} from '@shared/mcp-types';
 import type {
   NewProjectCommand,
   NewProjectCommandGroup,
@@ -43,73 +71,182 @@ import type {
   UpdateProjectCommandGroup,
 } from '@shared/run-command-types';
 import type {
-  AddGitHubSourceParams,
-  InstallSourceItemsParams,
-  UpdateSourceInstallParams,
-} from '@shared/source-management-types';
-import { isValidTeamsJoinUrl } from '@shared/teams-url';
-import {
-  PRESET_EDITORS,
-  type InteractionMode,
-  type ModelPreference,
-  type ThinkingEffort,
-  type AiGenerationSetting,
-  type UsageDisplaySetting,
-  type EditorSetting,
-  type AppSettings,
-  type NewToken,
-  type UpdateToken,
-  type NewTaskStep,
-  type Project,
-  type Task,
-  type UpdateTaskStep,
-  type SkillCreationStepMeta,
-  type FeatureMapStepMeta,
-  isSkillCreationStepMeta,
-  isFeatureMapStepMeta,
-  isAiSkillSlotsSetting,
-  type ReviewerConfig,
-  type ReviewStepMeta,
-  isOpenAiImageModel,
-} from '@shared/types';
-import type { UsageProviderType } from '@shared/usage-types';
-import type {
   NewWorkActivityEvent,
   WorkActivityWeekParams,
 } from '@shared/work-activity-types';
 import type { CreateWorkItemVerificationNoteParams } from '@shared/work-item-verification-note-types';
+import { getImageMimeType } from '@shared/image-types';
+import type { GlobalPromptResponse } from '@shared/global-prompt-types';
+import { isValidTeamsJoinUrl } from '@shared/teams-url';
+import type { UsageProviderType } from '@shared/usage-types';
 
-import type { PermissionScope } from '../../shared/permission-types';
+
+
+import * as backendModelsService from '../services/backend-models-service';
 import {
-  ProjectRepository,
-  TaskRepository,
-  ProviderRepository,
-  TokenRepository,
-  SettingsRepository,
-  DebugRepository,
-  TaskSummaryRepository,
-  ProjectTodoRepository,
+  activateMcpServer,
+  deactivateMcpServer,
+  getEnabledTemplatesForProject,
+  getUnifiedMcpServers,
+  MCP_PRESETS,
+  substituteVariables,
+} from '../services/mcp-template-service';
+import {
+  activateWorkItem,
+  addPullRequestComment,
+  addPullRequestFileComment,
+  addThreadReply,
+  cancelBuild,
+  cloneRepository,
+  type CloneRepositoryParams,
+  createRelease as createAzureRelease,
+  createPullRequest,
+  deleteThreadComment,
+  getBuild,
+  getBuildDefinitionDetail,
+  getBuildLog,
+  getBuildTimeline,
+  getCommitChanges,
+  getCurrentUser,
+  getFileContentAtCommit,
+  getIterations,
+  getOrganizationsByTokenId,
+  getProviderDetails,
+  getPullRequest,
+  getPullRequestChanges,
+  getPullRequestCommits,
+  getPullRequestFileContent,
+  getPullRequestPolicyEvaluations,
+  getPullRequestThreads,
+  getPullRequestWorkItems,
+  getRelease,
+  getTokenExpiration,
+  getYamlPipelineParameters,
+  linkWorkItemToPr,
+  listBranches,
+  listBuilds,
+  listPullRequests,
+  listReleases,
+  publishPullRequest,
+  queryWorkItems,
+  queueBuild,
+  requeuePolicyEvaluation,
+  searchIdentities,
+  setPullRequestAutoComplete,
+  setThreadCommentLike,
+  unlinkWorkItemFromPr,
+  updatePullRequestDescription,
+  updatePullRequestTitle,
+  updateThreadComment,
+  updateThreadStatus,
+  uploadPullRequestAttachment,
+  validateTokenAndGetOrganizations,
+  votePullRequest,
+} from '../services/azure-devops-service';
+import {
+  addGitHubSource,
+  installSourceItems,
+  listSources,
+  refreshSource,
+  removeSource,
+  updateSourceInstall,
+} from '../services/source-management-service';
+import {
+  addGlobalPermission,
+  editGlobalPermission,
+  readGlobalPermissions,
+  removeGlobalPermission,
+  validatePermissionScope,
+  writeGlobalPermissions,
+} from '../services/global-permissions-service';
+import {
+  addProjectPermission,
+  addProjectPermissionRule,
+  addWorktreePermission,
+  buildToolPermissionConfig,
+  editProjectPermissionRule,
+  normalizeToolRequest,
+  readProjectPermissions,
+  readProjectPromptPreface,
+  readSettings,
+  removeProjectPermissionRule,
+  writeProjectPromptPreface,
+  writeSettings,
+} from '../services/permission-settings-service';
+import {
   AiUsageRepository,
+  DebugRepository,
+  ProjectRepository,
+  ProjectTodoRepository,
+  ProviderRepository,
+  SettingsRepository,
+  TaskRepository,
+  TaskSummaryRepository,
+  TokenRepository,
 } from '../database/repositories';
-import { McpTemplateRepository } from '../database/repositories/mcp-templates';
-import { NotificationRepository } from '../database/repositories/notifications';
-import { ProjectCommandGroupRepository } from '../database/repositories/project-command-groups';
-import { ProjectCommandRepository } from '../database/repositories/project-commands';
-import { ProjectMcpOverrideRepository } from '../database/repositories/project-mcp-overrides';
-import { ProjectRunConfigRepository } from '../database/repositories/project-run-config';
-import { TaskStepRepository } from '../database/repositories/task-steps';
-import { TrackedPipelineRepository } from '../database/repositories/tracked-pipelines';
-import { UsageSnapshotRepository } from '../database/repositories/usage-snapshots';
 import {
-  NewProject,
-  NewTask,
-  NewProvider,
-  UpdateProject,
-  UpdateTask,
-  UpdateProvider,
-} from '../database/schema';
-import { dbg } from '../lib/debug';
-import { pathExists } from '../lib/fs';
+  assertValidSourceSkillPath,
+  assertValidWorkspacePath,
+  cleanupSkillWorkspace,
+  getOrCreateSystemProject,
+  getSkillWorkspacePath,
+} from '../services/system-project-service';
+import {
+  buildProjectFeatureMapPrompt,
+  cleanupFeatureMapTempDir,
+  FEATURE_MAP_GIT_PATH,
+  getExistingProjectFeatureMapPath,
+  getFeatureMapTempPaths,
+  getProjectFeatureMap,
+  saveProjectFeatureMapFromTemp,
+} from '../services/project-feature-map-generation-service';
+import {
+  buildPromptActivityText,
+  buildTaskCreationActivityText,
+} from '../services/prompt-utils';
+import {
+  checkMergeConflicts,
+  cleanupMissingWorktree,
+  cleanupWorktree,
+  commitWorktreeChanges,
+  createWorktree,
+  deleteProjectWorktreesFolder,
+  getCurrentBranch,
+  getCurrentCommitHash,
+  getProjectBranches,
+  getProjectCommitIgnore,
+  getWorktreeCommitDiff,
+  getWorktreeCommitFileContent,
+  getWorktreeCommits,
+  getWorktreeDiff,
+  getWorktreeFileContent,
+  getWorktreeStatus,
+  getWorktreeUnifiedDiff,
+  isGitRepository,
+  mergeWorktree,
+  pushBranch,
+  updateProjectCommitIgnore,
+} from '../services/worktree-service';
+import {
+  cleanupProjectLogoPath,
+  cleanupProjectLogos,
+  deleteGeneratedProjectLogo,
+  generateProjectLogo,
+  listGeneratedProjectLogos,
+  removeProjectLogo,
+  selectGeneratedProjectLogo,
+  uploadProjectLogo,
+} from '../services/project-logo-service';
+import {
+  complete as completeText,
+  getDailyUsage as getCompletionDailyUsage,
+  resetClient as resetCompletionClient,
+  testCompletion,
+} from '../services/completion-service';
+import {
+  type CopilotDeviceCode,
+  CopilotDeviceFlowService,
+} from '../services/copilot-device-flow-service';
 import {
   createAgent,
   deleteAgent,
@@ -121,96 +258,6 @@ import {
   previewLegacyAgentMigration,
   updateAgent,
 } from '../services/agent-management-service';
-import { agentResourceMonitorService } from '../services/agent-resource-monitor-service';
-import { agentService } from '../services/agent-service';
-import { agentUsageService } from '../services/agent-usage-service';
-import {
-  listOpenAiBaseImageOptions,
-  removeOpenAiBaseImage,
-  saveOpenAiBaseImage,
-  setOpenAiBaseImageSelection,
-} from '../services/ai-generation-settings-service';
-import { resolveAiSkillSlot } from '../services/ai-skill-slot-resolver';
-import {
-  getOrganizationsByTokenId,
-  validateTokenAndGetOrganizations,
-  getTokenExpiration,
-  getProviderDetails,
-  queryWorkItems,
-  getIterations,
-  createPullRequest,
-  cloneRepository,
-  listPullRequests,
-  getPullRequest,
-  updatePullRequestTitle,
-  updatePullRequestDescription,
-  uploadPullRequestAttachment,
-  getPullRequestWorkItems,
-  linkWorkItemToPr,
-  unlinkWorkItemFromPr,
-  getPullRequestPolicyEvaluations,
-  requeuePolicyEvaluation,
-  getPullRequestCommits,
-  getPullRequestChanges,
-  getPullRequestFileContent,
-  getCommitChanges,
-  getFileContentAtCommit,
-  getPullRequestThreads,
-  addPullRequestComment,
-  addPullRequestFileComment,
-  addThreadReply,
-  updateThreadComment,
-  deleteThreadComment,
-  setThreadCommentLike,
-  updateThreadStatus,
-  searchIdentities,
-  getCurrentUser,
-  activateWorkItem,
-  listBuilds,
-  listReleases,
-  getBuild,
-  getBuildTimeline,
-  getBuildLog,
-  getRelease,
-  listBranches,
-  getBuildDefinitionDetail,
-  getYamlPipelineParameters,
-  queueBuild,
-  createRelease as createAzureRelease,
-  cancelBuild,
-  votePullRequest,
-  setPullRequestAutoComplete,
-  publishPullRequest,
-  type CloneRepositoryParams,
-} from '../services/azure-devops-service';
-import { fetchImageAsBase64 } from '../services/azure-image-proxy-service';
-import {
-  readBackendUserConfig,
-  writeBackendUserConfig,
-} from '../services/backend-config-settings-service';
-import * as backendModelsService from '../services/backend-models-service';
-import {
-  emitCacheEvent,
-  emitStepUpsert,
-  emitTaskDelete,
-  emitTaskUpsert,
-  setCacheSubscriptions,
-} from '../services/cache-event-service';
-import {
-  generateCommitMessageForTask,
-  generateMergeMessageForTask,
-} from '../services/commit-message-generation-service';
-import {
-  complete as completeText,
-  testCompletion,
-  resetClient as resetCompletionClient,
-  getDailyUsage as getCompletionDailyUsage,
-} from '../services/completion-service';
-import {
-  CopilotDeviceFlowService,
-  type CopilotDeviceCode,
-} from '../services/copilot-device-flow-service';
-import { closeEditorWindowsForTaskWorktree } from '../services/editor-automation-service';
 import {
   createFeedNote,
   deleteFeedNote,
@@ -224,130 +271,88 @@ import {
   updateFeedNote,
 } from '../services/feed-service';
 import {
-  readGlobalPermissions,
-  writeGlobalPermissions,
-  validatePermissionScope,
-  addGlobalPermission,
-  removeGlobalPermission,
-  editGlobalPermission,
-} from '../services/global-permissions-service';
-import { handlePromptResponse } from '../services/global-prompt-service';
-import { encodeLocalImageUrl } from '../services/local-image-protocol-service';
-import {
-  MCP_PRESETS,
-  getEnabledTemplatesForProject,
-  getUnifiedMcpServers,
-  activateMcpServer,
-  deactivateMcpServer,
-  substituteVariables,
-} from '../services/mcp-template-service';
-import { generateTaskName } from '../services/name-generation-service';
-import { notificationService } from '../services/notification-service';
-import {
-  addProjectPermission,
-  addWorktreePermission,
-  buildToolPermissionConfig,
-  normalizeToolRequest,
-  readProjectPermissions,
-  addProjectPermissionRule,
-  removeProjectPermissionRule,
-  editProjectPermissionRule,
-  readSettings,
-  writeSettings,
-  readProjectPromptPreface,
-  writeProjectPromptPreface,
-} from '../services/permission-settings-service';
-import { pipelineTrackingService } from '../services/pipeline-tracking-service';
-import { generatePrDescriptionForTask } from '../services/pr-description-generation-service';
-import { detectProjects } from '../services/project-detection-service';
-import {
-  buildProjectFeatureMapPrompt,
-  cleanupFeatureMapTempDir,
-  FEATURE_MAP_GIT_PATH,
-  getFeatureMapTempPaths,
-  getExistingProjectFeatureMapPath,
-  getProjectFeatureMap,
-  saveProjectFeatureMapFromTemp,
-} from '../services/project-feature-map-generation-service';
-import { projectFileIndexService } from '../services/project-file-index-service';
-import { detectProjectLogos } from '../services/project-logo-detection-service';
-import {
-  generateProjectLogo,
-  cleanupProjectLogoPath,
-  cleanupProjectLogos,
-  deleteGeneratedProjectLogo,
-  listGeneratedProjectLogos,
-  removeProjectLogo,
-  uploadProjectLogo,
-  selectGeneratedProjectLogo,
-} from '../services/project-logo-service';
-import { regenerateProjectSummary } from '../services/project-summary-generation-service';
-import {
-  buildPromptActivityText,
-  buildTaskCreationActivityText,
-} from '../services/prompt-utils';
-import { runReloadPreviewCommand } from '../services/reload-preview-service';
-import { runCommandService } from '../services/run-command-service';
-import {
-  getAllManagedSkills,
-  getAllManagedSkillsUnified,
-  getSkillContent,
   createSkill,
-  updateSkill,
   deleteSkill,
   disableSkill,
   enableSkill,
-  previewLegacySkillMigration,
   executeLegacySkillMigration,
+  getAllManagedSkills,
+  getAllManagedSkillsUnified,
+  getSkillContent,
+  previewLegacySkillMigration,
+  updateSkill,
 } from '../services/skill-management-service';
 import {
-  searchRegistry,
+  emitCacheEvent,
+  emitStepUpsert,
+  emitTaskDelete,
+  emitTaskUpsert,
+  setCacheSubscriptions,
+} from '../services/cache-event-service';
+import {
   fetchRegistrySkillContent,
   installFromRegistry,
+  searchRegistry,
 } from '../services/skill-registry-service';
 import {
-  addGitHubSource,
-  installSourceItems,
-  listSources,
-  refreshSource,
-  removeSource,
-  updateSourceInstall,
-} from '../services/source-management-service';
-import { StepService } from '../services/step-service';
+  generateCommitMessageForTask,
+  generateMergeMessageForTask,
+} from '../services/commit-message-generation-service';
+import {
+  listOpenAiBaseImageOptions,
+  removeOpenAiBaseImage,
+  saveOpenAiBaseImage,
+  setOpenAiBaseImageSelection,
+} from '../services/ai-generation-settings-service';
+import {
+  NewProject,
+  NewProvider,
+  NewTask,
+  UpdateProject,
+  UpdateProvider,
+  UpdateTask,
+} from '../database/schema';
+import {
+  readBackendUserConfig,
+  writeBackendUserConfig,
+} from '../services/backend-config-settings-service';
+import { agentResourceMonitorService } from '../services/agent-resource-monitor-service';
+import { agentService } from '../services/agent-service';
+import { agentUsageService } from '../services/agent-usage-service';
+import { closeEditorWindowsForTaskWorktree } from '../services/editor-automation-service';
+import { dbg } from '../lib/debug';
+import { detectProjectLogos } from '../services/project-logo-detection-service';
+import { detectProjects } from '../services/project-detection-service';
+import { encodeLocalImageUrl } from '../services/local-image-protocol-service';
+import { fetchImageAsBase64 } from '../services/azure-image-proxy-service';
+import { generatePrDescriptionForTask } from '../services/pr-description-generation-service';
 import { generateSummary } from '../services/summary-generation-service';
-import { systemCalendarService } from '../services/system-calendar-service';
-import {
-  assertValidSourceSkillPath,
-  assertValidWorkspacePath,
-  cleanupSkillWorkspace,
-  getOrCreateSystemProject,
-  getSkillWorkspacePath,
-} from '../services/system-project-service';
-import { workActivityService } from '../services/work-activity-service';
+import { generateTaskName } from '../services/name-generation-service';
 import { generateWorkItemVerificationNote } from '../services/work-item-verification-note-service';
-import {
-  checkMergeConflicts,
-  createWorktree,
-  getWorktreeCommitDiff,
-  getWorktreeCommitFileContent,
-  getWorktreeCommits,
-  getWorktreeDiff,
-  getWorktreeFileContent,
-  getWorktreeUnifiedDiff,
-  getProjectBranches,
-  getCurrentBranch,
-  getCurrentCommitHash,
-  isGitRepository,
-  getWorktreeStatus,
-  getProjectCommitIgnore,
-  commitWorktreeChanges,
-  updateProjectCommitIgnore,
-  cleanupWorktree,
-  cleanupMissingWorktree,
-  mergeWorktree,
-  pushBranch,
-  deleteProjectWorktreesFolder,
-} from '../services/worktree-service';
+import { handlePromptResponse } from '../services/global-prompt-service';
+import { McpTemplateRepository } from '../database/repositories/mcp-templates';
+import { NotificationRepository } from '../database/repositories/notifications';
+import { notificationService } from '../services/notification-service';
+import { pathExists } from '../lib/fs';
+import type { PermissionScope } from '../../shared/permission-types';
+import { pipelineTrackingService } from '../services/pipeline-tracking-service';
+import { ProjectCommandGroupRepository } from '../database/repositories/project-command-groups';
+import { ProjectCommandRepository } from '../database/repositories/project-commands';
+import { projectFileIndexService } from '../services/project-file-index-service';
+import { ProjectMcpOverrideRepository } from '../database/repositories/project-mcp-overrides';
+import { ProjectRunConfigRepository } from '../database/repositories/project-run-config';
+import { regenerateProjectSummary } from '../services/project-summary-generation-service';
+import { resolveAiSkillSlot } from '../services/ai-skill-slot-resolver';
+import { runCommandService } from '../services/run-command-service';
+import { runReloadPreviewCommand } from '../services/reload-preview-service';
+import { StepService } from '../services/step-service';
+import { systemCalendarService } from '../services/system-calendar-service';
+import { TaskStepRepository } from '../database/repositories/task-steps';
+import { TrackedPipelineRepository } from '../database/repositories/tracked-pipelines';
+import { UsageSnapshotRepository } from '../database/repositories/usage-snapshots';
+import { workActivityService } from '../services/work-activity-service';
+
+
 
 import {
   prepareUsageDisplaySettingForSave,

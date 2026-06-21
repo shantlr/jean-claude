@@ -5,9 +5,6 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 
-import { skillsQueryKeys } from '@/hooks/use-skills';
-import { api } from '@/lib/api';
-import type { AgentBackendType } from '@shared/agent-backend-types';
 import type {
   LegacySkillMigrationExecuteResult,
   LegacySkillMigrationPreviewResult,
@@ -15,7 +12,12 @@ import type {
   RegistrySkillContent,
   SkillScope,
 } from '@shared/skill-types';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import { api } from '@/lib/api';
 import type { InteractionMode } from '@shared/types';
+import { skillsQueryKeys } from '@/hooks/use-skills';
+
+
 
 export const managedSkillsQueryKeys = {
   all: ['managedSkills'] as const,

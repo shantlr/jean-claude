@@ -1,15 +1,19 @@
-import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { type FormEvent, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
+
+
+import { useProviderDetails, useProviders } from '@/hooks/use-providers';
+import { api } from '@/lib/api';
 import { Button } from '@/common/ui/button';
 import { Input } from '@/common/ui/input';
-import { Select } from '@/common/ui/select';
 import { ProjectColorPicker } from '@/features/project/ui-project-color-picker';
 import { ProjectLogoSuggestions } from '@/features/project/ui-project-logo-suggestions';
-import { useProviders, useProviderDetails } from '@/hooks/use-providers';
-import { api } from '@/lib/api';
 import type { Provider } from '@shared/types';
+import { Select } from '@/common/ui/select';
+
+
 
 export interface ProjectFormData {
   name: string;

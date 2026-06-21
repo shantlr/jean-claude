@@ -2,30 +2,34 @@ import { Plus, Trash2 } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { useMemo } from 'react';
 
-import { Button } from '@/common/ui/button';
-import { Input } from '@/common/ui/input';
-import { Select, type SelectOption } from '@/common/ui/select';
+
+
 import {
   AVAILABLE_BACKENDS,
   getModelLabel,
-  getModelThinkingCapabilities,
   getModelsForBackend,
+  getModelThinkingCapabilities,
 } from '@/features/agent/ui-backend-selector';
-import { ModelSelector } from '@/features/agent/ui-model-selector';
-import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
-import { BackendsSettings } from '@/features/settings/ui-general-settings';
-import { useBackendModels } from '@/hooks/use-backend-models';
+import {
+  getThinkingEffortOptions,
+  normalizeThinkingEffortForModel,
+} from '@shared/thinking-settings';
+import { Select, type SelectOption } from '@/common/ui/select';
 import {
   useBackendModelPresetsSetting,
   useBackendsSetting,
   useUpdateBackendModelPresetsSetting,
 } from '@/hooks/use-settings';
 import type { AgentBackendType } from '@shared/agent-backend-types';
-import {
-  getThinkingEffortOptions,
-  normalizeThinkingEffortForModel,
-} from '@shared/thinking-settings';
 import type { BackendModelPreset } from '@shared/types';
+import { BackendsSettings } from '@/features/settings/ui-general-settings';
+import { Button } from '@/common/ui/button';
+import { Input } from '@/common/ui/input';
+import { ModelSelector } from '@/features/agent/ui-model-selector';
+import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
+import { useBackendModels } from '@/hooks/use-backend-models';
+
+
 
 function PresetCard({
   preset,

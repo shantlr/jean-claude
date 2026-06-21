@@ -4,7 +4,6 @@ import * as path from 'path';
 
 import { describe, expect, it } from 'vitest';
 
-import { JC_BUILTIN_SKILLS_DIR } from './builtin-skills-service';
 import {
   createSkill,
   deleteSkill,
@@ -16,6 +15,8 @@ import {
   previewLegacySkillMigration,
   syncBuiltinSkillSymlinks,
 } from './skill-management-service';
+import { JC_BUILTIN_SKILLS_DIR } from './builtin-skills-service';
+
 
 async function writeSkill({
   projectPath,

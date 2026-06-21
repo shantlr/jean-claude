@@ -1,29 +1,26 @@
-import clsx from 'clsx';
-import { Edit3, Image, Loader2, Save, X } from 'lucide-react';
 import type {
   ChangeEvent,
   ClipboardEvent,
   DragEvent,
   KeyboardEvent,
 } from 'react';
-import { useCallback, useState, useMemo, useEffect, useRef } from 'react';
+import { Edit3, Image, Loader2, Save, X } from 'lucide-react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import clsx from 'clsx';
 
-import { Button } from '@/common/ui/button';
-import type { MentionOption } from '@/common/ui/mention-textarea';
-import { Textarea } from '@/common/ui/textarea';
-import { AzureMarkdownContent } from '@/features/common/ui-azure-html-content';
+
+import type {
+  AzureDevOpsCommentThread,
+  AzureDevOpsFileChange,
+  AzureDevOpsPullRequestDetails,
+} from '@/lib/api';
 import {
+  type DiffFile,
   FileDiffContent,
   normalizeAzureChangeType,
-  type DiffFile,
 } from '@/features/common/ui-file-diff';
 import {
-  isVideoFile,
-  VideoGifConverter,
-} from '@/features/common/ui-video-gif-converter';
-import { useDebouncedValue } from '@/hooks/use-debounced-value';
-import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
-import {
+  getAllowedMergeStrategies,
   useCurrentAzureUser,
   useLinkWorkItemToPr,
   usePullRequestFileContent,
@@ -34,29 +31,37 @@ import {
   useUnlinkWorkItemFromPr,
   useUpdatePullRequestDescription,
   useUploadPullRequestAttachment,
-  getAllowedMergeStrategies,
 } from '@/hooks/use-pull-requests';
-import type {
-  AzureDevOpsPullRequestDetails,
-  AzureDevOpsCommentThread,
-  AzureDevOpsFileChange,
-} from '@/lib/api';
 import {
-  normalizeMentionId,
-  type MentionDisplayNames,
-} from '@/lib/azure-devops-mentions';
-import { formatBytes } from '@/lib/format-bytes';
+  isVideoFile,
+  VideoGifConverter,
+} from '@/features/common/ui-video-gif-converter';
 import { MAX_IMAGES, processImageFile } from '@/lib/image-utils';
+import {
+  type MentionDisplayNames,
+  normalizeMentionId,
+} from '@/lib/azure-devops-mentions';
+import { AzureMarkdownContent } from '@/features/common/ui-azure-html-content';
+import { Button } from '@/common/ui/button';
+import { formatBytes } from '@/lib/format-bytes';
+import type { MentionOption } from '@/common/ui/mention-textarea';
 import type { PromptImagePart } from '@shared/agent-backend-types';
+import { Textarea } from '@/common/ui/textarea';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 
-import { PrChecks } from '../ui-pr-checks';
-import { CIInlinePanel } from '../ui-pr-ci-inline';
-import { PrComments } from '../ui-pr-comments';
+
+
 import {
   convertPrThreadsForFile,
   PrInlineCommentThread,
 } from '../ui-pr-inline-comment-thread';
+import { CIInlinePanel } from '../ui-pr-ci-inline';
+import { PrChecks } from '../ui-pr-checks';
+import { PrComments } from '../ui-pr-comments';
 import { PrMetaPanel } from '../ui-pr-meta-panel';
+
+
 
 type PendingDescriptionImage = PromptImagePart & {
   placeholderMarkdown: string;
@@ -194,10 +199,10 @@ export function PrOverview({
 
   useEffect(() => {
     if (!isEditingDescription) {
-      setDescriptionDraft(pr.description);
-      setDescriptionError(null);
+      startTransition(() => setDescriptionDraft(pr.description));
+      startTransition(() => setDescriptionError(null));
       pendingDescriptionImagesRef.current = [];
-      setPendingDescriptionImages([]);
+      startTransition(() => setPendingDescriptionImages([]));
     }
   }, [isEditingDescription, pr.description]);
 
@@ -238,7 +243,7 @@ export function PrOverview({
   const prevEvaluationsRef = useRef(evaluations);
   useEffect(() => {
     if (queuedIds.size === 0) return;
-    setQueuedIds((prev) => {
+    startTransition(() => setQueuedIds((prev) => {
       const next = new Set(prev);
       for (const id of prev) {
         const evaluation = evaluations.find((e) => e.evaluationId === id);
@@ -253,7 +258,7 @@ export function PrOverview({
       }
       if (next.size === prev.size) return prev;
       return next;
-    });
+    }));
     prevEvaluationsRef.current = evaluations;
   }, [evaluations, queuedIds]);
 

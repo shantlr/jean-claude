@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import {
   AlertTriangle,
   Check,
@@ -9,12 +8,16 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import clsx from 'clsx';
 
-import { useCommands } from '@/common/hooks/use-commands';
+
+import type { TaskStep, TaskStepStatus } from '@shared/types';
 import { Button } from '@/common/ui/button';
+import { useCommands } from '@/common/hooks/use-commands';
 import { useSteps } from '@/hooks/use-steps';
 import { useTaskState } from '@/stores/navigation';
-import type { TaskStep, TaskStepStatus } from '@shared/types';
+
+
 
 const NODE_HEIGHT = 22;
 const MIN_NODE_WIDTH = 64;

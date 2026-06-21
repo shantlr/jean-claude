@@ -1,11 +1,11 @@
 import { BrowserWindow, type WebContents } from 'electron';
 
 import {
-  getCacheEventResourceKeys,
-  matchesCacheSubscription,
   type CacheEvent,
   type CacheSubscription,
   type CacheSubscriptionUpdate,
+  getCacheEventResourceKeys,
+  matchesCacheSubscription,
 } from '@shared/cache-events';
 import type { Task, TaskStep } from '@shared/types';
 

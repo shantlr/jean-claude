@@ -1,10 +1,11 @@
 import { Plus, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
 
+import { api } from '@/lib/api';
 import { Button } from '@/common/ui/button';
 import { Input } from '@/common/ui/input';
-import { api } from '@/lib/api';
 import type { WorktreeFileCopyEntry } from '@shared/permission-types';
+
 
 /**
  * Normalize an entry to a display-friendly [source, destination] tuple.
@@ -42,7 +43,7 @@ export function ProjectWorktreeSettings({
   // Load entries on mount
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    startTransition(() => setLoading(true));
     api.worktreeConfig.getCopyEntries(projectPath).then((result) => {
       if (cancelled) return;
       setEntries(result.map(entryToTuple));

@@ -1,12 +1,15 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { startTransition, useEffect, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
+
+
+import { api } from '@/lib/api';
 import { Button } from '@/common/ui/button';
 import { Input } from '@/common/ui/input';
 import { Switch } from '@/common/ui/switch';
 import { useCompletionSetting } from '@/hooks/use-settings';
-import { api } from '@/lib/api';
+
 
 export function AutocompleteSettings() {
   const { data: setting, isLoading } = useCompletionSetting();
@@ -26,12 +29,12 @@ export function AutocompleteSettings() {
   // Sync local state from loaded setting
   useEffect(() => {
     if (setting) {
-      setEnabled(setting.enabled);
-      setModel(setting.model || 'codestral-latest');
-      setServerUrl(setting.serverUrl);
+      startTransition(() => setEnabled(setting.enabled));
+      startTransition(() => setModel(setting.model || 'codestral-latest'));
+      startTransition(() => setServerUrl(setting.serverUrl));
       // Don't set apiKey — it's encrypted, show placeholder instead
-      setHasApiKey(!!setting.apiKey);
-      setApiKey('');
+      startTransition(() => setHasApiKey(!!setting.apiKey));
+      startTransition(() => setApiKey(''));
     }
   }, [setting]);
 

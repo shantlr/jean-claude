@@ -1,6 +1,4 @@
 import { ImagePlus, Pencil, X } from 'lucide-react';
-import type React from 'react';
-import type { ReactNode } from 'react';
 import {
   useCallback,
   useEffect,
@@ -9,24 +7,30 @@ import {
   useRef,
   useState,
 } from 'react';
+import type React from 'react';
+import type { ReactNode } from 'react';
 
-import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+
+
 import {
   EMPTY_MENTION_OPTIONS,
   MENTION_TEXTAREA_CLASS,
-  MentionTextarea,
   type MentionOption,
+  MentionTextarea,
 } from '@/common/ui/mention-textarea';
-import { MarkdownContent } from '@/features/agent/ui-markdown-content';
 import {
   isVideoFile,
   VideoGifConverter,
 } from '@/features/common/ui-video-gif-converter';
-import { useDebouncedValue } from '@/hooks/use-debounced-value';
-import { formatBytes } from '@/lib/format-bytes';
 import { MAX_IMAGES, processImageFile } from '@/lib/image-utils';
+import { formatBytes } from '@/lib/format-bytes';
 import { formatLineRangeLabel } from '@/stores/utils-comment-store';
+import { MarkdownContent } from '@/features/agent/ui-markdown-content';
 import type { PromptImagePart } from '@shared/agent-backend-types';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
+import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+
+
 
 // ---------------------------------------------------------------------------
 // Shared styling constants for inline comment UI

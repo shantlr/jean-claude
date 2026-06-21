@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import {
   CheckCircle2,
   ChevronDown,
@@ -9,21 +8,21 @@ import {
   ThumbsUp,
   Trash2,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { codeToTokens, type ThemedToken } from 'shiki';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import clsx from 'clsx';
 
-import { Button } from '@/common/ui/button';
-import { IconButton } from '@/common/ui/icon-button';
+
 import {
-  EMPTY_MENTION_OPTIONS,
   decodeMentionDisplayNames,
+  EMPTY_MENTION_OPTIONS,
   encodeMentionDisplayNames,
   type MentionOption,
 } from '@/common/ui/mention-textarea';
-import { UserAvatar } from '@/common/ui/user-avatar';
-import { getLanguageFromPath } from '@/features/agent/ui-diff-view/language-utils';
-import { AzureMarkdownContent } from '@/features/common/ui-azure-html-content';
-import { InlineCommentComposer } from '@/features/common/ui-inline-comments';
+import {
+  type MentionDisplayNames,
+  replaceAzureDevOpsMentions,
+} from '@/lib/azure-devops-mentions';
 import {
   useAddThreadReply,
   useCurrentAzureUser,
@@ -34,13 +33,17 @@ import {
   useUpdateThreadStatus,
 } from '@/hooks/use-pull-requests';
 import type { AzureDevOpsCommentThread } from '@/lib/api';
-import {
-  replaceAzureDevOpsMentions,
-  type MentionDisplayNames,
-} from '@/lib/azure-devops-mentions';
+import { AzureMarkdownContent } from '@/features/common/ui-azure-html-content';
+import { Button } from '@/common/ui/button';
 import { encodeProxyUrl } from '@/lib/azure-image-proxy';
 import { formatRelativeTime } from '@/lib/time';
+import { getLanguageFromPath } from '@/features/agent/ui-diff-view/language-utils';
+import { IconButton } from '@/common/ui/icon-button';
+import { InlineCommentComposer } from '@/features/common/ui-inline-comments';
 import type { PromptImagePart } from '@shared/agent-backend-types';
+import { UserAvatar } from '@/common/ui/user-avatar';
+
+
 
 import { PrCommentForm, uploadImagesIntoMarkdown } from '../ui-pr-comment-form';
 

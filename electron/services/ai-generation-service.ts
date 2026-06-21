@@ -1,7 +1,8 @@
 import { homedir } from 'os';
 
-import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { AssistantMessage as OcAssistantMessage } from '@opencode-ai/sdk/v2';
+import { query } from '@anthropic-ai/claude-agent-sdk';
+
 
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { AiUsageContext } from '@shared/ai-usage-types';
@@ -9,9 +10,10 @@ import type { ThinkingEffort } from '@shared/types';
 
 import { dbg } from '../lib/debug';
 
-import { getOrCreateServer } from './agent-backends/opencode/opencode-backend';
 import { aiUsageTrackingService } from './ai-usage-tracking-service';
 import { calculateTheoreticalOpenCodeCost } from './backend-models-service';
+import { getOrCreateServer } from './agent-backends/opencode/opencode-backend';
+
 
 const DEFAULT_TIMEOUT_MS = 60_000;
 

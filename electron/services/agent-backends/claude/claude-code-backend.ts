@@ -18,36 +18,41 @@ import {
 } from '@anthropic-ai/claude-agent-sdk';
 import { nanoid } from 'nanoid';
 
+
+
 import type {
   AgentBackend,
   AgentBackendConfig,
   AgentEvent,
   AgentSession,
   AgentTaskContext,
-  NormalizedPermissionResponse,
   NormalizedPermissionRequest,
-  NormalizedQuestionRequest,
+  NormalizedPermissionResponse,
   NormalizedQuestion,
+  NormalizedQuestionRequest,
   PromptPart,
 } from '@shared/agent-backend-types';
 import type { AgentMessage, AgentQuestion } from '@shared/agent-types';
 import type { InteractionMode } from '@shared/types';
 
-import type { ResolvedPermissionRule } from '../../../../shared/permission-types';
-import { dbg } from '../../../lib/debug';
 import {
+  buildPromptMarkdown,
+  getPromptImages,
+  getPromptText,
+} from '../../prompt-utils';
+import {
+  evaluatePermissionWithMatch,
   flattenScope,
   normalizeToolRequest,
-  evaluatePermissionWithMatch,
 } from '../../permission-settings-service';
-import {
-  getPromptText,
-  getPromptImages,
-  buildPromptMarkdown,
-} from '../../prompt-utils';
+import { dbg } from '../../../lib/debug';
+import type { ResolvedPermissionRule } from '../../../../shared/permission-types';
 
-import { normalizeClaudeMessageV2 } from './normalize-claude-message-v2';
+
+
 import type { NormalizationContext } from './normalize-claude-message-v2';
+import { normalizeClaudeMessageV2 } from './normalize-claude-message-v2';
+
 
 const SDK_PERMISSION_MODES = {
   ask: 'default',

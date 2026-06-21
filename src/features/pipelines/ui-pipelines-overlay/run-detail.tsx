@@ -1,10 +1,12 @@
 import { ExternalLink, Loader2, XCircle } from 'lucide-react';
 
-import { useBuildTimeline, useCancelBuild } from '@/hooks/use-pipeline-runs';
 import type { AzureBuildRun, AzureRelease } from '@shared/pipeline-types';
+import { useBuildTimeline, useCancelBuild } from '@/hooks/use-pipeline-runs';
 
-import { StagesTimeline } from './stages-timeline';
+
 import { isBuildRun } from './utils';
+import { StagesTimeline } from './stages-timeline';
+
 
 export function RunDetail({
   run,

@@ -1,8 +1,9 @@
 import { Check, Pencil, X } from 'lucide-react';
 import { useState } from 'react';
 
-import { Textarea } from '@/common/ui/textarea';
 import type { QueuedPrompt } from '@shared/agent-types';
+import { Textarea } from '@/common/ui/textarea';
+
 
 export function QueuedPromptEntry({
   prompt,

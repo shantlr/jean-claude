@@ -1,20 +1,22 @@
 import { forwardRef, useMemo } from 'react';
 
-import type { KeyboardLayer } from '@/common/context/keyboard-bindings';
-import type { BindingKey } from '@/common/context/keyboard-bindings/types';
-import { Select, type SelectOption, type SelectRef } from '@/common/ui/select';
-import type { ComponentSize } from '@/common/ui/styles';
-import { AVAILABLE_BACKENDS } from '@/features/agent/ui-backend-selector';
-import {
-  useBackendModelPresetsSetting,
-  useBackendsSetting,
-} from '@/hooks/use-settings';
-import type { AgentBackendType } from '@shared/agent-backend-types';
 import type {
   BackendModelPreset,
   ModelPreference,
   ThinkingEffort,
 } from '@shared/types';
+import { Select, type SelectOption, type SelectRef } from '@/common/ui/select';
+import {
+  useBackendModelPresetsSetting,
+  useBackendsSetting,
+} from '@/hooks/use-settings';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import { AVAILABLE_BACKENDS } from '@/features/agent/ui-backend-selector';
+import type { BindingKey } from '@/common/context/keyboard-bindings/types';
+import type { ComponentSize } from '@/common/ui/styles';
+import type { KeyboardLayer } from '@/common/context/keyboard-bindings';
+
+
 
 export type { SelectRef } from '@/common/ui/select';
 

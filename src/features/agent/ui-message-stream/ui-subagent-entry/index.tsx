@@ -1,13 +1,15 @@
 import { Bot, Check, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { memo, useMemo, useState } from 'react';
 import type { MouseEvent } from 'react';
-import { memo, useState, useMemo } from 'react';
 
-import { formatModelName } from '@/hooks/use-model';
+
 import type {
   NormalizedEntry,
   NormalizedToolUse,
   ToolUseByName,
 } from '@shared/normalized-message-v2';
+import { formatModelName } from '@/hooks/use-model';
+
 
 import { MarkdownContent } from '../../ui-markdown-content';
 import { TimelineEntry } from '../ui-timeline-entry';

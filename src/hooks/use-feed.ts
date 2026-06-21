@@ -1,22 +1,25 @@
-import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
-import { subscribeCacheResources } from '@/cache/cache-subscriptions';
-import { useProjects } from '@/hooks/use-projects';
-import { useWindowFocused } from '@/hooks/use-window-focused';
-import { api } from '@/lib/api';
+
 import {
   getFeedPullRequestIdentityKey,
   partitionFeedItems,
 } from '@/lib/feed-partition';
-import { feedQueryKeys } from '@/lib/feed-query-keys';
-import { useFeedStore } from '@/stores/feed';
-import { useNavigationStore } from '@/stores/navigation';
-import { useTaskMessagesStore } from '@/stores/task-messages';
-import { useUIStore } from '@/stores/ui';
+import { api } from '@/lib/api';
 import type { CacheSubscription } from '@shared/cache-events';
 import type { FeedItem } from '@shared/feed-types';
+import { feedQueryKeys } from '@/lib/feed-query-keys';
 import type { Project } from '@shared/types';
+import { subscribeCacheResources } from '@/cache/cache-subscriptions';
+import { useFeedStore } from '@/stores/feed';
+import { useNavigationStore } from '@/stores/navigation';
+import { useProjects } from '@/hooks/use-projects';
+import { useTaskMessagesStore } from '@/stores/task-messages';
+import { useUIStore } from '@/stores/ui';
+import { useWindowFocused } from '@/hooks/use-window-focused';
+
+
 
 export const FEED_CACHE_SUBSCRIPTIONS: CacheSubscription[] = [
   { resourceKey: 'feed:tasks' },

@@ -5,13 +5,15 @@ import type { AgentBackendType } from '@shared/agent-backend-types';
 
 import { dbg } from '../lib/debug';
 
-import { generateText } from './ai-generation-service';
-import { resolveAiSkillSlot } from './ai-skill-slot-resolver';
 import {
   getWorktreeCommitLog,
   getWorktreeDiff,
   getWorktreeUnifiedDiff,
 } from './worktree-service';
+import { generateText } from './ai-generation-service';
+import { resolveAiSkillSlot } from './ai-skill-slot-resolver';
+
+
 
 const execAsync = promisify(exec) as (
   command: string,

@@ -1,25 +1,27 @@
 import { Check, Copy, File, FileText } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
-import { Modal } from '@/common/ui/modal';
-import { parseUnifiedPatchToStrings } from '@/features/agent/ui-diff-view/diff-utils';
-import { FileDiffContent } from '@/features/common/ui-file-diff';
-import { DiffFileTree } from '@/features/common/ui-file-diff/file-tree';
 import type {
   DiffFile,
   DiffFileStatus,
 } from '@/features/common/ui-file-diff/types';
-import {
-  useReviewCommentsForFile,
-  useReviewCommentsStore,
-  type ReviewPresetId,
-} from '@/stores/review-comments';
-import { getSelectedTextForRange } from '@/stores/utils-comment-prompt';
-import type { PromptImagePart } from '@shared/agent-backend-types';
 import type {
   NormalizedEntry,
   ToolUseByName,
 } from '@shared/normalized-message-v2';
+import {
+  type ReviewPresetId,
+  useReviewCommentsForFile,
+  useReviewCommentsStore,
+} from '@/stores/review-comments';
+import { DiffFileTree } from '@/features/common/ui-file-diff/file-tree';
+import { FileDiffContent } from '@/features/common/ui-file-diff';
+import { getSelectedTextForRange } from '@/stores/utils-comment-prompt';
+import { Modal } from '@/common/ui/modal';
+import { parseUnifiedPatchToStrings } from '@/features/agent/ui-diff-view/diff-utils';
+import type { PromptImagePart } from '@shared/agent-backend-types';
+
+
 
 import type { DisplayMessage } from '../message-merger';
 
@@ -236,7 +238,7 @@ export function PromptGroupDiffModal({
       selectedChange?.rawPatch
         ? parseUnifiedPatchToStrings(selectedChange.rawPatch)
         : null,
-    [selectedChange?.rawPatch],
+    [selectedChange],
   );
 
   const handleSelectFile = (displayPath: string) => {
@@ -250,7 +252,7 @@ export function PromptGroupDiffModal({
     await navigator.clipboard.writeText(selectedChange.rawPatch);
     setRawDiffCopied(true);
     window.setTimeout(() => setRawDiffCopied(false), 1200);
-  }, [selectedChange?.rawPatch]);
+  }, [selectedChange]);
 
   const selectedDisplayPath = selectedChange?.displayPath ?? null;
 

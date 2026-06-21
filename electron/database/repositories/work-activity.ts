@@ -6,8 +6,9 @@ import type {
   WorkActivityWorkItem,
 } from '@shared/work-activity-types';
 
-import { db } from '../index';
 import type { NewWorkActivityEventRow, WorkActivityEventRow } from '../schema';
+import { db } from '../index';
+
 
 function parseJson<T>(value: string, fallback: T): T {
   try {

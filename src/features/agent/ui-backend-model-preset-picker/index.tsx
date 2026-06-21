@@ -1,22 +1,24 @@
 import { useMemo } from 'react';
 
-import type { KeyboardLayer } from '@/common/context/keyboard-bindings';
-import type { BindingKey } from '@/common/context/keyboard-bindings/types';
-import { BackendPresetSelector } from '@/features/agent/ui-backend-preset-selector';
 import {
   type BackendModelOption,
   getModelLabel,
   getModelsForBackend,
 } from '@/features/agent/ui-backend-selector';
-import { ModelSelector } from '@/features/agent/ui-model-selector';
-import { useBackendModels } from '@/hooks/use-backend-models';
+import type { ModelPreference, ThinkingEffort } from '@shared/types';
 import {
   useBackendDefaultModelsSetting,
   useBackendModelPresetsSetting,
 } from '@/hooks/use-settings';
-import { getDefaultModelForBackend } from '@/lib/default-models';
 import type { AgentBackendType } from '@shared/agent-backend-types';
-import type { ModelPreference, ThinkingEffort } from '@shared/types';
+import { BackendPresetSelector } from '@/features/agent/ui-backend-preset-selector';
+import type { BindingKey } from '@/common/context/keyboard-bindings/types';
+import { getDefaultModelForBackend } from '@/lib/default-models';
+import type { KeyboardLayer } from '@/common/context/keyboard-bindings';
+import { ModelSelector } from '@/features/agent/ui-model-selector';
+import { useBackendModels } from '@/hooks/use-backend-models';
+
+
 
 export function BackendModelPresetPicker({
   backend,

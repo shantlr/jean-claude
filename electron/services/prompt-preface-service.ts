@@ -1,9 +1,10 @@
-import type { PromptPart } from '@shared/agent-backend-types';
 import {
   applyPromptPrefaceToParts,
-  type PromptPrefaceSetting,
   type ProjectPromptPrefaceSetting,
+  type PromptPrefaceSetting,
 } from '@shared/prompt-preface-types';
+import type { PromptPart } from '@shared/agent-backend-types';
+
 
 import { SettingsRepository } from '../database/repositories/settings';
 

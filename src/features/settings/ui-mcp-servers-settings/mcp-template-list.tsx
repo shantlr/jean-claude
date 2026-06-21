@@ -1,4 +1,4 @@
-import { Trash2, Server } from 'lucide-react';
+import { Server, Trash2 } from 'lucide-react';
 
 import { IconButton } from '@/common/ui/icon-button';
 import type { McpServerTemplate } from '@shared/mcp-types';

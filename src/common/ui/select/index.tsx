@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import { Check, ChevronDown } from 'lucide-react';
 import React, {
   forwardRef,
@@ -9,17 +8,22 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import clsx from 'clsx';
 import { createPortal } from 'react-dom';
 
+
+
+import { type ComponentSize, sizeClasses } from '@/common/ui/styles';
 import {
-  useRegisterKeyboardBindings,
   type KeyboardLayer,
+  useRegisterKeyboardBindings,
 } from '@/common/context/keyboard-bindings';
 import type { BindingKey } from '@/common/context/keyboard-bindings/types';
-import { useRegisterOverlay } from '@/common/context/overlay';
-import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
 import { Kbd } from '@/common/ui/kbd';
-import { sizeClasses, type ComponentSize } from '@/common/ui/styles';
+import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
+import { useRegisterOverlay } from '@/common/context/overlay';
+
+
 
 export interface SelectOption<T extends string> {
   value: T;

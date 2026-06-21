@@ -1,10 +1,12 @@
-import type { AgentResourceSnapshot } from './agent-resource-types';
 import type { AgentQuestion, QueuedPrompt } from './agent-types';
 import type {
   NormalizedEntry,
   NormalizedPermissionRequest,
 } from './normalized-message-v2';
+import type { AgentResourceSnapshot } from './agent-resource-types';
 import type { TaskStatus } from './types';
+
+
 
 export type AgentUIEventPayload =
   | { type: 'entry'; entry: NormalizedEntry }

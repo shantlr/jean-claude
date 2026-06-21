@@ -1,5 +1,6 @@
-import clsx from 'clsx';
 import { GitPullRequest, ListTodo } from 'lucide-react';
+import clsx from 'clsx';
+
 
 import { useSidebarTab } from '@/stores/navigation';
 

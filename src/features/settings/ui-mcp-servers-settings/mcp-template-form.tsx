@@ -1,19 +1,21 @@
 import { FolderOpen, X } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import type { McpPreset, McpServerTemplate } from '@shared/mcp-types';
+import {
+  useCreateMcpTemplate,
+  useMcpPresets,
+  useUpdateMcpTemplate,
+} from '@/hooks/use-mcp-templates';
+import { api } from '@/lib/api';
 import { Button } from '@/common/ui/button';
 import { Checkbox } from '@/common/ui/checkbox';
 import { IconButton } from '@/common/ui/icon-button';
 import { Input } from '@/common/ui/input';
-import { Textarea } from '@/common/ui/textarea';
 import { MarkdownContent } from '@/features/agent/ui-markdown-content';
-import {
-  useMcpPresets,
-  useCreateMcpTemplate,
-  useUpdateMcpTemplate,
-} from '@/hooks/use-mcp-templates';
-import { api } from '@/lib/api';
-import type { McpServerTemplate, McpPreset } from '@shared/mcp-types';
+import { Textarea } from '@/common/ui/textarea';
+
+
 
 // Variable descriptions for tooltips
 const VARIABLE_DESCRIPTIONS: Record<string, string> = {
@@ -113,17 +115,17 @@ export function McpTemplateForm({
   // Initialize from template or reset
   useEffect(() => {
     if (template) {
-      setName(template.name);
-      setCommandTemplate(template.commandTemplate);
-      setVariables(template.variables);
-      setInstallOnCreateWorktree(template.installOnCreateWorktree);
-      setPresetId(template.presetId);
+      startTransition(() => setName(template.name));
+      startTransition(() => setCommandTemplate(template.commandTemplate));
+      startTransition(() => setVariables(template.variables));
+      startTransition(() => setInstallOnCreateWorktree(template.installOnCreateWorktree));
+      startTransition(() => setPresetId(template.presetId));
     } else {
-      setName('');
-      setCommandTemplate('');
-      setVariables({});
-      setInstallOnCreateWorktree(true);
-      setPresetId(null);
+      startTransition(() => setName(''));
+      startTransition(() => setCommandTemplate(''));
+      startTransition(() => setVariables({}));
+      startTransition(() => setInstallOnCreateWorktree(true));
+      startTransition(() => setPresetId(null));
     }
   }, [template]);
 

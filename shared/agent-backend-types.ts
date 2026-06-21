@@ -2,12 +2,14 @@
 // All agent backends (Claude Code, OpenCode, etc.) normalize to these types.
 // The rest of the app (IPC, database, UI) only sees these types.
 
-import type { NormalizationEvent } from './normalized-message-v2';
+import type { InteractionMode, ThinkingEffort } from './types';
 import type {
   PermissionScope,
   ResolvedPermissionRule,
 } from './permission-types';
-import type { InteractionMode, ThinkingEffort } from './types';
+import type { NormalizationEvent } from './normalized-message-v2';
+
+
 
 // Re-export shared types that live in normalized-message-v2
 export type {

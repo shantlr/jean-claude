@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import {
   AlertTriangle,
   Check,
@@ -9,20 +8,24 @@ import {
   Square,
   X,
 } from 'lucide-react';
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useState } from 'react';
+import clsx from 'clsx';
 
-import { Button } from '@/common/ui/button';
-import { Textarea } from '@/common/ui/textarea';
+
 import {
   FileDiffContent,
   normalizeAzureChangeType,
 } from '@/features/common/ui-file-diff';
+import type { PrReviewStepMeta, TaskStep } from '@shared/types';
 import {
   usePullRequestChanges,
   usePullRequestFileContent,
 } from '@/hooks/use-pull-requests';
 import { useSubmitPrReview, useUpdateStep } from '@/hooks/use-steps';
-import type { PrReviewStepMeta, TaskStep } from '@shared/types';
+import { Button } from '@/common/ui/button';
+import { Textarea } from '@/common/ui/textarea';
+
+
 
 function normalizePath(path: string): string {
   return path.startsWith('/') ? path.slice(1) : path;
@@ -42,7 +45,7 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
 
   useEffect(() => {
     if (comments.length === 0) {
-      setSelectedCommentIndex(null);
+      startTransition(() => setSelectedCommentIndex(null));
       return;
     }
     if (
@@ -50,7 +53,7 @@ export function PrReviewValidation({ step }: { step: TaskStep }) {
       selectedCommentIndex < 0 ||
       selectedCommentIndex >= comments.length
     ) {
-      setSelectedCommentIndex(0);
+      startTransition(() => setSelectedCommentIndex(0));
     }
   }, [comments.length, selectedCommentIndex]);
 

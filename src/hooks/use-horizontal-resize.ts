@@ -1,5 +1,6 @@
+import { useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
-import { useCallback, useRef, useState } from 'react';
+
 
 interface UseHorizontalResizeOptions {
   initialWidth: number;
@@ -21,10 +22,9 @@ export function useHorizontalResize({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const handleMouseDown = useCallback(
-    (e: ReactMouseEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      setIsDragging(true);
+  const handleMouseDown = (e: ReactMouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
 
       const startX = e.clientX;
       const startWidth = initialWidth;
@@ -53,18 +53,9 @@ export function useHorizontalResize({
         document.removeEventListener('mouseup', handleMouseUp);
       };
 
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    },
-    [
-      initialWidth,
-      minWidth,
-      maxWidthFraction,
-      maxWidthAbsolute,
-      direction,
-      onWidthChange,
-    ],
-  );
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
 
   return {
     containerRef,

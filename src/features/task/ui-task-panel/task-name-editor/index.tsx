@@ -1,9 +1,12 @@
+import { memo, useCallback, useState } from 'react';
 import clsx from 'clsx';
 import { Pencil } from 'lucide-react';
-import { memo, useCallback, useState } from 'react';
 
-import { useUpdateTask } from '@/hooks/use-tasks';
+
+
 import { useToastStore } from '@/stores/toasts';
+import { useUpdateTask } from '@/hooks/use-tasks';
+
 
 export function getTaskTitle({
   name,

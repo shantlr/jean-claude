@@ -1,12 +1,13 @@
 import type {
-  Event as OcEvent,
-  Part as OcPart,
-  Message as OcMessage,
   AssistantMessage as OcAssistantMessage,
+  Event as OcEvent,
+  Message as OcMessage,
+  Part as OcPart,
 } from '@opencode-ai/sdk/v2';
 
-import type { OpenCodeNormalizationContext } from './normalize-opencode-message-v2';
 import { applyDeltaToMessageParts } from './opencode-message-delta';
+import type { OpenCodeNormalizationContext } from './normalize-opencode-message-v2';
+
 
 /**
  * Replay OpenCode context updates for an SSE event.

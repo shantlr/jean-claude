@@ -1,27 +1,31 @@
-import { exec } from 'child_process';
+import { join, relative } from 'path';
 import { readFile, stat } from 'fs/promises';
 import { createServer } from 'net';
-import { join, relative } from 'path';
+import { exec } from 'child_process';
 import { promisify } from 'util';
 
-import { glob } from 'glob';
+
+
 import * as nodePty from 'node-pty';
+import { glob } from 'glob';
+
 
 import type {
-  RunStatus,
   CommandRunStatus,
-  ProjectCommand,
+  PackageScriptsResult,
   PortInUse,
   PortsInUseErrorData,
-  PackageScriptsResult,
-  WorkspacePackage,
+  ProjectCommand,
   RunCommandLogStream,
+  RunStatus,
+  WorkspacePackage,
 } from '@shared/run-command-types';
 
+import { dbg } from '../lib/debug';
 import { ProjectCommandRepository } from '../database/repositories/project-commands';
 import { ProjectRepository } from '../database/repositories/projects';
 import { TaskRepository } from '../database/repositories/tasks';
-import { dbg } from '../lib/debug';
+
 
 const execAsync = promisify(exec);
 const RUN_COMMAND_LOG_FLUSH_INTERVAL_MS = 50;

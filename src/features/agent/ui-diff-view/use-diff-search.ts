@@ -1,9 +1,12 @@
-import type { RefObject } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import type { RefObject } from 'react';
 
-import type { DiffSearchBarHandle } from './diff-search-bar';
+
+
 import type { DiffLine } from './diff-utils';
+import type { DiffSearchBarHandle } from './diff-search-bar';
+
 
 export interface SearchMatch {
   lineIndex: number;
@@ -54,7 +57,7 @@ export function useDiffSearch({
   // Reset current match when matches change
   useEffect(() => {
     if (matches.length > 0) {
-      setCurrentMatchIndex(0);
+      startTransition(() => setCurrentMatchIndex(0));
     }
   }, [matches.length, searchQuery]);
 

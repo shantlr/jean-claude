@@ -1,12 +1,14 @@
 import { forwardRef } from 'react';
 
-import type { KeyboardLayer } from '@/common/context/keyboard-bindings';
-import type { BindingKey } from '@/common/context/keyboard-bindings/types';
 import { Select, type SelectRef } from '@/common/ui/select';
+import type { BindingKey } from '@/common/context/keyboard-bindings/types';
 import type { ComponentSize } from '@/common/ui/styles';
-import type { ThinkingEffortOption } from '@shared/thinking-settings';
+import type { KeyboardLayer } from '@/common/context/keyboard-bindings';
 import { THINKING_EFFORT_OPTIONS } from '@shared/thinking-settings';
 import type { ThinkingEffort } from '@shared/types';
+import type { ThinkingEffortOption } from '@shared/thinking-settings';
+
+
 
 export const ThinkingSelector = forwardRef<
   SelectRef,

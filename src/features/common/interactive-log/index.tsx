@@ -1,19 +1,21 @@
-import clsx from 'clsx';
 import {
+  type KeyboardEvent,
   memo,
   useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
-  type KeyboardEvent,
 } from 'react';
+import clsx from 'clsx';
 
-import { api } from '@/lib/api';
+
 import type {
   RunCommandLogChunk,
   RunCommandLogLine,
   RunCommandLogState,
 } from '@/stores/task-messages';
+import { api } from '@/lib/api';
+
 
 import { AnsiLine } from './ansi-line';
 import { keyEventToTerminalInput } from './key-event-to-terminal-input';

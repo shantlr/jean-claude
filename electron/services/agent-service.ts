@@ -7,6 +7,13 @@
 import { BrowserWindow } from 'electron';
 import { nanoid } from 'nanoid';
 
+import {
+  AGENT_CHANNELS,
+  type AgentQuestion,
+  type PermissionResponse,
+  type QuestionResponse,
+  type QueuedPrompt,
+} from '@shared/agent-types';
 import type {
   AgentBackend,
   AgentBackendType,
@@ -19,66 +26,65 @@ import type {
   PromptPart,
 } from '@shared/agent-backend-types';
 import {
-  AGENT_CHANNELS,
-  type AgentQuestion,
-  type PermissionResponse,
-  type QuestionResponse,
-  type QueuedPrompt,
-} from '@shared/agent-types';
-import type { AgentUIEventPayload } from '@shared/agent-ui-events';
-import type { AiUsageFeature } from '@shared/ai-usage-types';
-import type { NormalizedEntry } from '@shared/normalized-message-v2';
-import {
-  type InteractionMode,
-  type TaskNotificationEvent,
-  type TaskStepType,
-  type ReviewStepMeta,
-  type ThinkingEffort,
-  isSkillCreationStepMeta,
-} from '@shared/types';
-import {
   getDefaultInteractionModeForBackend,
   normalizeInteractionModeForBackend,
 } from '@shared/types';
-
-import type { PermissionScope } from '../../shared/permission-types';
-import { normalizeThinkingEffortForModel } from '../../shared/thinking-settings';
 import {
-  TaskRepository,
-  ProjectRepository,
+  type InteractionMode,
+  isSkillCreationStepMeta,
+  type ReviewStepMeta,
+  type TaskNotificationEvent,
+  type TaskStepType,
+  type ThinkingEffort,
+} from '@shared/types';
+import type { AgentUIEventPayload } from '@shared/agent-ui-events';
+import type { AiUsageFeature } from '@shared/ai-usage-types';
+import type { NormalizedEntry } from '@shared/normalized-message-v2';
+
+
+
+import {
   AgentMessageRepository,
+  ProjectRepository,
   RawMessageRepository,
+  TaskRepository,
 } from '../database/repositories';
+import { dbg } from '../lib/debug';
+import { normalizeThinkingEffortForModel } from '../../shared/thinking-settings';
+import { pathExists } from '../lib/fs';
+import type { PermissionScope } from '../../shared/permission-types';
 import { SettingsRepository } from '../database/repositories/settings';
 import { TaskStepRepository } from '../database/repositories/task-steps';
-import { dbg } from '../lib/debug';
-import { pathExists } from '../lib/fs';
 
-import { AGENT_BACKEND_CLASSES } from './agent-backends';
-import { ClaudeCodeBackend } from './agent-backends/claude/claude-code-backend';
-import { OpenCodeBackend } from './agent-backends/opencode/opencode-backend';
-import { agentResourceMonitorService } from './agent-resource-monitor-service';
-import { buildSessionIdStepUpdate } from './agent-session-update';
-import { aiUsageTrackingService } from './ai-usage-tracking-service';
-import { emitStepUpsert, emitTaskUpsert } from './cache-event-service';
-import { resolveGlobalRules } from './global-permissions-service';
-import { getJcMcpServerPath } from './mcp-template-service';
-import { generateTaskName } from './name-generation-service';
-import { notificationService } from './notification-service';
-import {
-  buildToolPermissionConfig,
-  readSettings,
-  resolveRules,
-  normalizeToolRequest,
-} from './permission-settings-service';
-import { applyConfiguredPromptPreface } from './prompt-preface-service';
+
+
 import {
   buildAgentPromptMarkdown,
-  textPrompt,
   getPromptText,
+  textPrompt,
 } from './prompt-utils';
-import { StepService } from './step-service';
+import {
+  buildToolPermissionConfig,
+  normalizeToolRequest,
+  readSettings,
+  resolveRules,
+} from './permission-settings-service';
+import { emitStepUpsert, emitTaskUpsert } from './cache-event-service';
+import { AGENT_BACKEND_CLASSES } from './agent-backends';
+import { agentResourceMonitorService } from './agent-resource-monitor-service';
+import { aiUsageTrackingService } from './ai-usage-tracking-service';
+import { applyConfiguredPromptPreface } from './prompt-preface-service';
 import { assertValidWorkspacePath } from './system-project-service';
+import { buildSessionIdStepUpdate } from './agent-session-update';
+import { ClaudeCodeBackend } from './agent-backends/claude/claude-code-backend';
+import { generateTaskName } from './name-generation-service';
+import { getJcMcpServerPath } from './mcp-template-service';
+import { notificationService } from './notification-service';
+import { OpenCodeBackend } from './agent-backends/opencode/opencode-backend';
+import { resolveGlobalRules } from './global-permissions-service';
+import { StepService } from './step-service';
+
+
 
 /** In-memory store for queued prompt parts, keyed by QueuedPrompt.id.
  *  Keeps full PromptPart[] (with image base64) out of the QueuedPrompt.content

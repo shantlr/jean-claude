@@ -1,7 +1,8 @@
 import * as path from 'path';
 
-import { vol } from 'memfs';
 import { describe, expect, it } from 'vitest';
+import { vol } from 'memfs';
+
 
 import { detectProjectLogos } from './project-logo-detection-service';
 

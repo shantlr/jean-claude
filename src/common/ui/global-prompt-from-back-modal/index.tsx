@@ -1,10 +1,11 @@
 import { AlertTriangle, KeyRound, X } from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
-import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
-import { Kbd } from '@/common/ui/kbd';
 import { api } from '@/lib/api';
 import type { GlobalPrompt } from '@shared/global-prompt-types';
+import { Kbd } from '@/common/ui/kbd';
+import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+
 
 export function GlobalPromptFromBackModal() {
   const [promptQueue, setPromptQueue] = useState<GlobalPrompt[]>([]);

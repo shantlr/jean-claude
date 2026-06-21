@@ -1,17 +1,17 @@
-import clsx from 'clsx';
 import { BookOpen, Pencil, Trash2, Undo2, Wand2 } from 'lucide-react';
-import type { ReactNode } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-
-import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
+import { useSkillContent, useUpdateSkill } from '@/hooks/use-managed-skills';
+import type { AgentBackendType } from '@shared/agent-backend-types';
 import { Button } from '@/common/ui/button';
 import { Chip } from '@/common/ui/chip';
-import { Switch } from '@/common/ui/switch';
-import { MarkdownContent } from '@/features/agent/ui-markdown-content';
-import { useSkillContent, useUpdateSkill } from '@/hooks/use-managed-skills';
-import { useToastStore } from '@/stores/toasts';
-import type { AgentBackendType } from '@shared/agent-backend-types';
+import clsx from 'clsx';
 import type { ManagedSkill } from '@shared/skill-types';
+import { MarkdownContent } from '@/features/agent/ui-markdown-content';
+import type { ReactNode } from 'react';
+import { Switch } from '@/common/ui/switch';
+import { useLatestRef } from '@/hooks/use-latest-ref';
+import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import { useToastStore } from '@/stores/toasts';
 
 type DetailMode = 'read' | 'edit';
 
@@ -93,11 +93,11 @@ export function SkillDetails({
   // Load content into editor when data arrives
   useEffect(() => {
     if (data?.content) {
-      setEditedContent(data.content);
+      startTransition(() => setEditedContent(data.content));
       initializedRef.current = true;
-      setHasChanges(false);
+      startTransition(() => setHasChanges(false));
     }
-  }, [data?.content]);
+  }, [data]);
 
   const handleContentChange = useCallback((value: string) => {
     setEditedContent(value);
@@ -157,11 +157,10 @@ export function SkillDetails({
       setEditedContent(data.content);
       setHasChanges(false);
     }
-  }, [data?.content]);
+  }, [data]);
 
   // Keyboard shortcuts
-  const handleSaveRef = useRef(handleSave);
-  handleSaveRef.current = handleSave;
+  const handleSaveRef = useLatestRef(handleSave);
 
   useRegisterKeyboardBindings('skill-detail', {
     'cmd+s': () => {

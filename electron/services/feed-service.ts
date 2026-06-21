@@ -1,19 +1,22 @@
-import type { AzureDevOpsPullRequest } from '@shared/azure-devops-types';
 import {
   blockNoteJsonToMarkdown,
   markdownToBlockNoteJson,
 } from '@shared/feed-note-blocknote';
 import type { FeedItem, FeedItemAttention, FeedNote } from '@shared/feed-types';
 import type { TaskStatus, TaskStep, TaskStepStatus } from '@shared/types';
+import type { AzureDevOpsPullRequest } from '@shared/azure-devops-types';
+
 
 import {
   FeedNoteRepository,
   ProjectRepository,
   TaskRepository,
 } from '../database/repositories';
+import { dbg } from '../lib/debug';
 import { PrViewSnapshotRepository } from '../database/repositories/pr-view-snapshots';
 import { TaskStepRepository } from '../database/repositories/task-steps';
-import { dbg } from '../lib/debug';
+
+
 
 import {
   getCurrentUser,
@@ -23,9 +26,11 @@ import {
   listPullRequests,
   queryAssignedWorkItems,
 } from './azure-devops-service';
-import type { LinkedPr } from './azure-devops-service';
 import { emitCacheEvent } from './cache-event-service';
 import { getMostRecentlyUpdatedStep } from './step-service';
+import type { LinkedPr } from './azure-devops-service';
+
+
 
 // In-memory cache for PR feed items to avoid hammering Azure DevOps API
 let prCache: {

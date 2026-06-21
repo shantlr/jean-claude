@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import { Check, ChevronDown, GitFork } from 'lucide-react';
 import {
   useCallback,
@@ -8,13 +7,17 @@ import {
   useRef,
   useState,
 } from 'react';
+import clsx from 'clsx';
 import { createPortal } from 'react-dom';
 
+
+
+import type { BranchInfo, Task } from '@shared/types';
+import { type ComponentSize, sizeClasses } from '@/common/ui/styles';
+import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
 import { useRegisterOverlay } from '@/common/context/overlay';
-import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
-import { sizeClasses, type ComponentSize } from '@/common/ui/styles';
-import type { BranchInfo, Task } from '@shared/types';
+
 
 const SEARCH_INPUT_HEIGHT = 41;
 
@@ -399,7 +402,6 @@ export function BranchOrTaskSelect({
                 position.actualAlign === 'right'
                   ? window.innerWidth - position.left
                   : undefined,
-              minWidth: triggerRef.current?.getBoundingClientRect().width,
               maxWidth: Math.min(320, position.maxWidth),
               maxHeight: position.maxHeight,
               display: 'flex',

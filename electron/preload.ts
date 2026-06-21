@@ -1,31 +1,33 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
-import { AGENT_CHANNELS } from '@shared/agent-types';
-import type { AiUsageDashboardParams } from '@shared/ai-usage-types';
-import type { CacheEvent, CacheSubscriptionUpdate } from '@shared/cache-events';
-import type { DebugLogEntry } from '@shared/debug-log-types';
-import type {
-  GlobalPrompt,
-  GlobalPromptResponse,
-} from '@shared/global-prompt-types';
-import type {
-  AppNotification,
-  TaskNotificationTarget,
-} from '@shared/notification-types';
-import type {
-  GetYamlParametersIpcParams,
-  QueueBuildIpcParams,
-} from '@shared/pipeline-types';
 import type {
   AddGitHubSourceParams,
   InstallSourceItemsParams,
   UpdateSourceInstallParams,
 } from '@shared/source-management-types';
 import type {
+  AppNotification,
+  TaskNotificationTarget,
+} from '@shared/notification-types';
+import type { CacheEvent, CacheSubscriptionUpdate } from '@shared/cache-events';
+import type {
+  GetYamlParametersIpcParams,
+  QueueBuildIpcParams,
+} from '@shared/pipeline-types';
+import type {
+  GlobalPrompt,
+  GlobalPromptResponse,
+} from '@shared/global-prompt-types';
+import type {
   NewWorkActivityEvent,
   WorkActivityWeekParams,
 } from '@shared/work-activity-types';
+import { AGENT_CHANNELS } from '@shared/agent-types';
+import type { AiUsageDashboardParams } from '@shared/ai-usage-types';
 import type { CreateWorkItemVerificationNoteParams } from '@shared/work-item-verification-note-types';
+import type { DebugLogEntry } from '@shared/debug-log-types';
+
+
 
 contextBridge.exposeInMainWorld('api', {
   platform: process.platform,

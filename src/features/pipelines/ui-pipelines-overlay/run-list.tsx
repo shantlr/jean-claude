@@ -4,11 +4,13 @@ import {
   type PipelineRunWithContext,
   useAllPipelineRuns,
 } from '@/hooks/use-pipeline-runs';
-import { useTrackedPipelines } from '@/hooks/use-tracked-pipelines';
 import type { Project } from '@shared/types';
+import { useTrackedPipelines } from '@/hooks/use-tracked-pipelines';
 
-import { RunRow } from './run-row';
+
 import { isBuildRun } from './utils';
+import { RunRow } from './run-row';
+
 
 import type { SidebarFilter } from './index';
 

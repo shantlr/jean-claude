@@ -1,16 +1,19 @@
-import clsx from 'clsx';
 import { FolderTree, Search, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
+import clsx from 'clsx';
 
-import { FileTree } from '@/features/task/ui-task-panel/file-explorer-pane/file-tree';
-import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
-import { useProjectFilePaths } from '@/hooks/use-project-file-paths';
+
 import {
   useComposerFileCommentActions,
   useComposerFileCommentCount,
   useComposerFileCommentCountsByFile,
 } from '@/stores/composer-file-comments';
+import { FileTree } from '@/features/task/ui-task-panel/file-explorer-pane/file-tree';
 import { useComposerFileExplorerState } from '@/stores/composer-file-explorer';
+import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
+import { useProjectFilePaths } from '@/hooks/use-project-file-paths';
+
+
 
 import { CommentableFileViewer } from './commentable-file-viewer';
 

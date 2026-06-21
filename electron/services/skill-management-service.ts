@@ -2,7 +2,6 @@ import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 
-import type { AgentBackendType } from '@shared/agent-backend-types';
 import type {
   AgentSkillPathConfig,
   LegacySkillMigrationExecuteResult,
@@ -11,17 +10,21 @@ import type {
   ManagedSkill,
   SkillScope,
 } from '@shared/skill-types';
+import type { AgentBackendType } from '@shared/agent-backend-types';
 
-import { dbg } from '../lib/debug';
-import { isEnoent } from '../lib/fs';
+
 import {
   buildSkillMd,
   extractBody,
   parseFrontmatter,
 } from '../lib/skill-frontmatter';
+import { dbg } from '../lib/debug';
+import { isEnoent } from '../lib/fs';
 
-import { JC_BUILTIN_SKILLS_DIR } from './builtin-skills-service';
+
 import { getSourceProvenanceByInstalledPathMap } from './source-manifest-store';
+import { JC_BUILTIN_SKILLS_DIR } from './builtin-skills-service';
+
 
 // --- Jean-Claude canonical skill storage ---
 //

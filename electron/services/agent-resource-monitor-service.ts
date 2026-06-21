@@ -1,12 +1,13 @@
-import type { AgentBackendType } from '@shared/agent-backend-types';
 import type {
   AgentResourceSnapshot,
   AgentResourceSummary,
 } from '@shared/agent-resource-types';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+
 
 import {
-  sampleProcessTree,
   type ProcessTreeSample,
+  sampleProcessTree,
 } from './process-resource-sampler';
 
 type TrackedSession = {

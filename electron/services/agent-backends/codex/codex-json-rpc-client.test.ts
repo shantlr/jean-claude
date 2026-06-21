@@ -4,8 +4,8 @@ import { PassThrough } from 'stream';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  CodexJsonRpcError,
   CodexJsonRpcClient,
+  CodexJsonRpcError,
   type CodexJsonRpcProcess,
 } from './codex-json-rpc-client';
 

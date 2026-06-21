@@ -1,81 +1,85 @@
-import { Trash2, Plus } from 'lucide-react';
-import { nanoid } from 'nanoid';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
+import { nanoid } from 'nanoid';
 
-import {
-  KeyboardLayerProvider,
-  useKeyboardLayer,
-} from '@/common/context/keyboard-bindings';
-import { useCommands } from '@/common/hooks/use-commands';
-import { Button } from '@/common/ui/button';
-import { Checkbox } from '@/common/ui/checkbox';
-import { IconButton } from '@/common/ui/icon-button';
-import { Input } from '@/common/ui/input';
-import { Kbd } from '@/common/ui/kbd';
-import { Modal } from '@/common/ui/modal';
-import { Select, type SelectOption } from '@/common/ui/select';
-import { Textarea } from '@/common/ui/textarea';
-import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
-import {
-  AVAILABLE_BACKENDS,
-  getModelThinkingCapabilities,
-  getModelsForBackend,
-} from '@/features/agent/ui-backend-selector';
-import { ModeSelector } from '@/features/agent/ui-mode-selector';
-import {
-  RateLimitSwapPreview,
-  resolveRateLimitSwapSelection,
-  useRateLimitSwapPreview,
-} from '@/features/agent/ui-rate-limit-swap-preview';
-import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
-import {
-  PromptTextarea,
-  type PromptTextareaRef,
-} from '@/features/common/ui-prompt-textarea';
-import {
-  ReviewPillsQueue,
-  reviewCommentToPill,
-} from '@/features/common/ui-review-pills';
-import { useBackendModels } from '@/hooks/use-backend-models';
-import { useProject, useProjectFeatureMap } from '@/hooks/use-projects';
-import {
-  useBackendDefaultModelsSetting,
-  useBackendsSetting,
-  usePromptSnippetsSetting,
-} from '@/hooks/use-settings';
-import { useSkills } from '@/hooks/use-skills';
-import { useTask } from '@/hooks/use-tasks';
-import { getDefaultModelForBackend } from '@/lib/default-models';
-import { expandFeatureReferencesInPrompt } from '@/lib/prompt-feature-context';
-import {
-  resolvePromptSnippet,
-  type SnippetVariableContext,
-} from '@/lib/resolve-snippet-template';
+
+
 import {
   type AddStepPresetType,
   useAddStepDialogDraft,
   useNavigationStore,
 } from '@/stores/navigation';
-import {
-  synthesizeReviewPrompt,
-  useReviewComments,
-} from '@/stores/review-comments';
 import type {
   AgentBackendType,
   PromptImagePart,
 } from '@shared/agent-backend-types';
 import {
+  AVAILABLE_BACKENDS,
+  getModelsForBackend,
+  getModelThinkingCapabilities,
+} from '@/features/agent/ui-backend-selector';
+import {
   getThinkingEffortOptions,
   normalizeThinkingEffortForModel,
 } from '@shared/thinking-settings';
 import {
-  normalizeInteractionModeForBackend,
   type InteractionMode,
   type ModelPreference,
+  normalizeInteractionModeForBackend,
   type ReviewerConfig,
   type ThinkingEffort,
 } from '@shared/types';
+import {
+  KeyboardLayerProvider,
+  useKeyboardLayer,
+} from '@/common/context/keyboard-bindings';
+import {
+  PromptTextarea,
+  type PromptTextareaRef,
+} from '@/features/common/ui-prompt-textarea';
+import {
+  RateLimitSwapPreview,
+  resolveRateLimitSwapSelection,
+  useRateLimitSwapPreview,
+} from '@/features/agent/ui-rate-limit-swap-preview';
+import {
+  resolvePromptSnippet,
+  type SnippetVariableContext,
+} from '@/lib/resolve-snippet-template';
+import {
+  reviewCommentToPill,
+  ReviewPillsQueue,
+} from '@/features/common/ui-review-pills';
+import { Select, type SelectOption } from '@/common/ui/select';
+import {
+  synthesizeReviewPrompt,
+  useReviewComments,
+} from '@/stores/review-comments';
+import {
+  useBackendDefaultModelsSetting,
+  useBackendsSetting,
+  usePromptSnippetsSetting,
+} from '@/hooks/use-settings';
+import { useProject, useProjectFeatureMap } from '@/hooks/use-projects';
+import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
+import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { expandFeatureReferencesInPrompt } from '@/lib/prompt-feature-context';
+import { getDefaultModelForBackend } from '@/lib/default-models';
+import { IconButton } from '@/common/ui/icon-button';
+import { Input } from '@/common/ui/input';
+import { Kbd } from '@/common/ui/kbd';
+import { Modal } from '@/common/ui/modal';
+import { ModeSelector } from '@/features/agent/ui-mode-selector';
+import { Textarea } from '@/common/ui/textarea';
+import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
+import { useBackendModels } from '@/hooks/use-backend-models';
+import { useCommands } from '@/common/hooks/use-commands';
+import { useSkills } from '@/hooks/use-skills';
+import { useTask } from '@/hooks/use-tasks';
+
+
 
 function createDefaultReviewers(backend: AgentBackendType): ReviewerConfig[] {
   return [
@@ -407,6 +411,11 @@ export function AddStepDialog({
     createDefaultReviewers(defaultBackend),
   );
   const userTouchedSelectionRef = useRef(false);
+  const [userTouchedSelection, setUserTouchedSelection] = useState(false);
+  const markUserTouchedSelection = useCallback(() => {
+    userTouchedSelectionRef.current = true;
+    setUserTouchedSelection(true);
+  }, []);
 
   const { data: backendsSetting } = useBackendsSetting();
   const { data: backendDefaultModelsSetting } =
@@ -471,9 +480,7 @@ export function AddStepDialog({
   });
   const { data: rateLimitSuggestion } = useRateLimitSwapPreview(
     backend,
-    isOpen &&
-      presetType !== 'review-changes' &&
-      !userTouchedSelectionRef.current,
+    isOpen && presetType !== 'review-changes' && !userTouchedSelection,
   );
   const snippetVariableContext: SnippetVariableContext = useMemo(
     () => ({
@@ -496,17 +503,18 @@ export function AddStepDialog({
   useEffect(() => {
     if (isOpen) {
       userTouchedSelectionRef.current = false;
-      setInteractionMode('ask');
-      setBackend(defaultBackend);
-      setModel(defaultModel);
-      setThinkingEffort(defaultThinkingEffort ?? 'default');
-      setBackendModelPresetId(null);
-      setImages([]);
-      setAutoStart(true);
-      setIncludeReviewComments(true);
-      setShowReviewPreview(false);
-      setIsAutocompleteOpen(false);
-      setReviewers(createDefaultReviewers(defaultBackend));
+      startTransition(() => setUserTouchedSelection(false));
+      startTransition(() => setInteractionMode('ask'));
+      startTransition(() => setBackend(defaultBackend));
+      startTransition(() => setModel(defaultModel));
+      startTransition(() => setThinkingEffort(defaultThinkingEffort ?? 'default'));
+      startTransition(() => setBackendModelPresetId(null));
+      startTransition(() => setImages([]));
+      startTransition(() => setAutoStart(true));
+      startTransition(() => setIncludeReviewComments(true));
+      startTransition(() => setShowReviewPreview(false));
+      startTransition(() => setIsAutocompleteOpen(false));
+      startTransition(() => setReviewers(createDefaultReviewers(defaultBackend)));
     }
   }, [defaultBackend, defaultModel, defaultThinkingEffort, isOpen]);
 
@@ -515,24 +523,30 @@ export function AddStepDialog({
       !isOpen ||
       presetType === 'review-changes' ||
       !rateLimitSuggestion?.swapped ||
-      userTouchedSelectionRef.current
+      userTouchedSelection
     ) {
       return;
     }
 
     const nextBackend = rateLimitSuggestion.backend;
-    setBackend(nextBackend);
-    setBackendModelPresetId(null);
-    setModel(
-      rateLimitSuggestion.model ??
-        (nextBackend !== backend ? 'default' : model),
+    startTransition(() => setBackend(nextBackend));
+    startTransition(() => setBackendModelPresetId(null));
+    startTransition(() =>
+      setModel(
+        rateLimitSuggestion.model ??
+          (nextBackend !== backend ? 'default' : model),
+      ),
     );
-    setThinkingEffort(
-      rateLimitSuggestion.thinkingEffort ??
-        (nextBackend !== backend ? 'default' : normalizedThinkingEffort),
+    startTransition(() =>
+      setThinkingEffort(
+        rateLimitSuggestion.thinkingEffort ??
+          (nextBackend !== backend ? 'default' : normalizedThinkingEffort),
+      ),
     );
-    setInteractionMode((mode) =>
-      normalizeInteractionModeForBackend({ backend: nextBackend, mode }),
+    startTransition(() =>
+      setInteractionMode((mode) =>
+        normalizeInteractionModeForBackend({ backend: nextBackend, mode }),
+      ),
     );
   }, [
     backend,
@@ -541,6 +555,7 @@ export function AddStepDialog({
     normalizedThinkingEffort,
     presetType,
     rateLimitSuggestion,
+    userTouchedSelection,
   ]);
 
   const reviewersValid =
@@ -861,7 +876,7 @@ export function AddStepDialog({
               side="top"
               layer={layer}
               onChange={(selection) => {
-                userTouchedSelectionRef.current = true;
+                markUserTouchedSelection();
                 setBackend(selection.backend);
                 setBackendModelPresetId(selection.presetId);
                 setModel(selection.model);
@@ -882,7 +897,7 @@ export function AddStepDialog({
             <ThinkingSelector
               value={normalizedThinkingEffort}
               onChange={(nextThinkingEffort) => {
-                userTouchedSelectionRef.current = true;
+                markUserTouchedSelection();
                 setThinkingEffort(nextThinkingEffort);
               }}
               options={thinkingOptions}
@@ -896,7 +911,7 @@ export function AddStepDialog({
                 model={model}
                 thinkingEffort={normalizedThinkingEffort}
                 onApplySuggestion={(selection) => {
-                  userTouchedSelectionRef.current = true;
+                  markUserTouchedSelection();
                   setBackend(selection.backend);
                   setBackendModelPresetId(null);
                   setModel(selection.model as ModelPreference);

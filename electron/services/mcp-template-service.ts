@@ -1,9 +1,10 @@
 // electron/services/mcp-template-service.ts
-import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { exec } from 'child_process';
 import { promisify } from 'util';
+
 
 import { app } from 'electron';
 
@@ -15,9 +16,10 @@ import type {
   UnifiedMcpServer,
 } from '@shared/mcp-types';
 
+import { dbg } from '../lib/debug';
 import { McpTemplateRepository } from '../database/repositories/mcp-templates';
 import { ProjectMcpOverrideRepository } from '../database/repositories/project-mcp-overrides';
-import { dbg } from '../lib/debug';
+
 
 const execAsync = promisify(exec);
 

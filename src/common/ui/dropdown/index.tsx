@@ -1,25 +1,26 @@
-import clsx from 'clsx';
-import { Check } from 'lucide-react';
 import React, {
   cloneElement,
   isValidElement,
+  type ReactElement,
+  type ReactNode,
   useCallback,
   useEffect,
   useId,
   useRef,
   useState,
-  type ReactElement,
-  type ReactNode,
-  type RefObject,
 } from 'react';
+import { Check } from 'lucide-react';
+import clsx from 'clsx';
 import { createPortal } from 'react-dom';
 
-import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+
+
 import type { BindingKey } from '@/common/context/keyboard-bindings/types';
 import { isTypingInInput } from '@/common/context/keyboard-bindings/utils';
-import { useRegisterOverlay } from '@/common/context/overlay';
-import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
 import { Kbd } from '@/common/ui/kbd';
+import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
+import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import { useRegisterOverlay } from '@/common/context/overlay';
 
 function setRef<T>(
   ref: ((node: T) => void) | { current: T } | null | undefined,
@@ -28,7 +29,9 @@ function setRef<T>(
   if (typeof ref === 'function') {
     ref(value);
   } else if (ref && typeof ref === 'object' && 'current' in ref) {
-    ref.current = value;
+    queueMicrotask(() => {
+      Reflect.set(ref, 'current', value);
+    });
   }
 }
 
@@ -45,7 +48,7 @@ export function Dropdown({
   variant?: 'default' | 'bright';
   trigger:
     | ReactElement
-    | ((props: { triggerRef: RefObject<HTMLElement | null> }) => ReactElement);
+    | ((props: { triggerRef: (node: HTMLElement | null) => void }) => ReactElement);
   children: ReactNode;
   align?: 'left' | 'right';
   side?: 'bottom' | 'top';
@@ -59,10 +62,26 @@ export function Dropdown({
   const menuId = `dropdown-menu-${id}`;
   const [isOpen, setIsOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [triggerElementNode, setTriggerElementNode] =
+    useState<HTMLElement | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const originalTriggerRef =
+    typeof trigger !== 'function' && isValidElement(trigger)
+      ? ((trigger as unknown as { ref?: unknown }).ref as
+          | ((node: HTMLElement | null) => void)
+          | { current: HTMLElement | null }
+          | null
+          | undefined)
+      : undefined;
 
-  const position = useDropdownPosition({ isOpen, triggerRef, side, align });
+  const position = useDropdownPosition({
+    isOpen,
+    triggerElement: triggerElementNode,
+    triggerRef,
+    side,
+    align,
+  });
 
   useEffect(() => {
     if (isOpen) onOpen?.();
@@ -72,19 +91,29 @@ export function Dropdown({
     setIsOpen(false);
     setFocusedIndex(-1);
     // Return focus to trigger on close
-    triggerRef.current?.focus();
-  }, []);
+    (triggerElementNode ?? triggerRef.current)?.focus();
+  }, [triggerElementNode]);
 
   const toggle = useCallback(() => {
     setIsOpen((prev) => {
       if (prev) {
         setFocusedIndex(-1);
         // Return focus to trigger on close
-        triggerRef.current?.focus();
+        (triggerElementNode ?? triggerRef.current)?.focus();
       }
       return !prev;
     });
-  }, []);
+  }, [triggerElementNode]);
+
+  useEffect(() => {
+    triggerRef.current = triggerElementNode;
+  }, [triggerElementNode]);
+
+  useEffect(() => {
+    if (!originalTriggerRef) return;
+    setRef(originalTriggerRef, triggerElementNode);
+    return () => setRef(originalTriggerRef, null);
+  }, [originalTriggerRef, triggerElementNode]);
 
   // Expose toggle to parent via ref or callback
   useEffect(() => {
@@ -258,24 +287,12 @@ export function Dropdown({
   // Build trigger element
   let triggerElement: ReactElement;
   if (typeof trigger === 'function') {
-    triggerElement = trigger({ triggerRef });
+    triggerElement = trigger({ triggerRef: setTriggerElementNode });
   } else if (isValidElement(trigger)) {
     triggerElement = cloneElement(
       trigger as ReactElement<Record<string, unknown>>,
       {
-        ref: (node: HTMLElement | null) => {
-          triggerRef.current = node;
-          // Preserve original ref if any
-          const originalRef = (trigger as unknown as { ref?: unknown }).ref;
-          setRef(
-            originalRef as
-              | ((node: HTMLElement | null) => void)
-              | { current: HTMLElement | null }
-              | null
-              | undefined,
-            node,
-          );
-        },
+        ref: setTriggerElementNode,
         onClick: (e: React.MouseEvent) => {
           // Call original onClick if present
           const originalProps = trigger.props as Record<string, unknown>;

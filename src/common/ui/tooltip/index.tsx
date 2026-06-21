@@ -1,28 +1,19 @@
-import clsx from 'clsx';
 import React, {
-  cloneElement,
   isValidElement,
+  type ReactElement,
+  type ReactNode,
+  startTransition,
   useCallback,
   useEffect,
   useRef,
   useState,
-  type ReactElement,
-  type ReactNode,
 } from 'react';
+import clsx from 'clsx';
 import { createPortal } from 'react-dom';
 
-import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
 
-function setRef<T>(
-  ref: ((node: T) => void) | { current: T } | null | undefined,
-  value: T,
-) {
-  if (typeof ref === 'function') {
-    ref(value);
-  } else if (ref && typeof ref === 'object' && 'current' in ref) {
-    ref.current = value;
-  }
-}
+
+import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
 
 /**
  * Portal-based tooltip that renders on hover.
@@ -57,11 +48,14 @@ export function Tooltip({
   const [contentWidth, setContentWidth] = useState<number | undefined>(
     minWidth,
   );
+  const [triggerElementNode, setTriggerElementNode] =
+    useState<HTMLElement | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const delayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const position = useDropdownPosition({
     isOpen,
+    triggerElement: triggerElementNode,
     triggerRef,
     side,
     align,
@@ -83,13 +77,13 @@ export function Tooltip({
 
   useEffect(() => {
     if (!isOpen) {
-      setContentElement(null);
-      setContentWidth(minWidth);
+      startTransition(() => setContentElement(null));
+      startTransition(() => setContentWidth(minWidth));
       return;
     }
     if (!contentElement) return;
 
-    updateContentWidth(contentElement);
+    startTransition(() => updateContentWidth(contentElement));
 
     const observer = new ResizeObserver(() => {
       updateContentWidth(contentElement);
@@ -121,50 +115,17 @@ export function Tooltip({
     throw new Error('Tooltip children must be a single ReactElement');
   }
 
-  const triggerElement = cloneElement(
-    children as ReactElement<Record<string, unknown>>,
-    {
-      ref: (node: HTMLElement | null) => {
-        triggerRef.current = node;
-        const originalRef = (children as unknown as { ref?: unknown }).ref;
-        setRef(
-          originalRef as
-            | ((node: HTMLElement | null) => void)
-            | { current: HTMLElement | null }
-            | null
-            | undefined,
-          node,
-        );
-      },
-      onMouseEnter: (e: React.MouseEvent) => {
-        const originalProps = children.props as Record<string, unknown>;
-        if (typeof originalProps.onMouseEnter === 'function') {
-          (originalProps.onMouseEnter as (e: React.MouseEvent) => void)(e);
-        }
-        handleMouseEnter();
-      },
-      onMouseLeave: (e: React.MouseEvent) => {
-        const originalProps = children.props as Record<string, unknown>;
-        if (typeof originalProps.onMouseLeave === 'function') {
-          (originalProps.onMouseLeave as (e: React.MouseEvent) => void)(e);
-        }
-        handleMouseLeave();
-      },
-      onFocus: (e: React.FocusEvent) => {
-        const originalProps = children.props as Record<string, unknown>;
-        if (typeof originalProps.onFocus === 'function') {
-          (originalProps.onFocus as (e: React.FocusEvent) => void)(e);
-        }
-        handleMouseEnter();
-      },
-      onBlur: (e: React.FocusEvent) => {
-        const originalProps = children.props as Record<string, unknown>;
-        if (typeof originalProps.onBlur === 'function') {
-          (originalProps.onBlur as (e: React.FocusEvent) => void)(e);
-        }
-        handleMouseLeave();
-      },
-    },
+  const triggerElement = (
+    <span
+      ref={setTriggerElementNode}
+      className="inline-flex"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onFocus={handleMouseEnter}
+      onBlur={handleMouseLeave}
+    >
+      {children}
+    </span>
   );
 
   return (

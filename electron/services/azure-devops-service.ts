@@ -1,20 +1,11 @@
 // electron/services/azure-devops-service.ts
 
-import { spawn } from 'child_process';
 import { createHash } from 'crypto';
+import { spawn } from 'child_process';
+
 
 import TurndownService from 'turndown';
 
-import type {
-  AzureDevOpsPullRequest,
-  AzureDevOpsPullRequestDetails,
-  AzureDevOpsCommit,
-  AzureDevOpsFileChange,
-  AzureDevOpsCommentThread,
-  AzureDevOpsComment,
-  AzureDevOpsIdentity,
-  ReviewerVoteStatus,
-} from '@shared/azure-devops-types';
 import type {
   AzureBuildDefinition,
   AzureBuildDefinitionDetail,
@@ -27,16 +18,29 @@ import type {
   AzureReleaseDetail,
   YamlPipelineParameter,
 } from '@shared/pipeline-types';
+import type {
+  AzureDevOpsComment,
+  AzureDevOpsCommentThread,
+  AzureDevOpsCommit,
+  AzureDevOpsFileChange,
+  AzureDevOpsIdentity,
+  AzureDevOpsPullRequest,
+  AzureDevOpsPullRequestDetails,
+  ReviewerVoteStatus,
+} from '@shared/azure-devops-types';
 
+
+import { dbg } from '../lib/debug';
 import { ProviderRepository } from '../database/repositories/providers';
 import { TokenRepository } from '../database/repositories/tokens';
-import { dbg } from '../lib/debug';
 
-import { sendGlobalPromptToWindow } from './global-prompt-service';
+
 import {
   parseYamlParameters,
   validateYamlFilename,
 } from './yaml-pipeline-parser';
+import { sendGlobalPromptToWindow } from './global-prompt-service';
+
 
 export type {
   AzureDevOpsPullRequest,

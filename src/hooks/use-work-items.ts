@@ -2,10 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   api,
+  type AzureDevOpsIteration,
+  type AzureDevOpsUser,
   type AzureDevOpsWorkItem,
   type AzureDevOpsWorkItemState,
-  type AzureDevOpsUser,
-  type AzureDevOpsIteration,
   type WorkItemComment,
 } from '@/lib/api';
 import { useToastStore } from '@/stores/toasts';

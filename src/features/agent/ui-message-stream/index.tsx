@@ -1,41 +1,47 @@
-import type { MouseEvent } from 'react';
-import { memo, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
-
-import type {
-  AgentQuestion,
-  PermissionResponse,
-  QuestionResponse,
-  QueuedPrompt,
-} from '@shared/agent-types';
-import type {
-  NormalizedEntry,
-  NormalizedPermissionRequest,
-  NormalizedToolUse,
-} from '@shared/normalized-message-v2';
-import type { ToolUseByName } from '@shared/normalized-message-v2';
-import type { InteractionMode } from '@shared/types';
-
-import { PermissionBar } from '../ui-permission-bar';
-import { QuestionOptions } from '../ui-question-options';
-
-import { processMessageStream } from './message-merger';
-import type {
-  MessageStreamProcessingCache,
-  StreamMessage,
-} from './message-merger';
 import {
   addBashToPermissionsItem,
   copyToClipboardItem,
   showRawMessageItem,
   useMessageContextMenu,
 } from './ui-message-context-menu';
+import type {
+  AgentQuestion,
+  PermissionResponse,
+  QuestionResponse,
+  QueuedPrompt,
+} from '@shared/agent-types';
+import { CompactingEntry, TimelineEntry } from './ui-timeline-entry';
+import {
+  memo,
+  startTransition,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import type {
+  MessageStreamProcessingCache,
+  StreamMessage,
+} from './message-merger';
+import type {
+  NormalizedEntry,
+  NormalizedPermissionRequest,
+  NormalizedToolUse,
+} from '@shared/normalized-message-v2';
 import type { ContextMenuItem } from './ui-message-context-menu';
+import type { InteractionMode } from '@shared/types';
+import type { MouseEvent } from 'react';
+import { PermissionBar } from '../ui-permission-bar';
+import { processMessageStream } from './message-merger';
 import { PromptGroupEntry } from './ui-prompt-group-entry';
 import { PromptSidebar } from './ui-prompt-sidebar';
+import { QuestionOptions } from '../ui-question-options';
 import { QueuedPromptEntry } from './ui-queued-prompt-entry';
 import { SkillEntry } from './ui-skill-entry';
 import { SubagentEntry } from './ui-subagent-entry';
-import { TimelineEntry, CompactingEntry } from './ui-timeline-entry';
+import type { ToolUseByName } from '@shared/normalized-message-v2';
 
 // Threshold in pixels - if user is within this distance from bottom, auto-scroll
 const SCROLL_THRESHOLD = 10;
@@ -127,21 +133,41 @@ export const MessageStream = memo(function MessageStream({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
-  const processingCacheRef = useRef<MessageStreamProcessingCache>(undefined);
-  const processingCacheKeyRef = useRef<string>(undefined);
-
+  const [processingCacheState, setProcessingCacheState] = useState<{
+    key: string;
+    cache: MessageStreamProcessingCache;
+  } | null>(null);
   const processingCacheKey = `${taskId ?? ''}:${stepId ?? ''}`;
-  if (processingCacheKeyRef.current !== processingCacheKey) {
-    processingCacheRef.current = undefined;
-    processingCacheKeyRef.current = processingCacheKey;
-  }
-
-  const processedStream = processMessageStream(
-    messages,
-    isRunning,
-    processingCacheRef.current,
+  const previousProcessingCache =
+    processingCacheState?.key === processingCacheKey
+      ? processingCacheState.cache
+      : undefined;
+  const processedStream = useMemo(
+    () =>
+      processMessageStream(
+        messages,
+        isRunning,
+        previousProcessingCache,
+      ),
+    [messages, isRunning, previousProcessingCache],
   );
-  processingCacheRef.current = processedStream.cache;
+
+  useEffect(() => {
+    if (
+      processingCacheState?.key === processingCacheKey &&
+      processingCacheState.cache === processedStream.cache
+    ) {
+      return;
+    }
+
+    startTransition(() => {
+      setProcessingCacheState({
+        key: processingCacheKey,
+        cache: processedStream.cache,
+      });
+    });
+  }, [processedStream.cache, processingCacheKey, processingCacheState]);
+
   const {
     streamMessages,
     promptIndexMap,

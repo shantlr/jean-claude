@@ -1,5 +1,6 @@
-import clsx from 'clsx';
 import { CheckCircle2, CircleAlert, X } from 'lucide-react';
+import clsx from 'clsx';
+
 
 import { useToastStore } from '@/stores/toasts';
 

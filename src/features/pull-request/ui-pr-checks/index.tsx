@@ -1,20 +1,22 @@
-import clsx from 'clsx';
 import {
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  Clock,
-  MinusCircle,
   AlertTriangle,
-  Play,
-  RefreshCw,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
-  ShieldCheck,
   Circle,
+  Clock,
+  Loader2,
+  MinusCircle,
+  Play,
+  RefreshCw,
+  ShieldCheck,
+  XCircle,
 } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
+import clsx from 'clsx';
 import type { ReactNode } from 'react';
-import { useState, useMemo, useCallback } from 'react';
+
+
 
 import type { AzureDevOpsPolicyEvaluation } from '@/lib/api';
 

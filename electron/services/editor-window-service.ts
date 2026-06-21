@@ -1,10 +1,11 @@
-import { execFile } from 'child_process';
 import * as path from 'path';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
+
 
 import { systemPreferences } from 'electron';
 
-import { PRESET_EDITORS, type EditorSetting } from '@shared/types';
+import { type EditorSetting, PRESET_EDITORS } from '@shared/types';
 
 import { dbg } from '../lib/debug';
 

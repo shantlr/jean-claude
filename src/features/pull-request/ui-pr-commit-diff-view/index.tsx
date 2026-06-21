@@ -1,18 +1,22 @@
+import { useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { Loader2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+
+
 
 import {
   DiffFileTree,
   FileDiffContent,
   normalizeAzureChangeType,
 } from '@/features/common/ui-file-diff';
-import type { DiffFile } from '@/features/common/ui-file-diff';
-import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import {
   useCommitChanges,
   useCommitFileContent,
 } from '@/hooks/use-pull-requests';
+import type { DiffFile } from '@/features/common/ui-file-diff';
+import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
+
+
 
 export function PrCommitDiffView({
   projectId,

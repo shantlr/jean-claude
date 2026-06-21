@@ -1,5 +1,6 @@
+import { useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
-import { useCallback, useRef, useState } from 'react';
+
 
 /** Fixed-width columns: 2 × line-number (32px each) + divider (8px) */
 const FIXED_WIDTH_PX = 32 + 32 + 8;
@@ -11,7 +12,7 @@ export function useDividerResize() {
   const [isDragging, setIsDragging] = useState(false);
   const tableRef = useRef<HTMLTableElement>(null);
 
-  const handleDividerMouseDown = useCallback((e: ReactMouseEvent) => {
+  const handleDividerMouseDown = (e: ReactMouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
 
@@ -37,7 +38,7 @@ export function useDividerResize() {
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  }, []);
+  };
 
   return { tableRef, leftFraction, isDragging, handleDividerMouseDown };
 }

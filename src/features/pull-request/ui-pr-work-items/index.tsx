@@ -1,21 +1,24 @@
-import { useQuery } from '@tanstack/react-query';
-import clsx from 'clsx';
 import {
   ChevronDown,
-  Eye,
   ExternalLink,
+  Eye,
   Link,
   Loader2,
   Plus,
   Search,
   X,
 } from 'lucide-react';
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
+import clsx from 'clsx';
 import type React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
+
+
+import { api, type AzureDevOpsWorkItem } from '@/lib/api';
 import { Modal } from '@/common/ui/modal';
 import { WorkItemPreview } from '@/features/work-item/ui-work-item-preview';
-import { api, type AzureDevOpsWorkItem } from '@/lib/api';
+
 
 import { WorkItemTypeIcon } from '../../work-item/ui-work-item-shared';
 
@@ -293,7 +296,7 @@ export function PrWorkItems({
   // Clear unlinking state when mutation completes
   useEffect(() => {
     if (!isUnlinking) {
-      setUnlinkingId(null);
+      startTransition(() => setUnlinkingId(null));
     }
   }, [isUnlinking]);
 

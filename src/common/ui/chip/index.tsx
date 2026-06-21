@@ -1,5 +1,6 @@
-import clsx from 'clsx';
 import type { MouseEvent, ReactNode } from 'react';
+import clsx from 'clsx';
+
 
 type ChipSize = 'xs' | 'sm';
 type ChipColor =

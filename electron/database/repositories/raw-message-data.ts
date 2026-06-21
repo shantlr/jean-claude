@@ -1,6 +1,6 @@
+import { gunzip, gzip } from 'node:zlib';
 import { Buffer } from 'node:buffer';
 import { promisify } from 'node:util';
-import { gunzip, gzip } from 'node:zlib';
 
 const gzipAsync = promisify(gzip);
 const gunzipAsync = promisify(gunzip);

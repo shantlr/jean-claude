@@ -1,8 +1,8 @@
 import clsx from 'clsx';
 import { Zap } from 'lucide-react';
-import { useMemo } from 'react';
 
-import { MeetingDetail } from '@/features/calendar/ui-meeting-detail';
+
+
 import {
   addDays,
   computeFreeBlocks,
@@ -14,7 +14,9 @@ import {
   minutesBetween,
   startOfDay,
 } from '@/features/calendar/utils-calendar';
+import { MeetingDetail } from '@/features/calendar/ui-meeting-detail';
 import type { UpcomingMeeting } from '@shared/calendar-types';
+
 
 const HOUR_START = 8;
 const HOUR_END = 20;
@@ -49,37 +51,22 @@ export function TodayTimelineView({
   const dayStart = startOfDay(todayDate);
   const dayEnd = addDays(dayStart, 1);
 
-  const dayMeetings = useMemo(
-    () =>
-      meetings.filter(
-        (m) => new Date(m.startAt) >= dayStart && new Date(m.startAt) < dayEnd,
-      ),
-    [meetings, dayStart, dayEnd],
+  const dayMeetings = meetings.filter(
+    (m) => new Date(m.startAt) >= dayStart && new Date(m.startAt) < dayEnd,
   );
 
-  const cols = useMemo(() => layoutColumns(dayMeetings), [dayMeetings]);
-  const selected = useMemo(
-    () =>
-      dayMeetings.find((m) => m.id === selectedId) ?? dayMeetings[0] ?? null,
-    [dayMeetings, selectedId],
+  const cols = layoutColumns(dayMeetings);
+  const selected =
+    dayMeetings.find((m) => m.id === selectedId) ?? dayMeetings[0] ?? null;
+
+  const freeBlocks = computeFreeBlocks(
+    dayMeetings.filter((m) => !ignoredSet.has(m.id)),
+    dayStart,
   );
 
-  const freeBlocks = useMemo(
-    () =>
-      computeFreeBlocks(
-        dayMeetings.filter((m) => !ignoredSet.has(m.id)),
-        dayStart,
-      ),
-    [dayMeetings, ignoredSet, dayStart],
-  );
-
-  const totalMins = useMemo(
-    () =>
-      dayMeetings.reduce(
-        (acc, m) => acc + minutesBetween(m.startAt, m.endAt),
-        0,
-      ),
-    [dayMeetings],
+  const totalMins = dayMeetings.reduce(
+    (acc, m) => acc + minutesBetween(m.startAt, m.endAt),
+    0,
   );
 
   const currentHour = todayDate.getHours();

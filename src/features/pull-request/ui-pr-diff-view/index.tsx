@@ -1,25 +1,28 @@
 import { useCallback, useMemo } from 'react';
 
-import type { MentionOption } from '@/common/ui/mention-textarea';
-import type { LineRange } from '@/features/agent/ui-diff-view';
+import type {
+  AzureDevOpsCommentThread,
+  AzureDevOpsFileChange,
+} from '@/lib/api';
 import {
   FileDiffContent,
   normalizeAzureChangeType,
 } from '@/features/common/ui-file-diff';
 import type { DiffFile } from '@/features/common/ui-file-diff';
-import type {
-  AzureDevOpsFileChange,
-  AzureDevOpsCommentThread,
-} from '@/lib/api';
+import type { LineRange } from '@/features/agent/ui-diff-view';
 import type { MentionDisplayNames } from '@/lib/azure-devops-mentions';
-import { usePrFileDraftActions } from '@/stores/pr-comment-drafts';
+import type { MentionOption } from '@/common/ui/mention-textarea';
 import type { PromptImagePart } from '@shared/agent-backend-types';
+import { usePrFileDraftActions } from '@/stores/pr-comment-drafts';
 
-import { PrCommentForm } from '../ui-pr-comment-form';
+
+
 import {
   convertPrThreadsForFile,
   PrInlineCommentThread,
 } from '../ui-pr-inline-comment-thread';
+import { PrCommentForm } from '../ui-pr-comment-form';
+
 
 export function PrDiffView({
   file,

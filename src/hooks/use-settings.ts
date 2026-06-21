@@ -1,30 +1,34 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
-import { api } from '@/lib/api';
-import { BUILTIN_SNIPPETS, BUILTIN_SNIPPET_IDS } from '@/lib/builtin-snippets';
+
+
 import type {
   AiGenerationSetting,
+  AiSkillSlotsSetting,
   AppearanceSetting,
+  AppSettings,
   BackendDefaultModelsSetting,
   BackendModelPresetsSetting,
-  AiSkillSlotsSetting,
-  AppSettings,
   BackendsSetting,
   CalendarNotificationsSetting,
   EditorAutomationSetting,
   EditorSetting,
-  PromptSnippetsSetting,
   ProjectPromptPrefaceSetting,
   PromptPrefaceSetting,
-  RawMessageCleanupSetting,
+  PromptSnippetsSetting,
   RateLimitSwapSetting,
+  RawMessageCleanupSetting,
   SummaryModelsSetting,
   TaskEventNotificationsSetting,
   ThinkingSettingsSetting,
   UsageDisplaySetting,
 } from '@shared/types';
+import { BUILTIN_SNIPPET_IDS, BUILTIN_SNIPPETS } from '@/lib/builtin-snippets';
+import { api } from '@/lib/api';
 import { PRESET_EDITORS } from '@shared/types';
+
+
 
 export function useSetting<K extends keyof AppSettings>(key: K) {
   return useQuery({

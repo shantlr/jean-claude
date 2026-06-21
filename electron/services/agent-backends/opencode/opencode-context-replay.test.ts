@@ -1,5 +1,6 @@
-import type { Message, Part } from '@opencode-ai/sdk/v2';
 import { describe, expect, it } from 'vitest';
+import type { Message, Part } from '@opencode-ai/sdk/v2';
+
 
 import type { OpenCodeNormalizationContext } from './normalize-opencode-message-v2';
 import { replayOpenCodeContextUpdate } from './opencode-context-replay';

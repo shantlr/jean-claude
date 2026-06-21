@@ -1,20 +1,23 @@
-import clsx from 'clsx';
 import {
-  Loader2,
+  ArrowLeft,
+  ExternalLink,
   GitPullRequest,
   Link,
-  ExternalLink,
-  ArrowLeft,
+  Loader2,
 } from 'lucide-react';
-import { useMemo, useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
+import clsx from 'clsx';
 
-import { Button } from '@/common/ui/button';
-import { Separator } from '@/common/ui/separator';
-import { PrDetail } from '@/features/pull-request/ui-pr-detail';
-import { useProject } from '@/hooks/use-projects';
-import { usePullRequests } from '@/hooks/use-pull-requests';
+
 import { useTask, useUpdateTask } from '@/hooks/use-tasks';
 import type { AzureDevOpsPullRequest } from '@/lib/api';
+import { Button } from '@/common/ui/button';
+import { PrDetail } from '@/features/pull-request/ui-pr-detail';
+import { Separator } from '@/common/ui/separator';
+import { useProject } from '@/hooks/use-projects';
+import { usePullRequests } from '@/hooks/use-pull-requests';
+
+
 
 import { PrCreationForm } from './pr-creation-form';
 

@@ -1,13 +1,15 @@
-import { useCallback } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useCallback } from 'react';
 
-import type { AgentBackendType } from '@shared/agent-backend-types';
+
 import type {
   InteractionMode,
   ModelPreference,
   ThinkingEffort,
 } from '@shared/types';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+
 
 interface NewTaskFormDraft {
   name: string;

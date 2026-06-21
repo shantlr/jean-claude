@@ -1,21 +1,17 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { Play } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
+import { Play } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+
+
 
 import {
   KeyboardLayerProvider,
   useKeyboardLayer,
   useRegisterKeyboardBindings,
 } from '@/common/context/keyboard-bindings';
-import { BranchSelect } from '@/common/ui/branch-select';
-import { Button } from '@/common/ui/button';
-import { Checkbox } from '@/common/ui/checkbox';
-import { Input } from '@/common/ui/input';
-import { Kbd } from '@/common/ui/kbd';
 import { Select, type SelectOption } from '@/common/ui/select';
-import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import {
   useBranchNames,
   useBuildDefinitionParams,
@@ -24,9 +20,17 @@ import {
   useYamlPipelineParameters,
 } from '@/hooks/use-pipeline-runs';
 import { api } from '@/lib/api';
-import { useBackgroundJobsStore } from '@/stores/background-jobs';
-import type { TrackedPipeline } from '@shared/pipeline-types';
+import { BranchSelect } from '@/common/ui/branch-select';
+import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { Input } from '@/common/ui/input';
+import { Kbd } from '@/common/ui/kbd';
 import type { Project } from '@shared/types';
+import type { TrackedPipeline } from '@shared/pipeline-types';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
+
+
 
 /** Azure DevOps process type for YAML pipelines. */
 const PROCESS_TYPE_YAML = 2;

@@ -1,18 +1,21 @@
-import { useNavigate } from '@tanstack/react-router';
-import { Bot } from 'lucide-react';
 import React, { useCallback, useRef } from 'react';
+import { Bot } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
 
-import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
-import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
-import { Button } from '@/common/ui/button';
-import { Kbd } from '@/common/ui/kbd';
+
+
 import {
   AGENT_BACKENDS,
   BackendSelector,
 } from '@/features/agent/ui-backend-selector';
-import { useCreateSkillWithAgent } from '@/hooks/use-managed-skills';
+import { Button } from '@/common/ui/button';
+import { Kbd } from '@/common/ui/kbd';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useCreateSkillDraftStore } from '@/stores/create-skill-draft';
+import { useCreateSkillWithAgent } from '@/hooks/use-managed-skills';
+import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
+
 
 export function CreateWithAgentDialog({ onClose }: { onClose: () => void }) {
   const draft = useCreateSkillDraftStore((s) => s.draft);

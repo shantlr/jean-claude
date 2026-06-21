@@ -2,12 +2,14 @@ import { type QueryClient, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
 import { api } from '@/lib/api';
-import { feedQueryKeys } from '@/lib/feed-query-keys';
 import type { CacheEvent } from '@shared/cache-events';
+import { feedQueryKeys } from '@/lib/feed-query-keys';
+
 
 import { applyCacheEvent } from './cache-events';
-import { startCacheGarbageCollector } from './cache-gc';
 import { shouldApplyCacheEvent } from './cache-subscriptions';
+import { startCacheGarbageCollector } from './cache-gc';
+
 
 export function getFeedQueryKeyForCacheEvent(event: CacheEvent) {
   switch (event.type) {

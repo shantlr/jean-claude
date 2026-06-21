@@ -1,11 +1,14 @@
 import { Bug, Clipboard, Shield } from 'lucide-react';
 import type { MouseEvent, ReactNode } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+
+
+import type { NormalizedEntry } from '@shared/normalized-message-v2';
 import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
 import { useRegisterOverlay } from '@/common/context/overlay';
-import type { NormalizedEntry } from '@shared/normalized-message-v2';
+
 
 export interface ContextMenuItem {
   label: string;
@@ -59,7 +62,7 @@ export function useMessageContextMenu() {
 
   useEffect(() => {
     if (!menu) {
-      setAdjustedPos(null);
+      startTransition(() => setAdjustedPos(null));
       return;
     }
     const frame = requestAnimationFrame(() => {

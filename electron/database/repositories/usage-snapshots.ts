@@ -1,5 +1,6 @@
-import { db } from '../index';
 import type { NewUsageSnapshotRow, UsageSnapshotRow } from '../schema';
+import { db } from '../index';
+
 
 export const UsageSnapshotRepository = {
   async record(snapshots: NewUsageSnapshotRow[]): Promise<void> {

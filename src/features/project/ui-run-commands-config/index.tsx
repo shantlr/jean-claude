@@ -1,35 +1,23 @@
 import {
-  DndContext,
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
   closestCenter,
+  DndContext,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import type { DragEndEvent } from '@dnd-kit/core';
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  arrayMove,
-} from '@dnd-kit/sortable';
 import { GitBranch, Plus } from 'lucide-react';
-import { useMemo, useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
+import type { DragEndEvent } from '@dnd-kit/core';
 
-import { usePackageScripts } from '@/hooks/use-package-scripts';
-import {
-  useCreateProjectCommandGroup,
-  useDeleteProjectCommandGroup,
-  useProjectCommandGroups,
-  useUpdateProjectCommandGroup,
-} from '@/hooks/use-project-command-groups';
-import {
-  useProjectCommands,
-  useCreateProjectCommand,
-  useUpdateProjectCommand,
-  useDeleteProjectCommand,
-} from '@/hooks/use-project-commands';
-import { useReorderProjectRunConfig } from '@/hooks/use-project-run-config';
+
+
 import type {
   ProjectCommand,
   ProjectCommandGroup,
@@ -37,6 +25,22 @@ import type {
   UpdateProjectCommand,
   UpdateProjectCommandGroup,
 } from '@shared/run-command-types';
+import {
+  useCreateProjectCommand,
+  useDeleteProjectCommand,
+  useProjectCommands,
+  useUpdateProjectCommand,
+} from '@/hooks/use-project-commands';
+import {
+  useCreateProjectCommandGroup,
+  useDeleteProjectCommandGroup,
+  useProjectCommandGroups,
+  useUpdateProjectCommandGroup,
+} from '@/hooks/use-project-command-groups';
+import { usePackageScripts } from '@/hooks/use-package-scripts';
+import { useReorderProjectRunConfig } from '@/hooks/use-project-run-config';
+
+
 
 import { CommandRow } from './command-row';
 import { GroupRow } from './group-row';

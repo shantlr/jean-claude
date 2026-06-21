@@ -1,7 +1,6 @@
-import clsx from 'clsx';
 import {
-  Bug,
   BookOpen,
+  Bug,
   CheckSquare,
   ChevronDown,
   ChevronRight,
@@ -11,25 +10,30 @@ import {
   Loader2,
   MessagesSquare,
 } from 'lucide-react';
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
+import clsx from 'clsx';
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { Chip } from '@/common/ui/chip';
+
+
 import { Dropdown, DropdownItem } from '@/common/ui/dropdown';
-import { AzureHtmlContent } from '@/features/common/ui-azure-html-content';
-import { WorkItemComments } from '@/features/work-item/ui-work-item-comments';
-import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
-import { useProject } from '@/hooks/use-projects';
 import {
-  useRelatedTestCases,
   useAddWorkItemComment,
+  useRelatedTestCases,
   useUpdateWorkItemState,
   useWorkItemById,
   useWorkItemComments,
   useWorkItemStates,
 } from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
+import { AzureHtmlContent } from '@/features/common/ui-azure-html-content';
+import { Chip } from '@/common/ui/chip';
+import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
+import { useProject } from '@/hooks/use-projects';
 import { useWorkItemCommentsPaneWidth } from '@/stores/navigation';
+import { WorkItemComments } from '@/features/work-item/ui-work-item-comments';
+
+
 
 type DetailsTab = 'comments' | 'test-cases';
 
@@ -196,10 +200,11 @@ export function WorkItemDetails({
   const addComment = useAddWorkItemComment();
   const hasTestCases = isLoadingTestCases || relatedTestCases.length > 0;
   const [activeTab, setActiveTab] = useState<DetailsTab>('comments');
+  const [containerWidth, setContainerWidth] = useState(() => window.innerWidth);
 
   useEffect(() => {
     if (!hasTestCases && activeTab === 'test-cases') {
-      setActiveTab('comments');
+      startTransition(() => setActiveTab('comments'));
     }
   }, [hasTestCases, activeTab]);
 
@@ -212,10 +217,23 @@ export function WorkItemDetails({
     onWidthChange: setCommentsPaneWidth,
   });
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const updateWidth = () => setContainerWidth(container.offsetWidth);
+    updateWidth();
+
+    const resizeObserver = new ResizeObserver(updateWidth);
+    resizeObserver.observe(container);
+
+    return () => resizeObserver.disconnect();
+  }, [containerRef]);
+
   const effectiveCommentsPaneWidth = Math.min(
     commentsPaneWidth,
     maxCommentsPaneWidth,
-    Math.floor((containerRef.current?.offsetWidth ?? window.innerWidth) * 0.6),
+    Math.floor(containerWidth * 0.6),
   );
 
   if (isLoading || !project) {

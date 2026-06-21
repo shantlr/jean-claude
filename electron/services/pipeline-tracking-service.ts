@@ -1,13 +1,15 @@
 import { BrowserWindow } from 'electron';
 
-import type { AppNotification } from '@shared/notification-types';
 import type { AzureBuildRun, AzureRelease } from '@shared/pipeline-types';
+import type { AppNotification } from '@shared/notification-types';
 
+
+import { dbg } from '../lib/debug';
 import { NotificationRepository } from '../database/repositories/notifications';
 import { ProjectRepository } from '../database/repositories/projects';
 import { TrackedPipelineRepository } from '../database/repositories/tracked-pipelines';
 import type { TrackedPipelineRow } from '../database/schema';
-import { dbg } from '../lib/debug';
+
 
 function safeJsonParse(value: string | null): Record<string, unknown> | null {
   if (!value) return null;

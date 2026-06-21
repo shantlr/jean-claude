@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from 'react';
+import { type RefObject, useEffect, useState } from 'react';
 
 const PREFERRED_MAX_HEIGHT = 320;
 const GAP = 4;
@@ -25,6 +25,7 @@ export interface DropdownPosition {
  */
 export function useDropdownPosition({
   isOpen,
+  triggerElement,
   triggerRef,
   side = 'bottom',
   align = 'left',
@@ -34,6 +35,7 @@ export function useDropdownPosition({
 }: {
   isOpen: boolean;
   triggerRef: RefObject<HTMLElement | null>;
+  triggerElement?: HTMLElement | null;
   side?: 'top' | 'bottom';
   align?: 'left' | 'right';
   /** When true, automatically flip horizontal alignment when space is limited */
@@ -45,10 +47,11 @@ export function useDropdownPosition({
   const [position, setPosition] = useState<DropdownPosition | null>(null);
 
   useEffect(() => {
-    if (!isOpen || !triggerRef.current) return;
+    const trigger = triggerElement ?? triggerRef.current;
+    if (!isOpen || !trigger) return;
 
     const updatePosition = () => {
-      const rect = triggerRef.current!.getBoundingClientRect();
+      const rect = trigger.getBoundingClientRect();
 
       const spaceBelow = window.innerHeight - rect.bottom;
       const spaceAbove = rect.top;
@@ -111,6 +114,7 @@ export function useDropdownPosition({
     autoAlign,
     minHorizontalSpace,
     preferredMaxHeight,
+    triggerElement,
     triggerRef,
   ]);
 

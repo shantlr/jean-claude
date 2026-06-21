@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import {
   Activity,
   Check,
@@ -9,20 +8,25 @@ import {
   X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import clsx from 'clsx';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
 
-import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
-import { useCommands } from '@/common/hooks/use-commands';
-import { Button } from '@/common/ui/button';
-import { IconButton } from '@/common/ui/icon-button';
-import { useWorkActivity } from '@/hooks/use-work-activity';
-import { useToastStore } from '@/stores/toasts';
-import type { WorkActivityEvent } from '@shared/work-activity-types';
+
+
 import {
   getWeekRange,
   groupWorkActivityEvents,
 } from '@shared/work-activity-utils';
+import { Button } from '@/common/ui/button';
+import { IconButton } from '@/common/ui/icon-button';
+import { useCommands } from '@/common/hooks/use-commands';
+import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
+import { useToastStore } from '@/stores/toasts';
+import { useWorkActivity } from '@/hooks/use-work-activity';
+import type { WorkActivityEvent } from '@shared/work-activity-types';
+
+
 
 const dayFormatter = new Intl.DateTimeFormat(undefined, {
   weekday: 'short',

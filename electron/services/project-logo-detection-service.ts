@@ -1,8 +1,9 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-import { getImageMimeType } from '@shared/image-types';
 import type { DetectedProjectLogo } from '@shared/types';
+import { getImageMimeType } from '@shared/image-types';
+
 
 const LOGO_CANDIDATES: {
   relativePath: string;

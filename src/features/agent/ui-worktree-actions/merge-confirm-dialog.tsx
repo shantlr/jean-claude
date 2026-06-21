@@ -1,20 +1,23 @@
+import { type RefObject, startTransition, useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { type RefObject, useEffect, useRef, useState } from 'react';
+
 
 import {
   KeyboardLayerProvider,
   useKeyboardLayer,
 } from '@/common/context/keyboard-bindings';
-import { useCommands } from '@/common/hooks/use-commands';
+import {
+  useCheckMergeConflicts,
+  useCommitWorktree,
+} from '@/hooks/use-worktree-diff';
 import { Button } from '@/common/ui/button';
 import { Checkbox } from '@/common/ui/checkbox';
 import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
 import { Textarea } from '@/common/ui/textarea';
-import {
-  useCheckMergeConflicts,
-  useCommitWorktree,
-} from '@/hooks/use-worktree-diff';
+import { useCommands } from '@/common/hooks/use-commands';
+
+
 
 export function MergeConfirmDialog({
   isOpen,
@@ -70,8 +73,8 @@ export function MergeConfirmDialog({
   useEffect(() => {
     if (!isOpen) return;
 
-    setSquash(true);
-    setCommitMessage('');
+    startTransition(() => setSquash(true));
+    startTransition(() => setCommitMessage(''));
     setCommitAllUnstaged(hasUncommittedChangesRef.current);
     setSubmitError(null);
     setHasConflicts(false);

@@ -1,23 +1,19 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { KeyRound, Sparkles, TextQuote } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { Button } from '@/common/ui/button';
-import { ImagePreviewModal } from '@/common/ui/image-preview-modal';
-import { Input } from '@/common/ui/input';
+
+import type { AiSkillSlotConfig, AiSkillSlotKey } from '@shared/types';
 import {
   ListDetailLayout,
   ListGroupHeader,
   ListItemButton,
   ListPane,
 } from '@/common/ui/list-detail-layout';
-import { Switch } from '@/common/ui/switch';
 import {
   SLOT_DEFINITIONS,
   SlotDetail,
 } from '@/features/common/ui-ai-skill-slot';
-import { SummaryModelSettings } from '@/features/settings/ui-general-settings';
-import { useEnabledBackends } from '@/hooks/use-enabled-backends';
 import {
   useAiGenerationSetting,
   useAiSkillSlotsSetting,
@@ -25,7 +21,14 @@ import {
   useUpdateAiSkillSlotsSetting,
 } from '@/hooks/use-settings';
 import { api } from '@/lib/api';
-import type { AiSkillSlotConfig, AiSkillSlotKey } from '@shared/types';
+import { Button } from '@/common/ui/button';
+import { ImagePreviewModal } from '@/common/ui/image-preview-modal';
+import { Input } from '@/common/ui/input';
+import { SummaryModelSettings } from '@/features/settings/ui-general-settings';
+import { Switch } from '@/common/ui/switch';
+import { useEnabledBackends } from '@/hooks/use-enabled-backends';
+
+
 
 const SUMMARY_MODEL_ITEMS = [
   { key: 'summary-model:claude-code', label: 'Claude Code Summary' },
@@ -242,8 +245,8 @@ function OpenAiApiKeyDetail() {
   const hasChanges = !!openAiApiKey.trim();
 
   useEffect(() => {
-    setOpenAiApiKey('');
-    setSaveMessage(null);
+    startTransition(() => setOpenAiApiKey(''));
+    startTransition(() => setSaveMessage(null));
   }, [setting?.openAiApiKey]);
 
   const handleSave = async () => {
@@ -344,12 +347,18 @@ function OpenAiImageGenerationDetail() {
     openAiLogoPromptContext !== (setting?.openAiLogoPromptContext ?? '');
 
   useEffect(() => {
-    setOpenAiImageGenerationEnabled(
-      setting?.openAiImageGenerationEnabled ?? false,
+    startTransition(() =>
+      setOpenAiImageGenerationEnabled(
+        setting?.openAiImageGenerationEnabled ?? false,
+      ),
     );
-    setOpenAiImageModel(setting?.openAiImageModel ?? 'gpt-image-2');
-    setOpenAiLogoPromptContext(setting?.openAiLogoPromptContext ?? '');
-    setSaveMessage(null);
+    startTransition(() =>
+      setOpenAiImageModel(setting?.openAiImageModel ?? 'gpt-image-2'),
+    );
+    startTransition(() =>
+      setOpenAiLogoPromptContext(setting?.openAiLogoPromptContext ?? ''),
+    );
+    startTransition(() => setSaveMessage(null));
   }, [
     setting?.openAiApiKey,
     setting?.openAiImageGenerationEnabled,

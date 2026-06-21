@@ -1,25 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import type { FeedItem, ProjectPriority } from '@shared/feed-types';
 import {
-  PROJECTS_INDEX_KEY,
   getProjectIndexIds,
   ingestProject,
   ingestProjects,
   projectResourceKey,
+  PROJECTS_INDEX_KEY,
+  selectProject,
   selectProjectColor,
   selectProjectLogoPath,
   selectProjectName,
   selectProjectPrPriority,
-  selectProjectWorkItemPriority,
-  selectProject,
   selectProjects,
+  selectProjectWorkItemPriority,
   setProjectIndexIds,
 } from '@/cache/domains/projects';
-import { useCacheResource } from '@/cache/use-cache-resource';
+import { NewProject, Project, UpdateProject } from '@shared/types';
 import { api } from '@/lib/api';
 import { feedQueryKeys } from '@/lib/feed-query-keys';
-import type { FeedItem, ProjectPriority } from '@shared/feed-types';
-import { NewProject, Project, UpdateProject } from '@shared/types';
+import { useCacheResource } from '@/cache/use-cache-resource';
+
+
 
 const EMPTY_PROJECT_LOGO_FIELDS: {
   name: string | undefined;

@@ -2,17 +2,18 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { Project } from '@shared/types';
 
-import { applyCacheEvent } from '../cache-events';
 import { cache$, resetCache } from '../cache-store';
 import { clearPendingResources, ensureResource } from '../use-cache-resource';
+import { applyCacheEvent } from '../cache-events';
+
 
 import {
-  PROJECTS_INDEX_KEY,
   appendProjectToIndex,
   ingestProject,
   ingestProjects,
   ingestUpdatedProject,
   projectResourceKey,
+  PROJECTS_INDEX_KEY,
   removeProject,
   selectProject,
   selectProjectColor,
@@ -22,8 +23,8 @@ import {
   selectProjectRepoId,
   selectProjectRepoProjectId,
   selectProjectRepoProviderId,
-  selectProjectWorkItemPriority,
   selectProjects,
+  selectProjectWorkItemPriority,
   setProjectIndexIds,
 } from './projects';
 

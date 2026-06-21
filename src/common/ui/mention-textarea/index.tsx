@@ -1,6 +1,8 @@
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import type { TextareaHTMLAttributes } from 'react';
-import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
+
+
 
 export type MentionOption = {
   id: string;

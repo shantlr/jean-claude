@@ -1,15 +1,17 @@
-import clsx from 'clsx';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import clsx from 'clsx';
 
-import { useCommands } from '@/common/hooks/use-commands';
-import { UserAvatar } from '@/common/ui/user-avatar';
-import { useCurrentAzureUser } from '@/hooks/use-work-items';
+
 import type { AzureDevOpsWorkItem } from '@/lib/api';
+import { useCommands } from '@/common/hooks/use-commands';
+import { useCurrentAzureUser } from '@/hooks/use-work-items';
+import { UserAvatar } from '@/common/ui/user-avatar';
+
 
 import {
   HighlightedSearchText,
-  WorkItemTypeIcon,
   SelectionCheckbox,
+  WorkItemTypeIcon,
 } from '../ui-work-item-shared';
 
 // Group work items so children appear right after their parents

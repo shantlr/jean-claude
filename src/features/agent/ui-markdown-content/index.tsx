@@ -1,21 +1,30 @@
-import clsx from 'clsx';
 import {
   decompressFrame,
   decompressFrames,
-  parseGIF,
   type ParsedFrame,
+  parseGIF,
 } from 'gifuct-js';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  startTransition,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import clsx from 'clsx';
+import { codeToHtml } from 'shiki';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { codeToHtml } from 'shiki';
 
-import { Modal } from '@/common/ui/modal';
+
+
 import {
-  extractImagesFromMarkdown,
   type ExtractedMarkdownContent,
+  extractImagesFromMarkdown,
 } from '@/lib/markdown-images';
+import { Modal } from '@/common/ui/modal';
 import { sanitizeMarkdownUrl } from '@/lib/markdown-urls';
+
 
 // Pattern to match file paths like src/foo.ts:42-50 or just src/foo.ts:42 or src/foo.ts
 const FILE_PATH_PATTERN =
@@ -768,11 +777,11 @@ function GifFrameScrubber({
 
   useEffect(() => {
     let cancelled = false;
-    setFrameImages([]);
-    setFrameIndex(0);
-    setSize(null);
-    setFailed(false);
-    setIsDecoding(false);
+    startTransition(() => setFrameImages([]));
+    startTransition(() => setFrameIndex(0));
+    startTransition(() => setSize(null));
+    startTransition(() => setFailed(false));
+    startTransition(() => setIsDecoding(false));
 
     if (!isScrubbing) {
       return () => {
@@ -780,7 +789,7 @@ function GifFrameScrubber({
       };
     }
 
-    setIsDecoding(true);
+    startTransition(() => setIsDecoding(true));
     getCachedGifFrameImages(src)
       .then(({ images, width, height }) => {
         if (cancelled) {

@@ -1,29 +1,34 @@
-import { Loader2 } from 'lucide-react';
 import type { ComponentType, ReactNode } from 'react';
-import { useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { Loader2 } from 'lucide-react';
+
+
 
 import {
-  useAnnotationsAsInlineComments,
-  fileHasAnnotations,
-} from '@/features/agent/ui-diff-annotation';
-import {
-  DiffView,
   type CommentFormEntry,
+  DiffView,
   type InlineComment,
   type LineRange,
 } from '@/features/agent/ui-diff-view';
+import {
+  fileHasAnnotations,
+  useAnnotationsAsInlineComments,
+} from '@/features/agent/ui-diff-annotation';
+import type { ReviewComment, ReviewPresetId } from '@/stores/review-comments';
+import type { FileAnnotation } from '@/lib/api';
+import { getSelectedTextForRange } from '@/stores/utils-comment-prompt';
+import { isSvgPath } from '@shared/image-types';
 import { MarkdownContent } from '@/features/agent/ui-markdown-content';
+import type { PromptImagePart } from '@shared/agent-backend-types';
 import { ReviewCommentComposer } from '@/features/agent/ui-review-comments/review-comment-composer';
 import { ReviewCommentThread } from '@/features/agent/ui-review-comments/review-comment-thread';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
-import type { FileAnnotation } from '@/lib/api';
-import type { ReviewComment, ReviewPresetId } from '@/stores/review-comments';
-import { getSelectedTextForRange } from '@/stores/utils-comment-prompt';
-import type { PromptImagePart } from '@shared/agent-backend-types';
-import { isSvgPath } from '@shared/image-types';
 
+
+
+import type { CommentThread, DiffFile } from './types';
 import { FileDiffHeader } from './file-diff-header';
-import type { DiffFile, CommentThread } from './types';
+
 
 const EMPTY_INLINE_COMMENTS: InlineComment[] = [];
 const SVG_PREVIEW_WIDTH = 192;

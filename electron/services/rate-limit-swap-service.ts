@@ -1,9 +1,10 @@
 import { BrowserWindow } from 'electron';
 
 import type { AgentBackendType } from '../../shared/agent-backend-types';
+import { SettingsRepository } from '../database/repositories/settings';
 import type { ThinkingEffort } from '../../shared/types';
 import type { UsageProviderType } from '../../shared/usage-types';
-import { SettingsRepository } from '../database/repositories/settings';
+
 
 import { agentUsageService } from './agent-usage-service';
 

@@ -4,12 +4,14 @@ import {
   KeyboardLayerProvider,
   useKeyboardLayer,
 } from '@/common/context/keyboard-bindings';
-import { useCommands } from '@/common/hooks/use-commands';
+import { api } from '@/lib/api';
 import { Button } from '@/common/ui/button';
 import { Input } from '@/common/ui/input';
 import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
-import { api } from '@/lib/api';
+import { useCommands } from '@/common/hooks/use-commands';
+
+
 
 export function ChangeWorktreePathDialog({
   isOpen,

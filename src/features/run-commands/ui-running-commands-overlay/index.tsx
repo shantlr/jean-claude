@@ -1,23 +1,27 @@
-import clsx from 'clsx';
 import { Loader2, Square, Terminal, X } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useState } from 'react';
+import clsx from 'clsx';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
 
-import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
-import { useCommands } from '@/common/hooks/use-commands';
-import { IconButton } from '@/common/ui/icon-button';
-import { Kbd } from '@/common/ui/kbd';
-import { InteractiveLog } from '@/features/common/interactive-log';
-import { useProjects } from '@/hooks/use-projects';
-import { useTasks } from '@/hooks/use-tasks';
-import { api } from '@/lib/api';
-import { useTaskMessagesStore } from '@/stores/task-messages';
-import { useToastStore } from '@/stores/toasts';
+
+
 import {
-  getRunCommandDisplayName,
   type CommandRunStatus,
+  getRunCommandDisplayName,
 } from '@shared/run-command-types';
+import { api } from '@/lib/api';
+import { IconButton } from '@/common/ui/icon-button';
+import { InteractiveLog } from '@/features/common/interactive-log';
+import { Kbd } from '@/common/ui/kbd';
+import { useCommands } from '@/common/hooks/use-commands';
+import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
+import { useProjects } from '@/hooks/use-projects';
+import { useTaskMessagesStore } from '@/stores/task-messages';
+import { useTasks } from '@/hooks/use-tasks';
+import { useToastStore } from '@/stores/toasts';
+
+
 
 /** Keys the overlay handles itself — don't forward to PTY. */
 const OVERLAY_IGNORED_KEYS = new Set(['Escape']);
@@ -71,7 +75,7 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
   // Auto-select first command if nothing selected or selected got removed
   useEffect(() => {
     if (runningCommands.length === 0) {
-      setSelectedKey(null);
+      startTransition(() => setSelectedKey(null));
       return;
     }
     const stillExists = selectedKey
@@ -80,9 +84,9 @@ export function RunningCommandsOverlay({ onClose }: { onClose: () => void }) {
         )
       : false;
     if (!stillExists) {
-      setSelectedKey(
+      startTransition(() => setSelectedKey(
         makeKey(runningCommands[0].taskId, runningCommands[0].commandStatus.id),
-      );
+      ));
     }
   }, [runningCommands, selectedKey]);
 

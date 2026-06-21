@@ -1,9 +1,8 @@
-import { useNavigate } from '@tanstack/react-router';
-import clsx from 'clsx';
 import {
   ArrowDownNarrowWide,
-  Bug,
   Bot,
+  Bug,
+  CheckCircle2,
   CircleHelp,
   ClipboardList,
   FolderOpen,
@@ -14,43 +13,55 @@ import {
   MessageSquare,
   MinusCircle,
   Pin,
+  PinOff,
   ShieldAlert,
   ShieldQuestion,
-  PinOff,
   StickyNote,
   Terminal,
-  CheckCircle2,
   XCircle,
 } from 'lucide-react';
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import clsx from 'clsx';
 import type React from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 
+
+
+import {
+  bgJobLabel,
+  useRunningBackgroundJobsForTask,
+} from '@/stores/background-jobs';
 import {
   Dropdown,
   DropdownDivider,
   DropdownInfo,
   DropdownItem,
 } from '@/common/ui/dropdown';
-import { ProjectLogoBackground } from '@/features/project/ui-project-logo';
-import { PrAutoComplete } from '@/features/pull-request/ui-pr-auto-complete';
-import { CompleteTaskDialog } from '@/features/task/ui-task-panel/complete-task-dialog';
+import type { FeedItem, FeedItemAttention } from '@shared/feed-types';
 import {
   useCachedPullRequest,
-  usePullRequestPolicyEvaluations,
   usePullRequest,
+  usePullRequestPolicyEvaluations,
 } from '@/hooks/use-pull-requests';
 import { useCompleteTask, useTask } from '@/hooks/use-tasks';
+import { CompleteTaskDialog } from '@/features/task/ui-task-panel/complete-task-dialog';
 import { formatRelativeTime } from '@/lib/time';
-import {
-  bgJobLabel,
-  useRunningBackgroundJobsForTask,
-} from '@/stores/background-jobs';
+import { PrAutoComplete } from '@/features/pull-request/ui-pr-auto-complete';
+import { ProjectLogoBackground } from '@/features/project/ui-project-logo';
 import { useFeedStore } from '@/stores/feed';
 import { useNewTaskDraftStore } from '@/stores/new-task-draft';
-import { useOverlaysStore } from '@/stores/overlays';
 import { useOpenReviewCommentCount } from '@/stores/review-comments';
+import { useOverlaysStore } from '@/stores/overlays';
 import { useTaskMessagesStore } from '@/stores/task-messages';
-import type { FeedItem, FeedItemAttention } from '@shared/feed-types';
+
+
 
 import { useFeedItemProject } from './use-feed-item-project';
 
@@ -365,7 +376,7 @@ function RailPrCiStatus({
   );
 
   useEffect(() => {
-    setShouldPollCi(ciCounts.running > 0);
+    startTransition(() => setShouldPollCi(ciCounts.running > 0));
   }, [ciCounts.running]);
 
   if (!isAutoCompleteSet) {

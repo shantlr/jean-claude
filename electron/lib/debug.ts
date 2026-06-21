@@ -1,7 +1,8 @@
 import { format } from 'node:util';
 
-import createDebug from 'debug';
 import { BrowserWindow } from 'electron';
+import createDebug from 'debug';
+
 
 import type { DebugLogEntry } from '@shared/debug-log-types';
 

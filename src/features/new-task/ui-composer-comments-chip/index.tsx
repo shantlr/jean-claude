@@ -1,17 +1,21 @@
-import { X } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 
-import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
-import type { ComposerFileComment } from '@/stores/composer-file-comments';
+
+
 import {
+  synthesizeFileCommentsPrompt,
   useComposerFileCommentActions,
   useComposerFileCommentCount,
   useComposerFileComments,
-  synthesizeFileCommentsPrompt,
 } from '@/stores/composer-file-comments';
+import type { ComposerFileComment } from '@/stores/composer-file-comments';
 import { useComposerFileExplorerState } from '@/stores/composer-file-explorer';
+import { useDropdownPosition } from '@/common/hooks/use-dropdown-position';
 import { useNewTaskDraft } from '@/stores/new-task-draft';
+
+
 
 export function ComposerCommentsChip({
   projectId,
@@ -76,7 +80,7 @@ export function ComposerCommentsChip({
 
   // Close when all comments removed
   useEffect(() => {
-    if (commentCount === 0) setIsOpen(false);
+    if (commentCount === 0) startTransition(() => setIsOpen(false));
   }, [commentCount]);
 
   // Group comments by file

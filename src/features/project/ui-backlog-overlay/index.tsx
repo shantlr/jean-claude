@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import {
   ArrowRight,
   GripVertical,
@@ -14,35 +13,40 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import clsx from 'clsx';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
 
-import {
-  useKeyboardLayer,
-  useRegisterKeyboardBindings,
-} from '@/common/context/keyboard-bindings';
-import { useModal } from '@/common/context/modal';
-import { useCommands } from '@/common/hooks/use-commands';
+
+
 import { Dropdown, DropdownItem } from '@/common/ui/dropdown';
-import { Kbd } from '@/common/ui/kbd';
-import { Select } from '@/common/ui/select';
-import {
-  useProjectTodos,
-  useCreateProjectTodo,
-  useUpdateProjectTodo,
-  useDeleteProjectTodo,
-  useReorderProjectTodos,
-} from '@/hooks/use-project-todos';
-import { useProjects } from '@/hooks/use-projects';
-import { useBackgroundNewTaskJobForBacklogItem } from '@/stores/background-jobs';
 import {
   useBacklogOverlayDraftStore,
   useBacklogSelectedProjectId,
   useSetBacklogSelectedProjectId,
 } from '@/stores/backlog-overlay-draft';
+import {
+  useCreateProjectTodo,
+  useDeleteProjectTodo,
+  useProjectTodos,
+  useReorderProjectTodos,
+  useUpdateProjectTodo,
+} from '@/hooks/use-project-todos';
+import {
+  useKeyboardLayer,
+  useRegisterKeyboardBindings,
+} from '@/common/context/keyboard-bindings';
+import { Kbd } from '@/common/ui/kbd';
+import type { ProjectTodo } from '@shared/types';
+import { Select } from '@/common/ui/select';
+import { useBackgroundNewTaskJobForBacklogItem } from '@/stores/background-jobs';
+import { useCommands } from '@/common/hooks/use-commands';
+import { useModal } from '@/common/context/modal';
 import { useNewTaskDraftStore } from '@/stores/new-task-draft';
 import { useOverlaysStore } from '@/stores/overlays';
-import type { ProjectTodo } from '@shared/types';
+import { useProjects } from '@/hooks/use-projects';
+
+
 
 function BacklogTodoRow({
   todo,

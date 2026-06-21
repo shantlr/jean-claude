@@ -2,19 +2,20 @@
 // These are plain TypeScript types without database-specific dependencies
 
 import type { AgentBackendType, PromptImagePart } from './agent-backend-types';
-import type { ProjectPriority } from './feed-types';
 import {
   DEFAULT_OPENAI_LOGO_BASE_IMAGE_ID,
   isOpenAiLogoBaseImageId,
   type OpenAiBaseImageMode,
   type OpenAiLogoBaseImageId,
 } from './openai-logo-bases';
-import type { PermissionScope } from './permission-types';
 import {
   DEFAULT_PROMPT_PREFACE_SETTING,
   isPromptPrefaceSetting,
 } from './prompt-preface-types';
+import type { PermissionScope } from './permission-types';
+import type { ProjectPriority } from './feed-types';
 import type { UsageProviderType } from './usage-types';
+
 
 export type ProviderType = 'azure-devops' | 'github' | 'gitlab';
 

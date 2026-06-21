@@ -1,8 +1,3 @@
-import { useValue } from '@legendapp/state/react';
-import { useCallback, useEffect, useRef } from 'react';
-
-import type { CacheSubscription } from '@shared/cache-events';
-
 import {
   getResourceChangeVersion,
   isResourceFresh,
@@ -13,9 +8,13 @@ import {
   setResourceLoading,
   setResourceSuccess,
 } from './cache-actions';
-import { cache$ } from './cache-store';
-import { subscribeCacheResources } from './cache-subscriptions';
 import type { ResourceMeta, ResourceResult } from './cache-types';
+import { useCallback, useEffect } from 'react';
+import { cache$ } from './cache-store';
+import type { CacheSubscription } from '@shared/cache-events';
+import { subscribeCacheResources } from './cache-subscriptions';
+import { useLatestRef } from '@/hooks/use-latest-ref';
+import { useValue } from '@legendapp/state/react';
 
 // One pending promise per resource key prevents duplicate concurrent loads.
 const pendingResources = new Map<string, Promise<unknown>>();
@@ -169,11 +168,8 @@ export function useCacheResource<TData, TSelected = TData>({
   select?: () => TSelected | undefined;
   subscriptions?: CacheSubscription[];
 }): ResourceResult<TSelected> {
-  const loadRef = useRef(load);
-  const ingestRef = useRef(ingest);
-
-  loadRef.current = load;
-  ingestRef.current = ingest;
+  const loadRef = useLatestRef(load);
+  const ingestRef = useLatestRef(ingest);
 
   const subscriptionKey = getCacheSubscriptionKey(key, subscriptions);
   const retainedResourceKey = getRetainedResourceKey(key, subscriptions);
@@ -196,7 +192,7 @@ export function useCacheResource<TData, TSelected = TData>({
       load: () => loadRef.current(),
       ingest: (loadedData) => ingestRef.current?.(loadedData),
     });
-  }, [key, staleTime]);
+  }, [ingestRef, key, loadRef, staleTime]);
 
   useEffect(() => {
     if (!enabled) {
@@ -251,7 +247,7 @@ export function useCacheResource<TData, TSelected = TData>({
       load: () => loadRef.current(),
       ingest: (loadedData) => ingestRef.current?.(loadedData),
     });
-  }, [key, staleTime]);
+  }, [ingestRef, key, loadRef, staleTime]);
 
   const error = meta?.error ? new Error(meta.error) : null;
 

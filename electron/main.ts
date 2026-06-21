@@ -3,29 +3,31 @@ import { join } from 'path';
 import { app, BrowserWindow, protocol, shell } from 'electron';
 import fixPath from 'fix-path';
 
-import { migrateDatabase } from './database';
-import { registerIpcHandlers } from './ipc/handlers';
-import { dbg } from './lib/debug';
 import {
   closeIdleOpenCodeSharedServerNow,
   killAllOpenCodeServersSync,
 } from './services/agent-backends/opencode/opencode-backend';
-import { agentService } from './services/agent-service';
 import {
   decodeProxyUrl,
   fetchAuthenticatedImageStream,
 } from './services/azure-image-proxy-service';
-import { upsertBuiltinSkills } from './services/builtin-skills-service';
 import {
   fetchLocalImage,
   LOCAL_IMAGE_PROTOCOL,
 } from './services/local-image-protocol-service';
+import { agentService } from './services/agent-service';
+import { cleanupOrphanedWorkspaces } from './services/system-project-service';
+import { dbg } from './lib/debug';
+import { migrateDatabase } from './database';
 import { pipelineTrackingService } from './services/pipeline-tracking-service';
 import { rawMessageCleanupService } from './services/raw-message-cleanup-service';
+import { registerIpcHandlers } from './ipc/handlers';
 import { runCommandService } from './services/run-command-service';
 import { syncBuiltinSkillSymlinks } from './services/skill-management-service';
 import { systemCalendarService } from './services/system-calendar-service';
-import { cleanupOrphanedWorkspaces } from './services/system-project-service';
+import { upsertBuiltinSkills } from './services/builtin-skills-service';
+
+
 
 // Register custom protocol scheme before app is ready
 // This must be done synchronously before the app ready event

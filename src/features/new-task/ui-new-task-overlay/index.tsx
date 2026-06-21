@@ -1,23 +1,22 @@
 import {
+  arrayMove,
+  rectSortingStrategy,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { ChevronRight, Eye, Search } from 'lucide-react';
+import {
+  closestCenter,
   DndContext,
+  type DragEndEvent,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
-  closestCenter,
 } from '@dnd-kit/core';
-import type { DragEndEvent } from '@dnd-kit/core';
-import {
-  SortableContext,
-  arrayMove,
-  rectSortingStrategy,
-  sortableKeyboardCoordinates,
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS as DndCSS } from '@dnd-kit/utilities';
-import { useQueryClient } from '@tanstack/react-query';
-import { ChevronRight, Eye, Search } from 'lucide-react';
 import React, {
+  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -25,121 +24,126 @@ import React, {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { CSS as DndCSS } from '@dnd-kit/utilities';
 import FocusLock from 'react-focus-lock';
+import { useQueryClient } from '@tanstack/react-query';
 
-import {
-  KeyboardLayerProvider,
-  useKeyboardLayer,
-} from '@/common/context/keyboard-bindings';
-import { useCommands } from '@/common/hooks/use-commands';
-import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
-import {
-  BranchOrTaskSelect,
-  type BranchOrTaskSelection,
-} from '@/common/ui/branch-or-task-select';
-import { Button } from '@/common/ui/button';
-import { Kbd } from '@/common/ui/kbd';
-import { Modal } from '@/common/ui/modal';
-import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
-import { findMatchingBackendModelPresetId } from '@/features/agent/ui-backend-preset-selector';
-import {
-  getModelThinkingCapabilities,
-  getModelsForBackend,
-} from '@/features/agent/ui-backend-selector';
-import { ModeSelector } from '@/features/agent/ui-mode-selector';
-import {
-  RateLimitSwapPreview,
-  resolveRateLimitSwapSelection,
-  useRateLimitSwapPreview,
-} from '@/features/agent/ui-rate-limit-swap-preview';
-import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
-import {
-  PromptTextarea,
-  type PromptTextareaRef,
-} from '@/features/common/ui-prompt-textarea';
-import { ProjectLogoBackground } from '@/features/project/ui-project-logo';
-import { WorkItemPicker } from '@/features/work-item/ui-work-item-picker';
-import { useBackendModels } from '@/hooks/use-backend-models';
-import {
-  useCreateFeedNote,
-  useCreateWorkItemVerificationNote,
-} from '@/hooks/use-feed-notes';
-import { useDeleteProjectTodo } from '@/hooks/use-project-todos';
-import {
-  useProjects,
-  useProjectBranches,
-  useProjectFeatureMap,
-  useProjectIsGitRepository,
-  useReorderProjects,
-} from '@/hooks/use-projects';
-import {
-  useBackendModelPresetsSetting,
-  useBackendDefaultModelsSetting,
-  useBackendsSetting,
-  useCompletionSetting,
-  usePromptSnippetsSetting,
-  useThinkingSettingsSetting,
-} from '@/hooks/use-settings';
-import { useProjectSkills } from '@/hooks/use-skills';
-import { useCreateTaskWithWorktree, useProjectTasks } from '@/hooks/use-tasks';
-import {
-  useWorkItems,
-  useWorkItemComments,
-  useRelatedTestCasesForWorkItems,
-} from '@/hooks/use-work-items';
-import type { AzureDevOpsWorkItem } from '@/lib/api';
-import { getDefaultModelForBackend } from '@/lib/default-models';
-import { feedQueryKeys } from '@/lib/feed-query-keys';
-import { buildAttachedFilesXml } from '@/lib/file-attachment-utils';
-import { compressImage } from '@/lib/image-compression';
-import {
-  expandFeatureReferencesInPrompt,
-  getReferencedFeatures,
-} from '@/lib/prompt-feature-context';
-import {
-  resolveSnippetTemplate,
-  type SnippetVariableContext,
-} from '@/lib/resolve-snippet-template';
-import { useBackgroundJobsStore } from '@/stores/background-jobs';
-import {
-  useComposerFileCommentCount,
-  useComposerFileComments,
-  useComposerFileCommentsStore,
-  synthesizeFileCommentsPrompt,
-  type ComposerFileComment,
-} from '@/stores/composer-file-comments';
-import {
-  useNewTaskDraft,
-  useNewTaskDraftStore,
-  type InputMode,
-  type WorkItemsViewMode,
-} from '@/stores/new-task-draft';
-import { useUISetting, useUIStore } from '@/stores/ui';
 import type {
   AgentBackendType,
   PromptFilePart,
   PromptImagePart,
 } from '@shared/agent-backend-types';
 import {
+  BranchOrTaskSelect,
+  type BranchOrTaskSelection,
+} from '@/common/ui/branch-or-task-select';
+import {
+  type ComposerFileComment,
+  synthesizeFileCommentsPrompt,
+  useComposerFileCommentCount,
+  useComposerFileComments,
+  useComposerFileCommentsStore,
+} from '@/stores/composer-file-comments';
+import {
+  expandFeatureReferencesInPrompt,
+  getReferencedFeatures,
+} from '@/lib/prompt-feature-context';
+import {
+  getModelsForBackend,
+  getModelThinkingCapabilities,
+} from '@/features/agent/ui-backend-selector';
+import {
   getThinkingEffortOptions,
   normalizeThinkingEffortForModel,
 } from '@shared/thinking-settings';
 import {
+  type InputMode,
+  useNewTaskDraft,
+  useNewTaskDraftStore,
+  type WorkItemsViewMode,
+} from '@/stores/new-task-draft';
+import {
+  KeyboardLayerProvider,
+  useKeyboardLayer,
+} from '@/common/context/keyboard-bindings';
+import {
   normalizeInteractionModeForBackend,
-  type ThinkingEffort,
   type Project,
   type ProjectFeatureMap,
+  type ThinkingEffort,
 } from '@shared/types';
-
-import { ComposerFileExplorer } from '../ui-composer-file-explorer';
 import {
-  PromptComposer,
+  PromptTextarea,
+  type PromptTextareaRef,
+} from '@/features/common/ui-prompt-textarea';
+import {
+  RateLimitSwapPreview,
+  resolveRateLimitSwapSelection,
+  useRateLimitSwapPreview,
+} from '@/features/agent/ui-rate-limit-swap-preview';
+import {
+  resolveSnippetTemplate,
+  type SnippetVariableContext,
+} from '@/lib/resolve-snippet-template';
+import {
+  useBackendDefaultModelsSetting,
+  useBackendModelPresetsSetting,
+  useBackendsSetting,
+  useCompletionSetting,
+  usePromptSnippetsSetting,
+  useThinkingSettingsSetting,
+} from '@/hooks/use-settings';
+import {
+  useCreateFeedNote,
+  useCreateWorkItemVerificationNote,
+} from '@/hooks/use-feed-notes';
+import { useCreateTaskWithWorktree, useProjectTasks } from '@/hooks/use-tasks';
+import {
+  useProjectBranches,
+  useProjectFeatureMap,
+  useProjectIsGitRepository,
+  useProjects,
+  useReorderProjects,
+} from '@/hooks/use-projects';
+import {
+  useRelatedTestCasesForWorkItems,
+  useWorkItemComments,
+  useWorkItems,
+} from '@/hooks/use-work-items';
+import { useUISetting, useUIStore } from '@/stores/ui';
+import type { AzureDevOpsWorkItem } from '@/lib/api';
+import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
+import { buildAttachedFilesXml } from '@/lib/file-attachment-utils';
+import { Button } from '@/common/ui/button';
+import { compressImage } from '@/lib/image-compression';
+import { feedQueryKeys } from '@/lib/feed-query-keys';
+import { findMatchingBackendModelPresetId } from '@/features/agent/ui-backend-preset-selector';
+import { getDefaultModelForBackend } from '@/lib/default-models';
+import { Kbd } from '@/common/ui/kbd';
+import { Modal } from '@/common/ui/modal';
+import { ModeSelector } from '@/features/agent/ui-mode-selector';
+import { ProjectLogoBackground } from '@/features/project/ui-project-logo';
+import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
+import { useBackendModels } from '@/hooks/use-backend-models';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
+import { useCommands } from '@/common/hooks/use-commands';
+import { useDeleteProjectTodo } from '@/hooks/use-project-todos';
+import { useProjectSkills } from '@/hooks/use-skills';
+import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
+import { WorkItemPicker } from '@/features/work-item/ui-work-item-picker';
+
+
+
+import {
   buildWorkItemSnippetContext,
-  generateInitialTemplate,
-  getWorkItemCommentSelectionId,
   expandTemplate,
   extractWorkItemImageUrls,
+  generateInitialTemplate,
+  getWorkItemCommentSelectionId,
+  PromptComposer,
 } from '../ui-prompt-composer';
+import { ComposerFileExplorer } from '../ui-composer-file-explorer';
+
 
 // Check if project has work items linked
 function projectHasWorkItems(project: Project | null): boolean {
@@ -991,7 +995,7 @@ export function NewTaskOverlay({
       }
     } finally {
       if (workItemImageFetchSessionRef.current === fetchSessionId) {
-        setIsFetchingWorkItemImages(false);
+        startTransition(() => setIsFetchingWorkItemImages(false));
       }
     }
   }, [
@@ -1222,36 +1226,35 @@ export function NewTaskOverlay({
       // Keep overlay open on error (draft preserved)
     }
   }, [
+    addRunningJob,
     canStartTask,
-    draft,
-    selectedProjectId,
-    inputMode,
-    searchStep,
-    promptTemplate,
-    selectedWorkItems,
-    workItemComments,
-    snippetVariableContext,
-    testCasesByWorkItem,
-    selectedProject?.name,
-    selectedProject?.path,
-    selectedProjectFeatureMap,
+    clearDraft,
+    createTaskMutation,
     currentBackend,
+    currentCreateWorktree,
     currentInteractionMode,
     currentModelPreference,
-    currentThinkingEffort,
-    isNoteMode,
-    currentCreateWorktree,
-    currentUpdateWorkItemStatus,
     currentSourceBranch,
-    fileComments,
-    addRunningJob,
-    createTaskMutation,
+    currentThinkingEffort,
+    currentUpdateWorkItemStatus,
     deleteBacklogTodo,
-    clearDraft,
-    queryClient,
-    markJobSucceeded,
+    draft,
+    fileComments,
+    inputMode,
+    isNoteMode,
     markJobFailed,
+    markJobSucceeded,
+    promptTemplate,
+    queryClient,
+    searchStep,
+    selectedProject,
+    selectedProjectFeatureMap,
+    selectedProjectId,
+    selectedWorkItems,
+    snippetVariableContext,
+    testCasesByWorkItem,
     triggerAnimation,
+    workItemComments,
   ]);
 
   const handleCreateNote = useCallback(async () => {

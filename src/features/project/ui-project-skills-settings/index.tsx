@@ -1,9 +1,7 @@
-import { Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { Plus } from 'lucide-react';
 
-import { Button } from '@/common/ui/button';
-import { SkillDetails } from '@/features/settings/ui-skills-settings/skill-details';
-import { SkillEditor } from '@/features/settings/ui-skills-settings/skill-editor';
+
 import {
   GroupHeader,
   SkillRow,
@@ -14,10 +12,15 @@ import {
   useEnableSkill,
   useManagedSkills,
 } from '@/hooks/use-managed-skills';
-import { useProject } from '@/hooks/use-projects';
-import { useBackendsSetting } from '@/hooks/use-settings';
 import type { AgentBackendType } from '@shared/agent-backend-types';
+import { Button } from '@/common/ui/button';
 import type { ManagedSkill } from '@shared/skill-types';
+import { SkillDetails } from '@/features/settings/ui-skills-settings/skill-details';
+import { SkillEditor } from '@/features/settings/ui-skills-settings/skill-editor';
+import { useBackendsSetting } from '@/hooks/use-settings';
+import { useProject } from '@/hooks/use-projects';
+
+
 
 export function ProjectSkillsSettings({ projectId }: { projectId: string }) {
   const { data: project } = useProject(projectId);

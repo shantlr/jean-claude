@@ -2,14 +2,16 @@ import { Server } from 'lucide-react';
 import { useState } from 'react';
 
 import {
-  useUnifiedMcpServers,
   useActivateMcpServer,
   useDeactivateMcpServer,
-  useUpsertProjectMcpOverride,
   useDeleteProjectMcpOverride,
   useSubstituteVariables,
+  useUnifiedMcpServers,
+  useUpsertProjectMcpOverride,
 } from '@/hooks/use-mcp-templates';
 import { useProject } from '@/hooks/use-projects';
+
+
 
 export function ProjectMcpSettings({ projectId }: { projectId: string }) {
   const { data: project } = useProject(projectId);

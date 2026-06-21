@@ -1,26 +1,10 @@
 import type { CacheEvent } from '@shared/cache-events';
 
 import {
-  markDocumentStale,
-  markResourceChanged,
-  markResourceStale,
-  setResourceSuccess,
-} from './cache-actions';
-import { cache$ } from './cache-store';
-import {
   ingestProject,
   projectResourceKey,
   removeProject,
 } from './domains/projects';
-import {
-  isAllProjectsPullRequestsResourceKey,
-  mergePullRequestSnapshot,
-  patchPullRequestSnapshot,
-  projectPullRequestsResourceKey,
-  pullRequestResourceKey,
-  pullRequestThreadsResourceKey,
-  repoPullRequestsResourceKey,
-} from './domains/pull-requests';
 import {
   ingestStep,
   markStepListsStale,
@@ -35,7 +19,25 @@ import {
   removeTask,
   taskResourceKey,
 } from './domains/tasks';
+import {
+  isAllProjectsPullRequestsResourceKey,
+  mergePullRequestSnapshot,
+  patchPullRequestSnapshot,
+  projectPullRequestsResourceKey,
+  pullRequestResourceKey,
+  pullRequestThreadsResourceKey,
+  repoPullRequestsResourceKey,
+} from './domains/pull-requests';
+import {
+  markDocumentStale,
+  markResourceChanged,
+  markResourceStale,
+  setResourceSuccess,
+} from './cache-actions';
 import { applyEntityPatch } from './entity-merge';
+import { cache$ } from './cache-store';
+
+
 
 const PULL_REQUEST_STATUSES = [
   'active',

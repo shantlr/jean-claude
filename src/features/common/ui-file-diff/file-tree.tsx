@@ -1,16 +1,17 @@
 import {
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
-  CheckCircle2,
   File,
   Folder,
   MessageCircle,
   PenLine,
 } from 'lucide-react';
-import { useState, useMemo, useCallback } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
-import { getStatusIndicator } from './status-badge';
 import type { DiffFile, DiffFileStatus } from './types';
+import { getStatusIndicator } from './status-badge';
+
 
 interface TreeNode {
   name: string;
@@ -19,6 +20,16 @@ interface TreeNode {
   status?: DiffFileStatus;
   originalPath?: string;
   children?: TreeNode[];
+}
+
+function collectFolderPaths(nodes: TreeNode[], folders = new Set<string>()) {
+  for (const node of nodes) {
+    if (node.type === 'folder') {
+      folders.add(node.path);
+      if (node.children) collectFolderPaths(node.children, folders);
+    }
+  }
+  return folders;
 }
 
 export function DiffFileTree({
@@ -55,17 +66,7 @@ export function DiffFileTree({
 
   // All folder paths in the current tree
   const allFolderPaths = useMemo(() => {
-    const folders = new Set<string>();
-    const collectFolders = (nodes: TreeNode[]) => {
-      for (const node of nodes) {
-        if (node.type === 'folder') {
-          folders.add(node.path);
-          if (node.children) collectFolders(node.children);
-        }
-      }
-    };
-    collectFolders(tree);
-    return folders;
+    return collectFolderPaths(tree);
   }, [tree]);
 
   // Local state fallback when no external state is provided

@@ -1,6 +1,7 @@
-import clsx from 'clsx';
 import { Check, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { startTransition, useEffect, useState } from 'react';
+import clsx from 'clsx';
+
 
 import type { ReviewerVoteStatus } from '@shared/azure-devops-types';
 
@@ -73,11 +74,10 @@ export function UserAvatar({
   className?: string;
 }) {
   const [imgError, setImgError] = useState(false);
-  const prevImageUrl = useRef(imageUrl);
-  if (prevImageUrl.current !== imageUrl) {
-    prevImageUrl.current = imageUrl;
-    setImgError(false);
-  }
+
+  useEffect(() => {
+    startTransition(() => setImgError(false));
+  }, [imageUrl]);
 
   const isApproved =
     vote === 'approved' || vote === 'approved-with-suggestions';

@@ -1,20 +1,24 @@
-import { Send } from 'lucide-react';
-import type { FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
+import { Send } from 'lucide-react';
 
-import { Button } from '@/common/ui/button';
-import {
-  EMPTY_MENTION_OPTIONS,
-  encodeMentionDisplayNames,
-  MENTION_TEXTAREA_MD_CLASS,
-  MentionTextarea,
-  type MentionOption,
-} from '@/common/ui/mention-textarea';
+
+
 import {
   COMMENT_ACCENT,
   InlineCommentComposer,
 } from '@/features/common/ui-inline-comments';
+import {
+  EMPTY_MENTION_OPTIONS,
+  encodeMentionDisplayNames,
+  MENTION_TEXTAREA_MD_CLASS,
+  type MentionOption,
+  MentionTextarea,
+} from '@/common/ui/mention-textarea';
+import { Button } from '@/common/ui/button';
 import type { PromptImagePart } from '@shared/agent-backend-types';
+
+
 
 function imageFileName(image: PromptImagePart, index: number) {
   if (image.filename) return image.filename;

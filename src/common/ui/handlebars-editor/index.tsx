@@ -1,8 +1,9 @@
+import * as monaco from 'monaco-editor/esm/vs/editor/edcore.main.js';
 import Editor, { loader, type OnMount } from '@monaco-editor/react';
 import type { editor, IDisposable, IPosition, languages } from 'monaco-editor';
-import * as monaco from 'monaco-editor/esm/vs/editor/edcore.main.js';
-import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+
 
 import {
   flattenProjectFeatures,

@@ -1,18 +1,21 @@
 import { Loader2, Sparkles } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import {
   KeyboardLayerProvider,
   useKeyboardLayer,
 } from '@/common/context/keyboard-bindings';
-import { useCommands } from '@/common/hooks/use-commands';
 import { Button } from '@/common/ui/button';
 import { Checkbox } from '@/common/ui/checkbox';
 import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
 import { Textarea } from '@/common/ui/textarea';
+import { useCommands } from '@/common/hooks/use-commands';
 import { useGenerateCommitMessage } from '@/hooks/use-worktree-diff';
 
+
+
+import { useLatestRef } from '@/hooks/use-latest-ref';
 export function CommitModal({
   isOpen,
   onClose,
@@ -32,15 +35,14 @@ export function CommitModal({
   const [message, setMessage] = useState('');
   const [stageAll, setStageAll] = useState(true);
   const generateMutation = useGenerateCommitMessage();
-  const resetRef = useRef(generateMutation.reset);
-  resetRef.current = generateMutation.reset;
+  const resetRef = useLatestRef(generateMutation.reset);
 
   // Reset mutation error state when the modal reopens
   useEffect(() => {
     if (isOpen) {
       resetRef.current();
     }
-  }, [isOpen]);
+  }, [isOpen, resetRef]);
 
   const isGenerating = generateMutation.isPending;
 

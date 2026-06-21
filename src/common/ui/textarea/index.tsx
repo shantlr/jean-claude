@@ -1,11 +1,12 @@
-import clsx from 'clsx';
 import { forwardRef, type TextareaHTMLAttributes } from 'react';
+import clsx from 'clsx';
+
 
 import {
+  type ComponentSize,
   inputBaseClasses,
   inputBorderClasses,
   sizeClasses,
-  type ComponentSize,
 } from '@/common/ui/styles';
 
 export const Textarea = forwardRef<

@@ -1,21 +1,19 @@
-import clsx from 'clsx';
 import {
   ArrowLeft,
-  Bot,
   BookOpen,
+  Bot,
   Pencil,
   Plus,
   RefreshCw,
   Trash2,
   Undo2,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import clsx from 'clsx';
 import type { ReactNode } from 'react';
 
-import { Button } from '@/common/ui/button';
-import { Checkbox } from '@/common/ui/checkbox';
-import { Chip } from '@/common/ui/chip';
-import { IconButton } from '@/common/ui/icon-button';
+
+
 import {
   DetailPlaceholder,
   ListDetailLayout,
@@ -23,8 +21,6 @@ import {
   ListItemButton,
   ListPane,
 } from '@/common/ui/list-detail-layout';
-import { Switch } from '@/common/ui/switch';
-import { MarkdownContent } from '@/features/agent/ui-markdown-content';
 import {
   useAgentContent,
   useCreateAgent,
@@ -37,10 +33,18 @@ import {
   useManagedAgents,
   useUpdateAgent,
 } from '@/hooks/use-managed-agents';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { Chip } from '@/common/ui/chip';
+import { IconButton } from '@/common/ui/icon-button';
+import type { ManagedAgent } from '@shared/agent-management-types';
+import { MarkdownContent } from '@/features/agent/ui-markdown-content';
+import { Switch } from '@/common/ui/switch';
 import { useSkillsRailWidth } from '@/stores/navigation';
 import { useToastStore } from '@/stores/toasts';
-import type { AgentBackendType } from '@shared/agent-backend-types';
-import type { ManagedAgent } from '@shared/agent-management-types';
+
+
 
 const BACKENDS: AgentBackendType[] = ['claude-code', 'opencode'];
 
@@ -248,17 +252,17 @@ function AgentEditor({
 
   useEffect(() => {
     if (data) {
-      setName(data.name);
-      setDescription(data.description);
-      setContent(data.content);
+      startTransition(() => setName(data.name));
+      startTransition(() => setDescription(data.description));
+      startTransition(() => setContent(data.content));
       initializedRef.current = true;
-      setHasChanges(false);
+      startTransition(() => setHasChanges(false));
     } else if (!agent) {
-      setName('');
-      setDescription('');
-      setContent('');
+      startTransition(() => setName(''));
+      startTransition(() => setDescription(''));
+      startTransition(() => setContent(''));
       initializedRef.current = true;
-      setHasChanges(false);
+      startTransition(() => setHasChanges(false));
     }
   }, [agent, data]);
 
@@ -457,11 +461,11 @@ function AgentDetails({
 
   useEffect(() => {
     if (data?.content) {
-      setEditedContent(data.content);
+      startTransition(() => setEditedContent(data.content));
       initializedRef.current = true;
-      setHasChanges(false);
+      startTransition(() => setHasChanges(false));
     }
-  }, [data?.content]);
+  }, [data]);
 
   const handleSave = useCallback(
     async (showToast = true) => {
@@ -510,7 +514,7 @@ function AgentDetails({
       setEditedContent(data.content);
       setHasChanges(false);
     }
-  }, [data?.content]);
+  }, [data]);
 
   const lineCount = editedContent.split('\n').length;
   const charCount = editedContent.length;

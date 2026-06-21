@@ -1,13 +1,15 @@
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import type { AiUsageContext } from '@shared/ai-usage-types';
-import type { NormalizedEntry } from '@shared/normalized-message-v2';
 import type { ModelPreference } from '@shared/types';
+import type { NormalizedEntry } from '@shared/normalized-message-v2';
 
-import { generateText } from './ai-generation-service';
+
 import {
   SESSION_SUMMARY_PROMPT,
   SESSION_SUMMARY_SCHEMA,
 } from './session-summary-prompt';
+import { generateText } from './ai-generation-service';
+
 
 const MAX_TRANSCRIPT_CHARS = 60_000;
 const MAX_TOOL_RESULT_CHARS = 4_000;

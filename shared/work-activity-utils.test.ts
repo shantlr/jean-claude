@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import type { WorkActivityEvent } from './work-activity-types';
 import {
-  WORK_ACTIVITY_PROMPT_SNIPPET_LIMIT,
   buildPromptSnapshot,
   getWeekRange,
   groupWorkActivityEvents,
   parseAzureOrgId,
+  WORK_ACTIVITY_PROMPT_SNIPPET_LIMIT,
 } from './work-activity-utils';
+import type { WorkActivityEvent } from './work-activity-types';
+
 
 function makeEvent(
   overrides: Partial<WorkActivityEvent> = {},

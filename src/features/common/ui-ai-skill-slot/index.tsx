@@ -1,16 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useState } from 'react';
 
-import { Select } from '@/common/ui/select';
-import { Switch } from '@/common/ui/switch';
-import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
-import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
-import { useManagedSkills } from '@/hooks/use-managed-skills';
-import type { AgentBackendType } from '@shared/agent-backend-types';
 import type {
   AiSkillSlotConfig,
   AiSkillSlotKey,
   ThinkingEffort,
 } from '@shared/types';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
+import { Select } from '@/common/ui/select';
+import { Switch } from '@/common/ui/switch';
+import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
+import { useManagedSkills } from '@/hooks/use-managed-skills';
+
+
 
 /** Sentinel value used when no skill is selected in the dropdown. */
 const NO_SKILL_VALUE = '__none__';
@@ -108,11 +110,11 @@ export function SlotDetail({
 
   // Sync local state when external config changes (e.g., query refetch)
   useEffect(() => {
-    setLocalBackend(config?.backend ?? fallbackBackend);
-    setLocalModel(config?.model ?? fallbackModel);
-    setLocalThinkingEffort(config?.thinkingEffort ?? 'default');
-    setLocalPresetId(null);
-    setLocalSkillName(config?.skillName ?? null);
+    startTransition(() => setLocalBackend(config?.backend ?? fallbackBackend));
+    startTransition(() => setLocalModel(config?.model ?? fallbackModel));
+    startTransition(() => setLocalThinkingEffort(config?.thinkingEffort ?? 'default'));
+    startTransition(() => setLocalPresetId(null));
+    startTransition(() => setLocalSkillName(config?.skillName ?? null));
   }, [config, fallbackBackend, fallbackModel]);
 
   // Skills for the selected backend (enabled or builtin)

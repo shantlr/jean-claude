@@ -1,28 +1,32 @@
 import '@blocknote/core/fonts/inter.css';
-import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/mantine/style.css';
 import {
   FormattingToolbar,
   FormattingToolbarController,
+  type FormattingToolbarProps,
   getFormattingToolbarItems,
   useComponentsContext,
   useCreateBlockNote,
-  type FormattingToolbarProps,
 } from '@blocknote/react';
-import { useNavigate } from '@tanstack/react-router';
 import { Highlighter, ListChecks, X } from 'lucide-react';
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
+import { BlockNoteView } from '@blocknote/mantine';
 import type { KeyboardEvent } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 
-import { Button } from '@/common/ui/button';
-import { IconButton } from '@/common/ui/icon-button';
-import { useDebouncedValue } from '@/hooks/use-debounced-value';
+
+
 import {
   useDeleteFeedNote,
   useFeedNoteById,
   useUpdateFeedNote,
 } from '@/hooks/use-feed-notes';
+import { Button } from '@/common/ui/button';
+import { IconButton } from '@/common/ui/icon-button';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 
+
+import { useLatestRef } from '@/hooks/use-latest-ref';
 const CHECKBOX_MARKER_PATTERN = /^\s*-\s+\[([ xX])\]\s*/;
 const HIGHLIGHT_COLOR = 'oklch(0.72 0.2 295 / 0.16)';
 const MAX_STORED_SCROLL_POSITIONS = 100;
@@ -175,8 +179,7 @@ export function FeedNoteEditor({ noteId }: { noteId: string }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Stable ref for mutate so cleanup effect doesn't re-fire every render
-  const mutateRef = useRef(updateNote.mutate);
-  mutateRef.current = updateNote.mutate;
+  const mutateRef = useLatestRef(updateNote.mutate);
 
   // Initialize value from note content
   useEffect(() => {
@@ -189,9 +192,9 @@ export function FeedNoteEditor({ noteId }: { noteId: string }) {
       isLoadingEditorRef.current = true;
       editor.replaceBlocks(editor.document, blocks);
       isLoadingEditorRef.current = false;
-      setValue(content);
+      startTransition(() => setValue(content));
       lastSavedRef.current = content;
-      setHasInitialized(true);
+      startTransition(() => setHasInitialized(true));
     }
   }, [editor, note, hasInitialized, noteId]);
 
@@ -234,11 +237,9 @@ export function FeedNoteEditor({ noteId }: { noteId: string }) {
   }, [hasInitialized, noteId]);
 
   // Keep refs for unmount flush and auto-save
-  const valueRef = useRef(value);
-  valueRef.current = value;
+  const valueRef = useLatestRef(value);
 
-  const noteIdRef = useRef(noteId);
-  noteIdRef.current = noteId;
+  const noteIdRef = useLatestRef(noteId);
 
   // Auto-save via debounced value
   const debouncedValue = useDebouncedValue(value, 500);
@@ -252,13 +253,10 @@ export function FeedNoteEditor({ noteId }: { noteId: string }) {
         content: debouncedValue,
       });
     }
-  }, [debouncedValue, hasInitialized]);
+  }, [debouncedValue, hasInitialized, mutateRef, noteIdRef]);
 
-  // Flush pending save on unmount only
-  useEffect(() => {
-    const scrollContainer = scrollContainerRef.current;
-
-    return () => {
+  const flushPendingSave = useCallback(
+    (scrollContainer: HTMLDivElement | null) => {
       if (isDeletedRef.current) return;
 
       if (scrollContainer) {
@@ -272,8 +270,18 @@ export function FeedNoteEditor({ noteId }: { noteId: string }) {
           content: valueRef.current,
         });
       }
+    },
+    [mutateRef, noteIdRef, valueRef],
+  );
+
+  // Flush pending save on unmount only
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+
+    return () => {
+      flushPendingSave(scrollContainer);
     };
-  }, []);
+  }, [flushPendingSave]);
 
   const handleScroll = useCallback(() => {
     if (isRestoringScrollRef.current) return;

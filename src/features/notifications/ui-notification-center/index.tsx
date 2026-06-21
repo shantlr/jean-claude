@@ -1,30 +1,34 @@
-import clsx from 'clsx';
 import {
-  CalendarClock,
-  CheckCircle,
-  XCircle,
   Ban,
   Bell,
-  ExternalLink,
   Bug,
+  CalendarClock,
+  CheckCircle,
+  ExternalLink,
   Trash2,
+  XCircle,
 } from 'lucide-react';
-import { useCallback, useMemo, useState, type CSSProperties } from 'react';
+import { type CSSProperties, useCallback, useMemo, useState } from 'react';
+import clsx from 'clsx';
 import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
 import { RemoveScroll } from 'react-remove-scroll';
+
+
 
 import {
   useKeyboardLayer,
   useRegisterKeyboardBindings,
 } from '@/common/context/keyboard-bindings';
+import type { AppNotification } from '@shared/notification-types';
 import { Button } from '@/common/ui/button';
-import { useProjects } from '@/hooks/use-projects';
 import { ensureUtc } from '@/lib/time';
+import type { Project } from '@shared/types';
 import { useDebugLogsStore } from '@/stores/debug-logs';
 import { useNotificationsStore } from '@/stores/notifications';
-import type { AppNotification } from '@shared/notification-types';
-import type { Project } from '@shared/types';
+import { useProjects } from '@/hooks/use-projects';
+
+
 
 type Tab = 'notifications' | 'debug';
 

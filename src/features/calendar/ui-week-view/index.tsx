@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import {
   ChevronLeft,
   ChevronRight,
@@ -8,10 +7,9 @@ import {
   Video,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import clsx from 'clsx';
 
-import { Button } from '@/common/ui/button';
-import { Kbd } from '@/common/ui/kbd';
-import { OrganizerTooltip } from '@/features/calendar/ui-organizer-tooltip';
+
 import {
   addDays,
   extractTeamsUrl,
@@ -23,10 +21,14 @@ import {
   minutesBetween,
   startOfDay,
 } from '@/features/calendar/utils-calendar';
-import { useCalendarNotificationsSetting } from '@/hooks/use-settings';
 import { api } from '@/lib/api';
-import { useToastStore } from '@/stores/toasts';
+import { Button } from '@/common/ui/button';
+import { Kbd } from '@/common/ui/kbd';
+import { OrganizerTooltip } from '@/features/calendar/ui-organizer-tooltip';
 import type { UpcomingMeeting } from '@shared/calendar-types';
+import { useCalendarNotificationsSetting } from '@/hooks/use-settings';
+import { useToastStore } from '@/stores/toasts';
+
 
 const HOUR_START = 8;
 const HOUR_END = 19;

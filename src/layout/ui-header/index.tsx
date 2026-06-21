@@ -3,42 +3,45 @@ import {
   BarChart3,
   ClipboardList,
   History,
-  X,
   Menu,
   RefreshCw,
   SlidersHorizontal,
   Terminal,
   Workflow,
+  X,
 } from 'lucide-react';
 import {
+  type CSSProperties,
+  startTransition,
   useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
 } from 'react';
 
-import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
-import { useModal } from '@/common/context/modal';
-import { useCommands } from '@/common/hooks/use-commands';
-import { Button } from '@/common/ui/button';
+import { api, type ReloadPreviewProgress } from '@/lib/api';
 import {
   Dropdown,
   DropdownDivider,
   DropdownInfo,
   DropdownItem,
 } from '@/common/ui/dropdown';
+import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
-import { useProjectTodoCount } from '@/hooks/use-project-todos';
-import { useProjects } from '@/hooks/use-projects';
-import { api, type ReloadPreviewProgress } from '@/lib/api';
 import { useBacklogSelectedProjectId } from '@/stores/backlog-overlay-draft';
 import { useChangelogStore } from '@/stores/changelog';
+import { useCommands } from '@/common/hooks/use-commands';
 import { useCurrentVisibleProject } from '@/stores/navigation';
+import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
+import { useModal } from '@/common/context/modal';
 import { useOverlaysStore } from '@/stores/overlays';
+import { useProjects } from '@/hooks/use-projects';
+import { useProjectTodoCount } from '@/hooks/use-project-todos';
 import { useTaskMessagesStore } from '@/stores/task-messages';
+
+
 
 import { ActivityButton } from './activity-button';
 import { CompletionCostDisplay } from './completion-cost-display';
@@ -195,11 +198,11 @@ function ReloadPreviewModal({
     : Math.min(reloadStepCount - 1, activeStepIndex);
 
   useEffect(() => {
-    setProgress(initialReloadProgress);
+    startTransition(() => setProgress(initialReloadProgress));
     progressRef.current = initialReloadProgress;
-    setStepStartedAt(startedAt);
+    startTransition(() => setStepStartedAt(startedAt));
     stepStartedAtRef.current = startedAt;
-    setStepDurations({});
+    startTransition(() => setStepDurations({}));
     return api.app.onReloadPreviewProgress((nextProgress) => {
       const currentProgress = progressRef.current;
       if (currentProgress.step !== nextProgress.step) {

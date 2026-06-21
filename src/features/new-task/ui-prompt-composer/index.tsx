@@ -1,4 +1,14 @@
 import {
+  type ChangeEvent,
+  type ClipboardEvent,
+  type DragEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -9,47 +19,41 @@ import {
   Paperclip,
   X,
 } from 'lucide-react';
-import {
-  type ChangeEvent,
-  type ClipboardEvent,
-  type DragEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
 import { createPortal } from 'react-dom';
 
-import { Checkbox } from '@/common/ui/checkbox';
-import { HandlebarsEditor } from '@/common/ui/handlebars-editor';
-import { Kbd } from '@/common/ui/kbd';
-import { FileEditorDialog } from '@/features/common/ui-file-editor-dialog';
+
+import type { AzureDevOpsWorkItem, WorkItemComment } from '@/lib/api';
+import {
+  buildAttachedFilesXml,
+  MAX_FILES,
+  processAttachmentFile,
+  processAttachmentPath,
+} from '@/lib/file-attachment-utils';
 import {
   isVideoFile,
   VideoGifConverter,
 } from '@/features/common/ui-video-gif-converter';
-import type { AzureDevOpsWorkItem, WorkItemComment } from '@/lib/api';
-import {
-  buildAttachedFilesXml,
-  processAttachmentFile,
-  processAttachmentPath,
-  MAX_FILES,
-} from '@/lib/file-attachment-utils';
-import { formatBytes } from '@/lib/format-bytes';
-import { processImageFile, MAX_IMAGES } from '@/lib/image-utils';
-import { expandFeatureReferencesInPrompt } from '@/lib/prompt-feature-context';
-import {
-  resolveSnippetTemplate,
-  type SnippetVariableContext,
-} from '@/lib/resolve-snippet-template';
-import { useToastStore } from '@/stores/toasts';
+import { MAX_IMAGES, processImageFile } from '@/lib/image-utils';
+import type { ProjectFeatureMap, PromptSnippet } from '@shared/types';
 import type {
   PromptFilePart,
   PromptImagePart,
 } from '@shared/agent-backend-types';
-import type { ProjectFeatureMap, PromptSnippet } from '@shared/types';
+import {
+  resolveSnippetTemplate,
+  type SnippetVariableContext,
+} from '@/lib/resolve-snippet-template';
+import { Checkbox } from '@/common/ui/checkbox';
+import { expandFeatureReferencesInPrompt } from '@/lib/prompt-feature-context';
+import { FileEditorDialog } from '@/features/common/ui-file-editor-dialog';
+import { formatBytes } from '@/lib/format-bytes';
+import { HandlebarsEditor } from '@/common/ui/handlebars-editor';
+import { Kbd } from '@/common/ui/kbd';
+import { useToastStore } from '@/stores/toasts';
 
+
+
+import { useLatestRef } from '@/hooks/use-latest-ref';
 export function getWorkItemCommentSelectionId(
   comment: WorkItemComment,
 ): string {
@@ -1275,8 +1279,7 @@ function ImagePreviewDialog({
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const img = images[currentIndex];
 
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  const onCloseRef = useLatestRef(onClose);
 
   useEffect(() => {
     const handleKeyDown = (e: globalThis.KeyboardEvent) => {
@@ -1291,7 +1294,7 @@ function ImagePreviewDialog({
     };
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [images.length]);
+  }, [images.length, onCloseRef]);
 
   if (!img) return null;
 

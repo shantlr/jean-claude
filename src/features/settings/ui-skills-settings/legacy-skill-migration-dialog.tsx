@@ -1,19 +1,21 @@
 import { RefreshCw, TriangleAlert, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { Button } from '@/common/ui/button';
-import { Checkbox } from '@/common/ui/checkbox';
-import { Chip } from '@/common/ui/chip';
-import { IconButton } from '@/common/ui/icon-button';
-import {
-  useLegacySkillMigrationExecute,
-  useLegacySkillMigrationPreview,
-} from '@/hooks/use-managed-skills';
-import { useToastStore } from '@/stores/toasts';
 import type {
   LegacySkillMigrationExecuteResult,
   LegacySkillMigrationPreviewItem,
 } from '@shared/skill-types';
+import {
+  useLegacySkillMigrationExecute,
+  useLegacySkillMigrationPreview,
+} from '@/hooks/use-managed-skills';
+import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { Chip } from '@/common/ui/chip';
+import { IconButton } from '@/common/ui/icon-button';
+import { useToastStore } from '@/stores/toasts';
+
+
 
 function backendLabel(backendType: string): string {
   return backendType === 'claude-code' ? 'Claude Code' : 'OpenCode';

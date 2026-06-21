@@ -1,27 +1,32 @@
-import { ArrowLeft } from 'lucide-react';
 import {
+  startTransition,
   useCallback,
   useDeferredValue,
   useEffect,
   useRef,
   useState,
 } from 'react';
+import { ArrowLeft } from 'lucide-react';
 
-import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
-import { Button } from '@/common/ui/button';
-import { Checkbox } from '@/common/ui/checkbox';
-import { IconButton } from '@/common/ui/icon-button';
-import { Input } from '@/common/ui/input';
-import { MarkdownContent } from '@/features/agent/ui-markdown-content';
-import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
+
 import {
   useCreateSkill,
   useSkillContent,
   useUpdateSkill,
 } from '@/hooks/use-managed-skills';
-import { useToastStore } from '@/stores/toasts';
 import type { AgentBackendType } from '@shared/agent-backend-types';
+import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { IconButton } from '@/common/ui/icon-button';
+import { Input } from '@/common/ui/input';
+import { MarkdownContent } from '@/features/agent/ui-markdown-content';
 import type { SkillScope } from '@shared/skill-types';
+import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
+import { useLatestRef } from '@/hooks/use-latest-ref';
+import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import { useToastStore } from '@/stores/toasts';
+
+
 
 export function SkillEditor({
   skillPath,
@@ -68,17 +73,17 @@ export function SkillEditor({
 
   useEffect(() => {
     if (existing) {
-      setName(existing.name);
-      setDescription(existing.description);
-      setContent(existing.content);
+      startTransition(() => setName(existing.name));
+      startTransition(() => setDescription(existing.description));
+      startTransition(() => setContent(existing.content));
       initializedRef.current = true;
-      setHasChanges(false);
+      startTransition(() => setHasChanges(false));
     } else if (!skillPath) {
-      setName('');
-      setDescription('');
-      setContent('');
+      startTransition(() => setName(''));
+      startTransition(() => setDescription(''));
+      startTransition(() => setContent(''));
       initializedRef.current = true;
-      setHasChanges(false);
+      startTransition(() => setHasChanges(false));
     }
   }, [existing, skillPath]);
 
@@ -227,14 +232,10 @@ export function SkillEditor({
   const deferredContent = useDeferredValue(content);
 
   // Keyboard shortcuts: Cmd+S to save, Escape to go back
-  const handleSaveRef = useRef(handleSave);
-  handleSaveRef.current = handleSave;
-  const handleBackRef = useRef(handleBack);
-  handleBackRef.current = handleBack;
-  const isValidRef = useRef(isValid);
-  isValidRef.current = isValid;
-  const isPendingRef = useRef(isPending);
-  isPendingRef.current = isPending;
+  const handleSaveRef = useLatestRef(handleSave);
+  const handleBackRef = useLatestRef(handleBack);
+  const isValidRef = useLatestRef(isValid);
+  const isPendingRef = useLatestRef(isPending);
 
   useRegisterKeyboardBindings('skill-editor', {
     'cmd+s': () => {

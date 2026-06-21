@@ -1,5 +1,6 @@
-import { formatDuration } from '@/lib/time';
 import type { AzureBuildRun, AzureRelease } from '@shared/pipeline-types';
+import { formatDuration } from '@/lib/time';
+
 
 export function isBuildRun(
   run: AzureBuildRun | AzureRelease,

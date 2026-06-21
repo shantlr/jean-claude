@@ -1,15 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { AzureDevOpsPullRequestDetails } from '@shared/azure-devops-types';
 import type { Project, Task, TaskStep } from '@shared/types';
+import type { AzureDevOpsPullRequestDetails } from '@shared/azure-devops-types';
 
-import {
-  getResourceChangeVersion,
-  markResourceStale,
-  setDocumentResource,
-} from './cache-actions';
-import { applyCacheEvent } from './cache-events';
-import { cache$, resetCache } from './cache-store';
+
 import {
   allProjectsPullRequestsResourceKey,
   projectPullRequestsResourceKey,
@@ -17,8 +11,17 @@ import {
   repoPullRequestsResourceKey,
   selectPullRequest,
 } from './domains/pull-requests';
+import { cache$, resetCache } from './cache-store';
+import {
+  getResourceChangeVersion,
+  markResourceStale,
+  setDocumentResource,
+} from './cache-actions';
 import { removeTask, taskResourceKey } from './domains/tasks';
+import { applyCacheEvent } from './cache-events';
 import { isResourceInitialLoading } from './use-cache-resource';
+
+
 
 function createProject(overrides: Partial<Project> = {}): Project {
   return {

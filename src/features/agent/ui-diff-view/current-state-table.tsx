@@ -1,15 +1,18 @@
-import clsx from 'clsx';
 import { ChevronDown, ChevronRight, MessageSquarePlus } from 'lucide-react';
-import type { ReactNode } from 'react';
 import { useCallback, useMemo, useState } from 'react';
+import clsx from 'clsx';
+import type { ReactNode } from 'react';
 import type { ThemedToken } from 'shiki';
 
+
+
 import { computeCurrentStateLines, type DiffLine } from './diff-utils';
-import type { SearchMatch } from './use-diff-search';
 import {
   renderTokensWithHighlights,
   renderWithHighlights,
 } from './utils-search-highlight';
+import type { SearchMatch } from './use-diff-search';
+
 
 import type {
   CodeFoldingState,

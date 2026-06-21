@@ -1,13 +1,15 @@
-import { ListTodo, Link2Off } from 'lucide-react';
+import { Link2Off, ListTodo } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { useProviderDetails, useProviders } from '@/hooks/use-providers';
 import { Button } from '@/common/ui/button';
 import { Checkbox } from '@/common/ui/checkbox';
 import { Combobox } from '@/common/ui/combobox';
-import { useUpdateProject } from '@/hooks/use-projects';
-import { useProviders, useProviderDetails } from '@/hooks/use-providers';
-import { useToastStore } from '@/stores/toasts';
 import type { Project } from '@shared/types';
+import { useToastStore } from '@/stores/toasts';
+import { useUpdateProject } from '@/hooks/use-projects';
+
+
 
 export function WorkItemsLink({ project }: { project: Project }) {
   const { data: providers } = useProviders();

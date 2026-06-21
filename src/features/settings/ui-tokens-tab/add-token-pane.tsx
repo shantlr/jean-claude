@@ -4,10 +4,11 @@ import { useState } from 'react';
 import { Button } from '@/common/ui/button';
 import { IconButton } from '@/common/ui/icon-button';
 import { Input } from '@/common/ui/input';
-import { Select } from '@/common/ui/select';
-import { useValidateAzureDevOpsToken } from '@/hooks/use-azure-devops';
-import { useCreateToken } from '@/hooks/use-tokens';
 import type { ProviderType } from '@shared/types';
+import { Select } from '@/common/ui/select';
+import { useCreateToken } from '@/hooks/use-tokens';
+import { useValidateAzureDevOpsToken } from '@/hooks/use-azure-devops';
+
 
 type Step = 'form' | 'validating';
 

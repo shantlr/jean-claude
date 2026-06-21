@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { api } from '@/lib/api';
 import type { AgentBackendType } from '@shared/agent-backend-types';
+import { api } from '@/lib/api';
+
 
 const BACKEND_LABELS: Record<AgentBackendType, string> = {
   'claude-code': 'Claude Code',

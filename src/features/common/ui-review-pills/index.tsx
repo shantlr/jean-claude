@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight, Eye, X } from 'lucide-react';
-import { useCallback, useRef, useState, useLayoutEffect } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 
 import type { ReviewComment } from '@/stores/review-comments';
 

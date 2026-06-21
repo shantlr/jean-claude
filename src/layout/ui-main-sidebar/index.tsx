@@ -1,10 +1,9 @@
-import clsx from 'clsx';
-import type { MouseEvent as ReactMouseEvent } from 'react';
-import { useCallback, useState } from 'react';
-
-import { FeedList } from '@/features/feed/ui-feed-list';
-import { TaskList } from '@/features/task/ui-task-list';
 import { useCurrentVisibleProject, useSidebarWidth } from '@/stores/navigation';
+import clsx from 'clsx';
+import { FeedList } from '@/features/feed/ui-feed-list';
+import type { MouseEvent as ReactMouseEvent } from 'react';
+import { TaskList } from '@/features/task/ui-task-list';
+import { useState } from 'react';
 
 export const MAIN_SIDEBAR_HEADER_HEIGHT = 48;
 
@@ -13,9 +12,8 @@ export function MainSidebar() {
   const { width, setWidth, minWidth, maxWidth } = useSidebarWidth();
   const [isDragging, setIsDragging] = useState(false);
 
-  const handleMouseDown = useCallback(
-    (e: ReactMouseEvent<HTMLDivElement>) => {
-      e.preventDefault();
+  const handleMouseDown = (e: ReactMouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
       setIsDragging(true);
 
       const startX = e.clientX;
@@ -36,11 +34,9 @@ export function MainSidebar() {
         document.removeEventListener('mouseup', handleMouseUp);
       };
 
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    },
-    [width, minWidth, maxWidth, setWidth],
-  );
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
 
   return (
     <aside

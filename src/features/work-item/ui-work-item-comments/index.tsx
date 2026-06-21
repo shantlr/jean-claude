@@ -1,10 +1,11 @@
 import { MessageSquare, MessagesSquare, Send } from 'lucide-react';
 import { useState } from 'react';
 
+import { AzureHtmlContent } from '@/features/common/ui-azure-html-content';
 import { Button } from '@/common/ui/button';
 import { Textarea } from '@/common/ui/textarea';
-import { AzureHtmlContent } from '@/features/common/ui-azure-html-content';
 import type { WorkItemComment } from '@/lib/api';
+
 
 function formatCommentDate(value: string) {
   if (!value) return 'Unknown date';

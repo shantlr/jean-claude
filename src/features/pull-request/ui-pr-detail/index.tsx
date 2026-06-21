@@ -1,48 +1,54 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { FileCode, FileText, GitCommit, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { Loader2, FileCode, GitCommit, FileText } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
-import { useCommands } from '@/common/hooks/use-commands';
-import type { MentionOption } from '@/common/ui/mention-textarea';
+
+
 import {
   DiffFileTree,
   normalizeAzureChangeType,
 } from '@/features/common/ui-file-diff';
-import type { DiffFile } from '@/features/common/ui-file-diff';
-import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
-import { useRecordPrView } from '@/hooks/use-pr-view-snapshot';
-import { useProject } from '@/hooks/use-projects';
 import {
-  usePullRequest,
-  usePullRequestCommits,
-  usePullRequestChanges,
-  usePullRequestFileContent,
-  usePullRequestThreads,
+  type MentionDisplayNames,
+  normalizeMentionId,
+} from '@/lib/azure-devops-mentions';
+import {
   useAddPullRequestComment,
   useAddPullRequestFileComment,
+  usePullRequest,
+  usePullRequestChanges,
+  usePullRequestCommits,
+  usePullRequestFileContent,
+  usePullRequestThreads,
   useUploadPullRequestAttachment,
 } from '@/hooks/use-pull-requests';
 import { api } from '@/lib/api';
-import {
-  normalizeMentionId,
-  type MentionDisplayNames,
-} from '@/lib/azure-devops-mentions';
-import { feedQueryKeys } from '@/lib/feed-query-keys';
-import { usePrDetailState } from '@/stores/navigation';
-import type { PrDetailTab } from '@/stores/navigation';
-import { usePrDraftCountByFile } from '@/stores/pr-comment-drafts';
-import type { PromptImagePart } from '@shared/agent-backend-types';
+import type { DiffFile } from '@/features/common/ui-file-diff';
 import type { FeedItem } from '@shared/feed-types';
+import { feedQueryKeys } from '@/lib/feed-query-keys';
+import type { MentionOption } from '@/common/ui/mention-textarea';
+import type { PrDetailTab } from '@/stores/navigation';
+import type { PromptImagePart } from '@shared/agent-backend-types';
+import { useCommands } from '@/common/hooks/use-commands';
+import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
+import { usePrDetailState } from '@/stores/navigation';
+import { usePrDraftCountByFile } from '@/stores/pr-comment-drafts';
+import { useProject } from '@/hooks/use-projects';
+import { useRecordPrView } from '@/hooks/use-pr-view-snapshot';
 
+
+
+import { getCommentStatusCountByPrFile } from '../utils-pr-comment-counts';
 import { PrCommitDiffView } from '../ui-pr-commit-diff-view';
 import { PrCommits } from '../ui-pr-commits';
 import { PrDiffView } from '../ui-pr-diff-view';
 import { PrHeader } from '../ui-pr-header';
 import { PrOverview } from '../ui-pr-overview';
-import { getCommentStatusCountByPrFile } from '../utils-pr-comment-counts';
 
+
+import { useLatestRef } from '@/hooks/use-latest-ref';
 const PR_DETAIL_TABS: PrDetailTab[] = ['overview', 'files', 'commits'];
 
 export function PrDetail({
@@ -118,8 +124,7 @@ export function PrDetail({
   const { data: project } = useProject(projectId);
 
   const { mutate: recordPrView } = useRecordPrView();
-  const recordPrViewRef = useRef(recordPrView);
-  recordPrViewRef.current = recordPrView;
+  const recordPrViewRef = useLatestRef(recordPrView);
 
   // Record PR view for activity tracking.
   useEffect(() => {
@@ -149,6 +154,7 @@ export function PrDetail({
     project?.repoProviderId,
     projectId,
     queryClient,
+    recordPrViewRef,
   ]);
 
   const { data: pr, isLoading: isPrLoading } = usePullRequest(projectId, prId);
@@ -276,7 +282,7 @@ export function PrDetail({
       });
       return options;
     },
-    [project?.repoProviderId],
+    [project],
   );
 
   if (isPrLoading) {

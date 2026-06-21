@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import {
   CheckCircle2,
   ChevronDown,
@@ -9,10 +8,13 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
+import clsx from 'clsx';
 
+
+import type { AzureBuildTimelineRecord } from '@shared/pipeline-types';
 import { Button } from '@/common/ui/button';
 import { useBuildLog } from '@/hooks/use-pipeline-runs';
-import type { AzureBuildTimelineRecord } from '@shared/pipeline-types';
+
 
 import { computeDuration } from './utils';
 

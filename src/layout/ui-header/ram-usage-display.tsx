@@ -1,12 +1,12 @@
-import { MemoryStick } from 'lucide-react';
-
-import { Tooltip } from '@/common/ui/tooltip';
 import {
   MAX_MEMORY_USAGE_SAMPLES,
-  useMemoryUsage,
   type MemoryUsageSample,
+  useMemoryUsage,
 } from '@/hooks/use-memory-usage';
+import { MemoryStick } from 'lucide-react';
+import { Tooltip } from '@/common/ui/tooltip';
 import { useOverlaysStore } from '@/stores/overlays';
+import { useState } from 'react';
 
 function formatBytes(bytes: number): string {
   const megabytes = bytes / 1_048_576;
@@ -112,6 +112,7 @@ export function RamUsageDisplay() {
   const isResourcesOpen = useOverlaysStore(
     (s) => s.activeOverlay === 'resources',
   );
+  const [nowMs] = useState(() => Date.now());
 
   if (!data) return null;
 
@@ -167,7 +168,7 @@ export function RamUsageDisplay() {
 
   const oldestSample = history[0] as MemoryUsageSample | undefined;
   const historyMinutes = oldestSample
-    ? Math.max(1, Math.round((Date.now() - oldestSample.sampledAt) / 60_000))
+    ? Math.max(1, Math.round((nowMs - oldestSample.sampledAt) / 60_000))
     : 0;
 
   const trigger = (

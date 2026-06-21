@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import {
   Clock,
   ExternalLink,
@@ -8,16 +7,20 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
+import clsx from 'clsx';
 
-import { StagesTimeline } from '@/features/pipelines/ui-pipelines-overlay/stages-timeline';
+
 import {
   computeDuration,
   stripRefsHeads,
 } from '@/features/pipelines/ui-pipelines-overlay/utils';
-import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useBuildTimeline, useCancelBuild } from '@/hooks/use-pipeline-runs';
-import { useWindowFocused } from '@/hooks/use-window-focused';
 import type { AzureBuildDetail } from '@shared/pipeline-types';
+import { StagesTimeline } from '@/features/pipelines/ui-pipelines-overlay/stages-timeline';
+import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
+import { useWindowFocused } from '@/hooks/use-window-focused';
+
+
 
 import { useBuildDetail } from './use-build-detail';
 

@@ -1,18 +1,19 @@
 import {
-  Shield,
-  X,
   Check,
-  ShieldCheck,
   MessageSquare,
   Send,
+  Shield,
+  ShieldCheck,
+  X,
 } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/common/ui/button';
-import { Textarea } from '@/common/ui/textarea';
-import type { PermissionResponse } from '@shared/agent-types';
-import type { NormalizedPermissionRequest } from '@shared/normalized-message-v2';
 import type { InteractionMode } from '@shared/types';
+import type { NormalizedPermissionRequest } from '@shared/normalized-message-v2';
+import type { PermissionResponse } from '@shared/agent-types';
+import { Textarea } from '@/common/ui/textarea';
+
 
 import { MarkdownContent } from '../ui-markdown-content';
 

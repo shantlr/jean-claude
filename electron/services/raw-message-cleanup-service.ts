@@ -1,6 +1,7 @@
+import { createDebug } from '../lib/debug';
 import { RawMessageRepository } from '../database/repositories/raw-messages';
 import { SettingsRepository } from '../database/repositories/settings';
-import { createDebug } from '../lib/debug';
+
 
 const debug = createDebug('jc:raw-message-cleanup');
 

@@ -1,8 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import isEqual from 'lodash-es/isEqual';
 import {
-  ChevronRight,
   Check,
+  ChevronRight,
   FileText,
   FolderOpen,
   ImagePlus,
@@ -16,78 +14,18 @@ import {
   X,
 } from 'lucide-react';
 import {
+  type ReactElement,
+  startTransition,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type ReactElement,
 } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import isEqual from 'lodash-es/isEqual';
 
-import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
-import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
-import { Button } from '@/common/ui/button';
-import { Checkbox } from '@/common/ui/checkbox';
-import { ImagePreviewModal } from '@/common/ui/image-preview-modal';
-import { Input } from '@/common/ui/input';
-import { Kbd } from '@/common/ui/kbd';
-import {
-  ListDetailLayout,
-  ListGroupHeader,
-  ListItemButton,
-  ListPane,
-} from '@/common/ui/list-detail-layout';
-import { Modal } from '@/common/ui/modal';
-import { Select } from '@/common/ui/select';
-import { Textarea } from '@/common/ui/textarea';
-import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
-import { findMatchingBackendModelPresetId } from '@/features/agent/ui-backend-preset-selector';
-import { AVAILABLE_BACKENDS } from '@/features/agent/ui-backend-selector';
-import {
-  SLOT_DEFINITIONS,
-  SlotDetail,
-} from '@/features/common/ui-ai-skill-slot';
-import { ProjectColorPicker } from '@/features/project/ui-project-color-picker';
-import { ProjectLogo } from '@/features/project/ui-project-logo';
-import { ProjectLogoSuggestions } from '@/features/project/ui-project-logo-suggestions';
-import { ProjectMcpSettings } from '@/features/project/ui-project-mcp-settings';
-import { ProjectPermissionsSettings } from '@/features/project/ui-project-permissions-settings';
-import { ProjectPipelineSettings } from '@/features/project/ui-project-pipeline-settings';
-import { ProjectSkillsSettings } from '@/features/project/ui-project-skills-settings';
-import { ProjectWorktreeSettings } from '@/features/project/ui-project-worktree-settings';
-import { RepoLink } from '@/features/project/ui-repo-link';
-import { RunCommandsConfig } from '@/features/project/ui-run-commands-config';
-import { WorkItemsLink } from '@/features/project/ui-work-items-link';
-import { useEnabledBackends } from '@/hooks/use-enabled-backends';
-import {
-  useProject,
-  useProjectBranches,
-  useUpdateProject,
-  useDeleteProject,
-  useDeleteProjectWorktreesFolder,
-  useDeleteGeneratedProjectLogo,
-  useGenerateProjectLogo,
-  useGeneratedProjectLogos,
-  useCreateProjectFeatureMapTask,
-  useProjectFeatureMap,
-  useRegenerateProjectSummary,
-  useRemoveProjectLogo,
-  useSelectGeneratedProjectLogo,
-  useUploadProjectLogo,
-} from '@/hooks/use-projects';
-import {
-  useAiGenerationSetting,
-  useBackendModelPresetsSetting,
-  useBackendsSetting,
-  useProjectPromptPrefaceSetting,
-  useUpdateProjectPromptPrefaceSetting,
-} from '@/hooks/use-settings';
-import { api } from '@/lib/api';
-import { useBackgroundJobsStore } from '@/stores/background-jobs';
-import { useNavigationStore } from '@/stores/navigation';
-import { useToastStore } from '@/stores/toasts';
-import type { AgentBackendType } from '@shared/agent-backend-types';
-import type { ProjectPriority } from '@shared/feed-types';
+
 import type {
   AiSkillSlotConfig,
   AiSkillSlotKey,
@@ -98,10 +36,77 @@ import type {
   ProjectLogoHistoryItem,
   UpdateProject,
 } from '@shared/types';
+import {
+  ListDetailLayout,
+  ListGroupHeader,
+  ListItemButton,
+  ListPane,
+} from '@/common/ui/list-detail-layout';
+import {
+  SLOT_DEFINITIONS,
+  SlotDetail,
+} from '@/features/common/ui-ai-skill-slot';
+import {
+  useAiGenerationSetting,
+  useBackendModelPresetsSetting,
+  useBackendsSetting,
+  useProjectPromptPrefaceSetting,
+  useUpdateProjectPromptPrefaceSetting,
+} from '@/hooks/use-settings';
+import {
+  useCreateProjectFeatureMapTask,
+  useDeleteGeneratedProjectLogo,
+  useDeleteProject,
+  useDeleteProjectWorktreesFolder,
+  useGeneratedProjectLogos,
+  useGenerateProjectLogo,
+  useProject,
+  useProjectBranches,
+  useProjectFeatureMap,
+  useRegenerateProjectSummary,
+  useRemoveProjectLogo,
+  useSelectGeneratedProjectLogo,
+  useUpdateProject,
+  useUploadProjectLogo,
+} from '@/hooks/use-projects';
+import type { AgentBackendType } from '@shared/agent-backend-types';
+import { api } from '@/lib/api';
+import { AVAILABLE_BACKENDS } from '@/features/agent/ui-backend-selector';
+import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
+import { Button } from '@/common/ui/button';
+import { Checkbox } from '@/common/ui/checkbox';
+import { findMatchingBackendModelPresetId } from '@/features/agent/ui-backend-preset-selector';
+import { ImagePreviewModal } from '@/common/ui/image-preview-modal';
+import { Input } from '@/common/ui/input';
+import { Kbd } from '@/common/ui/kbd';
+import { Modal } from '@/common/ui/modal';
+import { ProjectColorPicker } from '@/features/project/ui-project-color-picker';
+import { ProjectLogo } from '@/features/project/ui-project-logo';
+import { ProjectLogoSuggestions } from '@/features/project/ui-project-logo-suggestions';
+import { ProjectMcpSettings } from '@/features/project/ui-project-mcp-settings';
+import { ProjectPermissionsSettings } from '@/features/project/ui-project-permissions-settings';
+import { ProjectPipelineSettings } from '@/features/project/ui-project-pipeline-settings';
+import type { ProjectPriority } from '@shared/feed-types';
+import { ProjectSkillsSettings } from '@/features/project/ui-project-skills-settings';
+import { ProjectWorktreeSettings } from '@/features/project/ui-project-worktree-settings';
+import { RepoLink } from '@/features/project/ui-repo-link';
+import { RunCommandsConfig } from '@/features/project/ui-run-commands-config';
+import { Select } from '@/common/ui/select';
+import { Textarea } from '@/common/ui/textarea';
+import { useBackgroundJobsStore } from '@/stores/background-jobs';
+import { useEnabledBackends } from '@/hooks/use-enabled-backends';
+import { useNavigationStore } from '@/stores/navigation';
+import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
+import { useToastStore } from '@/stores/toasts';
+import { WorkItemsLink } from '@/features/project/ui-work-items-link';
+
+
 
 import { FavoriteBranchesInput } from './favorite-branches-input';
-import { ProtectedBranchesInput } from './protected-branches-input';
 import { getProjectSettingsSaveData } from './utils-project-settings-save-data';
+import { ProtectedBranchesInput } from './protected-branches-input';
+
 
 const PROMPT_PREFACE_MODE_OPTIONS = [
   { value: 'inherit', label: 'Use global' },
@@ -151,7 +156,7 @@ function ProjectPromptPrefaceSettings({
 
   useEffect(() => {
     if (setting) {
-      setDraftText(setting.text);
+      startTransition(() => setDraftText(setting.text));
     }
   }, [setting]);
 
@@ -1050,7 +1055,7 @@ export function ProjectSettings({
 
   useEffect(() => {
     if (menuItem !== 'danger-zone' && showDeleteConfirm) {
-      setShowDeleteConfirm(false);
+      startTransition(() => setShowDeleteConfirm(false));
     }
   }, [menuItem, showDeleteConfirm]);
 

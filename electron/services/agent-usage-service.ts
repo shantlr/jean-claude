@@ -10,12 +10,13 @@ import type {
 import { SettingsRepository } from '../database/repositories/settings';
 import { UsageSnapshotRepository } from '../database/repositories/usage-snapshots';
 
-import { encryptionService } from './encryption-service';
+import type { BackendUsageProvider } from './usage-providers/types';
 import { ClaudeUsageProvider } from './usage-providers/claude-usage-provider';
 import { CodexUsageProvider } from './usage-providers/codex-usage-provider';
 import { CopilotUsageProvider } from './usage-providers/copilot-usage-provider';
+import { encryptionService } from './encryption-service';
 import { GeminiUsageProvider } from './usage-providers/gemini-usage-provider';
-import type { BackendUsageProvider } from './usage-providers/types';
+
 
 class AgentUsageService {
   private providers = new Map<UsageProviderType, BackendUsageProvider>();

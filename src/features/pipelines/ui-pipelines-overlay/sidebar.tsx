@@ -1,22 +1,10 @@
 import {
-  DndContext,
-  DragOverlay,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
-import {
-  SortableContext,
   arrayMove,
+  SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import clsx from 'clsx';
 import {
   ChevronDown,
   ChevronRight,
@@ -26,7 +14,16 @@ import {
   Play,
   Rocket,
 } from 'lucide-react';
-import type React from 'react';
+import {
+  closestCenter,
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import {
   Fragment,
   useCallback,
@@ -36,20 +33,27 @@ import {
   useRef,
   useState,
 } from 'react';
+import clsx from 'clsx';
 import { createPortal } from 'react-dom';
+import { CSS } from '@dnd-kit/utilities';
+import type React from 'react';
 
-import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
-import { useRegisterOverlay } from '@/common/context/overlay';
-import { Button } from '@/common/ui/button';
-import { IconButton } from '@/common/ui/icon-button';
-import { Separator } from '@/common/ui/separator';
+
+
 import {
   useReorderTrackedPipelines,
   useToggleTrackedPipelineVisible,
   useTrackedPipelines,
 } from '@/hooks/use-tracked-pipelines';
-import type { TrackedPipeline } from '@shared/pipeline-types';
+import { Button } from '@/common/ui/button';
+import { IconButton } from '@/common/ui/icon-button';
 import type { Project } from '@shared/types';
+import { Separator } from '@/common/ui/separator';
+import type { TrackedPipeline } from '@shared/pipeline-types';
+import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings';
+import { useRegisterOverlay } from '@/common/context/overlay';
+
+
 
 import type { SidebarFilter } from './index';
 

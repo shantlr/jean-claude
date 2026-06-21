@@ -1,12 +1,11 @@
 import { Bot, Plus, Search } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
-import { useCommands } from '@/common/hooks/use-commands';
-import { Button } from '@/common/ui/button';
 import {
   DetailPlaceholder,
   ListDetailLayout,
 } from '@/common/ui/list-detail-layout';
+import type { ManagedSkill, RegistrySkill } from '@shared/skill-types';
 import {
   useAllManagedSkills,
   useDeleteSkill,
@@ -14,16 +13,21 @@ import {
   useEnableSkill,
   useHasLegacySkills,
 } from '@/hooks/use-managed-skills';
-import { useCreateSkillDraftStore } from '@/stores/create-skill-draft';
 import type { AgentBackendType } from '@shared/agent-backend-types';
-import type { ManagedSkill, RegistrySkill } from '@shared/skill-types';
+import { Button } from '@/common/ui/button';
+import { useCommands } from '@/common/hooks/use-commands';
+import { useCreateSkillDraftStore } from '@/stores/create-skill-draft';
 
+
+
+import { type RailMode, SkillRail } from './skill-rail';
 import { CreateWithAgentDialog } from './create-with-agent-dialog';
 import { LegacySkillMigrationDialog } from './legacy-skill-migration-dialog';
 import { RegistrySkillDetails } from './registry-skill-details';
 import { SkillDetails } from './skill-details';
 import { SkillEditor } from './skill-editor';
-import { type RailMode, SkillRail } from './skill-rail';
+
+
 
 export function SkillsSettings() {
   const { data: skills, isLoading } = useAllManagedSkills();

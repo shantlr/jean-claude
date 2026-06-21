@@ -1,5 +1,6 @@
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RefObject } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
 
 import {
   computeDiff,
@@ -242,7 +243,7 @@ export function useChangeNavigator({
 
   // Reset current hunk when hunks change
   useEffect(() => {
-    setCurrentHunkIndex(0);
+    startTransition(() => setCurrentHunkIndex(0));
   }, [hunks]);
 
   const scrollToHunk = useCallback(
