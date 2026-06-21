@@ -494,10 +494,7 @@ export function FeedItemCard({
   const hasQuestion = item.attention === 'has-question';
   const needsAttention = needsPermission || hasQuestion;
   const visibleChildren = useMemo(
-    () =>
-      (item.children ?? []).filter(
-        (child) => !child.isCompleted && child.attention !== 'completed',
-      ),
+    () => (item.children ?? []).filter((child) => !child.isCompleted),
     [item.children],
   );
   const hasChildren = !isSubtask && visibleChildren.length > 0;
