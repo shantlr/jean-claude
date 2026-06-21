@@ -91,6 +91,7 @@ type CodexSessionState = {
     {
       rowId: string;
       notification: CodexDeltaNotification;
+      dirty: boolean;
     }
   >;
 };
@@ -178,7 +179,7 @@ export class CodexBackend implements AgentBackend {
         rootPid,
       };
     } catch (error) {
-      this.cleanupSession(sessionKey, session);
+      await this.cleanupSession(sessionKey, session);
       throw error;
     }
   }
@@ -190,7 +191,7 @@ export class CodexBackend implements AgentBackend {
     try {
       await this.interruptSession(session);
     } finally {
-      this.cleanupSession(sessionId, session);
+      await this.cleanupSession(sessionId, session);
     }
   }
 
@@ -244,7 +245,7 @@ export class CodexBackend implements AgentBackend {
           type: 'error',
           error: `Failed to persist Codex raw notification: ${errorMessage(error)}`,
         });
-        this.cleanupSession(session.sessionId, session);
+        await this.cleanupSession(session.sessionId, session);
       }
       return;
     }
@@ -275,7 +276,7 @@ export class CodexBackend implements AgentBackend {
 
       if (event.type === 'complete') {
         session.turnId = null;
-        this.cleanupSession(session.sessionId, session);
+        await this.cleanupSession(session.sessionId, session);
         return;
       }
     }
@@ -309,6 +310,8 @@ export class CodexBackend implements AgentBackend {
     const mergedDeltaId = await this.persistMergedDelta(session, notification);
     if (mergedDeltaId !== null) return mergedDeltaId;
 
+    await this.flushRawDeltaRows(session);
+
     const messageIndex = session.messageIndex++;
     return this.taskContext.persistRaw({
       messageIndex,
@@ -340,6 +343,7 @@ export class CodexBackend implements AgentBackend {
       session.rawDeltaRows.set(key, {
         rowId,
         notification: cloneCodexDeltaNotification(notification),
+        dirty: false,
       });
       return rowId;
     }
@@ -351,21 +355,42 @@ export class CodexBackend implements AgentBackend {
         delta: existing.notification.params.delta + notification.params.delta,
       },
     };
-    await this.taskContext.updateRaw({
-      rowId: existing.rowId,
-      rawData: existing.notification,
-    });
+    existing.dirty = true;
     return existing.rowId;
   }
 
-  private cleanupSession(sessionId: string, session: CodexSessionState): void {
+  private async flushRawDeltaRows(session: CodexSessionState): Promise<void> {
+    if (!this.taskContext.updateRaw) return;
+
+    for (const deltaRow of session.rawDeltaRows.values()) {
+      if (!deltaRow.dirty) continue;
+
+      await this.taskContext.updateRaw({
+        rowId: deltaRow.rowId,
+        rawData: deltaRow.notification,
+      });
+      deltaRow.dirty = false;
+    }
+  }
+
+  private async cleanupSession(
+    sessionId: string,
+    session: CodexSessionState,
+    options: { flushRawDeltas?: boolean } = {},
+  ): Promise<void> {
     if (session.closed) return;
     session.closed = true;
     this.clearIdleCompletionTimer(session);
     session.unsubscribe?.();
     session.unsubscribe = null;
-    session.eventChannel.close();
-    this.sessions.delete(sessionId);
+    try {
+      if (options.flushRawDeltas !== false) {
+        await this.flushRawDeltaRows(session);
+      }
+    } finally {
+      session.eventChannel.close();
+      this.sessions.delete(sessionId);
+    }
   }
 
   private scheduleIdleCompletionIfNeeded(session: CodexSessionState): void {
@@ -389,12 +414,29 @@ export class CodexBackend implements AgentBackend {
         return;
       }
 
-      session.turnId = null;
-      session.eventChannel.push({
-        type: 'complete',
-        result: { isError: false, model: session.normalizationCtx.model },
-      });
-      this.cleanupSession(session.sessionId, session);
+      void (async () => {
+        try {
+          await this.flushRawDeltaRows(session);
+          if (session.closed || session.turnId === null) return;
+
+          session.turnId = null;
+          session.eventChannel.push({
+            type: 'complete',
+            result: { isError: false, model: session.normalizationCtx.model },
+          });
+          await this.cleanupSession(session.sessionId, session);
+        } catch (error) {
+          if (!session.closed) {
+            session.eventChannel.push({
+              type: 'error',
+              error: `Failed to flush Codex raw deltas: ${errorMessage(error)}`,
+            });
+            await this.cleanupSession(session.sessionId, session, {
+              flushRawDeltas: false,
+            });
+          }
+        }
+      })();
     }, CODEX_IDLE_COMPLETION_TIMEOUT_MS);
     session.idleCompletionTimer.unref?.();
   }

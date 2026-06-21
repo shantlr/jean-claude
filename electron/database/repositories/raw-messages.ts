@@ -95,7 +95,7 @@ export const RawMessageRepository = {
     rawData: unknown;
     rawFormat: AgentBackendType;
   }) => {
-    const encoded = encodeRawMessageData(rawData);
+    const encoded = await encodeRawMessageData(rawData);
 
     return db
       .insertInto('raw_messages')
@@ -119,7 +119,7 @@ export const RawMessageRepository = {
    * Used when a streaming update replaces a previous snapshot.
    */
   updateRawData: async (rowId: string, rawData: unknown) => {
-    const encoded = encodeRawMessageData(rawData);
+    const encoded = await encodeRawMessageData(rawData);
 
     await db
       .updateTable('raw_messages')
@@ -143,10 +143,12 @@ export const RawMessageRepository = {
       .orderBy('messageIndex', 'asc')
       .execute();
 
-    return rows.map((row) => ({
-      ...row,
-      rawData: decodeRawMessageData(row),
-    }));
+    return Promise.all(
+      rows.map(async (row) => ({
+        ...row,
+        rawData: await decodeRawMessageData(row),
+      })),
+    );
   },
 
   /**
@@ -234,15 +236,17 @@ export const RawMessageRepository = {
         .execute();
 
       // Parse all rows once upfront to avoid double JSON.parse across passes
-      const parsedRows = rows.map((row) => {
-        let parsed: unknown = null;
-        try {
-          parsed = JSON.parse(decodeRawMessageData(row));
-        } catch {
-          // leave as null
-        }
-        return { ...row, parsed };
-      });
+      const parsedRows = await Promise.all(
+        rows.map(async (row) => {
+          let parsed: unknown = null;
+          try {
+            parsed = JSON.parse(await decodeRawMessageData(row));
+          } catch {
+            // leave as null
+          }
+          return { ...row, parsed };
+        }),
+      );
 
       const updates: Array<{ id: string; rawData: unknown }> = [];
       const deleteIds: string[] = [];
@@ -385,7 +389,7 @@ export const RawMessageRepository = {
 
       // --- Apply updates and deletes ---
       for (const update of updates) {
-        const encoded = encodeRawMessageData(update.rawData);
+        const encoded = await encodeRawMessageData(update.rawData);
         await trx
           .updateTable('raw_messages')
           .set({

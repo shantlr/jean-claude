@@ -224,6 +224,10 @@ describe('CodexBackend', () => {
       value: { type: 'entry-update', entry: { id: 'msg-1', value: 'Hello' } },
     });
     expect(persistRaw).toHaveBeenCalledTimes(1);
+    expect(updateRaw).not.toHaveBeenCalled();
+
+    await backend.stop(session.sessionId);
+
     expect(updateRaw).toHaveBeenCalledWith({
       rowId: 'raw-1',
       rawData: {
@@ -581,6 +585,67 @@ describe('CodexBackend', () => {
       value: { type: 'complete', result: { isError: false } },
     });
     await expect(iterator.next()).resolves.toMatchObject({ done: true });
+    expect(unsubscribe).toHaveBeenCalledOnce();
+    vi.useRealTimers();
+  });
+
+  it('closes after idle delta flush fails without retrying cleanup flush', async () => {
+    vi.useFakeTimers();
+    const updateRaw = vi.fn<NonNullable<AgentTaskContext['updateRaw']>>(
+      async () => {
+        throw new Error('database unavailable');
+      },
+    );
+    const { backend, emitNotification, unsubscribe } = createBackend({
+      updateRaw,
+    });
+    const session = await backend.start(createConfig(), [
+      { type: 'text', text: 'Hello' },
+    ]);
+    const iterator = session.events[Symbol.asyncIterator]();
+    await iterator.next();
+
+    emitNotification({
+      method: 'item/completed',
+      params: {
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        item: { id: 'msg-1', type: 'message', role: 'assistant' },
+      },
+    });
+    await iterator.next();
+    emitNotification({
+      method: 'item/agentMessage/delta',
+      params: {
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        itemId: 'msg-1',
+        delta: 'Hello',
+      },
+    });
+    await iterator.next();
+    emitNotification({
+      method: 'item/agentMessage/delta',
+      params: {
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        itemId: 'msg-1',
+        delta: ' world',
+      },
+    });
+    await iterator.next();
+
+    const error = iterator.next();
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    await expect(error).resolves.toMatchObject({
+      value: {
+        type: 'error',
+        error: 'Failed to flush Codex raw deltas: database unavailable',
+      },
+    });
+    await expect(iterator.next()).resolves.toMatchObject({ done: true });
+    expect(updateRaw).toHaveBeenCalledOnce();
     expect(unsubscribe).toHaveBeenCalledOnce();
     vi.useRealTimers();
   });
