@@ -15,6 +15,7 @@ export type OverlayType =
   | 'running-commands'
   | 'calendar'
   | 'usage'
+  | 'work-activity'
   | 'resources';
 
 interface OverlaysState {

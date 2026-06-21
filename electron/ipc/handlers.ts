@@ -73,6 +73,10 @@ import {
   isOpenAiImageModel,
 } from '@shared/types';
 import type { UsageProviderType } from '@shared/usage-types';
+import type {
+  NewWorkActivityEvent,
+  WorkActivityWeekParams,
+} from '@shared/work-activity-types';
 import type { CreateWorkItemVerificationNoteParams } from '@shared/work-item-verification-note-types';
 
 import type { PermissionScope } from '../../shared/permission-types';
@@ -278,6 +282,10 @@ import {
   selectGeneratedProjectLogo,
 } from '../services/project-logo-service';
 import { regenerateProjectSummary } from '../services/project-summary-generation-service';
+import {
+  buildPromptActivityText,
+  buildTaskCreationActivityText,
+} from '../services/prompt-utils';
 import { runReloadPreviewCommand } from '../services/reload-preview-service';
 import { runCommandService } from '../services/run-command-service';
 import {
@@ -315,6 +323,7 @@ import {
   getOrCreateSystemProject,
   getSkillWorkspacePath,
 } from '../services/system-project-service';
+import { workActivityService } from '../services/work-activity-service';
 import { generateWorkItemVerificationNote } from '../services/work-item-verification-note-service';
 import {
   checkMergeConflicts,
@@ -1215,6 +1224,7 @@ export function registerIpcHandlers() {
         updateWorkItemStatus,
         ...taskData
       } = data;
+      const taskPromptOccurredAt = new Date().toISOString();
       const project = await ProjectRepository.findById(taskData.projectId);
       if (!project) {
         throw new Error(`Project ${taskData.projectId} not found`);
@@ -1231,7 +1241,7 @@ export function registerIpcHandlers() {
       });
 
       // Auto-create a single step for the task
-      await StepService.create({
+      const step = await StepService.create({
         taskId: task.id,
         name: 'Step 1',
         promptTemplate: data.prompt,
@@ -1240,6 +1250,14 @@ export function registerIpcHandlers() {
         thinkingEffort: thinkingEffort ?? null,
         agentBackend: agentBackend ?? null,
         images: images ?? null,
+      });
+      void workActivityService.recordTaskPrompt({
+        stepId: step.id,
+        prompt: buildTaskCreationActivityText({
+          prompt: taskData.prompt,
+          images,
+        }),
+        occurredAt: taskPromptOccurredAt,
       });
 
       // Optionally activate associated work items in Azure DevOps.
@@ -1278,6 +1296,7 @@ export function registerIpcHandlers() {
         updateWorkItemStatus,
         ...taskData
       } = data;
+      const taskPromptOccurredAt = new Date().toISOString();
       dbg.ipc(
         'tasks:createWithWorktree useWorktree=%s, sourceBranch=%s, autoStart=%s',
         useWorktree,
@@ -1439,6 +1458,14 @@ export function registerIpcHandlers() {
         thinkingEffort: thinkingEffort ?? null,
         agentBackend: agentBackend ?? null,
         images: images ?? null,
+      });
+      void workActivityService.recordTaskPrompt({
+        stepId: step.id,
+        prompt: buildTaskCreationActivityText({
+          prompt: taskData.prompt,
+          images,
+        }),
+        occurredAt: taskPromptOccurredAt,
       });
 
       // Optionally activate associated work items in Azure DevOps.
@@ -2691,6 +2718,7 @@ export function registerIpcHandlers() {
     'steps:create',
     async (event, data: NewTaskStep & { start?: boolean }) => {
       const { start, ...stepData } = data;
+      const stepPromptOccurredAt = new Date().toISOString();
 
       // If auto-start is requested but step has dependencies, defer the start
       const hasDeps = (stepData.dependsOn?.length ?? 0) > 0;
@@ -2699,6 +2727,14 @@ export function registerIpcHandlers() {
       }
 
       let step = await StepService.create(stepData);
+      void workActivityService.recordTaskPrompt({
+        stepId: step.id,
+        prompt: buildTaskCreationActivityText({
+          prompt: stepData.promptTemplate,
+          images: stepData.images,
+        }),
+        occurredAt: stepPromptOccurredAt,
+      });
 
       const shouldStartNow = start && (!hasDeps || step.status === 'ready');
       if (shouldStartNow) {
@@ -3791,6 +3827,11 @@ export function registerIpcHandlers() {
     AGENT_CHANNELS.SEND_MESSAGE,
     (_, stepId: string, parts: PromptPart[]) => {
       dbg.ipc('agent:sendMessage %s (parts: %d)', stepId, parts.length);
+      void workActivityService.recordTaskPrompt({
+        stepId,
+        prompt: buildPromptActivityText(parts),
+        occurredAt: new Date().toISOString(),
+      });
       return agentService.sendMessage(stepId, parts);
     },
   );
@@ -3799,6 +3840,11 @@ export function registerIpcHandlers() {
     AGENT_CHANNELS.QUEUE_PROMPT,
     (_, stepId: string, parts: PromptPart[]) => {
       dbg.ipc('agent:queuePrompt %s', stepId);
+      void workActivityService.recordTaskPrompt({
+        stepId,
+        prompt: buildPromptActivityText(parts),
+        occurredAt: new Date().toISOString(),
+      });
       return agentService.queuePrompt(stepId, parts);
     },
   );
@@ -4171,6 +4217,25 @@ export function registerIpcHandlers() {
 
   ipcMain.handle('agent:usage:getTaskUsage', (_, taskId: string) => {
     return AiUsageRepository.getTaskUsage(taskId);
+  });
+
+  ipcMain.handle('workActivity:record', (_, event: NewWorkActivityEvent) => {
+    return workActivityService.record(event);
+  });
+
+  ipcMain.handle(
+    'workActivity:getRange',
+    (_, params: WorkActivityWeekParams) => {
+      return workActivityService.getRange(params);
+    },
+  );
+
+  ipcMain.handle('workActivity:deleteBefore', (_, before: string) => {
+    return workActivityService.deleteBefore(before);
+  });
+
+  ipcMain.handle('workActivity:deleteAll', () => {
+    return workActivityService.deleteAll();
   });
 
   ipcMain.handle('agent:resources:getSnapshots', () => {
@@ -5266,6 +5331,7 @@ export function registerIpcHandlers() {
         agentBackend?: AgentBackendType | null;
       },
     ) => {
+      const submittedAt = new Date().toISOString();
       // Runtime validation
       if (!data.prompt || typeof data.prompt !== 'string') {
         throw new Error('prompt is required');
@@ -5332,6 +5398,11 @@ export function registerIpcHandlers() {
           modelPreference: data.modelPreference ?? null,
           agentBackend: data.agentBackend ?? 'claude-code',
           meta,
+        });
+        void workActivityService.recordTaskPrompt({
+          stepId: step.id,
+          prompt: buildTaskCreationActivityText({ prompt: data.prompt }),
+          occurredAt: submittedAt,
         });
 
         // Auto-start

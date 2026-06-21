@@ -56,6 +56,7 @@ export interface Database {
   ai_usage_events: AiUsageEventTable;
   ai_usage_task_totals: AiUsageTaskTotalTable;
   ai_usage_daily_totals: AiUsageDailyTotalTable;
+  work_activity_events: WorkActivityEventTable;
 }
 
 export interface TokenTable {
@@ -460,3 +461,27 @@ export interface AiUsageDailyTotalTable {
 
 export type AiUsageDailyTotalRow = Selectable<AiUsageDailyTotalTable>;
 export type NewAiUsageDailyTotalRow = Insertable<AiUsageDailyTotalTable>;
+
+export interface WorkActivityEventTable {
+  id: Generated<string>;
+  occurredAt: string;
+  type: string;
+  projectId: string | null;
+  projectName: string | null;
+  providerId: string | null;
+  azureOrgId: string | null;
+  azureProjectId: string | null;
+  repoId: string | null;
+  taskId: string | null;
+  taskTitle: string | null;
+  stepId: string | null;
+  promptSnippet: string | null;
+  promptLength: number | null;
+  workItemIdsJson: string;
+  workItemsJson: string;
+  pullRequestJson: string | null;
+  metadataJson: string;
+}
+
+export type WorkActivityEventRow = Selectable<WorkActivityEventTable>;
+export type NewWorkActivityEventRow = Insertable<WorkActivityEventTable>;

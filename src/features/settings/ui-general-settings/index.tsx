@@ -56,12 +56,16 @@ import {
   useUpdateUsageDisplaySetting,
   usePromptPrefaceSetting,
   useUpdatePromptPrefaceSetting,
+  useSetting,
+  useUpdateSetting,
 } from '@/hooks/use-settings';
+import { useDeleteWorkActivity } from '@/hooks/use-work-activity';
 import {
   api,
   type DesktopNotificationStatus,
   type NonExistentClaudeProject,
 } from '@/lib/api';
+import { useToastStore } from '@/stores/toasts';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import {
   getThinkingEffortOptions,
@@ -94,6 +98,10 @@ const MEETING_JOIN_TARGET_OPTIONS = [
   { value: 'web', label: 'Web browser' },
   { value: 'app', label: 'Teams app' },
 ];
+
+function getUtcDateInputValue(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
 
 const TASK_NOTIFICATION_OPTIONS: Array<{
   event: TaskNotificationEvent;
@@ -473,6 +481,138 @@ function RawMessageCleanupSettings() {
   );
 }
 
+export function WorkActivitySettings() {
+  const addToast = useToastStore((state) => state.addToast);
+  const { data: workActivitySetting } = useSetting('workActivity');
+  const updateSetting = useUpdateSetting<'workActivity'>();
+  const deleteWorkActivity = useDeleteWorkActivity();
+  const [deleteBeforeDate, setDeleteBeforeDate] = useState('');
+  const todayUtcDate = getUtcDateInputValue(new Date());
+
+  function toggleLogging(checked: boolean) {
+    updateSetting.mutate(
+      {
+        key: 'workActivity',
+        value: { enabled: checked },
+      },
+      {
+        onError: () => {
+          addToast({
+            type: 'error',
+            message: 'Failed to update activity logging',
+          });
+        },
+      },
+    );
+  }
+
+  function deleteBefore() {
+    if (!deleteBeforeDate) return;
+    if (deleteBeforeDate > todayUtcDate) {
+      addToast({
+        type: 'error',
+        message: 'Delete date cannot be in the future',
+      });
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Delete work activity before ${deleteBeforeDate}? This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+
+    deleteWorkActivity.mutate(
+      { before: new Date(`${deleteBeforeDate}T00:00:00.000Z`).toISOString() },
+      {
+        onSuccess: () => {
+          addToast({ type: 'success', message: 'Work activity deleted' });
+        },
+        onError: () => {
+          addToast({
+            type: 'error',
+            message: 'Failed to delete work activity',
+          });
+        },
+      },
+    );
+  }
+
+  function deleteAll() {
+    if (!window.confirm('Delete all work activity? This cannot be undone.')) {
+      return;
+    }
+
+    deleteWorkActivity.mutate(undefined, {
+      onSuccess: () => {
+        addToast({ type: 'success', message: 'All work activity deleted' });
+      },
+      onError: () => {
+        addToast({ type: 'error', message: 'Failed to delete work activity' });
+      },
+    });
+  }
+
+  return (
+    <div>
+      <h2 className="text-ink-1 text-lg font-semibold">Work Activity</h2>
+      <p className="text-ink-3 mt-1 text-sm">
+        Control automatic activity logging and manage stored activity data.
+      </p>
+
+      <div className="mt-4 space-y-4">
+        <Checkbox
+          checked={workActivitySetting?.enabled ?? true}
+          onChange={toggleLogging}
+          disabled={updateSetting.isPending}
+          label="Log work activity"
+          description="Track task prompts, PR comments, and approvals for weekly summaries."
+        />
+
+        <div className="border-glass-border bg-bg-1/50 rounded-lg border p-4">
+          <h3 className="text-ink-1 text-sm font-medium">Retention</h3>
+          <p className="text-ink-3 mt-1 text-sm">
+            Delete old activity entries or clear all stored activity.
+          </p>
+
+          <div className="mt-4 flex flex-wrap items-end gap-3">
+            <label className="block">
+              <span className="text-ink-2 mb-1 block text-xs font-medium">
+                Delete before date
+              </span>
+              <Input
+                type="date"
+                value={deleteBeforeDate}
+                max={todayUtcDate}
+                onChange={(event) =>
+                  setDeleteBeforeDate(event.currentTarget.value)
+                }
+                className="w-44"
+              />
+            </label>
+            <Button
+              variant="secondary"
+              onClick={deleteBefore}
+              disabled={!deleteBeforeDate || deleteWorkActivity.isPending}
+            >
+              Delete Before Date
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={deleteAll}
+              disabled={deleteWorkActivity.isPending}
+            >
+              Delete All
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function GeneralSettings() {
   return (
     <div>
@@ -481,6 +621,8 @@ export function GeneralSettings() {
       <NotificationsSettings />
       <div className="border-line-soft my-8 border-t" />
       <UsageDisplaySettings />
+      <div className="border-line-soft my-8 border-t" />
+      <WorkActivitySettings />
       <div className="border-line-soft my-8 border-t" />
       <MaintenanceSettings />
     </div>

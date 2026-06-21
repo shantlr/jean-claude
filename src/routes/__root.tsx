@@ -26,6 +26,7 @@ import { ResourcesOverlay } from '@/features/resources/ui-resources-overlay';
 import { RunningCommandsOverlay } from '@/features/run-commands/ui-running-commands-overlay';
 import { SettingsOverlay } from '@/features/settings/ui-settings-overlay';
 import { UsageOverlay } from '@/features/usage/ui-usage-overlay';
+import { WorkActivityOverlay } from '@/features/work-activity/ui-work-activity-overlay';
 import { useAppearanceSetting } from '@/hooks/use-settings';
 import { Header } from '@/layout/ui-header';
 import { MainSidebar } from '@/layout/ui-main-sidebar';
@@ -278,6 +279,30 @@ function UsageContainer() {
   return <UsageOverlay onClose={() => close('usage')} />;
 }
 
+function WorkActivityContainer() {
+  const layer = useKeyboardLayer('global-nav');
+  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'work-activity');
+  const toggle = useOverlaysStore((s) => s.toggle);
+  const close = useOverlaysStore((s) => s.close);
+
+  useCommands(
+    'work-activity-trigger',
+    [
+      {
+        label: 'Open Work Activity',
+        section: 'General',
+        handler: () => {
+          toggle('work-activity');
+        },
+      },
+    ],
+    { layer },
+  );
+
+  if (!isOpen) return null;
+  return <WorkActivityOverlay onClose={() => close('work-activity')} />;
+}
+
 function ResourcesContainer() {
   const isOpen = useOverlaysStore((s) => s.activeOverlay === 'resources');
   const close = useOverlaysStore((s) => s.close);
@@ -425,6 +450,7 @@ function RootLayout() {
       <CalendarContainer />
       <SettingsContainer />
       <UsageContainer />
+      <WorkActivityContainer />
       <ResourcesContainer />
       <RunningCommandsContainer />
       <PipelinesOverlayContainer />

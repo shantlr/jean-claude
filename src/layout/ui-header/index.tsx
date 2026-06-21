@@ -1,4 +1,5 @@
 import {
+  Activity,
   BarChart3,
   ClipboardList,
   History,
@@ -641,6 +642,15 @@ export function Header() {
           aria-label="Open AI usage"
           onClick={() => openOverlay('usage')}
           className="ml-1 px-2"
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Activity />}
+          title="Work activity"
+          aria-label="Open work activity"
+          onClick={() => openOverlay('work-activity')}
+          className="px-2"
         />
         <NextMeetingButton />
         {api.app.isDevMode && (

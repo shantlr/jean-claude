@@ -22,8 +22,12 @@ import {
 import { feedQueryKeys } from '@/lib/feed-query-keys';
 import type { ReviewerVoteStatus } from '@shared/azure-devops-types';
 import type { FeedItem } from '@shared/feed-types';
+import type { Provider } from '@shared/types';
+import type { NewWorkActivityEvent } from '@shared/work-activity-types';
+import { parseAzureOrgId } from '@shared/work-activity-utils';
 
 import { useProject } from './use-projects';
+import { useSetting } from './use-settings';
 
 // Helper to get repo info from project
 function useProjectRepoInfo(projectId: string) {
@@ -34,10 +38,161 @@ function useProjectRepoInfo(projectId: string) {
   }
 
   return {
+    projectName: project.name,
     providerId: project.repoProviderId,
     projectId: project.repoProjectId,
     repoId: project.repoId,
   };
+}
+
+function getCachedProviderBaseUrl(
+  queryClient: ReturnType<typeof useQueryClient>,
+  providerId: string,
+): string | null {
+  const cachedProvider = queryClient.getQueryData<Provider>([
+    'providers',
+    providerId,
+  ]);
+  if (cachedProvider?.baseUrl) {
+    return cachedProvider.baseUrl;
+  }
+
+  return (
+    queryClient
+      .getQueryData<Provider[]>(['providers'])
+      ?.find((provider) => provider.id === providerId)?.baseUrl ?? null
+  );
+}
+
+function buildPullRequestActivityEvent({
+  queryClient,
+  projectId,
+  prId,
+  repoInfo,
+  type,
+  azureOrgId,
+  workItems,
+  metadata = {},
+}: {
+  queryClient: ReturnType<typeof useQueryClient>;
+  projectId: string;
+  prId: number;
+  repoInfo: NonNullable<ReturnType<typeof useProjectRepoInfo>>;
+  type: 'pr_comment_added' | 'pr_approved';
+  azureOrgId: string | null;
+  workItems: AzureDevOpsWorkItem[];
+  metadata?: Record<string, unknown>;
+}): NewWorkActivityEvent {
+  const cachedPr = queryClient.getQueryData<AzureDevOpsPullRequestDetails>([
+    'pull-request',
+    projectId,
+    prId,
+  ]);
+  const workItemIds = workItems.map((workItem) => String(workItem.id));
+
+  return {
+    occurredAt: new Date().toISOString(),
+    type,
+    projectId,
+    projectName: repoInfo.projectName,
+    providerId: repoInfo.providerId,
+    azureOrgId,
+    azureProjectId: repoInfo.projectId,
+    repoId: repoInfo.repoId,
+    taskId: null,
+    taskTitle: null,
+    stepId: null,
+    promptSnippet: null,
+    promptLength: null,
+    workItemIds,
+    workItems: workItemIds.map((id) => ({
+      id,
+      providerId: repoInfo.providerId,
+      azureOrgId,
+      azureProjectId: repoInfo.projectId,
+    })),
+    pullRequest: {
+      providerId: repoInfo.providerId,
+      azureOrgId,
+      azureProjectId: repoInfo.projectId,
+      repoId: repoInfo.repoId,
+      pullRequestId: String(prId),
+      title: cachedPr?.title ?? null,
+      url: cachedPr?.url ?? null,
+    },
+    metadata,
+  };
+}
+
+function recordPrActivity({
+  queryClient,
+  projectId,
+  prId,
+  repoInfo,
+  type,
+  metadata,
+  workActivityEnabled,
+}: {
+  queryClient: ReturnType<typeof useQueryClient>;
+  projectId: string;
+  prId: number;
+  repoInfo: NonNullable<ReturnType<typeof useProjectRepoInfo>>;
+  type: 'pr_comment_added' | 'pr_approved';
+  metadata?: Record<string, unknown>;
+  workActivityEnabled: boolean;
+}) {
+  if (!workActivityEnabled) {
+    return;
+  }
+
+  void (async () => {
+    const workItemsQueryKey = ['pull-request-work-items', projectId, prId];
+    let azureOrgId: string | null = null;
+    let workItems: AzureDevOpsWorkItem[] = [];
+
+    try {
+      const provider = await api.providers.findById(repoInfo.providerId);
+      azureOrgId = parseAzureOrgId(provider?.baseUrl ?? null);
+    } catch (error) {
+      console.error('Failed to fetch provider for PR activity log:', error);
+      azureOrgId = parseAzureOrgId(
+        getCachedProviderBaseUrl(queryClient, repoInfo.providerId),
+      );
+    }
+
+    try {
+      workItems = await api.azureDevOps.getPullRequestWorkItems({
+        providerId: repoInfo.providerId,
+        projectId: repoInfo.projectId,
+        repoId: repoInfo.repoId,
+        pullRequestId: prId,
+      });
+    } catch (error) {
+      console.error('Failed to fetch PR work items for activity log:', error);
+      workItems =
+        queryClient.getQueryData<AzureDevOpsWorkItem[]>(workItemsQueryKey) ??
+        [];
+    }
+
+    const event = buildPullRequestActivityEvent({
+      queryClient,
+      projectId,
+      prId,
+      repoInfo,
+      type,
+      azureOrgId,
+      workItems,
+      metadata,
+    });
+
+    try {
+      await api.workActivity.record(event);
+    } catch (error) {
+      console.error('Failed to record PR activity:', error);
+    }
+  })().catch((error) => {
+    console.error('Failed to prepare PR activity log:', error);
+  });
 }
 
 function getReviewerVoteStatus(vote: number): ReviewerVoteStatus {
@@ -474,6 +629,7 @@ export function useUnlinkWorkItemFromPr(projectId: string, prId: number) {
 export function useAddPullRequestComment(projectId: string, prId: number) {
   const queryClient = useQueryClient();
   const repoInfo = useProjectRepoInfo(projectId);
+  const { data: workActivitySetting } = useSetting('workActivity');
 
   return useMutation({
     mutationFn: (content: string) =>
@@ -489,6 +645,15 @@ export function useAddPullRequestComment(projectId: string, prId: number) {
         queryKey: ['pull-request-threads', projectId, prId],
       });
       queryClient.invalidateQueries({ queryKey: feedQueryKeys.pullRequests });
+      recordPrActivity({
+        queryClient,
+        projectId,
+        prId,
+        repoInfo: repoInfo!,
+        type: 'pr_comment_added',
+        metadata: { commentKind: 'top-level' },
+        workActivityEnabled: workActivitySetting?.enabled !== false,
+      });
     },
   });
 }
@@ -496,6 +661,7 @@ export function useAddPullRequestComment(projectId: string, prId: number) {
 export function useAddPullRequestFileComment(projectId: string, prId: number) {
   const queryClient = useQueryClient();
   const repoInfo = useProjectRepoInfo(projectId);
+  const { data: workActivitySetting } = useSetting('workActivity');
 
   return useMutation({
     mutationFn: (params: {
@@ -511,11 +677,20 @@ export function useAddPullRequestFileComment(projectId: string, prId: number) {
         pullRequestId: prId,
         ...params,
       }),
-    onSuccess: () => {
+    onSuccess: (_result, params) => {
       queryClient.invalidateQueries({
         queryKey: ['pull-request-threads', projectId, prId],
       });
       queryClient.invalidateQueries({ queryKey: feedQueryKeys.pullRequests });
+      recordPrActivity({
+        queryClient,
+        projectId,
+        prId,
+        repoInfo: repoInfo!,
+        type: 'pr_comment_added',
+        metadata: { commentKind: 'file', filePath: params.filePath },
+        workActivityEnabled: workActivitySetting?.enabled !== false,
+      });
     },
   });
 }
@@ -523,6 +698,7 @@ export function useAddPullRequestFileComment(projectId: string, prId: number) {
 export function useAddThreadReply(projectId: string, prId: number) {
   const queryClient = useQueryClient();
   const repoInfo = useProjectRepoInfo(projectId);
+  const { data: workActivitySetting } = useSetting('workActivity');
 
   return useMutation<
     AzureDevOpsComment,
@@ -537,11 +713,20 @@ export function useAddThreadReply(projectId: string, prId: number) {
         pullRequestId: prId,
         ...params,
       }),
-    onSuccess: () => {
+    onSuccess: (_result, params) => {
       queryClient.invalidateQueries({
         queryKey: ['pull-request-threads', projectId, prId],
       });
       queryClient.invalidateQueries({ queryKey: feedQueryKeys.pullRequests });
+      recordPrActivity({
+        queryClient,
+        projectId,
+        prId,
+        repoInfo: repoInfo!,
+        type: 'pr_comment_added',
+        metadata: { commentKind: 'reply', threadId: params.threadId },
+        workActivityEnabled: workActivitySetting?.enabled !== false,
+      });
     },
   });
 }
@@ -696,6 +881,7 @@ export function useCurrentAzureUser(projectId: string) {
 export function useVotePullRequest(projectId: string, prId: number) {
   const queryClient = useQueryClient();
   const repoInfo = useProjectRepoInfo(projectId);
+  const { data: workActivitySetting } = useSetting('workActivity');
 
   return useMutation({
     mutationFn: (params: { reviewerId: string; vote: number }) =>
@@ -734,6 +920,17 @@ export function useVotePullRequest(projectId: string, prId: number) {
         isApprovedByMe,
         attention: isApprovedByMe ? 'pr-approved-by-me' : 'review-requested',
       });
+      if (isApprovedByMe) {
+        recordPrActivity({
+          queryClient,
+          projectId,
+          prId,
+          repoInfo: repoInfo!,
+          type: 'pr_approved',
+          metadata: { voteStatus },
+          workActivityEnabled: workActivitySetting?.enabled !== false,
+        });
+      }
 
       queryClient.setQueryData<AzureDevOpsPullRequestDetails | undefined>(
         ['pull-request', projectId, prId],

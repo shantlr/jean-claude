@@ -1144,6 +1144,16 @@ function isPromptSnippetsSetting(
   );
 }
 
+export type WorkActivitySetting = { enabled: boolean };
+
+function isWorkActivitySetting(value: unknown): value is WorkActivitySetting {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    typeof (value as Record<string, unknown>).enabled === 'boolean'
+  );
+}
+
 export const SETTINGS_DEFINITIONS = {
   editor: {
     defaultValue: { type: 'preset', id: 'vscode' } as EditorSetting,
@@ -1278,6 +1288,10 @@ export const SETTINGS_DEFINITIONS = {
   promptPreface: {
     defaultValue: DEFAULT_PROMPT_PREFACE_SETTING,
     validate: isPromptPrefaceSetting,
+  },
+  workActivity: {
+    defaultValue: { enabled: true } as WorkActivitySetting,
+    validate: isWorkActivitySetting,
   },
 } satisfies Record<string, SettingDefinition<unknown>>;
 

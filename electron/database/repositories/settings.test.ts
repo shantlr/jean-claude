@@ -142,4 +142,33 @@ describe('SettingsRepository legacy normalization', () => {
 
     expect(insertInto).not.toHaveBeenCalled();
   });
+
+  it('normalizes work activity setting to enabled unless explicitly false', async () => {
+    executeTakeFirst.mockResolvedValue({
+      key: 'workActivity',
+      value: JSON.stringify({ enabled: 'yes' }),
+      updatedAt: '2026-06-12T00:00:00.000Z',
+    });
+    insertExecute.mockResolvedValue(undefined);
+
+    await expect(SettingsRepository.get('workActivity')).resolves.toEqual({
+      enabled: true,
+    });
+
+    expect(insertInto).toHaveBeenCalledWith('settings');
+  });
+
+  it('keeps valid work activity setting without rewriting it', async () => {
+    executeTakeFirst.mockResolvedValue({
+      key: 'workActivity',
+      value: JSON.stringify({ enabled: false }),
+      updatedAt: '2026-06-12T00:00:00.000Z',
+    });
+
+    await expect(SettingsRepository.get('workActivity')).resolves.toEqual({
+      enabled: false,
+    });
+
+    expect(insertInto).not.toHaveBeenCalled();
+  });
 });

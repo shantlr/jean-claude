@@ -53,6 +53,7 @@ import {
   UsageDisplaySettings,
   MaintenanceSettings,
   PromptPrefaceSettings,
+  WorkActivitySettings,
 } from '@/features/settings/ui-general-settings';
 import { GlobalPermissionsSettings } from '@/features/settings/ui-global-permissions-settings';
 import { McpServersSettings } from '@/features/settings/ui-mcp-servers-settings';
@@ -116,6 +117,7 @@ function getGlobalSections(): GlobalSection[] {
       ? [{ id: 'calendar', label: 'Calendar' }]
       : []),
     { id: 'usage', label: 'Usage Display' },
+    { id: 'work-activity', label: 'Work Activity' },
     { id: 'maintenance', label: 'Maintenance' },
   ];
 
@@ -385,6 +387,7 @@ function getGlobalNavGroups(): SettingsNavGroup[] {
         globalLeaf('general', 'editor', 'General'),
         globalLeaf('general', 'appearance'),
         globalLeaf('general', 'notifications'),
+        globalLeaf('general', 'work-activity', 'Work Activity'),
         ...(api.platform === 'darwin'
           ? [globalLeaf('general', 'calendar')]
           : []),
@@ -579,6 +582,8 @@ function getGlobalSubtitle(sectionId: string, subId: string): string {
         return 'Visual effects and motion preferences.';
       case 'notifications':
         return 'How and when jean-claude lets you know about runs.';
+      case 'work-activity':
+        return 'Automatic work activity logging and retention controls.';
       case 'calendar':
         return 'Meeting reminders from your macOS Calendar.';
       case 'usage':
@@ -606,6 +611,8 @@ function GlobalContentInner({ selection }: { selection: ActiveSelection }) {
         return <AppearanceSettings />;
       case 'general:notifications':
         return <NotificationsSettings />;
+      case 'general:work-activity':
+        return <WorkActivitySettings />;
       case 'general:calendar':
         return <CalendarSettings />;
       case 'general:usage':

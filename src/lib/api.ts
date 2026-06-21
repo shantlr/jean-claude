@@ -118,6 +118,11 @@ import type {
   ProjectLogoHistoryItem,
 } from '@shared/types';
 import type { UsageProviderMap, UsageSnapshot } from '@shared/usage-types';
+import type {
+  NewWorkActivityEvent,
+  WorkActivityEvent,
+  WorkActivityWeekParams,
+} from '@shared/work-activity-types';
 import type { CreateWorkItemVerificationNoteParams } from '@shared/work-item-verification-note-types';
 
 export type {
@@ -1080,6 +1085,12 @@ export interface Api {
     getDashboard: (params: AiUsageDashboardParams) => Promise<AiUsageDashboard>;
     getTaskUsage: (taskId: string) => Promise<AiUsageTaskUsage>;
   };
+  workActivity: {
+    record: (event: NewWorkActivityEvent) => Promise<WorkActivityEvent | null>;
+    getRange: (params: WorkActivityWeekParams) => Promise<WorkActivityEvent[]>;
+    deleteBefore: (before: string) => Promise<void>;
+    deleteAll: () => Promise<void>;
+  };
   rateLimitSwap: {
     getStatus: () => Promise<{
       active: boolean;
@@ -1987,6 +1998,12 @@ export const api: Api = hasWindowApi
             taskCount: 0,
           },
         }),
+      },
+      workActivity: {
+        record: async () => null,
+        getRange: async () => [],
+        deleteBefore: async () => {},
+        deleteAll: async () => {},
       },
       rateLimitSwap: {
         getStatus: async () => ({ active: false, swaps: [] }),

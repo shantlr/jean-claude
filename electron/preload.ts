@@ -21,6 +21,10 @@ import type {
   InstallSourceItemsParams,
   UpdateSourceInstallParams,
 } from '@shared/source-management-types';
+import type {
+  NewWorkActivityEvent,
+  WorkActivityWeekParams,
+} from '@shared/work-activity-types';
 import type { CreateWorkItemVerificationNoteParams } from '@shared/work-item-verification-note-types';
 
 contextBridge.exposeInMainWorld('api', {
@@ -786,6 +790,15 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('agent:usage:getDashboard', params),
     getTaskUsage: (taskId: string) =>
       ipcRenderer.invoke('agent:usage:getTaskUsage', taskId),
+  },
+  workActivity: {
+    record: (event: NewWorkActivityEvent) =>
+      ipcRenderer.invoke('workActivity:record', event),
+    getRange: (params: WorkActivityWeekParams) =>
+      ipcRenderer.invoke('workActivity:getRange', params),
+    deleteBefore: (before: string) =>
+      ipcRenderer.invoke('workActivity:deleteBefore', before),
+    deleteAll: () => ipcRenderer.invoke('workActivity:deleteAll'),
   },
   rateLimitSwap: {
     getStatus: () =>

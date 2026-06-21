@@ -12,6 +12,7 @@ import {
   type TaskNotificationMode,
   type ThinkingEffort,
   type ThinkingSettingsSetting,
+  type WorkActivitySetting,
 } from '@shared/types';
 
 import { dbg } from '../../lib/debug';
@@ -155,6 +156,20 @@ function normalizeThinkingSettingsSetting(
   };
 }
 
+function normalizeWorkActivitySetting(
+  value: unknown,
+): WorkActivitySetting | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  if (typeof value.enabled === 'boolean') {
+    return null;
+  }
+
+  return { enabled: value.enabled !== false };
+}
+
 function normalizeSettingValue<K extends keyof AppSettings>(
   key: K,
   value: unknown,
@@ -170,6 +185,9 @@ function normalizeSettingValue<K extends keyof AppSettings>(
   }
   if (key === 'thinkingSettings') {
     return normalizeThinkingSettingsSetting(value) as AppSettings[K];
+  }
+  if (key === 'workActivity') {
+    return normalizeWorkActivitySetting(value) as AppSettings[K];
   }
   return null;
 }
