@@ -238,6 +238,209 @@ describe('normalizeCodexNotification', () => {
     ]);
   });
 
+  it('emits an edit tool use for Codex commandExecution file actions', () => {
+    const ctx = createCodexNormalizationContext();
+    const patch = '@@ -1 +1\n-old\n+new\n';
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/started',
+          params: {
+            item: {
+              id: 'cmd-codex-edit',
+              type: 'commandExecution',
+              command: 'apply_patch',
+              commandActions: [
+                {
+                  type: 'edit',
+                  path: '/repo/src/file.ts',
+                  patch,
+                },
+              ],
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'entry',
+        entry: expect.objectContaining({
+          id: 'cmd-codex-edit',
+          type: 'tool-use',
+          toolId: 'cmd-codex-edit',
+          name: 'edit',
+          input: expect.objectContaining({
+            filePath: '/repo/src/file.ts',
+            oldString: '',
+            newString: '',
+            files: [
+              expect.objectContaining({
+                filePath: '/repo/src/file.ts',
+                type: 'update',
+                patch,
+              }),
+            ],
+          }),
+        }),
+      },
+    ]);
+  });
+
+  it('emits a read tool use for single Codex commandExecution read actions', () => {
+    const ctx = createCodexNormalizationContext();
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/started',
+          params: {
+            item: {
+              id: 'cmd-codex-read',
+              type: 'commandExecution',
+              command: "sed -n '1,120p' src/file.ts",
+              commandActions: [
+                {
+                  type: 'read',
+                  path: '/repo/src/file.ts',
+                },
+              ],
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'entry',
+        entry: expect.objectContaining({
+          id: 'cmd-codex-read',
+          type: 'tool-use',
+          toolId: 'cmd-codex-read',
+          name: 'read',
+          input: { filePath: '/repo/src/file.ts' },
+        }),
+      },
+    ]);
+  });
+
+  it('keeps multi-read Codex commandExecution actions as bash', () => {
+    const ctx = createCodexNormalizationContext();
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/started',
+          params: {
+            item: {
+              id: 'cmd-codex-multi-read',
+              type: 'commandExecution',
+              command: "sed -n '1,120p' src/a.ts && sed -n '1,120p' src/b.ts",
+              commandActions: [
+                { type: 'read', path: '/repo/src/a.ts' },
+                { type: 'read', path: '/repo/src/b.ts' },
+              ],
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'entry',
+        entry: expect.objectContaining({
+          id: 'cmd-codex-multi-read',
+          name: 'bash',
+          input: {
+            command: "sed -n '1,120p' src/a.ts && sed -n '1,120p' src/b.ts",
+          },
+        }),
+      },
+    ]);
+  });
+
+  it('keeps mixed Codex commandExecution actions as bash', () => {
+    const ctx = createCodexNormalizationContext();
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/started',
+          params: {
+            item: {
+              id: 'cmd-codex-mixed-actions',
+              type: 'commandExecution',
+              command: "sed -n '1,120p' src/file.ts && rg test src",
+              commandActions: [
+                { type: 'read', path: '/repo/src/file.ts' },
+                { type: 'search', query: 'test', path: '/repo/src' },
+              ],
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'entry',
+        entry: expect.objectContaining({
+          id: 'cmd-codex-mixed-actions',
+          name: 'bash',
+          input: {
+            command: "sed -n '1,120p' src/file.ts && rg test src",
+          },
+        }),
+      },
+    ]);
+  });
+
+  it('attaches aggregated output for Codex read action completion', () => {
+    const ctx = createCodexNormalizationContext();
+
+    normalizeCodexNotification(
+      {
+        method: 'item/started',
+        params: {
+          item: {
+            id: 'cmd-codex-read-output',
+            type: 'commandExecution',
+            command: "sed -n '1,120p' src/file.ts",
+            commandActions: [{ type: 'read', path: '/repo/src/file.ts' }],
+          },
+        },
+      },
+      ctx,
+    );
+
+    expect(
+      normalizeCodexNotification(
+        {
+          method: 'item/completed',
+          params: {
+            item: {
+              id: 'cmd-codex-read-output',
+              type: 'commandExecution',
+              aggregatedOutput: 'line 1\nline 2\n',
+              exitCode: 0,
+              commandActions: [{ type: 'read', path: '/repo/src/file.ts' }],
+            },
+          },
+        },
+        ctx,
+      ),
+    ).toEqual([
+      {
+        type: 'entry-update',
+        entry: expect.objectContaining({
+          id: 'cmd-codex-read-output',
+          name: 'read',
+          result: 'line 1\nline 2\n',
+        }),
+      },
+    ]);
+  });
+
   it('ignores speculative Codex agent commandExecution items', () => {
     const ctx = createCodexNormalizationContext();
 

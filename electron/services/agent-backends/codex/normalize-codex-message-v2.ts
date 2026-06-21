@@ -337,6 +337,36 @@ function createToolEntry(
   if (type === 'command' || type === 'commandExecution') {
     if (isSpeculativeAgentCommandExecution(item)) return undefined;
 
+    const files = filesFromCommandActions(item);
+    if (files.length > 0) {
+      const firstFile = files[0];
+      return {
+        id: itemId,
+        date: dateFromItem(item),
+        type: 'tool-use',
+        toolId: itemId,
+        name: 'edit',
+        input: {
+          filePath: firstFile.filePath,
+          oldString: '',
+          newString: '',
+          files,
+        },
+      };
+    }
+
+    const readPath = singleReadPathFromCommandActions(item);
+    if (readPath !== undefined) {
+      return {
+        id: itemId,
+        date: dateFromItem(item),
+        type: 'tool-use',
+        toolId: itemId,
+        name: 'read',
+        input: { filePath: readPath },
+      };
+    }
+
     const command = str(item.command) ?? str(item.cmd) ?? str(item.text);
     if (command === undefined || command.trim() === '') return undefined;
 
@@ -603,6 +633,11 @@ function addToolResult(
     };
   }
 
+  if (entry.name === 'read' || entry.name === 'glob' || entry.name === 'grep') {
+    if (content === undefined) return undefined;
+    return { ...entry, result: content };
+  }
+
   if (entry.name === 'edit') {
     const status = str(item.status);
     if (status === 'completed' || status === 'failed') {
@@ -738,6 +773,71 @@ function filesFromFileChangeItem(item: Record<string, unknown>): Array<{
       },
     ];
   });
+}
+
+function singleReadPathFromCommandActions(
+  item: Record<string, unknown>,
+): string | undefined {
+  const commandActions = item.commandActions;
+  if (!Array.isArray(commandActions)) return undefined;
+  if (commandActions.length !== 1) return undefined;
+
+  const actionRecord = record(commandActions[0]);
+  if (actionRecord === undefined || str(actionRecord.type) !== 'read') {
+    return undefined;
+  }
+
+  return (
+    str(actionRecord.path) ??
+    str(actionRecord.filePath) ??
+    str(actionRecord.name)
+  );
+}
+
+function filesFromCommandActions(item: Record<string, unknown>): Array<{
+  filePath: string;
+  type: 'add' | 'update' | 'delete';
+  patch?: string;
+}> {
+  const commandActions = item.commandActions;
+  if (!Array.isArray(commandActions)) return [];
+
+  return commandActions.flatMap((action) => {
+    const actionRecord = record(action);
+    if (actionRecord === undefined) return [];
+
+    const actionType = str(actionRecord.type);
+    if (!isFileWriteAction(actionType)) return [];
+
+    const filePath =
+      str(actionRecord.path) ??
+      str(actionRecord.filePath) ??
+      str(actionRecord.name);
+    if (filePath === undefined) return [];
+
+    const kind = record(actionRecord.kind);
+    const type = fileChangeType(str(kind?.type) ?? actionType);
+    const patch = str(actionRecord.diff) ?? str(actionRecord.patch);
+
+    return [
+      {
+        filePath,
+        type,
+        ...(patch === undefined ? {} : { patch }),
+      },
+    ];
+  });
+}
+
+function isFileWriteAction(value: string | undefined): boolean {
+  return (
+    value === 'edit' ||
+    value === 'write' ||
+    value === 'create' ||
+    value === 'delete' ||
+    value === 'applyPatch' ||
+    value === 'apply_patch'
+  );
 }
 
 function fileChangeType(
