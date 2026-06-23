@@ -29,7 +29,6 @@ import {
 } from '@/hooks/use-settings';
 import type { ModelPreference, ThinkingEffort } from '@shared/types';
 import {
-  useCurrentAzureUser,
   usePublishPullRequest,
   useUpdatePullRequestTitle,
 } from '@/hooks/use-pull-requests';
@@ -114,7 +113,6 @@ export function PrHeader({
   const { data: editorSetting } = useEditorSetting();
   const publishMutation = usePublishPullRequest(projectId, pr.id);
   const updateTitle = useUpdatePullRequestTitle(projectId, pr.id);
-  const { data: currentUser } = useCurrentAzureUser(projectId);
   const [isCreating, setIsCreating] = useState(false);
   const [isReviewSetupOpen, setIsReviewSetupOpen] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -122,16 +120,9 @@ export function PrHeader({
   const [titleError, setTitleError] = useState<string | null>(null);
   const sourceBranch = getBranchName(pr.sourceRefName);
   const targetBranch = getBranchName(pr.targetRefName);
-  const currentUserEmail = currentUser?.emailAddress.toLowerCase();
-  const ownerEmail = pr.createdBy.uniqueName.toLowerCase();
   const { data: backendsSetting } = useBackendsSetting();
   const { data: backendDefaultModelsSetting } =
     useBackendDefaultModelsSetting();
-  const canEditTitle =
-    !!currentUser &&
-    (currentUser.identityId === pr.createdBy.id ||
-      currentUser.id === pr.createdBy.id ||
-      currentUserEmail === ownerEmail);
   const defaultReviewBackend = useMemo<AgentBackendType>(
     () =>
       (project?.defaultAgentBackend as AgentBackendType | null) ??
@@ -411,18 +402,16 @@ export function PrHeader({
                 <h1 className="text-ink-0 min-w-0 font-mono text-xl leading-tight font-semibold tracking-tight break-words">
                   {pr.title}
                 </h1>
-                {canEditTitle && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    icon={<Edit3 className="h-3.5 w-3.5" />}
-                    onClick={() => setIsEditingTitle(true)}
-                    className="mt-0.5 shrink-0"
-                  >
-                    Edit
-                  </Button>
-                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  icon={<Edit3 className="h-3.5 w-3.5" />}
+                  onClick={() => setIsEditingTitle(true)}
+                  className="mt-0.5 shrink-0"
+                >
+                  Edit
+                </Button>
               </div>
             )}
 

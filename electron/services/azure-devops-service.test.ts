@@ -20,6 +20,7 @@ vi.mock('../database/repositories/tokens', () => ({
 import {
   getPullRequestFileContent,
   setPullRequestAutoComplete,
+  updatePullRequestTitle,
   uploadPullRequestAttachment,
 } from './azure-devops-service';
 
@@ -220,6 +221,63 @@ describe('setPullRequestAutoComplete', () => {
             autoCompleteIgnoreConfigIds: [11, 22],
           },
         }),
+      }),
+    );
+  });
+});
+
+describe('updatePullRequestTitle', () => {
+  beforeEach(() => {
+    findProviderByIdMock.mockResolvedValue({
+      tokenId: 'token-1',
+      baseUrl: 'https://dev.azure.com/org',
+    });
+    getDecryptedTokenMock.mockResolvedValue('pat');
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  it('patches title without requiring current user to own the PR', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse(
+        {
+          pullRequestId: 123,
+          title: 'Updated PR',
+          status: 'active',
+          isDraft: false,
+          createdBy: {
+            id: 'owner-id',
+            displayName: 'PR Owner',
+            uniqueName: 'owner@example.com',
+          },
+          creationDate: '2026-01-01T00:00:00Z',
+          sourceRefName: 'refs/heads/feature',
+          targetRefName: 'refs/heads/main',
+        },
+        { ok: true },
+      ),
+    );
+
+    await expect(
+      updatePullRequestTitle({
+        providerId: 'provider-1',
+        projectId: 'project',
+        repoId: 'repo',
+        pullRequestId: 123,
+        title: '  Updated PR  ',
+      }),
+    ).resolves.toMatchObject({ title: 'Updated PR' });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith(
+      'https://dev.azure.com/org/project/_apis/git/repositories/repo/pullrequests/123?api-version=7.0',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ title: 'Updated PR' }),
       }),
     );
   });

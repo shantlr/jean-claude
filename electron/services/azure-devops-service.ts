@@ -2285,8 +2285,6 @@ export async function updatePullRequestTitle(params: {
     throw new Error('Pull request title is required');
   }
 
-  await assertCurrentUserOwnsPullRequest(params);
-
   const { authHeader, orgName } = await getProviderAuth(params.providerId);
 
   const url = `https://dev.azure.com/${orgName}/${params.projectId}/_apis/git/repositories/${params.repoId}/pullrequests/${params.pullRequestId}?api-version=7.0`;
