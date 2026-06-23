@@ -53,7 +53,7 @@ export function SideBySideDiffTable({
   folding: CodeFoldingState;
 }) {
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
-  const [hoveredLine, setHoveredLine] = useState<number | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
 
   // Compute both the flat lines (for mapping search matches) and side-by-side rows
   const { rows, lineToRowMapping } = useMemo(() => {
@@ -137,6 +137,7 @@ export function SideBySideDiffTable({
     (lineNumber: number) => {
       if (!onAddCommentClick) return;
       setSelectionStart(lineNumber);
+      setSelectionEnd(lineNumber);
     },
     [onAddCommentClick],
   );
@@ -149,23 +150,33 @@ export function SideBySideDiffTable({
       const end = Math.max(selectionStart, lineNumber);
       onAddCommentClick({ start, end });
       setSelectionStart(null);
+      setSelectionEnd(null);
     },
     [onAddCommentClick, selectionStart],
   );
 
+  const handleLineMouseEnter = useCallback(
+    (lineNumber: number) => {
+      if (selectionStart !== null) {
+        setSelectionEnd(lineNumber);
+      }
+    },
+    [selectionStart],
+  );
+
   const handleMouseLeaveTable = useCallback(() => {
     setSelectionStart(null);
-    setHoveredLine(null);
+    setSelectionEnd(null);
   }, []);
 
   const isLineInSelection = useCallback(
     (lineNumber: number) => {
-      if (selectionStart === null || hoveredLine === null) return false;
-      const start = Math.min(selectionStart, hoveredLine);
-      const end = Math.max(selectionStart, hoveredLine);
+      if (selectionStart === null || selectionEnd === null) return false;
+      const start = Math.min(selectionStart, selectionEnd);
+      const end = Math.max(selectionStart, selectionEnd);
       return lineNumber >= start && lineNumber <= end;
     },
-    [selectionStart, hoveredLine],
+    [selectionStart, selectionEnd],
   );
 
   const isLineInCommentRange = useCallback(
@@ -266,14 +277,14 @@ export function SideBySideDiffTable({
               onDividerMouseDown={handleDividerMouseDown}
               isDragging={isDragging}
               canComment={canComment}
-              isHovered={hoveredLine === newLineNumber}
               isSelected={isSelected}
               isInCommentRange={isInCommentRange}
               hasComment={
                 !!newLineNumber && !!commentedLines?.has(newLineNumber)
               }
               onMouseEnter={() =>
-                newLineNumber !== undefined && setHoveredLine(newLineNumber)
+                newLineNumber !== undefined &&
+                handleLineMouseEnter(newLineNumber)
               }
               onMouseDown={() =>
                 newLineNumber !== undefined &&
@@ -312,7 +323,6 @@ function SideBySideRowComponent({
   onDividerMouseDown,
   isDragging,
   canComment,
-  isHovered,
   isSelected,
   isInCommentRange,
   hasComment,
@@ -337,7 +347,6 @@ function SideBySideRowComponent({
   onDividerMouseDown: (e: ReactMouseEvent) => void;
   isDragging: boolean;
   canComment: boolean;
-  isHovered: boolean;
   isSelected: boolean;
   isInCommentRange: boolean;
   hasComment: boolean;
@@ -357,7 +366,7 @@ function SideBySideRowComponent({
       <tr
         data-line-index={rowIndex}
         data-new-line={newLineNumber}
-        className={clsx({
+        className={clsx('group', {
           'bg-blue-500/30': isSelected,
           'bg-blue-500/10': !isSelected && isInCommentRange,
         })}
@@ -404,7 +413,6 @@ function SideBySideRowComponent({
           searchMatches={leftMatches}
           currentMatch={currentMatch}
           canComment={canComment}
-          isHovered={isHovered}
           isSelected={isSelected}
           isInCommentRange={isInCommentRange}
           hasComment={hasComment}
@@ -433,7 +441,6 @@ function SideBySideRowComponent({
           searchMatches={rightMatches}
           currentMatch={currentMatch}
           canComment={canComment}
-          isHovered={isHovered}
           isSelected={isSelected}
           isInCommentRange={isInCommentRange}
           hasComment={hasComment}
@@ -477,7 +484,6 @@ function SideBySideCell({
   searchMatches,
   currentMatch,
   canComment,
-  isHovered,
   isSelected,
   isInCommentRange,
   hasComment,
@@ -491,7 +497,6 @@ function SideBySideCell({
   searchMatches: SearchMatch[];
   currentMatch: SearchMatch | null;
   canComment: boolean;
-  isHovered: boolean;
   isSelected: boolean;
   isInCommentRange: boolean;
   hasComment: boolean;
@@ -556,7 +561,7 @@ function SideBySideCell({
     );
 
   // Show comment icon on the left side's line number column when hovered
-  const showCommentIcon = canComment && isHovered && side === 'left';
+  const showCommentIcon = canComment && side === 'left';
 
   return (
     <>
@@ -573,11 +578,11 @@ function SideBySideCell({
             : undefined
         }
       >
-        <span className={clsx(showCommentIcon && 'invisible')}>
+        <span className={clsx(showCommentIcon && 'group-hover:invisible')}>
           {lineNumber ?? ''}
         </span>
         {showCommentIcon && (
-          <span className="text-acc-ink absolute inset-0 flex items-center justify-center">
+          <span className="text-acc-ink absolute inset-0 hidden items-center justify-center group-hover:flex">
             <MessageSquarePlus className="h-3 w-3" aria-hidden />
           </span>
         )}

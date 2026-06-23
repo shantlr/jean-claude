@@ -16,18 +16,17 @@ import type { ReactNode } from 'react';
 import { useUISetting, useUIStore } from '@/stores/ui';
 
 import { computeDiff, type DiffLine } from './diff-utils';
-import { DiffMinimap, type ViewportInfo } from './diff-minimap';
 import {
   renderTokensWithHighlights,
   renderWithHighlights,
 } from './utils-search-highlight';
 import { type SearchMatch, useDiffSearch } from './use-diff-search';
-import { ChangeNavigator } from './change-navigator';
+import { ChangeNavigatorOverlay } from './change-navigator';
 import { CurrentStateTable } from './current-state-table';
+import { DiffMinimapOverlay } from './diff-minimap';
 import { DiffSearchBar } from './diff-search-bar';
 import { getLanguageFromPath } from './language-utils';
 import { SideBySideDiffTable } from './side-by-side-table';
-import { useChangeNavigator } from './use-change-navigator';
 import { useCodeFolding } from './use-code-folding';
 
 
@@ -84,29 +83,9 @@ export function DiffView({
   const [isLoading, setIsLoading] = useState(true);
   const viewMode = useUISetting('diffViewMode');
   const setSetting = useUIStore((s) => s.setSetting);
-  const [viewport, setViewport] = useState<ViewportInfo | undefined>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const language = getLanguageFromPath(filePath);
-
-  // Update viewport info on scroll
-  const handleScroll = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (container) {
-      setViewport({
-        scrollTop: container.scrollTop,
-        scrollHeight: container.scrollHeight,
-        clientHeight: container.clientHeight,
-      });
-    }
-  }, []);
-
-  // Initialize viewport info after content loads
-  useEffect(() => {
-    if (state && scrollContainerRef.current) {
-      handleScroll();
-    }
-  }, [state, handleScroll]);
 
   useEffect(() => {
     if (!state || !scrollToLine || !scrollContainerRef.current) return;
@@ -177,22 +156,9 @@ export function DiffView({
     scrollContainerRef,
   });
 
-  const {
-    totalHunks,
-    currentHunkIndex,
-    goToNextHunk,
-    goToPreviousHunk,
-    isScrollable,
-  } = useChangeNavigator({
-    lines: state?.lines ?? [],
-    scrollContainerRef,
-    viewMode,
-    oldString,
-    newString,
-  });
-
   // Code folding based on new file content (tree-sitter in main process)
   const folding = useCodeFolding(newString, language, filePath);
+  const hasChanges = state?.lines.some((line) => line.type !== 'context') ?? false;
 
   if (isLoading || !state) {
     return (
@@ -270,10 +236,9 @@ export function DiffView({
 
       <div
         ref={scrollContainerRef}
-        onScroll={handleScroll}
         className={clsx(
           'h-full flex-1 overflow-auto bg-black/30 pb-2 font-mono text-xs',
-          isScrollable && totalHunks > 0 ? 'pt-12' : 'pt-2',
+          hasChanges ? 'pt-12' : 'pt-2',
           {
             'no-scrollbar': !!withMinimap,
           },
@@ -323,20 +288,19 @@ export function DiffView({
         )}
       </div>
       {!!withMinimap && (
-        <DiffMinimap
+        <DiffMinimapOverlay
           lines={state.lines}
-          viewport={viewport}
+          scrollContainerRef={scrollContainerRef}
           commentedLines={commentedLines}
         />
       )}
-      {isScrollable && totalHunks > 0 && (
-        <ChangeNavigator
-          currentHunk={currentHunkIndex + 1}
-          totalHunks={totalHunks}
-          onNext={goToNextHunk}
-          onPrevious={goToPreviousHunk}
-        />
-      )}
+      <ChangeNavigatorOverlay
+        lines={state.lines}
+        scrollContainerRef={scrollContainerRef}
+        viewMode={viewMode}
+        oldString={oldString}
+        newString={newString}
+      />
     </div>
   );
 }
@@ -397,12 +361,13 @@ function InlineDiffTable({
   folding: CodeFoldingState;
 }) {
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
-  const [hoveredLine, setHoveredLine] = useState<number | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
 
   const handleLineMouseDown = useCallback(
     (lineNumber: number) => {
       if (!onAddCommentClick) return;
       setSelectionStart(lineNumber);
+      setSelectionEnd(lineNumber);
     },
     [onAddCommentClick],
   );
@@ -415,24 +380,34 @@ function InlineDiffTable({
       const end = Math.max(selectionStart, lineNumber);
       onAddCommentClick({ start, end });
       setSelectionStart(null);
+      setSelectionEnd(null);
     },
     [onAddCommentClick, selectionStart],
   );
 
+  const handleLineMouseEnter = useCallback(
+    (lineNumber: number) => {
+      if (selectionStart !== null) {
+        setSelectionEnd(lineNumber);
+      }
+    },
+    [selectionStart],
+  );
+
   const handleMouseLeaveTable = useCallback(() => {
     setSelectionStart(null);
-    setHoveredLine(null);
+    setSelectionEnd(null);
   }, []);
 
   // Check if a line is in the selection range
   const isLineInSelection = useCallback(
     (lineNumber: number) => {
-      if (selectionStart === null || hoveredLine === null) return false;
-      const start = Math.min(selectionStart, hoveredLine);
-      const end = Math.max(selectionStart, hoveredLine);
+      if (selectionStart === null || selectionEnd === null) return false;
+      const start = Math.min(selectionStart, selectionEnd);
+      const end = Math.max(selectionStart, selectionEnd);
       return lineNumber >= start && lineNumber <= end;
     },
-    [selectionStart, hoveredLine],
+    [selectionStart, selectionEnd],
   );
 
   // Check if a line is in any comment form range
@@ -530,11 +505,10 @@ function InlineDiffTable({
               oldTokens={oldTokens}
               newTokens={newTokens}
               canComment={!!onAddCommentClick && lineNumber !== undefined}
-              isHovered={hoveredLine === lineNumber}
               isSelected={isSelected}
               isInCommentRange={isInCommentRange}
               hasComment={!!lineNumber && !!commentedLines?.has(lineNumber)}
-              onMouseEnter={() => lineNumber && setHoveredLine(lineNumber)}
+              onMouseEnter={() => lineNumber && handleLineMouseEnter(lineNumber)}
               onMouseDown={() => lineNumber && handleLineMouseDown(lineNumber)}
               onMouseUp={() => lineNumber && handleLineMouseUp(lineNumber)}
               inlineComments={lineComments}
@@ -561,7 +535,6 @@ function DiffLineRow({
   oldTokens,
   newTokens,
   canComment,
-  isHovered,
   isSelected,
   isInCommentRange,
   hasComment,
@@ -582,7 +555,6 @@ function DiffLineRow({
   oldTokens: ThemedToken[][];
   newTokens: ThemedToken[][];
   canComment: boolean;
-  isHovered: boolean;
   isSelected: boolean;
   isInCommentRange: boolean;
   hasComment: boolean;
@@ -634,7 +606,7 @@ function DiffLineRow({
       <tr
         data-line-index={lineIndex}
         data-new-line={line.newLineNumber ?? undefined}
-        className={clsx({
+        className={clsx('group', {
           'bg-blue-500/30': isSelected,
           'bg-blue-500/10': !isSelected && isInCommentRange,
           'bg-green-500/20':
@@ -693,11 +665,11 @@ function DiffLineRow({
               : undefined
           }
         >
-          <span className={clsx(canComment && isHovered && 'invisible')}>
+          <span className={clsx(canComment && 'group-hover:invisible')}>
             {line.oldLineNumber ?? ''}
           </span>
-          {canComment && isHovered && (
-            <span className="text-acc-ink absolute inset-0 flex items-center justify-center">
+          {canComment && (
+            <span className="text-acc-ink absolute inset-0 hidden items-center justify-center group-hover:flex">
               <MessageSquarePlus className="h-3 w-3" aria-hidden />
             </span>
           )}

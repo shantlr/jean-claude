@@ -1,4 +1,48 @@
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { memo } from 'react';
+import type { RefObject } from 'react';
+
+import type { DiffLine } from './diff-utils';
+import { useChangeNavigator } from './use-change-navigator';
+
+export const ChangeNavigatorOverlay = memo(function ChangeNavigatorOverlay({
+  lines,
+  scrollContainerRef,
+  viewMode,
+  oldString,
+  newString,
+}: {
+  lines: DiffLine[];
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
+  viewMode: 'inline' | 'side-by-side' | 'current-state';
+  oldString: string;
+  newString: string;
+}) {
+  const {
+    totalHunks,
+    currentHunkIndex,
+    goToNextHunk,
+    goToPreviousHunk,
+    isScrollable,
+  } = useChangeNavigator({
+    lines,
+    scrollContainerRef,
+    viewMode,
+    oldString,
+    newString,
+  });
+
+  if (!isScrollable || totalHunks === 0) return null;
+
+  return (
+    <ChangeNavigator
+      currentHunk={currentHunkIndex + 1}
+      totalHunks={totalHunks}
+      onNext={goToNextHunk}
+      onPrevious={goToPreviousHunk}
+    />
+  );
+});
 
 export function ChangeNavigator({
   currentHunk,

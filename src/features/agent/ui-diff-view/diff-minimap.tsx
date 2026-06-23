@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 
 import type { DiffLine } from './diff-utils';
 
@@ -175,3 +176,65 @@ export function DiffMinimap({
     </div>
   );
 }
+
+export const DiffMinimapOverlay = memo(function DiffMinimapOverlay({
+  lines,
+  scrollContainerRef,
+  commentedLines,
+}: {
+  lines: DiffLine[];
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
+  commentedLines?: Set<number>;
+}) {
+  const [viewport, setViewport] = useState<ViewportInfo | undefined>();
+  const rafRef = useRef<number | null>(null);
+
+  const updateViewport = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    setViewport({
+      scrollTop: container.scrollTop,
+      scrollHeight: container.scrollHeight,
+      clientHeight: container.clientHeight,
+    });
+  }, [scrollContainerRef]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    updateViewport();
+
+    const handleScroll = () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+
+      rafRef.current = requestAnimationFrame(() => {
+        updateViewport();
+        rafRef.current = null;
+      });
+    };
+
+    const observer = new ResizeObserver(updateViewport);
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    observer.observe(container);
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      observer.disconnect();
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [scrollContainerRef, updateViewport]);
+
+  return (
+    <DiffMinimap
+      lines={lines}
+      viewport={viewport}
+      commentedLines={commentedLines}
+    />
+  );
+});

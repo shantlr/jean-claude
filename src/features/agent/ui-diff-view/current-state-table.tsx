@@ -47,7 +47,7 @@ export function CurrentStateTable({
   folding: CodeFoldingState;
 }) {
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
-  const [hoveredLine, setHoveredLine] = useState<number | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
 
   const lines = useMemo(
     () => computeCurrentStateLines(oldString, newString),
@@ -91,6 +91,7 @@ export function CurrentStateTable({
     (lineNumber: number) => {
       if (!onAddCommentClick) return;
       setSelectionStart(lineNumber);
+      setSelectionEnd(lineNumber);
     },
     [onAddCommentClick],
   );
@@ -103,23 +104,33 @@ export function CurrentStateTable({
       const end = Math.max(selectionStart, lineNumber);
       onAddCommentClick({ start, end });
       setSelectionStart(null);
+      setSelectionEnd(null);
     },
     [onAddCommentClick, selectionStart],
   );
 
+  const handleLineMouseEnter = useCallback(
+    (lineNumber: number) => {
+      if (selectionStart !== null) {
+        setSelectionEnd(lineNumber);
+      }
+    },
+    [selectionStart],
+  );
+
   const handleMouseLeaveTable = useCallback(() => {
     setSelectionStart(null);
-    setHoveredLine(null);
+    setSelectionEnd(null);
   }, []);
 
   const isLineInSelection = useCallback(
     (lineNumber: number) => {
-      if (selectionStart === null || hoveredLine === null) return false;
-      const start = Math.min(selectionStart, hoveredLine);
-      const end = Math.max(selectionStart, hoveredLine);
+      if (selectionStart === null || selectionEnd === null) return false;
+      const start = Math.min(selectionStart, selectionEnd);
+      const end = Math.max(selectionStart, selectionEnd);
       return lineNumber >= start && lineNumber <= end;
     },
-    [selectionStart, hoveredLine],
+    [selectionStart, selectionEnd],
   );
 
   const isLineInCommentRange = useCallback(
@@ -188,7 +199,6 @@ export function CurrentStateTable({
           const canComment = !!onAddCommentClick;
           const isSelected = isLineInSelection(lineNumber);
           const isInCommentRange = isLineInCommentRange(lineNumber);
-          const isHovered = hoveredLine === lineNumber;
 
           const lineComments = inlineComments?.filter(
             (c) => c.line === lineNumber,
@@ -211,11 +221,10 @@ export function CurrentStateTable({
               isChanged={line.isChanged}
               renderedContent={renderedContent}
               canComment={canComment}
-              isHovered={isHovered}
               isSelected={isSelected}
               isInCommentRange={isInCommentRange}
               hasComment={!!commentedLines?.has(lineNumber)}
-              onMouseEnter={() => setHoveredLine(lineNumber)}
+              onMouseEnter={() => handleLineMouseEnter(lineNumber)}
               onMouseDown={() => handleLineMouseDown(lineNumber)}
               onMouseUp={() => handleLineMouseUp(lineNumber)}
               inlineComments={lineComments}
@@ -238,7 +247,6 @@ function CurrentStateRow({
   isChanged,
   renderedContent,
   canComment,
-  isHovered,
   isSelected,
   isInCommentRange,
   hasComment,
@@ -257,7 +265,6 @@ function CurrentStateRow({
   isChanged: boolean;
   renderedContent: ReactNode;
   canComment: boolean;
-  isHovered: boolean;
   isSelected: boolean;
   isInCommentRange: boolean;
   hasComment: boolean;
@@ -276,7 +283,7 @@ function CurrentStateRow({
       <tr
         data-line-index={lineIndex}
         data-new-line={lineNumber}
-        className={clsx({
+        className={clsx('group', {
           'bg-blue-500/30': isSelected,
           'bg-blue-500/10': !isSelected && isInCommentRange,
           'bg-green-500/15': !isSelected && !isInCommentRange && isChanged,
@@ -332,11 +339,11 @@ function CurrentStateRow({
               : undefined
           }
         >
-          <span className={clsx(canComment && isHovered && 'invisible')}>
+          <span className={clsx(canComment && 'group-hover:invisible')}>
             {lineNumber}
           </span>
-          {canComment && isHovered && (
-            <span className="text-acc-ink absolute inset-0 flex items-center justify-center">
+          {canComment && (
+            <span className="text-acc-ink absolute inset-0 hidden items-center justify-center group-hover:flex">
               <MessageSquarePlus className="h-3 w-3" aria-hidden />
             </span>
           )}
