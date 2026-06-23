@@ -39,6 +39,7 @@ export function useProjects() {
     load: api.projects.findAll,
     ingest: ingestProjects,
     select: selectProjects,
+    staleTime: Infinity,
   });
 }
 

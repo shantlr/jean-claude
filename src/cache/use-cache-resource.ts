@@ -9,7 +9,7 @@ import {
   setResourceSuccess,
 } from './cache-actions';
 import type { ResourceMeta, ResourceResult } from './cache-types';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { cache$ } from './cache-store';
 import type { CacheSubscription } from '@shared/cache-events';
 import { subscribeCacheResources } from './cache-subscriptions';
@@ -18,6 +18,11 @@ import { useValue } from '@legendapp/state/react';
 
 // One pending promise per resource key prevents duplicate concurrent loads.
 const pendingResources = new Map<string, Promise<unknown>>();
+
+type ResourceResultMeta = Pick<
+  ResourceMeta,
+  'error' | 'lastFetchedAt' | 'stale' | 'status'
+>;
 
 type SerializedCacheSubscription = [
   resourceKey: string,
@@ -86,7 +91,9 @@ export function clearPendingResources() {
   pendingResources.clear();
 }
 
-export function shouldLoadChangedResource(meta: ResourceMeta | undefined) {
+export function shouldLoadChangedResource(
+  meta: ResourceMeta | ResourceResultMeta | undefined,
+) {
   return (
     meta?.stale === true &&
     (meta.status === 'success' || meta.status === 'error')
@@ -95,7 +102,7 @@ export function shouldLoadChangedResource(meta: ResourceMeta | undefined) {
 
 export function isResourceInitialLoading(
   enabled: boolean,
-  meta: ResourceMeta | undefined,
+  meta: ResourceMeta | ResourceResultMeta | undefined,
 ) {
   return (
     enabled &&
@@ -174,9 +181,24 @@ export function useCacheResource<TData, TSelected = TData>({
   const subscriptionKey = getCacheSubscriptionKey(key, subscriptions);
   const retainedResourceKey = getRetainedResourceKey(key, subscriptions);
 
-  const meta = useValue(() => cache$.resources[key].get());
-  const metaStatus = meta?.status;
-  const metaStale = meta?.stale;
+  const metaStatus = useValue(() => cache$.resources[key].status.get());
+  const metaError = useValue(() => cache$.resources[key].error.get());
+  const metaLastFetchedAt = useValue(() =>
+    cache$.resources[key].lastFetchedAt.get(),
+  );
+  const metaStale = useValue(() => cache$.resources[key].stale.get());
+  const meta = useMemo<ResourceResultMeta | undefined>(
+    () =>
+      metaStatus === undefined
+        ? undefined
+        : {
+            status: metaStatus,
+            error: metaError ?? null,
+            lastFetchedAt: metaLastFetchedAt ?? null,
+            stale: metaStale ?? true,
+          },
+    [metaError, metaLastFetchedAt, metaStale, metaStatus],
+  );
   const data = useValue(() => {
     if (select) {
       return select();
@@ -237,7 +259,7 @@ export function useCacheResource<TData, TSelected = TData>({
     }
 
     void loadResource().catch(() => {});
-  }, [enabled, loadResource, meta, metaStale, metaStatus]);
+  }, [enabled, loadResource, meta]);
 
   const refetch = useCallback(async () => {
     await ensureResource({
@@ -249,13 +271,13 @@ export function useCacheResource<TData, TSelected = TData>({
     });
   }, [ingestRef, key, loadRef, staleTime]);
 
-  const error = meta?.error ? new Error(meta.error) : null;
+  const error = metaError ? new Error(metaError) : null;
 
   return {
     data,
     isLoading: isResourceInitialLoading(enabled, meta),
-    isFetching: enabled && meta?.status === 'loading',
-    isError: meta?.status === 'error',
+    isFetching: enabled && metaStatus === 'loading',
+    isError: metaStatus === 'error',
     error,
     refetch,
   };

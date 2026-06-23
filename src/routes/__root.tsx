@@ -99,9 +99,7 @@ function RootErrorBoundary({ error }: { error: Error }) {
 
 function CommandPaletteContainer() {
   const layer = useKeyboardLayer('global-nav');
-  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'command-palette');
   const toggle = useOverlaysStore((s) => s.toggle);
-  const close = useOverlaysStore((s) => s.close);
 
   useCommands(
     'command-palette-trigger',
@@ -118,8 +116,7 @@ function CommandPaletteContainer() {
     { layer },
   );
 
-  if (!isOpen) return null;
-  return <CommandPaletteOverlay onClose={() => close('command-palette')} />;
+  return null;
 }
 
 function GlobalCommands() {
@@ -151,23 +148,7 @@ function GlobalCommands() {
 
 function NewTaskContainer() {
   const layer = useKeyboardLayer('global-nav');
-  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'new-task');
   const toggle = useOverlaysStore((s) => s.toggle);
-  const close = useOverlaysStore((s) => s.close);
-  const { draft, discardDraft, setSelectedProjectId } = useNewTaskDraft();
-  const { projectId } = useCurrentVisibleProject();
-
-  useEffect(() => {
-    if (!isOpen || projectId === 'all') return;
-    if (draft?.backlogTodoIds?.length) return;
-    setSelectedProjectId(projectId);
-  }, [draft?.backlogTodoIds?.length, isOpen, projectId, setSelectedProjectId]);
-
-  const handleClose = useCallback(() => close('new-task'), [close]);
-  const handleDiscardDraft = useCallback(() => {
-    discardDraft();
-    close('new-task');
-  }, [discardDraft, close]);
 
   useCommands(
     'new-task-trigger',
@@ -183,19 +164,12 @@ function NewTaskContainer() {
     { layer },
   );
 
-  if (!isOpen) return null;
-  return (
-    <NewTaskOverlay onClose={handleClose} onDiscardDraft={handleDiscardDraft} />
-  );
+  return null;
 }
 
 function ProjectOverlayContainer() {
   const layer = useKeyboardLayer('global-nav');
-  const isOpen = useOverlaysStore(
-    (s) => s.activeOverlay === 'project-switcher',
-  );
   const toggle = useOverlaysStore((s) => s.toggle);
-  const close = useOverlaysStore((s) => s.close);
 
   useCommands(
     'project-overlay-trigger',
@@ -212,15 +186,12 @@ function ProjectOverlayContainer() {
     { layer },
   );
 
-  if (!isOpen) return null;
-  return <ProjectOverlay onClose={() => close('project-switcher')} />;
+  return null;
 }
 
 function ActivityCenterContainer() {
   const layer = useKeyboardLayer('global-nav');
-  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'activity-center');
   const toggle = useOverlaysStore((s) => s.toggle);
-  const close = useOverlaysStore((s) => s.close);
 
   useCommands(
     'activity-center-trigger',
@@ -237,15 +208,12 @@ function ActivityCenterContainer() {
     { layer },
   );
 
-  if (!isOpen) return null;
-  return <ActivityCenterOverlay onClose={() => close('activity-center')} />;
+  return null;
 }
 
 function CalendarContainer() {
   const layer = useKeyboardLayer('global-nav');
-  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'calendar');
   const toggle = useOverlaysStore((s) => s.toggle);
-  const close = useOverlaysStore((s) => s.close);
 
   useCommands(
     'calendar-trigger',
@@ -262,31 +230,12 @@ function CalendarContainer() {
     { layer },
   );
 
-  if (!isOpen) return null;
-  return <CalendarOverlay onClose={() => close('calendar')} />;
-}
-
-function SettingsContainer() {
-  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'settings');
-  const close = useOverlaysStore((s) => s.close);
-
-  if (!isOpen) return null;
-  return <SettingsOverlay onClose={() => close('settings')} />;
-}
-
-function UsageContainer() {
-  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'usage');
-  const close = useOverlaysStore((s) => s.close);
-
-  if (!isOpen) return null;
-  return <UsageOverlay onClose={() => close('usage')} />;
+  return null;
 }
 
 function WorkActivityContainer() {
   const layer = useKeyboardLayer('global-nav');
-  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'work-activity');
   const toggle = useOverlaysStore((s) => s.toggle);
-  const close = useOverlaysStore((s) => s.close);
 
   useCommands(
     'work-activity-trigger',
@@ -302,23 +251,12 @@ function WorkActivityContainer() {
     { layer },
   );
 
-  if (!isOpen) return null;
-  return <WorkActivityOverlay onClose={() => close('work-activity')} />;
-}
-
-function ResourcesContainer() {
-  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'resources');
-  const close = useOverlaysStore((s) => s.close);
-
-  if (!isOpen) return null;
-  return <ResourcesOverlay onClose={() => close('resources')} />;
+  return null;
 }
 
 function BacklogContainer() {
   const layer = useKeyboardLayer('global-nav');
-  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'backlog');
   const toggle = useOverlaysStore((s) => s.toggle);
-  const close = useOverlaysStore((s) => s.close);
 
   useCommands(
     'backlog-trigger',
@@ -335,17 +273,12 @@ function BacklogContainer() {
     { layer },
   );
 
-  if (!isOpen) return null;
-  return <BacklogOverlay onClose={() => close('backlog')} />;
+  return null;
 }
 
 function RunningCommandsContainer() {
   const layer = useKeyboardLayer('global-nav');
-  const isOpen = useOverlaysStore(
-    (s) => s.activeOverlay === 'running-commands',
-  );
   const toggle = useOverlaysStore((s) => s.toggle);
-  const close = useOverlaysStore((s) => s.close);
 
   useCommands(
     'running-commands-trigger',
@@ -362,15 +295,12 @@ function RunningCommandsContainer() {
     { layer },
   );
 
-  if (!isOpen) return null;
-  return <RunningCommandsOverlay onClose={() => close('running-commands')} />;
+  return null;
 }
 
 function PipelinesOverlayContainer() {
   const layer = useKeyboardLayer('global-nav');
-  const isOpen = useOverlaysStore((s) => s.activeOverlay === 'pipelines');
   const toggle = useOverlaysStore((s) => s.toggle);
-  const close = useOverlaysStore((s) => s.close);
 
   useCommands(
     'pipelines-trigger',
@@ -387,8 +317,67 @@ function PipelinesOverlayContainer() {
     { layer },
   );
 
-  if (!isOpen) return null;
-  return <PipelinesOverlay onClose={() => close('pipelines')} />;
+  return null;
+}
+
+function OverlayHost() {
+  const activeOverlay = useOverlaysStore((s) => s.activeOverlay);
+  const close = useOverlaysStore((s) => s.close);
+
+  if (activeOverlay === null) return null;
+
+  switch (activeOverlay) {
+    case 'new-task':
+      return <NewTaskOverlayContainer />;
+    case 'command-palette':
+      return <CommandPaletteOverlay onClose={() => close('command-palette')} />;
+    case 'project-switcher':
+      return <ProjectOverlay onClose={() => close('project-switcher')} />;
+    case 'activity-center':
+      return <ActivityCenterOverlay onClose={() => close('activity-center')} />;
+    case 'calendar':
+      return <CalendarOverlay onClose={() => close('calendar')} />;
+    case 'settings':
+      return <SettingsOverlay onClose={() => close('settings')} />;
+    case 'usage':
+      return <UsageOverlay onClose={() => close('usage')} />;
+    case 'work-activity':
+      return <WorkActivityOverlay onClose={() => close('work-activity')} />;
+    case 'resources':
+      return <ResourcesOverlay onClose={() => close('resources')} />;
+    case 'backlog':
+      return <BacklogOverlay onClose={() => close('backlog')} />;
+    case 'running-commands':
+      return (
+        <RunningCommandsOverlay onClose={() => close('running-commands')} />
+      );
+    case 'pipelines':
+      return <PipelinesOverlay onClose={() => close('pipelines')} />;
+    case 'keyboard-help':
+      return null;
+  }
+}
+
+function NewTaskOverlayContainer() {
+  const close = useOverlaysStore((s) => s.close);
+  const { draft, discardDraft, setSelectedProjectId } = useNewTaskDraft();
+  const { projectId } = useCurrentVisibleProject();
+
+  useEffect(() => {
+    if (projectId === 'all') return;
+    if (draft?.backlogTodoIds?.length) return;
+    setSelectedProjectId(projectId);
+  }, [draft?.backlogTodoIds?.length, projectId, setSelectedProjectId]);
+
+  const handleClose = useCallback(() => close('new-task'), [close]);
+  const handleDiscardDraft = useCallback(() => {
+    discardDraft();
+    close('new-task');
+  }, [discardDraft, close]);
+
+  return (
+    <NewTaskOverlay onClose={handleClose} onDiscardDraft={handleDiscardDraft} />
+  );
 }
 
 /** Clean up persisted store data for tasks that no longer exist or are completed */
@@ -451,12 +440,10 @@ function RootLayout() {
       <BacklogContainer />
       <ActivityCenterContainer />
       <CalendarContainer />
-      <SettingsContainer />
-      <UsageContainer />
       <WorkActivityContainer />
-      <ResourcesContainer />
       <RunningCommandsContainer />
       <PipelinesOverlayContainer />
+      <OverlayHost />
 
       <div className="flex h-full w-full flex-1 flex-col overflow-hidden">
         <Header />

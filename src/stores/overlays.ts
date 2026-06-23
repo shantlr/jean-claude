@@ -32,12 +32,14 @@ interface OverlaysState {
 export const useOverlaysStore = create<OverlaysState>((set) => ({
   activeOverlay: null,
 
-  open: (overlay) => set({ activeOverlay: overlay }),
+  open: (overlay) =>
+    set((s) => (s.activeOverlay === overlay ? s : { activeOverlay: overlay })),
   close: (overlay) =>
     set((s) => (s.activeOverlay === overlay ? { activeOverlay: null } : s)),
   toggle: (overlay) =>
     set((s) => ({
       activeOverlay: s.activeOverlay === overlay ? null : overlay,
     })),
-  closeAll: () => set({ activeOverlay: null }),
+  closeAll: () =>
+    set((s) => (s.activeOverlay === null ? s : { activeOverlay: null })),
 }));
