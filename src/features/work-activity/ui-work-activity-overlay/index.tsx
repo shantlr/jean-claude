@@ -5,6 +5,7 @@ import {
   Copy,
   ExternalLink,
   GitPullRequest,
+  Loader2,
   MessageSquareText,
   Sparkles,
   X,
@@ -18,11 +19,18 @@ import {
   getWeekRange,
   groupWorkActivityEvents,
 } from '@shared/work-activity-utils';
+
 import { IconButton } from '@/common/ui/icon-button';
+import { Modal } from '@/common/ui/modal';
+import { WorkItemPreview } from '@/features/work-item/ui-work-item-preview';
+import { WorkItemTypeIcon } from '@/features/work-item/ui-work-item-shared';
+
 import { useCommands } from '@/common/hooks/use-commands';
 import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
 import { useToastStore } from '@/stores/toasts';
 import { useWorkActivity } from '@/hooks/use-work-activity';
+import { useWorkItemById } from '@/hooks/use-work-items';
+
 import type { WorkActivityEvent } from '@shared/work-activity-types';
 
 const PROJECT_COLORS = [
@@ -112,7 +120,7 @@ function formatEventType(type: WorkActivityEvent['type']) {
 function getWorkItemLabel(workItemId: string) {
   return workItemId === 'no-work-item'
     ? 'No work item'
-    : `Work item ${workItemId}`;
+    : `#${workItemId}`;
 }
 
 function getEventLabel(event: WorkActivityEvent) {
@@ -188,6 +196,120 @@ function eventProjectName(event: WorkActivityEvent) {
   return event.projectName ?? 'Unknown project';
 }
 
+function getEventWorkItemEntries(event: WorkActivityEvent) {
+  if (event.workItems.length > 0) {
+    return event.workItems.map((workItem) => ({
+      key: [
+        workItem.providerId,
+        workItem.azureOrgId ?? 'unknown-org',
+        workItem.azureProjectId,
+        workItem.id,
+      ].join(':'),
+      id: workItem.id,
+      providerId: workItem.providerId,
+      title: workItem.title ?? null,
+      type: workItem.workItemType ?? null,
+      projectId: eventProjectId(event),
+      projectName: eventProjectName(event),
+    }));
+  }
+
+  return event.workItemIds.map((id) => ({
+    key: [
+      event.providerId ?? eventProjectId(event),
+      event.azureOrgId ?? 'unknown-org',
+      event.azureProjectId ?? 'unknown-azure-project',
+      id,
+    ].join(':'),
+    id,
+    providerId: event.providerId,
+    title: null,
+    type: null,
+    projectId: eventProjectId(event),
+    projectName: eventProjectName(event),
+  }));
+}
+
+function formatWorkItemEventSummary(events: WorkActivityEvent[]) {
+  const counts = new Map<WorkActivityEvent['type'], number>();
+  for (const event of events) {
+    counts.set(event.type, (counts.get(event.type) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .map(([type, count]) => {
+      const label =
+        count === 1
+          ? formatEventType(type).toLowerCase()
+          : type === 'pr_approved'
+            ? 'PR approvals'
+            : `${formatEventType(type).toLowerCase()}s`;
+      return `${count} ${label}`;
+    })
+    .join(' · ');
+}
+
+function getWorkItemRecap(events: WorkActivityEvent[]) {
+  const rows = new Map<
+    string,
+    {
+      key: string;
+      id: string;
+      providerId: string | null;
+      title: string | null;
+      type: string | null;
+      projectId: string;
+      projectName: string;
+      events: WorkActivityEvent[];
+    }
+  >();
+
+  for (const event of events) {
+    for (const entry of getEventWorkItemEntries(event)) {
+      if (entry.id === 'no-work-item') continue;
+
+      const current = rows.get(entry.key) ?? {
+        ...entry,
+        events: [],
+      };
+      current.events.push(event);
+      rows.set(entry.key, current);
+    }
+  }
+
+  const sorted = [...rows.values()].sort((left, right) => {
+    const countDelta = right.events.length - left.events.length;
+    if (countDelta !== 0) return countDelta;
+    return left.id.localeCompare(right.id, undefined, { numeric: true });
+  });
+  const percentages = wholePercentages(
+    sorted.map((row) => ({ id: row.key, count: row.events.length })),
+  );
+
+  return sorted.map((row) => ({
+    ...row,
+    pct: percentages.get(row.key) ?? 0,
+    summary: row.title ?? (row.events[0] ? getEventLabel(row.events[0]) : 'Activity'),
+    eventSummary: formatWorkItemEventSummary(row.events),
+  }));
+}
+
+function getAzureProjectNameFromWorkItemUrl(url: string | null | undefined) {
+  if (!url) return undefined;
+
+  try {
+    const parsed = new URL(url);
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    const projectSegment =
+      parsed.hostname.toLowerCase() === 'dev.azure.com'
+        ? segments[1]
+        : segments[0];
+    return projectSegment ? decodeURIComponent(projectSegment) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function getDateKey(iso: string) {
   return new Date(iso).toISOString().slice(0, 10);
 }
@@ -217,6 +339,17 @@ function formatDayMarkdown(day: string, events: WorkActivityEvent[]) {
       }
     }
   }
+
+  const workItems = getWorkItemRecap(events);
+  if (workItems.length > 0) {
+    lines.push('', 'Work items:');
+    for (const workItem of workItems) {
+      lines.push(
+        `- ${getWorkItemLabel(workItem.id)} ${workItem.pct}% · ${workItem.eventSummary}`,
+      );
+    }
+  }
+
   return lines.join('\n');
 }
 
@@ -251,6 +384,17 @@ function Percentage({
   );
 }
 
+function WorkItemPercentage({ value }: { value: number }) {
+  return (
+    <div className="flex shrink-0 items-baseline gap-px">
+      <span className="text-ink-0 text-[17px] leading-none font-semibold tabular-nums tracking-[-0.02em]">
+        {value}
+      </span>
+      <span className="text-ink-3 text-[10px]">%</span>
+    </div>
+  );
+}
+
 export function WorkActivityOverlay({ onClose }: { onClose: () => void }) {
   const layer = useKeyboardLayer('dialog', { exclusive: true });
   const addToast = useToastStore((state) => state.addToast);
@@ -259,12 +403,30 @@ export function WorkActivityOverlay({ onClose }: { onClose: () => void }) {
   const [copied, setCopied] = useState(false);
   const [dayCopied, setDayCopied] = useState(false);
   const [rawCopied, setRawCopied] = useState(false);
+  const [previewWorkItem, setPreviewWorkItem] = useState<{
+    id: string;
+    providerId: string | null;
+  } | null>(null);
   const range = useMemo(
     () => getWeekRange(selectedDate.toISOString()),
     [selectedDate],
   );
   const weekDays = useMemo(() => getWeekDays(range), [range]);
   const { data: events = [], isLoading, isError } = useWorkActivity(range);
+  const previewWorkItemId = previewWorkItem
+    ? Number(previewWorkItem.id)
+    : null;
+  const {
+    data: previewWorkItemDetails = null,
+    isError: isPreviewWorkItemError,
+    isLoading: isPreviewWorkItemLoading,
+  } = useWorkItemById({
+    providerId: previewWorkItem?.providerId ?? null,
+    workItemId: Number.isFinite(previewWorkItemId) ? previewWorkItemId : null,
+  });
+  const previewAzureProjectName = getAzureProjectNameFromWorkItemUrl(
+    previewWorkItemDetails?.url,
+  );
 
   const sortedEvents = useMemo(
     () =>
@@ -368,13 +530,22 @@ export function WorkActivityOverlay({ onClose }: { onClose: () => void }) {
     return projectColors.get(projectId) ?? projectColor(projectId);
   }
 
+  const selectedWorkItemRows = useMemo(
+    () => getWorkItemRecap(selectedSummary?.events ?? []),
+    [selectedSummary],
+  );
+
   useCommands(
     'work-activity-overlay',
     [
       {
         shortcut: 'escape',
         label: 'Close Work Activity Overlay',
-        handler: onClose,
+        handler: () => {
+          if (previewWorkItem) return false;
+          onClose();
+          return true;
+        },
         hideInCommandPalette: true,
       },
     ],
@@ -419,7 +590,7 @@ export function WorkActivityOverlay({ onClose }: { onClose: () => void }) {
   }
 
   return createPortal(
-    <FocusLock returnFocus>
+    <FocusLock disabled={!!previewWorkItem} returnFocus>
       <div
         className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md sm:p-6"
         onClick={onClose}
@@ -693,6 +864,78 @@ export function WorkActivityOverlay({ onClose }: { onClose: () => void }) {
                   </div>
 
                   <div className="text-ink-3 mt-5 mb-2 text-[10px] font-semibold tracking-[0.09em] uppercase">
+                    Work items · Azure DevOps
+                  </div>
+                  {selectedWorkItemRows.length > 0 ? (
+                    <div className="flex flex-col">
+                      {selectedWorkItemRows.map((workItem) => {
+                        const isPreviewed =
+                          previewWorkItem?.id === workItem.id &&
+                          previewWorkItem.providerId === workItem.providerId;
+                        const previewedTitle = isPreviewed
+                          ? previewWorkItemDetails?.fields.title
+                          : undefined;
+                        const previewedType = isPreviewed
+                          ? previewWorkItemDetails?.fields.workItemType
+                          : undefined;
+                        return (
+                          <button
+                            type="button"
+                            key={workItem.key}
+                            onClick={() => {
+                              setPreviewWorkItem({
+                                id: workItem.id,
+                                providerId: workItem.providerId,
+                              });
+                            }}
+                            disabled={!workItem.providerId}
+                            title={
+                              workItem.providerId
+                                ? `Open work item ${getWorkItemLabel(workItem.id)}`
+                                : `Work item ${getWorkItemLabel(workItem.id)}`
+                            }
+                            className="border-line-soft hover:bg-white/[0.025] flex w-full items-start gap-2.5 border-b px-1 py-2.5 text-left transition-colors last:border-b-0 disabled:cursor-default disabled:hover:bg-transparent"
+                          >
+                            <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
+                              <WorkItemTypeIcon
+                                type={previewedType ?? workItem.type ?? ''}
+                                size="md"
+                              />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex min-w-0 items-baseline gap-1.5">
+                                <span className="text-ink-3 shrink-0 font-mono text-[11px] tabular-nums">
+                                  {getWorkItemLabel(workItem.id)}
+                                </span>
+                                <span className="text-ink-0 truncate text-[13px] font-semibold">
+                                  {previewedTitle ?? workItem.summary}
+                                </span>
+                              </div>
+                              <div className="text-ink-4 mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] whitespace-nowrap">
+                                <Dot
+                                  color={getProjectColor(workItem.projectId)}
+                                />
+                                <span className="shrink-0 truncate">
+                                  {workItem.projectName}
+                                </span>
+                                <span>·</span>
+                                <span className="min-w-0 truncate">
+                                  {workItem.eventSummary}
+                                </span>
+                              </div>
+                            </div>
+                            <WorkItemPercentage value={workItem.pct} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="border-line-soft text-ink-4 rounded-xl border border-dashed px-3 py-4 text-center text-xs">
+                      No linked work items.
+                    </div>
+                  )}
+
+                  <div className="text-ink-3 mt-5 mb-2 text-[10px] font-semibold tracking-[0.09em] uppercase">
                     Activity
                   </div>
                   <div className="space-y-2">
@@ -713,6 +956,46 @@ export function WorkActivityOverlay({ onClose }: { onClose: () => void }) {
             )}
           </div>
 
+          <Modal
+            isOpen={!!previewWorkItem}
+            onClose={() => setPreviewWorkItem(null)}
+            title={
+              previewWorkItem ? (
+                <span className="flex min-w-0 items-center gap-2">
+                  <WorkItemTypeIcon
+                    type={previewWorkItemDetails?.fields.workItemType ?? ''}
+                  />
+                  <span className="text-ink-2 shrink-0 text-sm font-medium">
+                    {getWorkItemLabel(previewWorkItem.id)}
+                  </span>
+                  <span className="text-ink-1 min-w-0 truncate text-sm">
+                    {previewWorkItemDetails?.fields.title ?? 'Work item'}
+                  </span>
+                </span>
+              ) : undefined
+            }
+            size="xl"
+            overlayClassName="z-[10000]"
+            panelClassName="h-[85vh]"
+            contentClassName="flex min-h-0 flex-1 overflow-hidden p-4"
+          >
+            {isPreviewWorkItemLoading ? (
+              <div className="flex min-h-0 flex-1 items-center justify-center">
+                <Loader2 className="text-ink-3 h-5 w-5 animate-spin" />
+              </div>
+            ) : isPreviewWorkItemError ? (
+              <div className="text-status-fail flex min-h-0 flex-1 items-center justify-center text-sm">
+                Failed to load work item.
+              </div>
+            ) : (
+              <WorkItemPreview
+                workItem={previewWorkItemDetails}
+                providerId={previewWorkItem?.providerId ?? undefined}
+                projectName={previewAzureProjectName}
+                showCommentsAside
+              />
+            )}
+          </Modal>
         </div>
       </div>
     </FocusLock>,

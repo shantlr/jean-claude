@@ -31,6 +31,7 @@ export function Modal({
   contentRef,
   showHeader = true,
   contentClassName = 'min-h-0 overflow-y-auto p-4',
+  overlayClassName = 'z-50',
   panelClassName = '',
   ariaLabel,
   children,
@@ -44,6 +45,7 @@ export function Modal({
   contentRef?: RefObject<HTMLDivElement | null>;
   showHeader?: boolean;
   contentClassName?: string;
+  overlayClassName?: string;
   panelClassName?: string;
   ariaLabel?: string;
   children: ReactNode;
@@ -103,7 +105,7 @@ export function Modal({
     <FocusLock returnFocus>
       <RemoveScroll>
         <div
-          className="bg-bg-0/50 fixed inset-0 z-50 flex items-center justify-center"
+          className={`bg-bg-0/50 fixed inset-0 flex items-center justify-center ${overlayClassName}`}
           onClick={handleBackdropClick}
         >
           <div

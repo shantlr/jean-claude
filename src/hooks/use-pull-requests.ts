@@ -108,8 +108,8 @@ function buildPullRequestActivityEvent({
     promptSnippet: null,
     promptLength: null,
     workItemIds,
-    workItems: workItemIds.map((id) => ({
-      id,
+    workItems: workItems.map((workItem) => ({
+      id: String(workItem.id),
       providerId: repoInfo.providerId,
       azureOrgId,
       azureProjectId: repoInfo.projectId,

@@ -8,6 +8,8 @@ export type WorkActivityWorkItem = {
   providerId: string;
   azureOrgId: string | null;
   azureProjectId: string;
+  title?: string | null;
+  workItemType?: string | null;
 };
 
 export type WorkActivityPullRequest = {
