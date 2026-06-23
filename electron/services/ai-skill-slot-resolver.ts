@@ -5,8 +5,35 @@ import {
   DEFAULT_PROJECT_FEATURE_MAP_SLOT,
   isAiSkillSlotsSetting,
 } from '@shared/types';
+import type { AgentBackendType } from '@shared/agent-backend-types';
 
 import { SettingsRepository } from '../database/repositories/settings';
+
+async function normalizeSlotForEnabledBackends(
+  slot: AiSkillSlotConfig,
+  { preserveSkillOnFallback = false }: { preserveSkillOnFallback?: boolean } = {},
+): Promise<AiSkillSlotConfig> {
+  const backendsSetting = await SettingsRepository.get('backends');
+  if (backendsSetting.enabledBackends.includes(slot.backend)) {
+    return slot;
+  }
+
+  const fallbackBackend: AgentBackendType = backendsSetting.enabledBackends.includes(
+    backendsSetting.defaultBackend,
+  )
+    ? backendsSetting.defaultBackend
+    : (backendsSetting.enabledBackends[0] ?? slot.backend);
+  const backendDefaultModels = await SettingsRepository.get(
+    'backendDefaultModels',
+  );
+
+  return {
+    backend: fallbackBackend,
+    model: backendDefaultModels.models[fallbackBackend] ?? 'default',
+    thinkingEffort: 'default',
+    skillName: preserveSkillOnFallback ? slot.skillName : null,
+  };
+}
 
 /**
  * Resolves an AI skill slot configuration.
@@ -23,18 +50,20 @@ export async function resolveAiSkillSlot(
   // 1. Check project override (validate in case of corrupted data)
   if (projectSlots && isAiSkillSlotsSetting(projectSlots)) {
     if (projectSlots[slotKey] !== undefined) {
-      return projectSlots[slotKey];
+      return normalizeSlotForEnabledBackends(projectSlots[slotKey]);
     }
   }
 
   // 2. Check global setting (SettingsRepository.get already validates)
   const globalSlots = await SettingsRepository.get('aiSkillSlots');
   if (globalSlots[slotKey] !== undefined) {
-    return globalSlots[slotKey];
+    return normalizeSlotForEnabledBackends(globalSlots[slotKey]);
   }
 
   if (slotKey === 'project-feature-map') {
-    return DEFAULT_PROJECT_FEATURE_MAP_SLOT;
+    return normalizeSlotForEnabledBackends(DEFAULT_PROJECT_FEATURE_MAP_SLOT, {
+      preserveSkillOnFallback: true,
+    });
   }
 
   // 3. Not configured

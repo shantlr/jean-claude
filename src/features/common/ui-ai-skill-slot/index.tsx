@@ -95,27 +95,53 @@ export function SlotDetail({
   toggleDescription?: string;
 }) {
   const isEnabled = config !== null;
+  const enabledBackendValues = useMemo(
+    () => enabledBackends.map((backend) => backend.value),
+    [enabledBackends],
+  );
+  const effectiveFallbackBackend = enabledBackendValues.includes(
+    fallbackBackend,
+  )
+    ? fallbackBackend
+    : (enabledBackendValues[0] ?? fallbackBackend);
+  const effectiveConfigBackend =
+    config?.backend && enabledBackendValues.includes(config.backend)
+      ? config.backend
+      : effectiveFallbackBackend;
+  const effectiveConfigModel =
+    config?.backend && enabledBackendValues.includes(config.backend)
+      ? config.model
+      : fallbackModel;
+  const effectiveConfigSkillName =
+    config?.backend && enabledBackendValues.includes(config.backend)
+      ? config.skillName
+      : null;
 
   // Local editing state
   const [localBackend, setLocalBackend] = useState<AgentBackendType>(
-    config?.backend ?? fallbackBackend,
+    effectiveConfigBackend,
   );
-  const [localModel, setLocalModel] = useState(config?.model ?? fallbackModel);
+  const [localModel, setLocalModel] = useState(effectiveConfigModel);
   const [localThinkingEffort, setLocalThinkingEffort] =
     useState<ThinkingEffort>(config?.thinkingEffort ?? 'default');
   const [localPresetId, setLocalPresetId] = useState<string | null>(null);
   const [localSkillName, setLocalSkillName] = useState<string | null>(
-    config?.skillName ?? null,
+    effectiveConfigSkillName,
   );
 
   // Sync local state when external config changes (e.g., query refetch)
   useEffect(() => {
-    startTransition(() => setLocalBackend(config?.backend ?? fallbackBackend));
-    startTransition(() => setLocalModel(config?.model ?? fallbackModel));
+    startTransition(() => setLocalBackend(effectiveConfigBackend));
+    startTransition(() => setLocalModel(effectiveConfigModel));
     startTransition(() => setLocalThinkingEffort(config?.thinkingEffort ?? 'default'));
     startTransition(() => setLocalPresetId(null));
-    startTransition(() => setLocalSkillName(config?.skillName ?? null));
-  }, [config, fallbackBackend, fallbackModel]);
+    startTransition(() => setLocalSkillName(effectiveConfigSkillName));
+  }, [
+    config,
+    effectiveConfigBackend,
+    effectiveConfigModel,
+    effectiveConfigSkillName,
+  ]);
 
   // Skills for the selected backend (enabled or builtin)
   const { data: skills } = useManagedSkills(localBackend, projectPath);

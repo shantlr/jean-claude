@@ -17,11 +17,14 @@ import {
 import {
   useAiGenerationSetting,
   useAiSkillSlotsSetting,
+  useBackendDefaultModelsSetting,
+  useBackendsSetting,
   useSaveAiGenerationSetting,
   useUpdateAiSkillSlotsSetting,
 } from '@/hooks/use-settings';
 import { api } from '@/lib/api';
 import { Button } from '@/common/ui/button';
+import { getDefaultModelForBackend } from '@/lib/default-models';
 import { ImagePreviewModal } from '@/common/ui/image-preview-modal';
 import { Input } from '@/common/ui/input';
 import { SummaryModelSettings } from '@/features/settings/ui-general-settings';
@@ -56,6 +59,8 @@ export function AiGenerationSettings() {
   const { data: slots } = useAiSkillSlotsSetting();
   const updateSlots = useUpdateAiSkillSlotsSetting();
   const enabledBackends = useEnabledBackends();
+  const { data: backendsSetting } = useBackendsSetting();
+  const { data: backendDefaultModels } = useBackendDefaultModelsSetting();
   const [selectedItem, setSelectedItem] = useState<AiGenerationSelection>(
     SLOT_DEFINITIONS[0].key,
   );
@@ -85,6 +90,15 @@ export function AiGenerationSettings() {
   const selectedSummaryBackend = selectedItem.startsWith('summary-model:')
     ? selectedItem.replace('summary-model:', '')
     : null;
+  const fallbackBackend = enabledBackends.some(
+    (backend) => backend.value === backendsSetting?.defaultBackend,
+  )
+    ? backendsSetting!.defaultBackend
+    : (enabledBackends[0]?.value ?? 'claude-code');
+  const fallbackModel = getDefaultModelForBackend({
+    backend: fallbackBackend,
+    backendDefaultModels,
+  });
 
   return (
     <ListDetailLayout
@@ -103,6 +117,8 @@ export function AiGenerationSettings() {
             description={selectedSlot.description}
             config={slots?.[selectedSlot.key] ?? null}
             enabledBackends={enabledBackends}
+            fallbackBackend={fallbackBackend}
+            fallbackModel={fallbackModel}
             onUpdate={(config) => handleUpdate(selectedSlot.key, config)}
           />
         ) : selectedItem === OPENAI_API_ITEM.key ? (

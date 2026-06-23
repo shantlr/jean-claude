@@ -1,3 +1,13 @@
+import type {
+  AiSkillSlotConfig,
+  AiSkillSlotKey,
+  AiSkillSlotsSetting,
+  ModelPreference,
+  ProjectFeatureMap,
+  ProjectFeatureMapItem,
+  ProjectLogoHistoryItem,
+  UpdateProject,
+} from '@shared/types';
 import {
   Check,
   ChevronRight,
@@ -14,6 +24,12 @@ import {
   X,
 } from 'lucide-react';
 import {
+  ListDetailLayout,
+  ListGroupHeader,
+  ListItemButton,
+  ListPane,
+} from '@/common/ui/list-detail-layout';
+import {
   type ReactElement,
   startTransition,
   useCallback,
@@ -22,32 +38,13 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import isEqual from 'lodash-es/isEqual';
-
-
-import type {
-  AiSkillSlotConfig,
-  AiSkillSlotKey,
-  AiSkillSlotsSetting,
-  ModelPreference,
-  ProjectFeatureMap,
-  ProjectFeatureMapItem,
-  ProjectLogoHistoryItem,
-  UpdateProject,
-} from '@shared/types';
-import {
-  ListDetailLayout,
-  ListGroupHeader,
-  ListItemButton,
-  ListPane,
-} from '@/common/ui/list-detail-layout';
 import {
   SLOT_DEFINITIONS,
   SlotDetail,
 } from '@/features/common/ui-ai-skill-slot';
 import {
   useAiGenerationSetting,
+  useBackendDefaultModelsSetting,
   useBackendModelPresetsSetting,
   useBackendsSetting,
   useProjectPromptPrefaceSetting,
@@ -69,15 +66,20 @@ import {
   useUpdateProject,
   useUploadProjectLogo,
 } from '@/hooks/use-projects';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AgentBackendType } from '@shared/agent-backend-types';
 import { api } from '@/lib/api';
 import { AVAILABLE_BACKENDS } from '@/features/agent/ui-backend-selector';
 import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-preset-picker';
 import { Button } from '@/common/ui/button';
 import { Checkbox } from '@/common/ui/checkbox';
+import { FavoriteBranchesInput } from './favorite-branches-input';
 import { findMatchingBackendModelPresetId } from '@/features/agent/ui-backend-preset-selector';
+import { getDefaultModelForBackend } from '@/lib/default-models';
+import { getProjectSettingsSaveData } from './utils-project-settings-save-data';
 import { ImagePreviewModal } from '@/common/ui/image-preview-modal';
 import { Input } from '@/common/ui/input';
+import isEqual from 'lodash-es/isEqual';
 import { Kbd } from '@/common/ui/kbd';
 import { Modal } from '@/common/ui/modal';
 import { ProjectColorPicker } from '@/features/project/ui-project-color-picker';
@@ -89,6 +91,7 @@ import { ProjectPipelineSettings } from '@/features/project/ui-project-pipeline-
 import type { ProjectPriority } from '@shared/feed-types';
 import { ProjectSkillsSettings } from '@/features/project/ui-project-skills-settings';
 import { ProjectWorktreeSettings } from '@/features/project/ui-project-worktree-settings';
+import { ProtectedBranchesInput } from './protected-branches-input';
 import { RepoLink } from '@/features/project/ui-repo-link';
 import { RunCommandsConfig } from '@/features/project/ui-run-commands-config';
 import { Select } from '@/common/ui/select';
@@ -100,12 +103,6 @@ import { useRegisterKeyboardBindings } from '@/common/context/keyboard-bindings'
 import { useShrinkToTarget } from '@/common/hooks/use-shrink-to-target';
 import { useToastStore } from '@/stores/toasts';
 import { WorkItemsLink } from '@/features/project/ui-work-items-link';
-
-
-
-import { FavoriteBranchesInput } from './favorite-branches-input';
-import { getProjectSettingsSaveData } from './utils-project-settings-save-data';
-import { ProtectedBranchesInput } from './protected-branches-input';
 
 
 const PROMPT_PREFACE_MODE_OPTIONS = [
@@ -1973,6 +1970,8 @@ function ProjectAiGenerationSettings({
   onUpdate: (slots: AiSkillSlotsSetting | null) => void;
 }) {
   const enabledBackends = useEnabledBackends();
+  const { data: backendsSetting } = useBackendsSetting();
+  const { data: backendDefaultModels } = useBackendDefaultModelsSetting();
   const [selectedSlotKey, setSelectedSlotKey] = useState<AiSkillSlotKey>(
     SLOT_DEFINITIONS[0].key,
   );
@@ -1994,6 +1993,15 @@ function ProjectAiGenerationSettings({
   const selectedSlot = SLOT_DEFINITIONS.find(
     (slot) => slot.key === selectedSlotKey,
   );
+  const fallbackBackend = enabledBackends.some(
+    (backend) => backend.value === backendsSetting?.defaultBackend,
+  )
+    ? backendsSetting!.defaultBackend
+    : (enabledBackends[0]?.value ?? 'claude-code');
+  const fallbackModel = getDefaultModelForBackend({
+    backend: fallbackBackend,
+    backendDefaultModels,
+  });
 
   return (
     <ListDetailLayout
@@ -2013,8 +2021,8 @@ function ProjectAiGenerationSettings({
             config={aiSkillSlots?.[selectedSlot.key] ?? null}
             enabledBackends={enabledBackends}
             projectPath={projectPath}
-            fallbackBackend={enabledBackends[0]?.value ?? 'claude-code'}
-            fallbackModel="default"
+            fallbackBackend={fallbackBackend}
+            fallbackModel={fallbackModel}
             emptySummary="Using global default"
             emptyBadgeLabel="Global default"
             toggleLabel="Project override"
