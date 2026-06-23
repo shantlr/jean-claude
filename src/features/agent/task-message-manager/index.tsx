@@ -2,12 +2,11 @@ import type { QueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
-
 import { api } from '@/lib/api';
-import { feedQueryKeys } from '@/lib/feed-query-keys';
 import type { NormalizedEntry } from '@shared/normalized-message-v2';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 
+import { invalidateTaskFeed } from './feed-invalidations';
 
 const MESSAGE_UPDATE_FLUSH_MS = 300;
 
@@ -143,9 +142,7 @@ export function TaskMessageManager() {
           queryClient.invalidateQueries({ queryKey: ['steps', { taskId }] });
           queryClient.invalidateQueries({ queryKey: ['steps', stepId] });
           // Invalidate feed so status changes appear instantly
-          queryClient.invalidateQueries({
-            queryKey: feedQueryKeys.tasks,
-          });
+          invalidateTaskFeed(queryClient);
           break;
         case 'permission':
           flushPendingEntryUpdates(stepId);
@@ -160,9 +157,7 @@ export function TaskMessageManager() {
             permission: event,
           });
           // Invalidate feed so attention changes to needs-permission
-          queryClient.invalidateQueries({
-            queryKey: feedQueryKeys.tasks,
-          });
+          invalidateTaskFeed(queryClient);
           break;
         case 'question':
           flushPendingEntryUpdates(stepId);
@@ -171,9 +166,7 @@ export function TaskMessageManager() {
               setQuestion(stepId, null);
             }
             clearPendingRequestForTask(taskId);
-            queryClient.invalidateQueries({
-              queryKey: feedQueryKeys.tasks,
-            });
+            invalidateTaskFeed(queryClient);
             break;
           }
           if (isLoaded(stepId)) {
@@ -187,9 +180,7 @@ export function TaskMessageManager() {
             question: event,
           });
           // Invalidate feed so attention changes to has-question
-          queryClient.invalidateQueries({
-            queryKey: feedQueryKeys.tasks,
-          });
+          invalidateTaskFeed(queryClient);
           break;
         case 'name-updated':
           queryClient.invalidateQueries({ queryKey: ['tasks'] });
