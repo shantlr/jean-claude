@@ -1,7 +1,6 @@
 import { Cpu, X } from 'lucide-react';
+import { type ReactNode, useMemo } from 'react';
 import FocusLock from 'react-focus-lock';
-import type { ReactNode } from 'react';
-import { useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
 
 
@@ -127,7 +126,8 @@ function Sparkline({
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth="1.6"
-          className={className}
+          pathLength={1}
+          className={`resource-sparkline ${className}`}
         />
       ) : null}
     </svg>
@@ -144,7 +144,7 @@ function LoadBar({
   return (
     <div className="h-1.5 overflow-hidden rounded-full bg-white/8">
       <div
-        className={`h-full min-w-0.5 rounded-full ${className}`}
+        className={`resource-load-bar h-full min-w-0.5 rounded-full ${className}`}
         style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
       />
     </div>
@@ -241,8 +241,7 @@ function Gauge({
           strokeLinecap="round"
           strokeWidth={stroke + 3}
           filter="url(#resources-gauge-glow)"
-          className="text-[oklch(0.74_0.19_295)] opacity-55"
-          style={{ transition: 'stroke-dasharray 420ms ease-out' }}
+          className="resource-gauge-arc text-[oklch(0.74_0.19_295)] opacity-55"
         />
         <circle
           cx={size / 2}
@@ -253,8 +252,7 @@ function Gauge({
           strokeDasharray={activeDash}
           strokeLinecap="round"
           strokeWidth={stroke}
-          className="text-[oklch(0.74_0.19_295)]"
-          style={{ transition: 'stroke-dasharray 420ms ease-out' }}
+          className="resource-gauge-arc text-[oklch(0.74_0.19_295)]"
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -291,7 +289,7 @@ function SessionRow({
     <div className="grid items-center gap-4 border-t border-white/7 px-1 py-3 lg:grid-cols-[minmax(0,1fr)_84px_132px_84px_132px_56px]">
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="resource-status-pulse h-1.5 w-1.5 shrink-0 rounded-full bg-[oklch(0.74_0.19_295)] shadow-[0_0_8px_oklch(0.74_0.19_295)]" />
+          <span className="resource-overlay-status-pulse h-1.5 w-1.5 shrink-0 rounded-full bg-[oklch(0.74_0.19_295)] shadow-[0_0_8px_oklch(0.74_0.19_295)]" />
           <span className="text-ink-0 truncate text-[13px] font-semibold tracking-[-0.01em]">
             {taskName}
           </span>
@@ -473,7 +471,7 @@ export function ResourcesOverlay({ onClose }: { onClose: () => void }) {
         onClick={onClose}
       >
         <div
-          className="border-glass-border shadow-modal text-ink-0 relative flex h-[min(860px,calc(100vh-70px))] w-full max-w-6xl flex-col overflow-hidden rounded-[18px] border bg-[linear-gradient(180deg,#171721_0%,#101018_100%)]"
+          className="resource-overlay-enter border-glass-border shadow-modal text-ink-0 relative flex h-[min(860px,calc(100vh-70px))] w-full max-w-6xl flex-col overflow-hidden rounded-[18px] border bg-[linear-gradient(180deg,#171721_0%,#101018_100%)]"
           role="dialog"
           aria-modal="true"
           aria-labelledby="resources-overlay-title"
@@ -495,7 +493,7 @@ export function ResourcesOverlay({ onClose }: { onClose: () => void }) {
               </div>
             </div>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-[oklch(0.78_0.16_155/0.3)] bg-[oklch(0.78_0.16_155/0.12)] px-2.5 py-1 text-[11px] font-medium text-[oklch(0.78_0.16_155)]">
-              <span className="resource-status-pulse h-1.5 w-1.5 rounded-full bg-[oklch(0.78_0.16_155)] shadow-[0_0_8px_oklch(0.78_0.16_155)]" />
+              <span className="resource-overlay-status-pulse h-1.5 w-1.5 rounded-full bg-[oklch(0.78_0.16_155)] shadow-[0_0_8px_oklch(0.78_0.16_155)]" />
               live
             </span>
             <Button

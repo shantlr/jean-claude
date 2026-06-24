@@ -1100,6 +1100,59 @@ html[data-reduce-motion='false'] .feed-unread-branch {
   animation: feed-dash-flow 1.2s linear infinite;
 }
 
+@keyframes resource-overlay-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes resource-sparkline-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes resource-overlay-status-pulse {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.16);
+  }
+}
+
+.resource-overlay-enter {
+  animation: resource-overlay-enter 220ms ease-out both;
+}
+
+.resource-gauge-arc {
+  transition: stroke-dasharray 420ms ease-out;
+}
+
+.resource-load-bar {
+  transition: width 500ms ease-out;
+}
+
+.resource-sparkline {
+  stroke-dasharray: 1;
+  animation: resource-sparkline-draw 520ms ease-out both;
+}
+
+.resource-overlay-status-pulse {
+  animation: resource-overlay-status-pulse 1.8s ease-in-out infinite;
+}
+
 html[data-reduce-motion='true'] .running-border,
 html[data-reduce-motion='true'] .running-border-selected,
 html[data-reduce-motion='true'] .jobs-running-border,
