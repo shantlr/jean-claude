@@ -410,6 +410,84 @@ describe('cache store foundation', () => {
     expect(cache$.resources['feed:tasks'].get()?.stale).toBe(true);
   });
 
+  it('optimistically removes completed parent tasks from the feed', () => {
+    setDocumentResource('feed:tasks', [
+      createFeedItem({ id: 'task:task-1', taskId: 'task-1' }),
+      createFeedItem({ id: 'task:task-2', taskId: 'task-2' }),
+    ]);
+
+    applyCacheEvent({
+      type: 'task.upsert',
+      task: createTask({ id: 'task-1', userCompleted: true }),
+    });
+
+    expect(cache$.documents['feed:tasks'].data.get()).toMatchObject([
+      {
+        id: 'task:task-2',
+        taskId: 'task-2',
+      },
+    ]);
+    expect(cache$.resources['feed:tasks'].get()?.stale).toBe(true);
+  });
+
+  it('optimistically removes completed child tasks from the feed', () => {
+    setDocumentResource('feed:tasks', [
+      createFeedItem({
+        id: 'task:parent',
+        taskId: 'parent',
+        children: [
+          createFeedItem({ id: 'task:task-1', taskId: 'task-1' }),
+          createFeedItem({ id: 'task:task-2', taskId: 'task-2' }),
+        ],
+      }),
+    ]);
+
+    applyCacheEvent({
+      type: 'task.upsert',
+      task: createTask({
+        id: 'task-1',
+        parentTaskId: 'parent',
+        userCompleted: true,
+      }),
+    });
+
+    expect(cache$.documents['feed:tasks'].data.get()).toMatchObject([
+      {
+        id: 'task:parent',
+        taskId: 'parent',
+        children: [
+          {
+            id: 'task:task-2',
+            taskId: 'task-2',
+          },
+        ],
+      },
+    ]);
+    expect(cache$.resources['feed:tasks'].get()?.stale).toBe(true);
+  });
+
+  it('optimistically removes completed tasks from task patch events', () => {
+    setDocumentResource('feed:tasks', [
+      createFeedItem({ id: 'task:task-1', taskId: 'task-1' }),
+      createFeedItem({ id: 'task:task-2', taskId: 'task-2' }),
+    ]);
+
+    applyCacheEvent({
+      type: 'task.patch',
+      taskId: 'task-1',
+      projectId: 'project-1',
+      patch: { userCompleted: true },
+    });
+
+    expect(cache$.documents['feed:tasks'].data.get()).toMatchObject([
+      {
+        id: 'task:task-2',
+        taskId: 'task-2',
+      },
+    ]);
+    expect(cache$.resources['feed:tasks'].get()?.stale).toBe(true);
+  });
+
   it('preserves task feed timestamp when task status patch omits updatedAt', () => {
     setDocumentResource('feed:tasks', [
       createFeedItem({

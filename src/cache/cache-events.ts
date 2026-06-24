@@ -164,6 +164,55 @@ function patchTaskFeedDocument(
   );
 }
 
+function removeTaskFeedItem(
+  item: FeedItem,
+  taskId: string,
+): { item: FeedItem | null; changed: boolean } {
+  const matchesTask = item.source === 'task' && item.taskId === taskId;
+  if (matchesTask) {
+    return { item: null, changed: true };
+  }
+
+  const childResults = item.children?.map((child) =>
+    removeTaskFeedItem(child, taskId),
+  );
+  const childrenChanged =
+    childResults?.some((result) => result.changed) ?? false;
+  if (!childrenChanged) {
+    return { item, changed: false };
+  }
+
+  const children = childResults
+    ?.map((result) => result.item)
+    .filter((child): child is FeedItem => child !== null);
+
+  return {
+    item: {
+      ...item,
+      ...(children && children.length > 0
+        ? { children }
+        : { children: undefined }),
+    },
+    changed: true,
+  };
+}
+
+function removeTaskFromFeedDocument(taskId: string) {
+  const items = cache$.documents['feed:tasks'].data.get() as
+    | FeedItem[]
+    | undefined;
+  if (!items) return;
+
+  const results = items.map((item) => removeTaskFeedItem(item, taskId));
+  if (!results.some((result) => result.changed)) return;
+
+  cache$.documents['feed:tasks'].data.set(
+    results
+      .map((result) => result.item)
+      .filter((item): item is FeedItem => item !== null),
+  );
+}
+
 function compactFeedPatch(
   patch: Pick<Partial<FeedItem>, 'attention' | 'subtitle' | 'timestamp'>,
 ): Pick<Partial<FeedItem>, 'attention' | 'subtitle' | 'timestamp'> {
@@ -231,7 +280,9 @@ export function applyCacheEvent(event: CacheEvent) {
       markResourceChanged(taskResourceKey(event.task.id));
       ingestTask(event.task);
       const attention = attentionForTaskStatus(event.task.status);
-      if (attention) {
+      if (event.task.userCompleted) {
+        removeTaskFromFeedDocument(event.task.id);
+      } else if (attention) {
         patchTaskFeedDocument(event.task.id, compactFeedPatch({
           attention,
           timestamp: event.task.updatedAt,
@@ -263,7 +314,9 @@ export function applyCacheEvent(event: CacheEvent) {
         event.patch.status === undefined
           ? undefined
           : attentionForTaskStatus(event.patch.status);
-      if (attention) {
+      if (event.patch.userCompleted === true) {
+        removeTaskFromFeedDocument(event.taskId);
+      } else if (attention) {
         patchTaskFeedDocument(event.taskId, compactFeedPatch({
           attention,
           timestamp: event.patch.updatedAt,
