@@ -132,6 +132,8 @@ export function getCacheEventResourceKeys(event: CacheEvent): string[] {
         `tasks:project:${event.projectId}`,
         'steps',
         'feed:tasks',
+        'feed:pullRequests',
+        'feed:workItems',
         ...(event.taskIds ?? []).map((taskId) => `task:${taskId}`),
         ...(event.taskIds ?? []).map((taskId) => `steps:task:${taskId}`),
         ...(event.stepIds ?? []).map((stepId) => `step:${stepId}`),

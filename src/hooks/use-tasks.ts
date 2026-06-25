@@ -23,7 +23,6 @@ import type {
   ThinkingEffort,
   UpdateTask,
 } from '@shared/types';
-import { markDocumentStale, setDocumentResource } from '@/cache/cache-actions';
 import {
   useInfiniteQuery,
   useMutation,
@@ -34,7 +33,8 @@ import type { AgentBackendType } from '@shared/agent-backend-types';
 import { api } from '@/lib/api';
 import { cache$ } from '@/cache/cache-store';
 import type { FeedItem } from '@shared/feed-types';
-import { feedQueryKeys } from '@/lib/feed-query-keys';
+import { invalidateFeedResources } from '@/cache/feed-cache';
+import { setDocumentResource } from '@/cache/cache-actions';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useCacheResource } from '@/cache/use-cache-resource';
 import { useTaskMessagesStore } from '@/stores/task-messages';
@@ -55,10 +55,7 @@ type CreateTaskPayload = NewTask & {
 export function invalidateFeedItems(
   queryClient: ReturnType<typeof useQueryClient>,
 ) {
-  queryClient.invalidateQueries({ queryKey: feedQueryKeys.tasks });
-  queryClient.invalidateQueries({ queryKey: feedQueryKeys.workItems });
-  markDocumentStale('feed:tasks');
-  markDocumentStale('feed:workItems');
+  invalidateFeedResources(queryClient, ['tasks', 'workItems']);
 }
 
 export function updateFeedTaskPendingMessage(

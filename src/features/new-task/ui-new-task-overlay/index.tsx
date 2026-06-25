@@ -117,7 +117,6 @@ import { BackendModelPresetPicker } from '@/features/agent/ui-backend-model-pres
 import { buildAttachedFilesXml } from '@/lib/file-attachment-utils';
 import { Button } from '@/common/ui/button';
 import { compressImage } from '@/lib/image-compression';
-import { feedQueryKeys } from '@/lib/feed-query-keys';
 import { findMatchingBackendModelPresetId } from '@/features/agent/ui-backend-preset-selector';
 import { getDefaultModelForBackend } from '@/lib/default-models';
 import { Kbd } from '@/common/ui/kbd';
@@ -1408,8 +1407,6 @@ export function NewTaskOverlay({
       .mutateAsync(creationInput)
       .then((note) => {
         markJobSucceeded(jobId, { noteId: note.id });
-        queryClient.invalidateQueries({ queryKey: feedQueryKeys.tasks });
-        queryClient.invalidateQueries({ queryKey: feedQueryKeys.workItems });
       })
       .catch((error: unknown) => {
         const message =
@@ -1430,7 +1427,6 @@ export function NewTaskOverlay({
     onClose,
     triggerAnimation,
     markJobSucceeded,
-    queryClient,
     markJobFailed,
   ]);
 

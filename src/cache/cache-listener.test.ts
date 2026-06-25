@@ -104,6 +104,20 @@ describe('getFeedQueryKeyForCacheEvent', () => {
     ).toEqual([feedQueryKeys.tasks, ['tasks', 'allCompleted']]);
   });
 
+  it('maps project deletes to all project-backed feed keys', () => {
+    expect(
+      getReactQueryKeysForCacheEvent({
+        type: 'project.delete',
+        projectId: 'project-1',
+      }),
+    ).toEqual([
+      feedQueryKeys.tasks,
+      feedQueryKeys.pullRequests,
+      feedQueryKeys.workItems,
+      ['tasks', 'allCompleted'],
+    ]);
+  });
+
   it('maps step cache events to the task feed key', () => {
     expect(
       getReactQueryKeysForCacheEvent({

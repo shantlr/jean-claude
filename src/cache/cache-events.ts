@@ -1,5 +1,5 @@
 import type { FeedItem, FeedItemAttention } from '@shared/feed-types';
-import type { TaskStatus, TaskStepStatus } from '@shared/types';
+import type { Task, TaskStatus, TaskStepStatus } from '@shared/types';
 import type { CacheEvent } from '@shared/cache-events';
 
 import {
@@ -159,9 +159,167 @@ function patchTaskFeedDocument(
   const results = items.map((item) => patchTaskFeedItem(item, taskId, patch));
   if (!results.some((result) => result.changed)) return;
 
+  markResourceChanged('feed:tasks');
   cache$.documents['feed:tasks'].data.set(
     results.map((result) => result.item),
   );
+}
+
+function removeProjectFromFeedDocument(key: string, projectId: string) {
+  const items = cache$.documents[key].data.get() as FeedItem[] | undefined;
+  if (!items) return;
+
+  let changed = false;
+  const removeItems = (feedItems: FeedItem[]): FeedItem[] =>
+    feedItems
+      .map((item) => {
+        if (item.projectId === projectId) {
+          changed = true;
+          return null;
+        }
+
+        if (!item.children) return item;
+
+        const children = removeItems(item.children);
+        if (children.length === item.children.length) return item;
+
+        return children.length > 0
+          ? { ...item, children }
+          : { ...item, children: undefined };
+      })
+      .filter((item): item is FeedItem => item !== null);
+
+  const next = removeItems(items);
+  if (!changed) return;
+
+  markResourceChanged(key);
+  cache$.documents[key].data.set(next);
+}
+
+function taskToFeedItem(task: Task): FeedItem | null | undefined {
+  if (task.userCompleted) return null;
+
+  const project = cache$.projects[task.projectId].get();
+  if (!project) return undefined;
+
+  return {
+    id: `task:${task.id}`,
+    source: 'task',
+    attention: attentionForTaskStatus(task.status) ?? 'waiting',
+    timestamp: task.updatedAt,
+    projectId: task.projectId,
+    projectName: project.name,
+    projectColor: project.color,
+    projectLogoPath: project.logoPath,
+    projectPriority: 'normal',
+    title: task.name ?? task.prompt.slice(0, 80),
+    hasUnread: task.hasUnread,
+    taskId: task.id,
+    taskType: task.type,
+    parentTaskId: task.parentTaskId ?? undefined,
+    pendingMessage: task.pendingMessage ?? undefined,
+    pullRequestId: task.pullRequestId
+      ? parseInt(task.pullRequestId, 10)
+      : undefined,
+    pullRequestProviderId: project.repoProviderId ?? undefined,
+    pullRequestRepoId: project.repoId ?? undefined,
+    pullRequestUrl: task.pullRequestUrl ?? undefined,
+    workItemIds: task.workItemIds ?? undefined,
+    workItemUrls: task.workItemUrls ?? undefined,
+  };
+}
+
+type RemovedTaskFeedPosition = {
+  parentTaskId: string | null;
+  index: number;
+} | null;
+
+function removeTaskFeedItemFromList(
+  items: FeedItem[],
+  taskId: string,
+  parentTaskId: string | null = null,
+): { items: FeedItem[]; changed: boolean; position: RemovedTaskFeedPosition } {
+  let changed = false;
+  let position: RemovedTaskFeedPosition = null;
+  const nextItems = items
+    .map((item, index) => {
+      const childrenResult = item.children
+        ? removeTaskFeedItemFromList(item.children, taskId, item.taskId ?? null)
+        : null;
+      if (childrenResult?.changed) {
+        changed = true;
+        position = childrenResult.position;
+      }
+      if (item.source === 'task' && item.taskId === taskId) {
+        changed = true;
+        position = { parentTaskId, index };
+        return null;
+      }
+      return childrenResult?.changed
+        ? { ...item, children: childrenResult.items }
+        : item;
+    })
+    .filter((item): item is FeedItem => item !== null);
+
+  return { items: nextItems, changed, position };
+}
+
+function insertTaskFeedItemInList(
+  items: FeedItem[],
+  nextItem: FeedItem,
+  previousPosition: RemovedTaskFeedPosition,
+): { items: FeedItem[]; inserted: boolean } {
+  if (nextItem.parentTaskId) {
+    let inserted = false;
+    const nested = items.map((item) => {
+      if (item.source === 'task' && item.taskId === nextItem.parentTaskId) {
+        inserted = true;
+        const children = [...(item.children ?? [])];
+        const index =
+          previousPosition && previousPosition.parentTaskId === nextItem.parentTaskId
+            ? Math.min(previousPosition.index, children.length)
+            : 0;
+        children.splice(index, 0, nextItem);
+        return { ...item, children };
+      }
+      return item;
+    });
+    return { items: nested, inserted };
+  }
+
+  const nextItems = [...items];
+  const index =
+    previousPosition && previousPosition.parentTaskId === null
+      ? Math.min(previousPosition.index, nextItems.length)
+      : 0;
+  nextItems.splice(index, 0, nextItem);
+  return { items: nextItems, inserted: true };
+}
+
+function upsertTaskFeedDocument(task: Task) {
+  const nextItem = taskToFeedItem(task);
+  if (!nextItem) {
+    if (nextItem === null) {
+      removeTaskFromFeedDocument(task.id);
+    }
+    return;
+  }
+
+  const items = cache$.documents['feed:tasks'].data.get() as
+    | FeedItem[]
+    | undefined;
+  if (!items) return;
+
+  const withoutExisting = removeTaskFeedItemFromList(items, task.id);
+  const result = insertTaskFeedItemInList(
+    withoutExisting.items,
+    nextItem,
+    withoutExisting.position,
+  );
+  if (result.inserted) {
+    markResourceChanged('feed:tasks');
+    cache$.documents['feed:tasks'].data.set(result.items);
+  }
 }
 
 function removeTaskFeedItem(
@@ -206,6 +364,7 @@ function removeTaskFromFeedDocument(taskId: string) {
   const results = items.map((item) => removeTaskFeedItem(item, taskId));
   if (!results.some((result) => result.changed)) return;
 
+  markResourceChanged('feed:tasks');
   cache$.documents['feed:tasks'].data.set(
     results
       .map((result) => result.item)
@@ -272,22 +431,19 @@ export function applyCacheEvent(event: CacheEvent) {
       markDeletedEntityResource(projectResourceKey(event.projectId));
       markTaskListsStale(event.projectId);
       markStepListsStale();
+      removeProjectFromFeedDocument('feed:tasks', event.projectId);
+      removeProjectFromFeedDocument('feed:pullRequests', event.projectId);
+      removeProjectFromFeedDocument('feed:workItems', event.projectId);
       markTaskFeedStale();
+      markResourceStale('feed:pullRequests');
+      markResourceStale('feed:workItems');
       break;
     }
     case 'task.upsert': {
       const cachedProjectId = cache$.tasks[event.task.id].get()?.projectId;
       markResourceChanged(taskResourceKey(event.task.id));
       ingestTask(event.task);
-      const attention = attentionForTaskStatus(event.task.status);
-      if (event.task.userCompleted) {
-        removeTaskFromFeedDocument(event.task.id);
-      } else if (attention) {
-        patchTaskFeedDocument(event.task.id, compactFeedPatch({
-          attention,
-          timestamp: event.task.updatedAt,
-        }));
-      }
+      upsertTaskFeedDocument(event.task);
       const projectIds = new Set(
         [event.previousProjectId, cachedProjectId, event.task.projectId].filter(
           (id) => id !== undefined,
@@ -351,6 +507,7 @@ export function applyCacheEvent(event: CacheEvent) {
 
       removeTask(event.taskId, { deleteResource: false });
       markDeletedEntityResource(taskResourceKey(event.taskId));
+      removeTaskFromFeedDocument(event.taskId);
       const projectIds = new Set(
         [event.projectId, cachedProjectId].filter((id) => id !== undefined),
       );

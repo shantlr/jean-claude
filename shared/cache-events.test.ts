@@ -32,6 +32,8 @@ describe('cache event resources', () => {
       'tasks:project:project-1',
       'steps',
       'feed:tasks',
+      'feed:pullRequests',
+      'feed:workItems',
       'task:task-1',
       'steps:task:task-1',
       'step:step-1',

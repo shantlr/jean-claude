@@ -19,13 +19,14 @@ import {
   pullRequestResourceKey,
   selectPullRequest,
 } from '@/cache/domains/pull-requests';
-import { markDocumentStale, setDocumentResource } from '@/cache/cache-actions';
 import { cache$ } from '@/cache/cache-store';
 import type { FeedItem } from '@shared/feed-types';
+import { markDocumentStale } from '@/cache/cache-actions';
 import type { NewWorkActivityEvent } from '@shared/work-activity-types';
 import { parseAzureOrgId } from '@shared/work-activity-utils';
 import type { Provider } from '@shared/types';
 import type { ReviewerVoteStatus } from '@shared/azure-devops-types';
+import { updateFeedDocument } from '@/cache/feed-cache';
 
 
 
@@ -226,26 +227,12 @@ export function updateFeedPullRequest(
   prId: number,
   patch: Partial<FeedItem>,
 ) {
-  updateFeedItemsDocument('feed:pullRequests', (items) =>
+  updateFeedDocument('pullRequests', (items) =>
     items.map((item) =>
       item.projectId === projectId && item.pullRequestId === prId
         ? { ...item, ...patch }
         : item,
     ),
-  );
-}
-
-function updateFeedItemsDocument(
-  key: string,
-  update: (items: FeedItem[]) => FeedItem[],
-) {
-  const current = cache$.documents[key].data.get() as FeedItem[] | undefined;
-  if (!current) return;
-
-  setDocumentResource(
-    key,
-    update(current),
-    cache$.resources[key].lastFetchedAt.get() ?? Date.now(),
   );
 }
 
@@ -261,7 +248,7 @@ export function updateFeedItemsForPullRequest(
   projectId: string,
   pr: AzureDevOpsPullRequestDetails,
 ) {
-  updateFeedItemsDocument('feed:pullRequests', (items) =>
+  updateFeedDocument('pullRequests', (items) =>
     items
       .map((item) =>
         item.projectId === projectId && item.pullRequestId === pr.id
@@ -302,11 +289,11 @@ export function updateFeedItemsForPullRequest(
     };
   };
 
-  updateFeedItemsDocument('feed:tasks', (items) =>
+  updateFeedDocument('tasks', (items) =>
     items.map(updateTaskItem),
   );
 
-  updateFeedItemsDocument('feed:workItems', (items) =>
+  updateFeedDocument('workItems', (items) =>
     items.map((item) =>
       item.projectId === projectId &&
       (item.workItemPrId === pr.id || item.workItemPrUrl === pr.url)

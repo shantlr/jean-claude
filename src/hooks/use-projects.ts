@@ -16,9 +16,12 @@ import {
   selectProjectWorkItemPriority,
   setProjectIndexIds,
 } from '@/cache/domains/projects';
+import {
+  invalidateFeedResource,
+  invalidateFeedResources,
+} from '@/cache/feed-cache';
 import { NewProject, Project, UpdateProject } from '@shared/types';
 import { api } from '@/lib/api';
-import { feedQueryKeys } from '@/lib/feed-query-keys';
 import { useCacheResource } from '@/cache/use-cache-resource';
 
 
@@ -151,7 +154,7 @@ export function useUpdateProject() {
         data.repoProjectId !== undefined ||
         data.repoId !== undefined
       ) {
-        queryClient.invalidateQueries({ queryKey: feedQueryKeys.pullRequests });
+        invalidateFeedResource(queryClient, 'pullRequests');
       }
       if (
         data.showWorkItemsInFeed !== undefined ||
@@ -159,7 +162,7 @@ export function useUpdateProject() {
         data.workItemProjectId !== undefined ||
         data.workItemProjectName !== undefined
       ) {
-        queryClient.invalidateQueries({ queryKey: feedQueryKeys.workItems });
+        invalidateFeedResource(queryClient, 'workItems');
       }
     },
   });
@@ -313,7 +316,11 @@ export function useDeleteProject() {
       queryClient.invalidateQueries({
         queryKey: ['project-is-git-repository', id],
       });
-      queryClient.invalidateQueries({ queryKey: feedQueryKeys.all });
+      invalidateFeedResources(queryClient, [
+        'tasks',
+        'pullRequests',
+        'workItems',
+      ]);
     },
   });
 }

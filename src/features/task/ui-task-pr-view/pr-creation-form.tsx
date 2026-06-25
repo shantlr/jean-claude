@@ -23,10 +23,10 @@ import { useGenerateSummary, useTaskSummary } from '@/hooks/use-task-summary';
 import { api } from '@/lib/api';
 import { Button } from '@/common/ui/button';
 import { Checkbox } from '@/common/ui/checkbox';
-import { feedQueryKeys } from '@/lib/feed-query-keys';
 import type { FileAnnotation } from '@/lib/api';
 import { formatBytes } from '@/lib/format-bytes';
 import { Input } from '@/common/ui/input';
+import { invalidateFeedResource } from '@/cache/feed-cache';
 import { Kbd } from '@/common/ui/kbd';
 import type { PromptImagePart } from '@shared/agent-backend-types';
 import { Separator } from '@/common/ui/separator';
@@ -416,11 +416,8 @@ export function PrCreationForm({
                 queryKey: ['all-projects-pull-requests'],
               }),
               queryClient.invalidateQueries({ queryKey: ['tasks', taskId] }),
-              queryClient.invalidateQueries({ queryKey: feedQueryKeys.tasks }),
-              queryClient.invalidateQueries({
-                queryKey: feedQueryKeys.pullRequests,
-              }),
             ]);
+            invalidateFeedResource(queryClient, 'pullRequests');
           } catch {
             warningMessage = warningMessage
               ? `${warningMessage}\nPR created, but attachments could not be uploaded.`

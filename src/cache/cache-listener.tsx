@@ -55,6 +55,10 @@ export function getReactQueryKeysForCacheEvent(event: CacheEvent) {
     queryKeys.push(feedQueryKey);
   }
 
+  if (event.type === 'project.delete') {
+    queryKeys.push(feedQueryKeys.pullRequests, feedQueryKeys.workItems);
+  }
+
   if (event.type === 'pullRequest.threadsChanged') {
     queryKeys.push([
       'pull-request-threads',
