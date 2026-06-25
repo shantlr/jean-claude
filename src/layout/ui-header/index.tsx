@@ -413,6 +413,7 @@ export function Header() {
   const { data: todoCount } = useProjectTodoCount(backlogProjectId);
   const modal = useModal();
   const commitHash = import.meta.env.VITE_COMMIT_HASH;
+  const devBadgeLabel = api.app.devBadgeLabel ?? 'DEV';
 
   const runningCommandsCount = useTaskMessagesStore((s) => {
     let count = 0;
@@ -661,15 +662,19 @@ export function Header() {
             className="group relative ml-2 flex items-center gap-1 rounded-full border border-amber-400/50 bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold tracking-[0.18em] text-amber-200 shadow-[0_0_16px_oklch(0.8_0.18_80_/_0.22)]"
             aria-label="Development mode"
             aria-describedby="dev-mode-tooltip"
+            title={devBadgeLabel}
             tabIndex={0}
           >
             <span className="h-1.5 w-1.5 rounded-full bg-amber-300 shadow-[0_0_8px_oklch(0.8_0.18_80)]" />
-            DEV
+            <span className="max-w-24 truncate">{devBadgeLabel}</span>
             <span
               id="dev-mode-tooltip"
               role="tooltip"
               className="bg-bg-1 pointer-events-none absolute top-[calc(100%+0.5rem)] left-1/2 z-50 w-64 -translate-x-1/2 rounded-lg border border-amber-400/40 px-3 py-2 text-center text-[11px] leading-snug font-medium tracking-normal text-amber-100 opacity-0 shadow-[0_12px_32px_oklch(0_0_0_/_0.35),0_0_18px_oklch(0.8_0.18_80_/_0.18)] transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
             >
+              <span className="mb-1 block text-[12px] font-bold tracking-[0.08em] text-amber-200 uppercase">
+                {devBadgeLabel}
+              </span>
               Jean-Claude is running in dev mode. Use pnpm preview instead if
               you want to use the app.
             </span>

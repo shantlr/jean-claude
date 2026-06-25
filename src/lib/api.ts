@@ -1528,6 +1528,7 @@ export interface Api {
   };
   app: {
     isDevMode: boolean;
+    devBadgeLabel?: string;
     getIsPreviewMode: () => Promise<boolean>;
     getReloadUpdateInfo: (params: {
       builtCommitHash: string;
@@ -2366,6 +2367,7 @@ export const api: Api = hasWindowApi
       },
       app: {
         isDevMode: false,
+        devBadgeLabel: undefined,
         getIsPreviewMode: async () => false,
         getReloadUpdateInfo: async () => ({
           commitCount: 0,

@@ -29,6 +29,8 @@ import type { DebugLogEntry } from '@shared/debug-log-types';
 
 
 
+const devBadgeLabel = process.env.JC_DEV_BADGE_LABEL?.trim() || undefined;
+
 contextBridge.exposeInMainWorld('api', {
   platform: process.platform,
   windowState: {
@@ -1295,6 +1297,7 @@ contextBridge.exposeInMainWorld('api', {
   },
   app: {
     isDevMode: !!process.env.ELECTRON_RENDERER_URL,
+    devBadgeLabel,
     getIsPreviewMode: () =>
       ipcRenderer.invoke('app:getIsPreviewMode') as Promise<boolean>,
     getReloadUpdateInfo: (params: { builtCommitHash: string }) =>
