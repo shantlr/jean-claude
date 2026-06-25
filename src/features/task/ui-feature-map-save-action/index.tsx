@@ -124,10 +124,10 @@ function FeatureMapSaveActionInner({
             onClose={() => setIsDiffOpen(false)}
             title="Feature map diff"
             size="xl"
-            contentClassName="min-h-0 overflow-hidden p-0"
+            contentClassName="flex min-h-0 flex-col overflow-hidden p-0"
           >
             {draftDiff ? (
-              <div className="max-h-[72vh] overflow-auto">
+              <div className="h-[72vh] min-h-0 overflow-hidden">
                 <FileDiffContent
                   file={{
                     path: draftDiff.path,
