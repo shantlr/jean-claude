@@ -91,6 +91,7 @@ import { ProjectPipelineSettings } from '@/features/project/ui-project-pipeline-
 import type { ProjectPriority } from '@shared/feed-types';
 import { ProjectSkillsSettings } from '@/features/project/ui-project-skills-settings';
 import { ProjectWorktreeSettings } from '@/features/project/ui-project-worktree-settings';
+import { PromptPrefaceList } from '@/features/settings/ui-prompt-preface-list';
 import { ProtectedBranchesInput } from './protected-branches-input';
 import { RepoLink } from '@/features/project/ui-repo-link';
 import { RunCommandsConfig } from '@/features/project/ui-run-commands-config';
@@ -107,18 +108,7 @@ import { WorkItemsLink } from '@/features/project/ui-work-items-link';
 
 const PROMPT_PREFACE_MODE_OPTIONS = [
   { value: 'inherit', label: 'Use global' },
-  { value: 'extend', label: 'Extend global' },
   { value: 'override', label: 'Override global' },
-];
-
-const PROMPT_PREFACE_PLACEMENT_OPTIONS = [
-  { value: 'before', label: 'Before user prompt' },
-  { value: 'after', label: 'After user prompt' },
-];
-
-const PROMPT_PREFACE_FREQUENCY_OPTIONS = [
-  { value: 'initial', label: 'Initial prompt only' },
-  { value: 'each', label: 'Each prompt' },
 ];
 
 export type ProjectSettingsMenuItem =
@@ -149,13 +139,6 @@ function ProjectPromptPrefaceSettings({
   const { data: setting, isLoading } =
     useProjectPromptPrefaceSetting(projectPath);
   const updateSetting = useUpdateProjectPromptPrefaceSetting(projectPath);
-  const [draftText, setDraftText] = useState('');
-
-  useEffect(() => {
-    if (setting) {
-      startTransition(() => setDraftText(setting.text));
-    }
-  }, [setting]);
 
   if (isLoading || !setting) {
     return <p className="text-ink-3">Loading...</p>;
@@ -168,8 +151,8 @@ function ProjectPromptPrefaceSettings({
       <div>
         <h2 className="text-ink-1 text-lg font-semibold">Prompt Preface</h2>
         <p className="text-ink-3 mt-1 text-sm">
-          Configure project instructions to inherit, extend, or replace the
-          global prompt preface.
+          Configure project instructions to inherit or replace global prompt
+          prefaces.
         </p>
       </div>
 
@@ -183,7 +166,6 @@ function ProjectPromptPrefaceSettings({
           onChange={(mode) =>
             updateSetting.mutate({
               ...setting,
-              text: draftText,
               mode: mode as typeof setting.mode,
             })
           }
@@ -191,55 +173,11 @@ function ProjectPromptPrefaceSettings({
         />
       </div>
 
-      <Textarea
-        size="md"
-        value={draftText}
+      <PromptPrefaceList
+        entries={setting.entries}
         disabled={controlsDisabled}
-        onChange={(e) => setDraftText(e.target.value)}
-        onBlur={() => updateSetting.mutate({ ...setting, text: draftText })}
-        placeholder="Example: In this project, prefer Zustand selectors and avoid unstable selector outputs."
-        rows={8}
+        onChange={(entries) => updateSetting.mutate({ ...setting, entries })}
       />
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className="text-ink-1 mb-1 block text-sm font-medium">
-            Placement
-          </label>
-          <Select
-            value={setting.placement}
-            options={PROMPT_PREFACE_PLACEMENT_OPTIONS}
-            disabled={controlsDisabled}
-            onChange={(placement) =>
-              updateSetting.mutate({
-                ...setting,
-                text: draftText,
-                placement: placement as typeof setting.placement,
-              })
-            }
-            className="w-full justify-between"
-          />
-        </div>
-
-        <div>
-          <label className="text-ink-1 mb-1 block text-sm font-medium">
-            Frequency
-          </label>
-          <Select
-            value={setting.frequency}
-            options={PROMPT_PREFACE_FREQUENCY_OPTIONS}
-            disabled={controlsDisabled}
-            onChange={(frequency) =>
-              updateSetting.mutate({
-                ...setting,
-                text: draftText,
-                frequency: frequency as typeof setting.frequency,
-              })
-            }
-            className="w-full justify-between"
-          />
-        </div>
-      </div>
     </div>
   );
 }

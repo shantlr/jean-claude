@@ -3,6 +3,7 @@ import {
   type BackendDefaultModelsSetting,
   type CalendarNotificationsSetting,
   DEFAULT_TASK_NOTIFICATION_MODES,
+  normalizePromptPrefaceSetting,
   type RateLimitSwapSetting,
   SETTINGS_DEFINITIONS,
   type SummaryModelsSetting,
@@ -190,6 +191,9 @@ function normalizeSettingValue<K extends keyof AppSettings>(
   }
   if (key === 'workActivity') {
     return normalizeWorkActivitySetting(value) as AppSettings[K];
+  }
+  if (key === 'promptPreface') {
+    return normalizePromptPrefaceSetting(value) as AppSettings[K];
   }
   return null;
 }

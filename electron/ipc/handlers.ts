@@ -4054,9 +4054,10 @@ export function registerIpcHandlers() {
       return writeBackendUserConfig({ backend, content });
     },
   );
-  ipcMain.handle('projectPromptPreface:get', async (_, projectPath: string) =>
-    readProjectPromptPreface(projectPath),
-  );
+  ipcMain.handle('projectPromptPreface:get', async (_, projectPath: string) => {
+    const globalEntries = await SettingsRepository.get('promptPreface');
+    return readProjectPromptPreface(projectPath, globalEntries);
+  });
   ipcMain.handle(
     'projectPromptPreface:set',
     async (

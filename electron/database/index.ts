@@ -4,6 +4,8 @@ import { Kysely, Migrator, sql, SqliteDialect } from 'kysely';
 import { app } from 'electron';
 import Database from 'better-sqlite3';
 
+import type { PromptPrefaceEntry } from '@shared/prompt-preface-types';
+
 
 
 import { dbg } from '../lib/debug';
@@ -77,6 +79,16 @@ export async function migrateDatabase() {
     await sql`PRAGMA wal_checkpoint(TRUNCATE)`.execute(db);
     dbg.dbMigration('Post-migration: raw message vacuum complete');
   }
+
+  const promptPrefaceMigrationApplied = results?.some(
+    (r) =>
+      r.migrationName === '070_migrate_prompt_preface_array' &&
+      r.status === 'Success',
+  );
+
+  if (promptPrefaceMigrationApplied) {
+    await migrateProjectPromptPrefaces();
+  }
 }
 
 async function getTableColumnNames(tableName: string): Promise<Set<string>> {
@@ -141,6 +153,51 @@ async function ensureRunCommandEnvVarsSchema(): Promise<void> {
       row.envVarNames,
     )} WHERE id = ${row.id}`.execute(db);
   }
+}
+
+async function getGlobalPromptPrefaceEntries(): Promise<PromptPrefaceEntry[]> {
+  const row = await db
+    .selectFrom('settings')
+    .select('value')
+    .where('key', '=', 'promptPreface')
+    .executeTakeFirst();
+
+  if (!row) return [];
+
+  try {
+    const parsed = JSON.parse(row.value);
+    return Array.isArray(parsed) ? (parsed as PromptPrefaceEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function migrateProjectPromptPrefaces(): Promise<void> {
+  const { migrateProjectPromptPreface } = await import(
+    '../services/permission-settings-service'
+  );
+  const globalEntries = await getGlobalPromptPrefaceEntries();
+  const projects = await db.selectFrom('projects').select('path').execute();
+  let migratedCount = 0;
+
+  for (const project of projects) {
+    try {
+      if (await migrateProjectPromptPreface(project.path, globalEntries)) {
+        migratedCount += 1;
+      }
+    } catch (error) {
+      dbg.dbMigration(
+        'Failed to migrate project prompt preface for %s: %O',
+        project.path,
+        error,
+      );
+    }
+  }
+
+  dbg.dbMigration(
+    'Post-migration: migrated %d project prompt preface settings',
+    migratedCount,
+  );
 }
 
 /**

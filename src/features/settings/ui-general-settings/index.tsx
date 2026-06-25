@@ -78,24 +78,14 @@ import { Button } from '@/common/ui/button';
 import { Checkbox } from '@/common/ui/checkbox';
 import { Input } from '@/common/ui/input';
 import { ModelSelector } from '@/features/agent/ui-model-selector';
+import { PromptPrefaceList } from '@/features/settings/ui-prompt-preface-list';
 import { Select } from '@/common/ui/select';
-import { Textarea } from '@/common/ui/textarea';
 import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
 import { useBackendModels } from '@/hooks/use-backend-models';
 import { useDeleteWorkActivity } from '@/hooks/use-work-activity';
 import { useToastStore } from '@/stores/toasts';
 
 
-
-const PROMPT_PREFACE_PLACEMENT_OPTIONS = [
-  { value: 'before', label: 'Before user prompt' },
-  { value: 'after', label: 'After user prompt' },
-];
-
-const PROMPT_PREFACE_FREQUENCY_OPTIONS = [
-  { value: 'initial', label: 'Initial prompt only' },
-  { value: 'each', label: 'Each prompt' },
-];
 
 const MEETING_JOIN_TARGET_OPTIONS = [
   { value: 'web', label: 'Web browser' },
@@ -310,13 +300,6 @@ export function EditorSettings() {
 export function PromptPrefaceSettings() {
   const { data: setting, isLoading } = usePromptPrefaceSetting();
   const updateSetting = useUpdatePromptPrefaceSetting();
-  const [draftText, setDraftText] = useState('');
-
-  useEffect(() => {
-    if (setting) {
-      startTransition(() => setDraftText(setting.text));
-    }
-  }, [setting]);
 
   if (isLoading || !setting) {
     return <p className="text-ink-3">Loading...</p>;
@@ -324,52 +307,13 @@ export function PromptPrefaceSettings() {
 
   return (
     <div className="space-y-4">
-      <Textarea
-        size="md"
-        value={draftText}
-        onChange={(e) => setDraftText(e.target.value)}
-        onBlur={() => updateSetting.mutate({ ...setting, text: draftText })}
-        placeholder="Example: Keep responses concise and prioritize minimal code changes."
-        rows={8}
+      <p className="text-ink-3 text-sm">
+        Enabled entries are concatenated in list order.
+      </p>
+      <PromptPrefaceList
+        entries={setting}
+        onChange={(entries) => updateSetting.mutate(entries)}
       />
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className="text-ink-1 mb-1 block text-sm font-medium">
-            Placement
-          </label>
-          <Select
-            value={setting.placement}
-            options={PROMPT_PREFACE_PLACEMENT_OPTIONS}
-            onChange={(placement) =>
-              updateSetting.mutate({
-                ...setting,
-                text: draftText,
-                placement: placement as typeof setting.placement,
-              })
-            }
-            className="w-full justify-between"
-          />
-        </div>
-
-        <div>
-          <label className="text-ink-1 mb-1 block text-sm font-medium">
-            Frequency
-          </label>
-          <Select
-            value={setting.frequency}
-            options={PROMPT_PREFACE_FREQUENCY_OPTIONS}
-            onChange={(frequency) =>
-              updateSetting.mutate({
-                ...setting,
-                text: draftText,
-                frequency: frequency as typeof setting.frequency,
-              })
-            }
-            className="w-full justify-between"
-          />
-        </div>
-      </div>
     </div>
   );
 }

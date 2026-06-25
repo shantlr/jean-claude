@@ -1315,9 +1315,13 @@ export const SETTINGS_DEFINITIONS = {
 } satisfies Record<string, SettingDefinition<unknown>>;
 
 export type {
+  PromptPrefaceEntry,
+  PromptPrefaceFrequency,
+  PromptPrefacePlacement,
   PromptPrefaceSetting,
   ProjectPromptPrefaceSetting,
 } from './prompt-preface-types';
+export { normalizePromptPrefaceSetting } from './prompt-preface-types';
 
 export type AppSettings = {
   [K in keyof typeof SETTINGS_DEFINITIONS]: (typeof SETTINGS_DEFINITIONS)[K]['defaultValue'];

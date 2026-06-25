@@ -7,6 +7,7 @@ import writeFileAtomic from 'write-file-atomic';
 import {
   DEFAULT_PROJECT_PROMPT_PREFACE_SETTING,
   isProjectPromptPrefaceSetting,
+  normalizeProjectPromptPrefaceSetting,
 } from '@shared/prompt-preface-types';
 import {
   parseCompoundCommand,
@@ -57,7 +58,7 @@ function normalizeSettingsShape(
         : {}),
     },
     ...(parsed.worktree ? { worktree: parsed.worktree } : {}),
-    ...(isProjectPromptPrefaceSetting(parsed.promptPreface)
+    ...(parsed.promptPreface && typeof parsed.promptPreface === 'object'
       ? { promptPreface: parsed.promptPreface }
       : {}),
   };
@@ -238,9 +239,37 @@ export async function writeSettings(
 
 export async function readProjectPromptPreface(
   rootDir: string,
+  globalEntries: import('@shared/prompt-preface-types').PromptPrefaceEntry[] = [],
 ): Promise<import('@shared/prompt-preface-types').ProjectPromptPrefaceSetting> {
   const settings = await readSettings(rootDir);
-  return settings.promptPreface ?? DEFAULT_PROJECT_PROMPT_PREFACE_SETTING;
+  if (!settings.promptPreface) return DEFAULT_PROJECT_PROMPT_PREFACE_SETTING;
+  return (
+    normalizeProjectPromptPrefaceSetting({
+      value: settings.promptPreface,
+      globalEntries,
+    }) ?? DEFAULT_PROJECT_PROMPT_PREFACE_SETTING
+  );
+}
+
+export async function migrateProjectPromptPreface(
+  rootDir: string,
+  globalEntries: import('@shared/prompt-preface-types').PromptPrefaceEntry[] = [],
+): Promise<boolean> {
+  return withProjectWriteLock(rootDir, async () => {
+    const settings = await readSettings(rootDir);
+    if (!settings.promptPreface) return false;
+    if (isProjectPromptPrefaceSetting(settings.promptPreface)) return false;
+
+    const normalized = normalizeProjectPromptPrefaceSetting({
+      value: settings.promptPreface,
+      globalEntries,
+    });
+    if (!normalized) return false;
+
+    settings.promptPreface = normalized;
+    await writeSettings(rootDir, settings);
+    return true;
+  });
 }
 
 export async function writeProjectPromptPreface(
