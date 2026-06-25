@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react';
 import clsx from 'clsx';
 
@@ -38,9 +39,107 @@ import { useRunCommands } from '@/hooks/use-run-commands';
 import { TASK_PANEL_HEADER_HEIGHT_CLS } from '../constants';
 
 const EMPTY_RUN_COMMAND_LOGS: RunCommandLogs = {};
+const RUN_COMMAND_LOG_RENDER_THROTTLE_MS = 500;
 
 function hasLogContent(log: RunCommandLogState | null | undefined): boolean {
   return getRunCommandLogLineCount(log) > 0;
+}
+
+function shouldFlushRunCommandLogsImmediately({
+  previous,
+  next,
+}: {
+  previous: RunCommandLogs;
+  next: RunCommandLogs;
+}): boolean {
+  const previousIds = Object.keys(previous);
+  const nextIds = new Set(Object.keys(next));
+
+  for (const commandId of previousIds) {
+    const previousLog = previous[commandId];
+    const nextLog = next[commandId];
+
+    if (!nextIds.has(commandId)) return true;
+    if (getRunCommandLogLineCount(nextLog) < getRunCommandLogLineCount(previousLog)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function useThrottledRunCommandLogs(taskId: string): RunCommandLogs {
+  const getSnapshot = useCallback(
+    () =>
+      useTaskMessagesStore.getState().runCommandLogs[taskId] ??
+      EMPTY_RUN_COMMAND_LOGS,
+    [taskId],
+  );
+
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => {
+      let lastFlushAt = 0;
+      let timeout: ReturnType<typeof setTimeout> | null = null;
+
+      const flush = () => {
+        timeout = null;
+        lastFlushAt = Date.now();
+        onStoreChange();
+      };
+
+      const unsubscribe = useTaskMessagesStore.subscribe(
+        (state, previousState) => {
+          if (state.runCommandLogs === previousState.runCommandLogs) return;
+
+          const previousLogs =
+            previousState.runCommandLogs[taskId] ?? EMPTY_RUN_COMMAND_LOGS;
+          const nextLogs = state.runCommandLogs[taskId] ?? EMPTY_RUN_COMMAND_LOGS;
+          if (nextLogs === previousLogs) return;
+
+          if (
+            shouldFlushRunCommandLogsImmediately({
+              previous: previousLogs,
+              next: nextLogs,
+            })
+          ) {
+            if (timeout) {
+              clearTimeout(timeout);
+              timeout = null;
+            }
+            flush();
+            return;
+          }
+
+          const elapsed = Date.now() - lastFlushAt;
+          if (elapsed >= RUN_COMMAND_LOG_RENDER_THROTTLE_MS) {
+            if (timeout) {
+              clearTimeout(timeout);
+              timeout = null;
+            }
+            flush();
+            return;
+          }
+
+          if (!timeout) {
+            timeout = setTimeout(
+              flush,
+              RUN_COMMAND_LOG_RENDER_THROTTLE_MS - elapsed,
+            );
+          }
+        },
+      );
+
+      return () => {
+        unsubscribe();
+        if (timeout) {
+          clearTimeout(timeout);
+        }
+      };
+    },
+    [taskId],
+  );
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
 function logIncludesQuery(
@@ -126,9 +225,7 @@ export function CommandLogsPane({
     confirmKillPorts,
     dismissPortsError,
   } = useRunCommands({ taskId, projectId, workingDir });
-  const runCommandLogs =
-    useTaskMessagesStore((state) => state.runCommandLogs[taskId]) ??
-    EMPTY_RUN_COMMAND_LOGS;
+  const runCommandLogs = useThrottledRunCommandLogs(taskId);
   const resetRunCommandLogs = useTaskMessagesStore(
     (state) => state.resetRunCommandLogs,
   );
