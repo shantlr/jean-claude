@@ -60,7 +60,8 @@ git clone https://github.com/oraios/serena
 
 **Tools:**
 - \`run_agent\` — Run a full agent session to complete a task
-- \`run_review\` — Run a read-only code review
+- \`ask_question\` — Ask the user questions through the Jean-Claude task UI
+- \`run_review\` — Run a read-only code review, available only in review task steps
 
 **Safety:**
 - Maximum nesting depth of 3 levels

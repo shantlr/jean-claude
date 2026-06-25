@@ -9,6 +9,7 @@ import { getJcMcpServerPath } from './jc-mcp-server-path';
 export function buildJcMcpServersConfigForCwd({
   cwd,
   questionBridge,
+  enableReviewTool = false,
   environmentMode = 'env',
 }: {
   cwd: string;
@@ -19,6 +20,7 @@ export function buildJcMcpServersConfigForCwd({
     registrationId?: string;
     token: string;
   };
+  enableReviewTool?: boolean;
   environmentMode?: 'env' | 'argv';
 }): Record<
   string,
@@ -35,6 +37,7 @@ export function buildJcMcpServersConfigForCwd({
       ? { JC_MCP_REGISTRATION_ID: questionBridge.registrationId }
       : {}),
     JC_MCP_AUTH_TOKEN: questionBridge.token,
+    ...(enableReviewTool ? { JC_MCP_ENABLE_REVIEW_TOOL: '1' } : {}),
   };
 
   if (environmentMode === 'env') {

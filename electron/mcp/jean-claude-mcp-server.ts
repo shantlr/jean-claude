@@ -34,6 +34,10 @@ const THINKING_EFFORT_ENUM = z.enum([
   'xhigh',
 ]);
 
+function isReviewToolEnabled(): boolean {
+  return process.env.JC_MCP_ENABLE_REVIEW_TOOL === '1';
+}
+
 function getMcpWorkingDirectory(): string {
   const workdirArgIndex = process.argv.indexOf('--workdir');
   const workdirArg =
@@ -63,6 +67,7 @@ function buildSubAgentEnv(currentDepth: number): Record<string, string> {
   const {
     NODE_ENV: _nodeEnv,
     OPENCODE_CONFIG_CONTENT: _opencodeConfig,
+    JC_MCP_ENABLE_REVIEW_TOOL: _reviewTool,
     ...rest
   } = process.env;
   return {
@@ -341,79 +346,81 @@ async function main(): Promise<void> {
     },
   );
 
-  // --- Tool: run_review ---
-  server.tool(
-    'run_review',
-    'Run a read-only code review. The agent can only read files and produce text output, it cannot modify anything.',
-    {
-      prompt: z.string().describe('What to review and what to focus on'),
-      backend: BACKEND_ENUM.optional().describe(
-        'Backend to run the review with',
-      ),
-      model: z
-        .string()
-        .optional()
-        .describe('Model to use for the review (e.g. opus, sonnet, haiku)'),
-      thinkingEffort: THINKING_EFFORT_ENUM.optional().describe(
-        'Thinking effort / OpenCode variant to use for the review',
-      ),
-    },
-    async ({ prompt, backend, model, thinkingEffort }) => {
-      const currentDepth = getCurrentDepth();
+  if (isReviewToolEnabled()) {
+    // --- Tool: run_review ---
+    server.tool(
+      'run_review',
+      'Run a read-only code review. The agent can only read files and produce text output, it cannot modify anything.',
+      {
+        prompt: z.string().describe('What to review and what to focus on'),
+        backend: BACKEND_ENUM.optional().describe(
+          'Backend to run the review with',
+        ),
+        model: z
+          .string()
+          .optional()
+          .describe('Model to use for the review (e.g. opus, sonnet, haiku)'),
+        thinkingEffort: THINKING_EFFORT_ENUM.optional().describe(
+          'Thinking effort / OpenCode variant to use for the review',
+        ),
+      },
+      async ({ prompt, backend, model, thinkingEffort }) => {
+        const currentDepth = getCurrentDepth();
 
-      if (currentDepth >= MAX_DEPTH) {
-        console.error(
-          `[jean-claude-mcp] Recursion depth ${currentDepth} exceeds max ${MAX_DEPTH}`,
-        );
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: `Error: Maximum agent nesting depth (${MAX_DEPTH}) reached. Cannot spawn another sub-agent.`,
-            },
-          ],
-          isError: true,
-        };
-      }
+        if (currentDepth >= MAX_DEPTH) {
+          console.error(
+            `[jean-claude-mcp] Recursion depth ${currentDepth} exceeds max ${MAX_DEPTH}`,
+          );
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: `Error: Maximum agent nesting depth (${MAX_DEPTH}) reached. Cannot spawn another sub-agent.`,
+              },
+            ],
+            isError: true,
+          };
+        }
 
-      try {
-        console.error(
-          `[jean-claude-mcp] run_review: depth=${currentDepth}, backend=${backend ?? 'claude-code'}, model=${model ?? 'default'}, thinkingEffort=${thinkingEffort ?? 'default'}, prompt="${prompt.slice(0, 100)}..."`,
-        );
+        try {
+          console.error(
+            `[jean-claude-mcp] run_review: depth=${currentDepth}, backend=${backend ?? 'claude-code'}, model=${model ?? 'default'}, thinkingEffort=${thinkingEffort ?? 'default'}, prompt="${prompt.slice(0, 100)}..."`,
+          );
 
-        const result = await runSubAgent({
-          backend: backend ?? 'claude-code',
-          prompt,
-          model,
-          thinkingEffort,
-          currentDepth,
-          readOnly: true,
-        });
+          const result = await runSubAgent({
+            backend: backend ?? 'claude-code',
+            prompt,
+            model,
+            thinkingEffort,
+            currentDepth,
+            readOnly: true,
+          });
 
-        console.error(
-          `[jean-claude-mcp] run_review completed: ${result.length} chars`,
-        );
+          console.error(
+            `[jean-claude-mcp] run_review completed: ${result.length} chars`,
+          );
 
-        return {
-          content: [{ type: 'text' as const, text: result }],
-        };
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        console.error(`[jean-claude-mcp] run_review error: ${errorMessage}`);
+          return {
+            content: [{ type: 'text' as const, text: result }],
+          };
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          console.error(`[jean-claude-mcp] run_review error: ${errorMessage}`);
 
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: `Error running review: ${errorMessage}`,
-            },
-          ],
-          isError: true,
-        };
-      }
-    },
-  );
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: `Error running review: ${errorMessage}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    );
+  }
 
   // --- Tool: ask_question ---
   server.tool(
