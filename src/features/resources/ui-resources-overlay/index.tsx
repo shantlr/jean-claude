@@ -1,4 +1,5 @@
 import { Cpu, X } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { type ReactNode, useMemo } from 'react';
 import FocusLock from 'react-focus-lock';
 import { useQueries } from '@tanstack/react-query';
@@ -392,6 +393,7 @@ export function ResourcesOverlay({ onClose }: { onClose: () => void }) {
   const layer = useKeyboardLayer('dialog', { exclusive: true });
   const { data: memory, history: memoryHistory } = useMemoryUsage();
   const { data: snapshots = [], historyByStepId } = useAgentResourceSnapshots();
+  const shouldReduceMotion = useReducedMotion();
 
   const supportedSnapshots = useMemo(
     () =>
@@ -655,26 +657,34 @@ export function ResourcesOverlay({ onClose }: { onClose: () => void }) {
                 ) : (
                   <div>
                     {supportedSnapshots.map((snapshot, index) => (
-                      <SessionRow
+                      <motion.div
                         key={snapshot.stepId}
-                        snapshot={snapshot}
-                        history={historyByStepId[snapshot.stepId] ?? []}
-                        rootCpu={
-                          uniqueProcessSamples.latestByRoot.get(
-                            snapshotRootKey(snapshot),
-                          )?.cpuPercent ?? snapshot.cpuPercent
-                        }
-                        sharedRootCount={
-                          rootSessionCounts.get(snapshotRootKey(snapshot)) ?? 1
-                        }
-                        taskName={
-                          taskQueries[index]?.data?.name ?? snapshot.taskId
-                        }
-                        stepName={
-                          stepQueries[index]?.data?.name ?? snapshot.stepId
-                        }
-                        totalCpu={totalCpu}
-                      />
+                        layout={shouldReduceMotion ? false : 'position'}
+                        transition={{
+                          duration: 0.26,
+                          ease: [0.2, 0, 0, 1],
+                        }}
+                      >
+                        <SessionRow
+                          snapshot={snapshot}
+                          history={historyByStepId[snapshot.stepId] ?? []}
+                          rootCpu={
+                            uniqueProcessSamples.latestByRoot.get(
+                              snapshotRootKey(snapshot),
+                            )?.cpuPercent ?? snapshot.cpuPercent
+                          }
+                          sharedRootCount={
+                            rootSessionCounts.get(snapshotRootKey(snapshot)) ?? 1
+                          }
+                          taskName={
+                            taskQueries[index]?.data?.name ?? snapshot.taskId
+                          }
+                          stepName={
+                            stepQueries[index]?.data?.name ?? snapshot.stepId
+                          }
+                          totalCpu={totalCpu}
+                        />
+                      </motion.div>
                     ))}
                   </div>
                 )}
