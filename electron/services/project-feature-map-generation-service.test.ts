@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildProjectFeatureMapPrompt,
+  copyExistingProjectFeatureMapToTemp,
   parseProjectFeatureMapContent,
   saveProjectFeatureMapFromTemp,
 } from './project-feature-map-generation-service';
@@ -21,7 +22,7 @@ describe('buildProjectFeatureMapPrompt', () => {
     });
 
     expect(prompt).toContain(
-      'Existing feature map: /workspace/jean-claude/.jean-claude/feature-map.yaml',
+      'Existing feature map copy: /workspace/jean-claude/.jean-claude/feature-map.yaml',
     );
   });
 
@@ -39,6 +40,10 @@ describe('buildProjectFeatureMapPrompt', () => {
       'Use the "project-feature-mapping" skill to update the feature map.',
     );
     expect(prompt).toContain('Preserve accurate existing nodes');
+    expect(prompt).toContain('Read the existing feature map copy first.');
+    expect(prompt).toContain(
+      'Iterate on the existing feature map; do not fully rewrite it from scratch.',
+    );
     expect(prompt).toContain(
       'Explore code to find missing, newly added, or shallowly documented user-facing features.',
     );
@@ -57,6 +62,33 @@ describe('buildProjectFeatureMapPrompt', () => {
     expect(prompt).toContain('id: stable string id');
     expect(prompt).toContain('Preserve existing ids');
     expect(prompt).not.toContain('Maximum feature depth');
+  });
+});
+
+describe('copyExistingProjectFeatureMapToTemp', () => {
+  it('copies an existing feature map into the temp directory', async () => {
+    await mkdir(tmpdir(), { recursive: true });
+    const tempDir = await mkdtemp(path.join(tmpdir(), 'feature-map-'));
+    const existingFeatureMapPath = path.join(tempDir, 'feature-map.yaml');
+    const workingDir = path.join(tempDir, 'work');
+    await writeFile(existingFeatureMapPath, 'features: []');
+
+    const copiedPath = await copyExistingProjectFeatureMapToTemp({
+      existingFeatureMapPath,
+      tempDir: workingDir,
+    });
+
+    expect(copiedPath).toBe(path.join(workingDir, 'existing-feature-map.yaml'));
+    await expect(readFile(copiedPath!, 'utf8')).resolves.toBe('features: []');
+  });
+
+  it('returns null when no existing feature map exists', async () => {
+    const copiedPath = await copyExistingProjectFeatureMapToTemp({
+      existingFeatureMapPath: null,
+      tempDir: path.join(tmpdir(), 'feature-map-missing'),
+    });
+
+    expect(copiedPath).toBeNull();
   });
 });
 

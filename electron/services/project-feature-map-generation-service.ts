@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
@@ -64,6 +64,25 @@ export async function getExistingProjectFeatureMapPath(
     }
   }
   return null;
+}
+
+export async function copyExistingProjectFeatureMapToTemp({
+  existingFeatureMapPath,
+  tempDir,
+}: {
+  existingFeatureMapPath: string | null;
+  tempDir: string;
+}): Promise<string | null> {
+  if (!existingFeatureMapPath) return null;
+
+  await mkdir(tempDir, { recursive: true });
+  const ext = path.extname(existingFeatureMapPath).toLowerCase();
+  const tempPath = path.join(
+    tempDir,
+    `existing-feature-map${ext === '.json' ? '.json' : '.yaml'}`,
+  );
+  await copyFile(existingFeatureMapPath, tempPath);
+  return tempPath;
 }
 
 export async function saveProjectFeatureMapFromTemp({
@@ -145,7 +164,7 @@ export function buildProjectFeatureMapPrompt({
 Repository path: ${project.path}
 Output file: ${tempFilePath}${
     existingFeatureMapPath
-      ? `\nExisting feature map: ${existingFeatureMapPath}`
+      ? `\nExisting feature map copy: ${existingFeatureMapPath}`
       : ''
   }`;
   const skillInstruction = skillName
@@ -159,7 +178,8 @@ ${FEATURE_MAP_YAML_SCHEMA}
   const iterationInstructions = existingFeatureMapPath
     ? `
 Update mode:
-- Read the existing feature map first.
+- Read the existing feature map copy first.
+- Iterate on the existing feature map; do not fully rewrite it from scratch.
 - Preserve accurate existing nodes, names, summaries, and structure.
 - Explore code to find missing, newly added, or shallowly documented user-facing features.
 - Add or refine only the parts needed to close gaps.

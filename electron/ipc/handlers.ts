@@ -194,6 +194,7 @@ import {
 import {
   buildProjectFeatureMapPrompt,
   cleanupFeatureMapTempDir,
+  copyExistingProjectFeatureMapToTemp,
   FEATURE_MAP_GIT_PATH,
   getExistingProjectFeatureMapPath,
   getFeatureMapTempPaths,
@@ -997,12 +998,18 @@ export function registerIpcHandlers() {
           'project-feature-map',
           project.aiSkillSlots,
         );
+        const existingFeatureMapPath = await getExistingProjectFeatureMapPath(
+          project.path,
+        );
+        const existingFeatureMapCopyPath =
+          await copyExistingProjectFeatureMapToTemp({
+            existingFeatureMapPath,
+            tempDir: paths.tempDir,
+          });
         const prompt = buildProjectFeatureMapPrompt({
           project,
           tempFilePath: paths.tempFilePath,
-          existingFeatureMapPath: await getExistingProjectFeatureMapPath(
-            project.path,
-          ),
+          existingFeatureMapPath: existingFeatureMapCopyPath,
           skillName: slotConfig?.skillName,
         });
         const meta: FeatureMapStepMeta = {
