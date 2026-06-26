@@ -26,6 +26,8 @@
     "dev:tmp": "JC_DISABLE_USAGE_TRACKING=1 JC_SKIP_INSTANCE_LOCK=1 ./scripts/dev-tmp.sh",
     "dev:tmp:reuse": "JC_DISABLE_USAGE_TRACKING=1 JC_SKIP_INSTANCE_LOCK=1 ./scripts/dev-tmp.sh --auto-reuse-db",
     "dev:tmp:override": "JC_DISABLE_USAGE_TRACKING=1 JC_SKIP_INSTANCE_LOCK=1 ./scripts/dev-tmp.sh --auto-override-db",
+    "dev:symlink": "JC_DISABLE_USAGE_TRACKING=1 JC_SKIP_INSTANCE_LOCK=1 ./scripts/dev-symlink.sh",
+    "dev:symlink:update": "JC_DISABLE_USAGE_TRACKING=1 JC_SKIP_INSTANCE_LOCK=1 ./scripts/dev-symlink-update.sh",
     "build": "electron-vite build",
     "preview": "JC_PREVIEW=1 electron-vite preview",
     "preview:skip-build": "JC_PREVIEW=1 electron-vite preview --skipBuild",
