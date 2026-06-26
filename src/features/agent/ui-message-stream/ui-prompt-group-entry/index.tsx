@@ -283,6 +283,17 @@ function shouldRenderChildMessage(dm: DisplayMessage): boolean {
   return dm.kind !== 'entry' || dm.entry.type !== 'session-summary';
 }
 
+function hasActiveTextSelectionWithin(element: HTMLElement): boolean {
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed || !selection.toString().trim()) {
+    return false;
+  }
+
+  return [selection.anchorNode, selection.focusNode].some(
+    (node) => node && element.contains(node),
+  );
+}
+
 function getLastAssistantMessage(
   childMessages: DisplayMessage[],
 ): { text: string; entryId: string } | null {
@@ -344,12 +355,17 @@ const PromptSection = memo(function PromptSection({
   const visiblePromptText = promptContent.contentWithoutImages;
   const isLong = visiblePromptText.length > PROMPT_MAX_CHARS;
   const [open, setOpen] = useState(false);
+  const handlePromptClick = useCallback((event: MouseEvent<HTMLElement>) => {
+    if (hasActiveTextSelectionWithin(event.currentTarget)) return;
+
+    setOpen((current) => !current);
+  }, []);
 
   return (
     <div
       className="group/prompt border-glass-border bg-glass-light relative rounded-md border transition-colors duration-100"
       style={isLong ? { cursor: 'pointer' } : undefined}
-      onClick={isLong ? () => setOpen(!open) : undefined}
+      onClick={isLong ? handlePromptClick : undefined}
       onContextMenu={
         onContextMenu ? (e) => onContextMenu(e, group.promptEntry) : undefined
       }
