@@ -573,6 +573,44 @@ describe('cache store foundation', () => {
     expect(cache$.resources['feed:tasks'].get()?.stale).toBe(true);
   });
 
+  it('preserves child task rail when parent task upsert clears unread state', () => {
+    applyCacheEvent({ type: 'project.upsert', project: createProject() });
+    setDocumentResource('feed:tasks', [
+      createFeedItem({
+        id: 'task:task-1',
+        taskId: 'task-1',
+        hasUnread: true,
+        children: [
+          createFeedItem({
+            id: 'task:child-task',
+            taskId: 'child-task',
+            parentTaskId: 'task-1',
+          }),
+        ],
+      }),
+    ]);
+
+    applyCacheEvent({
+      type: 'task.upsert',
+      task: createTask({ id: 'task-1', hasUnread: false }),
+    });
+
+    expect(cache$.documents['feed:tasks'].data.get()).toMatchObject([
+      {
+        id: 'task:task-1',
+        taskId: 'task-1',
+        hasUnread: false,
+        children: [
+          {
+            id: 'task:child-task',
+            taskId: 'child-task',
+          },
+        ],
+      },
+    ]);
+    expect(cache$.resources['feed:tasks'].get()?.stale).toBe(true);
+  });
+
   it('optimistically moves child tasks to the feed root', () => {
     applyCacheEvent({ type: 'project.upsert', project: createProject() });
     setDocumentResource('feed:tasks', [

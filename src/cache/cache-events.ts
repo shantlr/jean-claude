@@ -296,8 +296,26 @@ function insertTaskFeedItemInList(
   return { items: nextItems, inserted: true };
 }
 
+function findTaskFeedItem(
+  items: FeedItem[],
+  taskId: string,
+): FeedItem | undefined {
+  for (const item of items) {
+    if (item.source === 'task' && item.taskId === taskId) {
+      return item;
+    }
+
+    const child = item.children
+      ? findTaskFeedItem(item.children, taskId)
+      : undefined;
+    if (child) return child;
+  }
+
+  return undefined;
+}
+
 function upsertTaskFeedDocument(task: Task) {
-  const nextItem = taskToFeedItem(task);
+  let nextItem = taskToFeedItem(task);
   if (!nextItem) {
     if (nextItem === null) {
       removeTaskFromFeedDocument(task.id);
@@ -309,6 +327,11 @@ function upsertTaskFeedDocument(task: Task) {
     | FeedItem[]
     | undefined;
   if (!items) return;
+
+  const existingItem = findTaskFeedItem(items, task.id);
+  if (existingItem?.children && !nextItem.children) {
+    nextItem = { ...nextItem, children: existingItem.children };
+  }
 
   const withoutExisting = removeTaskFeedItemFromList(items, task.id);
   const result = insertTaskFeedItemInList(
