@@ -16,6 +16,7 @@ export function PrInlineCommentThread({
   mentionOptions,
   onSearchMentions,
   onUploadImage,
+  readOnly = false,
 }: {
   thread: CommentThread;
   projectId: string;
@@ -25,6 +26,7 @@ export function PrInlineCommentThread({
   mentionOptions?: MentionOption[];
   onSearchMentions?: (query: string) => Promise<MentionOption[]>;
   onUploadImage?: (image: PromptImagePart, fileName: string) => Promise<string>;
+  readOnly?: boolean;
 }) {
   return (
     <PrInlineCommentTimeline
@@ -55,6 +57,7 @@ export function PrInlineCommentThread({
       mentionOptions={mentionOptions}
       onSearchMentions={onSearchMentions}
       onUploadImage={onUploadImage}
+      readOnly={readOnly}
     />
   );
 }

@@ -24,6 +24,7 @@ import {
   replaceAzureDevOpsMentions,
 } from '@/lib/azure-devops-mentions';
 import {
+  type PullRequestRepoInfo,
   useAddThreadReply,
   useCurrentAzureUser,
   useDeleteThreadComment,
@@ -84,6 +85,8 @@ export function PrComments({
   mentionDisplayNames,
   mentionOptions = EMPTY_MENTION_OPTIONS,
   onSearchMentions,
+  readOnly = false,
+  repoInfo,
 }: {
   threads: AzureDevOpsCommentThread[];
   providerId?: string;
@@ -100,6 +103,8 @@ export function PrComments({
   mentionDisplayNames?: MentionDisplayNames;
   mentionOptions?: MentionOption[];
   onSearchMentions?: (query: string) => Promise<MentionOption[]>;
+  readOnly?: boolean;
+  repoInfo?: PullRequestRepoInfo;
 }) {
   const [expandedResolved, setExpandedResolved] = useState<
     Record<number, boolean>
@@ -198,6 +203,8 @@ export function PrComments({
                 mentionOptions={mentionOptions}
                 onSearchMentions={onSearchMentions}
                 onUploadImage={onUploadImage}
+                readOnly={readOnly}
+                repoInfo={repoInfo}
               />
             );
           })}
@@ -381,6 +388,7 @@ function ThreadCodePreview({
   projectId,
   prId,
   onOpenFilePreview,
+  repoInfo,
 }: {
   filePath: string;
   startLine: number;
@@ -392,12 +400,14 @@ function ThreadCodePreview({
     lineStart: number;
     lineEnd: number;
   }) => void;
+  repoInfo?: PullRequestRepoInfo;
 }) {
   const { data: fileContent } = usePullRequestFileContent(
     projectId,
     prId,
     filePath,
     'head',
+    repoInfo,
   );
   const [tokens, setTokens] = useState<ThemedToken[][]>([]);
 
@@ -503,6 +513,8 @@ function CommentThread({
   mentionOptions,
   onSearchMentions,
   onUploadImage,
+  readOnly,
+  repoInfo,
 }: {
   thread: AzureDevOpsCommentThread;
   providerId?: string;
@@ -520,6 +532,8 @@ function CommentThread({
   mentionOptions?: MentionOption[];
   onSearchMentions?: (query: string) => Promise<MentionOption[]>;
   onUploadImage?: (image: PromptImagePart, fileName: string) => Promise<string>;
+  readOnly: boolean;
+  repoInfo?: PullRequestRepoInfo;
 }) {
   const resolved = !isActiveThread(thread);
 
@@ -552,6 +566,8 @@ function CommentThread({
           mentionOptions={mentionOptions}
           onSearchMentions={onSearchMentions}
           onUploadImage={onUploadImage}
+          readOnly={readOnly}
+          repoInfo={repoInfo}
         />
       )}
     </div>
@@ -569,6 +585,8 @@ function ExpandedThread({
   mentionOptions,
   onSearchMentions,
   onUploadImage,
+  readOnly,
+  repoInfo,
 }: {
   thread: AzureDevOpsCommentThread;
   providerId?: string;
@@ -584,6 +602,8 @@ function ExpandedThread({
   mentionOptions?: MentionOption[];
   onSearchMentions?: (query: string) => Promise<MentionOption[]>;
   onUploadImage?: (image: PromptImagePart, fileName: string) => Promise<string>;
+  readOnly: boolean;
+  repoInfo?: PullRequestRepoInfo;
 }) {
   const resolved = !isActiveThread(thread);
   const updateStatus = useUpdateThreadStatus(projectId, prId);
@@ -624,17 +644,19 @@ function ExpandedThread({
             )}
           </span>
           <div className="flex-1" />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(event) => {
-              event.stopPropagation();
-              handleReopen();
-            }}
-            loading={updateStatus.isPending}
-          >
-            Reopen
-          </Button>
+          {!readOnly && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleReopen();
+              }}
+              loading={updateStatus.isPending}
+            >
+              Reopen
+            </Button>
+          )}
           <ChevronUp className="text-ink-3 h-3.5 w-3.5" />
         </div>
       )}
@@ -658,6 +680,7 @@ function ExpandedThread({
               endLine={fileEnd}
               projectId={projectId}
               prId={prId}
+              repoInfo={repoInfo}
               onOpenFilePreview={onOpenFilePreview}
             />
           </div>
@@ -677,28 +700,33 @@ function ExpandedThread({
               mentionOptions={mentionOptions}
               onSearchMentions={onSearchMentions}
               onUploadImage={onUploadImage}
+              readOnly={readOnly}
             />
           ))}
         </div>
 
-        <ThreadReplyForm
-          threadId={thread.id}
-          projectId={projectId}
-          prId={prId}
-          canResolve={!resolved}
-          mentionOptions={mentionOptions}
-          onSearchMentions={onSearchMentions}
-          onUploadImage={onUploadImage}
-        />
-
-        <div className="mt-3 flex justify-end">
-          <StatusDropdown
-            status={thread.status}
+        {!readOnly && (
+          <ThreadReplyForm
             threadId={thread.id}
             projectId={projectId}
             prId={prId}
+            canResolve={!resolved}
+            mentionOptions={mentionOptions}
+            onSearchMentions={onSearchMentions}
+            onUploadImage={onUploadImage}
           />
-        </div>
+        )}
+
+        {!readOnly && (
+          <div className="mt-3 flex justify-end">
+            <StatusDropdown
+              status={thread.status}
+              threadId={thread.id}
+              projectId={projectId}
+              prId={prId}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -715,6 +743,7 @@ function ThreadComment({
   mentionOptions = EMPTY_MENTION_OPTIONS,
   onSearchMentions,
   onUploadImage,
+  readOnly,
 }: {
   comment: AzureDevOpsCommentThread['comments'][number];
   providerId?: string;
@@ -726,6 +755,7 @@ function ThreadComment({
   mentionOptions?: MentionOption[];
   onSearchMentions?: (query: string) => Promise<MentionOption[]>;
   onUploadImage?: (image: PromptImagePart, fileName: string) => Promise<string>;
+  readOnly: boolean;
 }) {
   const avatarUrl =
     comment.author.imageUrl && providerId
@@ -820,7 +850,7 @@ function ThreadComment({
               {formatRelativeTime(comment.publishedDate)}
             </span>
           </div>
-          {!isEditing && currentUser && (
+          {!readOnly && !isEditing && currentUser && (
             <button
               type="button"
               onClick={() => {
@@ -843,7 +873,7 @@ function ThreadComment({
               {likeCount > 0 && <span>{likeCount}</span>}
             </button>
           )}
-          {canEdit && !isEditing && (
+          {!readOnly && canEdit && !isEditing && (
             <div className="flex shrink-0 items-center gap-0.5">
               <IconButton
                 variant="ghost"
@@ -945,6 +975,7 @@ export function PrInlineCommentTimeline({
   mentionOptions = EMPTY_MENTION_OPTIONS,
   onSearchMentions,
   onUploadImage,
+  readOnly = false,
 }: {
   comments: PrTimelineComment[];
   providerId?: string;
@@ -957,6 +988,7 @@ export function PrInlineCommentTimeline({
   mentionOptions?: MentionOption[];
   onSearchMentions?: (query: string) => Promise<MentionOption[]>;
   onUploadImage?: (image: PromptImagePart, fileName: string) => Promise<string>;
+  readOnly?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const isResolved =
@@ -981,7 +1013,7 @@ export function PrInlineCommentTimeline({
         <div className="border-glass-border/40 flex items-center gap-2 border-b px-4 py-1.5">
           <CheckCircle2 className="text-status-done h-3.5 w-3.5" />
           <span className="text-ink-3 flex-1 text-[11px]">Resolved</span>
-          {threadId !== undefined && projectId && prId !== undefined && (
+          {!readOnly && threadId !== undefined && projectId && prId !== undefined && (
             <InlineThreadReopenButton
               threadId={threadId}
               projectId={projectId}
@@ -1005,6 +1037,7 @@ export function PrInlineCommentTimeline({
               mentionOptions={mentionOptions}
               onSearchMentions={onSearchMentions}
               onUploadImage={onUploadImage}
+              readOnly={readOnly}
             />
           ))
         ) : (
@@ -1063,6 +1096,7 @@ export function PrInlineCommentTimeline({
         {threadId !== undefined &&
           projectId &&
           prId !== undefined &&
+          !readOnly &&
           !isResolved && (
             <ThreadReplyForm
               threadId={threadId}

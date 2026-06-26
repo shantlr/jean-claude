@@ -14,6 +14,7 @@ import {
   useCommitFileContent,
 } from '@/hooks/use-pull-requests';
 import type { DiffFile } from '@/features/common/ui-file-diff';
+import type { PullRequestRepoInfo } from '@/hooks/use-pull-requests';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 
 
@@ -24,24 +25,27 @@ export function PrCommitDiffView({
   selectedFile,
   onSelectFile,
   bottomPadding = 0,
+  repoInfo,
 }: {
   projectId: string;
   commitId: string;
   selectedFile: string | null;
   onSelectFile: (filePath: string | null) => void;
   bottomPadding?: number;
+  repoInfo?: PullRequestRepoInfo;
 }) {
   const { data: files = [], isLoading: isFilesLoading } = useCommitChanges(
     projectId,
     commitId,
+    repoInfo,
   );
 
   const selectedFileData = files.find((f) => f.path === selectedFile);
 
   const { data: parentContent = '', isLoading: isParentLoading } =
-    useCommitFileContent(projectId, commitId, selectedFile, 'parent');
+    useCommitFileContent(projectId, commitId, selectedFile, 'parent', repoInfo);
   const { data: currentContent = '', isLoading: isCurrentLoading } =
-    useCommitFileContent(projectId, commitId, selectedFile, 'current');
+    useCommitFileContent(projectId, commitId, selectedFile, 'current', repoInfo);
 
   const diffFiles: DiffFile[] = useMemo(
     () =>

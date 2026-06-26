@@ -2884,6 +2884,25 @@ export function registerIpcHandlers() {
   );
 
   ipcMain.handle(
+    'azureDevOps:getPullRequestStatuses',
+    async (
+      _event,
+      params: {
+        providerId: string;
+        linkedPrs: Array<{ prId: number; projectId: string; repoId: string }>;
+      },
+    ) => {
+      const { getPullRequestStatuses } =
+        await import('../services/azure-devops-service');
+      const statuses = await getPullRequestStatuses(params);
+      return Array.from(statuses.entries()).map(([key, status]) => ({
+        key,
+        ...status,
+      }));
+    },
+  );
+
+  ipcMain.handle(
     'azureDevOps:updateWorkItemState',
     async (
       _event,

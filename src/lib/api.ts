@@ -258,6 +258,7 @@ export interface AzureDevOpsWorkItem {
   fields: {
     title: string;
     workItemType: string;
+    teamProject?: string;
     state: string;
     assignedTo?: string;
     description?: string;
@@ -266,8 +267,18 @@ export interface AzureDevOpsWorkItem {
   };
   testSteps?: TestStep[];
   parentId?: number;
+  childIds?: number[];
+  relatedWorkItemIds?: number[];
   linkedPrs?: Array<{ prId: number; projectId: string; repoId: string }>;
   relatedTestCaseIds?: number[];
+}
+
+export interface AzureDevOpsPullRequestStatus {
+  key: string;
+  status: 'active' | 'completed' | 'abandoned';
+  url: string;
+  isDraft: boolean;
+  mergeStatus?: 'succeeded' | 'conflicts' | 'failure' | 'notSet';
 }
 
 export interface AzureDevOpsWorkItemState {
@@ -658,6 +669,10 @@ export interface Api {
       providerId: string;
       workItemId: number;
     }) => Promise<AzureDevOpsWorkItem | null>;
+    getPullRequestStatuses: (params: {
+      providerId: string;
+      linkedPrs: Array<{ prId: number; projectId: string; repoId: string }>;
+    }) => Promise<AzureDevOpsPullRequestStatus[]>;
     getWorkItemStates: (params: {
       providerId: string;
       projectName: string;
@@ -1801,6 +1816,7 @@ export const api: Api = hasWindowApi
         },
         queryWorkItems: async () => [],
         getWorkItemById: async () => null,
+        getPullRequestStatuses: async () => [],
         getWorkItemStates: async () => [],
         updateWorkItemState: async () => {
           throw new Error('API not available');

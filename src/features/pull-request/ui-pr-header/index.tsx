@@ -99,9 +99,13 @@ function getBranchName(refName: string) {
 export function PrHeader({
   pr,
   projectId,
+  providerId,
+  readOnly = false,
 }: {
   pr: AzureDevOpsPullRequestDetails;
   projectId: string;
+  providerId?: string;
+  readOnly?: boolean;
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -120,6 +124,7 @@ export function PrHeader({
   const [titleError, setTitleError] = useState<string | null>(null);
   const sourceBranch = getBranchName(pr.sourceRefName);
   const targetBranch = getBranchName(pr.targetRefName);
+  const avatarProviderId = providerId ?? project?.repoProviderId;
   const { data: backendsSetting } = useBackendsSetting();
   const { data: backendDefaultModelsSetting } =
     useBackendDefaultModelsSetting();
@@ -289,14 +294,16 @@ export function PrHeader({
         <div className="flex-1" />
 
         {/* Actions */}
-        <button
-          onClick={handleCreateTaskFromPrBranch}
-          className="bg-acc/15 text-acc-ink border-acc/30 hover:bg-acc/25 flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          New Task
-        </button>
-        {pr.status === 'active' && (
+        {!readOnly && (
+          <button
+            onClick={handleCreateTaskFromPrBranch}
+            className="bg-acc/15 text-acc-ink border-acc/30 hover:bg-acc/25 flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New Task
+          </button>
+        )}
+        {!readOnly && pr.status === 'active' && (
           <button
             onClick={() => setIsReviewSetupOpen(true)}
             disabled={isCreating}
@@ -402,16 +409,18 @@ export function PrHeader({
                 <h1 className="text-ink-0 min-w-0 font-mono text-xl leading-tight font-semibold tracking-tight break-words">
                   {pr.title}
                 </h1>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  icon={<Edit3 className="h-3.5 w-3.5" />}
-                  onClick={() => setIsEditingTitle(true)}
-                  className="mt-0.5 shrink-0"
-                >
-                  Edit
-                </Button>
+                {!readOnly && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    icon={<Edit3 className="h-3.5 w-3.5" />}
+                    onClick={() => setIsEditingTitle(true)}
+                    className="mt-0.5 shrink-0"
+                  >
+                    Edit
+                  </Button>
+                )}
               </div>
             )}
 
@@ -422,9 +431,9 @@ export function PrHeader({
                 <UserAvatar
                   name={pr.createdBy.displayName}
                   imageUrl={
-                    pr.createdBy.imageUrl && project?.repoProviderId
+                    pr.createdBy.imageUrl && avatarProviderId
                       ? encodeProxyUrl(
-                          project.repoProviderId,
+                          avatarProviderId,
                           pr.createdBy.imageUrl,
                         )
                       : pr.createdBy.imageUrl
@@ -455,7 +464,7 @@ export function PrHeader({
               </div>
 
               {/* Vote/autocomplete controls */}
-              {pr.status === 'active' && !pr.isDraft && (
+              {!readOnly && pr.status === 'active' && !pr.isDraft && (
                 <>
                   <div className="flex-1" />
                   <PrVoteDropdown pr={pr} projectId={projectId} />
@@ -464,7 +473,7 @@ export function PrHeader({
               )}
 
               {/* Publish button for drafts */}
-              {pr.isDraft && pr.status === 'active' && (
+              {!readOnly && pr.isDraft && pr.status === 'active' && (
                 <>
                   <div className="flex-1" />
                   <button

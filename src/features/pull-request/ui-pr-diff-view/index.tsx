@@ -39,6 +39,7 @@ export function PrDiffView({
   mentionDisplayNames,
   mentionOptions = [],
   onSearchMentions,
+  readOnly = false,
 }: {
   file: AzureDevOpsFileChange;
   baseContent: string;
@@ -48,7 +49,7 @@ export function PrDiffView({
   projectId: string;
   prId: number;
   providerId?: string;
-  onAddFileComment: (params: {
+  onAddFileComment?: (params: {
     filePath: string;
     line: number;
     lineEnd?: number;
@@ -59,6 +60,7 @@ export function PrDiffView({
   mentionDisplayNames?: MentionDisplayNames;
   mentionOptions?: MentionOption[];
   onSearchMentions?: (query: string) => Promise<MentionOption[]>;
+  readOnly?: boolean;
 }) {
   const { setDraft, clearDraft, getBody, getAllDrafts } = usePrFileDraftActions(
     prId,
@@ -119,6 +121,7 @@ export function PrDiffView({
       lineEnd?: number;
       content: string;
     }) => {
+      if (!onAddFileComment) return;
       clearDraft(params.line, params.lineEnd);
       onAddFileComment(params);
     },
@@ -174,9 +177,6 @@ export function PrDiffView({
       isLoading={isLoadingContent}
       headerClassName="h-[40px] shrink-0"
       threads={fileThreads}
-      defaultCommentFormLineRanges={defaultCommentFormLineRanges}
-      onCommentFormClose={handleCommentFormClose}
-      shouldKeepCommentFormRangeOnOpen={shouldKeepCommentFormRangeOnOpen}
       renderThread={(thread) => (
         <PrInlineCommentThread
           thread={thread}
@@ -187,11 +187,21 @@ export function PrDiffView({
           mentionOptions={mentionOptions}
           onSearchMentions={onSearchMentions}
           onUploadImage={onUploadImage}
+          readOnly={readOnly}
         />
       )}
-      onAddComment={handleAddFileComment}
+      defaultCommentFormLineRanges={
+        !readOnly && onAddFileComment ? defaultCommentFormLineRanges : undefined
+      }
+      onCommentFormClose={
+        !readOnly && onAddFileComment ? handleCommentFormClose : undefined
+      }
+      shouldKeepCommentFormRangeOnOpen={
+        !readOnly && onAddFileComment ? shouldKeepCommentFormRangeOnOpen : undefined
+      }
+      onAddComment={!readOnly && onAddFileComment ? handleAddFileComment : undefined}
       isAddingComment={isAddingComment}
-      renderCommentForm={renderCommentForm}
+      renderCommentForm={!readOnly && onAddFileComment ? renderCommentForm : undefined}
     />
   );
 }

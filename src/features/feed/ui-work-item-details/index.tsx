@@ -7,7 +7,9 @@ import {
   ExternalLink,
   FileText,
   FlaskConical,
+  GitPullRequest,
   History,
+  Link2,
   Loader2,
   MessagesSquare,
 } from 'lucide-react';
@@ -16,26 +18,41 @@ import clsx from 'clsx';
 import { diffWordsWithSpace } from 'diff';
 import type { ReactNode } from 'react';
 
-import type { AzureDevOpsWorkItem, WorkItemHistoryEntry } from '@/lib/api';
+import type {
+  AzureDevOpsPullRequestStatus,
+  AzureDevOpsWorkItem,
+  WorkItemHistoryEntry,
+} from '@/lib/api';
 import { Dropdown, DropdownItem } from '@/common/ui/dropdown';
 import {
   useAddWorkItemComment,
+  useLinkedPullRequestStatuses,
   useRelatedTestCases,
   useUpdateWorkItemState,
   useWorkItemById,
   useWorkItemComments,
   useWorkItemHistory,
+  useWorkItemsByIds,
   useWorkItemStates,
 } from '@/hooks/use-work-items';
 import { AzureHtmlContent } from '@/features/common/ui-azure-html-content';
 import { Chip } from '@/common/ui/chip';
 import { formatRelativeTime } from '@/lib/time';
+import { Modal } from '@/common/ui/modal';
+import { PrDetail } from '@/features/pull-request/ui-pr-detail';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
 import { useProject } from '@/hooks/use-projects';
 import { useWorkItemCommentsPaneWidth } from '@/stores/navigation';
 import { WorkItemComments } from '@/features/work-item/ui-work-item-comments';
 
 type DetailsTab = 'comments' | 'history' | 'test-cases';
+
+type LinkDetailModal =
+  | { type: 'work-item'; workItemId: number }
+  | {
+      type: 'pull-request';
+      pr: NonNullable<AzureDevOpsWorkItem['linkedPrs']>[number];
+    };
 
 function WorkItemTypeIcon({
   type,
@@ -161,7 +178,7 @@ export function WorkItemDetails({
 }) {
   const { data: project } = useProject(projectId);
   const providerId = project?.workItemProviderId ?? null;
-  const projectName = project?.workItemProjectName ?? null;
+  const configuredProjectName = project?.workItemProjectName ?? null;
   const {
     width: commentsPaneWidth,
     setWidth: setCommentsPaneWidth,
@@ -177,6 +194,7 @@ export function WorkItemDetails({
     providerId,
     workItemId,
   });
+  const projectName = workItem?.fields.teamProject ?? configuredProjectName;
   const { data: availableStates = [] } = useWorkItemStates({
     providerId,
     projectName,
@@ -206,9 +224,23 @@ export function WorkItemDetails({
       projectName,
       workItemId,
     });
+  const linkedPrs = workItem?.linkedPrs ?? [];
+  const { data: linkedPullRequestStatuses = [] } = useLinkedPullRequestStatuses({
+    providerId,
+    linkedPrs,
+  });
+  const linkedWorkItemIds = getLinkedWorkItemIds(workItem);
+  const { data: linkedWorkItems = [], isLoading: isLoadingLinkedWorkItems } =
+    useWorkItemsByIds({
+      providerId,
+      workItemIds: linkedWorkItemIds,
+    });
   const addComment = useAddWorkItemComment();
   const hasTestCases = isLoadingTestCases || relatedTestCases.length > 0;
   const [activeTab, setActiveTab] = useState<DetailsTab>('comments');
+  const [linkDetailModal, setLinkDetailModal] = useState<LinkDetailModal | null>(
+    null,
+  );
   const [containerWidth, setContainerWidth] = useState(() => window.innerWidth);
 
   useEffect(() => {
@@ -266,6 +298,11 @@ export function WorkItemDetails({
   const { fields } = workItem;
   const hasReproSteps = fields.workItemType === 'Bug' && !!fields.reproSteps;
   const hasContent = !!fields.description || hasReproSteps;
+  const hasLinks =
+    !!workItem.parentId ||
+    !!workItem.childIds?.length ||
+    !!workItem.relatedWorkItemIds?.length ||
+    !!workItem.linkedPrs?.length;
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -317,7 +354,9 @@ export function WorkItemDetails({
           </div>
           <div className="flex items-center gap-1.5 text-xs">
             <span className="text-ink-3">Project:</span>
-            <span className="text-ink-1">{project.name}</span>
+              <span className="text-ink-1">
+                {fields.teamProject ?? project.name}
+              </span>
           </div>
         </div>
       </div>
@@ -376,6 +415,21 @@ export function WorkItemDetails({
           className="border-glass-border/50 bg-bg-1/20 flex min-w-0 shrink-0 flex-col border-l"
           style={{ width: effectiveCommentsPaneWidth }}
         >
+          {hasLinks && (
+            <WorkItemLinks
+              workItem={workItem}
+              linkedWorkItems={linkedWorkItems}
+              linkedPullRequestStatuses={linkedPullRequestStatuses}
+              isLoadingWorkItems={isLoadingLinkedWorkItems}
+              onOpenWorkItem={(id) =>
+                setLinkDetailModal({ type: 'work-item', workItemId: id })
+              }
+              onOpenPullRequest={(pr) =>
+                setLinkDetailModal({ type: 'pull-request', pr })
+              }
+            />
+          )}
+
           <div className="border-glass-border flex gap-0 border-b px-3">
             <FeedTabButton
               active={activeTab === 'comments'}
@@ -457,8 +511,308 @@ export function WorkItemDetails({
           </div>
         </aside>
       </div>
+
+      <LinkedDetailModal
+        projectId={projectId}
+        providerId={providerId}
+        modal={linkDetailModal}
+        onClose={() => setLinkDetailModal(null)}
+      />
     </div>
   );
+}
+
+function getLinkedWorkItemIds(workItem?: AzureDevOpsWorkItem | null): number[] {
+  if (!workItem) return [];
+  return Array.from(
+    new Set([
+      ...(workItem.parentId ? [workItem.parentId] : []),
+      ...(workItem.childIds ?? []),
+      ...(workItem.relatedWorkItemIds ?? []),
+    ]),
+  );
+}
+
+function WorkItemLinks({
+  workItem,
+  linkedWorkItems,
+  linkedPullRequestStatuses,
+  isLoadingWorkItems,
+  onOpenWorkItem,
+  onOpenPullRequest,
+}: {
+  workItem: AzureDevOpsWorkItem;
+  linkedWorkItems: AzureDevOpsWorkItem[];
+  linkedPullRequestStatuses: AzureDevOpsPullRequestStatus[];
+  isLoadingWorkItems: boolean;
+  onOpenWorkItem: (workItemId: number) => void;
+  onOpenPullRequest: (
+    pr: NonNullable<AzureDevOpsWorkItem['linkedPrs']>[number],
+  ) => void;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+  const findWorkItem = (id: number) => linkedWorkItems.find((wi) => wi.id === id);
+  const findPullRequestStatus = (
+    pr: NonNullable<AzureDevOpsWorkItem['linkedPrs']>[number],
+  ) =>
+    linkedPullRequestStatuses.find(
+      (status) => status.key === getLinkedPrKey(pr),
+    );
+
+  return (
+    <section className="border-glass-border border-b bg-white/[0.018]">
+      <button
+        type="button"
+        className="hover:bg-white/[0.025] flex w-full items-center gap-2 px-5 py-3 text-left transition-colors"
+        onClick={() => setCollapsed((value) => !value)}
+      >
+        {collapsed ? (
+          <ChevronRight className="text-ink-3 h-3.5 w-3.5" />
+        ) : (
+          <ChevronDown className="text-ink-3 h-3.5 w-3.5" />
+        )}
+        <Link2 className="text-ink-3 h-3.5 w-3.5" />
+        <h2 className="text-ink-1 flex-1 text-sm font-semibold">Links</h2>
+        <span className="bg-ink-4/20 text-ink-3 rounded-full px-1.5 py-0.5 text-[10px]">
+          {getLinkCount(workItem)}
+        </span>
+      </button>
+
+      {!collapsed && <div className="flex flex-col gap-2.5 px-5 pb-3">
+        {!!workItem.linkedPrs?.length && (
+          <LinkGroup label="Pull Requests">
+            {workItem.linkedPrs.map((pr) => (
+              <LinkedPrChip
+                key={`${pr.projectId}-${pr.repoId}-${pr.prId}`}
+                pr={pr}
+                status={findPullRequestStatus(pr)}
+                onOpen={() => onOpenPullRequest(pr)}
+              />
+            ))}
+          </LinkGroup>
+        )}
+
+        {workItem.parentId && (
+          <LinkGroup label="Parent">
+            <LinkedWorkItemChip
+              workItemId={workItem.parentId}
+              workItem={findWorkItem(workItem.parentId)}
+              isLoading={isLoadingWorkItems}
+              onOpen={() => onOpenWorkItem(workItem.parentId ?? 0)}
+            />
+          </LinkGroup>
+        )}
+
+        {!!workItem.childIds?.length && (
+          <LinkGroup label="Children">
+            {workItem.childIds.map((id) => (
+              <LinkedWorkItemChip
+                key={id}
+                workItemId={id}
+                workItem={findWorkItem(id)}
+                isLoading={isLoadingWorkItems}
+                onOpen={() => onOpenWorkItem(id)}
+              />
+            ))}
+          </LinkGroup>
+        )}
+
+        {!!workItem.relatedWorkItemIds?.length && (
+          <LinkGroup label="Related">
+            {workItem.relatedWorkItemIds.map((id) => (
+              <LinkedWorkItemChip
+                key={id}
+                workItemId={id}
+                workItem={findWorkItem(id)}
+                isLoading={isLoadingWorkItems}
+                onOpen={() => onOpenWorkItem(id)}
+              />
+            ))}
+          </LinkGroup>
+        )}
+      </div>}
+    </section>
+  );
+}
+
+function getLinkCount(workItem: AzureDevOpsWorkItem): number {
+  return (
+    (workItem.linkedPrs?.length ?? 0) +
+    (workItem.parentId ? 1 : 0) +
+    (workItem.childIds?.length ?? 0) +
+    (workItem.relatedWorkItemIds?.length ?? 0)
+  );
+}
+
+function getLinkedPrKey(
+  pr: NonNullable<AzureDevOpsWorkItem['linkedPrs']>[number],
+): string {
+  return `${pr.projectId}:${pr.repoId}:${pr.prId}`;
+}
+
+function LinkGroup({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-3">
+      <span className="text-ink-3 pt-1 text-xs font-medium">{label}</span>
+      <div className="flex min-w-0 flex-wrap gap-2">{children}</div>
+    </div>
+  );
+}
+
+function LinkedPrChip({
+  pr,
+  status,
+  onOpen,
+}: {
+  pr: NonNullable<AzureDevOpsWorkItem['linkedPrs']>[number];
+  status?: AzureDevOpsPullRequestStatus;
+  onOpen: () => void;
+}) {
+  const content = (
+    <>
+      <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-acc-ink" />
+      <span>PR #{pr.prId}</span>
+      {status?.isDraft && <span className="text-ink-3">Draft</span>}
+    </>
+  );
+
+  return (
+    <LinkChip onClick={onOpen} title={`Open PR #${pr.prId}`}>
+      {content}
+    </LinkChip>
+  );
+}
+
+function LinkedWorkItemChip({
+  workItemId,
+  workItem,
+  isLoading,
+  onOpen,
+}: {
+  workItemId: number;
+  workItem?: AzureDevOpsWorkItem;
+  isLoading: boolean;
+  onOpen: () => void;
+}) {
+  const title = workItem
+    ? `#${workItem.id} ${workItem.fields.title}`
+    : `#${workItemId}`;
+  const content = (
+    <>
+      {workItem ? (
+        <WorkItemTypeIcon type={workItem.fields.workItemType} size="sm" />
+      ) : isLoading ? (
+        <Loader2 className="text-ink-3 h-3.5 w-3.5 shrink-0 animate-spin" />
+      ) : (
+        <FileText className="text-ink-3 h-3.5 w-3.5 shrink-0" />
+      )}
+      <span className="text-ink-2 shrink-0 text-xs font-medium">
+        #{workItemId}
+      </span>
+      {workItem && (
+        <span className="min-w-0 truncate">{workItem.fields.title}</span>
+      )}
+    </>
+  );
+
+  return (
+    <LinkChip onClick={onOpen} title={title}>
+      {content}
+    </LinkChip>
+  );
+}
+
+function LinkChip({
+  onClick,
+  title,
+  children,
+}: {
+  onClick: () => void;
+  title?: string;
+  children: ReactNode;
+}) {
+  const className =
+    'border-glass-border/70 text-ink-1 hover:border-glass-border hover:bg-white/[0.04] flex min-w-0 max-w-full items-center gap-1.5 rounded-md border bg-white/[0.025] px-2 py-1 text-left text-xs transition-colors';
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={className}
+      title={title}
+    >
+      {children}
+    </button>
+  );
+}
+
+function LinkedDetailModal({
+  projectId,
+  providerId,
+  modal,
+  onClose,
+}: {
+  projectId: string;
+  providerId: string | null;
+  modal: LinkDetailModal | null;
+  onClose: () => void;
+}) {
+  if (modal?.type === 'work-item') {
+    return (
+      <Modal
+        isOpen
+        onClose={onClose}
+        title={`Work Item #${modal.workItemId}`}
+        size="xl"
+        contentClassName="min-h-0 overflow-hidden p-0"
+        panelClassName="h-[85vh]"
+      >
+        <WorkItemDetails projectId={projectId} workItemId={modal.workItemId} />
+      </Modal>
+    );
+  }
+
+  if (modal?.type === 'pull-request') {
+    if (!providerId) {
+      return (
+        <Modal
+          isOpen
+          onClose={onClose}
+          title={`Pull Request #${modal.pr.prId}`}
+          size="lg"
+        >
+          <p className="text-status-fail text-sm">
+            Work item provider is required to load pull request details.
+          </p>
+        </Modal>
+      );
+    }
+
+    return (
+      <Modal
+        isOpen
+        onClose={onClose}
+        title={`Pull Request #${modal.pr.prId}`}
+        size="xl"
+        contentClassName="min-h-0 overflow-hidden p-0"
+        panelClassName="h-[85vh]"
+      >
+        <PrDetail
+          projectId={projectId}
+          prId={modal.pr.prId}
+          repoInfo={{
+            projectName: '',
+            providerId,
+            projectId: modal.pr.projectId,
+            repoId: modal.pr.repoId,
+          }}
+          readOnly
+        />
+      </Modal>
+    );
+  }
+
+  return null;
 }
 
 function WorkItemHistory({

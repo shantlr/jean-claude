@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   api,
   type AzureDevOpsIteration,
+  type AzureDevOpsPullRequestStatus,
   type AzureDevOpsUser,
   type AzureDevOpsWorkItem,
   type AzureDevOpsWorkItemState,
@@ -61,6 +62,47 @@ export function useWorkItemById(params: {
       }),
     enabled: !!params.providerId && !!params.workItemId,
     staleTime: 5 * 60_000,
+  });
+}
+
+export function useWorkItemsByIds(params: {
+  providerId: string | null;
+  workItemIds: number[];
+}) {
+  return useQuery<AzureDevOpsWorkItem[]>({
+    queryKey: ['work-items-by-ids', params.providerId, params.workItemIds],
+    queryFn: async () => {
+      const results = await Promise.allSettled(
+        params.workItemIds.map((workItemId) =>
+          api.azureDevOps.getWorkItemById({
+            providerId: params.providerId!,
+            workItemId,
+          }),
+        ),
+      );
+      return results
+        .filter((result) => result.status === 'fulfilled')
+        .map((result) => result.value)
+        .filter((item): item is AzureDevOpsWorkItem => !!item);
+    },
+    enabled: !!params.providerId && params.workItemIds.length > 0,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useLinkedPullRequestStatuses(params: {
+  providerId: string | null;
+  linkedPrs: Array<{ prId: number; projectId: string; repoId: string }>;
+}) {
+  return useQuery<AzureDevOpsPullRequestStatus[]>({
+    queryKey: ['linked-pull-request-statuses', params.providerId, params.linkedPrs],
+    queryFn: () =>
+      api.azureDevOps.getPullRequestStatuses({
+        providerId: params.providerId!,
+        linkedPrs: params.linkedPrs,
+      }),
+    enabled: !!params.providerId && params.linkedPrs.length > 0,
+    staleTime: 60_000,
   });
 }
 

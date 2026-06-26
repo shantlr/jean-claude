@@ -102,6 +102,7 @@ export interface AzureDevOpsWorkItem {
   fields: {
     title: string;
     workItemType: string;
+    teamProject?: string;
     state: string;
     assignedTo?: string;
     description?: string;
@@ -110,6 +111,8 @@ export interface AzureDevOpsWorkItem {
   };
   testSteps?: TestStep[];
   parentId?: number;
+  childIds?: number[];
+  relatedWorkItemIds?: number[];
   linkedPrs?: LinkedPr[];
   relatedTestCaseIds?: number[];
 }
@@ -161,6 +164,7 @@ interface WorkItemsBatchResponse {
     fields: {
       'System.Title': string;
       'System.WorkItemType': string;
+      'System.TeamProject'?: string;
       'System.State': string;
       'System.AssignedTo'?: { displayName: string };
       'System.Description'?: string;
@@ -460,6 +464,26 @@ function extractParentId(relations?: WorkItemRelation[]): number | undefined {
   return match ? parseInt(match[1], 10) : undefined;
 }
 
+function extractWorkItemRelationIds(
+  relations: WorkItemRelation[] | undefined,
+  rel: string,
+): number[] {
+  if (!relations) return [];
+  return relations
+    .filter((r) => r.rel === rel)
+    .map((r) => r.url.match(/\/workItems\/(\d+)$/i)?.[1])
+    .filter((id): id is string => !!id)
+    .map((id) => parseInt(id, 10));
+}
+
+function extractChildIds(relations?: WorkItemRelation[]): number[] {
+  return extractWorkItemRelationIds(relations, 'System.LinkTypes.Hierarchy-Forward');
+}
+
+function extractRelatedWorkItemIds(relations?: WorkItemRelation[]): number[] {
+  return extractWorkItemRelationIds(relations, 'System.LinkTypes.Related');
+}
+
 /**
  * Extract linked Pull Request IDs from a work item's relations array.
  * PR artifact links use rel "ArtifactLink" with URL format:
@@ -742,6 +766,7 @@ export async function queryWorkItems(params: {
     fields: {
       title: wi.fields['System.Title'],
       workItemType: wi.fields['System.WorkItemType'],
+      teamProject: wi.fields['System.TeamProject'] ?? params.projectName,
       state: wi.fields['System.State'],
       assignedTo: wi.fields['System.AssignedTo']?.displayName,
       description: wi.fields['System.Description'],
@@ -813,6 +838,7 @@ export async function queryAssignedWorkItems(params: {
     fields: {
       title: wi.fields['System.Title'],
       workItemType: wi.fields['System.WorkItemType'],
+      teamProject: wi.fields['System.TeamProject'] ?? params.projectName,
       state: wi.fields['System.State'],
       assignedTo: wi.fields['System.AssignedTo']?.displayName,
       description: wi.fields['System.Description'],
@@ -854,6 +880,7 @@ export async function getWorkItemById(params: {
     fields: {
       title: wi.fields['System.Title'],
       workItemType: wi.fields['System.WorkItemType'],
+      teamProject: wi.fields['System.TeamProject'],
       state: wi.fields['System.State'],
       assignedTo: wi.fields['System.AssignedTo']?.displayName,
       description: wi.fields['System.Description'],
@@ -861,6 +888,9 @@ export async function getWorkItemById(params: {
       changedDate: wi.fields['System.ChangedDate'],
     },
     parentId: extractParentId(wi.relations),
+    childIds: extractChildIds(wi.relations),
+    relatedWorkItemIds: extractRelatedWorkItemIds(wi.relations),
+    linkedPrs: extractLinkedPrs(wi.relations),
     relatedTestCaseIds: extractLinkedTestCaseIds(wi.relations),
   };
 }
@@ -974,6 +1004,7 @@ export async function getRelatedTestCases(params: {
       fields: {
         title: wi.fields['System.Title'],
         workItemType: wi.fields['System.WorkItemType'],
+        teamProject: wi.fields['System.TeamProject'] ?? params.projectName,
         state: wi.fields['System.State'],
         assignedTo: wi.fields['System.AssignedTo']?.displayName,
         description: wi.fields['System.Description'],
@@ -2788,6 +2819,7 @@ export async function getPullRequestWorkItems(params: {
     fields: {
       title: wi.fields['System.Title'],
       workItemType: wi.fields['System.WorkItemType'],
+      teamProject: wi.fields['System.TeamProject'],
       state: wi.fields['System.State'],
       assignedTo: wi.fields['System.AssignedTo']?.displayName,
       description: wi.fields['System.Description'],

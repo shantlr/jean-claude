@@ -251,6 +251,7 @@ export function PrWorkItems({
   onUnlink,
   isLinking,
   isUnlinking,
+  readOnly = false,
 }: {
   workItems: AzureDevOpsWorkItem[];
   isLoading: boolean;
@@ -261,6 +262,7 @@ export function PrWorkItems({
   onUnlink?: (workItemId: number) => void;
   isLinking?: boolean;
   isUnlinking?: boolean;
+  readOnly?: boolean;
 }) {
   const [expanded, setExpanded] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
@@ -281,7 +283,8 @@ export function PrWorkItems({
 
   const linkedWorkItemIds = new Set(workItems.map((wi) => wi.id));
 
-  const canModify = !!providerId && !!azureProjectId && !!azureProjectName;
+  const canLink = !!providerId && !!azureProjectId && !!azureProjectName && !!onLink;
+  const canUnlink = !!onUnlink;
 
   const handleUnlink = useCallback(
     (e: React.MouseEvent, workItemId: number) => {
@@ -320,7 +323,7 @@ export function PrWorkItems({
   }
 
   // Show section even when empty if we can link
-  if (workItems.length === 0 && !canModify) {
+  if (workItems.length === 0 && !canLink) {
     return null;
   }
 
@@ -345,7 +348,7 @@ export function PrWorkItems({
           )}
         </button>
 
-        {canModify && expanded && (
+        {canLink && expanded && (
           <button
             onClick={() => setShowSearch(!showSearch)}
             className="text-ink-3 hover:text-ink-1 ml-auto rounded p-0.5 transition-colors"
@@ -412,7 +415,7 @@ export function PrWorkItems({
                         >
                           <ExternalLink className="h-3 w-3" />
                         </a>
-                        {onUnlink && (
+                        {canUnlink && (
                           <button
                             onClick={(e) => handleUnlink(e, wi.id)}
                             className="text-ink-3 hover:text-status-fail rounded p-0.5 transition-colors"
@@ -435,13 +438,13 @@ export function PrWorkItems({
             </p>
           )}
 
-          {showSearch && canModify && (
+          {showSearch && canLink && (
             <WorkItemSearchInput
               providerId={providerId}
               azureProjectId={azureProjectId}
               azureProjectName={azureProjectName}
               linkedWorkItemIds={linkedWorkItemIds}
-              onLink={onLink!}
+              onLink={onLink}
               onPreview={setPreviewItem}
               isLinking={!!isLinking}
               onClose={() => setShowSearch(false)}
@@ -474,8 +477,9 @@ export function PrWorkItems({
         <WorkItemPreview
           workItem={previewItem}
           providerId={providerId}
-          projectName={azureProjectName}
+          projectName={previewItem?.fields.teamProject ?? azureProjectName}
           showCommentsAside
+          readOnly={readOnly}
         />
       </Modal>
     </div>

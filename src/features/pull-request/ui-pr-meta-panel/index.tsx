@@ -63,6 +63,7 @@ export function PrMetaPanel({
   onUnlinkWorkItem,
   isLinkingWorkItem,
   isUnlinkingWorkItem,
+  readOnly = false,
 }: {
   pr: AzureDevOpsPullRequestDetails;
   fileCount?: number;
@@ -75,6 +76,7 @@ export function PrMetaPanel({
   onUnlinkWorkItem?: (workItemId: number) => void;
   isLinkingWorkItem?: boolean;
   isUnlinkingWorkItem?: boolean;
+  readOnly?: boolean;
 }) {
   const reviewers = pr.reviewers.filter((r) => !r.isContainer);
 
@@ -142,6 +144,7 @@ export function PrMetaPanel({
         onUnlink={onUnlinkWorkItem}
         isLinking={isLinkingWorkItem}
         isUnlinking={isUnlinkingWorkItem}
+        readOnly={readOnly}
       />
 
       {/* Auto-complete */}

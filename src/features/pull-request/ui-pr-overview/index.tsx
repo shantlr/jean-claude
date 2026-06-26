@@ -46,6 +46,7 @@ import { Button } from '@/common/ui/button';
 import { formatBytes } from '@/lib/format-bytes';
 import type { MentionOption } from '@/common/ui/mention-textarea';
 import type { PromptImagePart } from '@shared/agent-backend-types';
+import type { PullRequestRepoInfo } from '@/hooks/use-pull-requests';
 import { Textarea } from '@/common/ui/textarea';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useHorizontalResize } from '@/hooks/use-horizontal-resize';
@@ -110,6 +111,8 @@ export function PrOverview({
   files = [],
   mentionOptions = [],
   onSearchMentions,
+  repoInfo,
+  readOnly = false,
 }: {
   pr: AzureDevOpsPullRequestDetails;
   projectId: string;
@@ -127,6 +130,8 @@ export function PrOverview({
   files?: AzureDevOpsFileChange[];
   mentionOptions?: MentionOption[];
   onSearchMentions?: (query: string) => Promise<MentionOption[]>;
+  repoInfo?: PullRequestRepoInfo;
+  readOnly?: boolean;
 }) {
   const [filePreview, setFilePreview] = useState<{
     filePath: string;
@@ -150,13 +155,22 @@ export function PrOverview({
   const descriptionTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const descriptionImageTokenCounterRef = useRef(0);
 
-  const { data: currentUser } = useCurrentAzureUser(projectId);
-  const updateDescription = useUpdatePullRequestDescription(projectId, prId);
-  const uploadAttachment = useUploadPullRequestAttachment(projectId, prId);
+  const { data: currentUser } = useCurrentAzureUser(projectId, repoInfo);
+  const updateDescription = useUpdatePullRequestDescription(
+    projectId,
+    prId,
+    repoInfo,
+  );
+  const uploadAttachment = useUploadPullRequestAttachment(
+    projectId,
+    prId,
+    repoInfo,
+  );
 
   const currentUserEmail = currentUser?.emailAddress.toLowerCase();
   const ownerEmail = pr.createdBy.uniqueName.toLowerCase();
   const canEditDescription =
+    !readOnly &&
     !!currentUser &&
     (currentUser.identityId === pr.createdBy.id ||
       currentUser.id === pr.createdBy.id ||
@@ -229,15 +243,20 @@ export function PrOverview({
   const hasActiveBuilds = queuedIds.size > 0;
 
   const { data: evaluations = [], isLoading: isChecksLoading } =
-    usePullRequestPolicyEvaluations(projectId, prId, {
-      refetchInterval: hasActiveBuilds ? 10_000 : false,
-    });
+    usePullRequestPolicyEvaluations(
+      projectId,
+      prId,
+      {
+        refetchInterval: hasActiveBuilds ? 10_000 : false,
+      },
+      repoInfo,
+    );
 
   const { data: workItems = [], isLoading: isWorkItemsLoading } =
-    usePullRequestWorkItems(projectId, prId);
+    usePullRequestWorkItems(projectId, prId, repoInfo);
 
-  const linkWorkItem = useLinkWorkItemToPr(projectId, prId);
-  const unlinkWorkItem = useUnlinkWorkItemFromPr(projectId, prId);
+  const linkWorkItem = useLinkWorkItemToPr(projectId, prId, repoInfo);
+  const unlinkWorkItem = useUnlinkWorkItemFromPr(projectId, prId, repoInfo);
 
   // Clear queued IDs when the server confirms they're no longer pending
   const prevEvaluationsRef = useRef(evaluations);
@@ -262,8 +281,8 @@ export function PrOverview({
     prevEvaluationsRef.current = evaluations;
   }, [evaluations, queuedIds]);
 
-  const requeueMutation = useRequeuePolicyEvaluation(projectId, prId);
-  const autoCompleteMutation = useSetAutoComplete(projectId, prId);
+  const requeueMutation = useRequeuePolicyEvaluation(projectId, prId, repoInfo);
+  const autoCompleteMutation = useSetAutoComplete(projectId, prId, repoInfo);
 
   const handleRequeue = useCallback(
     (evaluationId: string) => {
@@ -572,8 +591,8 @@ export function PrOverview({
           <PrChecks
             evaluations={evaluationsWithOptimistic}
             isLoading={isChecksLoading}
-            onRequeue={handleRequeue}
-            onQueueAll={handleQueueAll}
+            onRequeue={readOnly ? undefined : handleRequeue}
+            onQueueAll={readOnly ? undefined : handleQueueAll}
             isRequeuing={requeueMutation.isPending}
             expandedBuildId={providerId ? expandedBuildId : undefined}
             onExpandCheck={providerId ? handleExpandCheck : undefined}
@@ -591,7 +610,9 @@ export function PrOverview({
             }
             ignoredAutoCompletePolicyIds={ignoredAutoCompletePolicyIds}
             onIgnoreOptionalPolicy={
-              pr.autoCompleteSetBy ? handleIgnoreOptionalPolicy : undefined
+              !readOnly && pr.autoCompleteSetBy
+                ? handleIgnoreOptionalPolicy
+                : undefined
             }
             isIgnoringOptionalPolicy={autoCompleteMutation.isPending}
           />
@@ -781,6 +802,8 @@ export function PrOverview({
             mentionDisplayNames={mentionDisplayNames}
             mentionOptions={mentionOptions}
             onSearchMentions={onSearchMentions}
+            readOnly={readOnly}
+            repoInfo={repoInfo}
           />
         </div>
 
@@ -822,6 +845,8 @@ export function PrOverview({
                 mentionOptions={mentionOptions}
                 onSearchMentions={onSearchMentions}
                 onClose={() => setFilePreview(null)}
+                repoInfo={repoInfo}
+                readOnly={readOnly}
               />
             ) : (
               <PrMetaPanel
@@ -832,12 +857,19 @@ export function PrOverview({
                 isWorkItemsLoading={isWorkItemsLoading}
                 azureProjectId={azureProjectId}
                 azureProjectName={azureProjectName}
-                onLinkWorkItem={(workItemId) => linkWorkItem.mutate(workItemId)}
-                onUnlinkWorkItem={(workItemId) =>
-                  unlinkWorkItem.mutate(workItemId)
+                onLinkWorkItem={
+                  readOnly
+                    ? undefined
+                    : (workItemId) => linkWorkItem.mutate(workItemId)
+                }
+                onUnlinkWorkItem={
+                  readOnly
+                    ? undefined
+                    : (workItemId) => unlinkWorkItem.mutate(workItemId)
                 }
                 isLinkingWorkItem={linkWorkItem.isPending}
                 isUnlinkingWorkItem={unlinkWorkItem.isPending}
+                readOnly={readOnly}
               />
             )}
           </div>
@@ -861,6 +893,8 @@ function PrFilePreviewPane({
   mentionOptions,
   onSearchMentions,
   onClose,
+  repoInfo,
+  readOnly,
 }: {
   projectId: string;
   prId: number;
@@ -875,11 +909,13 @@ function PrFilePreviewPane({
   mentionOptions: MentionOption[];
   onSearchMentions?: (query: string) => Promise<MentionOption[]>;
   onClose: () => void;
+  repoInfo?: PullRequestRepoInfo;
+  readOnly: boolean;
 }) {
   const { data: headContent = '', isLoading: isHeadLoading } =
-    usePullRequestFileContent(projectId, prId, filePath, 'head');
+    usePullRequestFileContent(projectId, prId, filePath, 'head', repoInfo);
   const { data: baseContent = '', isLoading: isBaseLoading } =
-    usePullRequestFileContent(projectId, prId, filePath, 'base');
+    usePullRequestFileContent(projectId, prId, filePath, 'base', repoInfo);
 
   const file = useMemo<DiffFile>(() => {
     const change = files.find(
@@ -939,6 +975,7 @@ function PrFilePreviewPane({
               mentionDisplayNames={mentionDisplayNames}
               mentionOptions={mentionOptions}
               onSearchMentions={onSearchMentions}
+              readOnly={readOnly}
             />
           )}
           scrollToLine={scrollToLine}

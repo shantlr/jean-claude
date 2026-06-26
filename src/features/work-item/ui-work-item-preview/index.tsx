@@ -32,11 +32,13 @@ export function WorkItemPreview({
   providerId,
   projectName,
   showCommentsAside = false,
+  readOnly = false,
 }: {
   workItem: AzureDevOpsWorkItem | null;
   providerId?: string;
   projectName?: string;
   showCommentsAside?: boolean;
+  readOnly?: boolean;
 }) {
   const workItemId = workItem?.id ?? null;
   const {
@@ -149,7 +151,7 @@ export function WorkItemPreview({
 
                 <div className="flex items-center gap-1">
                   <span className="text-ink-3">State:</span>
-                  {providerId ? (
+                  {providerId && !readOnly ? (
                     <EditableStateValue
                       state={currentState}
                       states={availableStates.map((s) => s.name)}
@@ -218,7 +220,7 @@ export function WorkItemPreview({
               hideHeader
               isAddingComment={addComment.isPending}
               onAddComment={
-                providerId && projectName
+                providerId && projectName && !readOnly
                   ? (text) =>
                       addComment.mutateAsync({
                         providerId,
@@ -268,7 +270,7 @@ export function WorkItemPreview({
                 hideHeader
                 isAddingComment={addComment.isPending}
                 onAddComment={
-                  providerId && projectName
+                  providerId && projectName && !readOnly
                     ? (text) =>
                         addComment.mutateAsync({
                           providerId,
