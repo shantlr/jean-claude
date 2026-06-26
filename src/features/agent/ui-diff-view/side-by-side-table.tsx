@@ -215,12 +215,7 @@ export function SideBySideDiffTable({
       </colgroup>
       <tbody>
         {rows.map((row, rowIndex) => {
-          // Prefer new line anchors; fall back to old lines so deleted rows can
-          // still receive review comments.
-          const newLineNumber =
-            row.right?.newLineNumber ??
-            row.left?.newLineNumber ??
-            row.left?.oldLineNumber;
+          const newLineNumber = row.right?.newLineNumber ?? row.left?.newLineNumber;
 
           // Check if this line is hidden by a collapsed fold
           if (newLineNumber && folding.isLineHidden(newLineNumber)) {
@@ -291,7 +286,9 @@ export function SideBySideDiffTable({
                 handleLineMouseDown(newLineNumber)
               }
               onMouseUp={() =>
-                newLineNumber !== undefined && handleLineMouseUp(newLineNumber)
+                newLineNumber !== undefined
+                  ? handleLineMouseUp(newLineNumber)
+                  : handleMouseLeaveTable()
               }
               inlineComments={lineComments}
               commentForms={formsForLine}
@@ -372,7 +369,7 @@ function SideBySideRowComponent({
         })}
         onMouseEnter={onMouseEnter}
         onMouseDown={canComment ? onMouseDown : undefined}
-        onMouseUp={canComment ? onMouseUp : undefined}
+        onMouseUp={onMouseUp}
         style={{
           cursor: canComment ? 'pointer' : undefined,
           ...(hasComment && !isSelected && !isInCommentRange

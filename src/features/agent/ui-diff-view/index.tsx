@@ -432,9 +432,7 @@ function InlineDiffTable({
     >
       <tbody>
         {lines.map((line, i) => {
-          // Prefer new line anchors; fall back to old lines so deleted rows can
-          // still receive review comments.
-          const lineNumber = line.newLineNumber ?? line.oldLineNumber;
+          const lineNumber = line.newLineNumber;
 
           // Check if this line is hidden by a collapsed fold.
           // For deletion lines (no newLineNumber), check if the surrounding
@@ -510,7 +508,11 @@ function InlineDiffTable({
               hasComment={!!lineNumber && !!commentedLines?.has(lineNumber)}
               onMouseEnter={() => lineNumber && handleLineMouseEnter(lineNumber)}
               onMouseDown={() => lineNumber && handleLineMouseDown(lineNumber)}
-              onMouseUp={() => lineNumber && handleLineMouseUp(lineNumber)}
+              onMouseUp={() =>
+                lineNumber
+                  ? handleLineMouseUp(lineNumber)
+                  : handleMouseLeaveTable()
+              }
               inlineComments={lineComments}
               commentForms={formsForLine}
               searchMatches={lineMatches}
@@ -616,7 +618,7 @@ function DiffLineRow({
         })}
         onMouseEnter={onMouseEnter}
         onMouseDown={canComment ? onMouseDown : undefined}
-        onMouseUp={canComment ? onMouseUp : undefined}
+        onMouseUp={onMouseUp}
         style={{
           cursor: canComment ? 'pointer' : undefined,
           ...(hasComment && !isSelected && !isInCommentRange
