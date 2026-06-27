@@ -3051,6 +3051,25 @@ const TaskInputFooter = memo(function TaskInputFooter({
         if (reviewParts) {
           finalParts = [...parts, ...reviewParts];
         }
+        void api.preferenceMemory
+          .recordEvidence({
+            source: 'task-review-comment',
+            taskId,
+            comments: openReviewComments.map((comment) => ({
+              body: comment.body,
+              filePath: comment.anchor.filePath,
+              lineStart: comment.anchor.lineStart,
+              lineEnd: comment.anchor.lineEnd,
+              presets: comment.presets,
+              selectedText: comment.anchor.selectedText,
+            })),
+            context: {
+              targetStepId: activeStepId,
+            },
+          })
+          .catch((error: unknown) => {
+            console.warn('Failed to record preference evidence', error);
+          });
         // Resolve and clear all open comments after send
         for (const comment of openReviewComments) {
           resolveComment(taskId, comment.id);
@@ -3070,6 +3089,7 @@ const TaskInputFooter = memo(function TaskInputFooter({
       openReviewComments,
       resolveComment,
       clearResolvedComments,
+      activeStepId,
     ],
   );
 

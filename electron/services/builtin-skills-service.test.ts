@@ -36,6 +36,12 @@ describe('builtin skills installation', () => {
         'utf-8',
       ),
     ).resolves.toContain('name: project-feature-mapping');
+    await expect(
+      fs.readFile(
+        path.join(testDir, 'user-preference-memory', 'SKILL.md'),
+        'utf-8',
+      ),
+    ).resolves.toContain('name: user-preference-memory');
   });
 
   it('overwrites existing builtin skill content by default', async () => {

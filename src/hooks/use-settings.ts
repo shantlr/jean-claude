@@ -14,6 +14,7 @@ import type {
   CalendarNotificationsSetting,
   EditorAutomationSetting,
   EditorSetting,
+  PreferenceMemorySetting,
   ProjectPromptPrefaceSetting,
   PromptPrefaceSetting,
   PromptSnippetsSetting,
@@ -80,6 +81,23 @@ export function useEditorAutomationSetting() {
 
 export function useRawMessageCleanupSetting() {
   return useSetting('rawMessageCleanup');
+}
+
+export function usePreferenceMemorySetting() {
+  return useSetting('preferenceMemory');
+}
+
+export function useUpdatePreferenceMemorySetting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (value: PreferenceMemorySetting) =>
+      api.settings.set('preferenceMemory', value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['settings', 'preferenceMemory'],
+      });
+    },
+  });
 }
 
 export function useUpdateRawMessageCleanupSetting() {

@@ -90,6 +90,7 @@ async function generateWithClaudeCode({
   outputSchema,
   cwd,
   allowedTools,
+  allowedToolPatterns,
   abortController,
   usageContext,
 }: Parameters<TextGenerationCapability['generate']>[0] & {
@@ -103,7 +104,10 @@ async function generateWithClaudeCode({
   const generator = query({
     prompt: effectivePrompt,
     options: {
-      allowedTools: allowedTools ?? [],
+      allowedTools: buildClaudeCodeAllowedTools(
+        allowedTools,
+        allowedToolPatterns,
+      ),
       model: model !== 'default' ? model : undefined,
       abortController,
       ...(thinkingEffort === 'low' ||
@@ -184,6 +188,8 @@ async function generateWithOpenCode({
   thinkingEffort,
   outputSchema,
   cwd,
+  allowedTools,
+  allowedToolPatterns,
   abortController,
   usageContext,
 }: Parameters<TextGenerationCapability['generate']>[0] & {
@@ -203,7 +209,15 @@ async function generateWithOpenCode({
     : effectivePrompt;
 
   const directory = cwd ?? homedir();
-  const session = await client.session.create({ directory });
+  const permission = buildOpenCodePermissions(
+    allowedTools,
+    allowedToolPatterns,
+    skillName,
+  );
+  const session = await client.session.create({
+    directory,
+    ...(permission.length > 0 ? { body: { permission } } : {}),
+  });
   const sessionId = session.data?.id;
 
   if (!sessionId) {
@@ -387,6 +401,70 @@ function parseOpenCodeModel(
     return { providerID, modelID: rest.join('/') };
   }
   return undefined;
+}
+
+function buildOpenCodePermissions(
+  allowedTools?: string[],
+  allowedToolPatterns?: Record<string, string[]>,
+  skillName?: string | null,
+): Array<{ permission: string; pattern: string; action: 'allow' | 'deny' }> {
+  if (!allowedTools) return [];
+
+  const toolNameMap: Record<string, string> = {
+    Read: 'read',
+    Edit: 'edit',
+    Write: 'write',
+    Glob: 'glob',
+    Grep: 'grep',
+    WebFetch: 'webfetch',
+    WebSearch: 'websearch',
+    Task: 'task',
+    TodoWrite: 'todowrite',
+    Skill: 'skill',
+  };
+
+  const permissions: Array<{
+    permission: string;
+    pattern: string;
+    action: 'allow' | 'deny';
+  }> = [{ permission: '*', pattern: '*', action: 'deny' }];
+
+  for (const tool of allowedTools) {
+    const permission = toolNameMap[tool] ?? tool.toLowerCase();
+    const patterns = allowedToolPatterns?.[tool] ?? ['*'];
+    for (const pattern of patterns) {
+      if (
+        permissions.some(
+          (entry) =>
+            entry.permission === permission &&
+            entry.pattern === pattern &&
+            entry.action === 'allow',
+        )
+      ) {
+        continue;
+      }
+      permissions.push({ permission, pattern, action: 'allow' });
+    }
+  }
+
+  if (skillName) {
+    permissions.push({ permission: 'skill', pattern: skillName, action: 'allow' });
+  }
+
+  return permissions;
+}
+
+function buildClaudeCodeAllowedTools(
+  allowedTools?: string[],
+  allowedToolPatterns?: Record<string, string[]>,
+): string[] {
+  if (!allowedTools) return [];
+
+  return allowedTools.flatMap((tool) => {
+    const patterns = allowedToolPatterns?.[tool];
+    if (!patterns?.length) return [tool];
+    return patterns.map((pattern) => `${tool}(${pattern})`);
+  });
 }
 
 function parseJsonResponse(text: string): unknown | null {

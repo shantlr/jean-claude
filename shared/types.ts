@@ -700,6 +700,27 @@ export interface RawMessageCleanupSetting {
   retentionHours: number;
 }
 
+export interface PreferenceMemorySetting {
+  enabled: boolean;
+  consolidationEnabled: boolean;
+  consolidationIntervalMinutes: number;
+  consolidationBackend: AgentBackendType;
+  consolidationModel: ModelPreference;
+  consolidationThinkingEffort: ThinkingEffort;
+}
+
+export const DEFAULT_PREFERENCE_MEMORY_CONSOLIDATION_INTERVAL_MINUTES = 24 * 60;
+export const PREFERENCE_MEMORY_CONSOLIDATION_BACKENDS = [
+  'claude-code',
+  'opencode',
+] as const satisfies readonly AgentBackendType[];
+export const DEFAULT_PREFERENCE_MEMORY_CONSOLIDATION_BACKEND: AgentBackendType =
+  'claude-code';
+export const DEFAULT_PREFERENCE_MEMORY_CONSOLIDATION_MODEL: ModelPreference =
+  'haiku';
+export const DEFAULT_PREFERENCE_MEMORY_CONSOLIDATION_THINKING_EFFORT: ThinkingEffort =
+  'default';
+
 export interface ThinkingSettingsSetting {
   efforts: Record<AgentBackendType, Record<string, ThinkingEffort>>;
   selectedModels?: Record<AgentBackendType, ModelPreference>;
@@ -952,6 +973,27 @@ function isRawMessageCleanupSetting(v: unknown): v is RawMessageCleanupSetting {
     typeof obj.retentionHours === 'number' &&
     Number.isFinite(obj.retentionHours) &&
     obj.retentionHours >= 1
+  );
+}
+
+function isPreferenceMemorySetting(v: unknown): v is PreferenceMemorySetting {
+  if (!v || typeof v !== 'object') return false;
+  const obj = v as Record<string, unknown>;
+  return (
+    typeof obj.enabled === 'boolean' &&
+    typeof obj.consolidationEnabled === 'boolean' &&
+    typeof obj.consolidationIntervalMinutes === 'number' &&
+    Number.isFinite(obj.consolidationIntervalMinutes) &&
+    obj.consolidationIntervalMinutes >= 15 &&
+    typeof obj.consolidationBackend === 'string' &&
+    PREFERENCE_MEMORY_CONSOLIDATION_BACKENDS.includes(
+      obj.consolidationBackend as (typeof PREFERENCE_MEMORY_CONSOLIDATION_BACKENDS)[number],
+    ) &&
+    typeof obj.consolidationModel === 'string' &&
+    typeof obj.consolidationThinkingEffort === 'string' &&
+    VALID_THINKING_EFFORTS.includes(
+      obj.consolidationThinkingEffort as ThinkingEffort,
+    )
   );
 }
 
@@ -1249,6 +1291,19 @@ export const SETTINGS_DEFINITIONS = {
       retentionHours: 24,
     } as RawMessageCleanupSetting,
     validate: isRawMessageCleanupSetting,
+  },
+  preferenceMemory: {
+    defaultValue: {
+      enabled: false,
+      consolidationEnabled: false,
+      consolidationIntervalMinutes:
+        DEFAULT_PREFERENCE_MEMORY_CONSOLIDATION_INTERVAL_MINUTES,
+      consolidationBackend: DEFAULT_PREFERENCE_MEMORY_CONSOLIDATION_BACKEND,
+      consolidationModel: DEFAULT_PREFERENCE_MEMORY_CONSOLIDATION_MODEL,
+      consolidationThinkingEffort:
+        DEFAULT_PREFERENCE_MEMORY_CONSOLIDATION_THINKING_EFFORT,
+    } as PreferenceMemorySetting,
+    validate: isPreferenceMemorySetting,
   },
   thinkingSettings: {
     defaultValue: {

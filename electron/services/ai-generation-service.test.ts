@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getOrCreateServerMock, queryMock, recordUsageSafeMock } = vi.hoisted(
-  () => ({
+const {
+  getOrCreateServerMock,
+  queryMock,
+  rateLimitResolveBackendMock,
+  recordUsageSafeMock,
+} = vi.hoisted(() => ({
     getOrCreateServerMock: vi.fn(),
     queryMock: vi.fn(),
+    rateLimitResolveBackendMock: vi.fn(),
     recordUsageSafeMock: vi.fn(),
-  }),
-);
+  }));
 
 vi.mock('./agent-backends/opencode/opencode-backend', () => ({
   getOrCreateServer: getOrCreateServerMock,
@@ -18,9 +22,7 @@ vi.mock('@anthropic-ai/claude-agent-sdk', () => ({
 
 vi.mock('./rate-limit-swap-service', () => ({
   rateLimitSwapService: {
-    resolveBackend: vi
-      .fn()
-      .mockResolvedValue({ backend: 'opencode', swapped: false }),
+    resolveBackend: rateLimitResolveBackendMock,
   },
 }));
 
@@ -50,6 +52,10 @@ async function* createClaudeQueryResponse(message: unknown) {
 describe('generateText claude-code structured output', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    rateLimitResolveBackendMock.mockImplementation(async (backend: string) => ({
+      backend,
+      swapped: false,
+    }));
   });
 
   it('dispatches structured generation through Claude query and records usage', async () => {
@@ -147,11 +153,45 @@ describe('generateText claude-code structured output', () => {
 
     expect(result).toBe(false);
   });
+
+  it('passes Claude Code allowed tool patterns as scoped tool permissions', async () => {
+    queryMock.mockReturnValue(
+      createClaudeQueryResponse({ type: 'result', result: 'done' }),
+    );
+
+    await generateText({
+      backend: 'claude-code',
+      model: 'default',
+      prompt: 'Update memory',
+      allowedTools: ['Read', 'Write', 'Edit'],
+      allowedToolPatterns: {
+        Read: ['.jean-claude/memory/**'],
+        Write: ['.jean-claude/memory/**'],
+        Edit: ['.jean-claude/memory/**'],
+      },
+    });
+
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({
+          allowedTools: [
+            'Read(.jean-claude/memory/**)',
+            'Write(.jean-claude/memory/**)',
+            'Edit(.jean-claude/memory/**)',
+          ],
+        }),
+      }),
+    );
+  });
 });
 
 describe('generateText opencode structured output', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    rateLimitResolveBackendMock.mockImplementation(async (backend: string) => ({
+      backend,
+      swapped: false,
+    }));
   });
 
   it('returns native structured output when OpenCode provides it', async () => {
@@ -269,11 +309,87 @@ describe('generateText opencode structured output', () => {
       }),
     );
   });
+
+  it('passes restrictive OpenCode permissions for allowed tools and skill', async () => {
+    const client = createMockClient({
+      data: {
+        info: {},
+        parts: [{ type: 'text', text: 'done' }],
+      },
+    });
+    getOrCreateServerMock.mockResolvedValue({ client });
+
+    await generateText({
+      backend: 'opencode',
+      model: 'default',
+      prompt: 'Update memory',
+      skillName: 'user-preference-memory',
+      allowedTools: ['Read', 'Write', 'Edit'],
+      allowedToolPatterns: {
+        Read: ['.jean-claude/memory/**'],
+        Write: ['.jean-claude/memory/**'],
+        Edit: ['.jean-claude/memory/**'],
+      },
+    });
+
+    expect(client.session.create).toHaveBeenCalledWith({
+      directory: expect.any(String),
+      body: {
+        permission: [
+          { permission: '*', pattern: '*', action: 'deny' },
+          {
+            permission: 'read',
+            pattern: '.jean-claude/memory/**',
+            action: 'allow',
+          },
+          {
+            permission: 'write',
+            pattern: '.jean-claude/memory/**',
+            action: 'allow',
+          },
+          {
+            permission: 'edit',
+            pattern: '.jean-claude/memory/**',
+            action: 'allow',
+          },
+          {
+            permission: 'skill',
+            pattern: 'user-preference-memory',
+            action: 'allow',
+          },
+        ],
+      },
+    });
+  });
+
+  it('does not pass OpenCode permissions when allowed tools are unset', async () => {
+    const client = createMockClient({
+      data: {
+        info: {},
+        parts: [{ type: 'text', text: 'done' }],
+      },
+    });
+    getOrCreateServerMock.mockResolvedValue({ client });
+
+    await generateText({
+      backend: 'opencode',
+      model: 'default',
+      prompt: 'Generate text',
+    });
+
+    expect(client.session.create).toHaveBeenCalledWith({
+      directory: expect.any(String),
+    });
+  });
 });
 
 describe('generateText unsupported backends', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    rateLimitResolveBackendMock.mockImplementation(async (backend: string) => ({
+      backend,
+      swapped: false,
+    }));
   });
 
   it('returns null for unsupported Codex generation when throwOnError is false', async () => {

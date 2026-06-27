@@ -6,6 +6,7 @@ import type { ThinkingEffort } from '@shared/types';
 import { dbg } from '../lib/debug';
 
 import { getAgentBackendProvider } from './agent-backends/providers';
+import { rateLimitSwapService } from './rate-limit-swap-service';
 
 const DEFAULT_TIMEOUT_MS = 60_000;
 
@@ -22,8 +23,10 @@ export async function generateText({
   outputSchema,
   cwd,
   allowedTools,
+  allowedToolPatterns,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   throwOnError = false,
+  allowRateLimitSwap = true,
   usageContext,
 }: {
   backend: AgentBackendType;
@@ -34,17 +37,34 @@ export async function generateText({
   outputSchema?: Record<string, unknown>;
   cwd?: string;
   allowedTools?: string[];
+  allowedToolPatterns?: Record<string, string[]>;
   timeoutMs?: number;
   throwOnError?: boolean;
+  allowRateLimitSwap?: boolean;
   usageContext?: AiUsageContext;
 }): Promise<unknown | null> {
+  const swapResult = allowRateLimitSwap
+    ? await rateLimitSwapService.resolveBackend(backend)
+    : { backend, swapped: false, model: undefined, thinkingEffort: undefined };
+  const resolvedBackend = swapResult.backend;
+  const backendChanged = resolvedBackend !== backend;
+  const resolvedModel =
+    swapResult.model ?? (backendChanged ? 'default' : model);
+  const resolvedThinkingEffort =
+    swapResult.thinkingEffort ?? (backendChanged ? undefined : thinkingEffort);
+  if (swapResult.swapped) {
+    console.log(
+      `[rate-limit-swap] AI gen${skillName ? ` (${skillName})` : ''}: swapped ${backend} -> ${resolvedBackend} (model: ${resolvedModel})`,
+    );
+  }
+
   const abortController = new AbortController();
   const timeout = setTimeout(() => {
     abortController.abort();
   }, timeoutMs);
 
   try {
-    const provider = getAgentBackendProvider(backend);
+    const provider = getAgentBackendProvider(resolvedBackend);
 
     if (outputSchema) {
       const capability = requireCapability(
@@ -53,13 +73,14 @@ export async function generateText({
         provider.capabilities.generation.structured,
       );
       const result = await capability.generate({
-        model,
+        model: resolvedModel,
         prompt,
         skillName,
-        thinkingEffort,
+        thinkingEffort: resolvedThinkingEffort,
         outputSchema,
         cwd,
         allowedTools,
+        allowedToolPatterns,
         abortController,
         usageContext,
       });
@@ -72,12 +93,13 @@ export async function generateText({
       provider.capabilities.generation.text,
     );
     const result = await capability.generate({
-      model,
+      model: resolvedModel,
       prompt,
       skillName,
-      thinkingEffort,
+      thinkingEffort: resolvedThinkingEffort,
       cwd,
       allowedTools,
+      allowedToolPatterns,
       abortController,
       usageContext,
     });

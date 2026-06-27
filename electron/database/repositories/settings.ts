@@ -4,6 +4,8 @@ import {
   type CalendarNotificationsSetting,
   DEFAULT_TASK_NOTIFICATION_MODES,
   normalizePromptPrefaceSetting,
+  PREFERENCE_MEMORY_CONSOLIDATION_BACKENDS,
+  type PreferenceMemorySetting,
   type RateLimitSwapSetting,
   SETTINGS_DEFINITIONS,
   type SummaryModelsSetting,
@@ -173,6 +175,45 @@ function normalizeWorkActivitySetting(
   return { enabled: value.enabled !== false };
 }
 
+function normalizePreferenceMemorySetting(
+  value: unknown,
+): PreferenceMemorySetting | null {
+  if (!isRecord(value) || typeof value.enabled !== 'boolean') {
+    return null;
+  }
+
+  const defaults = SETTINGS_DEFINITIONS.preferenceMemory.defaultValue;
+  return {
+    enabled: value.enabled,
+    consolidationEnabled:
+      typeof value.consolidationEnabled === 'boolean'
+        ? value.consolidationEnabled
+        : defaults.consolidationEnabled,
+    consolidationIntervalMinutes:
+      typeof value.consolidationIntervalMinutes === 'number' &&
+      Number.isFinite(value.consolidationIntervalMinutes) &&
+      value.consolidationIntervalMinutes >= 15
+        ? value.consolidationIntervalMinutes
+        : defaults.consolidationIntervalMinutes,
+    consolidationBackend:
+      typeof value.consolidationBackend === 'string' &&
+      PREFERENCE_MEMORY_CONSOLIDATION_BACKENDS.includes(
+        value.consolidationBackend as (typeof PREFERENCE_MEMORY_CONSOLIDATION_BACKENDS)[number],
+      )
+        ? (value.consolidationBackend as AgentBackendType)
+        : defaults.consolidationBackend,
+    consolidationModel:
+      typeof value.consolidationModel === 'string'
+        ? value.consolidationModel
+        : defaults.consolidationModel,
+    consolidationThinkingEffort: isThinkingEffort(
+      value.consolidationThinkingEffort,
+    )
+      ? value.consolidationThinkingEffort
+      : defaults.consolidationThinkingEffort,
+  };
+}
+
 function normalizeSettingValue<K extends keyof AppSettings>(
   key: K,
   value: unknown,
@@ -194,6 +235,9 @@ function normalizeSettingValue<K extends keyof AppSettings>(
   }
   if (key === 'promptPreface') {
     return normalizePromptPrefaceSetting(value) as AppSettings[K];
+  }
+  if (key === 'preferenceMemory') {
+    return normalizePreferenceMemorySetting(value) as AppSettings[K];
   }
   return null;
 }

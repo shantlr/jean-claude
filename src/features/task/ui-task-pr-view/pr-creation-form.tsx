@@ -435,6 +435,27 @@ export function PrCreationForm({
               pullRequestId: result.id,
               comments: checkedAnnotations,
             });
+            void api.preferenceMemory
+              .recordEvidence({
+                source: 'pr-file-comment',
+                taskId,
+                projectId,
+                comments: checkedAnnotations.map((annotation) => ({
+                  body: annotation.content,
+                  filePath: annotation.filePath,
+                  lineStart: annotation.line,
+                  pullRequestId: result.id,
+                })),
+                context: {
+                  repoId,
+                  azureProjectId: repoProjectId,
+                  pullRequestTitle: displayTitle,
+                  pullRequestUrl: result.url,
+                },
+              })
+              .catch((error: unknown) => {
+                console.warn('Failed to record preference evidence', error);
+              });
           } catch {
             // Comments are best-effort; don't fail the job
             addToast({

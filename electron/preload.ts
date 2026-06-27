@@ -9,6 +9,7 @@ import type {
   AppNotification,
   TaskNotificationTarget,
 } from '@shared/notification-types';
+import type { RecordPreferenceEvidenceParams } from '@shared/preference-memory-types';
 import type { CacheEvent, CacheSubscriptionUpdate } from '@shared/cache-events';
 import type {
   GetYamlParametersIpcParams,
@@ -100,6 +101,10 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('projects:detectLogos', projectPath),
     getSkills: (projectId: string) =>
       ipcRenderer.invoke('projects:getSkills', projectId),
+  },
+  preferenceMemory: {
+    recordEvidence: (params: RecordPreferenceEvidenceParams) =>
+      ipcRenderer.invoke('preferenceMemory:recordEvidence', params),
   },
   tasks: {
     focused: (taskId: string) => ipcRenderer.send('tasks:focused', taskId),

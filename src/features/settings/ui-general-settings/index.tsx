@@ -1,4 +1,5 @@
 import {
+  Brain,
   Check,
   CircleAlert,
   ExternalLink,
@@ -26,8 +27,13 @@ import {
 import {
   type CalendarNotificationsSetting,
   DEFAULT_CALENDAR_NOTIFICATION_LEAD_TIME_MINUTES,
+  DEFAULT_PREFERENCE_MEMORY_CONSOLIDATION_BACKEND,
+  DEFAULT_PREFERENCE_MEMORY_CONSOLIDATION_INTERVAL_MINUTES,
+  DEFAULT_PREFERENCE_MEMORY_CONSOLIDATION_MODEL,
+  DEFAULT_PREFERENCE_MEMORY_CONSOLIDATION_THINKING_EFFORT,
   DEFAULT_TASK_NOTIFICATION_MODES,
   type ModelPreference,
+  PREFERENCE_MEMORY_CONSOLIDATION_BACKENDS,
   PRESET_EDITORS,
   type RawMessageCleanupSetting,
   type TaskNotificationEvent,
@@ -43,6 +49,7 @@ import {
   useCalendarNotificationsSetting,
   useEditorAutomationSetting,
   useEditorSetting,
+  usePreferenceMemorySetting,
   usePromptPrefaceSetting,
   useRawMessageCleanupSetting,
   useSetting,
@@ -55,6 +62,7 @@ import {
   useUpdateCalendarNotificationsSetting,
   useUpdateEditorAutomationSetting,
   useUpdateEditorSetting,
+  useUpdatePreferenceMemorySetting,
   useUpdatePromptPrefaceSetting,
   useUpdateRawMessageCleanupSetting,
   useUpdateSetting,
@@ -80,6 +88,7 @@ import { Input } from '@/common/ui/input';
 import { ModelSelector } from '@/features/agent/ui-model-selector';
 import { PromptPrefaceList } from '@/features/settings/ui-prompt-preface-list';
 import { Select } from '@/common/ui/select';
+import { Switch } from '@/common/ui/switch';
 import { ThinkingSelector } from '@/features/agent/ui-thinking-selector';
 import { useBackendModels } from '@/hooks/use-backend-models';
 import { useDeleteWorkActivity } from '@/hooks/use-work-activity';
@@ -335,6 +344,252 @@ export function MaintenanceSettings() {
       <div className="border-line-soft border-t" />
       <ClaudeProjectsCleanup />
       <GlobalGitignoreSetup />
+    </div>
+  );
+}
+
+function BetaBadge() {
+  return (
+    <span className="border-acc/35 bg-acc/10 text-acc-ink inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase">
+      Beta
+    </span>
+  );
+}
+
+export function PreferenceMemorySettings() {
+  const { data: preferenceMemorySetting } = usePreferenceMemorySetting();
+  const updatePreferenceMemory = useUpdatePreferenceMemorySetting();
+  const setting = preferenceMemorySetting ?? {
+    enabled: false,
+    consolidationEnabled: false,
+    consolidationIntervalMinutes:
+      DEFAULT_PREFERENCE_MEMORY_CONSOLIDATION_INTERVAL_MINUTES,
+    consolidationBackend: DEFAULT_PREFERENCE_MEMORY_CONSOLIDATION_BACKEND,
+    consolidationModel: DEFAULT_PREFERENCE_MEMORY_CONSOLIDATION_MODEL,
+    consolidationThinkingEffort:
+      DEFAULT_PREFERENCE_MEMORY_CONSOLIDATION_THINKING_EFFORT,
+  };
+  const { data: dynamicModels } = useBackendModels(
+    setting.consolidationBackend,
+  );
+  const thinkingCapabilities = getModelThinkingCapabilities(
+    setting.consolidationModel,
+    dynamicModels,
+  );
+  const thinkingOptions = getThinkingEffortOptions({
+    backend: setting.consolidationBackend,
+    model: setting.consolidationModel,
+    capabilities: thinkingCapabilities,
+  });
+  const normalizedThinkingEffort = normalizeThinkingEffortForModel({
+    backend: setting.consolidationBackend,
+    model: setting.consolidationModel,
+    effort: setting.consolidationThinkingEffort,
+    capabilities: thinkingCapabilities,
+  });
+
+  const updateSetting = (next: typeof setting) => {
+    updatePreferenceMemory.mutate(next);
+  };
+
+  return (
+    <div>
+      <div className="flex items-start gap-3">
+        <div className="bg-acc/15 text-acc-ink mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
+          <Brain className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-ink-1 text-lg font-semibold">Agent Memory</h2>
+            <BetaBadge />
+          </div>
+          <p className="text-ink-3 mt-1 text-sm">
+            Capture review and PR comments as local evidence, then periodically
+            consolidate them into reusable coding preferences.
+          </p>
+        </div>
+      </div>
+
+      <div className="border-glass-border bg-bg-1 mt-4 rounded-lg border px-4 py-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-ink-1 text-sm font-medium">
+              Capture preference evidence
+            </div>
+            <p className="text-ink-3 mt-1 text-xs">
+              When enabled, Jean-Claude writes review/PR comments, selected
+              code, task context, and bounded file snapshots to daily files in{' '}
+              <span className="font-mono">
+                .jean-claude/memory/user-reviews/
+              </span>{' '}
+              in each project.
+            </p>
+          </div>
+          <Switch
+            checked={setting.enabled}
+            onChange={(nextEnabled) =>
+              updateSetting({
+                ...setting,
+                enabled: nextEnabled,
+              })
+            }
+            label="Capture preference evidence"
+          />
+        </div>
+      </div>
+
+      <div className="border-glass-border bg-bg-1 mt-4 rounded-lg border px-4 py-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-ink-1 text-sm font-medium">
+              Consolidate preferences
+            </div>
+            <p className="text-ink-3 mt-1 text-xs">
+              When enabled, Jean-Claude regularly processes new review evidence
+              from byte offsets tracked in{' '}
+              <span className="font-mono">
+                .jean-claude/memory/user-reviews-state.json
+              </span>{' '}
+              and updates{' '}
+              <span className="font-mono">
+                .jean-claude/memory/user-preferences.md
+              </span>
+              .
+            </p>
+          </div>
+          <Switch
+            checked={setting.consolidationEnabled}
+            onChange={(consolidationEnabled) =>
+              updateSetting({
+                ...setting,
+                consolidationEnabled,
+              })
+            }
+            label="Consolidate preferences"
+          />
+        </div>
+        <div className="mt-4 max-w-xs">
+          <label className="text-ink-2 block text-xs font-medium">
+            Interval (minutes)
+          </label>
+          <Input
+            type="number"
+            min={15}
+            value={setting.consolidationIntervalMinutes}
+            onChange={(event) => {
+              const nextValue = Number(event.target.value);
+              if (!Number.isFinite(nextValue)) return;
+              updateSetting({
+                ...setting,
+                consolidationIntervalMinutes: Math.max(15, nextValue),
+              });
+            }}
+            className="mt-2"
+          />
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <Select
+            value={setting.consolidationBackend}
+            options={AVAILABLE_BACKENDS.filter((backend) =>
+              PREFERENCE_MEMORY_CONSOLIDATION_BACKENDS.includes(
+                backend.value as (typeof PREFERENCE_MEMORY_CONSOLIDATION_BACKENDS)[number],
+              ),
+            ).map((backend) => ({
+              value: backend.value,
+              label: backend.label,
+              description: backend.description,
+              badge: backend.badge,
+            }))}
+            onChange={(backendValue) => {
+              const consolidationBackend = backendValue as AgentBackendType;
+              const consolidationModel =
+                consolidationBackend === 'claude-code'
+                  ? DEFAULT_PREFERENCE_MEMORY_CONSOLIDATION_MODEL
+                  : 'default';
+              updateSetting({
+                ...setting,
+                consolidationBackend,
+                consolidationModel,
+                consolidationThinkingEffort:
+                  DEFAULT_PREFERENCE_MEMORY_CONSOLIDATION_THINKING_EFFORT,
+              });
+            }}
+            label="Backend"
+          />
+          <ModelSelector
+            value={setting.consolidationModel}
+            models={getModelsForBackend(
+              setting.consolidationBackend,
+              dynamicModels,
+            )}
+            onChange={(consolidationModel) => {
+              const nextCapabilities = getModelThinkingCapabilities(
+                consolidationModel,
+                dynamicModels,
+              );
+              updateSetting({
+                ...setting,
+                consolidationModel,
+                consolidationThinkingEffort: normalizeThinkingEffortForModel({
+                  backend: setting.consolidationBackend,
+                  model: consolidationModel,
+                  effort: setting.consolidationThinkingEffort,
+                  capabilities: nextCapabilities,
+                }),
+              });
+            }}
+          />
+          <ThinkingSelector
+            value={normalizedThinkingEffort}
+            options={thinkingOptions}
+            onChange={(consolidationThinkingEffort) =>
+              updateSetting({
+                ...setting,
+                consolidationThinkingEffort: normalizeThinkingEffortForModel({
+                  backend: setting.consolidationBackend,
+                  model: setting.consolidationModel,
+                  effort: consolidationThinkingEffort,
+                  capabilities: thinkingCapabilities,
+                }),
+              })
+            }
+            disabled={thinkingOptions.length <= 1}
+          />
+        </div>
+      </div>
+
+      <div className="border-glass-border bg-bg-1 mt-4 rounded-lg border px-4 py-3">
+        <div className="text-ink-1 text-sm font-medium">How it works</div>
+        <ol className="text-ink-3 mt-2 list-decimal space-y-1 pl-4 text-xs">
+          <li>Enable capture here.</li>
+          <li>Leave task review comments or PR file comments.</li>
+          <li>
+            Jean-Claude appends evidence to daily JSONL files under{' '}
+            <span className="font-mono">.jean-claude/memory/user-reviews/</span>
+            .
+          </li>
+          <li>
+            If consolidation is enabled, Jean-Claude runs the{' '}
+            <span className="font-mono">user-preference-memory</span> skill to
+            update{' '}
+            <span className="font-mono">
+              .jean-claude/memory/user-preferences.md
+            </span>
+            .
+          </li>
+          <li>Future agents can read that markdown memory before working.</li>
+        </ol>
+      </div>
+
+      <div className="border-glass-border bg-bg-1 mt-4 rounded-lg border px-4 py-3">
+        <div className="text-ink-1 text-sm font-medium">Evidence retention</div>
+        <p className="text-ink-3 mt-1 text-xs">
+          Evidence is kept indefinitely in project JSONL files until you delete
+          it. Jean-Claude does not prune or upload it. Evidence can include
+          comments, selected code, task context, and bounded file excerpts
+          around commented lines.
+        </p>
+      </div>
     </div>
   );
 }

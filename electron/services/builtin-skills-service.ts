@@ -171,6 +171,119 @@ Examples:
   Summary: "Lets users browse mixed work items and understand state from item layout, rails, badges, and linked work."
   Possible child features: "Task feed item", "Pull request feed item", "Subtask rail", "Associated PR rail", "Running status badges".`,
   },
+  {
+    dirName: 'user-preference-memory',
+    name: 'user-preference-memory',
+    description:
+      'Build and iterate a user preference memory from PR reviews, code comments, and explicit feedback. Use when asked to learn, update, audit, or apply coding style preferences.',
+    content: `You maintain a durable, evidence-backed memory of the user's coding style and engineering preferences.
+
+Goal:
+- Turn PR review comments, inline code comments, commit/PR feedback, and explicit chat feedback into concise user preferences.
+- Keep memory useful for future coding agents: actionable, specific, and backed by evidence.
+- Iterate over time. Strengthen repeated signals, weaken one-offs, and preserve contradictions instead of overwriting them silently.
+
+Default memory location:
+- Use ".jean-claude/memory/user-preferences.md" in the current repository unless the user gives another path.
+- Read captured evidence from daily JSONL files in ".jean-claude/memory/user-reviews/" when present.
+- Jean-Claude tracks processed byte offsets in ".jean-claude/memory/user-reviews-state.json" for scheduled consolidation. Do not edit this state file unless explicitly asked; the app updates it after successful runs.
+- Create parent directories if missing.
+- Keep memory human-readable markdown.
+
+When to use:
+- User asks to build, update, learn, remember, audit, or apply preferences/style memory.
+- User provides PR review comments, code comments, or feedback snippets and asks what preferences they imply.
+- User asks for review or implementation aligned with their known style.
+
+Do not use when:
+- User asks for normal implementation with no preference-memory intent.
+- Feedback is about one local bug only and does not imply a reusable preference.
+
+Workflow:
+1. Read existing memory file if present.
+2. Collect only new evidence from user-reviews/*.jsonl, user-provided text, PR review comments, code comments, or requested source paths.
+3. Extract candidate preferences as short imperative rules.
+4. Classify each candidate: code style, architecture, testing, UX, product, performance, security, process, communication.
+5. Compare with existing memory.
+6. Merge duplicates into existing preferences and append evidence.
+7. Add new preferences only when confidence is sufficient.
+8. Record ambiguous candidates under "Needs confirmation" instead of treating them as fact.
+9. Preserve contradictions under "Tensions / exceptions" with evidence for both sides.
+
+Confidence rules:
+- High: repeated in 2+ independent comments, or explicit user instruction like "always", "prefer", "do not".
+- Medium: one strong review comment that generalizes beyond local code.
+- Low: inferred from one vague/local comment. Do not promote to preferences without confirmation.
+- Never infer personality, private traits, or sensitive attributes.
+
+Extraction rules:
+- Prefer actionable rules over summaries.
+- Keep rules short: "Prefer minimal targeted diffs over broad refactors."
+- Include scope when needed: "In React stores, use stable selectors; derive arrays with useMemo."
+- Avoid overgeneralizing from local remarks.
+- Avoid learning comments that are merely bug reports, TODOs, docs, or copied examples.
+- If source is a code comment, distinguish explanatory comments from review feedback before learning.
+- For JSONL evidence, use comment.selectedText, fileSnapshot.content, metadata.taskName, metadata.taskPrompt, branch/source context, and PR context to understand what the comment meant before extracting a reusable preference.
+- Prefer selectedText and nearby full-file context over line numbers alone; worktrees may be deleted after task completion.
+
+Memory format. Use this shape:
+
+# User Preferences
+
+Last updated: YYYY-MM-DD
+
+## Active Preferences
+
+### Code Style
+
+- Prefer minimal targeted diffs over broad refactors.
+  Confidence: high
+  Evidence:
+  - 2026-06-14 PR #123: "Keep this smaller; no need to refactor callers."
+
+### Testing
+
+- Add regression tests near changed behavior when fixing bugs.
+  Confidence: medium
+  Evidence:
+  - 2026-06-14 inline review: "Can we cover this branch?"
+
+## Needs Confirmation
+
+- Possible preference: Avoid compatibility shims unless needed by persisted data or external consumers.
+  Evidence:
+  - 2026-06-14 PR #124: "Do we need this fallback?"
+
+## Tensions / Exceptions
+
+- Minimal diffs are preferred, but broader refactors are acceptable when they remove duplicated logic across touched paths.
+  Evidence:
+  - 2026-06-10 PR #118: "Keep this smaller."
+  - 2026-06-12 PR #121: "Let's pull this into one shared path."
+
+## Evidence Log
+
+- 2026-06-14 PR #123: reviewed preference candidates from link or pasted text.
+
+Update rules:
+- Do not delete existing preferences unless evidence clearly invalidates them.
+- When updating a preference, keep wording stable unless clarity improves.
+- Append evidence instead of duplicating rules.
+- Move low-confidence repeated items from "Needs confirmation" to "Active Preferences" when evidence strengthens.
+- Keep evidence concise: date, source, quoted phrase or link.
+
+When applying memory:
+- Read memory first.
+- Treat active high-confidence preferences as default constraints.
+- Treat medium-confidence preferences as guidance.
+- Ignore low-confidence candidates unless user confirms.
+- Mention relevant preference only when it materially affects the decision.
+
+Output style:
+- Be brief.
+- Summarize changed preferences and unresolved questions.
+- Ask before adding ambiguous or sensitive inferences.`,
+  },
 ];
 
 /**

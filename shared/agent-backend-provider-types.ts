@@ -92,6 +92,7 @@ export interface TextGenerationInput {
   thinkingEffort?: ThinkingEffort | null;
   cwd?: string;
   allowedTools?: string[];
+  allowedToolPatterns?: Record<string, string[]>;
   abortController: AbortController;
   usageContext?: AiUsageContext;
 }

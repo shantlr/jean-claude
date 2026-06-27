@@ -79,15 +79,6 @@ import type {
   GlobalPromptResponse,
 } from '@shared/global-prompt-types';
 import type {
-  LegacySkillMigrationExecuteResult,
-  LegacySkillMigrationPreviewResult,
-  ManagedSkill,
-  RegistrySearchResult,
-  RegistrySkillContent,
-  Skill,
-  SkillScope,
-} from '@shared/skill-types';
-import type {
   McpPreset,
   McpServerTemplate,
   NewMcpServerTemplate,
@@ -96,6 +87,14 @@ import type {
   UnifiedMcpServer,
   UpdateMcpServerTemplate,
 } from '@shared/mcp-types';
+import type {
+  NormalizedEntry,
+  NormalizedPermissionRequest,
+} from '@shared/normalized-message-v2';
+import type {
+  RecordPreferenceEvidenceParams,
+  RecordPreferenceEvidenceResult,
+} from '@shared/preference-memory-types';
 import type {
   NewProjectCommand,
   NewProjectCommandGroup,
@@ -109,14 +108,19 @@ import type {
   UpdateProjectCommandGroup,
 } from '@shared/run-command-types';
 import type {
+  LegacySkillMigrationExecuteResult,
+  LegacySkillMigrationPreviewResult,
+  ManagedSkill,
+  RegistrySearchResult,
+  RegistrySkillContent,
+  Skill,
+  SkillScope,
+} from '@shared/skill-types';
+import type {
   NewWorkActivityEvent,
   WorkActivityEvent,
   WorkActivityWeekParams,
 } from '@shared/work-activity-types';
-import type {
-  NormalizedEntry,
-  NormalizedPermissionRequest,
-} from '@shared/normalized-message-v2';
 import type { UsageProviderMap, UsageSnapshot } from '@shared/usage-types';
 import type { AgentResourceSnapshot } from '@shared/agent-resource-types';
 import type { AgentUIEvent } from '@shared/agent-ui-events';
@@ -460,6 +464,11 @@ export interface Api {
     getDetected: () => Promise<DetectedProject[]>;
     detectLogos: (projectPath: string) => Promise<DetectedProjectLogo[]>;
     getSkills: (projectId: string) => Promise<Skill[]>;
+  };
+  preferenceMemory: {
+    recordEvidence: (
+      params: RecordPreferenceEvidenceParams,
+    ) => Promise<RecordPreferenceEvidenceResult>;
   };
   tasks: {
     focused: (taskId: string) => void;
@@ -1666,6 +1675,11 @@ export const api: Api = hasWindowApi
         getDetected: async () => [],
         detectLogos: async () => [],
         getSkills: async () => [],
+      },
+      preferenceMemory: {
+        recordEvidence: async () => {
+          throw new Error('API not available');
+        },
       },
       tasks: {
         focused: () => {},

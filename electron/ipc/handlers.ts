@@ -70,6 +70,7 @@ import type {
   UpdateProjectCommand,
   UpdateProjectCommandGroup,
 } from '@shared/run-command-types';
+import type { RecordPreferenceEvidenceParams } from '@shared/preference-memory-types';
 import type {
   NewWorkActivityEvent,
   WorkActivityWeekParams,
@@ -291,6 +292,7 @@ import {
   emitTaskUpsert,
   setCacheSubscriptions,
 } from '../services/cache-event-service';
+import { recordPreferenceEvidence } from '../services/preference-memory-service';
 import {
   fetchRegistrySkillContent,
   installFromRegistry,
@@ -1238,6 +1240,12 @@ export function registerIpcHandlers() {
         skillPath,
       }));
   });
+
+  ipcMain.handle(
+    'preferenceMemory:recordEvidence',
+    async (_, params: RecordPreferenceEvidenceParams) =>
+      recordPreferenceEvidence(params),
+  );
 
   // Tasks
   ipcMain.handle('tasks:findAll', () => TaskRepository.findAll());
