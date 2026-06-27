@@ -1115,6 +1115,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
   const [startingStepIds, setStartingStepIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [continuingInterruptedStepId, setContinuingInterruptedStepId] =
+    useState<string | null>(null);
   const stepStartJobIdsRef = useRef<Map<string, string>>(new Map());
   const [showWorkItemsEditor, setShowWorkItemsEditor] = useState(false);
   const [workItemsFilter, setWorkItemsFilter] = useState('');
@@ -1654,22 +1656,26 @@ export function TaskPanel({ taskId }: { taskId: string }) {
       activeStep,
     });
     if (!interruptedStep) return;
+    if (continuingInterruptedStepId === interruptedStep.id) return;
 
-    await handleAddStep({
-      promptTemplate: 'continue',
-      hasUserPrompt: false,
-      presetType: 'continue',
-      interactionMode: getDefaultInteractionModeForBackend({
-        backend: defaultAddStepBackend,
-      }),
-      agentBackend: defaultAddStepBackend,
-      modelPreference: defaultAddStepModel,
-      thinkingEffort: interruptedStep.thinkingEffort ?? 'default',
-      images: [],
-      start: true,
-      includedReviewCommentIds: [],
-      preferredStepId: interruptedStep.id,
-    });
+    setContinuingInterruptedStepId(interruptedStep.id);
+    setActiveStepId(interruptedStep.id);
+
+    try {
+      await api.agent.sendMessage(interruptedStep.id, [
+        { type: 'text', text: 'continue' },
+      ]);
+    } catch (error) {
+      addToast({
+        type: 'error',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to continue interrupted step',
+      });
+    } finally {
+      setContinuingInterruptedStepId(null);
+    }
   };
 
   const handleStartStep = useCallback(async () => {
@@ -2033,7 +2039,8 @@ export function TaskPanel({ taskId }: { taskId: string }) {
     !isAgentBusy &&
     !isSkillCreationTask &&
     task.status === 'interrupted' &&
-    !!interruptedStep;
+    !!interruptedStep &&
+    continuingInterruptedStepId === null;
   const hasRepoLink =
     !!project.repoProviderId && !!project.repoProjectId && !!project.repoId;
   const hasWorkItemsLink =
