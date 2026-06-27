@@ -2681,23 +2681,52 @@ const TaskMessageStreamSection = memo(function TaskMessageStreamSection({
 
   if (hasMessages) {
     return (
-      <MessageStream
-        messages={agentState.messages}
-        isRunning={isAgentBusy}
-        queuedPrompts={agentState.queuedPrompts}
-        onFilePathClick={onFilePathClick}
-        onToolDiffClick={onToolDiffClick}
-        onCancelQueuedPrompt={onCancelQueuedPrompt}
-        onUpdateQueuedPrompt={onUpdateQueuedPrompt}
-        onShowRawMessage={onShowRawMessage}
-        bottomPadding={bottomPadding}
-        pendingPermission={pendingPermission}
-        pendingQuestion={pendingQuestion}
-        onAddBashToPermissions={onAddBashToPermissions}
-        rootPath={rootPath}
-        taskId={taskId}
-        stepId={stepId}
-      />
+      <div className="flex h-full min-h-0 flex-col">
+        {activeStep?.status === 'errored' && !activeStep.sessionId && (
+          <div className="shrink-0 px-4 pt-4">
+            <div className="border-status-fail/30 bg-bg-0/95 flex items-center justify-between gap-3 rounded-lg border p-3 shadow-lg backdrop-blur">
+              <div className="min-w-0">
+                <p className="text-status-fail text-sm font-medium">
+                  Step failed to start
+                </p>
+                <p className="text-ink-2 truncate text-xs">
+                  {activeStepError}
+                </p>
+              </div>
+              <Button
+                onClick={onStartStep}
+                disabled={isStepStarting}
+                loading={isStepStarting}
+                variant="secondary"
+                size="sm"
+                icon={<RefreshCw />}
+                className="shrink-0"
+              >
+                {isStepStarting ? 'Retrying...' : 'Retry'}
+              </Button>
+            </div>
+          </div>
+        )}
+        <div className="min-h-0 flex-1">
+          <MessageStream
+            messages={agentState.messages}
+            isRunning={isAgentBusy}
+            queuedPrompts={agentState.queuedPrompts}
+            onFilePathClick={onFilePathClick}
+            onToolDiffClick={onToolDiffClick}
+            onCancelQueuedPrompt={onCancelQueuedPrompt}
+            onUpdateQueuedPrompt={onUpdateQueuedPrompt}
+            onShowRawMessage={onShowRawMessage}
+            bottomPadding={bottomPadding}
+            pendingPermission={pendingPermission}
+            pendingQuestion={pendingQuestion}
+            onAddBashToPermissions={onAddBashToPermissions}
+            rootPath={rootPath}
+            taskId={taskId}
+            stepId={stepId}
+          />
+        </div>
+      </div>
     );
   }
 
