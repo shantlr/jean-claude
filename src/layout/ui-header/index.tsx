@@ -657,9 +657,35 @@ export function Header() {
           className="px-2"
         />
         <NextMeetingButton />
+      </div>
+
+      {/* CENTER — Activity (absolutely centered) */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div
+          ref={activityButtonRef}
+          className="pointer-events-auto"
+          style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
+        >
+          <ActivityButton />
+        </div>
+      </div>
+
+      {/* Spacer to push telemetry right */}
+      <div className="flex-1" />
+
+      {/* RIGHT — telemetry */}
+      <div
+        className="flex min-w-0 items-center justify-end gap-1 px-4"
+        style={
+          {
+            WebkitAppRegion: 'no-drag',
+            maxWidth: `max(0px, calc(50vw - ${activityReservePx}px))`,
+          } as CSSProperties
+        }
+      >
         {api.app.isDevMode && (
           <div
-            className="group relative ml-2 flex items-center gap-1 rounded-full border border-amber-400/50 bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold tracking-[0.18em] text-amber-200 shadow-[0_0_16px_oklch(0.8_0.18_80_/_0.22)]"
+            className="group relative mr-1 flex shrink-0 items-center gap-1 rounded-full border border-amber-400/50 bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold tracking-[0.18em] text-amber-200 shadow-[0_0_16px_oklch(0.8_0.18_80_/_0.22)]"
             aria-label="Development mode"
             aria-describedby="dev-mode-tooltip"
             title={devBadgeLabel}
@@ -680,32 +706,6 @@ export function Header() {
             </span>
           </div>
         )}
-      </div>
-
-      {/* CENTER — Activity (absolutely centered) */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div
-          ref={activityButtonRef}
-          className="pointer-events-auto"
-          style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
-        >
-          <ActivityButton />
-        </div>
-      </div>
-
-      {/* Spacer to push telemetry right */}
-      <div className="flex-1" />
-
-      {/* RIGHT — telemetry */}
-      <div
-        className="flex min-w-0 items-center justify-end gap-1 overflow-hidden px-4"
-        style={
-          {
-            WebkitAppRegion: 'no-drag',
-            maxWidth: `max(0px, calc(50vw - ${activityReservePx}px))`,
-          } as CSSProperties
-        }
-      >
         <RamUsageDisplay />
         <CompletionCostDisplay />
         <UsageDisplay />
