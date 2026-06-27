@@ -14,6 +14,7 @@ export type DisplayMessage =
       skillToolUse: NormalizedToolUse;
       promptEntry?: NormalizedEntry;
       childEntries: NormalizedEntry[];
+      latestChildEntryDate?: string;
     }
   | {
       kind: 'compacting';
@@ -24,6 +25,7 @@ export type DisplayMessage =
       kind: 'subagent';
       toolUse: NormalizedToolUse;
       childEntries: NormalizedEntry[];
+      latestChildEntryDate?: string;
     };
 
 /**
@@ -116,6 +118,50 @@ function isSkillToolUse(
   entry: NormalizedEntry,
 ): entry is NormalizedEntry & NormalizedToolUse & { name: 'skill' } {
   return entry.type === 'tool-use' && entry.name === 'skill' && !!entry.result;
+}
+
+function getLatestEntryDate(
+  latest: { date: string; ms: number } | null,
+  entry: NormalizedEntry,
+): { date: string; ms: number } | null {
+  const ms = parseDateMs(entry.date);
+  if (ms === undefined || (latest && ms <= latest.ms)) return latest;
+
+  return { date: entry.date, ms };
+}
+
+function getLatestChildEntryDate(
+  toolId: string,
+  childEntriesByToolId: Map<
+    string,
+    { entry: NormalizedEntry; index: number }[]
+  >,
+  visited = new Set<string>(),
+): string | undefined {
+  if (visited.has(toolId)) return undefined;
+
+  visited.add(toolId);
+
+  let latest: { date: string; ms: number } | null = null;
+  const children = childEntriesByToolId.get(toolId) ?? [];
+
+  for (const { entry } of children) {
+    latest = getLatestEntryDate(latest, entry);
+
+    if (entry.type !== 'tool-use') continue;
+
+    const childDate = getLatestChildEntryDate(
+      entry.toolId,
+      childEntriesByToolId,
+      visited,
+    );
+    const childMs = parseDateMs(childDate);
+    if (childDate && childMs !== undefined && (!latest || childMs > latest.ms)) {
+      latest = { date: childDate, ms: childMs };
+    }
+  }
+
+  return latest?.date;
 }
 
 function isSubAgentToolUse(
@@ -300,6 +346,10 @@ export function mergeSkillMessages(
         skillToolUse: current,
         promptEntry,
         childEntries: children.map((c) => c.entry),
+        latestChildEntryDate: getLatestChildEntryDate(
+          current.toolId,
+          childEntriesByToolId,
+        ),
       });
       processedIndices.add(i);
       continue;
@@ -347,6 +397,10 @@ export function mergeSkillMessages(
         kind: 'subagent',
         toolUse: current,
         childEntries: children.map((c) => c.entry),
+        latestChildEntryDate: getLatestChildEntryDate(
+          current.toolId,
+          childEntriesByToolId,
+        ),
       });
       processedIndices.add(i);
       continue;
@@ -626,7 +680,8 @@ function areDisplayMessagesEqual(
     return (
       a.skillToolUse === b.skillToolUse &&
       a.promptEntry === b.promptEntry &&
-      areEntriesEqual(a.childEntries, b.childEntries)
+      areEntriesEqual(a.childEntries, b.childEntries) &&
+      a.latestChildEntryDate === b.latestChildEntryDate
     );
   }
 
@@ -636,7 +691,9 @@ function areDisplayMessagesEqual(
 
   if (a.kind === 'subagent' && b.kind === 'subagent') {
     return (
-      a.toolUse === b.toolUse && areEntriesEqual(a.childEntries, b.childEntries)
+      a.toolUse === b.toolUse &&
+      areEntriesEqual(a.childEntries, b.childEntries) &&
+      a.latestChildEntryDate === b.latestChildEntryDate
     );
   }
 

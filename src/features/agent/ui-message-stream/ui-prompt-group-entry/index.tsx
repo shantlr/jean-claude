@@ -263,6 +263,64 @@ function getDisplayMessageDate(dm: DisplayMessage): string | undefined {
     : undefined;
 }
 
+function getLatestEntryDate(
+  latest: { date: string; ms: number } | null,
+  entry: NormalizedEntry,
+): { date: string; ms: number } | null {
+  const ms = parseDateMs(entry.date);
+  if (ms === null || (latest && ms <= latest.ms)) return latest;
+
+  return { date: entry.date, ms };
+}
+
+function getLatestDisplayMessageDate(
+  childMessages: DisplayMessage[],
+): string | undefined {
+  let latest: { date: string; ms: number } | null = null;
+
+  for (const dm of childMessages) {
+    if (dm.kind === 'entry') latest = getLatestEntryDate(latest, dm.entry);
+    if (dm.kind === 'compacting') {
+      latest = getLatestEntryDate(latest, dm.startEntry);
+      if (dm.endEntry) latest = getLatestEntryDate(latest, dm.endEntry);
+    }
+    if (dm.kind === 'skill') {
+      if ('date' in dm.skillToolUse) {
+        latest = getLatestEntryDate(
+          latest,
+          dm.skillToolUse as NormalizedEntry,
+        );
+      }
+      if (dm.promptEntry) latest = getLatestEntryDate(latest, dm.promptEntry);
+      for (const entry of dm.childEntries) {
+        latest = getLatestEntryDate(latest, entry);
+      }
+      if (dm.latestChildEntryDate) {
+        const ms = parseDateMs(dm.latestChildEntryDate);
+        if (ms !== null && (!latest || ms > latest.ms)) {
+          latest = { date: dm.latestChildEntryDate, ms };
+        }
+      }
+    }
+    if (dm.kind === 'subagent') {
+      if ('date' in dm.toolUse) {
+        latest = getLatestEntryDate(latest, dm.toolUse as NormalizedEntry);
+      }
+      for (const entry of dm.childEntries) {
+        latest = getLatestEntryDate(latest, entry);
+      }
+      if (dm.latestChildEntryDate) {
+        const ms = parseDateMs(dm.latestChildEntryDate);
+        if (ms !== null && (!latest || ms > latest.ms)) {
+          latest = { date: dm.latestChildEntryDate, ms };
+        }
+      }
+    }
+  }
+
+  return latest?.date;
+}
+
 function MessageTime({ date }: { date?: string }) {
   if (!date) {
     return <div className="w-10 shrink-0" />;
@@ -463,6 +521,7 @@ const AgentHeader = memo(function AgentHeader({
   onContextMenu,
   isActiveGroup,
   runningStartDate,
+  lastMessageDate,
   completedDurationLabel,
   stepCount,
   resultStats,
@@ -472,6 +531,7 @@ const AgentHeader = memo(function AgentHeader({
   onContextMenu?: (e: MouseEvent) => void;
   isActiveGroup: boolean;
   runningStartDate?: string;
+  lastMessageDate?: string;
   completedDurationLabel: string | null;
   stepCount: number;
   resultStats?: string | null;
@@ -518,6 +578,15 @@ const AgentHeader = memo(function AgentHeader({
             startDate={runningStartDate}
             className="text-ink-4 ml-1.5"
           />
+          {lastMessageDate && (
+            <time
+              dateTime={ensureUtc(lastMessageDate)}
+              className="text-ink-4 ml-1.5 tracking-normal normal-case"
+              title={`Last message ${new Date(ensureUtc(lastMessageDate)).toLocaleString()}`}
+            >
+              last {formatMessageTime(lastMessageDate)}
+            </time>
+          )}
         </>
       ) : (
         <>
@@ -1214,6 +1283,11 @@ export const PromptGroupEntry = memo(function PromptGroupEntry({
     [group.promptEntry.date, previousPromptDate],
   );
 
+  const lastMessageDate = useMemo(() => {
+    if (!isActiveGroup) return undefined;
+    return getLatestDisplayMessageDate(group.childMessages);
+  }, [group.childMessages, isActiveGroup]);
+
   // Compute file edit/write stats from child messages
   const fileStats = useMemo(() => {
     const fileChangeEntries = getFileChangeToolEntries(group.childMessages);
@@ -1276,6 +1350,7 @@ export const PromptGroupEntry = memo(function PromptGroupEntry({
             }
             isActiveGroup={isActiveGroup}
             runningStartDate={runningStartDate}
+            lastMessageDate={lastMessageDate}
             completedDurationLabel={completedDurationLabel}
             stepCount={stepCount}
             resultStats={resultSummary?.stats}
