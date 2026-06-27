@@ -69,6 +69,7 @@ import * as m067 from './migrations/067_ai_usage_tracking';
 import * as m068 from './migrations/068_run_command_env_vars';
 import * as m069 from './migrations/069_work_activity_events';
 import * as m070 from './migrations/070_migrate_prompt_preface_array';
+import * as m071 from './migrations/071_project_archived_at';
 
 const migrations: Record<string, Migration> = {
   '001_initial': m001,
@@ -140,6 +141,7 @@ const migrations: Record<string, Migration> = {
   '068_run_command_env_vars': m068,
   '069_work_activity_events': m069,
   '070_migrate_prompt_preface_array': m070,
+  '071_project_archived_at': m071,
 };
 
 export const migrationProvider: MigrationProvider = {

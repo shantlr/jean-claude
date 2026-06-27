@@ -87,6 +87,13 @@ import {
   type SnippetVariableContext,
 } from '@/lib/resolve-snippet-template';
 import {
+  useActiveProjects,
+  useProjectBranches,
+  useProjectFeatureMap,
+  useProjectIsGitRepository,
+  useReorderProjects,
+} from '@/hooks/use-projects';
+import {
   useBackendDefaultModelsSetting,
   useBackendModelPresetsSetting,
   useBackendsSetting,
@@ -99,13 +106,6 @@ import {
   useCreateWorkItemVerificationNote,
 } from '@/hooks/use-feed-notes';
 import { useCreateTaskWithWorktree, useProjectTasks } from '@/hooks/use-tasks';
-import {
-  useProjectBranches,
-  useProjectFeatureMap,
-  useProjectIsGitRepository,
-  useProjects,
-  useReorderProjects,
-} from '@/hooks/use-projects';
 import {
   useRelatedTestCasesForWorkItems,
   useWorkItemComments,
@@ -455,7 +455,8 @@ export function NewTaskOverlay({
   const draftKey = selectedProjectId ?? 'all';
   const userTouchedSelectionRef = useRef(false);
 
-  const { data: projects = [] } = useProjects();
+  const { data: projects = [], isLoading: projectsLoading } =
+    useActiveProjects();
   const reorderProjectsMutation = useReorderProjects();
   const createTaskMutation = useCreateTaskWithWorktree();
   const createNoteMutation = useCreateFeedNote();
@@ -524,6 +525,19 @@ export function NewTaskOverlay({
         : null,
     [selectedProjectId, projects],
   );
+  useEffect(() => {
+    if (projectsLoading || selectedProjectId === null || selectedProject) {
+      return;
+    }
+
+    setSelectedProjectId(projects[0]?.id ?? null);
+  }, [
+    projects,
+    projectsLoading,
+    selectedProject,
+    selectedProjectId,
+    setSelectedProjectId,
+  ]);
   const snippetVariableContext: SnippetVariableContext = useMemo(
     () => ({
       project: selectedProject
@@ -1119,7 +1133,7 @@ export function NewTaskOverlay({
 
   // Start task handler
   const handleStartTask = useCallback(async () => {
-    if (!selectedProjectId) return;
+    if (!selectedProjectId || !selectedProject) return;
 
     const latestDraft = useNewTaskDraftStore.getState().drafts[draftKey];
     const submissionDraft = { ...(draft ?? {}), ...(latestDraft ?? {}) };

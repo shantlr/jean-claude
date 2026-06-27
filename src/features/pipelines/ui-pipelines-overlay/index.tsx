@@ -5,12 +5,11 @@ import { RemoveScroll } from 'react-remove-scroll';
 import { Settings } from 'lucide-react';
 
 
-
+import { useActiveProjects, useReorderProjects } from '@/hooks/use-projects';
 import {
   useKeyboardLayer,
   useRegisterKeyboardBindings,
 } from '@/common/context/keyboard-bindings';
-import { useProjects, useReorderProjects } from '@/hooks/use-projects';
 import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
 import type { Project } from '@shared/types';
@@ -79,7 +78,7 @@ export function PipelinesOverlay({ onClose }: { onClose: () => void }) {
     passthrough: ['global-nav'],
   });
 
-  const { data: allProjects = [] } = useProjects();
+  const { data: allProjects = [] } = useActiveProjects();
   const reorderProjects = useReorderProjects();
 
   const azureLinkedProjects = useMemo(

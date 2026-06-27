@@ -410,11 +410,22 @@ function markDeletedEntityResource(resourceKey: string) {
 
 export function applyCacheEvent(event: CacheEvent) {
   switch (event.type) {
-    case 'project.upsert':
+    case 'project.upsert': {
+      const previousProject = cache$.projects[event.project.id].get();
       markResourceChanged(projectResourceKey(event.project.id));
       ingestProject(event.project);
       markResourceStale('projects');
+      if (
+        previousProject === undefined ||
+        previousProject.archivedAt !== event.project.archivedAt
+      ) {
+        markTaskListsStale(event.project.id);
+        markTaskFeedStale();
+        markResourceStale('feed:pullRequests');
+        markResourceStale('feed:workItems');
+      }
       break;
+    }
     case 'project.patch': {
       const project$ = cache$.projects[event.projectId];
       const project = project$.get();

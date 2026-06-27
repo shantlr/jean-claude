@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 
 import type { FeedItem, ProjectPriority } from '@shared/feed-types';
 import {
@@ -22,6 +23,7 @@ import {
 } from '@/cache/feed-cache';
 import { NewProject, Project, UpdateProject } from '@shared/types';
 import { api } from '@/lib/api';
+import { feedQueryKeys } from '@/lib/feed-query-keys';
 import { useCacheResource } from '@/cache/use-cache-resource';
 
 
@@ -44,6 +46,19 @@ export function useProjects() {
     select: selectProjects,
     staleTime: Infinity,
   });
+}
+
+export function useActiveProjects() {
+  const result = useProjects();
+  const activeProjects = useMemo(
+    () => result.data?.filter((project) => !project.archivedAt),
+    [result.data],
+  );
+
+  return {
+    ...result,
+    data: activeProjects,
+  };
 }
 
 export function useProject(id: string) {
@@ -149,6 +164,7 @@ export function useUpdateProject() {
         queryKey: ['project-current-branch', id],
       });
       if (
+        data.archivedAt !== undefined ||
         data.showPrsInFeed !== undefined ||
         data.repoProviderId !== undefined ||
         data.repoProjectId !== undefined ||
@@ -157,12 +173,16 @@ export function useUpdateProject() {
         invalidateFeedResource(queryClient, 'pullRequests');
       }
       if (
+        data.archivedAt !== undefined ||
         data.showWorkItemsInFeed !== undefined ||
         data.workItemProviderId !== undefined ||
         data.workItemProjectId !== undefined ||
         data.workItemProjectName !== undefined
       ) {
         invalidateFeedResource(queryClient, 'workItems');
+      }
+      if (data.archivedAt !== undefined) {
+        queryClient.invalidateQueries({ queryKey: feedQueryKeys.tasks });
       }
     },
   });

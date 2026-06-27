@@ -460,6 +460,14 @@ async function ensureFeatureMapFileInDiff(
 async function createTaskAndEmit(
   data: Parameters<typeof TaskRepository.create>[0],
 ) {
+  const project = await ProjectRepository.findById(data.projectId);
+  if (!project) {
+    throw new Error('Project not found');
+  }
+  if (project.archivedAt) {
+    throw new Error('Cannot create tasks for archived projects');
+  }
+
   const task = await TaskRepository.create(data);
   emitTaskUpsert(task);
   return task;
@@ -888,6 +896,7 @@ export function registerIpcHandlers() {
       dbg.ipc('projects:update %s %o', id, data);
       const result = await ProjectRepository.update(id, data);
       if (
+        data.archivedAt !== undefined ||
         data.showWorkItemsInFeed !== undefined ||
         data.workItemProviderId !== undefined ||
         data.workItemProjectId !== undefined ||
@@ -896,6 +905,7 @@ export function registerIpcHandlers() {
         invalidateWorkItemCache();
       }
       if (
+        data.archivedAt !== undefined ||
         data.showPrsInFeed !== undefined ||
         data.repoProviderId !== undefined ||
         data.repoProjectId !== undefined ||

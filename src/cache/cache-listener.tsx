@@ -55,6 +55,14 @@ export function getReactQueryKeysForCacheEvent(event: CacheEvent) {
     queryKeys.push(feedQueryKey);
   }
 
+  if (event.type === 'project.upsert') {
+    queryKeys.push(
+      feedQueryKeys.tasks,
+      feedQueryKeys.pullRequests,
+      feedQueryKeys.workItems,
+    );
+  }
+
   if (event.type === 'project.delete') {
     queryKeys.push(feedQueryKeys.pullRequests, feedQueryKeys.workItems);
   }
@@ -70,6 +78,7 @@ export function getReactQueryKeysForCacheEvent(event: CacheEvent) {
 
   if (
     event.type === 'project.delete' ||
+    event.type === 'project.upsert' ||
     event.type === 'task.upsert' ||
     event.type === 'task.patch' ||
     event.type === 'task.delete'

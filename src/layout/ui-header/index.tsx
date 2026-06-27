@@ -30,6 +30,7 @@ import {
 } from '@/common/ui/dropdown';
 import { Button } from '@/common/ui/button';
 import { Kbd } from '@/common/ui/kbd';
+import { useActiveProjects } from '@/hooks/use-projects';
 import { useBacklogSelectedProjectId } from '@/stores/backlog-overlay-draft';
 import { useChangelogStore } from '@/stores/changelog';
 import { useCommands } from '@/common/hooks/use-commands';
@@ -37,7 +38,6 @@ import { useCurrentVisibleProject } from '@/stores/navigation';
 import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
 import { useModal } from '@/common/context/modal';
 import { useOverlaysStore } from '@/stores/overlays';
-import { useProjects } from '@/hooks/use-projects';
 import { useProjectTodoCount } from '@/hooks/use-project-todos';
 import { useTaskMessagesStore } from '@/stores/task-messages';
 
@@ -401,7 +401,7 @@ export function Header() {
   );
   const [reloadStartedAt, setReloadStartedAt] = useState(() => Date.now());
   const { projectId } = useCurrentVisibleProject();
-  const { data: projects = [] } = useProjects();
+  const { data: projects = [] } = useActiveProjects();
   const openOverlay = useOverlaysStore((state) => state.open);
   const openChangelog = useChangelogStore((state) => state.open);
   const persistedBacklogProjectId = useBacklogSelectedProjectId();

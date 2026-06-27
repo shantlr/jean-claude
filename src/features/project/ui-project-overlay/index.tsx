@@ -8,10 +8,10 @@ import { Plus } from 'lucide-react';
 
 
 import { ProjectLogoBackground } from '@/features/project/ui-project-logo';
+import { useActiveProjects } from '@/hooks/use-projects';
 import { useCommands } from '@/common/hooks/use-commands';
 import { useCurrentVisibleProject } from '@/stores/navigation';
 import { useKeyboardLayer } from '@/common/context/keyboard-bindings';
-import { useProjects } from '@/hooks/use-projects';
 
 
 const PROJECT_OVERLAY_GRID_COLUMNS = 3;
@@ -29,7 +29,7 @@ export function ProjectOverlay({ onClose }: { onClose: () => void }) {
     passthrough: ['global-nav'],
   });
 
-  const { data: projects = [] } = useProjects();
+  const { data: projects = [] } = useActiveProjects();
   const { projectId, moveToProject } = useCurrentVisibleProject();
 
   const sortedProjects = useMemo(

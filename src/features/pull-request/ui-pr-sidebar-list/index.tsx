@@ -12,9 +12,9 @@ import {
 } from '@/hooks/use-pull-requests';
 import { useCurrentVisibleProject, useSidebarTab } from '@/stores/navigation';
 import type { AzureDevOpsPullRequest } from '@/lib/api';
+import { useActiveProjects } from '@/hooks/use-projects';
 import { useCommands } from '@/common/hooks/use-commands';
 import { useCurrentAzureUser } from '@/hooks/use-work-items';
-import { useProjects } from '@/hooks/use-projects';
 
 
 
@@ -72,7 +72,7 @@ export function PrSidebarList() {
   const currentPrId = params.prId as string | undefined;
   const { projectId } = useCurrentVisibleProject();
   const { sidebarTab } = useSidebarTab();
-  const { data: projects = [] } = useProjects();
+  const { data: projects = [] } = useActiveProjects();
 
   const [tab, setTab] = useState<PrTab>('my-prs');
 

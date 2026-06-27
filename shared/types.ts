@@ -256,6 +256,7 @@ export interface Project {
   favoriteBranches: string[];
   prPriority: ProjectPriority;
   workItemPriority: ProjectPriority;
+  archivedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -293,6 +294,7 @@ export interface NewProject {
   favoriteBranches?: string[];
   prPriority?: ProjectPriority;
   workItemPriority?: ProjectPriority;
+  archivedAt?: string | null;
   createdAt?: string;
   updatedAt: string;
 }
@@ -330,6 +332,7 @@ export interface UpdateProject {
   favoriteBranches?: string[];
   prPriority?: ProjectPriority;
   workItemPriority?: ProjectPriority;
+  archivedAt?: string | null;
   updatedAt?: string;
 }
 

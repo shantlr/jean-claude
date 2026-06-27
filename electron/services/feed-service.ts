@@ -646,7 +646,12 @@ async function fetchPrFeedItems(): Promise<FeedItem[]> {
   dbg.feed('fetchPrFeedItems: fetching from Azure DevOps');
   const projects = await ProjectRepository.findAll();
   const repoProjects = projects.filter(
-    (p) => p.repoProviderId && p.repoProjectId && p.repoId && p.showPrsInFeed,
+    (p) =>
+      !p.archivedAt &&
+      p.repoProviderId &&
+      p.repoProjectId &&
+      p.repoId &&
+      p.showPrsInFeed,
   );
 
   const providerUserEmailMap = new Map<string, string>();
@@ -891,7 +896,10 @@ async function fetchWorkItemFeedItems(
   const projects = await ProjectRepository.findAll();
   const wiProjects = projects.filter(
     (p) =>
-      p.workItemProviderId && p.workItemProjectName && p.showWorkItemsInFeed,
+      !p.archivedAt &&
+      p.workItemProviderId &&
+      p.workItemProjectName &&
+      p.showWorkItemsInFeed,
   );
 
   if (wiProjects.length === 0) {

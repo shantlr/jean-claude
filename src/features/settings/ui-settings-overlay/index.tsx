@@ -789,14 +789,17 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
   const hasProjectTab = projects.length > 0;
   const displayedActiveTab =
     activeTab === 'project' && !hasProjectTab ? 'global' : activeTab;
-  const projectOptions = useMemo<SelectOption<string>[]>(
-    () =>
-      projects.map((project) => ({
-        value: project.id,
-        label: project.name,
-      })),
-    [projects],
-  );
+  const projectOptions = useMemo<SelectOption<string>[]>(() => {
+    const activeProjects = projects.filter((project) => !project.archivedAt);
+    const archivedProjects = projects.filter((project) => project.archivedAt);
+
+    return [...activeProjects, ...archivedProjects].map((project) => ({
+      value: project.id,
+      label: project.name,
+      group: project.archivedAt ? 'Archived' : 'Active',
+      badge: project.archivedAt ? 'Archived' : undefined,
+    }));
+  }, [projects]);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState('');
   const globalNavGroups = useMemo(() => getGlobalNavGroups(), []);

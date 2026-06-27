@@ -214,13 +214,26 @@ export const ProjectRepository = {
   reorder: async (orderedIds: string[]) => {
     dbg.db('projects.reorder %d projects', orderedIds.length);
     const now = new Date().toISOString();
+    const orderedIdSet = new Set(orderedIds);
+    const existingProjects = await db
+      .selectFrom('projects')
+      .select(['id', 'sortOrder'])
+      .where('type', '!=', 'system')
+      .orderBy('sortOrder', 'asc')
+      .execute();
+    const mergedOrderedIds = [
+      ...orderedIds,
+      ...existingProjects
+        .filter((project) => !orderedIdSet.has(project.id))
+        .map((project) => project.id),
+    ];
 
     // Update each project's sortOrder based on position in array
-    for (let i = 0; i < orderedIds.length; i++) {
+    for (let i = 0; i < mergedOrderedIds.length; i++) {
       await db
         .updateTable('projects')
         .set({ sortOrder: i, updatedAt: now })
-        .where('id', '=', orderedIds[i])
+        .where('id', '=', mergedOrderedIds[i])
         .execute();
     }
 

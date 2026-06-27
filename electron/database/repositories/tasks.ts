@@ -220,6 +220,7 @@ export const TaskRepository = {
       ])
       .where('tasks.userCompleted', '=', 0)
       .where('tasks.parentTaskId', 'is', null)
+      .where('projects.archivedAt', 'is', null)
       .orderBy('tasks.createdAt', 'desc')
       .execute();
     return rows.map(toTask);
@@ -239,6 +240,7 @@ export const TaskRepository = {
         'projects.repoId as repoId',
       ])
       .where('tasks.parentTaskId', 'in', parentTaskIds)
+      .where('projects.archivedAt', 'is', null)
       .orderBy('tasks.sortOrder', 'asc')
       .execute();
 
@@ -278,6 +280,7 @@ export const TaskRepository = {
         'projects.logoPath as projectLogoPath',
       ])
       .where('tasks.userCompleted', '=', 1)
+      .where('projects.archivedAt', 'is', null)
       .orderBy('tasks.updatedAt', 'desc')
       .limit(limit)
       .offset(offset)
@@ -286,8 +289,10 @@ export const TaskRepository = {
     // Get total count for pagination
     const countResult = await db
       .selectFrom('tasks')
+      .innerJoin('projects', 'projects.id', 'tasks.projectId')
       .select((eb) => eb.fn.countAll<number>().as('total'))
-      .where('userCompleted', '=', 1)
+      .where('tasks.userCompleted', '=', 1)
+      .where('projects.archivedAt', 'is', null)
       .executeTakeFirstOrThrow();
 
     return {

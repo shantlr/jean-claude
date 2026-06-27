@@ -16,9 +16,9 @@ import { useDeleteFeedNote, useUpdateFeedNote } from '@/hooks/use-feed-notes';
 import { Checkbox } from '@/common/ui/checkbox';
 import type { FeedItem } from '@shared/feed-types';
 import { formatRelativeTime } from '@/lib/time';
+import { useActiveProjects } from '@/hooks/use-projects';
 import { useNewTaskDraftStore } from '@/stores/new-task-draft';
 import { useOverlaysStore } from '@/stores/overlays';
-import { useProjects } from '@/hooks/use-projects';
 
 
 
@@ -60,7 +60,7 @@ export function FeedNoteCard({
 
   const [showProjectPicker, setShowProjectPicker] = useState(false);
 
-  const { data: projects } = useProjects();
+  const { data: projects } = useActiveProjects();
   const setDraft = useNewTaskDraftStore((s) => s.setDraft);
   const setSelectedProjectId = useNewTaskDraftStore(
     (s) => s.setSelectedProjectId,

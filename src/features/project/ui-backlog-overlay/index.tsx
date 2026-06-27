@@ -38,12 +38,12 @@ import FocusLock from 'react-focus-lock';
 import { Kbd } from '@/common/ui/kbd';
 import type { ProjectTodo } from '@shared/types';
 import { Select } from '@/common/ui/select';
+import { useActiveProjects } from '@/hooks/use-projects';
 import { useBackgroundNewTaskJobForBacklogItem } from '@/stores/background-jobs';
 import { useCommands } from '@/common/hooks/use-commands';
 import { useModal } from '@/common/context/modal';
 import { useNewTaskDraftStore } from '@/stores/new-task-draft';
 import { useOverlaysStore } from '@/stores/overlays';
-import { useProjects } from '@/hooks/use-projects';
 
 
 
@@ -283,7 +283,7 @@ export function BacklogOverlay({ onClose }: { onClose: () => void }) {
     exclusive: true,
     passthrough: ['global-nav'],
   });
-  const { data: projects = [] } = useProjects();
+  const { data: projects = [] } = useActiveProjects();
   const selectedProjectId = useBacklogSelectedProjectId();
   const setSelectedBacklogProjectId = useSetBacklogSelectedProjectId();
 

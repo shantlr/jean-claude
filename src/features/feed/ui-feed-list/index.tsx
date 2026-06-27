@@ -28,6 +28,7 @@ import { Dropdown, DropdownDivider, DropdownItem } from '@/common/ui/dropdown';
 import type { FeedItem } from '@shared/feed-types';
 import { Modal } from '@/common/ui/modal';
 import { ProjectLogo } from '@/features/project/ui-project-logo';
+import { useActiveProjects } from '@/hooks/use-projects';
 import { useBackgroundJobsStore } from '@/stores/background-jobs';
 import { useCachedPullRequest } from '@/hooks/use-pull-requests';
 import { useCommands } from '@/common/hooks/use-commands';
@@ -35,7 +36,6 @@ import { useFeed } from '@/hooks/use-feed';
 import { useFeedStore } from '@/stores/feed';
 import { useNavigationStore } from '@/stores/navigation';
 import { useOverlaysStore } from '@/stores/overlays';
-import { useProjects } from '@/hooks/use-projects';
 import { useUIStore } from '@/stores/ui';
 
 
@@ -585,7 +585,7 @@ function HorizontalPrReviewStack({
   const carouselRef = useRef<HTMLDivElement>(null);
   const prProjectOrder = useUIStore((s) => s.settings.prProjectOrder);
   const setSetting = useUIStore((s) => s.setSetting);
-  const { data: allProjects = [] } = useProjects();
+  const { data: allProjects = [] } = useActiveProjects();
   const wheelGesture = useRef<{
     accumulated: number;
     consumed: boolean;

@@ -9,6 +9,7 @@ import type {
   UpdateProject,
 } from '@shared/types';
 import {
+  Archive,
   Check,
   ChevronRight,
   FileText,
@@ -18,6 +19,7 @@ import {
   Maximize2,
   Minimize2,
   RefreshCw,
+  RotateCcw,
   Search,
   Sparkles,
   Trash2,
@@ -716,7 +718,8 @@ export function ProjectSettings({
     () => branchInfos?.map((b) => b.name),
     [branchInfos],
   );
-  const { mutateAsync: updateProject } = useUpdateProject();
+  const updateProjectMutation = useUpdateProject();
+  const updateProject = updateProjectMutation.mutateAsync;
   const uploadProjectLogo = useUploadProjectLogo();
   const generateProjectLogo = useGenerateProjectLogo();
   const selectGeneratedProjectLogo = useSelectGeneratedProjectLogo();
@@ -1014,6 +1017,17 @@ export function ProjectSettings({
     clearProjectNavHistoryState(projectId);
     await deleteProject.mutateAsync(projectId);
     onProjectDeleted();
+  }
+
+  async function handleArchiveToggle() {
+    if (!project) return;
+
+    await updateProject({
+      id: projectId,
+      data: {
+        archivedAt: project.archivedAt ? null : new Date().toISOString(),
+      },
+    });
   }
 
   async function handleGenerateContext() {
@@ -1720,10 +1734,29 @@ export function ProjectSettings({
       break;
     case 'danger-zone':
       content = (
-        <div>
+        <div className="space-y-5">
           <h2 className="text-status-fail mb-4 text-lg font-semibold">
             Danger Zone
           </h2>
+          <div className="border-glass-border bg-glass-light rounded-lg border p-4">
+            <p className="text-ink-1 text-sm font-medium">
+              {project.archivedAt ? 'Restore project' : 'Archive project'}
+            </p>
+            <p className="text-ink-3 mt-1 mb-3 text-sm">
+              {project.archivedAt
+                ? 'Restores this project to project lists and task creation.'
+                : 'Hides this project from project lists, task creation, feed, and all-project task views. Settings keep it available.'}
+            </p>
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={handleArchiveToggle}
+              disabled={updateProjectMutation.isPending}
+              icon={project.archivedAt ? <RotateCcw /> : <Archive />}
+            >
+              {project.archivedAt ? 'Restore Project' : 'Archive Project'}
+            </Button>
+          </div>
           {showDeleteConfirm ? (
             <div className="border-status-fail bg-status-fail/50 rounded-lg border p-4">
               <p className="text-ink-1 mb-4 text-sm">

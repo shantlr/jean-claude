@@ -9,9 +9,9 @@ import { Button } from '@/common/ui/button';
 import { PrSidebarList } from '@/features/pull-request/ui-pr-sidebar-list';
 import { SidebarContentTabs } from '@/features/project/ui-sidebar-content-tabs';
 import { TaskSummaryCard } from '@/features/task/ui-task-summary-card';
+import { useActiveProjects } from '@/hooks/use-projects';
 import { useCommands } from '@/common/hooks/use-commands';
 import { useOverlaysStore } from '@/stores/overlays';
-import { useProjects } from '@/hooks/use-projects';
 
 
 
@@ -22,7 +22,7 @@ export function TaskList() {
   const params = useParams({ strict: false });
   const currentTaskId = params.taskId as string | undefined;
 
-  const { data: projects = [] } = useProjects();
+  const { data: projects = [] } = useActiveProjects();
   const { data: activeTasks = [] } = useAllActiveTasks();
   const {
     data: completedTasksData,
