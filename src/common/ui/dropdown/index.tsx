@@ -44,6 +44,7 @@ export function Dropdown({
   dropdownRef,
   variant = 'default',
   onOpen,
+  initialFocusIndex = 0,
 }: {
   variant?: 'default' | 'bright';
   trigger:
@@ -57,6 +58,7 @@ export function Dropdown({
     | React.MutableRefObject<{ toggle: () => void } | null>
     | ((handle: { toggle: () => void } | null) => void);
   onOpen?: () => void;
+  initialFocusIndex?: number;
 }) {
   const id = useId();
   const menuId = `dropdown-menu-${id}`;
@@ -147,15 +149,15 @@ export function Dropdown({
     [getMenuItems],
   );
 
-  // Auto-focus first item when dropdown opens
+  // Auto-focus requested item when dropdown opens
   useEffect(() => {
     if (!isOpen || !contentRef.current) return;
     // Use a microtask to wait for the portal to render items
     const timer = requestAnimationFrame(() => {
-      focusItem(0);
+      focusItem(initialFocusIndex);
     });
     return () => cancelAnimationFrame(timer);
-  }, [isOpen, position, focusItem]);
+  }, [isOpen, position, focusItem, initialFocusIndex]);
 
   // Register with overlay context for click-outside detection
   useRegisterOverlay({

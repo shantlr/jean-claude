@@ -94,6 +94,15 @@ export function RunButton({
   const runningCount = Object.values(statusByCommandId).filter(
     (c) => c.status === 'running',
   ).length;
+  const firstRunningMenuIndex = menuItems.findIndex((menuItem) => {
+    if (menuItem.type === 'command') {
+      return statusByCommandId[menuItem.item.id]?.status === 'running';
+    }
+
+    return menuItem.item.commandIds.some(
+      (commandId) => statusByCommandId[commandId]?.status === 'running',
+    );
+  });
 
   const hasLogEntries =
     hasRunCommandLogEntries || (status?.commands.length ?? 0) > 0;
@@ -215,6 +224,9 @@ export function RunButton({
         <Dropdown
           align="right"
           dropdownRef={dropdownRef}
+          initialFocusIndex={
+            firstRunningMenuIndex >= 0 ? firstRunningMenuIndex : 0
+          }
           trigger={
             <button
               className={clsx(
