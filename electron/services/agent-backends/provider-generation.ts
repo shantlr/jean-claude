@@ -17,12 +17,6 @@ function supported<Implementation>(
   return { supported: true, implementation };
 }
 
-function unsupported<Implementation>(
-  reason: string,
-): Capability<Implementation> {
-  return { supported: false, reason };
-}
-
 export const claudeCodeTextGenerationCapability: TextGenerationCapability = {
   async generate(input) {
     const output = await generateWithClaudeCode(input);
@@ -55,6 +49,30 @@ export const openCodeStructuredGenerationCapability: StructuredGenerationCapabil
     },
   };
 
+const CODEX_ABORTED = Symbol('codex-aborted');
+const CODEX_FAILED = Symbol('codex-failed');
+
+type CodexGenerationOutcome =
+  | { output: unknown | null; usagePromise?: Promise<void> }
+  | typeof CODEX_ABORTED
+  | typeof CODEX_FAILED;
+
+export const codexTextGenerationCapability: TextGenerationCapability = {
+  async generate(input) {
+    const output = await generateWithCodex(input);
+    return { output };
+  },
+};
+
+export const codexStructuredGenerationCapability: StructuredGenerationCapability =
+  {
+    mode: 'prompt-json',
+    async generate(input) {
+      const output = await generateWithCodex(input);
+      return { output };
+    },
+  };
+
 export function createGenerationCapabilities(
   backend: AgentBackendType,
 ): AgentBackendCapabilities['generation'] {
@@ -73,12 +91,8 @@ export function createGenerationCapabilities(
   }
 
   return {
-    text: unsupported<TextGenerationCapability>(
-      'text generation is not implemented for this backend yet',
-    ),
-    structured: unsupported<StructuredGenerationCapability>(
-      'structured generation is not implemented for this backend yet',
-    ),
+    text: supported(codexTextGenerationCapability),
+    structured: supported(codexStructuredGenerationCapability),
   };
 }
 
@@ -333,6 +347,208 @@ async function generateWithOpenCode({
   }
 }
 
+async function generateWithCodex({
+  model,
+  prompt,
+  skillName,
+  thinkingEffort,
+  outputSchema,
+  cwd,
+  abortController,
+  usageContext,
+}: Parameters<TextGenerationCapability['generate']>[0] & {
+  outputSchema?: Record<string, unknown>;
+}): Promise<unknown | null> {
+  const { getOrCreateCodexAppServer } = await import(
+    './codex/codex-app-server'
+  );
+  const { client } = await abortableCodexAwait(
+    getOrCreateCodexAppServer(),
+    abortController.signal,
+  );
+  const effectivePrompt = skillName
+    ? `Use the "${skillName}" skill to help with this task.\n\n${prompt}`
+    : prompt;
+  const promptWithStructuredFallback = outputSchema
+    ? `${effectivePrompt}\n\nRespond with ONLY a valid JSON object matching this schema (no markdown, no code fences):\n${JSON.stringify(outputSchema, null, 2)}`
+    : effectivePrompt;
+
+  const threadResult = await abortableCodexAwait(
+    client.request('thread/start', {
+      cwd: cwd ?? homedir(),
+      serviceName: 'jean_claude',
+      ...(thinkingEffort && thinkingEffort !== 'default'
+        ? { config: { model_reasoning_effort: thinkingEffort } }
+        : {}),
+    }),
+    abortController.signal,
+  );
+  const threadId = idFromCodexResult(threadResult, 'thread');
+  if (!threadId) {
+    throw new Error('Codex thread/start did not return a thread id');
+  }
+
+  let turnId: string | null = null;
+  let abortGeneration: (() => void) | undefined;
+  const onAbort = () => {
+    if (turnId) {
+      client.request('turn/interrupt', { threadId, turnId }).catch(() => {});
+    }
+    abortGeneration?.();
+  };
+  abortController.signal.addEventListener('abort', onAbort, { once: true });
+
+  try {
+    let text = '';
+    let resolveResult:
+      | ((result: CodexGenerationOutcome) => void)
+      | undefined;
+    const resultPromise = new Promise<CodexGenerationOutcome>((resolve) => {
+      resolveResult = resolve;
+    });
+    const unsubscribe = client.onNotification((notification) => {
+      if (!codexNotificationMatches(notification, threadId, turnId)) return;
+
+      if (notification.method === 'item/agentMessage/delta') {
+        const params = record(notification.params);
+        text += typeof params?.delta === 'string' ? params.delta : '';
+        return;
+      }
+
+      if (notification.method === 'item/completed') {
+        text = codexAssistantTextFromCompletedItem(notification) ?? text;
+        return;
+      }
+
+      if (notification.method === 'turn/completed') {
+        const params = record(notification.params);
+        const usagePromise = usageContext
+          ? recordCodexUsage({ params, usageContext, model }).catch((error) => {
+              dbg.agent('Failed to record one-off Codex usage: %O', error);
+            })
+          : undefined;
+        if (codexTurnCompletedIsError(params)) {
+          resolveResult?.(CODEX_FAILED);
+          return;
+        }
+        resolveResult?.({
+          output: outputSchema ? parseJsonResponse(text) : text.trim() || null,
+          usagePromise,
+        });
+        return;
+      }
+
+      if (notification.method === 'thread/status/changed') {
+        const params = record(notification.params);
+        if (codexThreadStatusIsError(params)) {
+          resolveResult?.(CODEX_FAILED);
+          return;
+        }
+        if (turnId !== null && codexThreadStatusIsIdle(params)) {
+          resolveResult?.({
+            output: outputSchema ? parseJsonResponse(text) : text.trim() || null,
+          });
+        }
+      }
+    });
+    const unsubscribeError = client.onError((error) => {
+      dbg.agent('Codex generation client error: %O', error);
+      resolveResult?.(CODEX_FAILED);
+    });
+    abortGeneration = () => resolveResult?.(CODEX_ABORTED);
+
+    try {
+      const turnStartPromise = client.request('turn/start', {
+        threadId,
+        input: [{ type: 'text', text: promptWithStructuredFallback }],
+        model: model === 'default' ? undefined : model,
+      });
+      const turnResult = await abortableCodexAwait(
+        turnStartPromise,
+        abortController.signal,
+      ).catch((error: unknown) => {
+        if (abortController.signal.aborted) {
+          interruptCodexTurnWhenStarted({
+            turnStartPromise,
+            client,
+            threadId,
+          });
+        }
+        throw error;
+      });
+      turnId = idFromCodexResult(turnResult, 'turn');
+      if (!turnId) {
+        throw new Error('Codex turn/start did not return a turn id');
+      }
+      if (abortController.signal.aborted) {
+        onAbort();
+        throw new Error('Codex generation aborted');
+      }
+
+      const result = await resultPromise;
+      if (result === CODEX_ABORTED || abortController.signal.aborted) {
+        throw new Error('Codex generation aborted');
+      }
+      if (result === CODEX_FAILED) {
+        throw new Error('Codex generation failed');
+      }
+      await result.usagePromise;
+      return result.output;
+    } finally {
+      abortGeneration = undefined;
+      unsubscribe();
+      unsubscribeError();
+    }
+  } finally {
+    abortController.signal.removeEventListener('abort', onAbort);
+  }
+}
+
+async function recordCodexUsage({
+  params,
+  usageContext,
+  model,
+}: {
+  params: Record<string, unknown> | undefined;
+  usageContext: NonNullable<
+    Parameters<TextGenerationCapability['generate']>[0]['usageContext']
+  >;
+  model: string;
+}) {
+  const { aiUsageTrackingService } = await import(
+    '../ai-usage-tracking-service'
+  );
+  const usage = record(params?.usage);
+  aiUsageTrackingService.recordUsageSafe({
+    context: usageContext,
+    backend: 'codex',
+    model: typeof params?.model === 'string' ? params.model : model,
+    usage: {
+      inputTokens:
+        num(usage?.input_tokens) ??
+        num(usage?.inputTokens) ??
+        num(params?.input_tokens) ??
+        num(params?.inputTokens),
+      outputTokens:
+        num(usage?.output_tokens) ??
+        num(usage?.outputTokens) ??
+        num(params?.output_tokens) ??
+        num(params?.outputTokens),
+      cacheReadTokens:
+        num(usage?.cache_read_input_tokens) ??
+        num(usage?.cacheReadTokens) ??
+        num(params?.cache_read_input_tokens) ??
+        num(params?.cacheReadTokens),
+      cacheCreationTokens:
+        num(usage?.cache_creation_input_tokens) ??
+        num(usage?.cacheCreationTokens) ??
+        num(params?.cache_creation_input_tokens) ??
+        num(params?.cacheCreationTokens),
+    },
+    allowEmptyUsage: true,
+  });
+}
+
 function extractOpenCodeResponseOutput({
   response,
   outputSchema,
@@ -386,6 +602,201 @@ function extractOpenCodeResponseOutput({
   }
 
   return textParts;
+}
+
+function idFromCodexResult(
+  result: unknown,
+  key: 'thread' | 'turn',
+): string | null {
+  const obj = record(result);
+  const nested = record(obj?.[key]);
+  return (
+    str(nested?.id) ??
+    str(obj?.[`${key}Id`]) ??
+    str(obj?.[`${key}_id`]) ??
+    str(obj?.id) ??
+    null
+  );
+}
+
+function abortableCodexAwait<T>(
+  promise: Promise<T>,
+  signal: AbortSignal,
+): Promise<T> {
+  if (signal.aborted) {
+    promise.catch(() => {});
+    return Promise.reject(new Error('Codex generation aborted'));
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      promise.catch(() => {});
+      reject(new Error('Codex generation aborted'));
+    };
+
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      (error: unknown) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(error);
+      },
+    );
+  });
+}
+
+function codexNotificationMatches(
+  notification: { method: string; params?: unknown },
+  threadId: string,
+  turnId: string | null,
+): boolean {
+  const notificationThreadId = threadIdFromCodexNotification(notification);
+  const notificationTurnId = turnIdFromCodexNotification(notification);
+  let hasScope = false;
+
+  if (notificationThreadId !== null) {
+    if (notificationThreadId !== threadId) return false;
+    hasScope = true;
+  }
+
+  if (notificationTurnId !== null) {
+    if (turnId === null && notificationThreadId === null) return false;
+    if (turnId !== null && notificationTurnId !== turnId) return false;
+    hasScope = true;
+  }
+
+  return (
+    hasScope || !codexNotificationRequiresSessionScope(notification.method)
+  );
+}
+
+function codexAssistantTextFromCompletedItem(notification: {
+  params?: unknown;
+}): string | undefined {
+  const params = record(notification.params);
+  const item = record(params?.item);
+  if (!item) return undefined;
+
+  const type = str(item.type);
+  const role = str(item.role);
+  if (type !== 'agentMessage' && role !== 'assistant' && role !== 'agent') {
+    return undefined;
+  }
+
+  return (
+    str(item.text) ??
+    str(item.content) ??
+    str(item.value) ??
+    textFromParts(item.content)
+  );
+}
+
+function codexTurnCompletedIsError(
+  params: Record<string, unknown> | undefined,
+): boolean {
+  return isCodexErrorValue(params?.isError) || isCodexErrorValue(params?.error);
+}
+
+function codexThreadStatusIsIdle(
+  params: Record<string, unknown> | undefined,
+): boolean {
+  return str(record(params?.status)?.type) === 'idle';
+}
+
+function codexThreadStatusIsError(
+  params: Record<string, unknown> | undefined,
+): boolean {
+  const status = record(params?.status);
+  return isCodexErrorValue(status?.error) || isCodexErrorValue(params?.error);
+}
+
+function interruptCodexTurnWhenStarted({
+  turnStartPromise,
+  client,
+  threadId,
+}: {
+  turnStartPromise: Promise<unknown>;
+  client: {
+    request(method: string, params?: unknown): Promise<unknown>;
+  };
+  threadId: string;
+}) {
+  turnStartPromise
+    .then((turnResult) => {
+      const lateTurnId = idFromCodexResult(turnResult, 'turn');
+      if (lateTurnId) {
+        return client.request('turn/interrupt', {
+          threadId,
+          turnId: lateTurnId,
+        });
+      }
+      return undefined;
+    })
+    .catch(() => {});
+}
+
+function isCodexErrorValue(value: unknown): boolean {
+  if (value === true) return true;
+  if (typeof value === 'string') return value.trim().length > 0;
+  if (value && typeof value === 'object') return true;
+  return false;
+}
+
+function textFromParts(value: unknown): string | undefined {
+  if (!Array.isArray(value)) return undefined;
+
+  const parts = value
+    .map((part) => {
+      if (typeof part === 'string') return part;
+      const partRecord = record(part);
+      return partRecord === undefined ? undefined : str(partRecord.text);
+    })
+    .filter((part): part is string => part !== undefined);
+
+  return parts.length === 0 ? undefined : parts.join('');
+}
+
+function threadIdFromCodexNotification(notification: {
+  params?: unknown;
+}): string | null {
+  const params = record(notification.params);
+  const thread = record(params?.thread);
+  return str(params?.threadId) ?? str(params?.thread_id) ?? str(thread?.id) ?? null;
+}
+
+function turnIdFromCodexNotification(notification: {
+  params?: unknown;
+}): string | null {
+  const params = record(notification.params);
+  const turn = record(params?.turn);
+  return str(params?.turnId) ?? str(params?.turn_id) ?? str(turn?.id) ?? null;
+}
+
+function codexNotificationRequiresSessionScope(method: string): boolean {
+  return (
+    method.startsWith('item/') ||
+    method === 'turn/completed' ||
+    method === 'thread/status/changed'
+  );
+}
+
+function record(value: unknown): Record<string, unknown> | undefined {
+  return value !== null && typeof value === 'object'
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function str(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function num(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value
+    : undefined;
 }
 
 function summarizeForDebug(text: string, maxLength = 240): string {

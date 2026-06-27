@@ -57,6 +57,32 @@ describe('generateTaskName', () => {
     );
   });
 
+  it('passes Codex slot config through to AI generation', async () => {
+    resolveAiSkillSlotMock.mockResolvedValue({
+      backend: 'codex',
+      model: 'gpt-5.1-codex',
+      thinkingEffort: 'minimal',
+      skillName: null,
+    });
+
+    const name = await generateTaskName('add codex task name generation');
+
+    expect(name).toBe('fix PR details split-pane scroll');
+    expect(generateTextMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        backend: 'codex',
+        model: 'gpt-5.1-codex',
+        thinkingEffort: 'minimal',
+        prompt: expect.stringContaining('Task to name:'),
+        outputSchema: expect.objectContaining({
+          properties: {
+            name: { type: 'string', maxLength: 40 },
+          },
+        }),
+      }),
+    );
+  });
+
   it('unwraps JSON text returned inside the name field', async () => {
     generateTextMock.mockResolvedValue({
       name: '{"name":"fix task name truncation"}',

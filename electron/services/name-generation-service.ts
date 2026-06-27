@@ -1,7 +1,6 @@
+import type { AiSkillSlotsSetting, ThinkingEffort } from '@shared/types';
 import type { AgentBackendType } from '@shared/agent-backend-types';
-import type { AiSkillSlotsSetting } from '@shared/types';
 import type { AiUsageContext } from '@shared/ai-usage-types';
-
 
 import { dbg } from '../lib/debug';
 
@@ -9,7 +8,6 @@ import { generateText } from './ai-generation-service';
 import { getBuiltinSkillPath } from './builtin-skills-service';
 import { getSkillContent } from './skill-management-service';
 import { resolveAiSkillSlot } from './ai-skill-slot-resolver';
-
 
 const TASK_NAME_TIMEOUT_MS = 10 * 60 * 1000;
 const TASK_NAME_MAX_PROMPT_LENGTH = 8000;
@@ -49,6 +47,7 @@ export async function generateTaskName(
     let model: string;
     let effectivePrompt: string;
     let skillName: string | undefined;
+    let thinkingEffort: ThinkingEffort | undefined;
 
     if (!slotConfig) {
       // Unconfigured: fall back to claude-code + haiku + builtin skill content
@@ -60,12 +59,14 @@ export async function generateTaskName(
       // Slot configured but using builtin default prompt
       backend = slotConfig.backend;
       model = slotConfig.model;
+      thinkingEffort = slotConfig.thinkingEffort;
       const builtinContent = await getBuiltinSkillPrompt();
       effectivePrompt = `${builtinContent}\n\nTask to name:\n${truncatedPrompt}`;
     } else {
       // Slot configured with a custom skill name
       backend = slotConfig.backend;
       model = slotConfig.model;
+      thinkingEffort = slotConfig.thinkingEffort;
       skillName = slotConfig.skillName;
       effectivePrompt = `Task to name:\n${truncatedPrompt}`;
     }
@@ -75,6 +76,7 @@ export async function generateTaskName(
       model,
       prompt: effectivePrompt,
       skillName,
+      thinkingEffort,
       outputSchema: TASK_NAME_SCHEMA,
       timeoutMs: TASK_NAME_TIMEOUT_MS,
       usageContext,

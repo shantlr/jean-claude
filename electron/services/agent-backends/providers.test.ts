@@ -375,8 +375,8 @@ describe('agent backend providers', () => {
     expect(codexAgent.sessionAllowedTools.supported).toBe(false);
   });
 
-  it('supports generation capabilities for Claude Code and OpenCode', () => {
-    for (const type of ['claude-code', 'opencode'] as const) {
+  it('supports generation capabilities for all current backends', () => {
+    for (const type of BACKEND_TYPES) {
       const generation = getAgentBackendProvider(type).capabilities.generation;
 
       expect(generation.text.supported).toBe(true);
@@ -388,19 +388,6 @@ describe('agent backend providers', () => {
       expect(generation.text.implementation.generate).toBeDefined();
       expect(generation.structured.implementation.generate).toBeDefined();
     }
-  });
-
-  it('documents unsupported Codex generation capabilities', () => {
-    const generation = getAgentBackendProvider('codex').capabilities.generation;
-
-    expect(generation.text.supported).toBe(false);
-    expect(generation.structured.supported).toBe(false);
-    if (generation.text.supported || generation.structured.supported) {
-      throw new Error('Codex generation capabilities should be unsupported');
-    }
-
-    expect(generation.text.reason.trim()).not.toBe('');
-    expect(generation.structured.reason.trim()).not.toBe('');
   });
 
   it('rejects supported operations when passed a handle from another provider', async () => {
