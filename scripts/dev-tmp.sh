@@ -73,6 +73,50 @@ copy_source_db() {
   fi
 }
 
+resolve_main_repo_db() {
+  COMMON_GIT_DIR="$(git -C "$PROJECT_ROOT" rev-parse --path-format=absolute --git-common-dir)"
+  if [[ "$(basename "$COMMON_GIT_DIR")" != ".git" ]]; then
+    echo "Unable to resolve main repo root from git common dir: $COMMON_GIT_DIR"
+    exit 1
+  fi
+
+  MAIN_REPO_ROOT="$(dirname "$COMMON_GIT_DIR")"
+  MAIN_DB_DIR="$MAIN_REPO_ROOT/db-tmp"
+  MAIN_DB="$MAIN_DB_DIR/jean-claude.db"
+}
+
+create_symlinked_db() {
+  resolve_main_repo_db
+
+  if [[ "$PROJECT_ROOT" == "$MAIN_REPO_ROOT" ]]; then
+    copy_source_db
+    return
+  fi
+
+  if [[ ! -f "$MAIN_DB" ]]; then
+    mkdir -p "$MAIN_DB_DIR"
+
+    if [[ -f "$SOURCE_DB" ]]; then
+      echo "Main repo database not found. Copying from: $SOURCE_DB"
+      echo "                                      to: $MAIN_DB"
+      cp "$SOURCE_DB" "$MAIN_DB"
+      [[ -f "$SOURCE_DB-wal" ]] && cp "$SOURCE_DB-wal" "$MAIN_DB-wal"
+      [[ -f "$SOURCE_DB-shm" ]] && cp "$SOURCE_DB-shm" "$MAIN_DB-shm"
+    else
+      echo "Warning: Source database not found at $SOURCE_DB"
+      echo "Starting with empty database at: $MAIN_DB"
+      : > "$MAIN_DB"
+    fi
+  fi
+
+  echo "Creating symlinked database: $TMP_DB"
+  echo "              pointing to: $MAIN_DB"
+  rm -f "$TMP_DB" "$TMP_DB_WAL" "$TMP_DB_SHM"
+  ln -s "$MAIN_DB" "$TMP_DB"
+  ln -s "$MAIN_DB-wal" "$TMP_DB_WAL"
+  ln -s "$MAIN_DB-shm" "$TMP_DB_SHM"
+}
+
 # Create tmp directory and copy the database
 mkdir -p "$TMP_DIR"
 
@@ -104,7 +148,11 @@ if [[ -f "$TMP_DB" ]]; then
     done
   fi
 else
-  copy_source_db
+  if [[ "$AUTO_REUSE_EXISTING_DB" == true ]]; then
+    create_symlinked_db
+  else
+    copy_source_db
+  fi
 fi
 
 echo ""
