@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   api,
+  type AzureDevOpsBoardColumn,
   type AzureDevOpsIteration,
   type AzureDevOpsPullRequestStatus,
   type AzureDevOpsUser,
@@ -46,6 +47,24 @@ export function useIterations(params: {
     queryFn: () => api.azureDevOps.getIterations(params),
     enabled: !!params.providerId && !!params.projectName,
     staleTime: 5 * 60_000, // 5 minutes - iterations change infrequently
+  });
+}
+
+export function useBoardColumns(params: {
+  providerId: string;
+  projectId: string;
+  projectName: string;
+}) {
+  return useQuery<AzureDevOpsBoardColumn[]>({
+    queryKey: [
+      'work-item-board-columns',
+      params.providerId,
+      params.projectId,
+      params.projectName,
+    ],
+    queryFn: () => api.azureDevOps.getBoardColumns(params),
+    enabled: !!params.providerId && !!params.projectId && !!params.projectName,
+    staleTime: 5 * 60_000,
   });
 }
 

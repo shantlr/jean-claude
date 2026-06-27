@@ -103,6 +103,7 @@ import {
   createRelease as createAzureRelease,
   createPullRequest,
   deleteThreadComment,
+  getBoardColumns,
   getBuild,
   getBuildDefinitionDetail,
   getBuildLog,
@@ -2949,6 +2950,14 @@ export function registerIpcHandlers() {
         await import('../services/azure-devops-service');
       return getWorkItemStates(params);
     },
+  );
+
+  ipcMain.handle(
+    'azureDevOps:getBoardColumns',
+    (
+      _,
+      params: { providerId: string; projectId: string; projectName: string },
+    ) => getBoardColumns(params),
   );
 
   ipcMain.handle(

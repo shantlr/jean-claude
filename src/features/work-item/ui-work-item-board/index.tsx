@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 import clsx from 'clsx';
 
 
-import type { AzureDevOpsWorkItem } from '@/lib/api';
+import type { AzureDevOpsBoardColumn, AzureDevOpsWorkItem } from '@/lib/api';
 import { useCommands } from '@/common/hooks/use-commands';
 import { useCurrentAzureUser } from '@/hooks/use-work-items';
 import { UserAvatar } from '@/common/ui/user-avatar';
@@ -57,6 +57,7 @@ function getColumnColor(status: string): string {
 
 export function WorkItemBoard({
   workItems,
+  boardColumns,
   highlightedWorkItemId,
   selectedWorkItemIds,
   providerId,
@@ -65,6 +66,7 @@ export function WorkItemBoard({
   onHighlight,
 }: {
   workItems: AzureDevOpsWorkItem[];
+  boardColumns: AzureDevOpsBoardColumn[];
   highlightedWorkItemId: string | null;
   selectedWorkItemIds: string[];
   providerId?: string;
@@ -74,8 +76,43 @@ export function WorkItemBoard({
 }) {
   const { data: currentUser } = useCurrentAzureUser(providerId ?? null);
 
-  // Group work items by state
+  // Group work items by Azure board column when available, then fall back to state.
   const columns = useMemo(() => {
+    if (boardColumns.length > 0) {
+      const boardGroups = new Map(
+        boardColumns.map((column) => [column.name, [] as AzureDevOpsWorkItem[]]),
+      );
+      const fallbackGroups = new Map<string, AzureDevOpsWorkItem[]>();
+
+      for (const item of workItems) {
+        const boardColumn = item.fields.boardColumn;
+        if (boardColumn && boardGroups.has(boardColumn)) {
+          boardGroups.get(boardColumn)?.push(item);
+          continue;
+        }
+
+        const state = item.fields.state;
+        if (boardGroups.has(state)) {
+          boardGroups.get(state)?.push(item);
+          continue;
+        }
+
+        const group = fallbackGroups.get(state) ?? [];
+        group.push(item);
+        fallbackGroups.set(state, group);
+      }
+
+      return [
+        ...boardColumns.map((column) => ({
+          state: column.name,
+          items: boardGroups.get(column.name) ?? [],
+        })),
+        ...[...fallbackGroups.entries()]
+          .sort(([a], [b]) => getStatusWorkflowOrder(a) - getStatusWorkflowOrder(b))
+          .map(([state, items]) => ({ state, items })),
+      ];
+    }
+
     const groups = new Map<string, AzureDevOpsWorkItem[]>();
     for (const item of workItems) {
       const state = item.fields.state;
@@ -88,7 +125,7 @@ export function WorkItemBoard({
     return [...groups.entries()]
       .sort(([a], [b]) => getStatusWorkflowOrder(a) - getStatusWorkflowOrder(b))
       .map(([state, items]) => ({ state, items }));
-  }, [workItems]);
+  }, [boardColumns, workItems]);
 
   // Board navigation: up/down within column, left/right across columns
   const navigate = useCallback(

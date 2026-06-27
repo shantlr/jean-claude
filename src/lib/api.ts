@@ -268,6 +268,8 @@ export interface AzureDevOpsWorkItem {
     description?: string;
     reproSteps?: string;
     changedDate?: string;
+    boardColumn?: string;
+    boardColumnDone?: boolean;
   };
   testSteps?: TestStep[];
   parentId?: number;
@@ -289,6 +291,13 @@ export interface AzureDevOpsWorkItemState {
   name: string;
   color?: string;
   category?: string;
+}
+
+export interface AzureDevOpsBoardColumn {
+  id: string;
+  name: string;
+  columnType?: string;
+  stateMappings: Record<string, string>;
 }
 
 export interface WorkItemComment {
@@ -687,6 +696,11 @@ export interface Api {
       projectName: string;
       workItemType: string;
     }) => Promise<AzureDevOpsWorkItemState[]>;
+    getBoardColumns: (params: {
+      providerId: string;
+      projectId: string;
+      projectName: string;
+    }) => Promise<AzureDevOpsBoardColumn[]>;
     updateWorkItemState: (params: {
       providerId: string;
       workItemId: number;
@@ -1832,6 +1846,7 @@ export const api: Api = hasWindowApi
         getWorkItemById: async () => null,
         getPullRequestStatuses: async () => [],
         getWorkItemStates: async () => [],
+        getBoardColumns: async () => [],
         updateWorkItemState: async () => {
           throw new Error('API not available');
         },

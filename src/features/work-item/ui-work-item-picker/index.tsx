@@ -12,7 +12,11 @@ import Fuse from 'fuse.js';
 import type React from 'react';
 
 
-import { useIterations, useWorkItems } from '@/hooks/use-work-items';
+import {
+  useBoardColumns,
+  useIterations,
+  useWorkItems,
+} from '@/hooks/use-work-items';
 import type { AzureDevOpsWorkItem } from '@/lib/api';
 import { Select } from '@/common/ui/select';
 import type { SelectOption } from '@/common/ui/select';
@@ -121,6 +125,11 @@ export function WorkItemPicker({
 
   // Fetch iterations
   const { data: iterations } = useIterations({ providerId, projectName });
+  const { data: boardColumns } = useBoardColumns({
+    providerId,
+    projectId,
+    projectName,
+  });
 
   // Resolve iteration path
   const currentIteration = useMemo(
@@ -371,6 +380,7 @@ export function WorkItemPicker({
           ) : (
             <WorkItemBoard
               workItems={filteredWorkItems}
+              boardColumns={boardColumns ?? []}
               highlightedWorkItemId={highlightedId}
               selectedWorkItemIds={selectedWorkItemIds}
               providerId={providerId}

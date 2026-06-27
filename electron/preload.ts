@@ -327,6 +327,11 @@ contextBridge.exposeInMainWorld('api', {
       projectName: string;
       workItemType: string;
     }) => ipcRenderer.invoke('azureDevOps:getWorkItemStates', params),
+    getBoardColumns: (params: {
+      providerId: string;
+      projectId: string;
+      projectName: string;
+    }) => ipcRenderer.invoke('azureDevOps:getBoardColumns', params),
     updateWorkItemState: (params: {
       providerId: string;
       workItemId: number;

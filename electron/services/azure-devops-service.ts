@@ -108,6 +108,8 @@ export interface AzureDevOpsWorkItem {
     description?: string;
     reproSteps?: string;
     changedDate?: string;
+    boardColumn?: string;
+    boardColumnDone?: boolean;
   };
   testSteps?: TestStep[];
   parentId?: number;
@@ -130,6 +132,13 @@ export interface AzureDevOpsWorkItemState {
   name: string;
   color?: string;
   category?: string;
+}
+
+export interface AzureDevOpsBoardColumn {
+  id: string;
+  name: string;
+  columnType?: string;
+  stateMappings: Record<string, string>;
 }
 
 export interface WorkItemHistoryEntry {
@@ -171,9 +180,29 @@ interface WorkItemsBatchResponse {
       'Microsoft.VSTS.TCM.ReproSteps'?: string;
       'Microsoft.VSTS.TCM.Steps'?: string;
       'System.ChangedDate'?: string;
+      'System.BoardColumn'?: string;
+      'System.BoardColumnDone'?: boolean;
     };
     relations?: WorkItemRelation[];
   }>;
+}
+
+interface AzureDevOpsTeamResponse {
+  value?: Array<{ id: string; name: string }>;
+}
+
+interface AzureDevOpsBoardsResponse {
+  value?: Array<{
+    id: string;
+    name: string;
+    columns?: AzureDevOpsBoardColumn[];
+  }>;
+}
+
+interface AzureDevOpsBoardResponse {
+  id: string;
+  name: string;
+  columns?: AzureDevOpsBoardColumn[];
 }
 
 interface WorkItemUpdateRelation {
@@ -772,6 +801,8 @@ export async function queryWorkItems(params: {
       description: wi.fields['System.Description'],
       reproSteps: wi.fields['Microsoft.VSTS.TCM.ReproSteps'],
       changedDate: wi.fields['System.ChangedDate'],
+      boardColumn: wi.fields['System.BoardColumn'],
+      boardColumnDone: wi.fields['System.BoardColumnDone'],
     },
     parentId: extractParentId(wi.relations),
     relatedTestCaseIds: extractLinkedTestCaseIds(wi.relations),
@@ -844,6 +875,8 @@ export async function queryAssignedWorkItems(params: {
       description: wi.fields['System.Description'],
       reproSteps: wi.fields['Microsoft.VSTS.TCM.ReproSteps'],
       changedDate: wi.fields['System.ChangedDate'],
+      boardColumn: wi.fields['System.BoardColumn'],
+      boardColumnDone: wi.fields['System.BoardColumnDone'],
     },
     parentId: extractParentId(wi.relations),
     linkedPrs: extractLinkedPrs(wi.relations),
@@ -886,6 +919,8 @@ export async function getWorkItemById(params: {
       description: wi.fields['System.Description'],
       reproSteps: wi.fields['Microsoft.VSTS.TCM.ReproSteps'],
       changedDate: wi.fields['System.ChangedDate'],
+      boardColumn: wi.fields['System.BoardColumn'],
+      boardColumnDone: wi.fields['System.BoardColumnDone'],
     },
     parentId: extractParentId(wi.relations),
     childIds: extractChildIds(wi.relations),
@@ -924,6 +959,94 @@ export async function getWorkItemStates(params: {
       category: state.category,
     }),
   );
+}
+
+export async function getBoardColumns(params: {
+  providerId: string;
+  projectId: string;
+  projectName: string;
+}): Promise<AzureDevOpsBoardColumn[]> {
+  const { authHeader, orgName } = await getProviderAuth(params.providerId);
+  const projectPath = encodeURIComponent(params.projectName);
+
+  const teamsResponse = await fetch(
+    `https://dev.azure.com/${orgName}/_apis/projects/${encodeURIComponent(params.projectId)}/teams?api-version=7.1`,
+    { headers: { Authorization: authHeader } },
+  );
+
+  if (!teamsResponse.ok) {
+    const error = await teamsResponse.text();
+    throw new Error(`Failed to fetch Azure DevOps teams: ${error}`);
+  }
+
+  const teamsData: AzureDevOpsTeamResponse = await teamsResponse.json();
+  const teams = (teamsData.value ?? []).sort((a, b) => {
+    const defaultName = `${params.projectName} Team`;
+    if (a.name === defaultName) return -1;
+    if (b.name === defaultName) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  let bestColumns: AzureDevOpsBoardColumn[] = [];
+  let bestScore = 0;
+
+  for (const team of teams) {
+    const teamPath = encodeURIComponent(team.name);
+    const boardsResponse = await fetch(
+      `https://dev.azure.com/${orgName}/${projectPath}/${teamPath}/_apis/work/boards?api-version=7.1`,
+      { headers: { Authorization: authHeader } },
+    );
+    if (!boardsResponse.ok) continue;
+
+    const boardsData: AzureDevOpsBoardsResponse = await boardsResponse.json();
+    for (const board of boardsData.value ?? []) {
+      const columns = board.columns ?? (await fetchBoardColumns({
+        authHeader,
+        orgName,
+        projectPath,
+        teamPath,
+        boardId: board.id,
+      }));
+      const mappedColumns = columns.filter(
+        (column) => Object.keys(column.stateMappings ?? {}).length > 0,
+      );
+      if (mappedColumns.length === 0) continue;
+      const score = getTaskBoardScore(mappedColumns);
+      if (score > bestScore) {
+        bestColumns = mappedColumns;
+        bestScore = score;
+      }
+      if (score >= TASK_BOARD_TYPES.length) return mappedColumns;
+    }
+  }
+
+  return bestColumns;
+}
+
+const TASK_BOARD_TYPES = ['Bug', 'Task', 'User Story', 'Product Backlog Item'];
+
+function getTaskBoardScore(columns: AzureDevOpsBoardColumn[]): number {
+  const mappedTypes = new Set(
+    columns.flatMap((column) => Object.keys(column.stateMappings ?? {})),
+  );
+  return TASK_BOARD_TYPES.filter((type) => mappedTypes.has(type)).length;
+}
+
+async function fetchBoardColumns(params: {
+  authHeader: string;
+  orgName: string;
+  projectPath: string;
+  teamPath: string;
+  boardId: string;
+}): Promise<AzureDevOpsBoardColumn[]> {
+  const response = await fetch(
+    `https://dev.azure.com/${params.orgName}/${params.projectPath}/${params.teamPath}/_apis/work/boards/${encodeURIComponent(params.boardId)}?api-version=7.1`,
+    { headers: { Authorization: params.authHeader } },
+  );
+  if (!response.ok) return [];
+
+  const board: AzureDevOpsBoardResponse = await response.json();
+  return board.columns ?? [];
 }
 
 /**
