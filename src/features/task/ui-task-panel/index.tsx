@@ -712,11 +712,15 @@ function AgentResourceHoverPanel({
 }
 
 function AgentResourceTooltip({
+  ariaLabel,
   children,
   content,
+  onActivate,
 }: {
+  ariaLabel?: string;
   children: ReactNode;
   content: ReactNode;
+  onActivate?: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState<{
@@ -752,14 +756,30 @@ function AgentResourceTooltip({
     closeTimerRef.current = setTimeout(() => setIsOpen(false), 120);
   }, [clearCloseTimer]);
 
+  const activate = useCallback(() => {
+    if (!onActivate) return;
+    setIsOpen(false);
+    onActivate();
+  }, [onActivate]);
+
   useEffect(() => () => clearCloseTimer(), [clearCloseTimer]);
 
   return (
     <>
       <div
         ref={triggerRef}
+        aria-label={ariaLabel}
+        role={onActivate ? 'button' : undefined}
         onFocus={open}
         onBlur={scheduleClose}
+        onClick={activate}
+        onKeyDown={(event) => {
+          if (!onActivate) return;
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            activate();
+          }
+        }}
         onMouseEnter={open}
         onMouseLeave={scheduleClose}
         tabIndex={0}
@@ -792,6 +812,7 @@ function AgentResourcePill({
   stepId: string;
   isRunning: boolean;
 }) {
+  const openOverlay = useOverlaysStore((state) => state.open);
   const { data, historyByStepId } = useAgentResourceSnapshots();
   const snapshot = data?.find((item) => item.stepId === stepId);
   const history = historyByStepId[stepId] ?? [];
@@ -827,6 +848,7 @@ function AgentResourcePill({
 
   return (
     <AgentResourceTooltip
+      ariaLabel="Open resource metrics"
       content={
         <AgentResourceHoverPanel
           backendLabel={backendLabel}
@@ -838,8 +860,9 @@ function AgentResourcePill({
           rssSamples={samples}
         />
       }
+      onActivate={() => openOverlay('resources')}
     >
-      <div className="border-glass-border bg-bg-0/25 text-ink-1 hover:border-accent-1/40 hover:bg-bg-2 flex h-7 w-[196px] cursor-default items-center gap-1.5 rounded-[7px] border px-2 font-mono text-[11.5px] font-semibold tabular-nums transition-colors">
+      <div className="border-glass-border bg-bg-0/25 text-ink-1 hover:border-accent-1/40 hover:bg-bg-2 flex h-7 w-[196px] cursor-pointer items-center gap-1.5 rounded-[7px] border px-2 font-mono text-[11.5px] font-semibold tabular-nums transition-colors">
         <span
           className={clsx(
             'h-[5px] w-[5px] rounded-full',
