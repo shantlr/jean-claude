@@ -8,11 +8,13 @@ import type { PromptImagePart } from '@shared/agent-backend-types';
 
 const {
   createPullRequestSpy,
+  getPullRequestSpy,
   processImageFileSpy,
   updatePullRequestDescriptionSpy,
   uploadPullRequestAttachmentSpy,
 } = vi.hoisted(() => ({
   createPullRequestSpy: vi.fn(),
+  getPullRequestSpy: vi.fn(),
   processImageFileSpy: vi.fn(),
   updatePullRequestDescriptionSpy: vi.fn(),
   uploadPullRequestAttachmentSpy: vi.fn(),
@@ -37,6 +39,7 @@ vi.mock('@/lib/api', () => ({
     azureDevOps: {
       updatePullRequestDescription: updatePullRequestDescriptionSpy,
       uploadPullRequestAttachment: uploadPullRequestAttachmentSpy,
+      getPullRequest: getPullRequestSpy,
     },
     preferenceMemory: { recordEvidence: vi.fn() },
   },
@@ -157,6 +160,9 @@ describe('PrCreationForm image previews', () => {
       url: 'https://dev.azure.com/attachments/converted-demo.gif',
     });
     updatePullRequestDescriptionSpy.mockResolvedValue(undefined);
+    getPullRequestSpy.mockResolvedValue({
+      description: 'Generated description',
+    });
     vi.stubGlobal('URL', {
       createObjectURL: createObjectUrl,
       revokeObjectURL: revokeObjectUrl,
@@ -289,13 +295,13 @@ describe('PrCreationForm image previews', () => {
     expect(createPullRequestSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'Preserve GIF animation',
-        description: expect.stringContaining('jc-image://'),
+        description: expect.not.stringContaining('jc-image://'),
       }),
     );
     expect(updatePullRequestDescriptionSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        description: expect.stringContaining(
-          'https://dev.azure.com/attachments/converted-demo.gif',
+        description: expect.stringMatching(
+          /Generated description[\s\S]*https:\/\/dev\.azure\.com\/attachments\/converted-demo\.gif/,
         ),
       }),
     );

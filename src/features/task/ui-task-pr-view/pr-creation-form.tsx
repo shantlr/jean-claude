@@ -429,6 +429,16 @@ export function PrCreationForm({
       }));
 
     const displayTitle = title.trim() || 'AI-generated PR';
+    const descriptionWithoutImagePlaceholders = imagesToUpload.reduce(
+      (current, image) => {
+        const pattern = placeholderPattern(image.placeholderMarkdown);
+        return pattern ? current.replace(pattern, '') : current;
+      },
+      descriptionToCreate,
+    );
+    const imageOnlyDescription =
+      descriptionToCreate.trim() !== '' &&
+      descriptionWithoutImagePlaceholders.trim() === '';
 
     // 1. Create background job
     const jobId = addRunningJob({
@@ -451,7 +461,7 @@ export function PrCreationForm({
       .mutateAsync({
         taskId,
         title,
-        description: descriptionToCreate,
+        description: descriptionWithoutImagePlaceholders,
         isDraft,
         commitUnstaged: hasUncommittedChanges ? commitUnstaged : undefined,
       })
@@ -461,6 +471,16 @@ export function PrCreationForm({
         if (imagesToUpload.length > 0) {
           try {
             let updatedDescription = descriptionToCreate;
+            if (imageOnlyDescription) {
+              const createdPullRequest =
+                await api.azureDevOps.getPullRequest({
+                  providerId: repoProviderId,
+                  projectId: repoProjectId,
+                  repoId,
+                  pullRequestId: result.id,
+                });
+              updatedDescription = createdPullRequest.description ?? '';
+            }
             for (const image of imagesToUpload) {
               const attachment =
                 await api.azureDevOps.uploadPullRequestAttachment({
@@ -473,11 +493,13 @@ export function PrCreationForm({
                   dataBase64: image.storageData ?? image.data,
                 });
               const pattern = placeholderPattern(image.placeholderMarkdown);
-              updatedDescription = pattern
-                ? updatedDescription.replace(pattern, (match) =>
-                    replaceMarkdownImageUrl(match, attachment.url),
-                  )
-                : updatedDescription;
+              const replacement = replaceMarkdownImageUrl(
+                image.placeholderMarkdown,
+                attachment.url,
+              );
+              updatedDescription = pattern?.test(updatedDescription)
+                ? updatedDescription.replace(pattern, replacement)
+                : `${updatedDescription}${updatedDescription ? '\n\n' : ''}${replacement}`;
             }
             await api.azureDevOps.updatePullRequestDescription({
               providerId: repoProviderId,
